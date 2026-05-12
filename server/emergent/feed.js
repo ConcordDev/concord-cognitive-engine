@@ -71,6 +71,7 @@ export function emitFeedEvent(event, db, realtimeEmit) {
 export function getFeedEvents(db, { limit = 50, emergentId, since } = {}) {
   if (!db) return [];
   try {
+    // @select-star-ok: emergent_activity_feed admin list — caller renders every column
     let sql = "SELECT * FROM emergent_activity_feed";
     const args = [];
     const clauses = [];

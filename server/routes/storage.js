@@ -44,6 +44,7 @@ export default function createStorageRouter({ db, requireAuth }) {
   });
 
   // ── Vault ─────────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/vault/store", validateBody(vaultStoreSchema), (req, res) => {
     try {
       const { fileBase64, mimeType } = req.body || {};
@@ -75,6 +76,7 @@ export default function createStorageRouter({ db, requireAuth }) {
     }
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/vault/:hash/ref/increment", (req, res) => {
     try {
       const { hash } = req.params;
@@ -89,6 +91,7 @@ export default function createStorageRouter({ db, requireAuth }) {
     }
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/vault/:hash/ref/decrement", (req, res) => {
     try {
       const { hash } = req.params;
@@ -103,6 +106,7 @@ export default function createStorageRouter({ db, requireAuth }) {
     }
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/vault/cleanup", (_req, res) => {
     try {
       const result = cleanupUnreferencedArtifacts(db);
@@ -125,6 +129,7 @@ export default function createStorageRouter({ db, requireAuth }) {
   });
 
   // ── Downloads ─────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/download", (req, res) => {
     const result = recordDownload(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -150,17 +155,20 @@ export default function createStorageRouter({ db, requireAuth }) {
   });
 
   // ── CRI Cache ─────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/cri/cache", (req, res) => {
     const result = cacheInCRI(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/cri/serve", (req, res) => {
     const { criId, vaultHash } = req.body || {};
     recordCRIServe(db, { criId, vaultHash });
     res.json({ ok: true });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.delete("/cri/cache", (req, res) => {
     const result = evictFromCRI(db, req.body || {});
     res.json(result);
@@ -176,6 +184,7 @@ export default function createStorageRouter({ db, requireAuth }) {
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/cri/:criId/evict-expired", (req, res) => {
     const result = evictExpiredCRIEntries(db, req.params.criId);
     res.json(result);

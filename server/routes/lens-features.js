@@ -101,6 +101,7 @@ export default function lensFeatureRoutes(db, lensFeatures) {
     res.json({ ok: true, templates });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/generate", (req, res) => {
     const { template, config = {} } = req.body;
     const tmpl = LENS_TEMPLATES[template];
@@ -115,6 +116,7 @@ export default function lensFeatureRoutes(db, lensFeatures) {
     }
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/seed", (_req, res) => {
     const result = seedLensFeatures(db, lensFeatures);
     res.json(result);

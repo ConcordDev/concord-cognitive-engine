@@ -36,6 +36,7 @@ import fs from "fs";
 import path from "path";
 import logger from '../logger.js';
 import { queues, PRIORITIES } from '../requestQueue.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 const execAsync = promisify(execCb);
 
@@ -147,7 +148,7 @@ const GUARDIAN_INTERVALS = Object.freeze({
 // ── Repair Memory ───────────────────────────────────────────────────────────
 // Persistent pattern → fix registry. The system gets smarter over time.
 
-const _repairMemory = new Map();
+const _repairMemory = new LruMap();
 
 function _ensureRepairMemory() {
   try {
@@ -2647,7 +2648,7 @@ async function _tryHLRDiagnosis(errorMessage) {
 // Runs continuously while the system is live. Runtime self-repair.
 
 const _guardianTimers = new Map();
-const _guardianStatuses = new Map();
+const _guardianStatuses = new LruMap();
 
 const GUARDIAN_MONITORS = {
   process_health: {

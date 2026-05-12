@@ -15,11 +15,12 @@
  */
 
 import { getEmbedding } from "./embeddings.js";
+import { LruMap, LruSet } from "./lib/lru-map.js";
 
 // ── State ──────────────────────────────────────────────────────────────────
 
 /** @type {Map<string, { dtuCount: number, megaCount: number, hyperCount: number, cacheHits: number, totalQueries: number, retrievalSufficient: number, avgTopSimilarity: number, avgSatisfaction: number }>} */
-const lensStats = new Map();
+const lensStats = new LruMap();
 
 /** @type {Map<string, string>} lens → currently assigned model */
 const lensModels = new Map();

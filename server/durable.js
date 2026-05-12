@@ -984,6 +984,7 @@ export function registerDurableEndpoints(app, db) {
   app.get("/api/schema/version", (req, res) => {
     try {
       const row = db.prepare("SELECT MAX(version) as v FROM schema_version").get();
+      // @select-star-ok: schema_version registry — admin endpoint returns full row to client
       const migrations = db.prepare("SELECT * FROM schema_version ORDER BY version").all();
       res.json({ ok: true, current_version: row?.v || 0, migrations });
     } catch {

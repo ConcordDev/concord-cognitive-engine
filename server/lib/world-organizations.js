@@ -10,6 +10,7 @@
 
 import { randomUUID } from "crypto";
 import logger from "../logger.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -25,7 +26,7 @@ const MAX_ORG_MEMBERS = 500;
 // ══════════════════════════════════════════════════════════════════════════════
 
 /** @type {Map<string, object>} Organizations keyed by org ID */
-const _orgs = new Map();
+const _orgs = new LruMap();
 
 /** @type {Map<string, object>} Parties (temp groups) keyed by party ID */
 const _parties = new Map();
@@ -34,13 +35,13 @@ const _parties = new Map();
 const _userParty = new Map();
 
 /** @type {Map<string, object>} Mentorship pairs: mentorshipId -> { mentorId, menteeId, domain, ... } */
-const _mentorships = new Map();
+const _mentorships = new LruMap();
 
 /** @type {object[]} Recruitment board listings */
 const _recruitmentBoard = [];
 
 /** @type {Map<string, Map<string, string>>} orgId -> Map<userId, role> */
-const _orgMembers = new Map();
+const _orgMembers = new LruMap();
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ORGANIZATIONS
@@ -136,7 +137,7 @@ export function contributeToTreasury(orgId, amount, userId) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 /** @type {Map<string, object>} Alliances keyed by alliance ID */
-const _alliances = new Map();
+const _alliances = new LruMap();
 
 export function createAlliance({ name, founderOrgId, description }) {
   const org = _orgs.get(founderOrgId);

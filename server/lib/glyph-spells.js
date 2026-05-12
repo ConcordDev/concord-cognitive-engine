@@ -59,6 +59,7 @@ export function seedDefaultGlyphLibrary(db) {
 export function listGlyphComponents(db) {
   if (!db) return [];
   try {
+    // @select-star-ok: glyph_components — 10-entry seed library
     return db.prepare(`SELECT * FROM glyph_components ORDER BY element, glyph`).all();
   } catch { return []; }
 }

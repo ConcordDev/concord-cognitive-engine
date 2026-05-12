@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF IV.1 — Cognitive Load Balancing & Knowledge Exploration
  *
@@ -44,7 +45,7 @@ const MAX_LOAD_SCORE = 100;
 const OVERLOAD_THRESHOLD = 80;
 
 // userId -> { score, history[], lastDecay, domains{} }
-const userLoads = new Map();
+const userLoads = new LruMap();
 
 /**
  * Record cognitive load for a user.

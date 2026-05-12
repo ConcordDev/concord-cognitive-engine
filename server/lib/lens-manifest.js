@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "./lru-map.js";
 /**
  * Lens Capability Manifest Registry
  *
@@ -56,13 +57,13 @@ export const READ_ACTION_TYPES = new Set([
 // ── Manifest Store ───────────────────────────────────────────────────────
 
 /** lensId → manifest */
-const _manifests = new Map();
+const _manifests = new LruMap();
 
 /** domain tag → Set<lensId> (inverted index for fast routing) */
-const _tagIndex = new Map();
+const _tagIndex = new LruMap();
 
 /** action type → Set<lensId> (inverted index) */
-const _actionTypeIndex = new Map();
+const _actionTypeIndex = new LruMap();
 
 let _initialized = false;
 

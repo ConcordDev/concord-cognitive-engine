@@ -18,6 +18,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -86,16 +87,16 @@ const PAIN_HISTORY_MAX = 100;
 // ── Stores ──────────────────────────────────────────────────────────────────
 
 /** painId -> pain record */
-const _pains = new Map();
+const _pains = new LruMap();
 
 /** woundId -> wound record */
-const _wounds = new Map();
+const _wounds = new LruMap();
 
 /** avoidanceId -> avoidance memory record */
-const _avoidances = new Map();
+const _avoidances = new LruMap();
 
 /** entityId -> pain tolerance / meta state */
-const _painStates = new Map();
+const _painStates = new LruMap();
 
 // ── Internal: Ensure Pain State ─────────────────────────────────────────────
 

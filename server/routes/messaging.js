@@ -87,10 +87,15 @@ export function createMessagingRouter({ db, infer, contentGuard }) {
   }
 
   router.all("/whatsapp/webhook", webhookHandler(whatsapp));
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/telegram/webhook", webhookHandler(telegram));
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/discord/interactions", webhookHandler(discord));
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/signal/webhook", webhookHandler(signal));
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/slack/events", webhookHandler(slack));
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/imessage/webhook", webhookHandler(imessage));
 
   // ─── BINDING MANAGEMENT (authenticated) ────────────────────────────────────

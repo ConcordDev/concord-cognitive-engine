@@ -14,6 +14,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -82,8 +83,8 @@ const MAX_HISTORY           = 200;  // GPU: more memory for entity lifecycle
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const _sleepStates  = new Map();   // entityId -> SleepRecord
-const _sleepHistory = new Map();   // entityId -> SleepCycleHistory[]
+const _sleepStates  = new LruMap();   // entityId -> SleepRecord
+const _sleepHistory = new LruMap();   // entityId -> SleepCycleHistory[]
 const _metrics = {
   totalSleepCyclesCompleted: 0, totalConsolidationsRun: 0,
   totalREMPhasesRun: 0, totalDreamDTUsCreated: 0,

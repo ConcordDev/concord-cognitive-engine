@@ -91,6 +91,7 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
   const router = Router();
 
   // POST /api/lens/:domain/export-dtu — Export lens artifact as .dtu file
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/api/lens/:domain/export-dtu", asyncHandler(async (req, res) => {
     try {
       const { domain } = req.params;
@@ -142,6 +143,7 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
   }));
 
   // POST /api/convert/to-dtu — Convert any format to DTU
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/api/convert/to-dtu", asyncHandler(async (req, res) => {
     try {
       const { format, data, title, domain, tags } = req.body || {};
@@ -157,6 +159,7 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
   }));
 
   // POST /api/convert/from-dtu — Convert DTU to any format
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/api/convert/from-dtu", asyncHandler(async (req, res) => {
     try {
       const { targetFormat } = req.body || {};

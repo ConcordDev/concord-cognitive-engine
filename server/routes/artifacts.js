@@ -145,7 +145,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
   // Accepts: { name, mimeType, content (base64), dtuId?, description?, tags? }
   // For binary uploads via multipart/form-data, `content` should be base64-encoded.
 
-  router.post("/upload", requireAuth(), (req, res) => {
+  router.post("/upload", requireAuth(), async (req, res) => {
     try {
       const userId = resolveUserId(req);
       const { name, mimeType, content, dtuId, description, tags } = req.body || {};
@@ -186,7 +186,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
         const fileName = `${artifactId}_${safeName}`;
         storagePath = path.join(uploadDir, fileName);
         try {
-          fs.writeFileSync(storagePath, buf);
+          await fs.promises.writeFile(storagePath, buf);
         } catch (fsErr) {
           console.error("[artifacts] disk write failed:", fsErr);
           // Fall back to inline for resilience
@@ -259,7 +259,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
 
   // ── GET /:id/download — download content ────────────────────────────────────
 
-  router.get("/:id/download", (req, res) => {
+  router.get("/:id/download", async (req, res) => {
     try {
       const row = stmts.getWithContent.get(req.params.id);
       if (!row) return res.status(404).json({ ok: false, error: "Artifact not found" });
@@ -274,7 +274,9 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       }
 
       if (row.storage_mode === "disk" && row.storage_path) {
-        if (!fs.existsSync(row.storage_path)) {
+        try {
+          await fs.promises.access(row.storage_path);
+        } catch {
           return res.status(404).json({ ok: false, error: "Artifact content missing from disk" });
         }
         return fs.createReadStream(row.storage_path).pipe(res);

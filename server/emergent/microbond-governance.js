@@ -18,6 +18,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -62,9 +63,9 @@ const MAX_BONDS = 5000;                  // In-memory cap
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
 const _bonds = new Map();           // bondId -> bond object
-const _votes = new Map();           // bondId -> Map(voterId -> { vote, timestamp })
-const _pledges = new Map();         // bondId -> Map(entityId -> amount)
-const _spilloverFunds = new Map();  // scope -> accumulated spillover amount
+const _votes = new LruMap();           // bondId -> Map(voterId -> { vote, timestamp })
+const _pledges = new LruMap();         // bondId -> Map(entityId -> amount)
+const _spilloverFunds = new LruMap();  // scope -> accumulated spillover amount
 
 // ── Bond Creation ───────────────────────────────────────────────────────────
 

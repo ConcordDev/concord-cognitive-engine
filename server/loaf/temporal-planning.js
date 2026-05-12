@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF IV.3 — Temporal Planning & World Models
  *
@@ -31,7 +32,7 @@ const PLAN_STATES = Object.freeze({
 });
 
 // Plans store
-const plans = new Map(); // planId -> Plan
+const plans = new LruMap(); // planId -> Plan
 
 /**
  * Create a long-horizon plan with rollback guarantees.
@@ -125,7 +126,7 @@ function rollback(planId, checkpointId) {
 // === TEMPORAL FORECASTING ===
 
 // Forecasts with confidence decay
-const forecasts = new Map(); // forecastId -> Forecast
+const forecasts = new LruMap(); // forecastId -> Forecast
 
 const CONFIDENCE_DECAY_MODELS = Object.freeze({
   EXPONENTIAL: "exponential",
@@ -199,7 +200,7 @@ function computeDecayedConfidence(forecastId) {
 // === PARALLEL WORLD MODELS ===
 
 // World model store: each world model is an independent simulation
-const worldModels = new Map(); // worldModelId -> WorldModel
+const worldModels = new LruMap(); // worldModelId -> WorldModel
 
 /**
  * Create a parallel world model for reality simulation.

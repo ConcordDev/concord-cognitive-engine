@@ -21,6 +21,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -86,7 +87,7 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 // ── Migration Registry ──────────────────────────────────────────────────────
 // Every export/import operation is tracked for audit and debugging.
 
-const _migrations = new Map(); // migrationId → migration record
+const _migrations = new LruMap(); // migrationId → migration record
 
 function recordMigration(type, extra = {}) {
   const migrationId = uid("mig");

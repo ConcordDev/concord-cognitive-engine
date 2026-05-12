@@ -51,6 +51,7 @@ export default function createTransparencyRouter({ db, adminOnly }) {
 
   // ── Admin: Log New Legal Request ───────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/admin/legal-requests", adminOnly, (req, res) => {
     const {
       type,
@@ -81,6 +82,7 @@ export default function createTransparencyRouter({ db, adminOnly }) {
 
   // ── Admin: Update Legal Request ────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.put("/admin/legal-requests/:id", adminOnly, (req, res) => {
     const { id } = req.params;
     const { response, responseDate, notifiedUser, notes } = req.body || {};

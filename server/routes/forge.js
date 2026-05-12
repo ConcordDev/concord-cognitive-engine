@@ -62,6 +62,7 @@ export default function createForgeRouter({ db }) {
   });
 
   // ── Generate a Forge app ──────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/generate", (req, res) => {
     try {
       const {
@@ -111,6 +112,7 @@ export default function createForgeRouter({ db }) {
   });
 
   // ── Validate config ───────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/validate", (req, res) => {
     const { config = {} } = req.body;
     const merged = {
@@ -149,6 +151,7 @@ export default function createForgeRouter({ db }) {
   });
 
   // ── Export generated app as downloadable file ─────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/export", (req, res) => {
     try {
       const result = generateForgeApp(req.body);
@@ -163,6 +166,7 @@ export default function createForgeRouter({ db }) {
   });
 
   // ── Check code against avoidance patterns ─────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/check-avoidance", (req, res) => {
     const { code } = req.body;
     if (!code) return res.status(400).json({ ok: false, error: "code is required" });

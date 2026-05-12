@@ -74,7 +74,7 @@ export class LocalVolumeAdapter extends StorageAdapter {
     if (!fullPath.startsWith(path.resolve(this.basePath) + path.sep) && fullPath !== path.resolve(this.basePath)) {
       throw new Error("Path traversal detected");
     }
-    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+    await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
 
     const hash = crypto.createHash("sha256");
     let size = 0;
@@ -82,7 +82,7 @@ export class LocalVolumeAdapter extends StorageAdapter {
     if (Buffer.isBuffer(data)) {
       hash.update(data);
       size = data.length;
-      fs.writeFileSync(fullPath, data);
+      await fs.promises.writeFile(fullPath, data);
     } else if (data instanceof Readable) {
       const chunks = [];
       for await (const chunk of data) {
@@ -91,13 +91,13 @@ export class LocalVolumeAdapter extends StorageAdapter {
         size += buf.length;
         chunks.push(buf);
       }
-      fs.writeFileSync(fullPath, Buffer.concat(chunks));
+      await fs.promises.writeFile(fullPath, Buffer.concat(chunks));
     } else if (typeof data === "string") {
       // Base64 encoded string
       const buf = Buffer.from(data, "base64");
       hash.update(buf);
       size = buf.length;
-      fs.writeFileSync(fullPath, buf);
+      await fs.promises.writeFile(fullPath, buf);
     } else {
       throw new Error("Data must be a Buffer, Readable stream, or base64 string");
     }
@@ -109,13 +109,14 @@ export class LocalVolumeAdapter extends StorageAdapter {
     };
   }
 
-  get(uri) {
+  async get(uri) {
     const filePath = this._uriToFilePath(uri);
-    if (!fs.existsSync(filePath)) {
+    let stats;
+    try {
+      stats = await fs.promises.stat(filePath);
+    } catch {
       throw new Error(`File not found: ${uri}`);
     }
-
-    const stats = fs.statSync(filePath);
     const ext = path.extname(filePath).toLowerCase();
     const mimeMap = {
       ".wav": "audio/wav",
@@ -141,18 +142,24 @@ export class LocalVolumeAdapter extends StorageAdapter {
     };
   }
 
-  remove(uri) {
+  async remove(uri) {
     const filePath = this._uriToFilePath(uri);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    try {
+      await fs.promises.unlink(filePath);
       return true;
+    } catch {
+      return false;
     }
-    return false;
   }
 
-  exists(uri) {
+  async exists(uri) {
     const filePath = this._uriToFilePath(uri);
-    return fs.existsSync(filePath);
+    try {
+      await fs.promises.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

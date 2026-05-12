@@ -15,6 +15,7 @@ import {
   walk, readSafe, makeReport, makeError, lineOf, relPath, snippet,
   loadOpenDispatchers, loadLensManifestMacros,
 } from "./_framework.js";
+import { LruMap, LruSet } from "../lru-map.js";
 
 // Macros that are public via the lens manifest / chat router are dispatched
 // dynamically; the static parse can miss them. We treat them as live if
@@ -250,7 +251,7 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
     }
 
     // ── 4. Dead routes ────────────────────────────────────────────────────
-    const declaredRoutes = new Map(); // METHOD path -> {file, line}
+    const declaredRoutes = new LruMap(); // METHOD path -> {file, line}
     for (const f of serverFiles) {
       if (f.includes("/scripts/") || /\.test\.js$/.test(f)) continue;
       const c = await readSafe(f);
@@ -265,7 +266,7 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
       }
     }
     // For dead-route detection, look for fetch("…path…") strings in frontend.
-    const fetchTargets = new Set();
+    const fetchTargets = new LruSet();
     for (const f of frontendFiles) {
       const c = await readSafe(f);
       if (!c) continue;

@@ -186,6 +186,7 @@ export async function rollbackMigrations(targetVersion = null, existingDb = null
 
     let rolledBack = 0;
 
+    // @sql-loop-ok: migration runner — boot-time only, iterates fixed migration-files list
     for (const migration of applied) {
       const file = migrationFiles.find(
         (f) => parseInt(f.slice(0, 3), 10) === migration.version

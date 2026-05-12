@@ -221,6 +221,7 @@ export default function registerLegalRoutes(app, deps) {
         offset = "0",
       } = req.query;
 
+      // @select-star-ok: dmca_cases admin list
       let query = "SELECT * FROM dmca_cases";
       const params = [];
 

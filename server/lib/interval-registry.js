@@ -8,6 +8,7 @@
 
 // ── Interval Definitions ───────────────────────────────────────────────────
 
+import { LruMap, LruSet } from "./lru-map.js";
 export const INTERVALS = {
   // ── Critical (fast, lightweight) ──
   eventLoopMonitor:        7_000,     // 7s — just reads a counter
@@ -93,7 +94,7 @@ export const INTERVALS = {
 // ── Registry State ─────────────────────────────────────────────────────────
 
 const _registeredIntervals = new Map();
-const _taskHandlers = new Map();
+const _taskHandlers = new LruMap();
 
 /**
  * Register a task handler that will be called at the specified interval.

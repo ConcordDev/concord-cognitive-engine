@@ -64,6 +64,7 @@ export default function createQualiaRouter() {
   });
 
   // POST /api/qualia/activate — Activate an OS for an entity (sovereign only)
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/activate", (req, res) => {
     const engine = getEngine();
     if (!engine) return res.json({ ok: false, error: "qualia engine not initialized" });
@@ -78,6 +79,7 @@ export default function createQualiaRouter() {
   });
 
   // POST /api/qualia/deactivate — Deactivate an OS for an entity (sovereign only)
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/deactivate", (req, res) => {
     const engine = getEngine();
     if (!engine) return res.json({ ok: false, error: "qualia engine not initialized" });
@@ -117,6 +119,7 @@ export default function createQualiaRouter() {
   });
 
   // POST /api/qualia/senses/calibrate — Adjust sensitivity
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/senses/calibrate", (req, res) => {
     const { entityId, sensitivity } = req.body || {};
     if (!entityId || sensitivity === undefined) {

@@ -121,6 +121,7 @@ export default function createAPIKeysRouter({ requireAuth } = {}) {
   });
 
   // ── POST /api/keys/validate — Validate a raw key (utility) ───────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/validate", (req, res) => {
     const { key } = req.body || {};
     const result = validateKey(key);

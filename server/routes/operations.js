@@ -843,7 +843,7 @@ export default function registerOperationRoutes(app, {
   // Unified status view of the proposal-verify-council-commit pipeline,
   // WAL health, snapshot state, and recent commit history.
 
-  app.get("/api/organism/pipeline/status", (req, res) => {
+  app.get("/api/organism/pipeline/status", async (req, res) => {
     try {
       const proposals = Array.from(PIPE.proposals.values());
       const now = Date.now();
@@ -874,7 +874,7 @@ export default function registerOperationRoutes(app, {
       let walSizeBytes = 0;
       let walExists = false;
       try {
-        const stat = fs.statSync(PIPE.walPath);
+        const stat = await fs.promises.stat(PIPE.walPath);
         walSizeBytes = stat.size;
         walExists = true;
       } catch (_e) { /* WAL may not exist yet */ }

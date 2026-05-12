@@ -191,6 +191,7 @@ export default function createFilmStudioRouter({ db, requireAuth }) {
     res.status(result.ok ? 200 : 400).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/:filmDtuId/crew-dtus", (req, res) => {
     const result = createCrewDTU(db, {
       filmDtuId: req.params.filmDtuId,
@@ -227,6 +228,7 @@ export default function createFilmStudioRouter({ db, requireAuth }) {
 
   // ─── Film Remix System ────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/remixes", (req, res) => {
     const result = registerFilmRemix(db, req.body);
     res.status(result.ok ? 201 : 400).json(result);
@@ -260,6 +262,7 @@ export default function createFilmStudioRouter({ db, requireAuth }) {
     });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/:filmDtuId/compute-score", (req, res) => {
     const result = computeDiscoveryScore(db, req.params.filmDtuId);
     res.status(result.ok ? 200 : 400).json(result);

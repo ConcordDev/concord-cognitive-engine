@@ -13,6 +13,7 @@
  */
 
 import logger from "../logger.js";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Configuration ────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ const SPAM_CONFIG = {
 const _rateBuckets = new Map();   // `${userId}:${action}` → { count, windowStart }
 const _burstBuckets = new Map();  // userId → { count, windowStart }
 const _contentHashes = new Map(); // `${userId}:${hash}` → { count, windowStart }
-const _reputation = new Map();    // userId → number (starts at 0)
+const _reputation = new LruMap();    // userId → number (starts at 0)
 
 const HOUR_MS = 3_600_000;
 

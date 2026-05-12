@@ -511,6 +511,7 @@ export default function createMediaRouter({ STATE }) {
    * Body:
    *   - quality: string (e.g., '720p', '1080p', 'high', 'medium')
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/:id/transcode", asyncHandler(async (req, res) => {
     const { quality } = req.body;
     if (!quality) throw new ValidationError("quality is required");

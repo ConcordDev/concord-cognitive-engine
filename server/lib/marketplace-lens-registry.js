@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "./lru-map.js";
 /**
  * Marketplace Lens Registry — Complete 112-Lens Ecosystem
  *
@@ -2662,10 +2663,10 @@ export const REGISTRY_STATS = Object.freeze({
 // LOOKUP HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const _byId = new Map();
-const _byCategory = new Map();
-const _byClassification = new Map();
-const _byNumber = new Map();
+const _byId = new LruMap();
+const _byCategory = new LruMap();
+const _byClassification = new LruMap();
+const _byNumber = new LruMap();
 
 for (const lens of MARKETPLACE_LENS_REGISTRY) {
   _byId.set(lens.id, lens);

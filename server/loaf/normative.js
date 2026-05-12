@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF III.4 — Normative Modules (No Drift)
  *
@@ -19,7 +20,7 @@ const NORMATIVE_TYPES = Object.freeze({
 });
 
 // Normative module store
-const modules = new Map(); // moduleId -> NormativeModule
+const modules = new LruMap(); // moduleId -> NormativeModule
 
 /**
  * Create a normative module.

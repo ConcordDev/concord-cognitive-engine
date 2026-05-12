@@ -95,6 +95,7 @@ registerHeartbeat("fauna-spawner", {
 // flock/herd/scatter rather than sitting where the spawner placed them.
 // Frequency 4 (~60s) = visibly responsive without churning the DB.
 import { runCreatureFlockCycle } from "./emergent/creature-flock-cycle.js";
+import { LruMap, LruSet } from "./lib/lru-map.js";
 registerHeartbeat("creature-flock-cycle", {
   frequency: 4,
   handler: runCreatureFlockCycle,
@@ -1248,7 +1249,7 @@ try {
 } catch (_e) { console.warn("[DomainLogic] Failed to merge extended rules:", _e?.message); }
 
 // ---- Rate Limiting for Expensive Macros (Phase 5.2 + Phase 1-6 hardening) ----
-const _macroRateLimits = new Map();
+const _macroRateLimits = new LruMap();
 const EXPENSIVE_MACROS = new Map([
   ["scope.metrics", { maxPerMinute: 30, windowMs: 60000 }],
   ["system.autogen", { maxPerMinute: 10, windowMs: 60000 }],

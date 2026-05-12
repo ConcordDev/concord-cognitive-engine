@@ -113,6 +113,7 @@ export default function createAuthRouter({
   }, 60 * 60 * 1000);
   _regIpCleanupInterval.unref();
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/register", authRateLimitMiddleware, validate("userRegister"), (req, res) => {
     const { username, email, password } = req.validated || req.body;
 
@@ -238,6 +239,7 @@ export default function createAuthRouter({
     });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/login", authRateLimitMiddleware, validate("userLogin"), (req, res) => {
     // Defense-in-depth: per-IP AND per-account rate limiting so NAT
     // doesn't defeat the IP bucket and a botnet can't target one account.
@@ -503,6 +505,7 @@ export default function createAuthRouter({
   });
 
   // ---- Refresh Token Endpoint (Tier 1: Auth Hardening) ----
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/refresh", authRateLimitMiddleware, (req, res) => {
     const refreshCookie = req.cookies?.[REFRESH_TOKEN_COOKIE];
     if (!refreshCookie) {

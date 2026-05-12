@@ -34,6 +34,7 @@ import crypto from "crypto";
 import { readFileSync, readdirSync, statSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { LruMap, LruSet } from "./lru-map.js";
 
 const G = 9.81; // gravity
 const AIR_DENSITY = 1.225;
@@ -95,7 +96,7 @@ export const AQUATIC_ABILITY_FLAVORS = Object.freeze([
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = join(__dir, "../../content");
-const _baselineCache = new Map(); // worldId -> creatures[]
+const _baselineCache = new LruMap(); // worldId -> creatures[]
 
 function loadBaselineCreatures(worldId) {
   if (_baselineCache.has(worldId)) return _baselineCache.get(worldId);

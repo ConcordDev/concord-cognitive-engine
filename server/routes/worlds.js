@@ -539,6 +539,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }
 
       // Reset skill levels, preserve lineage for royalty cascade
+      // @sql-loop-ok: iterates player's skills on prestige (bounded by skill catalog ~50)
       for (const skill of playerSkills) {
         const prestigenMeta = JSON.stringify({ prestige_from_level: skill.skill_level, world: req.params.worldId });
         db.prepare("UPDATE dtus SET skill_level = 1, total_experience = 0, practice_count = 0 WHERE id = ?").run(skill.id);
@@ -1457,6 +1458,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         let toConsume = needed;
         const slots = db.prepare(
           'SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ? ORDER BY acquired_at DESC'
+        // @sql-loop-ok: iterates inventory slots to consume (bounded by slot count)
         ).all(req.user.id, cost.resource_id);
         for (const slot of slots) {
           if (toConsume <= 0) break;
@@ -1532,6 +1534,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         // Deduct from inventory (newest slots first)
         let toConsume = quantity;
         const slots = db.prepare(
+          // @sql-loop-ok: iterates inventory slots to consume (bounded by slot count)
           'SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ? ORDER BY acquired_at DESC'
         ).all(req.user.id, resource_id);
         for (const slot of slots) {

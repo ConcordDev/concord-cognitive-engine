@@ -7,6 +7,7 @@
 
 import { randomUUID } from "crypto";
 import logger from "../logger.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 // ──────────────────────────── Constants ────────────────────────────
 
@@ -59,10 +60,10 @@ const VALID_FORMATS = new Set(["glb", "gltf"]);
 // ──────────────────────────── Storage ──────────────────────────────
 
 /** @type {Map<string, object>} assetId → asset record */
-const assets = new Map();
+const assets = new LruMap();
 
 /** @type {Map<string, object>} userId → character profile */
-const characterProfiles = new Map();
+const characterProfiles = new LruMap();
 
 // ──────────────────────────── Helpers ──────────────────────────────
 

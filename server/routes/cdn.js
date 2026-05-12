@@ -88,6 +88,7 @@ export default function createCDNRouter({ cdnManager, urlSigner, STATE }) {
 
   // ── POST /purge — Purge specific artifact from CDN (admin) ────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/purge", asyncHandler(async (req, res) => {
     requireAdmin(req);
 
@@ -109,6 +110,7 @@ export default function createCDNRouter({ cdnManager, urlSigner, STATE }) {
 
   // ── POST /purge-all — Purge all cached content (admin) ────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/purge-all", asyncHandler(async (req, res) => {
     requireAdmin(req);
 
@@ -234,6 +236,7 @@ export default function createCDNRouter({ cdnManager, urlSigner, STATE }) {
 
   // ── POST /push — Push artifact to CDN origin (admin) ──────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/push", asyncHandler(async (req, res) => {
     requireAdmin(req);
 

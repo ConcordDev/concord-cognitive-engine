@@ -495,18 +495,21 @@ export default function createEmergentRouter({ makeCtx, runMacro }) {
     return res.json({ ok: true, tally });
   }));
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/proposals/:id/conflicts", asyncHandler(async (req, res) => {
     const ctx = makeCtx(req);
     const result = processProposalConflicts(ctx.STATE, req.body);
     return res.json({ ok: true, ...result });
   }));
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/rules/add", asyncHandler(async (req, res) => {
     const ctx = makeCtx(req);
     const result = await addRuleWithConflictCheck(ctx.STATE, req.body);
     return res.json({ ok: true, ...result });
   }));
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/actions/evaluate", asyncHandler(async (req, res) => {
     const ctx = makeCtx(req);
     const result = evaluateRulesForAction(ctx.STATE, req.body.action);

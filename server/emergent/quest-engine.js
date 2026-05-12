@@ -20,6 +20,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── DB Registration ──────────────────────────────────────────────────────────
 //
@@ -113,7 +114,7 @@ export const QUEST_TEMPLATES = Object.freeze({
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const quests = new Map();        // questId → quest object
+const quests = new LruMap();        // questId → quest object
 const activeQuests = new Map();  // questId → quest (only started, not completed)
 const questMetrics = {
   totalCreated: 0,

@@ -71,6 +71,7 @@ export default function createLensCultureRouter({ db, requireAuth }) {
   });
 
   // ── Culture DTUs ──────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/culture", (req, res) => {
     const result = postCultureDTU(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -126,6 +127,7 @@ export default function createLensCultureRouter({ db, requireAuth }) {
   });
 
   // ── Lens Protection ───────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/protection", (req, res) => {
     const result = setLensProtection(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
@@ -136,18 +138,21 @@ export default function createLensCultureRouter({ db, requireAuth }) {
     res.json({ ok: true, ...protection });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/protection/check", (req, res) => {
     const result = checkProtectionAllows(db, req.body || {});
     res.json({ ok: true, ...result });
   });
 
   // ── One-Tap Purchase ──────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/purchase", (req, res) => {
     const result = oneTapPurchase(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
   });
 
   // ── Artifact Export ───────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/export", (req, res) => {
     const result = exportArtifact(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
@@ -164,6 +169,7 @@ export default function createLensCultureRouter({ db, requireAuth }) {
   });
 
   // ── Biomonitor ────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/biomonitor", (req, res) => {
     const result = recordBiomonitorReading(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -184,11 +190,13 @@ export default function createLensCultureRouter({ db, requireAuth }) {
   });
 
   // ── Grief Protocol ────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/grief/init", (_req, res) => {
     const result = initGriefProtocol(db);
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/grief/activate", (req, res) => {
     const result = activateGriefProtocol(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
@@ -199,12 +207,14 @@ export default function createLensCultureRouter({ db, requireAuth }) {
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/grief/transition", (req, res) => {
     const result = transitionGriefPhase(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
   });
 
   // ── Great Merge ───────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/merge/init", (req, res) => {
     const result = initGreatMerge(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
@@ -215,17 +225,20 @@ export default function createLensCultureRouter({ db, requireAuth }) {
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/merge/advance", (req, res) => {
     const result = advanceMergePhase(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
   });
 
   // ── Lens Registry ────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/lenses/register", (req, res) => {
     const result = registerLens(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/lenses/register-system", (_req, res) => {
     const result = registerSystemLenses(db);
     res.json(result);

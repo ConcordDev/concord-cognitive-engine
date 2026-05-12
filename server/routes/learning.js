@@ -338,6 +338,7 @@ export default function createLearningRouter(opts = {}) {
   // POST /api/learning/credential/verify
   // Body: { studentId, domain, credential }
   // ------------------------------------------------------------------
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/credential/verify", async (req, res) => {
     try {
       const body = req.body || {};
@@ -479,6 +480,7 @@ export default function createLearningRouter(opts = {}) {
   // Body: { category }
   // Expand every lens in a single category.
   // ------------------------------------------------------------------
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/expand/category", async (req, res) => {
     try {
       const { category } = req.body || {};
@@ -500,6 +502,7 @@ export default function createLearningRouter(opts = {}) {
   // POST /api/learning/expand/all
   // Expand every category in sequence, rate-limited internally.
   // ------------------------------------------------------------------
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/expand/all", async (_req, res) => {
     try {
       const { engine, error } = await loadExpansionEngine();
@@ -550,6 +553,7 @@ export default function createLearningRouter(opts = {}) {
   // Body: { minDTUCount? }
   // Run a cross-domain DTU scan and propose new hybrids.
   // ------------------------------------------------------------------
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/hybrids/discover", async (req, res) => {
     try {
       const { minDTUCount } = req.body || {};
@@ -591,6 +595,7 @@ export default function createLearningRouter(opts = {}) {
   // Body: { name, domains:[d1,d2,...], description? }
   // Register a new hybrid lens with the lens manifest.
   // ------------------------------------------------------------------
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/hybrids/register", async (req, res) => {
     try {
       const hybrid = req.body || {};
@@ -700,6 +705,7 @@ export default function createLearningRouter(opts = {}) {
   // Body: { studentId?, claim, citations: [dtuId], domain?, type?, title? }
   // Proof-by-Citation submission.
   // ------------------------------------------------------------------
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/submit", async (req, res) => {
     try {
       const body = req.body || {};
@@ -733,6 +739,7 @@ export default function createLearningRouter(opts = {}) {
   // Body: { studentId?, domain, difficulty? }
   // Generate a STSVK assessment.
   // ------------------------------------------------------------------
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/assessment/generate", async (req, res) => {
     try {
       const body = req.body || {};
@@ -756,6 +763,7 @@ export default function createLearningRouter(opts = {}) {
   // Body: { studentId?, assessmentId, responses: [{questionId, claim, citations[]}] }
   // Grade a student's assessment responses.
   // ------------------------------------------------------------------
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/assessment/grade", async (req, res) => {
     try {
       const body = req.body || {};
@@ -839,6 +847,7 @@ export default function createLearningRouter(opts = {}) {
    * Ask a domain-specialized entity tutor for help. Never throws;
    * falls back to a heuristic response when brains are unavailable.
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/tutor/ask", async (req, res) => {
     try {
       const body = req.body || {};
@@ -885,6 +894,7 @@ export default function createLearningRouter(opts = {}) {
    * Body: { studentId?, domain, claim }
    * Generate Socratic questions that challenge a student's claim.
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/tutor/socratic", async (req, res) => {
     try {
       const body = req.body || {};
@@ -1075,6 +1085,7 @@ export default function createLearningRouter(opts = {}) {
    * Alias for /cohort/peer-teach — same semantics, matches the frontend
    * route name. Body: { teacherId?, learnerId, dtuId }
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/cohort/teach", async (req, res) => {
     try {
       const body = req.body || {};
@@ -1116,6 +1127,7 @@ export default function createLearningRouter(opts = {}) {
    * Match students into peer-learning cohorts based on genome similarity
    * and complementarity (complementarity weighted higher).
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/cohort/form", async (req, res) => {
     try {
       const body = req.body || {};
@@ -1164,6 +1176,7 @@ export default function createLearningRouter(opts = {}) {
    * Record a peer-teaching event. Teacher earns +0.6 mastery and CC
    * credits; learner earns +0.1 mastery.
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/cohort/peer-teach", async (req, res) => {
     try {
       const body = req.body || {};

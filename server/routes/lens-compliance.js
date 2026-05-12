@@ -79,6 +79,7 @@ export default function createLensComplianceRouter({ db, requireAuth }) {
     res.json({ ok: true, lens, latestCompliance });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/lenses/register", (req, res) => {
     const { name, classification, version, protection_mode, creator_id, creator_type, federation_tiers, artifact_types, config } = req.body || {};
     if (!name || !classification) {
@@ -89,6 +90,7 @@ export default function createLensComplianceRouter({ db, requireAuth }) {
   });
 
   // ── Compliance Submission (Creator Gate) ────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/lenses/:id/submit", (req, res) => {
     const lens = getLensById(db, req.params.id);
     if (!lens) return res.status(404).json({ ok: false, error: "lens_not_found" });
@@ -97,6 +99,7 @@ export default function createLensComplianceRouter({ db, requireAuth }) {
   });
 
   // ── Manual Compliance Validation ────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/lenses/:id/validate", (req, res) => {
     const lens = getLensById(db, req.params.id);
     if (!lens) return res.status(404).json({ ok: false, error: "lens_not_found" });
@@ -112,18 +115,21 @@ export default function createLensComplianceRouter({ db, requireAuth }) {
   });
 
   // ── Enable/Disable Lens ─────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/lenses/:id/disable", (req, res) => {
     const { reason } = req.body || {};
     disableLens(req.params.id, reason || "manual_disable", "manual", db);
     res.json({ ok: true, lensId: req.params.id, status: "disabled" });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/lenses/:id/enable", (req, res) => {
     enableLens(req.params.id, db);
     res.json({ ok: true, lensId: req.params.id, status: "active" });
   });
 
   // ── Nightly Audit ───────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/audit/run", (_req, res) => {
     const result = runNightlyAudit(db);
     res.json({ ok: true, result });
@@ -142,6 +148,7 @@ export default function createLensComplianceRouter({ db, requireAuth }) {
   });
 
   // ── Upgrade Propagation ─────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/upgrades/propagate", (req, res) => {
     const { name, description, newChecks, appliesTo, requiredByDate } = req.body || {};
     if (!name || !newChecks) {
@@ -159,6 +166,7 @@ export default function createLensComplianceRouter({ db, requireAuth }) {
 
   router.get("/upgrades", (_req, res) => {
     try {
+      // @select-star-ok: lens_upgrades admin list
       const upgrades = db.prepare("SELECT * FROM lens_upgrades ORDER BY created_at DESC").all();
       res.json({ ok: true, upgrades });
     } catch {

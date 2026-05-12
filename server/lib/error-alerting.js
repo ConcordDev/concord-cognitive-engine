@@ -18,6 +18,7 @@
  */
 
 import logger from "../logger.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ const ERROR_SPIKE_WINDOW_MS = 60 * 1000;
 // ── State ────────────────────────────────────────────────────────────────────
 
 /** @type {Map<string, number>} errorKey → last alert timestamp */
-const _alertCooldowns = new Map();
+const _alertCooldowns = new LruMap();
 
 /** @type {{ ts: number }[]} Rolling window of recent errors */
 const _recentErrors = [];

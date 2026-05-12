@@ -107,6 +107,7 @@ export function createCanonicalStore(db, dtuStore, opts = {}) {
           "DELETE FROM canonical_registry WHERE content_hash = ?"
         ),
         all: db.prepare(
+          // @select-star-ok: canonical_registry — full registry list
           "SELECT * FROM canonical_registry ORDER BY created_at DESC"
         ),
       };

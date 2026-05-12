@@ -102,6 +102,7 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin, 
   }));
 
   // POST /api/world/lore/refresh — admin-only forced refresh
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/lore/refresh", admin, wrap(async (req, res) => {
     const worldId = String(req.body?.worldId || req.query.worldId || "concordia-hub");
     _loreCache.delete(worldId);

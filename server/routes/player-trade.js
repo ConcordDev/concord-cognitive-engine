@@ -323,6 +323,7 @@ function _executeTrade(db, trade) {
 }
 
 function _transferItems(db, fromUserId, toUserId, items, refTradeId) {
+  // @sql-loop-ok: iterates trade items (bounded by trade-size cap, typically 1-5)
   for (const it of items) {
     const src = db.prepare(`SELECT * FROM player_inventory WHERE id = ?`).get(it.inventoryId);
     if (!src || src.user_id !== fromUserId || src.quantity < it.quantity) {

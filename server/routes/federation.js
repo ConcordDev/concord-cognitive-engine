@@ -89,6 +89,7 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── Nationals ─────────────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/nationals", (req, res) => {
     const result = createNational(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -105,6 +106,7 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── Regions ───────────────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/regions", (req, res) => {
     const result = createRegion(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -121,6 +123,7 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── CRI Instances ─────────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/cri", (req, res) => {
     const result = registerCRIInstance(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -134,17 +137,20 @@ export default function createFederationRouter({ db, requireAuth }) {
     }));
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/cri/:id/heartbeat", (req, res) => {
     const result = recordCRIHeartbeat(db, req.params.id);
     res.status(result.ok ? 200 : 404).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/cri/mark-stale", (_req, res) => {
     res.json(markStaleCRIs(db));
   });
 
   // ── User Location Declaration ─────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/users/:userId/location", (req, res) => {
     const result = declareUserLocation(db, { userId: req.params.userId, ...req.body });
     res.status(result.ok ? 200 : 400).json(result);
@@ -157,6 +163,7 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── Entity Home Base ──────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/entities/:entityId/home-base", (req, res) => {
     const result = setEntityHomeBase(db, { entityId: req.params.entityId, ...req.body });
     res.status(result.ok ? 200 : 400).json(result);
@@ -169,11 +176,13 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── DTU Location & Federation Tier ────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/dtus/:dtuId/location", (req, res) => {
     const result = tagDTULocation(db, { dtuId: req.params.dtuId, ...req.body });
     res.status(result.ok ? 200 : 400).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/dtus/:dtuId/promote", (req, res) => {
     const result = promoteDTU(db, { dtuId: req.params.dtuId, ...req.body });
     res.status(result.ok ? 200 : 400).json(result);
@@ -204,6 +213,7 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── Federation Peering ────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/peers", (req, res) => {
     const result = createPeer(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -231,11 +241,13 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── Quality Gate Check ──────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/quality-gate/check", (req, res) => {
     const result = checkQualityGate(req.body || {});
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/promotion/eligibility", (req, res) => {
     const result = checkPromotionEligibility(req.body || {});
     res.json(result);
@@ -243,6 +255,7 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── Tier Content Tracking ───────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/tier-content", (req, res) => {
     const result = recordTierContent(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -265,6 +278,7 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── XP & Quests ─────────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/xp/award", (req, res) => {
     const result = awardXP(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
@@ -281,6 +295,7 @@ export default function createFederationRouter({ db, requireAuth }) {
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/quests/complete", (req, res) => {
     const result = completeQuest(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
@@ -296,6 +311,7 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── Knowledge Race Seasons ──────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/race/seasons", (req, res) => {
     const result = createRaceSeason(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -321,6 +337,7 @@ export default function createFederationRouter({ db, requireAuth }) {
     res.status(result.ok ? 200 : 404).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.put("/users/:userId/preferences", (req, res) => {
     const result = updateFederationPreferences(db, {
       userId: req.params.userId,
@@ -339,6 +356,7 @@ export default function createFederationRouter({ db, requireAuth }) {
     res.json({ ok: true, protocol: getDedupProtocol() });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/dedup/reviews", (req, res) => {
     const result = createDedupReview(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -351,6 +369,7 @@ export default function createFederationRouter({ db, requireAuth }) {
     }));
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/dedup/reviews/:reviewId/decide", (req, res) => {
     const result = processDedupDecision(db, {
       reviewId: req.params.reviewId,
@@ -372,6 +391,7 @@ export default function createFederationRouter({ db, requireAuth }) {
     res.status(result.ok ? 200 : 404).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.put("/users/:userId/marketplace-filters", (req, res) => {
     const result = updateMarketplaceFilters(db, {
       userId: req.params.userId,
@@ -387,6 +407,7 @@ export default function createFederationRouter({ db, requireAuth }) {
     res.status(result.ok ? 200 : 404).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.put("/users/:userId/wealth-preferences", (req, res) => {
     const result = updateWealthPreferences(db, {
       userId: req.params.userId,
@@ -397,6 +418,7 @@ export default function createFederationRouter({ db, requireAuth }) {
 
   // ── Leaderboards ────────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/leaderboard/entry", (req, res) => {
     const result = updateLeaderboardEntry(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);

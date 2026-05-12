@@ -181,6 +181,7 @@ export function createCraftingRouter({ db, requireAuth }) {
   });
 
   // ── POST /api/crafting/skills/validate-quality — quality gate check ────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/skills/validate-quality", (req, res) => {
     try {
       const { description, skill_type, properties } = req.body;

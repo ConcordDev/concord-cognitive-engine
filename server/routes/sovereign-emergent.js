@@ -76,6 +76,7 @@ export default function createSovereignEmergentRouter({ STATE }) {
   // ════════════════════════════════════════════════════════════════════════════
   // POST /api/sovereign-emergent/decree — Extended decree handler
   // ════════════════════════════════════════════════════════════════════════════
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/decree", asyncHandler(async (req, res) => {
     const S = STATE || getSTATE();
     if (!S) return res.json({ ok: false, error: "STATE not available" });
@@ -1858,6 +1859,7 @@ export default function createSovereignEmergentRouter({ STATE }) {
   }));
 
   // Research endpoints
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/research/submit", asyncHandler(async (req, res) => {
     try {
       const mod = await loadModule("../emergent/research-jobs.js");
@@ -1908,6 +1910,7 @@ export default function createSovereignEmergentRouter({ STATE }) {
     } catch (e) { return res.json({ ok: false, error: String(e?.message || e) }); }
   }));
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/drafts/:draftId/review", asyncHandler(async (req, res) => {
     try {
       const mod = await loadModule("../lib/emergents/quality/peer-review.js");

@@ -15,6 +15,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -59,8 +60,8 @@ const SUMMIT_STATUSES = Object.freeze({
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const _cris = new Map();           // criId -> CRI object
-const _crisByDomain = new Map();   // domain -> Set<criId>
+const _cris = new LruMap();           // criId -> CRI object
+const _crisByDomain = new LruMap();   // domain -> Set<criId>
 
 // ── CRI Lifecycle ───────────────────────────────────────────────────────────
 

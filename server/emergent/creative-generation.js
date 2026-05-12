@@ -24,6 +24,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -93,8 +94,8 @@ const BRIDGES = ["emergence", "recursion", "boundary", "transformation", "symmet
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const _works      = new Map();   // workId -> creative work
-const _techniques = new Map();   // techniqueId -> technique record
+const _works      = new LruMap();   // workId -> creative work
+const _techniques = new LruMap();   // techniqueId -> technique record
 const _exhibition = new Map();   // workId -> exhibited work (gallery)
 const _metrics    = {
   totalWorks: 0, totalReceptions: 0, totalExhibited: 0,

@@ -644,6 +644,7 @@ export function reimportDTU(db, { buffer, importedBy, source }) {
  * Get reimport history for a user.
  */
 export function getReimports(db, { importedBy, limit = 50 } = {}) {
+  // @select-star-ok: dtu_reimports admin list — caller renders every column
   let query = "SELECT * FROM dtu_reimports";
   const params = [];
   if (importedBy) {

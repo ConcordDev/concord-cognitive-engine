@@ -4,6 +4,7 @@
 
 import { BRAIN_CONFIG } from "../brain-config.js";
 import { isBrainAvailable, makeBrainHandle } from "./ollama-client.js";
+import { LruMap, LruSet } from "../lru-map.js";
 
 // Role → ordered list of brains to try (primary first, then fallback)
 // IMPORTANT: conscious role for chat callers has NO fallback chain.
@@ -20,7 +21,7 @@ const ROLE_CHAIN = {
 const CHAT_CALLER_PREFIXES = ["chat", "chat-conscious", "conscious-chat"];
 
 // Reachability cache — refreshed on first miss or after TTL
-const _available = new Map(); // brainName → { ok, expiresAt }
+const _available = new LruMap(); // brainName → { ok, expiresAt }
 const CACHE_TTL_MS = 15000;
 
 async function checkAvailability(brainName) {

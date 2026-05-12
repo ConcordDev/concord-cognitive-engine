@@ -10,6 +10,7 @@
 
 import { randomUUID } from "crypto";
 import logger from "../logger.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -67,16 +68,16 @@ const _jobTemplateById = new Map(JOB_TEMPLATES.map(j => [j.id, j]));
 // ══════════════════════════════════════════════════════════════════════════════
 
 /** @type {Map<string, object>} Active job assignments: assignmentId -> job state */
-const _jobAssignments = new Map();
+const _jobAssignments = new LruMap();
 
 /** @type {Map<string, string>} userId -> assignmentId quick lookup */
 const _userJobs = new Map();
 
 /** @type {Map<string, object>} Player-owned businesses: businessId -> business state */
-const _businesses = new Map();
+const _businesses = new LruMap();
 
 /** @type {Map<string, object>} Franchise templates: franchiseId -> template */
-const _franchises = new Map();
+const _franchises = new LruMap();
 
 // ══════════════════════════════════════════════════════════════════════════════
 // JOBS

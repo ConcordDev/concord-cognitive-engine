@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF V.1 — Cross-Institution Cognition & Knowledge Continuity
  *
@@ -24,7 +25,7 @@
 // === CROSS-INSTITUTION PRIMITIVES ===
 
 // Shared epistemic primitives: institution-agnostic knowledge objects
-const sharedPrimitives = new Map(); // primitiveId -> { id, type, content, provenance, institutions[] }
+const sharedPrimitives = new LruMap(); // primitiveId -> { id, type, content, provenance, institutions[] }
 
 const PRIMITIVE_TYPES = Object.freeze({
   FACT: "fact",               // verified factual claim
@@ -83,7 +84,7 @@ function adoptPrimitive(primitiveId, institutionId) {
 // === KNOWLEDGE ARCHIVE (Institutional Memory) ===
 
 // Knowledge archives: survive organizational changes
-const archives = new Map(); // archiveId -> { entries[], metadata }
+const archives = new LruMap(); // archiveId -> { entries[], metadata }
 
 /**
  * Create a knowledge archive for institutional memory.
@@ -176,7 +177,7 @@ function queryArchive(archiveId, query) {
 // === EVIDENCE-BASED CONSENSUS (Without Social Coordination) ===
 
 // Evidence accumulator for social-coordination-free consensus
-const consensusTopics = new Map(); // topicId -> { claims, evidence, status }
+const consensusTopics = new LruMap(); // topicId -> { claims, evidence, status }
 
 /**
  * Submit evidence for a consensus topic. No voting — consensus emerges from evidence weight.

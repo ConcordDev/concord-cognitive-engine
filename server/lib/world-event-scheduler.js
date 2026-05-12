@@ -22,6 +22,7 @@
  */
 
 import { createEvent, EVENT_TYPES } from "./world-events.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS  = 24 * ONE_HOUR_MS;
@@ -58,7 +59,7 @@ const DISTRICT_AFFINITY = {
   referendum: ["district-civic"],
 };
 
-const _lastGeneratedAt = new Map(); // `${worldId}:${type}` -> ts
+const _lastGeneratedAt = new LruMap(); // `${worldId}:${type}` -> ts
 
 function key(worldId, type) {
   return `${worldId}:${type}`;

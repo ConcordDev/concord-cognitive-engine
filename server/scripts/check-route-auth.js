@@ -34,7 +34,8 @@ const ARGS = new Set(process.argv.slice(2));
 const UPDATE = ARGS.has("--update");
 const JSON_OUT = ARGS.has("--json");
 
-// Middleware names that count as authentication.
+// Middleware names that count as authentication when present in the route
+// args list. Word-boundary matched.
 const AUTH_NAMES = new Set([
   "requireAuth",
   "auth",
@@ -43,10 +44,37 @@ const AUTH_NAMES = new Set([
   "requirePluginAuth",
   "requireOwner",
   "requireAdmin",
+  "requireAdminRole",
+  "requireRole",
+  "requireApiKey",
+  "requireToken",
   "requireSession",
   "requireUser",
   "ensureAuthenticated",
 ]);
+
+// Patterns that, if present inside the handler BODY, prove the route is
+// auth-gated even when no middleware appears in the args list. These cover
+// the idioms common in this codebase that are invisible to an arg-list scan:
+//   - runMacro(...)            macro-system gate (publicReadDomains allowlist)
+//   - if (!req.user)           inline early-return on missing auth
+//   - if (!req?.user)          same, optional-chain form
+//   - requireRole("...")       inline role check (not in middleware position)
+//   - req.user.id              handler reads req.user.id (presumes authed —
+//                              also the canonical authorization pattern; a
+//                              route that reads req.user.id is doing the
+//                              right thing per actor-from-token, not
+//                              actor-from-body)
+//   - req.user?.id             same, optional-chain form
+const BODY_AUTH_PATTERNS = [
+  /\brunMacro\s*\(/,
+  /if\s*\(\s*!\s*req\.user\b/,
+  /if\s*\(\s*!\s*req\?\.user\b/,
+  /\brequireRole\s*\(/,
+  /\brequireAdminRole\s*\(/,
+  /\breq\.user\.id\b/,
+  /\breq\.user\?\.id\b/,
+];
 
 // Inline-marker pattern: `// AUTH: <reason>` on the line above the handler.
 const AUTH_MARKER_RE = /\/\/\s*AUTH:\s*(\S+)/i;
@@ -99,11 +127,19 @@ function findAuthInArgs(callExpr) {
     return pos;
   })();
   const argsOnly = handlerStart >= 0 ? buf.slice(0, handlerStart) : buf;
+  const handlerBody = handlerStart >= 0 ? buf.slice(handlerStart) : "";
 
+  // (1) Args-list middleware
   for (const name of AUTH_NAMES) {
     // word-boundary match — avoid `requireAuthxxx` false positive.
     const re = new RegExp(`\\b${name}\\b`);
     if (re.test(argsOnly)) return name;
+  }
+  // (2) Handler-body auth idioms — recognises runMacro / inline req.user
+  // checks / inline requireRole calls. Documented in BODY_AUTH_PATTERNS.
+  for (const re of BODY_AUTH_PATTERNS) {
+    const match = re.exec(handlerBody);
+    if (match) return `body:${match[0].slice(0, 16)}`;
   }
   return null;
 }

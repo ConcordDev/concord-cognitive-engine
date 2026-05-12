@@ -272,6 +272,7 @@ export function createRepairBrain(db) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `),
       getAllPatterns: db.prepare(
+        // @select-star-ok: repair_patterns — repair engine reads all columns
         `SELECT * FROM repair_patterns ORDER BY created_at DESC`
       ),
       getPatternsByCategory: db.prepare(
@@ -364,6 +365,7 @@ export function createRepairBrain(db) {
       getKnowledgeByCategory: db.prepare(
         `SELECT * FROM repair_knowledge WHERE category = ? ORDER BY success_count DESC`
       ),
+      // @select-star-ok: repair_knowledge — repair engine reads all columns
       getAllKnowledge: db.prepare(
         `SELECT * FROM repair_knowledge ORDER BY success_count DESC`
       ),

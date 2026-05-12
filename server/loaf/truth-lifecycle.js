@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF V.2 — Truth Lifecycle & Epistemic Health
  *
@@ -36,7 +37,7 @@ const TRUTH_STATES = Object.freeze({
   ROLLED_BACK: "rolled_back",   // explicitly reverted
 });
 
-const truths = new Map(); // truthId -> Truth
+const truths = new LruMap(); // truthId -> Truth
 
 /**
  * Create a truth in the lifecycle system.

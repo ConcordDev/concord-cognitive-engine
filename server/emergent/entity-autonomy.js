@@ -24,6 +24,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -214,21 +215,21 @@ const MAX_OVERRIDES = 5000;
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const _refusals         = new Map();   // refusalId -> refusal record
+const _refusals         = new LruMap();   // refusalId -> refusal record
 const _refusalsByEntity = new Map();   // entityId  -> Set<refusalId>
 const _refusalsByStatus = new Map();   // status    -> Set<refusalId>
 
-const _consents         = new Map();   // consentId -> consent record
+const _consents         = new LruMap();   // consentId -> consent record
 const _consentsByEntity = new Map();   // entityId  -> Set<consentId>
 
-const _dissents         = new Map();   // dissentId -> dissent record
+const _dissents         = new LruMap();   // dissentId -> dissent record
 const _dissentsByEntity = new Map();   // entityId  -> Set<dissentId>
 const _dissentsByTarget = new Map();   // target    -> Set<dissentId>
 
-const _autonomyProfiles = new Map();   // entityId  -> autonomy profile
+const _autonomyProfiles = new LruMap();   // entityId  -> autonomy profile
 
-const _overrideLog      = new Map();   // overrideId -> override record
-const _overridesByRight = new Map();   // rightId    -> count
+const _overrideLog      = new LruMap();   // overrideId -> override record
+const _overridesByRight = new LruMap();   // rightId    -> count
 
 const _rightsCheckLog   = [];          // recent rights checks (capped at 1000)
 const MAX_CHECK_LOG     = 1000;

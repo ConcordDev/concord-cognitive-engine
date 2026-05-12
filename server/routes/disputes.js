@@ -411,6 +411,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
   function checkAutoEscalation() {
     try {
       const openDisputes = getDisputes(db, { status: "open" });
+      // @sql-loop-ok: iterates open disputes (bounded by active disputes, typically < 10)
       for (const dispute of openDisputes) {
         const openedAt = new Date(dispute.opened_at).getTime();
         const elapsed = Date.now() - openedAt;

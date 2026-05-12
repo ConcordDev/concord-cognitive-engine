@@ -10,6 +10,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -27,8 +28,8 @@ function clamp01(v) {
 
 // ── In-Memory Store ─────────────────────────────────────────────────────────
 
-const _physicalDTUs = new Map();   // dtuId -> DTU
-const _byKind = new Map();        // kind -> Set<dtuId>
+const _physicalDTUs = new LruMap();   // dtuId -> DTU
+const _byKind = new LruMap();        // kind -> Set<dtuId>
 const _metrics = {
   totalCreated: 0,
   totalValidated: 0,
@@ -103,7 +104,7 @@ export const PHYSICAL_DTU_TYPES = Object.freeze({
 });
 
 // Reverse lookup: kind string -> type key
-const _kindToType = new Map();
+const _kindToType = new LruMap();
 for (const [key, def] of Object.entries(PHYSICAL_DTU_TYPES)) {
   _kindToType.set(def.kind, key);
 }

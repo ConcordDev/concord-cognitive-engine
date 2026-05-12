@@ -637,6 +637,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     res.json({ ok: true, steps });
   }));
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/wizard/validate", wrap((req, res) => {
     const { stepId, data } = req.body;
     const result = validateWizardStep(stepId, data);
@@ -2182,6 +2183,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Semantic Search API ─────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/sim/search/semantic", wrap((req, res) => {
     const { query, limit, filters } = req.body;
     // Simulated semantic search results
@@ -2195,6 +2197,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── STAXX Knowledge Graph API ───────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/sim/knowledge/query", wrap((req, res) => {
     const { nodeType, edgeType, startId, depth } = req.body;
     // Simulated graph traversal

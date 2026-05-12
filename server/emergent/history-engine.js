@@ -21,6 +21,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -87,12 +88,12 @@ const GOVERNANCE_MILESTONES = ["first_bond", "first_summit", "first_amendment"];
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const _events        = new Map();   // eventId -> event record
+const _events        = new LruMap();   // eventId -> event record
 const _eventsByType  = new Map();   // type -> [eventId]
 const _eventsByActor = new Map();   // entityId -> [eventId]
 const _eventsByTag   = new Map();   // tag -> [eventId]
 const _eventsByEra   = new Map();   // eraId -> [eventId]
-const _milestones    = new Map();   // milestoneKey -> event record
+const _milestones    = new LruMap();   // milestoneKey -> event record
 const _timeline      = [];          // sorted array of eventIds by timestamp
 
 // Era state
@@ -123,10 +124,10 @@ const _counters = {
 };
 
 // Track which milestones have been achieved to avoid duplicates
-const _achievedPopulationMilestones = new Set();
-const _achievedKnowledgeMilestones  = new Set();
-const _achievedResearchMilestones   = new Set();
-const _achievedGovernanceMilestones = new Set();
+const _achievedPopulationMilestones = new LruSet();
+const _achievedKnowledgeMilestones  = new LruSet();
+const _achievedResearchMilestones   = new LruSet();
+const _achievedGovernanceMilestones = new LruSet();
 
 // ── Index Helpers ───────────────────────────────────────────────────────────
 

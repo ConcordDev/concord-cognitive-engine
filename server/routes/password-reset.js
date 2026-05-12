@@ -32,6 +32,7 @@ export default function createPasswordResetRouter({ AuthDB, hashPassword, authRa
    *
    * Always returns 200 to prevent email enumeration.
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/forgot-password", rateLimit, async (req, res) => {
     const { email } = req.body;
     if (!email || typeof email !== "string") {
@@ -67,6 +68,7 @@ export default function createPasswordResetRouter({ AuthDB, hashPassword, authRa
    * POST /reset-password
    * Reset password using a valid token.
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/reset-password", rateLimit, async (req, res) => {
     const { token, newPassword } = req.body;
 

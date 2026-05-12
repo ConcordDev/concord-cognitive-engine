@@ -31,6 +31,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -82,12 +83,12 @@ const DEFAULTS = Object.freeze({
 
 // ── Module-Level State ──────────────────────────────────────────────────────
 
-const _traditions       = new Map();   // traditionId -> Tradition
+const _traditions       = new LruMap();   // traditionId -> Tradition
 const _observations     = new Map();   // observationId -> Observation
 const _stories          = new Map();   // storyId -> Story
 const _culturalValues   = new Map();   // valueName -> { value, strength, traditions }
-const _entityAdherence  = new Map();   // entityId -> Map<traditionId, { score, lastChecked, observations }>
-const _propagationLog   = new Map();   // entityId -> { startedAt, traditions, adopted, rejected, tick }
+const _entityAdherence  = new LruMap();   // entityId -> Map<traditionId, { score, lastChecked, observations }>
+const _propagationLog   = new LruMap();   // entityId -> { startedAt, traditions, adopted, rejected, tick }
 const _behaviorIndex    = new Map();   // behaviorHash -> [observationIds] (for emergence detection)
 
 const _metrics = {

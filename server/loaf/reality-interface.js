@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF VII.1 — Reality Interface & Feedback Systems
  *
@@ -40,7 +41,7 @@ const ERROR_LAYERS = Object.freeze({
 });
 
 // mismatchId -> { type, prediction, reality, attribution, severity }
-const mismatches = new Map();
+const mismatches = new LruMap();
 
 /**
  * Record a reality-model mismatch.
@@ -126,7 +127,7 @@ function errorAttributionSummary() {
 // === ABSTRACTION BREAKDOWN TRACKING ===
 
 // abstractionId -> { name, conditions, breakdowns[] }
-const abstractions = new Map();
+const abstractions = new LruMap();
 
 /**
  * Register an abstraction with its validity conditions.
@@ -175,7 +176,7 @@ function recordBreakdown(abstractionId, context, failedCondition) {
 // === REALITY FEEDBACK LOOPS ===
 
 // feedbackId -> { claim, prediction, outcome, correction }
-const feedbackLoops = new Map();
+const feedbackLoops = new LruMap();
 
 /**
  * Create a reality feedback loop: connect a prediction to its outcome.
@@ -236,7 +237,7 @@ function applyCorrection(feedbackId, correction) {
 // === GOODHART PRESSURE DETECTION ===
 
 // metricId -> { name, values[], target, pressureScore }
-const monitoredMetrics = new Map();
+const monitoredMetrics = new LruMap();
 
 /**
  * Monitor a metric for Goodhart pressure (when a measure becomes a target).
@@ -344,7 +345,7 @@ const TRUTH_KINDS = Object.freeze({
 });
 
 // truthId -> { kind, content, linkedActions[] }
-const typedTruths = new Map();
+const typedTruths = new LruMap();
 
 /**
  * Register a truth with explicit kind differentiation.

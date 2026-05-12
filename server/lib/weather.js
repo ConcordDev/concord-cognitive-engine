@@ -15,6 +15,7 @@
  */
 
 import logger from "../logger.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 const WEATHER_TYPES = Object.freeze(["clear", "overcast", "rain", "storm", "snow", "fog", "wind"]);
 
@@ -27,7 +28,7 @@ const CLIMATE_PROFILES = Object.freeze({
   cyber:     { clear: 0.30, overcast: 0.30, rain: 0.20, storm: 0.10, snow: 0.00, fog: 0.10, wind: 0.00 },
 });
 
-const _worldWeather = new Map(); // worldId -> { type, intensity, since, windDirection }
+const _worldWeather = new LruMap(); // worldId -> { type, intensity, since, windDirection }
 
 function _pickFromDist(dist) {
   const r = Math.random();

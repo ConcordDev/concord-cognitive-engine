@@ -396,10 +396,12 @@ export default function registerDomainRoutes(app, {
     if (!resolved.startsWith(allowedBase + path.sep) && resolved !== allowedBase) {
       return res.status(403).json({ ok: false, error: "Access denied: path outside allowed directory" });
     }
-    if (fs.existsSync(resolved)) {
+    try {
+      await fs.promises.access(resolved);
       return res.sendFile(resolved);
+    } catch {
+      return res.status(404).json({ ok: false, error: "Export file not found" });
     }
-    return res.status(404).json({ ok: false, error: "Export file not found" });
   }));
 
   // ---- Audit ----

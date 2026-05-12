@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF V.3 — Civilization-Scale Simulation & Executable Knowledge
  *
@@ -28,7 +29,7 @@ const SIM_STATES = Object.freeze({
   FAILED: "failed",
 });
 
-const simulations = new Map(); // simId -> Simulation
+const simulations = new LruMap(); // simId -> Simulation
 
 /**
  * Create a civilization-scale simulation.
@@ -151,7 +152,7 @@ const REHEARSAL_STATES = Object.freeze({
   REVERTED: "reverted",
 });
 
-const rehearsals = new Map(); // rehearsalId -> PolicyRehearsal
+const rehearsals = new LruMap(); // rehearsalId -> PolicyRehearsal
 
 /**
  * Create a policy rehearsal (dry-run before deployment).
@@ -263,7 +264,7 @@ function revertPolicy(rehearsalId) {
 
 // === EXECUTABLE SCIENCE PROGRAMS ===
 
-const sciencePrograms = new Map(); // programId -> ExecutableScienceProgram
+const sciencePrograms = new LruMap(); // programId -> ExecutableScienceProgram
 
 /**
  * Create a science program as an executable artifact.

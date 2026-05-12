@@ -9,6 +9,7 @@
  */
 
 import { embed, cosineSimilarity, isEmbeddingAvailable, getEmbedding } from "./embeddings.js";
+import { LruMap, LruSet } from "./lib/lru-map.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────
 const DEFAULT_THRESHOLD = 0.92;
@@ -18,7 +19,7 @@ const MAX_THRESHOLD = 0.98;
 // ── State ──────────────────────────────────────────────────────────────────
 
 /** @type {Map<string, number>} Per-lens adaptive thresholds */
-const lensThresholds = new Map();
+const lensThresholds = new LruMap();
 
 /** @type {{ hits: number, misses: number, totalSaved: number, avgScore: number, hitsByLens: Map<string, number> }} */
 const cacheStats = {

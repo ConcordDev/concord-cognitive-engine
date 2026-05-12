@@ -11,6 +11,7 @@
  */
 
 import { v4 as uuid } from "uuid";
+import { LruMap, LruSet } from "./lru-map.js";
 
 // ── Trigger/Action/Reward Definitions ────────────────────────────────────────
 
@@ -101,7 +102,7 @@ const REWARDS = {
 // ── Mechanic Engine ──────────────────────────────────────────────────────────
 
 /** @type {Map<string, object>} cityId → mechanics[] */
-const cityMechanics = new Map();
+const cityMechanics = new LruMap();
 
 /**
  * Create a custom mechanic rule for a city.

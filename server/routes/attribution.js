@@ -17,9 +17,10 @@ import {
   createDMCARecord,
 } from "../lib/source-attribution.js";
 import logger from "../logger.js";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 /** @type {Map<string, object>} In-memory DMCA records (persisted via DTU if pipelineCommitDTU available) */
-const _dmcaRecords = new Map();
+const _dmcaRecords = new LruMap();
 
 export default function createAttributionRoutes({ requireAuth } = {}) {
   const router = Router();

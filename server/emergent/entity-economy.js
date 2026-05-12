@@ -32,6 +32,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,19 +92,19 @@ const TRADE_HISTORY_CAP = 200;
 // ── In-Memory State ──────────────────────────────────────────────────────────
 
 /** entityId -> account */
-const _accounts = new Map();
+const _accounts = new LruMap();
 
 /** tradeId -> trade */
-const _trades = new Map();
+const _trades = new LruMap();
 
 /** "entityA::entityB" (sorted) -> true — tracks unique trade pairs */
-const _tradePairs = new Map();
+const _tradePairs = new LruMap();
 
 /** resourceType -> market data */
-const _markets = new Map();
+const _markets = new LruMap();
 
 /** Snapshot of total supply at a past tick for inflation/deflation checks */
-const _supplySnapshots = new Map();   // resourceType -> { tick, totalSupply }
+const _supplySnapshots = new LruMap();   // resourceType -> { tick, totalSupply }
 
 /** Global tick counter — incremented by runEconomicCycle */
 let _tick = 0;

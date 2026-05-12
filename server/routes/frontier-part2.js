@@ -34,22 +34,23 @@
 
 import { Router } from "express";
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 const logger = console;
 
 // ── In-memory stores ──────────────────────────────────────────────────────────
 
-const notebooks = new Map();
+const notebooks = new LruMap();
 
-const marketplaceListings = new Map();
-const marketplaceOrders = new Map();
-const marketplaceReviews = new Map();
+const marketplaceListings = new LruMap();
+const marketplaceOrders = new LruMap();
+const marketplaceReviews = new LruMap();
 
-const learningPaths = new Map();
-const enrollments = new Map();     // key: `${userId}:${pathId}`
-const certificates = new Map();    // key: `${userId}:${pathId}`
+const learningPaths = new LruMap();
+const enrollments = new LruMap();     // key: `${userId}:${pathId}`
+const certificates = new LruMap();    // key: `${userId}:${pathId}`
 
-const federationInstances = new Map();
-const syncLogs = new Map();        // key: instanceId -> array of log entries
+const federationInstances = new LruMap();
+const syncLogs = new LruMap();        // key: instanceId -> array of log entries
 
 // ── Seed data ─────────────────────────────────────────────────────────────────
 

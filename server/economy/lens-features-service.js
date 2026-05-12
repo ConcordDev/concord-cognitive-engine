@@ -161,6 +161,7 @@ export function browseFeatures(db, {
  */
 export function getAllLensFeatureSummaries(db) {
   const summaries = db.prepare(
+    // @select-star-ok: lens_feature_summary — admin endpoint returns full summary
     "SELECT * FROM lens_feature_summary ORDER BY lens_number"
   ).all();
 

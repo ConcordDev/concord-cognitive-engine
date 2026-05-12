@@ -631,6 +631,7 @@ export function getLatestBiomonitorReading(db) {
  * Get biomonitor history.
  */
 export function getBiomonitorHistory(db, { limit = 100, alertLevel } = {}) {
+  // @select-star-ok: sovereign_biomonitor admin history — full row needed
   let query = "SELECT * FROM sovereign_biomonitor";
   const params = [];
   if (alertLevel) {
@@ -1027,6 +1028,7 @@ export function getLens(db, name) {
 /**
  * List all registered lenses.
  */
+// @select-star-ok: lens_registry — registry list, all columns displayed
 export function listLenses(db, { isSystem } = {}) {
   let query = "SELECT * FROM lens_registry";
   const params = [];
