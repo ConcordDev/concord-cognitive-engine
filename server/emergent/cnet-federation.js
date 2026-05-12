@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 /**
  * System 9: C-NET Federation
  *

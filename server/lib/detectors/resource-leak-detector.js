@@ -135,25 +135,33 @@ export async function runResourceLeakDetector({ root, opts = {} } = {}) {
         if (findings.length >= findingCap) break;
       }
 
-      // db.prepare inside a loop — statement cache leak.
+      // db.prepare inside a loop — but ONLY a real leak when the SQL is
+      // dynamic (template literal interpolation `${…}` or string
+      // concatenation), because better-sqlite3 caches prepared statements
+      // by the SQL string. A constant SQL inside a loop adds 1 cache
+      // entry total; dynamic SQL adds N entries and grows unbounded.
       const loopPrep = [...content.matchAll(PREPARE_IN_LOOP_RE)];
       for (const m of loopPrep.slice(0, 3)) {
         const lineNum = content.slice(0, m.index).split("\n").length;
         const lineText = content.split("\n")[lineNum - 1] || "";
         if (ANNOTATION_OK_RE.test(lineText)) continue;
+        // Pull a window around the prepare() call to inspect its SQL.
+        const matchedSrc = m[0];
+        const prepareIdx = matchedSrc.lastIndexOf("db.prepare");
+        const argWindow = matchedSrc.slice(prepareIdx, prepareIdx + 600);
+        // Constant SQL = no `${` template, no `+ '` / `+ "` concat.
+        const isDynamic = /\$\{|\+\s*['"`]|['"`]\s*\+/.test(argWindow);
+        if (!isDynamic) continue;
         findings.push({
           id: "db_prepare_in_loop",
-          // Most chunked-batch loops are legitimate (different placeholder
-          // count per chunk produces a different cached statement, which
-          // is desired). The pattern is still worth surfacing for review,
-          // but defaulting to medium so it doesn't block CI.
+          // Real leak shape — flag at medium.
           severity: "medium",
           kind: "static",
           category: CATEGORY,
-          message: "db.prepare(...) inside a for/while loop — better-sqlite3 caches but the cache grows unbounded with dynamic SQL.",
+          message: "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded.",
           location: `${rel}:${lineNum}`,
           subject: { kind: "db_leak", file: rel },
-          fixHint: "Hoist the prepare() outside the loop, OR annotate `// @resource-leak-ok: bounded cache` if the SQL is constant.",
+          fixHint: "Build the SQL once outside the loop using a parameter placeholder, OR annotate `// @resource-leak-ok: <reason>` if the dynamic axis is bounded.",
         });
         if (findings.length >= findingCap) break;
       }

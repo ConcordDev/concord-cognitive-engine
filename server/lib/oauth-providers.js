@@ -1,3 +1,4 @@
+// @env-config-ok: OAuth provider endpoints — public, well-known
 /**
  * Concord Cognitive Engine — OAuth Provider Configuration & Utilities
  *

@@ -1,3 +1,4 @@
+// @env-config-ok: seed federation peer demo data
 'use client';
 
 import React, { useState, useMemo } from 'react';

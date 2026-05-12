@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // server/lib/messaging/adapters/telegram.js
 // Telegram Bot API adapter.
 // Requires: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET (optional)

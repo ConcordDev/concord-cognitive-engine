@@ -1,3 +1,4 @@
+// @env-config-ok: external search-target URLs
 /**
  * Conscious Web Search — Chat-Level Tool Use
  *

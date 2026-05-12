@@ -55,10 +55,19 @@ function shouldScan(rel) {
   return true;
 }
 
+// Route handler pattern. We match the OPENING `{` of the handler body
+// so we can brace-count from there to locate the matching close + look
+// for an attached `} catch`.
 const ROUTE_HANDLER_RE = /\b(?:app|router)\.(get|post|put|delete|patch)\s*\(\s*['"`][^'"`]+['"`]\s*,\s*(?:[^,]+,\s*)?(async\s*)?\([^)]*\)\s*=>\s*\{/g;
+// asyncHandler / errorHandler wrappers auto-catch async throws and
+// forward to express's error middleware — those routes don't need
+// inline try/catch.
+const ASYNC_WRAPPER_RE = /\b(?:asyncHandler|errorHandler|wrapHandler|safeHandler)\s*\(/;
 const HEARTBEAT_HANDLER_RE = /export\s+async\s+function\s+run[A-Z]\w+Cycle/g;
 const TRY_RE = /\btry\s*\{/;
-const CATCH_RE = /\}\s*catch\s*\(/;
+// catch can be either `} catch (e) {` or `} catch {` (ES2019 optional
+// binding). Both are valid; match both forms.
+const CATCH_RE = /\}\s*catch\s*[({]/;
 const LOGGER_RE = /\b(?:logger|console)\.(error|warn)\(/;
 const COUNTER_INC_RE = /\.inc\s*\(|prom_/;
 const FETCH_LLM_RE = /\b(?:fetch|axios)\s*\(\s*['"`]http[^'"`]*\b(?:11434|11435|11436|11437|11438|ollama|brain)/gi;
@@ -84,33 +93,69 @@ export async function runObservabilityGapDetector({ root, opts = {} } = {}) {
 
       const lines = content.split("\n");
 
-      // Scan each route handler — flag if its body (next 30 lines) lacks try.
+      // Scan each route handler. Three signals make a handler safe:
+      //   1. Wrapped by asyncHandler / errorHandler / safeHandler — those
+      //      forward async throws to express's error middleware that
+      //      already logs unhandled_route_error (server.js:27913).
+      //   2. SYNCHRONOUS handler `(req, res) => {…}` — express's default
+      //      error chain catches sync throws and forwards them to the
+      //      same error middleware. No async-promise-swallow risk.
+      //   3. Has a try/catch in the body.
+      //
+      // A handler is unsafe ONLY when it's `async` AND has no try/catch
+      // AND no wrapper. In that case a throw escapes as an unhandled
+      // promise rejection, which is observable but ungated.
       let m;
       const routeRe = new RegExp(ROUTE_HANDLER_RE.source, "g");
       while ((m = routeRe.exec(content)) !== null) {
         const lineNum = content.slice(0, m.index).split("\n").length;
         const lineText = lines[lineNum - 1] || "";
         if (ANNOTATION_OK_RE.test(lineText)) continue;
-        // Look ahead 30 lines for `try` block.
-        const window = lines.slice(lineNum - 1, lineNum + 30).join("\n");
-        if (!TRY_RE.test(window)) {
+        // Wrapper recognition: scan the route declaration line + the
+        // preceding 2 lines (multi-line decls put `asyncHandler(` on a
+        // different line than the route path).
+        const declStart = Math.max(0, lineNum - 3);
+        const declSlice = lines.slice(declStart, lineNum).join("\n");
+        if (ASYNC_WRAPPER_RE.test(declSlice)) continue;
+        // Sync handler: express's default error chain handles it.
+        // m[2] captures the optional `async ` keyword right before the
+        // arrow-function parameter list. (m[1] is the HTTP method.)
+        // Additional check on declSlice catches multi-line decls.
+        const isAsync = !!m[2] || /\basync\s*\(/.test(declSlice);
+        if (!isAsync) continue;
+
+        // Brace-count from the matched `{` to its closing `}`.
+        const openIdx = m.index + m[0].lastIndexOf("{");
+        let depth = 1;
+        let i = openIdx + 1;
+        while (i < content.length && depth > 0) {
+          const ch = content[i];
+          if (ch === "{") depth++;
+          else if (ch === "}") depth--;
+          i++;
+        }
+        // Cap at 4096 chars in case the handler is unclosed at EOF;
+        // beyond that the false-positive risk is higher than the signal.
+        const closeIdx = depth === 0 ? i : Math.min(content.length, openIdx + 4096);
+        const body = content.slice(openIdx, closeIdx);
+        if (!TRY_RE.test(body)) {
           findings.push({
             id: "route_without_try_catch",
             severity: "medium",
             kind: "static",
             category: CATEGORY,
-            message: `Route ${m[1].toUpperCase()} handler with no try/catch block within first 30 lines — uncaught throws return 500 with no log.`,
+            message: `Route ${m[1].toUpperCase()} handler has no try/catch — uncaught throws return 500 with no log.`,
             location: `${rel}:${lineNum}`,
             subject: { kind: "route", file: rel },
-            fixHint: "Wrap the handler body in try/catch + logger.error(err, 'route_failed', { route, params }).",
+            fixHint: "Wrap with asyncHandler() OR add try/catch + logger.error(err, 'route_failed', { route, params }).",
           });
-        } else if (!CATCH_RE.test(window)) {
+        } else if (!CATCH_RE.test(body)) {
           findings.push({
             id: "route_try_without_catch",
             severity: "medium",
             kind: "static",
             category: CATEGORY,
-            message: `Route handler has try without catch — async errors leak.`,
+            message: `Route handler has try without matching catch — async errors leak.`,
             location: `${rel}:${lineNum}`,
             subject: { kind: "route", file: rel },
           });

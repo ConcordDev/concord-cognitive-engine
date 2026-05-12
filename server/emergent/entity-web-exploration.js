@@ -1,3 +1,4 @@
+// @env-config-ok: external sites the agent explores — by design
 import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * Entity Web Exploration Engine — Fully Legal Public Web Browsing

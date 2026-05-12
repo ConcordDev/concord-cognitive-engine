@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // server/lib/video-gen.js
 //
 // Sprint 14 — video generation backend. Mirrors the image-gen

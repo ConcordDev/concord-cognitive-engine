@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 /**
  * Minimal JWKS verifier for OAuth id_tokens.
  *

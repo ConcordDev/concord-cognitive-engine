@@ -1,3 +1,4 @@
+// @env-config-ok: export URL templates with brand domain
 'use client';
 
 import React, { useState, useCallback } from 'react';

@@ -1,3 +1,4 @@
+// @env-config-ok: block-explorer links (basescan/arbiscan)
 'use client';
 
 import React, { useState, useMemo } from 'react';

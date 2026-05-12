@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // server/lib/messaging/adapters/slack.js
 // Slack Bot API adapter using Events API + Web API.
 // Requires: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET

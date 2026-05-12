@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // server/lib/activitypub-bridge.js
 //
 // Phase 6 (idea #21) — ActivityPub / FASP bridge.

@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 /**
  * Channel Routes — Express endpoints for messaging integration
  *
