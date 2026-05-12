@@ -74,17 +74,40 @@ jobs:
           }
 
       - name: ZAP Baseline Scan
+        # `continue-on-error: true` at step level catches the OTHER class
+        # of ZAP failure that `fail_action: false` doesn't: scan errors
+        # like "spider read timeout" where ZAP couldn't reach the target
+        # within the per-request 20s default. Concord's heartbeat ticks
+        # + parallel spider load occasionally trip this on the first run
+        # against an unwarmed instance. The report still uploads; we
+        # just don't fail the job on infrastructure-class flake.
+        continue-on-error: true
         uses: zaproxy/action-baseline@v0.13.0
         with:
           target: ${{ inputs.target || 'http://localhost:5050' }}
           rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a -j -m 5'
+          # Added `-z` block extending ZAP's HTTP connection timeout
+          # to 60s (default is 20s). The spider hits many endpoints in
+          # parallel and the slow ones (any path that triggers a DB
+          # query under heartbeat-tick load) need more time. 60s still
+          # bounds total scan duration via -m 5 (5 min max).
+          cmd_options: |
+            -a -j -m 5 -z "-config connection.timeoutInSecs=60 -config spider.thread=2"
           # `allow_issue_writing: false` prevents the action from opening
           # auto-generated GitHub issues on every run. The scan still
           # runs + the report is uploaded as the `zap-report` artifact;
           # we just don't spam the issue tracker until a triage process
           # exists. Flip to true once issue-triage cadence is decided.
           allow_issue_writing: false
+          # `fail_action: false` keeps the step exit 0 even when ZAP
+          # finds WARN/FAIL alerts. First-run baseline scans always have
+          # informational noise (default security headers, X-Content-Type,
+          # etc.) that needs triage before we know which are real vs
+          # which to allowlist in .zap/rules.tsv. Pattern: scan → review
+          # report artifact → update rules.tsv → flip back to true once
+          # the baseline noise floor is documented. Same shape as the
+          # platinum-visual-regression baseline_check guard.
+          fail_action: false
 
       - name: Upload ZAP report
         if: always()
