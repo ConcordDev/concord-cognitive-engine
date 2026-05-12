@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { mockAuthSuccess, mockAuthUnauthenticated } from './_helpers';
 
 test.describe('Authentication Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -219,17 +220,12 @@ test.describe('Authentication Flow', () => {
   });
 
   test('successful login redirects to home', async ({ page }) => {
-    // Mock both API calls for success
-    await page.route('**/api/auth/csrf-token', (route) =>
-      route.fulfill({ status: 200, body: JSON.stringify({ token: 'mock' }) })
-    );
-    await page.route('**/api/auth/login', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ ok: true }),
-      })
-    );
+    // Full auth-success path mocked: csrf + login + the post-redirect
+    // /api/auth/me hydration that useAuth() fires on the new page mount.
+    // Without /api/auth/me mocked, the redirect lands on `/`, useAuth
+    // calls /api/auth/me, gets a real-backend 401, and the auth context
+    // bounces back to /login → the assertion times out.
+    await mockAuthSuccess(page);
 
     const response = await page.goto('/login');
 
@@ -247,17 +243,7 @@ test.describe('Authentication Flow', () => {
   });
 
   test('login page preserves "from" redirect after authentication', async ({ page }) => {
-    // Mock APIs
-    await page.route('**/api/auth/csrf-token', (route) =>
-      route.fulfill({ status: 200, body: JSON.stringify({ token: 'mock' }) })
-    );
-    await page.route('**/api/auth/login', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ ok: true }),
-      })
-    );
+    await mockAuthSuccess(page);
 
     // Navigate to login with a "from" parameter (set by middleware redirect)
     const response = await page.goto('/login?from=/lenses/chat');
@@ -431,9 +417,10 @@ test.describe('Authentication Flow', () => {
   });
 
   test('successful registration redirects to home', async ({ page }) => {
-    await page.route('**/api/auth/csrf-token', (route) =>
-      route.fulfill({ status: 200, body: JSON.stringify({ token: 'mock' }) })
-    );
+    // Full auth-success path mocked, plus the /api/auth/register
+    // endpoint specific to this flow. Without /api/auth/me mocked the
+    // post-redirect hydration would bounce back to /register.
+    await mockAuthSuccess(page);
     await page.route('**/api/auth/register', (route) =>
       route.fulfill({
         status: 200,
@@ -475,6 +462,12 @@ test.describe('Authentication Flow', () => {
   });
 
   test('multiple protected routes all redirect to login', async ({ page }) => {
+    // Mock /api/auth/me as 401 so the auth context resolves quickly to
+    // "unauthenticated" instead of waiting on a real backend probe.
+    // Without this, each goto sits 5-10s on the hydration call before
+    // the middleware redirect fires, blowing the 30s test budget when
+    // the loop iterates 4 paths.
+    await mockAuthUnauthenticated(page);
     const protectedPaths = ['/lenses/graph', '/lenses/code', '/lenses/board', '/hub'];
 
     for (const path of protectedPaths) {
