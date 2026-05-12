@@ -8,8 +8,16 @@ name: synthetic-playtest
 # this workflow flips the flag and runs it on a schedule.
 
 on:
+  push:
+    # Run on every main push too — no point waiting until 04:13 UTC
+    # for the substrate-drift signal when we already know whether the
+    # platinum gates passed. Synthetic playtest is ~7 minutes; well
+    # within the Actions free-tier minute budget on the merge cadence
+    # of a solo project.
+    branches: [main]
   schedule:
-    # 04:13 UTC every day. Off-peak vs. main CI / lint-sweep.
+    # 04:13 UTC every day. Off-peak vs. main CI / lint-sweep. Kept as
+    # the fallback so the gate still runs on quiet days with no merges.
     - cron: '13 4 * * *'
   workflow_dispatch:
     # Manual trigger from the Actions tab.

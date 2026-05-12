@@ -17,12 +17,14 @@ name: Platinum Visual Regression
 # in production after a CSS refactor.
 
 on:
-  # Until baselines are seeded, run only on main pushes + manual
-  # dispatches. Removing the `pull_request` trigger stops the
-  # missing-baseline failure webhook from firing on every PR run
-  # (continue-on-error on the job suppresses workflow-level failure
-  # but the per-job webhook still fires with conclusion=failure).
+  # The baseline_check guard inside the job makes this safe to run on
+  # PRs and main pushes — if baselines aren't seeded yet, the job
+  # short-circuits and exits success. Once baselines land via a
+  # follow-on `chore(visual): seed baselines` commit, the gate begins
+  # actually catching regressions automatically.
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -35,22 +37,46 @@ jobs:
     name: Visual snapshot diff (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # continue-on-error until baselines are committed. The workflow's
-    # comment block at the top of this file explicitly says baselines
-    # need to be regenerated with
-    #   npx playwright test --update-snapshots tests/visual
-    # and the resulting concord-frontend/tests/visual/__screenshots__/
-    # directory committed. Until that seeding commit lands, every
-    # run will fail with "missing snapshot" — informative noise that
-    # shouldn't block PR merges. Once baselines exist, flip back to
-    # blocking (delete the continue-on-error line).
-    continue-on-error: true
+    # When baselines are present (committed under
+    # concord-frontend/tests/visual/__screenshots__/), this gate is
+    # blocking. When baselines are absent, the first step skips the
+    # rest of the job cleanly via the `baseline_check` guard below —
+    # so the job exits success and stops emitting failure webhooks
+    # while baselines are being seeded.
+    # NOTE: continue-on-error was removed once the baseline_check
+    # guard landed; the guard is the cleaner solution because it
+    # produces conclusion=success (not conclusion=failure) on
+    # missing-baseline runs.
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Check for committed baselines
+        # The visual-regression spec compares against
+        # concord-frontend/tests/visual/__screenshots__/. Until the
+        # baselines are seeded (requires running Playwright locally
+        # with --update-snapshots and committing the output), every
+        # run will fail with "missing snapshot — file not found" which
+        # is informative noise, not a real regression.
+        #
+        # This guard skips the rest of the job cleanly until baselines
+        # land. Same shape as the Trivy "Check for Dockerfile" guard
+        # in platinum-security.yml. Once any *.png files exist under
+        # __screenshots__/, the workflow proceeds as designed.
+        id: baseline_check
+        run: |
+          BASELINE_DIR="concord-frontend/tests/visual/__screenshots__"
+          if [ -d "$BASELINE_DIR" ] && find "$BASELINE_DIR" -name "*.png" -type f | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Visual baselines present — running diff"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No baselines at $BASELINE_DIR/*.png — skipping. Seed via: cd concord-frontend && npx playwright test --update-snapshots tests/visual && git add concord-frontend/tests/visual/__screenshots__"
+          fi
+
       - name: Setup Node.js
+        if: steps.baseline_check.outputs.present == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: "20"
@@ -60,18 +86,22 @@ jobs:
             concord-frontend/package-lock.json
 
       - name: Install server deps
+        if: steps.baseline_check.outputs.present == 'true'
         working-directory: server
         run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Install frontend deps
+        if: steps.baseline_check.outputs.present == 'true'
         working-directory: concord-frontend
         run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Install Playwright browsers
+        if: steps.baseline_check.outputs.present == 'true'
         working-directory: concord-frontend
         run: npx playwright install --with-deps chromium
 
       - name: Run migrations
+        if: steps.baseline_check.outputs.present == 'true'
         working-directory: server
         env:
           DB_PATH: ./data/concord.db
@@ -81,6 +111,7 @@ jobs:
           npm run migrate
 
       - name: Start server (background)
+        if: steps.baseline_check.outputs.present == 'true'
         working-directory: server
         env:
           NODE_ENV: test
@@ -88,21 +119,30 @@ jobs:
           PORT: 5050
           CONCORD_NO_LISTEN: "false"
           JWT_SECRET: test-secret-only-for-ci
+          # Skip 5-brain Ollama init in CI (no Ollama service running).
+          # Same fix shape as platinum-security + platinum-performance +
+          # main CI + ZAP — initFiveBrains() probes 5 instances at ~15s
+          # AbortSignal.timeout each = ~75s, blowing past the 60s wait.
+          CONCORD_DISABLE_BRAINS: "true"
           NODE_OPTIONS: --max-old-space-size=4096
         run: |
           npm start &> server.log &
-          for i in {1..30}; do
+          # Bumped 30 → 90 attempts (60s → 180s) to match the other
+          # workflows. Even with brain-disable the server takes 30-60s
+          # to warm migrations + heartbeats.
+          for i in {1..90}; do
             if curl -fsS http://localhost:5050/health > /dev/null 2>&1; then
-              echo "server up"
+              echo "server up after ${i} probes"
               exit 0
             fi
             sleep 2
           done
-          echo "server failed to start within 60s"
+          echo "server failed to start within 180s"
           tail -50 server.log
           exit 1
 
       - name: Build frontend
+        if: steps.baseline_check.outputs.present == 'true'
         working-directory: concord-frontend
         env:
           NODE_OPTIONS: --max-old-space-size=6144
@@ -110,6 +150,7 @@ jobs:
         run: npm run build
 
       - name: Start frontend (background)
+        if: steps.baseline_check.outputs.present == 'true'
         working-directory: concord-frontend
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -128,6 +169,7 @@ jobs:
           exit 1
 
       - name: Run visual regression suite
+        if: steps.baseline_check.outputs.present == 'true'
         working-directory: concord-frontend
         env:
           CONCORD_FRONTEND_URL: http://localhost:3000
@@ -139,7 +181,7 @@ jobs:
           npx playwright test tests/visual --reporter=line
 
       - name: Upload diff artifacts on failure
-        if: failure()
+        if: failure() && steps.baseline_check.outputs.present == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: visual-diff-${{ github.run_id }}
