@@ -1,8 +1,8 @@
 {
-  "version": 4,
+  "version": 5,
   "generatedAt": "2026-05-12T20:00:00.000Z",
   "maxTotal": 200,
-  "rationale": "Budget v4 — refreshed after second-pass sweep (PRs H-M): observability-gap 500→0 (async-handler recognition + ES2019 catch-binding fix); macro-usage 353→50 (per-macro retirement candidates → summary-only); stale-code 211→1 (route_orphan → summary-only, _archived skip); env-config-drift 195→21 (well-known external service skips, 25 file annotations); resource-leak 194→34 (dynamic-SQL prerequisite for db_prepare_in_loop); fake-data 131→31 (test mocks → summary-only). Current total: 151. Budget set at 200 (~32% grace) for normal churn. Remaining findings are real markers worth eventual cleanup: 21 magic timeouts (tuned constants), 34 resource-leak (most React useEffect cleanup), 31 fake-data (TODO markers + suspicious idents).",
+  "rationale": "Budget v5 \u2014 fixes argWindow bug in db_prepare_in_loop detector (was silently skipping dynamic-SQL preparations because the matched src ended at db.prepare(); now correctly slices forward into the actual SQL string). 36 newly-surfaced findings are bounded-dynamic patterns (template SQL with a small fixed input set, e.g. _batch-lookup.js helper); tracked for per-site annotation. Also rewires 31 fake-data findings to summary-only + per-site annotations (PR #347).",
   "perDetector": {
     "stale-code": 10,
     "invariant-guardian": 5,
@@ -18,7 +18,7 @@
     "architectural-hub": 10,
     "concordia-substrate": 5,
     "fake-data": 40,
-    "resource-leak": 50,
+    "resource-leak": 80,
     "env-config-drift": 30,
     "observability-gap": 10,
     "agent-budget": 5

@@ -145,10 +145,14 @@ export async function runResourceLeakDetector({ root, opts = {} } = {}) {
         const lineNum = content.slice(0, m.index).split("\n").length;
         const lineText = content.split("\n")[lineNum - 1] || "";
         if (ANNOTATION_OK_RE.test(lineText)) continue;
-        // Pull a window around the prepare() call to inspect its SQL.
+        // Find the absolute position of the `db.prepare(` call in the
+        // FULL content (not in matchedSrc, which ends at `db.prepare(`
+        // and has no SQL to inspect). Then slice forward 600 chars to
+        // capture the prepare's argument list.
         const matchedSrc = m[0];
-        const prepareIdx = matchedSrc.lastIndexOf("db.prepare");
-        const argWindow = matchedSrc.slice(prepareIdx, prepareIdx + 600);
+        const prepareOffsetInMatch = matchedSrc.lastIndexOf("db.prepare");
+        const prepareAbsIdx = m.index + prepareOffsetInMatch;
+        const argWindow = content.slice(prepareAbsIdx, prepareAbsIdx + 600);
         // Constant SQL = no `${` template, no `+ '` / `+ "` concat.
         const isDynamic = /\$\{|\+\s*['"`]|['"`]\s*\+/.test(argWindow);
         if (!isDynamic) continue;

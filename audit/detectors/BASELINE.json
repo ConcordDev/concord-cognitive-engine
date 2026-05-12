@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-12T21:04:11.941Z",
+  "generatedAt": "2026-05-12T21:31:58.644Z",
   "totals": {
     "critical": 0,
     "high": 0,
-    "medium": 34,
+    "medium": 70,
     "low": 8,
     "info": 80,
-    "total": 122
+    "total": 158
   },
   "detectorCount": 18,
   "fingerprints": {
@@ -627,6 +627,38 @@
       "location": "concord-frontend/lib/music/player.ts:79",
       "message": "addEventListener('volumechange', ...) has no matching removeEventListener in this file."
     },
+    "a3703a1a0123e2a1": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/economy/_batch-lookup.js:33",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "14387a938be1bbb4": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/economy/lens-culture.js:922",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "59f7bbe14c6bc9a6": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/economy/lens-features-service.js:43",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "9e4ecdbe33396eb2": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/economy/marketplace-lens-service.js:51",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
     "600e84971efae1fb": {
       "detector": "resource-leak",
       "id": "setinterval_without_clear",
@@ -634,6 +666,14 @@
       "kind": "static",
       "location": "server/emergent/atlas-antigaming.js:57",
       "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
+    },
+    "91e13342db3514ef": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/combat-recovery-cycle.js:40",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
     },
     "ca26f8cb8da21fdd": {
       "detector": "resource-leak",
@@ -659,6 +699,14 @@
       "location": "server/emergent/forge-template-engine.js:808",
       "message": "addEventListener('submit', ...) has no matching removeEventListener in this file."
     },
+    "6a0351a134f53a77": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/procedural-npc-spawner.js:44",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
     "06b03207a2ec04a1": {
       "detector": "resource-leak",
       "id": "setinterval_without_clear",
@@ -666,6 +714,14 @@
       "kind": "static",
       "location": "server/emergent/public-api.js:282",
       "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
+    },
+    "7ac512d8ec6ef64b": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/repair-cycle.js:77",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
     },
     "6b2b73643ad41827": {
       "detector": "resource-leak",
@@ -675,6 +731,14 @@
       "location": "server/emergent/spam-prevention.js:58",
       "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
     },
+    "40872f6d2164d567": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/account-lifecycle.js:137",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
     "3fc086e194dcfb5e": {
       "detector": "resource-leak",
       "id": "setinterval_without_clear",
@@ -682,6 +746,14 @@
       "kind": "static",
       "location": "server/lib/agentic/a2a-server.js:16",
       "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
+    },
+    "37aa28b3d3a2e847": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/agentic/memory-bank.js:31",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
     },
     "2548d0d4f2603034": {
       "detector": "resource-leak",
@@ -715,6 +787,166 @@
       "location": "server/lib/audit-logger.js:35",
       "message": "createReadStream / createWriteStream without a 'close'/'finish'/'end' handler."
     },
+    "39f9f6f2da32e83f": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/chat-context-pipeline.js:94",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "1ba360f22dce026d": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/coherence-check.js:51",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "4dbb24a45f5041e3": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/combat/loadout.js:28",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "5234afa50c117853": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/companions-mount-evo.js:34",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "8fd802c3fce213db": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/creator-dashboard.js:54",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "a5db67ded739df23": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/detectors/concordia-substrate-detector.js:115",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "4851cc827184a94f": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/detectors/dtu-lineage-detector.js:58",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "8e39c02be73bb308": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/detectors/predictive-growth-detector.js:58",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "d1316571271938ad": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/dtu-portability.js:103",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "063b919fb6e46d26": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/inference/context-assembler.js:36",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "ffd62be2fb7fa7fa": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/knowledge-genome.js:81",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "13b2ed544d79a4a0": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/land-claims.js:33",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "d945b47c2b851e1f": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/npc-asymmetry.js:58",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "1006007acb5539bb": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/npc-persona.js:37",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "254eea4f736b71dd": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/npc-skill-author.js:127",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "09688992aa97abfd": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/quest-archetype-bias.js:15",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "fecf0ba0b122a35a": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/quota-cache.js:54",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "30f98c274d6de7fb": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/repair-enhanced.js:105",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "299400f7487735e5": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/secrets.js:71",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "eca62a53cb01a9ca": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/security-ingest.js:155",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
     "e666657425e001fb": {
       "detector": "resource-leak",
       "id": "setinterval_without_clear",
@@ -723,6 +955,14 @@
       "location": "server/lib/skill-atrophy.js:53",
       "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
     },
+    "7932ad8dbc5d800f": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/starter-content.js:176",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
     "bdd42022bf511749": {
       "detector": "resource-leak",
       "id": "setinterval_without_clear",
@@ -730,6 +970,22 @@
       "kind": "static",
       "location": "server/lib/substrate-diffusion.js:180",
       "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
+    },
+    "d29689fc7cfa61b2": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/training-consent.js:98",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "c75fde82fa4a0c76": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/understanding-consumers.js:72",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
     },
     "f65ab040b90ae43c": {
       "detector": "resource-leak",
@@ -795,6 +1051,22 @@
       "location": "server/routes/chat.js:281",
       "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
     },
+    "016398f90caf2714": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/disputes.js:415",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "896345a8ac7f9efc": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/messaging.js:44",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
     "e3818ba4f508a67b": {
       "detector": "resource-leak",
       "id": "setinterval_without_clear",
@@ -802,6 +1074,22 @@
       "kind": "static",
       "location": "server/routes/oauth.js:35",
       "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
+    },
+    "9912b5cd8270c7cc": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/social-engagement.js:264",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
+    },
+    "9e792cd7a4486d74": {
+      "detector": "resource-leak",
+      "id": "db_prepare_in_loop",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/world.js:747",
+      "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
     },
     "80003128da2659ce": {
       "detector": "env-config-drift",
