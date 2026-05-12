@@ -102,8 +102,8 @@ export async function runEnvConfigDriftDetector({ root, opts = {} } = {}) {
         // social share intents, map tiles, OSS docs, CDN frameworks.
         // Patterns anchored on `://hostname` so prefix-shadowing like
         // `evil-twitter.com` can't accidentally match.
-        if (/^https?:\/\/(?:www\.)?(?:twitter|linkedin|facebook|reddit|mastodon|threads|t\.me|telegram|wa\.me|whatsapp|bsky\.app|bluesky)\.com\/(?:intent|sharer?|share|home|share-offsite|sharing|tweet|status|messages)(?:[\/?#]|$)/i.test(url)) continue;
-        if (/^https?:\/\/(?:www\.|[a-z0-9-]+\.)?(?:openstreetmap|osm)\.org(?:[\/?#]|$)|^https?:\/\/[a-z0-9-]+\.tile\.openstreetmap\.org(?:[\/?#]|$)|^https?:\/\/(?:www\.)?(?:maptiler|cartocdn)\.com(?:[\/?#]|$)|^https?:\/\/(?:www\.)?mapbox\.com\/styles(?:[\/?#]|$)|^https?:\/\/(?:www\.)?leafletjs\.com(?:[\/?#]|$)/i.test(url)) continue;
+        if (/^https?:\/\/(?:www\.)?(?:twitter|linkedin|facebook|reddit|mastodon|threads|t\.me|telegram|wa\.me|whatsapp|bsky\.app|bluesky)\.com\/(?:intent|sharer?|share|home|share-offsite|sharing|tweet|status|messages)(?:[/?#]|$)/i.test(url)) continue;
+        if (/^https?:\/\/(?:www\.|[a-z0-9-]+\.)?(?:openstreetmap|osm)\.org(?:[/?#]|$)|^https?:\/\/[a-z0-9-]+\.tile\.openstreetmap\.org(?:[/?#]|$)|^https?:\/\/(?:www\.)?(?:maptiler|cartocdn)\.com(?:[/?#]|$)|^https?:\/\/(?:www\.)?mapbox\.com\/styles(?:[/?#]|$)|^https?:\/\/(?:www\.)?leafletjs\.com(?:[/?#]|$)/i.test(url)) continue;
         if (/^https?:\/\/[a-z]+\.lattice(?:\b|\/)/i.test(url)) continue;   // template federation hosts
         if (/^https?:\/\/[a-z]+:\/\/|^https?:\/\/data:|^https?:\/\/blob:/i.test(url)) continue; // data/blob
         findings.push({
