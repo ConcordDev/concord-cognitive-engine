@@ -85,6 +85,15 @@ jobs:
           # we just don't spam the issue tracker until a triage process
           # exists. Flip to true once issue-triage cadence is decided.
           allow_issue_writing: false
+          # `fail_action: false` keeps the step exit 0 even when ZAP
+          # finds WARN/FAIL alerts. First-run baseline scans always have
+          # informational noise (default security headers, X-Content-Type,
+          # etc.) that needs triage before we know which are real vs
+          # which to allowlist in .zap/rules.tsv. Pattern: scan → review
+          # report artifact → update rules.tsv → flip back to true once
+          # the baseline noise floor is documented. Same shape as the
+          # platinum-visual-regression baseline_check guard.
+          fail_action: false
 
       - name: Upload ZAP report
         if: always()
