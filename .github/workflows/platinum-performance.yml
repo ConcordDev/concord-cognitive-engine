@@ -3,6 +3,31 @@ name: Platinum Performance (Lighthouse + bundle size + load)
 # Sprint 18 — runs on every PR + nightly on main.
 # Lighthouse asserts Core Web Vitals; size-limit enforces bundle
 # budgets; k6 runs a smoke load test against critical endpoints.
+#
+# BATCHED ARCHITECTURE v2 (Sprint 35): matrix-with-shared-build.
+#
+# Lighthouse + bundle-size both need a built `.next/` frontend.
+# Original shape did the 5-10 min `npm run build:ci` TWICE per PR
+# (once for each gate). v1 collapsed them into one sequential job
+# — saved the duplicate build but lost per-gate PR visibility.
+#
+# v2 keeps per-gate visibility via:
+#
+#   frontend-build      — runs `npm ci` + `npm run build:ci` once,
+#                         uploads `.next/` as an artifact
+#   frontend-perf-scan  — matrix: [lighthouse, bundle-size] in parallel,
+#                         each downloads the prebuilt `.next/` and runs
+#                         its specific check. Each is its own PR
+#                         check-run row.
+#
+# Net per-merge effect vs original 2-job shape:
+#   - Frontend builds:    2 → 1 (~5-10 min saved per PR — the big win)
+#   - Concurrent runners: 2 → 3 (build job + 2 matrix entries)
+#   - Per-gate PR rows:   2 → 2 (PRESERVED via matrix)
+#   - Artifact overhead:  +1 upload + 2 downloads of `.next/` (~50MB
+#                         compressed). Roughly ~10s artifact roundtrip
+#                         per matrix entry. Net win is still huge given
+#                         the ~5 min savings per skipped build.
 
 on:
   pull_request:
@@ -13,51 +38,117 @@ on:
   schedule:
     - cron: '0 6 * * *'  # nightly 06:00 UTC
   # Manual trigger so the k6 smoke can still be invoked from the
-  # Actions UI on demand. The lighthouse + bundle-size jobs run on
-  # every PR; only k6 has the schedule-only `if:` guard.
+  # Actions UI on demand. The frontend-perf-scan matrix runs on every
+  # PR; only k6 has the schedule-only `if:` guard.
   workflow_dispatch:
 
 jobs:
-  lighthouse:
-    name: Lighthouse CI — Core Web Vitals
+  # ════════════════════════════════════════════════════════════════════
+  # Shared frontend build (Sprint 35 v2)
+  # The 5-10 min `npm run build:ci` runs once, uploads `.next/` for the
+  # matrix scan jobs to consume. Setup-node's npm cache makes the
+  # `npm ci` step nearly instant on warm cache (~5-15s).
+  # ════════════════════════════════════════════════════════════════════
+  frontend-build:
+    name: Frontend perf setup (build .next/)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-node@v6
-        with: { node-version: '22' }
-      - name: Install
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: concord-frontend/package-lock.json
+
+      - name: Install frontend deps
         working-directory: ./concord-frontend
-        run: npm ci
-      - name: Build
+        run: npm ci --prefer-offline
+
+      - name: Build frontend (production)
         working-directory: ./concord-frontend
         env:
           NODE_OPTIONS: --max-old-space-size=6144
         run: npm run build:ci
-      - name: Run Lighthouse CI
+
+      - name: Upload .next/ artifact for downstream scans
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-build
+          path: |
+            concord-frontend/.next
+            concord-frontend/public
+          # `.next/` starts with a dot — actions/upload-artifact@v6
+          # excludes hidden files by default. Without this flag the
+          # artifact silently uploads only `public/` and the downstream
+          # matrix-scan jobs get nothing to scan. Caught on the first
+          # v2 PR run; both Lighthouse + size-limit fell over with
+          # "can't find files at .next/static/chunks/..."
+          include-hidden-files: true
+          # Auto-cleaned when run ends — only the matrix consumers
+          # need this artifact, not retained for history.
+          retention-days: 1
+          if-no-files-found: error
+
+  # ════════════════════════════════════════════════════════════════════
+  # Matrix-batched frontend perf gates (Sprint 35 v2)
+  # Each matrix entry is its own check-run in the PR UI:
+  #   frontend-perf-scan (lighthouse)
+  #   frontend-perf-scan (bundle-size)
+  # `fail-fast: false` lets both run independently so failure pattern
+  # is visible at a glance.
+  # ════════════════════════════════════════════════════════════════════
+  frontend-perf-scan:
+    name: ${{ matrix.scan.name }}
+    needs: frontend-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        scan:
+          - { id: lighthouse,   name: "Lighthouse CI — Core Web Vitals" }
+          - { id: bundle-size,  name: "Bundle size — size-limit" }
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: concord-frontend/package-lock.json
+
+      - name: Install frontend deps (cache-hit fast path)
         working-directory: ./concord-frontend
-        run: npx @lhci/cli@latest autorun --config=lighthouserc.json
+        run: npm ci --prefer-offline
+
+      - name: Download prebuilt .next/
+        uses: actions/download-artifact@v6
+        with:
+          name: frontend-build
+          path: concord-frontend
+
+      - name: Run ${{ matrix.scan.id }}
+        working-directory: ./concord-frontend
+        run: |
+          set -e
+          case "${{ matrix.scan.id }}" in
+            lighthouse)
+              npx @lhci/cli@latest autorun --config=lighthouserc.json
+              ;;
+            bundle-size)
+              npx size-limit
+              ;;
+          esac
+
       - name: Upload Lighthouse reports
-        if: always()
+        if: always() && matrix.scan.id == 'lighthouse'
         uses: actions/upload-artifact@v6
         with:
           name: lighthouse-reports
           path: concord-frontend/lighthouse-reports/
           retention-days: 14
-
-  bundle-size:
-    name: Bundle size — size-limit
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with: { node-version: '22' }
-      - working-directory: ./concord-frontend
-        run: |
-          npm ci
-          NODE_OPTIONS=--max-old-space-size=6144 npm run build:ci
-          npx size-limit
 
   k6-smoke:
     name: Load — k6 smoke
