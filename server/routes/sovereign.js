@@ -785,6 +785,7 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
   // ════════════════════════════════════════════════════════════════════
   // POST /api/sovereign/eval — Nuclear option
   // ════════════════════════════════════════════════════════════════════
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/eval", (req, res) => {
     const S = STATE || getSTATE();
     const code = String(req.body?.code || "").trim();

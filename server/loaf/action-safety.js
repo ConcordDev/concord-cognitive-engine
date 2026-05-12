@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF VII.2 — Action Safety & Irreversibility Management
  *
@@ -34,7 +35,7 @@ const SAFETY_LEVELS = Object.freeze({
 });
 
 // actionId -> { envelope, confidence, constraints }
-const actionEnvelopes = new Map();
+const actionEnvelopes = new LruMap();
 
 /**
  * Define a safety envelope for an action.
@@ -121,7 +122,7 @@ const IRREVERSIBILITY_TYPES = Object.freeze({
 });
 
 // decisionId -> { type, description, irreversibility, consequences }
-const decisions = new Map();
+const decisions = new LruMap();
 
 /**
  * Register a decision with its irreversibility classification.
@@ -227,7 +228,7 @@ function identifyPointsOfNoReturn() {
 
 // === CONTROLLED EXPERIMENTATION ===
 
-const experiments = new Map(); // experimentId -> Experiment
+const experiments = new LruMap(); // experimentId -> Experiment
 
 /**
  * Create a controlled experiment with bounded harm budget.
@@ -299,7 +300,7 @@ function recordExperimentObservation(experimentId, observation, harmCost) {
 // === ACTION THROTTLING ===
 
 // throttleId -> { domain, rate, window, actions[] }
-const throttles = new Map();
+const throttles = new LruMap();
 
 /**
  * Define an action throttle for a domain under epistemic instability.
@@ -350,7 +351,7 @@ function checkThrottle(domain) {
 
 // === DECISION ABSTENTION ===
 
-const abstentionRules = new Map(); // ruleId -> { domain, minConfidence, ... }
+const abstentionRules = new LruMap(); // ruleId -> { domain, minConfidence, ... }
 
 /**
  * Define a decision abstention rule: the system MUST NOT act

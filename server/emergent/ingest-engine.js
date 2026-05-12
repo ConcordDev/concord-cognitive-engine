@@ -18,6 +18,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -81,13 +82,13 @@ export const DOMAIN_BLOCKLIST = new Set([
 const _queue = [];
 
 // All ingest jobs by ID
-const _jobs = new Map();
+const _jobs = new LruMap();
 
 // Rate-limit counters: userId -> { count, resetDate }
-const _rateLimits = new Map();
+const _rateLimits = new LruMap();
 
 // Dedup index: content hash -> ingestId
-const _contentHashes = new Map();
+const _contentHashes = new LruMap();
 
 // Installed DTU IDs from ingest
 const _installedDTUs = [];

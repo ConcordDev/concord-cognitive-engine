@@ -10,6 +10,7 @@
  */
 
 import { v4 as uuid } from "uuid";
+import { LruMap, LruSet } from "./lru-map.js";
 
 // ── Mastery System ───────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ const XP_ACTIONS = {
 };
 
 /** @type {Map<string, object>} userId → mastery profile */
-const masteryProfiles = new Map();
+const masteryProfiles = new LruMap();
 
 /**
  * Get or create a mastery profile for a user.
@@ -372,10 +373,10 @@ const ACHIEVEMENTS = [
 ];
 
 /** @type {Map<string, Set<string>>} userId → set of unlocked achievement IDs */
-const userAchievements = new Map();
+const userAchievements = new LruMap();
 
 /** @type {Map<string, Map<string, number>>} userId → action → count */
-const actionCounters = new Map();
+const actionCounters = new LruMap();
 
 /**
  * Track an action for achievement progress.
@@ -465,7 +466,7 @@ export function getAchievements(userId) {
 // ── Explorer Tracking ────────────────────────────────────────────────────────
 
 /** @type {Map<string, object>} userId → explorer state */
-const explorerState = new Map();
+const explorerState = new LruMap();
 
 /**
  * Record a district visit.
@@ -541,7 +542,7 @@ export function getExplorerStats(userId) {
 // ── Daily/Weekly Activities ──────────────────────────────────────────────────
 
 /** @type {Map<string, object>} userId → activity state */
-const activityState = new Map();
+const activityState = new LruMap();
 
 /**
  * Record daily login and manage streaks.

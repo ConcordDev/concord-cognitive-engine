@@ -813,7 +813,7 @@ export function registerGuidanceEndpoints(app, db) {
     }
   });
 
-  console.log("[Guidance] All guidance layer endpoints registered (events, SSE, inspector, undo, suggestions, first-win)");
+  logger.log("info", "guidance", "all guidance layer endpoints registered (events, SSE, inspector, undo, suggestions, first-win)");
 }
 
 function safeJSON(str) {

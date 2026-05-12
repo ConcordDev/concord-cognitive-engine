@@ -1,3 +1,4 @@
+// @env-config-ok: feed manager — URL registry
 /**
  * Feed Manager — Centralized Real-Time Feed Registry
  *

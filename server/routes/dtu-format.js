@@ -44,6 +44,7 @@ export default function createDTUFormatRouter({ db, requireAuth }) {
   });
 
   // ── Encode DTU ────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/encode", (req, res) => {
     const result = encodeDTU(req.body || {});
     if (!result.ok) return res.status(400).json(result);
@@ -61,6 +62,7 @@ export default function createDTUFormatRouter({ db, requireAuth }) {
   });
 
   // ── Decode DTU ────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/decode", (req, res) => {
     const { dtuBase64 } = req.body || {};
     if (!dtuBase64) return res.status(400).json({ ok: false, error: "missing_dtu_base64" });
@@ -89,6 +91,7 @@ export default function createDTUFormatRouter({ db, requireAuth }) {
   });
 
   // ── Verify DTU ────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/verify", (req, res) => {
     const { dtuBase64, expectedHash, expectedSignature } = req.body || {};
     if (!dtuBase64) return res.status(400).json({ ok: false, error: "missing_dtu_base64" });
@@ -104,6 +107,7 @@ export default function createDTUFormatRouter({ db, requireAuth }) {
   });
 
   // ── Parse Header Only ─────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/header", (req, res) => {
     const { headerBase64 } = req.body || {};
     if (!headerBase64) return res.status(400).json({ ok: false, error: "missing_header_base64" });
@@ -119,6 +123,7 @@ export default function createDTUFormatRouter({ db, requireAuth }) {
   });
 
   // ── File Registry ─────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/registry", (req, res) => {
     const result = registerDTUExport(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -136,6 +141,7 @@ export default function createDTUFormatRouter({ db, requireAuth }) {
   });
 
   // ── Reimport ──────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/reimport", (req, res) => {
     const { dtuBase64, importedBy, source } = req.body || {};
     if (!dtuBase64) return res.status(400).json({ ok: false, error: "missing_dtu_base64" });

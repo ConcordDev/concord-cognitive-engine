@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // server/lib/voice-synthesis.js
 //
 // Sprint D / CC1+CC2 — ElevenLabs TTS wrapper.

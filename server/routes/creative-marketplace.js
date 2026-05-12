@@ -104,11 +104,13 @@ export default function createCreativeMarketplaceRouter({ db, requireAuth, detec
 
   // ── Publish Artifact ────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/artifacts", (req, res) => {
     const result = publishArtifact(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/artifacts/derivative", (req, res) => {
     const result = publishDerivativeArtifact(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -145,6 +147,7 @@ export default function createCreativeMarketplaceRouter({ db, requireAuth, detec
 
   // ── Purchase ────────────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/artifacts/:id/purchase", (req, res) => {
     const { buyerId } = req.body;
 
@@ -208,6 +211,7 @@ export default function createCreativeMarketplaceRouter({ db, requireAuth, detec
 
   // ── Ratings ─────────────────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/artifacts/:id/rate", (req, res) => {
     const result = rateArtifact(db, {
       artifactId: req.params.id,
@@ -297,6 +301,7 @@ export default function createCreativeMarketplaceRouter({ db, requireAuth, detec
 
   // ── Creative XP & Quests ────────────────────────────────────────────
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/xp/award", (req, res) => {
     const result = awardCreativeXP(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);
@@ -313,6 +318,7 @@ export default function createCreativeMarketplaceRouter({ db, requireAuth, detec
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/quests/complete", (req, res) => {
     const result = completeCreativeQuest(db, req.body || {});
     res.status(result.ok ? 200 : 400).json(result);

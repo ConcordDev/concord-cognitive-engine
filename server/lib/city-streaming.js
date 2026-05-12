@@ -8,6 +8,7 @@
 
 import { randomUUID } from "crypto";
 import logger from "../logger.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -18,10 +19,10 @@ const _activeStreams = new Map();
 const _streamViewers = new Map();
 
 /** streamId -> dtuId[] */
-const _streamDTUs = new Map();
+const _streamDTUs = new LruMap();
 
 /** streamId -> { viewerPeak, timeline } (extra bookkeeping) */
-const _streamMeta = new Map();
+const _streamMeta = new LruMap();
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

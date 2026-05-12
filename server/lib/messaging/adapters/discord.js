@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // server/lib/messaging/adapters/discord.js
 // Discord Bot Gateway + Interactions adapter.
 // Requires: DISCORD_BOT_TOKEN, DISCORD_APPLICATION_PUBLIC_KEY

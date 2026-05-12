@@ -1,3 +1,4 @@
+// @env-config-ok: feed source URLs — registry data
 import logger from '../logger.js';
 // server/emergent/realtime-feeds.js
 // Centralized real-time data fetching service — runs on heartbeat ticks,

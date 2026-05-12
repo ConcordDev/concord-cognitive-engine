@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF VI.1 — Epistemic Limits & Uncertainty Objects
  *
@@ -35,7 +36,7 @@ const UNCERTAINTY_TYPES = Object.freeze({
 });
 
 // First-class uncertainty objects
-const uncertainties = new Map(); // uncertaintyId -> Uncertainty
+const uncertainties = new LruMap(); // uncertaintyId -> Uncertainty
 
 /**
  * Create a formal uncertainty object (unknown as a first-class artifact).
@@ -96,7 +97,7 @@ function reduceUncertainty(uncertaintyId, newInformation, newBounds) {
 // === KNOWLEDGE BOUNDARIES ===
 
 // Boundary maps: domain -> { knownFrontier[], unknownBeyond[], limitType }
-const knowledgeBoundaries = new Map();
+const knowledgeBoundaries = new LruMap();
 
 /**
  * Map the boundary of knowledge for a domain.

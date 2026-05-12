@@ -34,6 +34,7 @@ import crypto from "crypto";
 import { exec as execCb } from "child_process";
 import { promisify } from "util";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "./lru-map.js";
 
 const execAsync = promisify(execCb);
 
@@ -1219,7 +1220,7 @@ export async function shieldHeartbeatTick(STATE, tick) {
 }
 
 function getActiveThreatFamilies(STATE) {
-  const familyCounts = new Map();
+  const familyCounts = new LruMap();
   const recentCutoff = Date.now() - (24 * 3600 * 1000); // Last 24 hours
 
   for (const dtu of STATE.dtus.values()) {

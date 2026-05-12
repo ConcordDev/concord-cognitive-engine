@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "./lru-map.js";
 /**
  * Lineage-aware, recency-weighted, scope-filtered search ranking.
  *
@@ -99,8 +100,8 @@ function parseTime(t) {
 // DB-backed via migration 086. In-memory cache layered on top so reads
 // stay cheap. Falls back gracefully when db is null (tests, no-DB mode).
 
-const _history = new Map();        // userId -> [{ q, ts }]   (cache)
-const _saved   = new Map();        // userId -> [{ id, q, name, createdAt }]
+const _history = new LruMap();        // userId -> [{ q, ts }]   (cache)
+const _saved   = new LruMap();        // userId -> [{ id, q, name, createdAt }]
 const HISTORY_MAX = 100;
 let _dbRef = null;
 

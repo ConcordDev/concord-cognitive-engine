@@ -220,16 +220,18 @@ jobs:
           # the test assertions still run + still pass. Coverage gets
           # measured separately on parent-process code paths anyway.
           #
-          # Sprint 34: detectors-suite is the env-sensitive flake
-          # documented in CLAUDE.md — under c8 instrumentation each
-          # detector walks the full 1.3M-LOC tree (~70s per detector),
-          # blowing past the 20-minute CI ceiling. Still runs in
-          # `npm test` standalone for behavior coverage; excluded
-          # from c8 measurement only. Re-evaluate if a detector
-          # implementation becomes fast enough to fit the c8 budget.
+          # Sprint 34 → fixed in zero-tech-debt sweep: detectors-suite
+          # was previously excluded because each detector walked the full
+          # 1.3M-LOC tree (~24s for stale-code, ~70s under c8). The fix
+          # gates the full-tree walks behind CONCORD_DETECTORS_FULL_RUN=1
+          # (default off) and passes a tiny fixture root to the contract
+          # tests, bringing the default run from 120s+ to ~1.3s. End-to-end
+          # detector coverage is independently verified by the cartograph
+          # + `npm run detectors -- --ci` gates on every push. Detectors
+          # suite is now back in the c8 measurement budget.
           npx c8 --check-coverage --statements 45 --branches 45 --functions 33 --lines 45 \
             node --test --test-force-exit \
-            $(ls tests/*.test.js | grep -v -E 'detectors-suite') \
+            tests/*.test.js \
             2>&1 | tee /tmp/server-coverage.log
 
       - name: Surface failing tests on coverage step failure
@@ -620,25 +622,21 @@ jobs:
     permissions:
       contents: read
       pull-requests: write  # for the failure-digest PR-comment step
-    # Plan B infra sprint deliverable: the prior single E2E job was
-    # marked continue-on-error because some specs depended on infra CI
-    # doesn't provision (Ollama, OAuth, Stripe). The Core slice covers
-    # everything that runs purely against our own server + frontend —
-    # auth (JWT only), lens-crud, dtu-integrity, navigation, mobile,
-    # accessibility, social-flow, error-recovery, legal-pages,
-    # admin-dashboard, concordia-smoke, media-flow.
+    # Zero-tech-debt sweep findings: of the 167 Core specs, 8 are
+    # reproducibly flaky against the current frontend regardless of
+    # branch state — most are login-flow tests that mock /api/auth/login
+    # only but don't mock the /api/auth/me hydration call the form's
+    # success path makes, so the redirect-after-login never fires and
+    # the test times out at 30s. Fixing these requires per-spec work
+    # (full mock the auth-success path, OR drive the form via real
+    # creds in a CI fixture user) which is its own sprint.
     #
-    # The split itself is the Plan B architectural deliverable.
-    # Driving the core suite from "real failures surface" to "always
-    # green" is the next sprint — it requires per-spec investigation
-    # to disentangle stale assertions, frontend regressions from
-    # months of fast iteration, and genuine flake. That work is
-    # incremental; the infrastructure to do it (separate job, isolated
-    # results.json, no infra noise) is what this PR ships.
-    #
-    # continue-on-error stays true for now so the PR isn't blocked on
-    # 800+ specs that have been silently red for ~2 months. Flip back
-    # to blocking once the suite spends a full week green spec-by-spec.
+    # Gate stays `continue-on-error: true` for now — the PR-comment
+    # failure digest below surfaces every failure into the PR thread
+    # so the surface area is visible without the gate blocking on
+    # pre-existing flake. Flip back to blocking when (a) the 8 known
+    # flakes are fixed, AND (b) the suite spends a full week green
+    # spec-by-spec across multiple commits.
     timeout-minutes: 25
     continue-on-error: true
 

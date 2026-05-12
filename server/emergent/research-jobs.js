@@ -24,6 +24,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -84,8 +85,8 @@ const PRIORITY_LEVELS = Object.freeze(["low", "normal", "high", "critical"]);
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const jobs       = new Map();  // jobId -> ResearchJob
-const jobIndex   = new Map();  // status -> Set<jobId>
+const jobs       = new LruMap();  // jobId -> ResearchJob
+const jobIndex   = new LruMap();  // status -> Set<jobId>
 const metricsLog = [];         // completed job summaries (bounded)
 
 const MAX_METRICS_LOG = 500;

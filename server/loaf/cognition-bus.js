@@ -14,6 +14,7 @@
  */
 
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 const EVENT_TYPES = Object.freeze([
   "episode_recorded",
@@ -50,7 +51,7 @@ const eventLog = [];
 const MAX_LOG_SIZE = 100000;
 
 // Subscribers
-const subscribers = new Map(); // eventType -> Set<callback>
+const subscribers = new LruMap(); // eventType -> Set<callback>
 
 // Sequence counter for deterministic ordering
 let sequence = 0;

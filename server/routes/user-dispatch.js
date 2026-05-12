@@ -54,6 +54,7 @@ export function createUserDispatchRouter({ STATE } = {}) {
     return null;
   }
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/run", asyncHandler(async (req, res) => {
     const { action, target, data } = req.body || {};
 

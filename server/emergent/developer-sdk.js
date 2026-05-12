@@ -17,6 +17,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -78,13 +79,13 @@ const WEBHOOK_EVENT_TYPES = Object.freeze([
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const _plugins      = new Map();   // pluginId → plugin record
+const _plugins      = new LruMap();   // pluginId → plugin record
 const _apiKeyIndex  = new Map();   // hashedKey → pluginId (reverse lookup)
 const _webhooks     = new Map();   // webhookId → webhook record
 const _sandboxes    = new Map();   // sandboxId → sandbox record
 const _rateBuckets  = new Map();   // pluginId → { tokens, lastRefill, burst }
 const _webhookQueue = [];          // pending webhook deliveries
-const _usageLog     = new Map();   // pluginId → [{ hour, count }]
+const _usageLog     = new LruMap();   // pluginId → [{ hour, count }]
 
 // ── Plugin System ───────────────────────────────────────────────────────────
 

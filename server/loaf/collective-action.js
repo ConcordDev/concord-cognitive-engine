@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF VIII.2 — Collective Action & Accountability
  *
@@ -76,19 +77,19 @@ function capMap(map, max) {
 }
 
 // rollbackId -> { actors[], checkpoints[], status, triggeredBy }
-const rollbacks = new Map();
+const rollbacks = new LruMap();
 // graphId -> { nodes[], edges[], outcomeId }
-const accountabilityGraphs = new Map();
+const accountabilityGraphs = new LruMap();
 // coalitionId -> { members[], motivation, evidence[], stakes, status }
-const coalitions = new Map();
+const coalitions = new LruMap();
 // commitmentId -> { actorId, commitment, state, deadline, verification[] }
-const commitments = new Map();
+const commitments = new LruMap();
 // poolId -> { evidence[], provenance[], contributors[] }
-const evidencePools = new Map();
+const evidencePools = new LruMap();
 // replayId -> { events[], protocolId }
-const coordinationReplays = new Map();
+const coordinationReplays = new LruMap();
 // Cascade monitors
-const cascadeMonitors = new Map();
+const cascadeMonitors = new LruMap();
 
 // === ROLLBACK COORDINATION ===
 

@@ -56,7 +56,9 @@ export default function createSkillsRouter({ requireAuth, DATA_DIR } = {}) {
       return res.status(400).json({ ok: false, error: "invalid emergentId" });
     }
     const skillPath = path.join(skillsDir, "skills.md");
-    if (!fs.existsSync(skillPath)) {
+    try {
+      await fs.promises.access(skillPath);
+    } catch {
       return res.status(404).json({ ok: false, error: "No skills found for this emergent" });
     }
     const exported = exportToAnthropicFormat(skillPath);

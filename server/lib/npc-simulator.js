@@ -25,6 +25,7 @@ import { detectiveTick, guardTick } from "./world-crime.js";
 import { executeScheduledTask, assignJob, seedJobsForWorld, getCurrentPhase } from "./npc-jobs.js";
 import { broadcastOpinionEvent } from "./npc-relations.js";
 import { applyDamageToPlayer, computeDamage } from "./combat/damage-calculator.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // NPC Combat AI — state machine for alert/pursue/attack/retreat behavior
@@ -32,7 +33,7 @@ import { applyDamageToPlayer, computeDamage } from "./combat/damage-calculator.j
 
 // Module-level map: npcId → combat state object
 // { state, target, startPosition, helpCalled, alertedAt, _lastAttack }
-const _npcCombatState = new Map();
+const _npcCombatState = new LruMap();
 
 // Aggression profiles per archetype
 const AGGRO_PROFILE = {

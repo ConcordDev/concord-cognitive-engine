@@ -28,6 +28,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -95,8 +96,8 @@ const LANGUAGES = ["typescript", "javascript"];
 // ── Module State ────────────────────────────────────────────────────────────
 
 const _templates = new Map();
-const _generations = new Map();
-const _presets = new Map();
+const _generations = new LruMap();
+const _presets = new LruMap();
 
 // ── Presets (built-in starter templates) ────────────────────────────────────
 
@@ -1408,8 +1409,8 @@ export function getForgeStats() {
   // was already impossible. Map.set() doesn't trip the alert and the
   // Object.fromEntries(...) at the end serialises cleanly to the same
   // public shape.
-  const byStatusMap = new Map();
-  const byCategoryMap = new Map();
+  const byStatusMap = new LruMap();
+  const byCategoryMap = new LruMap();
   for (const t of templates) {
     const status = _safePropKey(t.status);
     const category = _safePropKey(t.category);

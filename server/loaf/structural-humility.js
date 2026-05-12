@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF VI.3 — Structural Humility & Belief Ecosystem Stability
  *
@@ -33,7 +34,7 @@ const ABSTENTION_REASONS = Object.freeze({
   NON_PROGRESS: "non_progress",
 });
 
-const abstentions = new Map(); // abstentionId -> Abstention
+const abstentions = new LruMap(); // abstentionId -> Abstention
 
 /**
  * Record a knowledge abstention — an explicit decision NOT to answer.
@@ -79,7 +80,7 @@ function scheduleRevisit(abstentionId, revisitAfterMs) {
 
 // === PROOF-OF-NON-PROGRESS ===
 
-const nonProgressRecords = new Map(); // recordId -> NonProgressRecord
+const nonProgressRecords = new LruMap(); // recordId -> NonProgressRecord
 
 /**
  * Record proof-of-non-progress: evidence that more work on a question
@@ -125,7 +126,7 @@ function recordNonProgress(question, attemptHistory, diagnosis) {
 
 // === TERMINAL QUESTIONS ===
 
-const terminalQuestions = new Map(); // questionId -> TerminalQuestion
+const terminalQuestions = new LruMap(); // questionId -> TerminalQuestion
 
 /**
  * Register a terminal question: a question that cannot be resolved
@@ -174,7 +175,7 @@ function annotateResolutionPath(questionId, requirements) {
 
 // === UNRESOLVED QUESTION PRESERVATION ===
 
-const unresolvedQuestions = new Map(); // questionId -> UnresolvedQuestion
+const unresolvedQuestions = new LruMap(); // questionId -> UnresolvedQuestion
 
 /**
  * Preserve an unresolved question for long-term tracking.
@@ -210,7 +211,7 @@ const DEBT_CATEGORIES = Object.freeze({
   OUTDATED_MODELS: "outdated_models",          // models known to be incomplete
 });
 
-const conceptualDebts = new Map(); // debtId -> ConceptualDebt
+const conceptualDebts = new LruMap(); // debtId -> ConceptualDebt
 
 /**
  * Track conceptual debt — epistemic obligations that haven't been fulfilled.

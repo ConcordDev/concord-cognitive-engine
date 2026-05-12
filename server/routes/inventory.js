@@ -113,6 +113,7 @@ export default function createInventoryRouter() {
   });
 
   // ── POST /api/inventory/refresh — bust cache and re-scan ──────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/refresh", (_req, res) => {
     try {
       clearCache();

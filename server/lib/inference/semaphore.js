@@ -3,6 +3,7 @@
 // Uses static VRAM budgets from BRAIN_CONFIG; does not query GPU directly.
 
 import { BRAIN_CONFIG } from "../brain-config.js";
+import { LruMap, LruSet } from "../lru-map.js";
 
 const VRAM_BUDGET_GB = parseFloat(process.env.VRAM_BUDGET_GB || "32");
 
@@ -16,7 +17,7 @@ const BRAIN_VRAM_GB = {
 
 // Runtime state
 const _warmBrains = new Set(["repair", "utility"]); // always hot
-const _inflightCounts = new Map(); // brainName → number of concurrent calls
+const _inflightCounts = new LruMap(); // brainName → number of concurrent calls
 const _waiters = [];                // callbacks waiting for capacity
 
 /**

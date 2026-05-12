@@ -180,10 +180,32 @@ export async function loadLensManifestMacros(root) {
 const SYNC_FS_OK_MARK = /@sync-fs-ok\b/;
 const STARTUP_PATH_HINT = /[/\\](?:persistence|bootstrap|seed|init|migration|repair-cortex|prophet)/i;
 const SQL_LOOP_OK_MARK = /@sql-loop-ok\b/;
+const SELECT_STAR_OK_MARK = /@select-star-ok\b/;
 
 export function syncFsExempt(filePath, content) {
   if (SYNC_FS_OK_MARK.test(content)) return true;
   return STARTUP_PATH_HINT.test(filePath);
+}
+
+/**
+ * `@select-star-ok` annotation — operator opt-out for the SELECT *
+ * perf detector. Used for admin / registry / list-everything queries
+ * where the caller genuinely wants every column on every row and
+ * forcing an explicit projection would tightly couple the query to
+ * schema migrations with no perf benefit. Annotation lives on the
+ * same line as the query (or nearby in the surrounding scope).
+ */
+export function selectStarExempt(filePath, content, lineNo) {
+  // Per-call check: look on the query line itself + the 3 lines above
+  // (typical placement for a `// @select-star-ok: reason` comment).
+  if (!SELECT_STAR_OK_MARK.test(content)) return false;
+  const lines = content.split("\n");
+  const start = Math.max(0, lineNo - 4);
+  const end = Math.min(lines.length, lineNo + 1);
+  for (let i = start; i < end; i++) {
+    if (SELECT_STAR_OK_MARK.test(lines[i])) return true;
+  }
+  return false;
 }
 
 /**

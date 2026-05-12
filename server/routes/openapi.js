@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 /**
  * OpenAPI 3.1 Specification Generator
  *

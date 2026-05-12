@@ -1,3 +1,5 @@
+// @env-config-ok: external sites the agent explores — by design
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * Entity Web Exploration Engine — Fully Legal Public Web Browsing
  *
@@ -102,7 +104,7 @@ export const EXPLORATION_SOURCES = {
 
 // ── robots.txt Compliance ───────────────────────────────────────────────────
 
-const robotsCache = new Map(); // domain → { rules, fetchedAt }
+const robotsCache = new LruMap(); // domain → { rules, fetchedAt }
 
 function parseRobotsTxt(text) {
   const rules = { disallow: [], allow: [] };

@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF III.3 — Time & Causality Engine
  *
@@ -9,7 +10,7 @@
  */
 
 // Timeline store: each timeline is a versioned sequence of states
-const timelines = new Map();  // timelineId -> Timeline
+const timelines = new LruMap();  // timelineId -> Timeline
 
 // Causal graph: events linked by cause-effect edges
 const causalGraph = {

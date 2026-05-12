@@ -16,6 +16,7 @@ import crypto from "crypto";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { LruMap, LruSet } from "./lru-map.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = join(__dir, "../../content");
@@ -35,7 +36,7 @@ const RARITY_WEIGHTS = {
   legendary: 0.03,
 };
 
-const _faunaCache = new Map(); // worldId → fish[]
+const _faunaCache = new LruMap(); // worldId → fish[]
 
 function loadFishForWorld(worldId) {
   if (_faunaCache.has(worldId)) return _faunaCache.get(worldId);

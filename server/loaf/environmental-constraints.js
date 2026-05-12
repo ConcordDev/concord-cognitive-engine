@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF X.1 — Environmental Constraints & Resource Modeling
  *
@@ -67,13 +68,13 @@ function capMap(map, max) {
 }
 
 // budgetId -> { resourceType, total, used, reserved, operations[] }
-const budgets = new Map();
+const budgets = new LruMap();
 // opId -> { name, costs{}, qosTier, degradationLevel, status }
-const operations = new Map();
+const operations = new LruMap();
 // poolId -> { resources{}, consumers[], maxConsumers }
-const resourcePools = new Map();
+const resourcePools = new LruMap();
 // Alerts for predictive exhaustion
-const exhaustionAlerts = new Map();
+const exhaustionAlerts = new LruMap();
 // Global degradation level
 let globalDegradation = DEGRADATION_LEVELS.FULL;
 // Resource accounting ledger
@@ -454,7 +455,7 @@ function returnToPool(poolId, consumerId, amounts) {
 /**
  * Define minimum resource thresholds for safe operation.
  */
-const safetyThresholds = new Map();
+const safetyThresholds = new LruMap();
 
 function defineSafetyThreshold(resourceType, minimum, action) {
   safetyThresholds.set(resourceType, {

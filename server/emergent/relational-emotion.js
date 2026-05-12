@@ -15,6 +15,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -79,9 +80,9 @@ const MAX_HISTORY_PER_BOND    = 200;
 
 // ── State Stores ────────────────────────────────────────────────────────────
 
-const _bonds = new Map();              // bondKey -> Bond
-const _entityBonds = new Map();        // entityId -> Set<bondKey>
-const _lastInteractionTick = new Map();// bondKey -> tick number
+const _bonds = new LruMap();              // bondKey -> Bond
+const _entityBonds = new LruMap();        // entityId -> Set<bondKey>
+const _lastInteractionTick = new LruMap();// bondKey -> tick number
 let _currentTick = 0;
 
 const _metrics = {

@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 /**
  * System 9: C-NET Federation
  *
@@ -24,6 +25,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -79,10 +81,10 @@ const _peers = new Map();
 const _incomingQueue = new Map();
 
 /** Accepted global DTUs: globalDtuId -> acceptance record */
-const _acceptedGlobal = new Map();
+const _acceptedGlobal = new LruMap();
 
 /** Rejected global DTUs: globalDtuId -> rejection record */
-const _rejectedGlobal = new Map();
+const _rejectedGlobal = new LruMap();
 
 /** Event log (capped) */
 const _eventLog = [];

@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF IX.2 — Temporal Resilience & Knowledge Escrow
  *
@@ -60,19 +61,19 @@ function capMap(map, max) {
 }
 
 // deferralId -> { conclusion, evidence[], reason, maturationThreshold, status }
-const deferrals = new Map();
+const deferrals = new LruMap();
 // escrowId -> { content, releaseCondition, status, sealedAt, releasedAt }
-const escrows = new Map();
+const escrows = new LruMap();
 // dissentId -> { view, evidence[], author, consensusId, preserved }
-const dissents = new Map();
+const dissents = new LruMap();
 // Append-only history log
 const historyLog = [];
 // migrationId -> { fromVersion, toVersion, knowledgeMapping[], status }
-const migrations = new Map();
+const migrations = new LruMap();
 // capsuleId -> { content, releaseTime/releaseCondition, status }
-const timeCapsules = new Map();
+const timeCapsules = new LruMap();
 // snapshotId -> { timestamp, knowledgeState }
-const stateSnapshots = new Map();
+const stateSnapshots = new LruMap();
 
 // === DEFERRED REASONING ===
 

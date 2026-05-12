@@ -149,6 +149,7 @@ export function createSimulationRouter() {
   const router = Router();
 
   // POST /api/simulation/run — queue job, return immediately
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post('/run', async (req, res) => {
     try {
       const { type, input = {} } = req.body || {};
@@ -199,6 +200,7 @@ export function createSimulationRouter() {
   });
 
   // POST /api/simulation/:id/cancel
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post('/:id/cancel', (req, res) => {
     try {
       const result = cancelJob(req.params.id);

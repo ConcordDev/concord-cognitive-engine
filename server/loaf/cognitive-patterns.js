@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF IV.4 — Cognitive Pattern Libraries & Skill Crystallization
  *
@@ -29,13 +30,13 @@ const CRYSTALLIZATION_STATES = Object.freeze({
 });
 
 // Pattern library
-const patterns = new Map(); // patternId -> Pattern
+const patterns = new LruMap(); // patternId -> Pattern
 
 // Skill crystals: reusable cognitive modules
-const crystals = new Map(); // crystalId -> Crystal
+const crystals = new LruMap(); // crystalId -> Crystal
 
 // Best practices compiled from successful transfers
-const bestPractices = new Map(); // practiceId -> BestPractice
+const bestPractices = new LruMap(); // practiceId -> BestPractice
 
 // Transfer success tracking for auto-compilation
 const transferOutcomes = []; // { patternId, domain, success, ts }

@@ -14,22 +14,62 @@
 import path from "node:path";
 import {
   walk, readSafe, makeReport, makeError, lineOf, relPath, snippet,
-  syncFsExempt, sqlLoopExempt,
+  syncFsExempt, sqlLoopExempt, selectStarExempt,
 } from "./_framework.js";
 
 const PATTERNS = [
   {
     id: "select_star_hot",
     severity: "low",
-    description: "SELECT * — better to project explicit columns",
-    regex: /SELECT\s+\*\s+FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
+    // Tightened scope (zero-tech-debt sweep): in better-sqlite3 the
+    // perf cost of `SELECT *` for a single-row lookup (`WHERE id = ?`)
+    // is negligible — the result row is materialized in memory either
+    // way, and SQLite's storage engine doesn't pay per-unused-column
+    // I/O the way Postgres does. The real perf risks are:
+    //   - bare `SELECT * FROM <table>` (full-table scan that pulls every
+    //     row × every column into the result set)
+    //   - `SELECT *` with a JOIN (multi-table row width amplification)
+    // Pinpoint lookups (`SELECT * FROM foo WHERE …`) are intentionally
+    // not flagged — that's the by-far-most-common SQLite idiom in this
+    // codebase, and forcing each call site to enumerate columns would
+    // tightly couple every query to schema migrations without any
+    // measurable perf win. If a column list IS needed for schema-drift
+    // resilience, add it deliberately; don't lint-spam to force it.
+    description: "SELECT * full-scan or JOIN — project explicit columns",
+    skipFiles: [/\/tests?\//, /\/scripts\//, /\/migrations\//],
+    customScan: (content) => {
+      const out = [];
+      // Match SELECT * FROM <table> optionally followed by JOIN or end-of-stmt.
+      // Skip if a WHERE clause follows on the same line / nearby chunk.
+      const re = /SELECT\s+\*\s+FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)([^;`'"]*)/gi;
+      let m;
+      while ((m = re.exec(content)) != null) {
+        const tail = m[2] || "";
+        // Risk 1: explicit JOIN somewhere downstream of `SELECT *`
+        const hasJoin = /\bJOIN\b/i.test(tail);
+        // Risk 2: no WHERE/LIMIT — full-table scan. (We allow LIMIT alone
+        // as pagination because the cap is meaningful.)
+        const hasWhere = /\bWHERE\b/i.test(tail);
+        const hasLimit = /\bLIMIT\b/i.test(tail);
+        const fullScan = !hasWhere && !hasLimit;
+        if (!hasJoin && !fullScan) continue;
+        // Locate the SELECT * line
+        const offset = m.index;
+        const line = content.slice(0, offset).split("\n").length;
+        // Per-call operator opt-out: `// @select-star-ok: <reason>`
+        // on the same line or up to 3 lines above.
+        if (selectStarExempt(null, content, line)) continue;
+        out.push({ line });
+      }
+      return out;
+    },
   },
   {
     id: "sync_fs_in_handler",
     severity: "high",
     description: "Synchronous fs call (readFileSync / writeFileSync) inside async path",
     regex: /\bfs\.(?:readFileSync|writeFileSync|appendFileSync|statSync|existsSync)\s*\(/g,
-    skipFiles: [/\/scripts\//, /\/migrations\//, /server\.js$/],
+    skipFiles: [/\/tests?\//, /\/scripts\//, /\/migrations\//, /server\.js$/],
   },
   {
     id: "sync_crypto",
@@ -187,14 +227,51 @@ const PATTERNS = [
     id: "regex_catastrophic_shape",
     severity: "medium",
     description: "Regex with nested quantifier shape (a+)+ — risk of catastrophic backtracking",
-    regex: /\/[^/\n]*\([^()/\n]*\+[^()/\n]*\)\+/g,
+    // Match `(<inner>+)+` shape; the real risk is when <inner> can
+    // overlap with itself (e.g. `(\w+)+`, `(.*)+`, `(a+)+`).
+    // When <inner> contains a *fixed* anchor character (separator like
+    // `_`, `\.`, `\s`, `-`, `:`, `/`), each iteration consumes the
+    // separator so there's no overlap → no backtracking risk. Skip
+    // those cases.
+    customScan: (content) => {
+      const out = [];
+      const re = /\/[^/\n]*\(([^()/\n]*)\+[^()/\n]*\)\+/g;
+      let m;
+      while ((m = re.exec(content)) != null) {
+        const inner = m[1] || "";
+        // Inner has a fixed separator — no overlap, no risk.
+        if (/[._:/-]|\\\.|\\s|\\d|\\w/.test(inner) === false) {
+          // No separator — but ALSO require the inner to be character-class
+          // shaped (`[a-z]`, `\w`, etc.) for it to be a real risk.
+          if (!/^\s*\[/.test(inner) && !/\\w|\\d/.test(inner)) continue;
+        }
+        // Separator chars: literal `_`, `-`, `.`, `:`, `/`, `\s`, `\.`
+        if (/[_:-]/.test(inner) || /\\\./.test(inner) || /\\s/.test(inner) || /\\\//.test(inner)) {
+          continue;
+        }
+        const line = content.slice(0, m.index).split("\n").length;
+        out.push({ line });
+      }
+      return out;
+    },
   },
   {
     id: "console_log_production",
     severity: "low",
     description: "console.log left in production code — drop or replace with logger",
     regex: /^\s*console\.log\s*\(/gm,
-    skipFiles: [/\/tests?\//, /\/scripts\//, /\/migrations\//, /\/examples?\//],
+    // Skip boot-time runners and code-gen template files:
+    // - tests / scripts / migrations / examples — never run on a request thread
+    // - forge-template-(engine|generator) — backtick templates generating
+    //   user-facing test/runtime code (their console.log isn't ours)
+    // - migrate.js / server.js boot path — legitimate startup output
+    //   (server.js's startup phase IS the only console.log surface that's
+    //   meant to land in stdout; the request-handler phase uses logger.js)
+    skipFiles: [
+      /\/tests?\//, /\/scripts\//, /\/migrations\//, /\/examples?\//,
+      /forge-template-(engine|generator)/,
+      /server\/migrate\.js$/, /server\/server\.js$/,
+    ],
   },
   {
     id: "empty_catch",
@@ -228,12 +305,16 @@ export async function runPerformanceHotspotDetector({ root, opts = {} } = {}) {
       for (const p of PATTERNS) {
         if ((p.skipFiles || []).some(re => re.test(rel))) continue;
 
-        // For sync_fs_in_handler specifically, demote severity for exempt
-        // files instead of skipping outright — we still want visibility.
-        // Same treatment for uncaught_sql_loop with @sql-loop-ok.
-        const effectiveSeverity = (p.id === "sync_fs_in_handler" && exemptFromSyncFs) ? "low"
-                                 : (p.id === "uncaught_sql_loop" && exemptFromSqlLoop) ? "low"
-                                 : p.severity;
+        // For sync_fs_in_handler / uncaught_sql_loop, the exempt mechanism
+        // (`@sync-fs-ok` / `@sql-loop-ok` annotations + STARTUP_PATH_HINT)
+        // represents an explicit architectural decision: sync semantics are
+        // required at this site (atomic writes, boot-time ordering, etc.).
+        // Skip them entirely instead of recording as "low"-severity noise —
+        // visibility of the architectural choice is already provided by
+        // the annotation in source.
+        if (p.id === "sync_fs_in_handler" && exemptFromSyncFs) continue;
+        if (p.id === "uncaught_sql_loop" && exemptFromSqlLoop) continue;
+        const effectiveSeverity = p.severity;
 
         if (p.customScan) {
           const hits = p.customScan(c, f) || [];

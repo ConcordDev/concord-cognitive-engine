@@ -921,6 +921,7 @@ function _prepareStatements(db) {
     countPatternsByCategory: db.prepare(`SELECT COUNT(*) as count FROM code_patterns WHERE category = ?`),
     countPatternsByRepo: db.prepare(`SELECT COUNT(*) as count FROM code_patterns WHERE repository_id = ?`),
     allPatternsByCategory: db.prepare(`SELECT * FROM code_patterns WHERE category = ?`),
+    // @select-star-ok: code_patterns — engine reads all pattern columns
     allPatterns: db.prepare(`SELECT * FROM code_patterns`),
 
     // ── Megas ──────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF IX.1 — Knowledge Survival & Continuity
  *
@@ -67,15 +68,15 @@ function capMap(map, max) {
 }
 
 // knowledgeId -> { content, priority, status, dependencies[], redundancy, checksum, ... }
-const knowledgeItems = new Map();
+const knowledgeItems = new LruMap();
 // canonId -> { knowledgeIds[], survivalStrategy, protectionLevel }
-const canonEntries = new Map();
+const canonEntries = new LruMap();
 // seedId -> { knowledgeIds[], description, coldStartInstructions }
-const coldStartSeeds = new Map();
+const coldStartSeeds = new LruMap();
 // successionId -> { from, to, knowledgeIds[], state, rehearsals[] }
-const successions = new Map();
+const successions = new LruMap();
 // depId -> { from, to, type, strength }
-const dependencies = new Map();
+const dependencies = new LruMap();
 
 // === KNOWLEDGE REGISTRATION ===
 

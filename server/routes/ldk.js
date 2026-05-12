@@ -36,6 +36,7 @@ export default function createLDKRouter(deps = {}) {
   const router = Router();
 
   // ── POST /api/ldk/generate — generate lens template from config ───────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/generate", async (req, res) => {
     try {
       const config = req.body || {};
@@ -55,6 +56,7 @@ export default function createLDKRouter(deps = {}) {
   });
 
   // ── POST /api/ldk/validate — validate a lens handler ─────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/validate", (req, res) => {
     try {
       const { handler } = req.body || {};
@@ -108,6 +110,7 @@ export default function createLDKRouter(deps = {}) {
   });
 
   // ── POST /api/ldk/lint — lint a lens for quality ──────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/lint", (req, res) => {
     try {
       const { code } = req.body || {};
@@ -123,6 +126,7 @@ export default function createLDKRouter(deps = {}) {
   });
 
   // ── POST /api/ldk/publish — publish a new lens ───────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/publish", async (req, res) => {
     try {
       const lensData = req.body || {};

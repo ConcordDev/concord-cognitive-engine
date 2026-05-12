@@ -27,6 +27,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ const STALE_DAYS = 90;
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
 const hlmPasses = new Map();        // passId → pass result
-const hlmRecommendations = new Map(); // recId → recommendation
+const hlmRecommendations = new LruMap(); // recId → recommendation
 const hlmMetricsStore = {
   totalPasses: 0,
   totalClusters: 0,

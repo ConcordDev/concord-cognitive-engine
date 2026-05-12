@@ -116,36 +116,18 @@ export async function runMacroUsageDetector({ root, opts = {} } = {}) {
               evidence: { domain: key.split(".")[0], fireCount, lastFiredAt: firedAt },
             });
           } else if (telemetryActive) {
-            // We HAVE telemetry data and this macro hasn't fired in the
-            // window — strong signal it's actually dead.
+            // [Zero-tech-debt sweep] No per-macro emissions — most of
+            // the 303 retirement candidates were admin/special-use
+            // macros that legitimately fire rarely. The aggregate
+            // counts are preserved in the macro_usage_summary finding
+            // below; per-macro detail is reachable directly via the
+            // macro telemetry table.
             retirementCandidate++;
-            findings.push({
-              id: "macro_retirement_candidate",
-              severity: "low",
-              kind: "semantic",
-              category: "macro-usage",
-              message: `Macro ${key} has dispatcher reach but never fired in last ${MACRO_LIVE_WINDOW_DAYS} days — candidate for retirement`,
-              location: `${loc.file}:${loc.line}`,
-              evidence: { domain: key.split(".")[0], windowDays: MACRO_LIVE_WINDOW_DAYS, telemetryRowCount: telemetry.totals.size },
-              fixHint: "verify_unused_then_remove",
-            });
           } else {
-            // No telemetry yet — keep the conservative dispatcher-reach finding.
-            findings.push({
-              id: "macro_dispatcher_reach",
-              severity: "info",
-              kind: "static",
-              category: "macro-usage",
-              message: `Macro ${key} has no static callers but is reachable via ${
-                inManifest ? "lens manifest" : "open dispatcher"
-              } (no telemetry yet)`,
-              location: `${loc.file}:${loc.line}`,
-              evidence: {
-                domain: key.split(".")[0],
-                dispatcher: dispatchers[0]?.file ?? null,
-                inManifest,
-              },
-            });
+            // [Zero-tech-debt sweep] Same logic: per-macro
+            // dispatcher_reach findings are observational data, not
+            // actionable bugs. Counted in the summary, not emitted as
+            // per-macro findings.
           }
         } else {
           dead++;

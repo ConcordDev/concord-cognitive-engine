@@ -10,6 +10,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ const PROMOTION_STAGES = {
 
 // ── Module State ────────────────────────────────────────────────────────────
 
-const _proposals = new Map();
+const _proposals = new LruMap();
 const _history = [];
 
 // ── Requirement Checks ──────────────────────────────────────────────────────

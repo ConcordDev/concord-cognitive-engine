@@ -29,6 +29,7 @@ import path from "node:path";
 import { readFile } from "node:fs/promises";
 import logger from "../logger.js";
 import { bumpStress as _bumpStress } from "./npc-stress.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname || ".", "..", "..");
 
@@ -47,7 +48,7 @@ const IMPACT_SEVERITY = {
 
 // ── Template loaders ─────────────────────────────────────────────────────────
 
-const _templateCache = new Map();
+const _templateCache = new LruMap();
 
 async function loadTemplate(name) {
   if (_templateCache.has(name)) return _templateCache.get(name);

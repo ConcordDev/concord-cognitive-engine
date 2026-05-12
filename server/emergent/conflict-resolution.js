@@ -21,6 +21,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -79,10 +80,10 @@ const MAX_PRECEDENTS = 5000;
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const _disputes = new Map();          // disputeId -> dispute record
+const _disputes = new LruMap();          // disputeId -> dispute record
 const _disputesByEntity = new Map();  // entityId -> Set<disputeId>
 const _disputesByStatus = new Map();  // status -> Set<disputeId>
-const _precedents = new Map();        // precedentId -> precedent record
+const _precedents = new LruMap();        // precedentId -> precedent record
 const _coolingPeriods = new Map();    // "entityA|entityB" -> { until, resolvedAt, disputeId }
 const _proposedResolutions = new Map(); // disputeId -> { resolution, proposedBy, acceptedBy: Set }
 const _arbitrationVotes = new Map();  // disputeId -> Map(arbitratorId -> { vote, rationale })

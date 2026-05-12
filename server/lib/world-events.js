@@ -9,6 +9,7 @@
  */
 
 import { v4 as uuid } from "uuid";
+import { LruMap, LruSet } from "./lru-map.js";
 
 // ── Event Types ──────────────────────────────────────────────────────────────
 
@@ -31,10 +32,10 @@ const EVENT_TYPES = {
 // ── Event Storage ────────────────────────────────────────────────────────────
 
 /** @type {Map<string, object>} eventId → event */
-const events = new Map();
+const events = new LruMap();
 
 /** @type {Map<string, string[]>} cityId → eventId[] */
-const cityEvents = new Map();
+const cityEvents = new LruMap();
 
 // ── Event CRUD ───────────────────────────────────────────────────────────────
 

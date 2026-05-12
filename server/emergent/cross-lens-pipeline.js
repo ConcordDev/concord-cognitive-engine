@@ -17,6 +17,7 @@
 
 import { v4 as uuid } from "uuid";
 import logger from "../logger.js";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Pipeline Templates ───────────────────────────────────────────────────────
 
@@ -103,10 +104,10 @@ const STAGE_STATES = {
 // ── State ────────────────────────────────────────────────────────────────────
 
 /** @type {Map<string, object>} pipelineId → pipeline run */
-const _pipelines = new Map();
+const _pipelines = new LruMap();
 
 /** @type {Map<string, string[]>} userId → pipelineId[] */
-const _userPipelines = new Map();
+const _userPipelines = new LruMap();
 
 const _metrics = {
   totalPipelines: 0,

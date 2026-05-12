@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 /**
  * DTU Protocol Reference Implementation
  *

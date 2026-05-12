@@ -3,9 +3,10 @@
 // Operations accumulate in the worktree; a constitutional review gate controls merging.
 
 import crypto from "node:crypto";
+import { LruMap, LruSet } from "../lru-map.js";
 
 // In-memory worktree registry: emergentId → Map(branch → worktreeNamespace)
-const _registry = new Map();
+const _registry = new LruMap();
 
 /**
  * @typedef {Object} WorktreeOperation

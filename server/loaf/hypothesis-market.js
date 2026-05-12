@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF IV.2 — Hypothesis Markets & Adversarial Verification
  *
@@ -32,7 +33,7 @@ const HYPOTHESIS_STATES = Object.freeze({
 });
 
 // Hypothesis store
-const hypotheses = new Map(); // hypothesisId -> Hypothesis
+const hypotheses = new LruMap(); // hypothesisId -> Hypothesis
 
 // Truth-weighted influence ledger: actorId -> { accuracy, totalClaims, correctClaims }
 const influenceLedger = new Map();

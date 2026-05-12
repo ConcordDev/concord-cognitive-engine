@@ -393,6 +393,7 @@ export function getDispute(db, disputeId) {
 export function getDisputes(db, { status, disputeType, limit = 50 } = {}) {
   if (!db) return [];
   try {
+    // @select-star-ok: disputes admin list — admin dashboard renders all columns
     let sql = "SELECT * FROM disputes";
     const conditions = [];
     const params = [];

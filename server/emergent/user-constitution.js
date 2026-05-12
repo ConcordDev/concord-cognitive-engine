@@ -20,6 +20,7 @@
 
 import { v4 as uuid } from "uuid";
 import logger from "../logger.js";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -49,10 +50,10 @@ const VIOLATION_ACTIONS = {
 // ── State ────────────────────────────────────────────────────────────────────
 
 /** @type {Map<string, object[]>} userId → user rules[] */
-const _userConstitutions = new Map();
+const _userConstitutions = new LruMap();
 
 /** @type {Map<string, object[]>} userId → violation history[] */
-const _violationHistory = new Map();
+const _violationHistory = new LruMap();
 
 const _metrics = {
   totalRules: 0,

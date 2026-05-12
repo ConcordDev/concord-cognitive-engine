@@ -65,6 +65,7 @@ export function createNational(db, { name, countryCode, compliance = {}, steward
  * List all nationals.
  */
 export function listNationals(db) {
+  // @select-star-ok: nationals — federation registry list
   const rows = db.prepare("SELECT * FROM nationals ORDER BY name").all();
   return {
     ok: true,
@@ -125,6 +126,7 @@ export function createRegion(db, { name, nationalId, timezone = null }) {
 /**
  * List regions, optionally filtered by national.
  */
+// @select-star-ok: regions — federation registry list
 export function listRegions(db, { nationalId = null } = {}) {
   let sql = "SELECT * FROM regions";
   const params = [];

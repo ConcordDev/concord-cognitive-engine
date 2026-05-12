@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF X.2 — Substrate Independence & Portability
  *
@@ -70,17 +71,17 @@ function capMap(map, max) {
 }
 
 // substrateId -> { name, capabilities{}, limitations[], fingerprint }
-const substrates = new Map();
+const substrates = new LruMap();
 // knowledgeId -> { content, encoding, contextBounds[], portabilityScore }
-const portableKnowledge = new Map();
+const portableKnowledge = new LruMap();
 // translationId -> { fromSubstrate, toSubstrate, knowledgeId, translated, lossReport }
-const translations = new Map();
+const translations = new LruMap();
 // migrationId -> { fromSubstrate, toSubstrate, items[], status }
-const substrateMigrations = new Map();
+const substrateMigrations = new LruMap();
 // invariantId -> { rule, substrateIndependent, validatedOn[] }
-const invariants = new Map();
+const invariants = new LruMap();
 // Governance adaptation rules
-const governanceAdaptations = new Map();
+const governanceAdaptations = new LruMap();
 
 // === SUBSTRATE REGISTRATION ===
 

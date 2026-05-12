@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 /**
  * Channel Routes — Express endpoints for messaging integration
  *
@@ -52,6 +53,7 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
    * Receives Telegram Bot API webhook updates.
    * Verifies the secret token header if TELEGRAM_WEBHOOK_SECRET is set.
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/telegram/webhook", asyncHandler(async (req, res) => {
     // Verify webhook secret if configured
     const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET || "";
@@ -106,6 +108,7 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
    * Receives Discord interaction events (slash commands, components).
    * Verifies the Ed25519 signature from Discord.
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/discord/interactions", asyncHandler(async (req, res) => {
     // Discord requires signature verification
     const signature = req.headers["x-signature-ed25519"] || "";
@@ -170,6 +173,7 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
    * Receives SendGrid Inbound Parse webhook payloads.
    * Expects multipart/form-data or JSON body.
    */
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/email/inbound", asyncHandler(async (req, res) => {
     const payload = req.body;
     if (!payload) {

@@ -48,12 +48,14 @@ export default function createAPIBillingRouter({ db, requireAuth }) {
   });
 
   // ── API Key Management ────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/keys", (req, res) => {
     const { userId, name, isTest } = req.body || {};
     const result = createAPIKey(db, { userId, name, isTest });
     res.status(result.ok ? 201 : 400).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.delete("/keys/:keyId", (req, res) => {
     const { userId } = req.body || {};
     const result = revokeAPIKey(db, { keyId: req.params.keyId, userId });
@@ -65,6 +67,7 @@ export default function createAPIBillingRouter({ db, requireAuth }) {
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/keys/validate", (req, res) => {
     const { rawKey } = req.body || {};
     const result = validateAPIKey(db, rawKey);
@@ -80,6 +83,7 @@ export default function createAPIBillingRouter({ db, requireAuth }) {
   });
 
   // ── Endpoint Pricing ──────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/price", (req, res) => {
     const { endpoint, method, metadata } = req.body || {};
     if (!endpoint) return res.status(400).json({ ok: false, error: "missing_endpoint" });
@@ -89,6 +93,7 @@ export default function createAPIBillingRouter({ db, requireAuth }) {
   });
 
   // ── Metering (test endpoint) ──────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/meter", (req, res) => {
     const { keyHash, userId, endpoint, method, metadata, balance } = req.body || {};
     const result = meterAPICall(db, { keyHash, userId, endpoint, method, metadata, balance });
@@ -137,6 +142,7 @@ export default function createAPIBillingRouter({ db, requireAuth }) {
   });
 
   // ── Alerts ────────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/alerts", (req, res) => {
     const result = createAlert(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -147,12 +153,14 @@ export default function createAPIBillingRouter({ db, requireAuth }) {
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.delete("/alerts/:alertId", (req, res) => {
     const { userId } = req.body || {};
     const result = deleteAlert(db, { alertId: req.params.alertId, userId });
     res.status(result.ok ? 200 : 404).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/alerts/check", (req, res) => {
     const { userId, balance, dailySpend } = req.body || {};
     const result = checkAlerts(db, userId, { balance, dailySpend });

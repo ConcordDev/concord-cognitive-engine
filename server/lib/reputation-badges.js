@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "./lru-map.js";
 /**
  * Reputation badges + milestone notifications.
  *
@@ -74,7 +75,7 @@ function computeKnowledgeEntrepreneurScore({ citationsReceived = 0, downloads = 
   return citationsReceived + (downloads / 10) + (listings * 5) + (lineageDepth * 20);
 }
 
-const _granted = new Map(); // userId -> Set<badgeKey>
+const _granted = new LruMap(); // userId -> Set<badgeKey>
 
 function badgeKey(category, tier) { return `${category}:${tier}`; }
 

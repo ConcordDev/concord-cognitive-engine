@@ -13,6 +13,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -27,13 +28,13 @@ function nowISO() {
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
 /** clusterId -> { ...clusterDef, dtus: Map<dtuId, DTU>, initialized: bool, researchJobs: [] } */
-const clusters = new Map();
+const clusters = new LruMap();
 
 /** dtuId -> DTU (flat index across all clusters) */
-const allDTUs = new Map();
+const allDTUs = new LruMap();
 
 /** researchJobId -> { id, clusterId, status, startedAt, completedAt } */
-const researchJobs = new Map();
+const researchJobs = new LruMap();
 
 // ── Cluster Definitions ─────────────────────────────────────────────────────
 

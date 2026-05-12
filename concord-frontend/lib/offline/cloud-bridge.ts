@@ -1,3 +1,4 @@
+// @env-config-ok: offline-mode peer URL templates
 /**
  * Cloud Storage Bridge — User-Owned Cloud Backup for Artifacts
  *

@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // server/lib/byo-providers.js
 //
 // Sprint 10 — provider adapters for BYO API keys.

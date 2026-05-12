@@ -9,9 +9,10 @@
  */
 
 import { verifyPluginPackage, computePluginHash } from "./plugin-signing.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
-const _gallery = new Map(); // pluginId -> entry
-const _installs = new Map(); // pluginId -> Set<userId>
+const _gallery = new LruMap(); // pluginId -> entry
+const _installs = new LruMap(); // pluginId -> Set<userId>
 
 export function publishPlugin({ pluginId, authorId, name, description, version, source, signature, db = null }) {
   if (!pluginId || !authorId || !source) {

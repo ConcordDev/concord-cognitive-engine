@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "./lru-map.js";
 /**
  * Cooperative mechanics — coop build, shared inventory, cross-world raids.
  *
@@ -18,9 +19,9 @@
  * migration 085 mirror the structure for restart durability.
  */
 
-const _coopBuilds  = new Map();   // siteId -> { partyId, ownerId, dtus: [...], lastEditAt, openInvite }
-const _sharedStash = new Map();   // partyId -> { items: [{ id, kind, name, depositedBy, ts }], permission }
-const _raids       = new Map();   // raidId -> { partyId, target, worlds: Set, progress, threshold, contributors: Map }
+const _coopBuilds  = new LruMap();   // siteId -> { partyId, ownerId, dtus: [...], lastEditAt, openInvite }
+const _sharedStash = new LruMap();   // partyId -> { items: [{ id, kind, name, depositedBy, ts }], permission }
+const _raids       = new LruMap();   // raidId -> { partyId, target, worlds: Set, progress, threshold, contributors: Map }
 
 const VALID_PERMS = new Set(["open", "leader_only", "vote"]);
 

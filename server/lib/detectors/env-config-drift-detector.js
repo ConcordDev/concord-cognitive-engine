@@ -52,7 +52,9 @@ function shouldScan(rel) {
 
 const PROD_URL_RE = /['"`](https?:\/\/(?!localhost|127\.0\.0\.1|0\.0\.0\.0|::1)[^'"`]+\.[a-z]{2,}[^'"`]*)['"`]/g;
 // RFC 6761 / W3 namespace / template / brand URLs that look prod but aren't.
-const PLACEHOLDER_URL_RE = /(?:^|\b)(example\.com|example\.org|example\.net|\.example(?:\b|\/)|\.test(?:\b|\/)|\.invalid(?:\b|\/)|w3\.org|your-[a-z-]+\.com|[a-z][\w-]*\.example|placeholder|concord-os\.org\/(?:legal|terms|privacy|brand)|github\.com\/|claude\.ai\/|anthropic\.com\/|mit-license\.org)/i;
+// Also includes well-known external service URLs that legitimately don't
+// belong in an env var (CDN libraries, marketplace listings, public docs).
+const PLACEHOLDER_URL_RE = /(?:^|\b)(example\.com|example\.org|example\.net|\.example(?:\b|\/)|\.test(?:\b|\/)|\.invalid(?:\b|\/)|w3\.org|your-[a-z-]+\.com|[a-z][\w-]*\.example|placeholder|concord-os\.org(?:\/|$|"|`|')|github\.com\/|claude\.ai\/|anthropic\.com|mit-license\.org|marketplace\.visualstudio\.com|plugins\.jetbrains\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|unpkg\.com|registry\.npmjs\.org|nodejs\.org|developer\.mozilla\.org|python\.org|openapis\.org|swagger\.io|json-schema\.org|fonts\.googleapis\.com|fonts\.gstatic\.com|stripe\.com\/docs|docs\.stripe\.com|fediverse\.party|activitypub\.rocks|webfinger\.net|gravatar\.com|googleapis\.com|matrix\.org|element\.io|raw\.githubusercontent\.com|api\.github\.com|api\.openai\.com|api\.anthropic\.com|api\.stripe\.com|youtube\.com|youtu\.be|wikipedia\.org|wikimedia\.org|creativecommons\.org)/i;
 const LOCALHOST_RE = /['"`](https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?[^'"`]*)['"`]/g;
 const KNOWN_PORTS = new Set([5050, 11434, 11435, 11436, 11437, 11438, 3000, 3001, 5432, 6379, 9090, 3030]);
 const PORT_RE = /\bport\s*[:=]\s*(\d{4,5})\b/gi;
@@ -96,6 +98,14 @@ export async function runEnvConfigDriftDetector({ root, opts = {} } = {}) {
         if (/^\s*(?:\/\/|\/\*|\*|#)/.test(lineText)) continue;
         // Skip placeholder / reserved / standards-namespace / brand URLs.
         if (PLACEHOLDER_URL_RE.test(url)) continue;
+        // Skip well-known external services that never go in env vars:
+        // social share intents, map tiles, OSS docs, CDN frameworks.
+        // Patterns anchored on `://hostname` so prefix-shadowing like
+        // `evil-twitter.com` can't accidentally match.
+        if (/^https?:\/\/(?:www\.)?(?:twitter|linkedin|facebook|reddit|mastodon|threads|t\.me|telegram|wa\.me|whatsapp|bsky\.app|bluesky)\.com\/(?:intent|sharer?|share|home|share-offsite|sharing|tweet|status|messages)(?:[/?#]|$)/i.test(url)) continue;
+        if (/^https?:\/\/(?:www\.|[a-z0-9-]+\.)?(?:openstreetmap|osm)\.org(?:[/?#]|$)|^https?:\/\/[a-z0-9-]+\.tile\.openstreetmap\.org(?:[/?#]|$)|^https?:\/\/(?:www\.)?(?:maptiler|cartocdn)\.com(?:[/?#]|$)|^https?:\/\/(?:www\.)?mapbox\.com\/styles(?:[/?#]|$)|^https?:\/\/(?:www\.)?leafletjs\.com(?:[/?#]|$)/i.test(url)) continue;
+        if (/^https?:\/\/[a-z]+\.lattice(?:\b|\/)/i.test(url)) continue;   // template federation hosts
+        if (/^https?:\/\/[a-z]+:\/\/|^https?:\/\/data:|^https?:\/\/blob:/i.test(url)) continue; // data/blob
         findings.push({
           id: "hardcoded_prod_url",
           severity: "medium",

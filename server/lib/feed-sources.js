@@ -1,3 +1,4 @@
+// @env-config-ok: feed registry — URLs are the data, by design
 /**
  * Feed Sources — Default Feed Registry for All Lenses
  *

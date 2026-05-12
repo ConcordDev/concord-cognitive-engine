@@ -31,6 +31,7 @@
  */
 
 import crypto from "crypto";
+import { LruMap, LruSet } from "./lru-map.js";
 
 /* ── Effect grammar ───────────────────────────────────────────────── */
 
@@ -85,7 +86,7 @@ export const EFFECT_KINDS = Object.freeze(new Set([
 
 /* ── In-memory cache ──────────────────────────────────────────────── */
 
-const _cache = new Map(); // id -> Skill
+const _cache = new LruMap(); // id -> Skill
 
 /* ── Persistence ──────────────────────────────────────────────────── */
 

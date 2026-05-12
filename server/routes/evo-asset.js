@@ -82,7 +82,10 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
       }
 
       const filePath = row.version_path ?? row.local_path;
-      if (!filePath || !fs.existsSync(filePath)) {
+      if (!filePath) return res.status(404).json({ ok: false, error: "file_missing" });
+      try {
+        await fs.promises.access(filePath);
+      } catch {
         return res.status(404).json({ ok: false, error: "file_missing" });
       }
       // Set a long-cache header keyed off quality level (the caller passes

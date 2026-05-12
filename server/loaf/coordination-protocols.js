@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF VIII.1 — Coordination Protocols
  *
@@ -71,11 +72,11 @@ function capMap(map, max) {
 }
 
 // protocolId -> { mode, participants[], intents[], plans[], conflicts[], status }
-const protocols = new Map();
+const protocols = new LruMap();
 // interlockId -> { type, resources[], holders[], queue[], createdAt }
-const interlocks = new Map();
+const interlocks = new LruMap();
 // negotiationId -> { protocolId, topic, positions[], evidence[], rounds, outcome }
-const negotiations = new Map();
+const negotiations = new LruMap();
 
 /**
  * Create a new coordination protocol.

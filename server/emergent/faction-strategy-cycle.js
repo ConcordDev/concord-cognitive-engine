@@ -55,6 +55,7 @@ export async function runFactionStrategyCycle({ db, state: _state, tickCount: _t
   // Snapshot all peer states once (small list — 7 authored factions).
   let allStates;
   try {
+    // @select-star-ok: faction_strategy_state — heartbeat reads all state
     allStates = db.prepare(`SELECT * FROM faction_strategy_state`).all();
   } catch {
     allStates = [];

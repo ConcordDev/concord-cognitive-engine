@@ -16,6 +16,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -44,9 +45,9 @@ export const HYPOTHESIS_STATUSES = Object.freeze([
 
 // ── In-Memory State ─────────────────────────────────────────────────────────
 
-const _hypotheses = new Map();   // id → hypothesis DTU
-const _factDTUs = new Map();     // id → fact DTU (promoted from confirmed)
-const _rejectionDTUs = new Map(); // id → rejection DTU
+const _hypotheses = new LruMap();   // id → hypothesis DTU
+const _factDTUs = new LruMap();     // id → fact DTU (promoted from confirmed)
+const _rejectionDTUs = new LruMap(); // id → rejection DTU
 
 // ── Confidence Calculation ──────────────────────────────────────────────────
 

@@ -123,6 +123,7 @@ export function foundKingdom(db, {
 
 export function listKingdoms(db, { worldId = null } = {}) {
   if (!db) return [];
+  // @select-star-ok: kingdoms — registry list
   let sql = `SELECT * FROM kingdoms`;
   const params = [];
   if (worldId) { sql += " WHERE world_id = ?"; params.push(worldId); }

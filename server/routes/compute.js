@@ -158,6 +158,7 @@ export default function createComputeRoutes({ requireAuth, domainHandlers } = {}
   }));
 
   // POST /api/compute/run — call a function in a primitive compute module
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post('/run', asyncHandler(async (req, res) => {
     const { module: moduleName, fn, args = [] } = req.body;
     const mod = await loadComputeModule(moduleName);

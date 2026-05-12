@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF VI.2 — Meta-Reasoning & Model Pluralism
  *
@@ -38,7 +39,7 @@ const FAILURE_TYPES = Object.freeze({
   UNDERDETERMINATION: "underdetermination", // evidence insufficient to decide
 });
 
-const reasoningFailures = new Map(); // failureId -> ReasoningFailure
+const reasoningFailures = new LruMap(); // failureId -> ReasoningFailure
 
 /**
  * Record a reasoning failure with explicit typing.
@@ -129,7 +130,7 @@ function analyzeReasoningFailure(claims, evidence) {
 // === ASSUMPTION LINEAGE TRACKING ===
 
 // Assumption dependency graph
-const assumptions = new Map(); // assumptionId -> { text, enables[], enabledBy[], status }
+const assumptions = new LruMap(); // assumptionId -> { text, enables[], enabledBy[], status }
 
 /**
  * Register an assumption with its lineage.
@@ -299,7 +300,7 @@ function detectFrameworkCollapse(framework) {
 
 // === IRREDUCIBLE DISAGREEMENTS ===
 
-const disagreements = new Map(); // disagreementId -> IrreducibleDisagreement
+const disagreements = new LruMap(); // disagreementId -> IrreducibleDisagreement
 
 /**
  * Register an irreducible disagreement — a disagreement that cannot be resolved
@@ -332,7 +333,7 @@ function registerDisagreement(positions, domain, reason) {
 
 // === MODEL COEXISTENCE ===
 
-const coexistingModels = new Map(); // namespaceId -> { models[], policy }
+const coexistingModels = new LruMap(); // namespaceId -> { models[], policy }
 
 /**
  * Register incompatible but valid models for stable coexistence.
@@ -414,7 +415,7 @@ function evaluateTransfer(source, target, transferCandidate) {
 
 // === PARADOX TREATMENT ===
 
-const paradoxes = new Map(); // paradoxId -> Paradox
+const paradoxes = new LruMap(); // paradoxId -> Paradox
 
 /**
  * Register a paradox for formal treatment without resolution pressure.
@@ -442,7 +443,7 @@ function registerParadox(description, domain, relatedClaims) {
 
 // === EPISTEMIC INVARIANTS AS OBJECTS ===
 
-const epistemicInvariants = new Map(); // invariantId -> EpistemicInvariant
+const epistemicInvariants = new LruMap(); // invariantId -> EpistemicInvariant
 
 /**
  * Register an epistemic invariant as a first-class object (not just a rule).

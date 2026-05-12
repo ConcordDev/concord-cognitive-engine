@@ -90,6 +90,7 @@ export default function createLegalLiabilityRouter({ db, requireAuth }) {
     res.json({ ok: true, ...disclaimer });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/disclaimers/acknowledge", (req, res) => {
     const { userId, lensId } = req.body || {};
     if (!userId || !lensId) return res.status(400).json({ ok: false, error: "missing_required_fields" });
@@ -103,6 +104,7 @@ export default function createLegalLiabilityRouter({ db, requireAuth }) {
   });
 
   // ── User Agreements ─────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/agreements", (req, res) => {
     const { userId, agreementType, ipAddress } = req.body || {};
     if (!userId || !agreementType) {
@@ -127,17 +129,20 @@ export default function createLegalLiabilityRouter({ db, requireAuth }) {
   });
 
   // ── DMCA ────────────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/dmca/submit", (req, res) => {
     const result = submitDMCANotice(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/dmca/:id/review", (req, res) => {
     const { valid, notes } = req.body || {};
     const result = reviewDMCANotice(db, req.params.id, { valid, notes });
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/dmca/:id/counter", (req, res) => {
     const result = submitCounterNotification(db, req.params.id, req.body || {});
     res.json(result);
@@ -156,6 +161,7 @@ export default function createLegalLiabilityRouter({ db, requireAuth }) {
   });
 
   // ── Copyright Strikes ───────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/strikes", (req, res) => {
     const { userId, dmcaNoticeId } = req.body || {};
     if (!userId || !dmcaNoticeId) {
@@ -177,6 +183,7 @@ export default function createLegalLiabilityRouter({ db, requireAuth }) {
     });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/strikes/:id/appeal", (req, res) => {
     const { reason } = req.body || {};
     if (!reason) return res.status(400).json({ ok: false, error: "reason_required" });
@@ -184,6 +191,7 @@ export default function createLegalLiabilityRouter({ db, requireAuth }) {
     res.json(result);
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/strikes/:id/resolve-appeal", (req, res) => {
     const { result: appealResult } = req.body || {};
     const result = resolveAppeal(db, req.params.id, { result: appealResult });
@@ -191,6 +199,7 @@ export default function createLegalLiabilityRouter({ db, requireAuth }) {
   });
 
   // ── Disputes ────────────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/disputes", (req, res) => {
     const result = openDispute(db, req.body || {});
     res.status(result.ok ? 201 : 400).json(result);
@@ -208,6 +217,7 @@ export default function createLegalLiabilityRouter({ db, requireAuth }) {
     res.json({ ok: true, dispute });
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.patch("/disputes/:id", (req, res) => {
     const { status, resolution } = req.body || {};
     if (!status) return res.status(400).json({ ok: false, error: "status_required" });
@@ -216,6 +226,7 @@ export default function createLegalLiabilityRouter({ db, requireAuth }) {
   });
 
   // ── Content Labeling ────────────────────────────────────────────────
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/label", (req, res) => {
     const label = getContentLabel(req.body || {});
     res.json({ ok: true, label });

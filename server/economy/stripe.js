@@ -7,6 +7,7 @@ import { executePurchase } from "./transfer.js";
 import { PLATFORM_ACCOUNT_ID } from "./fees.js";
 import { recordTransactionBatch, generateTxId } from "./ledger.js";
 import { economyAudit } from "./audit.js";
+import { log } from "../logger.js";
 import { getBalance } from "./balances.js";
 import { mintCoins, burnCoins } from "./coin-service.js";
 import { handleChargeback } from "./chargeback-handler.js";
@@ -222,7 +223,7 @@ export async function handleWebhook(db, { rawBody, signature, requestId, ip }) {
             });
           }
 
-          console.log(`[ECONOMY] Checkout complete: ${tokenCount} tokens for user ${userId} via ${purchaseSource}`);
+          log("info", "economy", "checkout_complete", { tokenCount, userId, purchaseSource });
 
           economyAudit(db, {
             action: "token_purchase_completed",

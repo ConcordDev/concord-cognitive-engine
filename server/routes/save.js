@@ -26,6 +26,7 @@ const FRESHNESS_QUERIES = [
 
 function _readFreshness(db) {
   const rows = [];
+  // @sql-loop-ok: iterates FRESHNESS_QUERIES constant array (5 fixed queries)
   for (const q of FRESHNESS_QUERIES) {
     try {
       const r = db.prepare(q.sql).get();

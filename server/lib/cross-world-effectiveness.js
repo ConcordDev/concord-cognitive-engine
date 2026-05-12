@@ -18,8 +18,9 @@
 // meta.json. Worlds the seeder hasn't seen yet fall through to NEUTRAL.
 
 import { NEUTRAL_AFFINITY } from "./skill-domains.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
-const _worldRegistry = new Map();
+const _worldRegistry = new LruMap();
 
 /**
  * Register a world's metadata. Called by the content-seeder for each

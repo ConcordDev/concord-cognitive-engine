@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // server/lib/messaging/adapters/whatsapp.js
 // WhatsApp Cloud API adapter (Meta Graph API v19+).
 // Requires: WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, WHATSAPP_WEBHOOK_SECRET

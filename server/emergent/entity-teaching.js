@@ -17,6 +17,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -32,9 +33,9 @@ function getSTATE() { return globalThis._concordSTATE || globalThis.STATE || nul
 
 // ── State Stores ────────────────────────────────────────────────────────────
 
-const _mentorships = new Map();       // mentorshipId -> Mentorship
-const _teachingProfiles = new Map();  // mentorId -> TeachingProfile
-const _lessonLog = new Map();         // mentorshipId -> LessonRecord[]
+const _mentorships = new LruMap();       // mentorshipId -> Mentorship
+const _teachingProfiles = new LruMap();  // mentorId -> TeachingProfile
+const _lessonLog = new LruMap();         // mentorshipId -> LessonRecord[]
 
 // ── Constants ───────────────────────────────────────────────────────────────
 

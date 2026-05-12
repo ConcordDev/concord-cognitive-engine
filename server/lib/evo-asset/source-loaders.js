@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // @sql-loop-ok: evo-asset boot loaders — startup-only, bounded source count
 // @sync-fs-ok: evo asset loaders run from heartbeat, not request handlers
 // server/lib/evo-asset/source-loaders.js

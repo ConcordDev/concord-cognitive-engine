@@ -16,6 +16,7 @@
 
 import { v4 as uuid } from "uuid";
 import logger from "../logger.js";
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ const CONFIDENCE_LEVELS = {
 const _scenarios = new Map();
 
 /** @type {Map<string, string[]>} userId → scenarioId[] */
-const _userScenarios = new Map();
+const _userScenarios = new LruMap();
 
 const _metrics = {
   totalScenarios: 0,

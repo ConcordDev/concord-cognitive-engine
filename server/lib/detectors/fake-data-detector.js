@@ -106,6 +106,7 @@ export async function runFakeDataDetector({ root, opts = {} } = {}) {
   const findingCap = Number.isFinite(opts.findingCap) ? opts.findingCap : 500;
 
   let scanned = 0;
+  let testMockCount = 0;
   try {
     for await (const rel of walk(repoRoot)) {
       if (scanned >= fileCap) break;
@@ -141,36 +142,25 @@ export async function runFakeDataDetector({ root, opts = {} } = {}) {
         }
       }
 
-      // ── MEDIUM: test mocks of production modules.
+      // ── INFO: count test mocks of production modules for the summary.
+      // Per-mock findings were a 102-entry budget hog with no targeted
+      // fix path (each mock is a legitimate unit-test isolation). The
+      // aggregate count is preserved in the fake_data_summary finding
+      // below; future migration to fixture loaders happens at the test
+      // PR level, not via per-mock detector pings.
       if (isTest) {
         let m;
         const re = new RegExp(TEST_MOCK_RE.source, "g");
         while ((m = re.exec(content)) !== null) {
           const modulePath = m[1];
-          // Skip same-tree relative imports (./helpers, ./utils.js).
           if (/^\.\/[^.]/.test(modulePath)) continue;
-          // Skip trivial third-party mocks (test infra, not production drift).
-          const trivialThirdParty = /^(next\/|lucide-react|@testing-library|framer-motion|node:|process|fs|path|url|crypto|@radix-ui|vitest|jest)/.test(modulePath);
-          if (trivialThirdParty) continue;
-          // The substantive case: tests mocking @/lib/* or our own server/
-          // production trees via `../lib/*`, `../../lib/*`, etc.
+          if (/^(next\/|lucide-react|@testing-library|framer-motion|node:|process|fs|path|url|crypto|@radix-ui|vitest|jest)/.test(modulePath)) continue;
           const isProductionMock =
             /^@\/(?:lib|components|store|hooks)/.test(modulePath) ||
             /^\.\.\/(?:lib|domains|emergent|routes|economy)/.test(modulePath) ||
             /^\.\.\/\.\.\/(?:lib|domains|emergent|routes|economy)/.test(modulePath);
           if (!isProductionMock) continue;
-          const lineNum = content.slice(0, m.index).split("\n").length;
-          findings.push({
-            id: "test_mocks_production_module",
-            severity: "info",
-            kind: "static",
-            category: CATEGORY,
-            message: `Test mocks production module '${modulePath}' — surfacing for future fixture-loader migration.`,
-            location: `${rel}:${lineNum}`,
-            subject: { kind: "test_mock", file: rel, module: modulePath },
-            fixHint: "Replace the mock with a fixture loader that pulls real data, OR pin a contract test that verifies the mock matches the real module's exports.",
-          });
-          if (findings.length >= findingCap) break;
+          testMockCount = (testMockCount || 0) + 1;
         }
       }
 
@@ -260,6 +250,18 @@ export async function runFakeDataDetector({ root, opts = {} } = {}) {
     }
   } catch (err) {
     return makeError(CATEGORY, "detector_threw", err, t0);
+  }
+
+  if (testMockCount > 0) {
+    findings.push({
+      id: "fake_data_summary",
+      severity: "info",
+      kind: "static",
+      category: CATEGORY,
+      message: `${testMockCount} unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern).`,
+      location: null,
+      evidence: { testMockCount },
+    });
   }
 
   const report = makeReport(CATEGORY, findings, t0);

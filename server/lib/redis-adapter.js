@@ -5,12 +5,13 @@
  * When REDIS_URL is not set, all methods are no-ops (local-only mode).
  */
 import logger from "../logger.js";
+import { LruMap, LruSet } from "./lru-map.js";
 
 const REDIS_URL = process.env.REDIS_URL || null;
 let _client = null;
 let _connected = false;
 let _subscriber = null;
-const _subscriptions = new Map(); // channel -> Set<callback>
+const _subscriptions = new LruMap(); // channel -> Set<callback>
 
 /**
  * Initialize Redis connection. Call once at startup.

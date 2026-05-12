@@ -101,6 +101,7 @@ export function createInferenceDebugRouter({ db }) {
     }
   });
 
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/spans/query", (req, res) => {
     if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
 

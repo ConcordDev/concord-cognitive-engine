@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF VII.3 — Intervention Governance & Systemic Safety
  *
@@ -31,7 +32,7 @@ const CONSTRAINT_TYPES = Object.freeze({
 });
 
 // optimizationId -> { objective, constraints[], realityBounds }
-const optimizations = new Map();
+const optimizations = new LruMap();
 
 /**
  * Define a reality-constrained optimization.
@@ -194,7 +195,7 @@ function detectSystemicFragility(system) {
 
 // === LEVERAGE POINTS & RISK SURFACES ===
 
-const leveragePoints = new Map(); // pointId -> { description, leverage, risk, domain }
+const leveragePoints = new LruMap(); // pointId -> { description, leverage, risk, domain }
 
 /**
  * Map a leverage point alongside its risk surface.

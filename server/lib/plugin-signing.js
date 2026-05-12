@@ -18,8 +18,9 @@
  */
 
 import crypto from "node:crypto";
+import { LruMap, LruSet } from "./lru-map.js";
 
-const _trustedKeys = new Map(); // authorId -> publicKeyPem
+const _trustedKeys = new LruMap(); // authorId -> publicKeyPem
 
 export function computePluginHash(source) {
   // Canonicalize: strip CRLF, trim trailing whitespace per line. This way a

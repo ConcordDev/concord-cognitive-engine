@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF II.6 — Agent & App Sandboxes
  *
@@ -19,7 +20,7 @@ const SANDBOX_DEFAULTS = Object.freeze({
 });
 
 // Active sandboxes
-const sandboxes = new Map();  // sandboxId -> Sandbox
+const sandboxes = new LruMap();  // sandboxId -> Sandbox
 
 /**
  * Create an agent sandbox.

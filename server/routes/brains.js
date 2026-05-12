@@ -62,6 +62,7 @@ export default function createBrainsRouter({ db, requireAuth, requireRole }) {
 
   // POST /api/brains/refresh — admin-only manual trigger. Bypasses the
   // 23:30-23:59 time-window gate. Body: { force: boolean } (default true).
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/refresh", adminGate, async (req, res) => {
     try {
       const force = req.body?.force !== false;

@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF I.5 — Scheduler Hardening + LOAF I.6 — Unified Rate Budget
  *
@@ -49,7 +50,7 @@ const BUDGET_CONFIG = Object.freeze({
 });
 
 // Actor budget tracking
-const budgets = new Map(); // actorId -> { used, windowStart, entries[] }
+const budgets = new LruMap(); // actorId -> { used, windowStart, entries[] }
 
 // Scheduler task queue
 const schedulerQueue = [];

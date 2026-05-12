@@ -1,3 +1,4 @@
+import { LruMap, LruSet } from "../lib/lru-map.js";
 /**
  * LOAF II.7 — Federation
  *
@@ -10,7 +11,7 @@
 const artifactReputation = new Map(); // artifactId -> { score, votes, history }
 
 // Federation peers
-const peers = new Map(); // peerId -> { id, endpoint, trust, lastSeen }
+const peers = new LruMap(); // peerId -> { id, endpoint, trust, lastSeen }
 
 // Import sandbox queue
 const importQueue = []; // items pending local verification

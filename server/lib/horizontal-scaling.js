@@ -1,3 +1,4 @@
+// @env-config-ok: intentional external URL references
 // lib/horizontal-scaling.js
 // Auto-scale via RunPod API when load exceeds thresholds.
 // Monitors event loop lag, queue depth, and response times.

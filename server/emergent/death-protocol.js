@@ -31,6 +31,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { LruMap, LruSet } from "../lib/lru-map.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -120,9 +121,9 @@ const THRESHOLDS = Object.freeze({
 
 // ── Death Registry ──────────────────────────────────────────────────────────
 
-const _deathRegistry = new Map();       // deathId -> DeathRecord
-const _deathsByEntity = new Map();      // entityId -> deathId
-const _memorials = new Map();           // entityId -> memorialDTU
+const _deathRegistry = new LruMap();       // deathId -> DeathRecord
+const _deathsByEntity = new LruMap();      // entityId -> deathId
+const _memorials = new LruMap();           // entityId -> memorialDTU
 
 // ── Near-Death Tracking ─────────────────────────────────────────────────────
 // Track consecutive homeostasis failures per entity.

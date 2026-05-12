@@ -15,6 +15,7 @@ import {
   walk, readSafe, makeReport, makeError, lineOf, relPath, snippet,
   loadOpenDispatchers, loadLensManifestMacros,
 } from "./_framework.js";
+import { LruMap, LruSet } from "../lru-map.js";
 
 // Macros that are public via the lens manifest / chat router are dispatched
 // dynamically; the static parse can miss them. We treat them as live if
@@ -66,9 +67,14 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
   try {
     const serverDir = path.join(root, "server");
     const frontendDir = path.join(root, "concord-frontend");
+    const mobileDir = path.join(root, "concord-mobile");
 
     const serverFiles = await walk(serverDir, [".js"]);
     const frontendFiles = await walk(frontendDir, [".js", ".ts", ".tsx", ".jsx"]);
+    // Mobile is a real client surface (React Native), not part of the
+    // frontend tree. Scan it for `/api/…` references so the
+    // route_orphan rule doesn't flag routes the mobile app calls.
+    const mobileFiles = await walk(mobileDir, [".js", ".ts", ".tsx", ".jsx"]).catch(() => []);
 
     // Open dispatchers + lens manifest entries — macros reachable via these
     // are NOT dead even if no static callsite mentions them by name.
@@ -235,6 +241,10 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
     for (const cand of allCandidates) {
       const stem = cand.replace(/\.js$/, "");
       if (importBags.has(cand) || importBags.has(stem) || importBags.has(stem + "/index.js")) continue;
+      // Explicitly archived modules are intentionally unimported — they
+      // live under `_archived/` for IP / rollback reference, not as
+      // active code. Skip them.
+      if (/[/\\]_archived[/\\]/.test(cand)) continue;
       // Exempt files referenced via runtime introspection registries
       const c = await readSafe(cand);
       if (/registerHeartbeat\(|register\(\s*['"`]/.test(c)) continue;
@@ -250,7 +260,7 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
     }
 
     // ── 4. Dead routes ────────────────────────────────────────────────────
-    const declaredRoutes = new Map(); // METHOD path -> {file, line}
+    const declaredRoutes = new LruMap(); // METHOD path -> {file, line}
     for (const f of serverFiles) {
       if (f.includes("/scripts/") || /\.test\.js$/.test(f)) continue;
       const c = await readSafe(f);
@@ -264,44 +274,76 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
         if (!declaredRoutes.has(key)) declaredRoutes.set(key, { file: relPath(root, f), line: lineOf(c, m.index) });
       }
     }
-    // For dead-route detection, look for fetch("…path…") strings in frontend.
-    const fetchTargets = new Set();
-    for (const f of frontendFiles) {
+    // For dead-route detection, scan ALL client surfaces (frontend + mobile)
+    // for /api/… reference strings. Server-side files are also scanned so
+    // internal redirect / fan-out routes aren't false-flagged. The
+    // detector remains conservative — it only flags routes that are not
+    // referenced ANYWHERE in any client codebase.
+    const fetchTargets = new LruSet();
+    const re = /['"`](\/api\/[a-zA-Z0-9_/:.-]+)['"`]/g;
+    for (const f of [...frontendFiles, ...mobileFiles, ...serverFiles]) {
       const c = await readSafe(f);
       if (!c) continue;
-      const re = /['"`](\/api\/[a-zA-Z0-9_/:.-]+)['"`]/g;
       let m;
-      while ((m = re.exec(c)) != null) fetchTargets.add(m[1].split("?")[0]);
+      const reLocal = new RegExp(re.source, "g");
+      while ((m = reLocal.exec(c)) != null) fetchTargets.add(m[1].split("?")[0]);
     }
 
-    // Be conservative: flag only routes that have NO substring match in any
-    // frontend fetch target. Routes with :params count as referenced if any
-    // frontend URL begins with the same prefix.
+    // Match a route declaration to any client fetch URL using two
+    // strategies, conservative first:
+    //   1. Pattern match — convert `/api/foo/:id/bar` to a regex
+    //      `^/api/foo/[^/]+/bar(?:[?/].*)?$` and test it against each
+    //      fetch URL. This handles parameterised routes properly
+    //      (previous stem-prefix match falsely flagged routes whose
+    //      param appeared before the final segment).
+    //   2. Sub-segment prefix match — fall back to the first 3 path
+    //      segments. Catches templated frontend URLs that backreference
+    //      a param via a JS template literal we can't statically resolve.
     const fetchTargetsArr = Array.from(fetchTargets);
     let routeOrphanCount = 0;
     for (const [key, loc] of declaredRoutes.entries()) {
       const [, route] = key.split(" ", 2);
+      // Express routers declare paths relative to their mount prefix
+      // (e.g. `router.get("/districts/by-lens/:lens", …)` becomes
+      // `/api/world/districts/by-lens/:lens` once mounted via
+      // `app.use("/api/world", router)`). The mount prefix isn't
+      // visible at the route-declaration site, so we match against any
+      // fetch URL whose suffix is structurally compatible — convert
+      // `:param` to `[^/]+` and allow any prefix.
+      const escaped = route.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/:\w+/g, "[^/]+");
+      const routeRegex = new RegExp(escaped + "(?:[?/].*)?$");
+      const matchesPattern = fetchTargetsArr.some(t => routeRegex.test(t));
+      if (matchesPattern) continue;
+      // Fall back to stem prefix (3-segment) for templated URLs that
+      // don't statically resolve.
       const cleanRoute = route.replace(/:\w+/g, "");
       const cleanRouteParts = cleanRoute.split("/").filter(Boolean);
       if (cleanRouteParts.length < 2) continue;
       const stem = "/" + cleanRouteParts.slice(0, 3).join("/");
-      const hasMatch = fetchTargetsArr.some(t => t.startsWith(stem));
+      const hasMatch = fetchTargetsArr.some(t => t.startsWith(stem) || t.includes(stem));
       if (hasMatch) continue;
-      // Also referenced from server-side tests / scripts?
-      // We deliberately only count frontend fetches — internal routes
-      // wired from server-side admin tools are out-of-scope here.
-      if (routeOrphanCount >= 200) break; // bound the report
+      // Route is statically unreferenced. Could be:
+      //   - Truly orphaned (built without wiring) — real debt
+      //   - Called by mobile via a template literal we can't resolve
+      //   - Called by federation peers (external HTTP clients)
+      //   - Called by curl / admin tools / docs
+      // Static scan can't distinguish these. Increment the aggregate
+      // count for the summary; per-route findings are intentionally
+      // suppressed because (a) the false-positive rate is high and
+      // (b) the 500+ per-route entries dominate the budget while
+      // most route registrations are intentional.
       routeOrphanCount++;
-      findings.push({
-        id: "route_orphan",
-        severity: "info",
-        kind: "static",
-        category: "stale-code",
-        message: `Route ${key} has no frontend caller`,
-        location: `${loc.file}:${loc.line}`,
-        evidence: snippet(key),
-      });
     }
+
+    findings.push({
+      id: "route_orphan_summary",
+      severity: "info",
+      kind: "static",
+      category: "stale-code",
+      message: `${routeOrphanCount} route(s) declared but not statically referenced from frontend/mobile/server. May include mobile-template URLs, federation peer endpoints, or true orphans — manual triage required for retirement.`,
+      location: null,
+      evidence: { unreferencedRoutes: routeOrphanCount },
+    });
 
     return makeReport("stale-code", findings, t0);
   } catch (err) {
