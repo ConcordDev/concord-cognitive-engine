@@ -209,8 +209,21 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          # `exit-code: 1` keeps THIS step the actual CVE gate — if
+          # Trivy finds a CRITICAL or HIGH-severity CVE this fails the
+          # job. The SARIF upload step below is informational only.
           exit-code: '1'
       - name: Upload Trivy SARIF
+        # `continue-on-error: true` because this step downloads
+        # `github/codeql-action/upload-sarif@v3` from GitHub's CDN,
+        # which occasionally returns HTTP 429 (Too Many Requests) and
+        # fails the entire job during "Set up job" phase — before any
+        # of our scan logic runs. That's transient GitHub Actions
+        # infrastructure noise, not a CVE finding. The Trivy scan step
+        # above is the actual blocking CVE check; this step only
+        # uploads results to GitHub's Security dashboard for
+        # visualization, so a 429 here shouldn't gate merges.
+        continue-on-error: true
         if: always() && steps.dockerfile_check.outputs.present == 'true'
         uses: github/codeql-action/upload-sarif@v3
         with:
