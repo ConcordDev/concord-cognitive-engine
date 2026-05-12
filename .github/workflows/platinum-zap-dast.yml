@@ -10,8 +10,14 @@ name: Platinum DAST (OWASP ZAP)
 # eat too much budget on every PR). Manual dispatch is also enabled.
 
 on:
+  push:
+    # Solo-dev project: no point waiting until 04:00 UTC for the DAST
+    # signal when we already know whether the merge landed. ZAP takes
+    # ~5-10 minutes against a local instance — runs comfortably on
+    # every main push within the Actions free-tier budget.
+    branches: [main]
   schedule:
-    - cron: '0 4 * * *'  # 04:00 UTC nightly
+    - cron: '0 4 * * *'  # 04:00 UTC nightly — fallback for quiet days
   workflow_dispatch:
     inputs:
       target:
