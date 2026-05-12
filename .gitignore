@@ -1,4 +1,17 @@
 
+# Environment / secrets — never commit. .env.runpod and .env.example
+# stay tracked as templates; .env (the active local-config file) and
+# any deployment-specific overrides do not.
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+server/.env
+server/.env.local
+concord-frontend/.env
+concord-frontend/.env.local
+
 # Dependencies
 node_modules/
 
