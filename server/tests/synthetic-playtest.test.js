@@ -87,8 +87,8 @@ $describe("Synthetic multi-day playtest", () => {
     };
 
     // Seed a synthetic user + npc + 2 factions.
-    db.prepare(`INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)`)
-      .run("user_synth", "synth@local", "x", new Date().toISOString());
+    db.prepare(`INSERT INTO users (id, username, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)`)
+      .run("user_synth", "synth_player", "synth@local", "x", new Date().toISOString());
 
     // Two factions, must be sorted lexicographically for relations PK.
     mods.factionStrategy.ensureFactionState(db, "faction_a");
@@ -140,14 +140,25 @@ $describe("Synthetic multi-day playtest", () => {
     for (let day = 0; day < 7; day++) {
       for (const fid of ["faction_a", "faction_b"]) {
         try {
-          const r = mods.factionStrategy.applyMove(db, fid, { now: new Date(Date.now() + day * 86_400_000) });
-          if (r?.ok) totalMoves += 1;
+          // The substrate is two-phase: pickMove(state, peers) returns a
+          // move-pick object, then applyMove(db, factionId, picked) commits
+          // it. Earlier version of this test invoked applyMove directly
+          // with `{ now: ... }` which is not a picked-move shape — the
+          // function early-returns null on that, so totalMoves stayed 0.
+          const state = db.prepare(`SELECT * FROM faction_strategy_state WHERE faction_id = ?`).get(fid);
+          if (!state) continue;
+          const peers = db.prepare(`SELECT * FROM faction_strategy_state WHERE faction_id != ?`).all(fid);
+          const picked = mods.factionStrategy.pickMove(state, peers);
+          if (!picked) continue;
+          const r = mods.factionStrategy.applyMove(db, fid, picked);
+          if (r) totalMoves += 1;
         } catch (e) {
-          // applyMove can return non-ok results (cooldown not elapsed
-          // even with our backdate, etc.). Don't fail the test on those.
+          // applyMove can throw on missing peer state etc. Don't fail
+          // the test on individual day glitches; we only need the
+          // 7-day aggregate to show ≥1 move landed.
         }
       }
-      // Advance cooldown.
+      // Advance cooldown so the next day's attempts aren't gated.
       db.prepare(`UPDATE faction_strategy_state SET next_move_at = ?`)
         .run(new Date(Date.now() - 86_400_000).toISOString());
     }
@@ -159,14 +170,18 @@ $describe("Synthetic multi-day playtest", () => {
     assert.ok(logCount >= totalMoves, "log row count must match or exceed accepted moves");
   });
 
-  it("npc-asymmetry can be seeded and recorded against", () => {
+  it("npc-asymmetry can be seeded and recorded against", async () => {
     if (!mods.npcAsymmetry?.seedNPCAsymmetry) {
       // The substrate may not be loaded if an earlier migration failed;
       // skip rather than fail.
       return;
     }
     try {
-      mods.npcAsymmetry.seedNPCAsymmetry(db, {
+      // seedNPCAsymmetry is async — must await so its DB writes finish
+      // before the after() hook closes the connection. Without await
+      // the test ends, after() closes db, and the resolved Promise
+      // then tries to write → "database connection is not open".
+      await mods.npcAsymmetry.seedNPCAsymmetry(db, {
         id: "synth_npc",
         name: "Synth",
         archetype: "guard",
@@ -175,13 +190,11 @@ $describe("Synthetic multi-day playtest", () => {
     } catch { /* idempotent */ }
 
     // Record an impact event from the synthetic player.
+    // Signature is positional: (db, npcId, userId, eventKind, magnitudeOverride?)
+    // — not an options-object as previously called.
     if (mods.npcAsymmetry.recordPlayerImpactEvent) {
       try {
-        mods.npcAsymmetry.recordPlayerImpactEvent(db, {
-          npcId: "synth_npc",
-          playerId: "user_synth",
-          eventKind: "killed_by_player",
-        });
+        mods.npcAsymmetry.recordPlayerImpactEvent(db, "synth_npc", "user_synth", "killed_by_player");
       } catch { /* may fail on incomplete schema */ }
     }
 
