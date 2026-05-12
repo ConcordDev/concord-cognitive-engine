@@ -240,13 +240,13 @@ const PATTERNS = [
       while ((m = re.exec(content)) != null) {
         const inner = m[1] || "";
         // Inner has a fixed separator — no overlap, no risk.
-        if (/[._\-:/\\s]|\\\.|\\s|\\d|\\w/.test(inner) === false) {
+        if (/[._:/-]|\\\.|\\s|\\d|\\w/.test(inner) === false) {
           // No separator — but ALSO require the inner to be character-class
           // shaped (`[a-z]`, `\w`, etc.) for it to be a real risk.
           if (!/^\s*\[/.test(inner) && !/\\w|\\d/.test(inner)) continue;
         }
         // Separator chars: literal `_`, `-`, `.`, `:`, `/`, `\s`, `\.`
-        if (/[_:\-]/.test(inner) || /\\\./.test(inner) || /\\s/.test(inner) || /\\\\\//.test(inner)) {
+        if (/[_:-]/.test(inner) || /\\\./.test(inner) || /\\s/.test(inner) || /\\\//.test(inner)) {
           continue;
         }
         const line = content.slice(0, m.index).split("\n").length;
