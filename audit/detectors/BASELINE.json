@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-12T20:21:29.084Z",
+  "generatedAt": "2026-05-12T21:04:11.941Z",
   "totals": {
     "critical": 0,
     "high": 0,
-    "medium": 33,
-    "low": 17,
-    "info": 101,
-    "total": 151
+    "medium": 34,
+    "low": 8,
+    "info": 80,
+    "total": 122
   },
   "detectorCount": 18,
   "fingerprints": {
@@ -523,246 +523,6 @@
       "location": "server/logger.js",
       "message": "Module server/logger.js fan-in=214 fan-out=0 (leaf utility — wide use is by design)"
     },
-    "b24644f83b19cbdb": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/dx-platform/web-editor/page.tsx:71",
-      "message": "TODO marker in production: project explicit columns"
-    },
-    "7c5776201bf69d5d": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/ux-suite/page.tsx:111",
-      "message": "Production reference to identifier suggesting fake data: mockA11ySettings"
-    },
-    "d85678d64ee98d15": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/ux-suite/page.tsx:124",
-      "message": "Production reference to identifier suggesting fake data: mockAchievements"
-    },
-    "9f1bc55814a907e3": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/ux-suite/page.tsx:129",
-      "message": "Production reference to identifier suggesting fake data: mockProgressionProfile"
-    },
-    "afe31507a228a705": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/ux-suite/page.tsx:134",
-      "message": "Production reference to identifier suggesting fake data: mockSaveState"
-    },
-    "3fbd231c739956dc": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/ux-suite/page.tsx:141",
-      "message": "Production reference to identifier suggesting fake data: mockSeasonalEvents"
-    },
-    "0fb33124cfc11ead": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/ux-suite/page.tsx:145",
-      "message": "Production reference to identifier suggesting fake data: mockWorlds"
-    },
-    "cf24a654e421e03c": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/ux-suite/page.tsx:150",
-      "message": "Production reference to identifier suggesting fake data: mockDtu"
-    },
-    "43711c9a8ae1be83": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/graphs/FractalEmpireExplorer.tsx:137",
-      "message": "Production reference to identifier suggesting fake data: placeholderNode"
-    },
-    "aa25b2ec527fb8d6": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/ARPreview.tsx:95",
-      "message": "Production reference to identifier suggesting fake data: mockImageData"
-    },
-    "bd033adc34894da6": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/NotarizationPanel.tsx:148",
-      "message": "Production reference to identifier suggesting fake data: fakeTx"
-    },
-    "99e7a9b9cbcc9e0f": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/emergent/forge-template-engine.js:848",
-      "message": "TODO marker in production: ${e.description}"
-    },
-    "98454ef7f0fa9fc5": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/emergent/forge-template-engine.js:921",
-      "message": "TODO marker in production: ${description} */ } }`;"
-    },
-    "059462247485cb86": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/emergent/store.js:127",
-      "message": "Production reference to identifier suggesting fake data: dummyState"
-    },
-    "da2ff287daeeb7de": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/autofix/empty-catch.js:33",
-      "message": "TODO marker in production: add specific recovery; was empty catch */ }`;"
-    },
-    "494834f3849aba82": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/autofix/empty-catch.js:38",
-      "message": "TODO marker in production: was empty catch (${name}); add recovery */ }`);"
-    },
-    "45bae6bc56222068": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/autofix/select-star.js:3",
-      "message": "TODO marker in production: project explicit"
-    },
-    "4638c8de185d95ac": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/autofix/select-star.js:9",
-      "message": "TODO marker in production: project explicit columns (auto-fix suggestion)\";"
-    },
-    "da92f633081f3af3": {
-      "detector": "fake-data",
-      "id": "suspicious_string_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/chicken2-gate.js:259",
-      "message": "Suspicious literal in production: if (/\\blorem ipsum\\b/i.test(text)) reasons.push(\"Contains placeholder text.\");"
-    },
-    "7e2dc7768326760d": {
-      "detector": "fake-data",
-      "id": "suspicious_string_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/detectors/fake-data-detector.js:34",
-      "message": "Suspicious literal in production: const CATEGORY = \"fake-data\";"
-    },
-    "649bbd2be298044b": {
-      "detector": "fake-data",
-      "id": "suspicious_string_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/detectors/fake-data-detector.js:56",
-      "message": "Suspicious literal in production: const SUSPICIOUS_STR_RE = /['\"`][^'\"`]*?(lorem ipsum|test[-_ ]user[-_ ]?\\d|fake[-_ ]?(name|email|use"
-    },
-    "fa5f596cc73c3361": {
-      "detector": "fake-data",
-      "id": "suspicious_string_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/detectors/fake-data-detector.js:187",
-      "message": "Suspicious literal in production: id: isDeferredReplace ? \"todo_replace_in_production\" : \"todo_in_production\","
-    },
-    "a82818f4057123d6": {
-      "detector": "fake-data",
-      "id": "suspicious_string_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/detectors/fake-data-detector.js:243",
-      "message": "Suspicious literal in production: message: `Production reference to identifier suggesting fake data: ${ident}`,"
-    },
-    "5d9eabbedd9230a3": {
-      "detector": "fake-data",
-      "id": "suspicious_string_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/detectors/fake-data-detector.js:257",
-      "message": "Suspicious literal in production: id: \"fake_data_summary\","
-    },
-    "8517b2d8bfe34b7d": {
-      "detector": "fake-data",
-      "id": "suspicious_string_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/detectors/index.js:36",
-      "message": "Suspicious literal in production: import { runFakeDataDetector } from \"./fake-data-detector.js\";"
-    },
-    "630bb2562ac992b6": {
-      "detector": "fake-data",
-      "id": "suspicious_string_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/detectors/index.js:291",
-      "message": "Suspicious literal in production: id: \"fake-data\","
-    },
-    "67e93b677d857c43": {
-      "detector": "fake-data",
-      "id": "suspicious_string_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/detectors/index.js:292",
-      "message": "Suspicious literal in production: label: \"FakeDataDetector\","
-    },
-    "b7f738d4de2b772a": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/federation.js:1501",
-      "message": "TODO marker in production: project explicit columns (auto-fix suggestion)"
-    },
-    "893382bbf01cee4c": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/lens-developer-kit.js:222",
-      "message": "TODO marker in production: /FIXME/HACK/XXX placeholders"
-    },
-    "8aba96985eb09a92": {
-      "detector": "fake-data",
-      "id": "fake_ident_in_production",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/lens-developer-kit.js:158",
-      "message": "Production reference to identifier suggesting fake data: mockRegister"
-    },
     "e8ca0dab4cb5f073": {
       "detector": "fake-data",
       "id": "fake_data_summary",
@@ -1042,6 +802,14 @@
       "kind": "static",
       "location": "server/routes/oauth.js:35",
       "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
+    },
+    "80003128da2659ce": {
+      "detector": "env-config-drift",
+      "id": "hardcoded_prod_url",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/common/MapView.tsx:71",
+      "message": "Hardcoded production URL: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
     },
     "5f11ed8b1e9b51fe": {
       "detector": "env-config-drift",

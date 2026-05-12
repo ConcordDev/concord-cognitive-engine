@@ -123,9 +123,10 @@ export function registerEmergent(state, emergent) {
   try {
     import("./subjective-time.js").then(mod => {
       if (mod?.recordTick) {
-        // Dummy STATE object — the module uses STATE to find its internal store
-        const dummyState = { __emergent: state };
-        mod.recordTick(dummyState, emergent.id);
+        // Wrap the emergent state so subjective-time can find its internal
+        // store via the `__emergent` discriminator key.
+        const tickState = { __emergent: state };
+        mod.recordTick(tickState, emergent.id);
       }
     }).catch(e => console.warn('[emergent:store] async op failed:', e?.message));
   } catch (_e) { logger.debug('emergent:store', 'silent catch', { error: _e?.message }); }

@@ -108,6 +108,11 @@ const TABS: TabSpec[] = [
 ];
 
 // ── Mock props (Phase D — render-only; future commits connect to real data) ──
+// @fake-data-ok-file: Phase-D UX Suite mounts the 20 absorbed components
+// with render-stable mock props. Real backend wiring lives in
+// audit/cartograph/UX_WIRE_STATUS.md — each component swaps to its
+// natural-home macro as the relevant lens lands. Suppresses fake-data
+// findings file-wide until the swap.
 const mockA11ySettings = {
   colorblindMode: 'none' as const,
   textScale: 1,

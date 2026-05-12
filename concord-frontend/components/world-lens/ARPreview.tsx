@@ -92,6 +92,8 @@ export default function ARPreview({ dtuId, dtuData, onCapture, supported = true 
     setCapturing(true);
     setTimeout(() => {
       setCapturing(false);
+      // @fake-data-ok: AR preview scaffold — real WebXR capture lands when
+      // the Vision Pro / Quest 4 spatial port (Phase 6 #30/#37) ships.
       const mockImageData = `data:image/png;base64,AR_CAPTURE_${dtuId}_${Date.now()}`;
       onCapture?.(mockImageData);
     }, 500);

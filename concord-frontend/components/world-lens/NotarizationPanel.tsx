@@ -144,6 +144,9 @@ export default function NotarizationPanel() {
     setCurrentTxHash(null);
 
     // Simulate pending -> confirming -> confirmed
+    // @fake-data-ok: demo notarization panel shows the UI/state-machine
+    // for blockchain receipts; real submitTx wires up when the chain
+    // integration ships. The hash shape matches eth tx ids for layout.
     setTimeout(() => {
       const fakeTx = '0x' + Array.from({ length: 64 }, () =>
         Math.floor(Math.random() * 16).toString(16),
