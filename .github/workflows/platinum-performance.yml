@@ -79,6 +79,13 @@ jobs:
           path: |
             concord-frontend/.next
             concord-frontend/public
+          # `.next/` starts with a dot — actions/upload-artifact@v6
+          # excludes hidden files by default. Without this flag the
+          # artifact silently uploads only `public/` and the downstream
+          # matrix-scan jobs get nothing to scan. Caught on the first
+          # v2 PR run; both Lighthouse + size-limit fell over with
+          # "can't find files at .next/static/chunks/..."
+          include-hidden-files: true
           # Auto-cleaned when run ends — only the matrix consumers
           # need this artifact, not retained for history.
           retention-days: 1
