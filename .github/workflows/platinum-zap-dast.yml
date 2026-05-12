@@ -41,17 +41,31 @@ jobs:
           NODE_ENV: ci
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           PORT: 5050
+          # Skip 5-brain Ollama init in CI (no Ollama service running).
+          # Without this, initFiveBrains() runs 5 sequential probes with
+          # ~15s AbortSignal.timeout each = ~75s of cold probe time, which
+          # blew past the 60s wait loop. Same root-cause fix shape as
+          # platinum-security + platinum-performance + main CI.
+          CONCORD_DISABLE_BRAINS: 'true'
         run: |
           npm ci
           node server.js > server.log 2>&1 &
           sleep 5
-          for i in {1..30}; do
+          # Bumped 30 → 90 attempts (60s → 180s) to match the smoke +
+          # integration + E2E wait budget. Even with brain-disable the
+          # server takes 30-60s to warm migrations + heartbeats.
+          for i in {1..90}; do
             if curl -sf http://localhost:5050/health > /dev/null 2>&1; then
-              echo "Server ready"
+              echo "Server ready after ${i} probes"
               break
             fi
             sleep 2
           done
+          curl -sf http://localhost:5050/health > /dev/null 2>&1 || {
+            echo "::error::Server did not respond on /health after 180s. Tail of server.log:"
+            tail -n 200 server.log 2>/dev/null || echo "(no server.log)"
+            exit 1
+          }
 
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.13.0
@@ -59,7 +73,12 @@ jobs:
           target: ${{ inputs.target || 'http://localhost:5050' }}
           rules_file_name: '.zap/rules.tsv'
           cmd_options: '-a -j -m 5'
-          allow_issue_writing: true
+          # `allow_issue_writing: false` prevents the action from opening
+          # auto-generated GitHub issues on every run. The scan still
+          # runs + the report is uploaded as the `zap-report` artifact;
+          # we just don't spam the issue tracker until a triage process
+          # exists. Flip to true once issue-triage cadence is decided.
+          allow_issue_writing: false
 
       - name: Upload ZAP report
         if: always()
