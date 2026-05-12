@@ -173,63 +173,37 @@ jobs:
               ;;
 
             npm-audit-frontend)
+              # FP-aware audit. See scripts/ci/check-frontend-audit.py
+              # for the allowlist + audit rationale. Extracted to its
+              # own file (Sprint 35 v2) because embedding multi-line
+              # Python inside this YAML `run: |` block-scalar broke
+              # under matrix nesting — YAML strips common leading
+              # indent, leaving Python top-level statements indented
+              # and rejected by the interpreter.
               cd concord-frontend
-              # Known FP allowlist (no upstream fix; audited as not-applicable):
-              #   - GHSA-r5fr-rjxr-66jc: lodash _.template code injection.
-              #     Codebase audit confirms _.template is never invoked
-              #     (grep -rE "lodash.*template\|_.template\(" → 0 hits).
-              #     Transitive via @excalidraw → mermaid → chevrotain parser
-              #     which doesn't use _.template.
-              #   - GHSA-xxjr-mmjv-4gpg: lodash prototype pollution via
-              #     _.unset/_.omit array paths. Same transitive source
-              #     (chevrotain parser). chevrotain uses lodash for basic
-              #     iteration helpers, not user-supplied array path operations.
               set +e
               npm audit --omit=dev --json > audit.json
               set -e
-              HIGH_OR_CRIT_REAL=$(python3 -c "
-              import json
-              d = json.load(open('audit.json'))
-              ALLOWLIST_ADVISORIES = {'GHSA-r5fr-rjxr-66jc', 'GHSA-xxjr-mmjv-4gpg'}
-              flagged = 0
-              for name, v in d.get('vulnerabilities', {}).items():
-                  if v.get('severity') not in ('high', 'critical'):
-                      continue
-                  vias = v.get('via', [])
-                  real = [
-                      x for x in vias
-                      if isinstance(x, dict)
-                      and x.get('severity') in ('high', 'critical')
-                      and x.get('url', '').split('/')[-1] not in ALLOWLIST_ADVISORIES
-                  ]
-                  if real:
-                      flagged += 1
-                      print(f'  HIGH/CRIT: {name} (advisories: {[x.get(\"url\",\"?\") for x in real][:3]})')
-              print(f'real_high_or_critical={flagged}')
-              ")
-              echo "$HIGH_OR_CRIT_REAL"
-              REAL=$(echo "$HIGH_OR_CRIT_REAL" | grep -oE 'real_high_or_critical=[0-9]+' | cut -d= -f2)
-              if [ "${REAL:-1}" -gt 0 ]; then
-                echo "::error::Frontend has $REAL real high/critical npm audit findings"
-                exit 1
-              fi
-              echo "All high/critical findings are FP-allowlisted; audit passes."
+              python3 ../scripts/ci/check-frontend-audit.py audit.json
               ;;
 
             retire-js)
               # retire.js scans both server + frontend node_modules for
               # known-vulnerable bundled JS libraries (signature match
               # on the bundled bytes, not just package.json versions).
-              # See .retireignore.json for the false-positive allowlist
-              # (monaco-editor bundles its own old DOMPurify internally
-              # that we don't directly use).
+              # .retireignore.json lives at repo root and allowlists
+              # monaco-editor's bundled DOMPurify (full audit reason
+              # in the file's justification field). Passing
+              # --ignorefile explicitly so retire finds it regardless
+              # of the cwd at scan time.
               npm install -g retire@latest
+              IGNORE_FILE="$GITHUB_WORKSPACE/.retireignore.json"
               # Pass 1: never-fail report for visibility
-              retire --severity high --path server || true
-              retire --severity high --path concord-frontend || true
+              retire --severity high --ignorefile "$IGNORE_FILE" --path server || true
+              retire --severity high --ignorefile "$IGNORE_FILE" --path concord-frontend || true
               # Pass 2: fail-mode for actual gating
-              retire --severity high --exitwith 1 --path server
-              retire --severity high --exitwith 1 --path concord-frontend
+              retire --severity high --exitwith 1 --ignorefile "$IGNORE_FILE" --path server
+              retire --severity high --exitwith 1 --ignorefile "$IGNORE_FILE" --path concord-frontend
               ;;
 
             licenses)
