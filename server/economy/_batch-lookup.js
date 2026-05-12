@@ -33,6 +33,7 @@ export function batchLookup(db, table, pkCol, ids, opts = {}) {
   for (let i = 0; i < ids.length; i += DEFAULT_CHUNK) {
     const slice = ids.slice(i, i + DEFAULT_CHUNK);
     const placeholders = slice.map(() => "?").join(",");
+    // @resource-leak-ok: bounded enumerated inputs (cols/table/pkCol from typed call sites)
     const rows = db.prepare(
       `SELECT ${cols} FROM ${table} WHERE ${pkCol} IN (${placeholders})${where}`,
     ).all(...slice);

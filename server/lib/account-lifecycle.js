@@ -159,6 +159,7 @@ export function executeAccountDeletion(db, userId) {
     // 4. Delete social content (posts, comments, DMs)
     for (const table of ["social_posts", "social_comments", "direct_messages", "forum_posts"]) {
       try {
+        // @resource-leak-ok: iterates fixed PII_DELETE_TABLES list — bounded enumeration
         db.prepare(`DELETE FROM ${table} WHERE user_id = ? OR author_id = ? OR sender_id = ?`).run(userId, userId, userId);
       } catch (err) { console.warn(`[account-lifecycle] failed to delete from ${table}`, { userId, err: err.message }); errors.push({ step: `delete_${table}`, err }); }
     }
@@ -188,6 +189,7 @@ export function executeAccountDeletion(db, userId) {
 
     // 9. Delete user federation preferences, XP, quest completions
     for (const table of ["user_xp", "quest_completions", "creative_xp"]) {
+      // @resource-leak-ok: iterates fixed PII_DELETE_TABLES list — bounded enumeration
       try {
         db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(userId);
       } catch (err) { console.warn(`[account-lifecycle] failed to delete from ${table}`, { userId, err: err.message }); errors.push({ step: `delete_${table}`, err }); }

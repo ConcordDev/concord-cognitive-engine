@@ -159,6 +159,7 @@ export function cleanupUnreferencedArtifacts(db) {
   for (let i = 0; i < hashes.length; i += 500) {
     const chunk = hashes.slice(i, i + 500);
     const placeholders = chunk.map(() => "?").join(",");
+    // @resource-leak-ok: chunk size fixed at 500 — at most 1-2 cache entries
     db.prepare(`DELETE FROM artifact_vault WHERE hash IN (${placeholders})`).run(...chunk);
   }
 

@@ -97,6 +97,7 @@ export function getCorpusStats(db) {
   const tables = [];
   for (const name of ALL_CONSENT_TABLES) {
     try {
+      // @resource-leak-ok: iterates fixed consent-tracking tables list
       const total = db.prepare(`SELECT COUNT(*) as c FROM ${name}`).get().c;
       const consented = db.prepare(`SELECT COUNT(*) as c FROM ${name} WHERE train_consented = 1`).get().c;
       tables.push({
