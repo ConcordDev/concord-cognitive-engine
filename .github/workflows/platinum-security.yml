@@ -1,9 +1,29 @@
 name: Platinum Security (SAST + SCA + Secrets)
 
 # Sprint 18 — full platinum-tier security gate. Runs on every PR.
-# Each step is independently informative; the workflow fails if any
-# hard gate fails. Soft gates log to PR comments via GitHub Actions
-# annotations.
+#
+# BATCHED ARCHITECTURE (Sprint 35): the original shape had 7 separate
+# jobs each provisioning its own VM + downloading actions + running
+# `npm ci`. That meant ~7 VM provisions × ~30s + ~28 action downloads
+# per merge — exactly the load that triggers GitHub's CDN 429 throttle
+# on `github/codeql-action/*` and similar.
+#
+# This file collapses the 4 npm-dependent gates (npm-audit + retire-js
+# + license-compliance + sbom) into a single `npm-and-supply-chain`
+# job that does `npm ci` once for server + frontend and then runs all
+# four scans as sequential steps. Each step is still its own
+# annotation in the job log; the only behavior change is that the
+# PR Checks UI shows one row instead of four.
+#
+# Jobs left independent because they don't share the npm install path:
+#   - `semgrep-sast`: runs in semgrep/semgrep container, no npm needed
+#   - `secrets-scan`: gitleaks-action only, no npm
+#   - `container-scan`: docker build + Trivy, no npm
+#
+# Net per-merge effect:
+#   - VM provisions: 7 → 4 (saves ~90s wall-clock of cold-start)
+#   - Action downloads: ~28 → ~12 (lower CDN pressure → fewer 429s)
+#   - npm ci runs: 6 → 2 (server + frontend once each, not 3x each)
 
 on:
   pull_request:
@@ -51,23 +71,36 @@ jobs:
           name: semgrep-results
           path: semgrep-results.json
 
-  npm-audit:
-    name: SCA — npm audit (high/critical)
+  # ════════════════════════════════════════════════════════════════════
+  # Batched gate — Sprint 35
+  # Combines npm-audit + retire-js + license-compliance + SBOM into
+  # one job. Shared `npm ci` for both server + frontend; each scan is
+  # an independent step so failure surfaces clearly.
+  # ════════════════════════════════════════════════════════════════════
+  npm-and-supply-chain:
+    name: SCA + Supply Chain (npm audit, retire.js, licenses, SBOM)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-node@v6
         with: { node-version: '22' }
+
       - name: Install server deps
         working-directory: ./server
         run: npm ci
-      - name: npm audit (server) — fail on high
-        working-directory: ./server
-        run: npm audit --production --audit-level=high
+
       - name: Install frontend deps
         working-directory: ./concord-frontend
         run: npm ci
-      - name: npm audit (frontend) — fail on high
+
+      # ── SCA — npm audit (server) ─────────────────────────────────────
+      - name: npm audit (server) — fail on high
+        working-directory: ./server
+        run: npm audit --production --audit-level=high
+
+      # ── SCA — npm audit (frontend, with FP allowlist) ────────────────
+      - name: npm audit (frontend) — fail on real high+critical (FP-aware)
         working-directory: ./concord-frontend
         run: |
           # Known FP allowlist (no upstream fix; audited as not-applicable):
@@ -117,21 +150,41 @@ jobs:
           fi
           echo "All high/critical findings are FP-allowlisted; audit passes."
 
-  retire-js:
-    name: SCA — retire.js (known vulnerable libs)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with: { node-version: '22' }
-      - name: retire.js scan
+      # ── SCA — retire.js (server + frontend) ──────────────────────────
+      - name: retire.js scan (server + frontend) — fail on high
         run: |
           npm install -g retire@latest
+          # Pass 1: never-fail report so both directories get scanned
+          # regardless of which has issues. Pass 2: fail-mode to actually
+          # gate on findings.
           retire --severity high --path server || true
           retire --severity high --path concord-frontend || true
-          # Re-run to actually fail on high vulns.
           retire --severity high --exitwith 1 --path server
           retire --severity high --exitwith 1 --path concord-frontend
+
+      # ── Supply Chain — license compliance (server + frontend) ────────
+      - name: License compliance scan (server + frontend)
+        run: |
+          cd server
+          npx license-checker --production --json \
+            | node ../scripts/check-licenses.js ../.license-checker-allowlist.json
+          cd ../concord-frontend
+          npx license-checker --production --json \
+            | node ../scripts/check-licenses.js ../.license-checker-allowlist.json
+
+      # ── Supply Chain — SBOM generation ───────────────────────────────
+      - name: Generate SBOM
+        run: |
+          mkdir -p audit
+          npx @cyclonedx/cyclonedx-npm --output-file audit/sbom.json . || true
+
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: sbom
+          path: audit/sbom.json
+          retention-days: 30
 
   secrets-scan:
     name: Secrets — gitleaks
@@ -143,41 +196,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
-
-  license-compliance:
-    name: Supply Chain — license compliance
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with: { node-version: '22' }
-      - name: Install + scan licenses
-        run: |
-          cd server
-          npm ci
-          npx license-checker --production --json | node ../scripts/check-licenses.js ../.license-checker-allowlist.json
-          cd ../concord-frontend
-          npm ci
-          npx license-checker --production --json | node ../scripts/check-licenses.js ../.license-checker-allowlist.json
-
-  sbom:
-    name: Supply Chain — SBOM generation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with: { node-version: '22' }
-      - name: Generate SBOM
-        run: |
-          mkdir -p audit
-          npx @cyclonedx/cyclonedx-npm --output-file audit/sbom.json . || true
-      - name: Upload SBOM
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: sbom
-          path: audit/sbom.json
-          retention-days: 30
 
   container-scan:
     name: Container — Trivy image scan
