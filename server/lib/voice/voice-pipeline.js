@@ -219,6 +219,7 @@ export function getSessionStats() {
 
 // Prune stale sessions every 5 minutes
 const STALE_SESSION_MS = 30 * 60 * 1000; // 30 minutes
+// @resource-leak-ok: process-lifetime — voice queue heartbeat
 setInterval(() => {
   const now = Date.now();
   for (const [id, session] of _sessions) {

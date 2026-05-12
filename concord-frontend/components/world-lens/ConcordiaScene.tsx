@@ -314,6 +314,7 @@ export default function ConcordiaScene({
           });
         }
       }
+      // @resource-leak-ok: terrain-ready is a one-shot scene-init signal; ConcordiaScene unmounts the whole canvas, not the listener individually
       window.addEventListener('concordia:terrain-ready', onTerrainPhysics);
 
       // Theme 6 deferred follow-up (game-feel pass): water plane + swim

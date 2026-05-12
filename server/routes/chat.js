@@ -278,6 +278,7 @@ export default function registerChatRoutes(app, {
   }
 
   // Periodic cleanup: remove sessions older than 24 hours with no messages
+  // @resource-leak-ok: process-lifetime — chat session GC
   setInterval(() => {
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
     for (const [sid, sess] of STATE.sessions) {

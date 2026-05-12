@@ -54,6 +54,7 @@ function checkRate(userId, action, limit) {
 }
 
 // Periodic cleanup
+// @resource-leak-ok: process-lifetime — anti-gaming detector tick
 setInterval(() => {
   const now = Date.now();
   for (const [key, bucket] of rateBuckets) {

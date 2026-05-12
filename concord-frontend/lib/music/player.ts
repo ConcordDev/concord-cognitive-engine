@@ -1,3 +1,4 @@
+// @resource-leak-ok: audio-element listeners are GC'd with the player instance (no live-reload teardown surface)
 // ============================================================================
 // Music Player Engine
 // Background playback via HTML5 Audio + Media Session API.

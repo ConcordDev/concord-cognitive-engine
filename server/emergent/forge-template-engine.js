@@ -1,3 +1,4 @@
+// @resource-leak-ok: addEventListener inside backtick template emitted to user-generated test/runtime code
 /**
  * Forge Template Engine — Single-File Polyglot App Generator
  *

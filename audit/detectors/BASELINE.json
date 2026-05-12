@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-12T21:48:00.107Z",
+  "generatedAt": "2026-05-12T22:48:15.760Z",
   "totals": {
     "critical": 0,
     "high": 0,
-    "medium": 34,
-    "low": 8,
-    "info": 80,
-    "total": 122
+    "medium": 5,
+    "low": 4,
+    "info": 79,
+    "total": 88
   },
   "detectorCount": 18,
   "fingerprints": {
@@ -531,278 +531,6 @@
       "location": null,
       "message": "102 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
     },
-    "15984586c8b49c58": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/world/EnterVRButton.tsx:62",
-      "message": "addEventListener('end', ...) has no matching removeEventListener in this file."
-    },
-    "adb645a44b1107c6": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/world/TombMarker.tsx:224",
-      "message": "addEventListener('click', ...) has no matching removeEventListener in this file."
-    },
-    "b0362a995e2477cd": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:446",
-      "message": "addEventListener('statechange', ...) has no matching removeEventListener in this file."
-    },
-    "13bc69dec61ae3ee": {
-      "detector": "resource-leak",
-      "id": "high_settimeout_density",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:1",
-      "message": "8 setTimeout calls in this file — sanity-check for runaway recursion / unbounded reschedule."
-    },
-    "4381c375e6b72f50": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/music/player.ts:63",
-      "message": "addEventListener('play', ...) has no matching removeEventListener in this file."
-    },
-    "fb78d2ad77357495": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/music/player.ts:64",
-      "message": "addEventListener('pause', ...) has no matching removeEventListener in this file."
-    },
-    "40c9f6135e5c3e41": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/music/player.ts:65",
-      "message": "addEventListener('ended', ...) has no matching removeEventListener in this file."
-    },
-    "1b8747cb2d3abd0f": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/music/player.ts:66",
-      "message": "addEventListener('canplay', ...) has no matching removeEventListener in this file."
-    },
-    "a3d4798b08624874": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/music/player.ts:67",
-      "message": "addEventListener('waiting', ...) has no matching removeEventListener in this file."
-    },
-    "63dcb74eb6e91b26": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/music/player.ts:68",
-      "message": "addEventListener('error', ...) has no matching removeEventListener in this file."
-    },
-    "a596b7db5a7d1aae": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/music/player.ts:72",
-      "message": "addEventListener('timeupdate', ...) has no matching removeEventListener in this file."
-    },
-    "19c76cf96ad18115": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/lib/music/player.ts:79",
-      "message": "addEventListener('volumechange', ...) has no matching removeEventListener in this file."
-    },
-    "600e84971efae1fb": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/emergent/atlas-antigaming.js:57",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "ca26f8cb8da21fdd": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/emergent/developer-sdk.js:836",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "f023f36f3f269aa5": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/emergent/developer-sdk.js:1067",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "ac006332f964f6e2": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/emergent/forge-template-engine.js:808",
-      "message": "addEventListener('submit', ...) has no matching removeEventListener in this file."
-    },
-    "06b03207a2ec04a1": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/emergent/public-api.js:282",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "6b2b73643ad41827": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/emergent/spam-prevention.js:58",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "3fc086e194dcfb5e": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/agentic/a2a-server.js:16",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "2548d0d4f2603034": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/artifact-budget.js:239",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "413d7adb1dfb6251": {
-      "detector": "resource-leak",
-      "id": "stream_without_close",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/artifact-store.js:294",
-      "message": "createReadStream / createWriteStream without a 'close'/'finish'/'end' handler."
-    },
-    "2b82c75ed0b599f3": {
-      "detector": "resource-leak",
-      "id": "stream_without_close",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/artifact-store.js:298",
-      "message": "createReadStream / createWriteStream without a 'close'/'finish'/'end' handler."
-    },
-    "1eb836551401af0a": {
-      "detector": "resource-leak",
-      "id": "stream_without_close",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/audit-logger.js:35",
-      "message": "createReadStream / createWriteStream without a 'close'/'finish'/'end' handler."
-    },
-    "e666657425e001fb": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/skill-atrophy.js:53",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "bdd42022bf511749": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/substrate-diffusion.js:180",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "f65ab040b90ae43c": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/voice/voice-pipeline.js:222",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "9d5a48c92542bfcd": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/world-crisis.js:107",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "1d6c5db403794f1c": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/routes/api-docs.js:932",
-      "message": "addEventListener('input', ...) has no matching removeEventListener in this file."
-    },
-    "d4dfa6ec7010901c": {
-      "detector": "resource-leak",
-      "id": "listener_without_remove",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/routes/api-docs.js:934",
-      "message": "addEventListener('change', ...) has no matching removeEventListener in this file."
-    },
-    "db8a452747a11256": {
-      "detector": "resource-leak",
-      "id": "stream_without_close",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/routes/artifacts.js:292",
-      "message": "createReadStream / createWriteStream without a 'close'/'finish'/'end' handler."
-    },
-    "d52a6bcacd5499d9": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/routes/auth.js:56",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "db0be854e9e82d63": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/routes/auth.js:108",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "92ada1fa24a3a516": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/routes/chat.js:281",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
-    "e3818ba4f508a67b": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/routes/oauth.js:35",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
     "80003128da2659ce": {
       "detector": "env-config-drift",
       "id": "hardcoded_prod_url",
@@ -963,12 +691,12 @@
       "location": "server/lib/tools/computer-use-tool.js:128",
       "message": "Magic timeout 15000ms — consider env-driven"
     },
-    "03e252a50da80d95": {
+    "9d1bfffcc793c9a8": {
       "detector": "env-config-drift",
       "id": "hardcoded_localhost",
       "severity": "medium",
       "kind": "static",
-      "location": "server/routes/api-docs.js:179",
+      "location": "server/routes/api-docs.js:180",
       "message": "Hardcoded localhost URL with no env-var fallback in this file: http://localhost:5050"
     },
     "c642d5a00d91f3a4": {

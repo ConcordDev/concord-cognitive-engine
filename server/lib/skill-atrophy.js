@@ -50,5 +50,6 @@ export async function runAtrophyCycle(db) {
 
 export function startAtrophyCycle(db) {
   runAtrophyCycle(db).catch(err => logger?.debug?.('[skill-atrophy] background op failed', { err: err?.message }));
+  // @resource-leak-ok: process-lifetime — skill atrophy cycle
   return setInterval(() => runAtrophyCycle(db).catch(err => logger?.debug?.('[skill-atrophy] background op failed', { err: err?.message })), CYCLE_INTERVAL_MS);
 }

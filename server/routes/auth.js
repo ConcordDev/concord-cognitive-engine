@@ -53,6 +53,7 @@ function clearAccountRateLimit(identifier) {
 }
 
 // Cleanup stale entries every 30 minutes to prevent memory leak
+// @resource-leak-ok: process-lifetime — auth-attempt rate-limit cleanup
 const _loginRateLimitCleanup = setInterval(() => {
   const now = Date.now();
   for (const [ip, entry] of _loginAttempts) {
@@ -105,6 +106,7 @@ export default function createAuthRouter({
   const MAX_REGISTRATIONS_PER_IP_PER_DAY = 3;
 
   // Cleanup stale entries from _regIpDaily every hour to prevent memory leak
+  // @resource-leak-ok: process-lifetime — auth-attempt rate-limit cleanup
   const _regIpCleanupInterval = setInterval(() => {
     const today = new Date().toISOString().slice(0, 10);
     for (const [ip, entry] of _regIpDaily) {

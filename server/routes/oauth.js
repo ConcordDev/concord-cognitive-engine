@@ -32,6 +32,7 @@ const OAUTH_STATES = new Map();
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 // Periodic cleanup of expired states (every 5 minutes)
+// @resource-leak-ok: process-lifetime — oauth token cleanup
 setInterval(() => {
   const now = Date.now();
   for (const [state, entry] of OAUTH_STATES) {

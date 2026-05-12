@@ -56,8 +56,11 @@ function shouldScan(rel) {
 const SETINTERVAL_RE = /\bsetInterval\s*\(/g;
 const SETTIMEOUT_RE = /\bsetTimeout\s*\(/g;
 const CLEAR_RE = /\b(clearInterval|clearTimeout)\b/;
-const ADD_LISTENER_RE = /\.addEventListener\s*\(\s*['"`](\w+)['"`]/g;
-const REMOVE_LISTENER_RE = /\.removeEventListener\s*\(\s*['"`](\w+)['"`]/g;
+// Event names can be namespaced ("entity:death", "concordia:hit-reaction")
+// or plain word characters. Allow colons, hyphens, and dots so the
+// "matching remove" lookup catches namespaced + Concord-emergent events.
+const ADD_LISTENER_RE = /\.addEventListener\s*\(\s*['"`]([\w:.-]+)['"`]/g;
+const REMOVE_LISTENER_RE = /\.removeEventListener\s*\(\s*['"`]([\w:.-]+)['"`]/g;
 const STREAM_RE = /\bcreate(Read|Write)Stream\s*\(/g;
 const FS_OPEN_RE = /\bfs\.(?:promises\.)?open\s*\(/g;
 const FS_CLOSE_RE = /\bfs\.(?:promises\.)?close\s*\(|\.close\(\)|\.end\(\)/;

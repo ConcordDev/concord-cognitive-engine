@@ -295,6 +295,7 @@ export function retrieveArtifactStream(artifactRef) {
   }
   // Fallback to raw
   if (fs.existsSync(artifactRef.diskPath)) {
+    // @resource-leak-ok: createReadStream returned to caller for piping — caller-owned cleanup
     return fs.createReadStream(artifactRef.diskPath);
   }
   return null;

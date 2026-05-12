@@ -104,5 +104,6 @@ export function startCrisisWatch(db, realtimeEmit) {
   };
 
   run().catch(err => logger?.debug?.('[world-crisis] background op failed', { err: err?.message }));
+  // @resource-leak-ok: process-lifetime — crisis-monitor heartbeat
   return setInterval(run, CHECK_INTERVAL_MS);
 }

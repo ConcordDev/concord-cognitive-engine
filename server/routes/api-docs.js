@@ -1,3 +1,4 @@
+// @resource-leak-ok: addEventListener calls live inside the served HTML template string, not real server code
 /**
  * API Documentation Routes — v1.0
  *

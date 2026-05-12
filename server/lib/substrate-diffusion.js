@@ -177,6 +177,7 @@ export function startPatternDetection(db, selectBrain) {
   if (_patternTimer) return;
   // Run immediately on start, then daily
   detectSubstratePatterns(db, selectBrain).catch(err => logger?.debug?.('[substrate-diffusion] background op failed', { err: err?.message }));
+  // @resource-leak-ok: process-lifetime — daily pattern refresh
   _patternTimer = setInterval(() => {
     detectSubstratePatterns(db, selectBrain).catch(err => logger?.debug?.('[substrate-diffusion] background op failed', { err: err?.message }));
   }, DAILY_MS);
