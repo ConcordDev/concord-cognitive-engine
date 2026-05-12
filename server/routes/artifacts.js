@@ -184,7 +184,17 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
         // Write to disk
         storageMode = "disk";
         const fileName = `${artifactId}_${safeName}`;
-        storagePath = path.join(uploadDir, fileName);
+        // safeName already passed through `path.basename(...).slice(0,255)`
+        // at construction (line ~160) so it cannot contain path separators.
+        // Defence-in-depth: re-resolve through path.relative to give CodeQL
+        // a sanitiser it recognises and to catch any future change that
+        // weakens safeName's invariants.
+        const candidate = path.resolve(uploadDir, fileName);
+        const rel = path.relative(uploadDir, candidate);
+        if (rel.startsWith("..") || path.isAbsolute(rel)) {
+          return res.status(400).json({ ok: false, error: "invalid filename" });
+        }
+        storagePath = candidate;
         try {
           await fs.promises.writeFile(storagePath, buf);
         } catch (fsErr) {

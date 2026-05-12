@@ -58,7 +58,17 @@ export class LocalVolumeAdapter extends StorageAdapter {
     // uri format: "local:///artifacts/abc/v1/file.wav"
     const stripped = uri.replace(/^local:\/\//, "");
     const resolved = path.resolve(this.basePath, stripped);
-    if (!resolved.startsWith(path.resolve(this.basePath) + path.sep) && resolved !== path.resolve(this.basePath)) {
+    // Canonical CodeQL-recognised path-traversal sanitiser:
+    //   path.relative(base, target) yields a path that:
+    //     - starts with `..` if target escapes base
+    //     - is absolute if target is on a different volume / drive
+    //     - is empty when target === base (we allow this)
+    // This is the form CodeQL's js/path-injection query treats as
+    // sanitising; the prior `startsWith` form is semantically
+    // equivalent but not recognised, producing high-severity alerts
+    // on every reachable write site.
+    const rel = path.relative(this.basePath, resolved);
+    if (rel.startsWith("..") || path.isAbsolute(rel)) {
       throw new Error("Path traversal detected");
     }
     return resolved;
@@ -71,7 +81,9 @@ export class LocalVolumeAdapter extends StorageAdapter {
 
   async put(storagePath, data, _contentType = "application/octet-stream") {
     const fullPath = path.resolve(this.basePath, storagePath);
-    if (!fullPath.startsWith(path.resolve(this.basePath) + path.sep) && fullPath !== path.resolve(this.basePath)) {
+    // Canonical CodeQL-recognised path-traversal sanitiser (see _uriToFilePath).
+    const rel = path.relative(this.basePath, fullPath);
+    if (rel.startsWith("..") || path.isAbsolute(rel)) {
       throw new Error("Path traversal detected");
     }
     await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
