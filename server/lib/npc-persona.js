@@ -28,6 +28,12 @@ export function serialiseNPC(db, npcId) {
     ["desires",       `SELECT * FROM npc_desires WHERE npc_id = ?`,       [npcId]],
     ["secrets",       `SELECT * FROM secrets WHERE holder_npc_id = ?`,    [npcId]],
   ];
+  // @sql-loop-ok: iterates 7 fixed query templates, NOT user-supplied
+  // data — each prepare runs at most once per call (7 total), with
+  // the same npcId scalar bound each time. This is fan-out across
+  // distinct tables, not N+1 against rows of a single result set.
+  // performance-hotspot detector flags any `db.prepare(...).all` inside
+  // a `for` loop; this is the documented exemption pattern.
   for (const [field, sql, args] of tries) {
     try { pkg[field] = db.prepare(sql).all(...args); }
     catch { pkg[field] = []; }

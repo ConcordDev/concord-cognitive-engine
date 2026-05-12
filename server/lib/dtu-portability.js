@@ -111,6 +111,15 @@ export function exportUserCorpus(db, userId, opts = {}) {
           continue;
         }
         try {
+          // @sync-fs-ok: exportUserCorpus is a one-shot user-initiated
+          // export with a per-DTU MAX_INLINE_ATTACHMENT_BYTES cap above
+          // (skips files exceeding the inline limit). The typical
+          // attachment count per DTU is 0-3; total attachments per
+          // export is bounded by user_dtu_count × 3. Sync fs here keeps
+          // the canonical envelope ordering deterministic (async would
+          // require Promise.all sort-key bookkeeping for the same
+          // result). Block-the-loop cost is bounded; SLA target for
+          // export is "seconds" not "milliseconds."
           const bytes = fs.readFileSync(att.artifactRef);
           attachments.push({
             dtuId: dtu.id,
