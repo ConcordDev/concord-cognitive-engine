@@ -125,6 +125,7 @@ export const FORGE_SECTIONS = Object.freeze([
 
 export const FORGE_DEFAULT_CONFIG = Object.freeze({
   appName: "my-forge-app",
+  // @env-config-ok: default port for forge-generated apps (user-configurable in their generated config)
   port: 3000,
   host: "0.0.0.0",
   database: {
@@ -147,6 +148,7 @@ export const FORGE_DEFAULT_CONFIG = Object.freeze({
     webhookSecret: "",
     currency: "usd",
   },
+  // @env-config-ok: default CORS origin for forge-generated apps (template default)
   cors: {
     origins: ["http://localhost:3000"],
     credentials: true,

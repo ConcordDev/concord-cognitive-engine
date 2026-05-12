@@ -221,6 +221,7 @@ function Html3D({ legacy, onClose }: { legacy: LegacyDetail; onClose: () => void
 
     document.body.appendChild(root);
     const closeBtn = root.querySelector('#concord-tomb-close');
+    // @resource-leak-ok: click listener attached to transient root element that's removed via document.body.removeChild — listener GC'd with the element
     closeBtn?.addEventListener('click', onClose);
     const escHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', escHandler);

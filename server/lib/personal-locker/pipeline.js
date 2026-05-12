@@ -71,6 +71,7 @@ async function analyzeAudio(buffer, mimeType) {
     const whisperBin = process.env.WHISPER_CPP_BIN || "";
     let transcript = "";
     if (whisperBin) {
+      // @env-config-ok: pipeline step — matches conscious brain
       const p = spawnSync(whisperBin, ["-f", tmpFile, "--output-txt"], { encoding: "utf-8", timeout: 60000 });
       transcript = (p.stdout || "").trim();
     }

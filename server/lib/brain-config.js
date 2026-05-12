@@ -11,7 +11,7 @@ export const BRAIN_CONFIG = Object.freeze({
     model: process.env.BRAIN_CONSCIOUS_MODEL || "concord-conscious:latest",
     role: "chat, deep reasoning, council deliberation",
     temperature: 0.7,
-    timeout: 45000,    // GPU inference is faster — tighten to fail fast on real errors
+    timeout: Number(process.env.BRAIN_CONSCIOUS_TIMEOUT_MS) || 45000, // GPU inference; override per-deployment
     priority: 1,       // CRITICAL — user-facing
     // Bumped 3 → 8 to match OLLAMA_NUM_PARALLEL=8 on the conscious
     // service. Anything lower bottlenecks the JS queue while the GPU
@@ -25,7 +25,7 @@ export const BRAIN_CONFIG = Object.freeze({
     model: process.env.BRAIN_SUBCONSCIOUS_MODEL || "qwen2.5:7b-instruct-q4_K_M",
     role: "autogen, dream, evolution, synthesis, birth",
     temperature: 0.85,
-    timeout: 30000,    // GPU: faster inference, tighter timeout
+    timeout: Number(process.env.BRAIN_SUBCONSCIOUS_TIMEOUT_MS) || 30000,
     priority: 2,       // NORMAL — autonomous background
     // Bumped 4 → 12 to match OLLAMA_NUM_PARALLEL=12 on the
     // subconscious service.
@@ -38,7 +38,7 @@ export const BRAIN_CONFIG = Object.freeze({
     model: process.env.BRAIN_UTILITY_MODEL || "qwen2.5:3b",
     role: "lens interactions, entity actions, quick domain tasks",
     temperature: 0.3,
-    timeout: 20000,    // GPU: fast 3B model, tight timeout
+    timeout: Number(process.env.BRAIN_UTILITY_TIMEOUT_MS) || 20000,
     priority: 3,       // LOW — support tasks
     // Bumped 6 → 16 to match OLLAMA_NUM_PARALLEL=16 on the utility
     // service. Lens action spam doesn't queue at the JS layer anymore.
@@ -51,7 +51,7 @@ export const BRAIN_CONFIG = Object.freeze({
     model: process.env.BRAIN_REPAIR_MODEL || "qwen2.5:0.5b",
     role: "error detection, auto-fix, runtime repair",
     temperature: 0.1,
-    timeout: 10000,    // GPU: 1.5B repair brain is fast
+    timeout: Number(process.env.BRAIN_REPAIR_TIMEOUT_MS) || 10000,
     priority: 0,       // HIGHEST — system health
     // Bumped 2 → 4 to match OLLAMA_NUM_PARALLEL=4 on repair.
     maxConcurrent: Number(process.env.BRAIN_REPAIR_CONCURRENT) || 4,

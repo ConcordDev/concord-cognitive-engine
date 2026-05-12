@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { mockAuthSuccess } from './_helpers';
 
 /**
  * Helper: set a session cookie so middleware allows access to protected routes.
@@ -136,8 +137,9 @@ test.describe('404 Page', () => {
 // ── Authenticated Navigation (Sidebar, Topbar, App Shell) ────────
 
 test.describe('App Shell Navigation', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('sidebar renders with main navigation landmark', async ({ page }) => {
@@ -264,8 +266,9 @@ test.describe('App Shell Navigation', () => {
 // ── Topbar ────────────────────────────────────────────────────────
 
 test.describe('Topbar', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('topbar renders with banner role', async ({ page }) => {
@@ -375,8 +378,9 @@ test.describe('Topbar', () => {
 // ── Command Palette ──────────────────────────────────────────────
 
 test.describe('Command Palette', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('command palette opens with Ctrl+K keyboard shortcut', async ({ page }) => {
@@ -517,9 +521,13 @@ test.describe('Command Palette', () => {
         // Press ArrowDown to move selection
         await page.keyboard.press('ArrowDown');
 
-        // First option should no longer be selected
+        // After ArrowDown the first option should no longer be selected
+        // (selection moved to the next item) — but tolerate the edge case
+        // where the palette has only one option and selection wraps back
+        // to the same item.
         const updatedAriaSelected = await firstOption.getAttribute('aria-selected').catch(() => null);
-        if (updatedAriaSelected) {
+        const optionCount = await page.locator('[role="option"]').count().catch(() => 0);
+        if (updatedAriaSelected && optionCount > 1) {
           expect(updatedAriaSelected).toBe('false');
         }
       }
@@ -555,8 +563,9 @@ test.describe('Command Palette', () => {
 // ── Lens Page Loading ─────────────────────────────────────────────
 
 test.describe('Lens Pages', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   const coreLenses = [
@@ -595,8 +604,9 @@ test.describe('Lens Pages', () => {
 // ── Skip to Content (Accessibility) ──────────────────────────────
 
 test.describe('Accessibility - Skip to Content', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('skip-to-content link exists and targets main content', async ({ page }) => {
@@ -730,8 +740,9 @@ test.describe('Performance', () => {
 // ── Cross-Navigation Flows ────────────────────────────────────────
 
 test.describe('Navigation Flows', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('navigating between core lenses does not produce errors', async ({ page }) => {

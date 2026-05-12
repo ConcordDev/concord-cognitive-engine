@@ -120,6 +120,7 @@ export function installPersona(db, { dtuId, worldId, installerUserId, x = 0, z =
       });
       try {
         const placeholders = cols.map(() => "?").join(",");
+        // @resource-leak-ok: iterates persona-package fields — fixed schema
         db.prepare(`INSERT INTO ${table} (${cols.join(",")}) VALUES (${placeholders})`).run(...vals);
         imported++;
       } catch { /* per-row best-effort */ }

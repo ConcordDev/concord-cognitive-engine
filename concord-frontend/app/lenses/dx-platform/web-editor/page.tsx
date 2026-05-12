@@ -61,6 +61,11 @@ async function loadMonaco(): Promise<MonacoLike> {
   return window.monaco;
 }
 
+// @fake-data-ok-file: this whole file is the Monaco-editor host page;
+// STARTER_CODE is the sample shown inside the editor for first-time
+// DX-platform users. Its `TODO` markers + `mock` identifiers are the
+// demo content the user is meant to edit, not unresolved work in
+// this server.
 const STARTER_CODE = `// Paste your code here. Save (Ctrl+S) to run detectors.
 //
 // Heads-up: the web-editor variant is for demos and quick trials.

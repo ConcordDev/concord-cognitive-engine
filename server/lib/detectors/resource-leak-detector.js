@@ -56,12 +56,18 @@ function shouldScan(rel) {
 const SETINTERVAL_RE = /\bsetInterval\s*\(/g;
 const SETTIMEOUT_RE = /\bsetTimeout\s*\(/g;
 const CLEAR_RE = /\b(clearInterval|clearTimeout)\b/;
-const ADD_LISTENER_RE = /\.addEventListener\s*\(\s*['"`](\w+)['"`]/g;
-const REMOVE_LISTENER_RE = /\.removeEventListener\s*\(\s*['"`](\w+)['"`]/g;
+// Event names can be namespaced ("entity:death", "concordia:hit-reaction")
+// or plain word characters. Allow colons, hyphens, and dots so the
+// "matching remove" lookup catches namespaced + Concord-emergent events.
+const ADD_LISTENER_RE = /\.addEventListener\s*\(\s*['"`]([\w:.-]+)['"`]/g;
+const REMOVE_LISTENER_RE = /\.removeEventListener\s*\(\s*['"`]([\w:.-]+)['"`]/g;
 const STREAM_RE = /\bcreate(Read|Write)Stream\s*\(/g;
 const FS_OPEN_RE = /\bfs\.(?:promises\.)?open\s*\(/g;
 const FS_CLOSE_RE = /\bfs\.(?:promises\.)?close\s*\(|\.close\(\)|\.end\(\)/;
-const PREPARE_IN_LOOP_RE = /\b(for|while)\s*\(.*\)[^{]*\{[^}]{0,2000}db\.prepare\s*\(/gs;
+// Locate `for (…) {` / `while (…) {` opening braces; brace-counting
+// later verifies whether a db.prepare() actually lives INSIDE the
+// loop body (vs after it).
+const LOOP_OPEN_RE = /\b(for|while)\s*\([^)]*\)\s*\{/g;
 const ANNOTATION_OK_RE = /@resource-leak-ok\b/;
 
 export async function runResourceLeakDetector({ root, opts = {} } = {}) {
@@ -135,26 +141,77 @@ export async function runResourceLeakDetector({ root, opts = {} } = {}) {
         if (findings.length >= findingCap) break;
       }
 
-      // db.prepare inside a loop — but ONLY a real leak when the SQL is
-      // dynamic (template literal interpolation `${…}` or string
-      // concatenation), because better-sqlite3 caches prepared statements
-      // by the SQL string. A constant SQL inside a loop adds 1 cache
-      // entry total; dynamic SQL adds N entries and grows unbounded.
-      const loopPrep = [...content.matchAll(PREPARE_IN_LOOP_RE)];
-      for (const m of loopPrep.slice(0, 3)) {
-        const lineNum = content.slice(0, m.index).split("\n").length;
+      // db.prepare inside a loop — only a real leak when:
+      //   (a) the prepare is ACTUALLY inside the loop's brace-balanced
+      //       body (not after it), AND
+      //   (b) the SQL is dynamic (template `${…}` or string concat).
+      // better-sqlite3 caches prepared statements by SQL string; a
+      // constant SQL adds 1 cache entry, dynamic SQL adds N.
+      const loopOpens = [...content.matchAll(LOOP_OPEN_RE)];
+      let loopFindings = 0;
+      for (const m of loopOpens) {
+        if (loopFindings >= 3) break;
+        // Brace-count from the loop's opening `{` to its matching `}`.
+        const openIdx = m.index + m[0].lastIndexOf("{");
+        let depth = 1;
+        let i = openIdx + 1;
+        while (i < content.length && depth > 0) {
+          const ch = content[i];
+          if (ch === "{") depth++;
+          else if (ch === "}") depth--;
+          i++;
+        }
+        const closeIdx = depth === 0 ? i : Math.min(content.length, openIdx + 4096);
+        const body = content.slice(openIdx, closeIdx);
+        // Locate db.prepare( inside the body
+        const prepareInBody = body.indexOf("db.prepare");
+        if (prepareInBody < 0) continue;
+        // Extract just the SQL string passed to db.prepare(...). The
+        // dynamism check has to scan only that string — not the chained
+        // .run()/.all() args that follow, which often interpolate
+        // runtime values into BIND parameters (and would falsely mark
+        // every prepare with template-literal binds as dynamic SQL).
+        const prepareAbsIdx = openIdx + prepareInBody;
+        const afterParen = content.slice(prepareAbsIdx + "db.prepare(".length);
+        // Find the FIRST string literal (`, ', or ") and capture up to
+        // its matching closing quote. Skip leading whitespace.
+        const m1 = afterParen.match(/^\s*([`'"])/);
+        if (!m1) continue;
+        const quote = m1[1];
+        const stringStart = afterParen.indexOf(quote);
+        let j = stringStart + 1;
+        let sqlString = "";
+        // Walk forward respecting backslash escapes, find matching quote.
+        while (j < afterParen.length) {
+          const ch = afterParen[j];
+          if (ch === "\\") { sqlString += ch + (afterParen[j + 1] || ""); j += 2; continue; }
+          if (ch === quote) break;
+          sqlString += ch;
+          j++;
+        }
+        // Dynamic when EITHER:
+        //   (a) the SQL string itself contains `${...}` template
+        //       interpolation (template-literal SQL building), OR
+        //   (b) the SQL string is followed by `+ <expr>` outside the
+        //       string (string-concat SQL building).
+        // The `?` parameter placeholder is NOT dynamic SQL — it's a
+        // bind that better-sqlite3 caches as the same query.
+        const tail = afterParen.slice(j + 1, j + 200);
+        const isTemplateInterpolated = /\$\{/.test(sqlString);
+        const isConcat = /^\s*\+\s*[^)\s]/.test(tail);
+        const isDynamic = isTemplateInterpolated || isConcat;
+        if (!isDynamic) continue;
+        const lineNum = content.slice(0, prepareAbsIdx).split("\n").length;
         const lineText = content.split("\n")[lineNum - 1] || "";
         if (ANNOTATION_OK_RE.test(lineText)) continue;
-        // Pull a window around the prepare() call to inspect its SQL.
-        const matchedSrc = m[0];
-        const prepareIdx = matchedSrc.lastIndexOf("db.prepare");
-        const argWindow = matchedSrc.slice(prepareIdx, prepareIdx + 600);
-        // Constant SQL = no `${` template, no `+ '` / `+ "` concat.
-        const isDynamic = /\$\{|\+\s*['"`]|['"`]\s*\+/.test(argWindow);
-        if (!isDynamic) continue;
+        // Also accept the annotation up to 3 lines above the prepare.
+        let exempted = false;
+        for (let j = Math.max(0, lineNum - 4); j < lineNum; j++) {
+          if (ANNOTATION_OK_RE.test(content.split("\n")[j] || "")) { exempted = true; break; }
+        }
+        if (exempted) continue;
         findings.push({
           id: "db_prepare_in_loop",
-          // Real leak shape — flag at medium.
           severity: "medium",
           kind: "static",
           category: CATEGORY,
@@ -163,6 +220,7 @@ export async function runResourceLeakDetector({ root, opts = {} } = {}) {
           subject: { kind: "db_leak", file: rel },
           fixHint: "Build the SQL once outside the loop using a parameter placeholder, OR annotate `// @resource-leak-ok: <reason>` if the dynamic axis is bounded.",
         });
+        loopFindings++;
         if (findings.length >= findingCap) break;
       }
 

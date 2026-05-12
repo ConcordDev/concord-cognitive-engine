@@ -59,6 +59,7 @@ export default function EnterVRButton() {
       });
       await renderer.xr.setSession(session);
       setActive(true);
+      // @resource-leak-ok: session.addEventListener('end') — session ends, listener GC'd with session
       session.addEventListener('end', () => setActive(false));
     } catch (err) {
       const e = err as Error;

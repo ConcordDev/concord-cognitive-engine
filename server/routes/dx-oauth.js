@@ -200,6 +200,7 @@ export function mountDxOAuth(app, { requireAuth, getUserById } = {}) {
 
       // Loopback redirect — RFC 8252.
       if (pending.port) {
+        // @env-config-ok: RFC 8252 oauth loopback redirect — MUST be 127.0.0.1 by spec
         const url = `http://127.0.0.1:${pending.port}/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
         return res.redirect(302, url);
       }

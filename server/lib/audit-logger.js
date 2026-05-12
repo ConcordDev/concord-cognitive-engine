@@ -32,6 +32,7 @@ function ensureStream() {
   if (logStream && !logStream.destroyed) return;
   try {
     if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+    // @resource-leak-ok: process-lifetime audit log write stream — closes on process exit
     logStream = fs.createWriteStream(LOG_FILE, { flags: "a", encoding: "utf8" });
     logStream.on("error", (err) => {
        

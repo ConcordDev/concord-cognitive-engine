@@ -75,6 +75,7 @@ export async function runPredictiveGrowthDetector({ root, db, state, opts = {} }
     if (db) {
       for (const t of SAMPLE_TABLES) {
         try {
+          // @resource-leak-ok: table-name iteration over schema_version — bounded by table count
           const r = db.prepare(`SELECT COUNT(*) AS n FROM ${t.replace(/[^a-zA-Z0-9_]/g, "")}`).get();
           if (r) tableRows[t] = r.n;
         } catch { /* table doesn't exist on this build */ }

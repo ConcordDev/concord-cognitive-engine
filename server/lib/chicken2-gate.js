@@ -256,6 +256,9 @@ export class Chicken2Gate {
 
     // Trivial structural checks — detect "lorem ipsum", placeholders, etc.
     const reasons = [];
+    // @fake-data-ok: this IS the moderation check that detects placeholder
+    // text in user-submitted content. Flagging the detector's own pattern
+    // string is a tautology.
     if (/\blorem ipsum\b/i.test(text)) reasons.push("Contains placeholder text.");
     if (/\bTODO\b|\bFIXME\b|\bXXX\b/.test(text)) {
       reasons.push("Contains unresolved TODO markers.");

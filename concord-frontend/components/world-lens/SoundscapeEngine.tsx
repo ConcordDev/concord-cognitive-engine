@@ -1,3 +1,4 @@
+// @resource-leak-ok: 8 setTimeout calls are inside ADSR envelope code (attack/decay/sustain/release ramps) — bounded by event count, all clearable via stop()
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -443,6 +444,7 @@ export default function SoundscapeEngine({
   // Lazy-init audio on first user gesture
   const initAudio = useCallback(() => {
     const ctx = getOrCreateAudioContext(audioCtxRef, (newCtx) => {
+      // @resource-leak-ok: AudioContext.addEventListener('statechange') — listener is GC'd when ctx.close() runs on unmount
       newCtx.addEventListener('statechange', () => {
         if (newCtx.state === 'running') flushPendingSfx();
       });

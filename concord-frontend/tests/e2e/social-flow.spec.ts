@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { mockAuthSuccess } from './_helpers';
 
 /**
  * Helper: set a session cookie so middleware allows access to protected routes.
@@ -19,8 +20,9 @@ async function authenticateContext(context: import('@playwright/test').BrowserCo
 // ── User Profile ──────────────────────────────────────────────────
 
 test.describe('User Profile', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('profile page loads without server errors', async ({ page }) => {
@@ -129,8 +131,9 @@ test.describe('User Profile', () => {
 // ── Follow / Unfollow ──────────────────────────────────────────────
 
 test.describe('Follow / Unfollow', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('follow button is present on user profiles', async ({ page }) => {
@@ -178,8 +181,9 @@ test.describe('Follow / Unfollow', () => {
 // ── Discovery Page ──────────────────────────────────────────────────
 
 test.describe('Discovery Page', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('hub page loads without server errors', async ({ page }) => {
@@ -227,8 +231,9 @@ test.describe('Discovery Page', () => {
 // ── Search Functionality ──────────────────────────────────────────
 
 test.describe('Search Functionality', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('command palette opens with Ctrl+K and accepts search queries', async ({ page }) => {
@@ -287,8 +292,9 @@ test.describe('Search Functionality', () => {
 // ── Notification Center ──────────────────────────────────────────
 
 test.describe('Notification Center', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await authenticateContext(context);
+    await mockAuthSuccess(page);
   });
 
   test('notifications button exists in topbar', async ({ page }) => {

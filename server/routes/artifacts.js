@@ -289,6 +289,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
         } catch {
           return res.status(404).json({ ok: false, error: "Artifact content missing from disk" });
         }
+        // @resource-leak-ok: pipe(res) auto-closes both ends when the response drains
         return fs.createReadStream(row.storage_path).pipe(res);
       }
 

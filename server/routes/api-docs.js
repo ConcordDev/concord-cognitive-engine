@@ -1,3 +1,4 @@
+// @resource-leak-ok: addEventListener calls live inside the served HTML template string, not real server code
 /**
  * API Documentation Routes — v1.0
  *
@@ -176,6 +177,7 @@ function buildOpenAPISpec({ LENS_ACTIONS, ALL_LENS_DOMAINS, serverVersion }) {
       license: { name: "MIT" },
     },
     servers: [
+      // @env-config-ok: OpenAPI spec example server entry — documentation example, not runtime
       { url: "http://localhost:5050", description: "Local development" },
       { url: "https://api.concord.example.com", description: "Production" },
     ],

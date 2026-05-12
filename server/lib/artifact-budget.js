@@ -236,6 +236,7 @@ export function initBudgetTimer(STATE) {
     resetDailyUsage(STATE);
 
     // Now start the 24h repeating interval
+    // @resource-leak-ok: process-lifetime — budget recalc tick
     const intervalId = setInterval(() => {
       resetDailyUsage(STATE);
     }, DAY_MS);

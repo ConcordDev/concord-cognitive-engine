@@ -13,6 +13,7 @@ const _conversations = new Map();
 const CONVERSATION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 // Cleanup stale conversations (unref so this doesn't prevent process exit in tests)
+// @resource-leak-ok: process-lifetime — A2A session reaper
 setInterval(() => {
   const cutoff = Date.now() - CONVERSATION_TTL_MS;
   for (const [id, conv] of _conversations) {

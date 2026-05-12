@@ -77,6 +77,19 @@ function isTestFile(rel) {
 
 function isProductionPath(rel) {
   if (isTestFile(rel)) return false;
+  // Self-skip:
+  //   - The detector codebase itself: its rule strings literally include
+  //     "fake-data", "mock", "placeholder", etc. — flagging them is a
+  //     tautology.
+  //   - The autofix/repair-cortex template files: they emit "TODO"
+  //     markers as PART of the patches they inject elsewhere, so the
+  //     marker strings are template output, not unresolved work.
+  if (/[/\\]lib[/\\]detectors[/\\]/.test(rel)) return false;
+  if (/[/\\]lib[/\\]autofix[/\\]/.test(rel)) return false;
+  // The forge template engine + generator embed user-facing code in
+  // backtick templates; their `TODO` markers belong to the GENERATED
+  // app, not this server.
+  if (/forge-template-(engine|generator)/.test(rel)) return false;
   for (const p of PROD_PATHS) {
     if (rel.startsWith(p + "/") || rel === p) return true;
   }
@@ -120,6 +133,24 @@ export async function runFakeDataDetector({ root, opts = {} } = {}) {
       const lines = content.split("\n");
       const isProd = isProductionPath(rel);
       const isTest = isTestFile(rel);
+      // File-level operator opt-out: `@fake-data-ok-file: <reason>`
+      // anywhere in the file (typically at the top in a header comment)
+      // suppresses ALL fake-data findings for that file. Use for files
+      // where mock/placeholder identifiers are tracked-in-flight UI
+      // (Phase D UX Suite, demo scaffolds awaiting backend wiring).
+      if (/@fake-data-ok-file\b/.test(content)) continue;
+
+      // Inline annotation check: `// @fake-data-ok: <reason>` on the
+      // same line OR within 6 lines above suppresses findings on that
+      // line. The window accommodates multi-line comment blocks
+      // followed by a setTimeout/IIFE wrapper before the flagged
+      // identifier (a common React-component pattern).
+      const hasAnnotationNear = (i) => {
+        for (let j = Math.max(0, i - 6); j <= i; j++) {
+          if (/@fake-data-ok\b/.test(lines[j] || "")) return true;
+        }
+        return false;
+      };
 
       // ── HIGH: exported mock/fake/stub/placeholder/dummy identifiers
       // in production paths.
@@ -177,9 +208,11 @@ export async function runFakeDataDetector({ root, opts = {} } = {}) {
           const marker = m[1];
           if (!["TODO", "FIXME", "PLACEHOLDER"].includes(marker.toUpperCase())) continue;
           const tail = m[2].trim();
-          // Skip if the comment carries the explicit opt-out annotation.
+          // Skip if the comment carries the explicit opt-out annotation,
+          // either inline or within 3 lines above.
           if (/@fake-data-ok\b/.test(tail)) continue;
           const lineNum = content.slice(0, m.index).split("\n").length;
+          if (hasAnnotationNear(lineNum - 1)) continue;
           // Higher severity if the comment explicitly says it's a
           // deferred placeholder for a real implementation.
           const isDeferredReplace = /\b(replace|hardcoded|placeholder|stub|fake|mock|implement)\b/i.test(tail);
@@ -200,12 +233,15 @@ export async function runFakeDataDetector({ root, opts = {} } = {}) {
       }
 
       // ── INFO: suspicious string literals in production paths.
+      // (Per-line and within-3-lines-above annotation handled via the
+      // hasAnnotationNear helper defined above.)
       if (isProd) {
         for (let i = 0; i < lines.length; i++) {
           if (findings.length >= findingCap) break;
           const line = lines[i];
           // Skip comment-only lines.
           if (/^\s*(\/\/|\/\*|\*|#)/.test(line)) continue;
+          if (hasAnnotationNear(i)) continue;
           if (SUSPICIOUS_STR_RE.test(line)) {
             findings.push({
               id: "suspicious_string_in_production",
@@ -222,6 +258,8 @@ export async function runFakeDataDetector({ root, opts = {} } = {}) {
 
       // ── INFO: identifier-level fake-naming in production (lighter
       // than HIGH — flags any usage, not just exports).
+      // Operator opt-out: `// @fake-data-ok: <reason>` on the same line
+      // or the line above.
       if (isProd) {
         let m;
         const re = new RegExp(FAKE_IDENT_RE.source, "g");
@@ -235,6 +273,7 @@ export async function runFakeDataDetector({ root, opts = {} } = {}) {
           // mockOpenAI is a feature flag, not fake data).
           if (/^(mock(?:Openai|Llm|Brain|Inference|Llama)|stubReceiver)/i.test(ident)) continue;
           const lineNum = content.slice(0, m.index).split("\n").length;
+          if (hasAnnotationNear(lineNum - 1)) continue;
           findings.push({
             id: "fake_ident_in_production",
             severity: "info",

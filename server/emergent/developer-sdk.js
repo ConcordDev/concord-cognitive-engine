@@ -833,6 +833,7 @@ function pruneExpiredSandboxes() {
 }
 
 // Prune expired sandboxes every 60 seconds
+// @resource-leak-ok: process-lifetime — sandbox eviction loop
 setInterval(pruneExpiredSandboxes, 60000).unref();
 
 // ── Rate Limiting ───────────────────────────────────────────────────────────
@@ -1064,6 +1065,7 @@ export function getSDKMetrics() {
 // ── Rate Bucket Cleanup ─────────────────────────────────────────────────────
 
 // Clean up stale rate buckets every 2 minutes
+// @resource-leak-ok: process-lifetime — sandbox eviction loop
 setInterval(() => {
   try {
     const now = Date.now();

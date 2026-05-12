@@ -64,54 +64,57 @@ describe("FakeDataDetector — high severity (production exports)", () => {
   });
 });
 
-describe("FakeDataDetector — info severity (test mocks of production modules)", () => {
-  it("surfaces `vi.mock('@/lib/lens-registry', ...)` in a test as info", async () => {
+describe("FakeDataDetector — test mocks of production modules (summary)", () => {
+  // Per-PR-#347 zero-tech-debt sweep: per-mock findings are consolidated
+  // into a single `fake_data_summary` finding with the aggregate count.
+  // Each mock that previously emitted a per-mock finding now bumps the
+  // summary's testMockCount; the assertions below check the count delta.
+  const summaryCount = (r) => {
+    const s = r.findings.find(x => x.id === "fake_data_summary");
+    return s?.evidence?.testMockCount || 0;
+  };
+
+  it("counts `vi.mock('@/lib/lens-registry', ...)` in a test", async () => {
     const dir = withFixture({
       "concord-frontend/tests/foo.test.tsx":
         `import { vi } from 'vitest';\nvi.mock('@/lib/lens-registry', () => ({ getLenses: () => [] }));\n`,
     });
     try {
       const r = await runFakeDataDetector({ root: dir });
-      const f = r.findings.find(x => x.id === "test_mocks_production_module");
-      assert.ok(f);
-      assert.equal(f.severity, "info");
-      assert.match(f.message, /@\/lib\/lens-registry/);
+      assert.ok(summaryCount(r) >= 1, "expected the @/lib mock to bump summary count");
     } finally { teardown(dir); }
   });
 
-  it("ignores `vi.mock('next/navigation')` (trivial third-party)", async () => {
+  it("does not count `vi.mock('next/navigation')` (trivial third-party)", async () => {
     const dir = withFixture({
       "concord-frontend/tests/foo.test.tsx":
         `import { vi } from 'vitest';\nvi.mock('next/navigation');\nvi.mock('lucide-react');\n`,
     });
     try {
       const r = await runFakeDataDetector({ root: dir });
-      const flagged = r.findings.filter(x => x.id === "test_mocks_production_module");
-      assert.equal(flagged.length, 0);
+      assert.equal(summaryCount(r), 0);
     } finally { teardown(dir); }
   });
 
-  it("ignores relative-path mocks (`vi.mock('./helpers')`)", async () => {
+  it("does not count relative-path mocks (`vi.mock('./helpers')`)", async () => {
     const dir = withFixture({
       "concord-frontend/tests/foo.test.tsx":
         `import { vi } from 'vitest';\nvi.mock('./helpers');\n`,
     });
     try {
       const r = await runFakeDataDetector({ root: dir });
-      const flagged = r.findings.filter(x => x.id === "test_mocks_production_module");
-      assert.equal(flagged.length, 0);
+      assert.equal(summaryCount(r), 0);
     } finally { teardown(dir); }
   });
 
-  it("flags server-side test mocking ../lib/x", async () => {
+  it("counts server-side test mocking ../lib/x", async () => {
     const dir = withFixture({
       "server/tests/economy.test.js":
         `import { jest } from 'vitest';\njest.mock('../lib/royalty-cascade.js', () => ({}));\n`,
     });
     try {
       const r = await runFakeDataDetector({ root: dir });
-      const f = r.findings.find(x => x.id === "test_mocks_production_module");
-      assert.ok(f);
+      assert.ok(summaryCount(r) >= 1, "expected the ../lib mock to bump summary count");
     } finally { teardown(dir); }
   });
 });

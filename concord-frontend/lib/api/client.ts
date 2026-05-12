@@ -52,6 +52,7 @@ if (typeof window !== 'undefined') {
 // SECURITY: withCredentials ensures httpOnly cookies are sent with requests
 export const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
+  // @env-config-ok: axios default — 30s covers slow LLM-backed routes
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

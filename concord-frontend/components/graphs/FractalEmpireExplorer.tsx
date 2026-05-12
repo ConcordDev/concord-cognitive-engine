@@ -134,6 +134,8 @@ export function FractalEmpireExplorer({
 
     if (data.length === 0) {
       // Draw placeholder fractal pattern
+      // @fake-data-ok: empty-state visual for the explorer — renders a
+      // synthetic fractal so the canvas has texture before real data lands.
       const placeholderNode: FractalNode = {
         id: 'root',
         children: Array.from({ length: 5 }, (_, i) => ({

@@ -55,6 +55,7 @@ const _reputation = new LruMap();    // userId → number (starts at 0)
 const HOUR_MS = 3_600_000;
 
 // Periodic cleanup every 10 minutes
+// @resource-leak-ok: process-lifetime — spam-detection sweep
 setInterval(() => {
   const now = Date.now();
   for (const [key, bucket] of _rateBuckets) {

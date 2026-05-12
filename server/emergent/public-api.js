@@ -279,6 +279,7 @@ export function checkApiRateLimit(apiKeyId, limit = 100) {
 }
 
 // Cleanup
+// @resource-leak-ok: process-lifetime — public-api rate-limit cleanup
 setInterval(() => {
   const now = Date.now();
   for (const [key, bucket] of apiRateBuckets) {
