@@ -39,6 +39,7 @@ import { runEnvConfigDriftDetector } from "./env-config-drift-detector.js";
 import { runObservabilityGapDetector } from "./observability-gap-detector.js";
 import { runAgentBudgetDetector } from "./agent-budget-detector.js";
 import { runLensDecorativeStateDetector } from "./lens-decorative-state-detector.js";
+import { runHttpErrorDetector } from "./http-error-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -336,6 +337,17 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Unbounded agent loops, recursive LLM calls without caps, throttle-less heartbeats, output passthrough.",
   run: runAgentBudgetDetector,
+});
+
+// HTTP-error-shape patterns the rest of the matrix (500/401 already
+// covered by observability-gap + invariant-guardian).
+registerDetector({
+  id: "http-error",
+  label: "HttpErrorDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Static patterns that surface as HTTP 400/404/409/429/504 — missing input validation, null-checks, conflict guards, per-route rate limiters, fetch/axios timeouts.",
+  run: runHttpErrorDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same
