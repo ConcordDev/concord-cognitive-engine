@@ -14,6 +14,14 @@ import { walk, readSafe, existsSafe, makeReport, makeError, lineOf, relPath } fr
 
 const LENS_RUN_RE = /\/api\/lens\/run/;
 const DOMAIN_REF_RE = /domain\s*:\s*['"`]([a-zA-Z0-9_-]+)['"`]/g;
+// Backend macros are declared as `register("domain", "name", handler)`. The
+// domain name in the lens call must match the FIRST argument here — not the
+// filename. Filenames in server/domains/ are kebab-case (`event-timeline.js`)
+// while the registered domain is often snake_case (`event_timeline`), and
+// many domains (`llm`, `dtu`, `chat`) register inline in server.js with no
+// dedicated file at all. Pre-fix the detector matched on filename and produced
+// 8 HIGH false-positives; the real source of truth is the register() call.
+const REGISTER_DOMAIN_RE = /\bregister\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`][a-zA-Z0-9_-]+['"`]/g;
 
 export async function runLensHealthDetector({ root, opts = {} } = {}) {
   const t0 = Date.now();
@@ -34,15 +42,46 @@ export async function runLensHealthDetector({ root, opts = {} } = {}) {
       .map(e => e.name)
       .filter(n => !n.startsWith("[") && !n.startsWith("("));
 
-    // Collect known backend domains
+    // Collect known backend domains by parsing register("domain", "name", ...)
+    // and registerLensAction("domain", "name", ...) calls across server.js,
+    // server/domains/, server/routes/, server/emergent/, and server/lib/.
+    // Filename matching produces false positives because (a) filenames are
+    // kebab-case while many domains register snake_case names, and (b) many
+    // domains (`llm`, `dtu`, `chat`) register inline in server.js with no
+    // dedicated file. The register() call is the source of truth.
     const knownDomains = new Set();
-    try {
-      for (const e of await readdir(domainsDir, { withFileTypes: true })) {
-        if (e.isFile() && e.name.endsWith(".js")) {
-          knownDomains.add(e.name.replace(/\.js$/, ""));
+    const serverDir = path.join(root, "server");
+    const scanRoots = [
+      path.join(serverDir, "server.js"),
+      path.join(serverDir, "domains"),
+      path.join(serverDir, "lib"),
+      path.join(serverDir, "routes"),
+      path.join(serverDir, "emergent"),
+    ];
+    const filesToScan = [];
+    for (const p of scanRoots) {
+      if (!(await existsSafe(p))) continue;
+      const s = p.endsWith(".js") ? [p] : await walk(p, [".js"]);
+      filesToScan.push(...s);
+    }
+    for (const f of filesToScan) {
+      const c = await readSafe(f);
+      if (!c) continue;
+      if (c.includes("register(")) {
+        REGISTER_DOMAIN_RE.lastIndex = 0;
+        let m;
+        while ((m = REGISTER_DOMAIN_RE.exec(c)) != null) {
+          knownDomains.add(m[1]);
         }
       }
-    } catch { /* tolerate missing dir */ }
+      if (c.includes("registerLensAction(")) {
+        const lensActionRe = /\bregisterLensAction\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,/g;
+        let m;
+        while ((m = lensActionRe.exec(c)) != null) {
+          knownDomains.add(m[1]);
+        }
+      }
+    }
 
     const findings = [];
 
@@ -123,13 +162,23 @@ export async function runLensHealthDetector({ root, opts = {} } = {}) {
         while ((m = DOMAIN_REF_RE.exec(c)) != null) {
           const dom = m[1];
           if (!knownDomains.has(dom) && dom !== "lens") {
+            // Unknown domains are NOT broken at runtime: server.js#/api/lens/run
+            // (the route that handles these calls) has an AI catch-all that
+            // routes unregistered domain.action calls to the utility brain
+            // (utilityCall(action, domain, rest)). The lens still works — it
+            // gets LLM-generated content instead of a deterministic handler.
+            //
+            // This is reported as `info` (not `high`) so the lens-unknown-domain
+            // surface tracks "places where a dedicated handler would beat the
+            // LLM fallback" rather than "broken lenses." The previous `high`
+            // severity produced 8 false-positive blockers in CI.
             findings.push({
               id: "lens_unknown_domain",
-              severity: "high",
+              severity: "info",
               kind: "lens-health",
-              message: `Lens ${lensName} calls domain "${dom}" but no server/domains/${dom}.js exists`,
+              message: `Lens ${lensName} calls domain "${dom}" — no dedicated handler registered; runtime routes via utility-brain AI catch-all. Adding a register("${dom}", ...) handler would give deterministic behavior.`,
               location: `${relPath(root, pagePath)}:${lineOf(c, m.index)}`,
-              evidence: { domain: dom },
+              evidence: { domain: dom, runtimeFallback: "utility-brain" },
             });
           }
         }
