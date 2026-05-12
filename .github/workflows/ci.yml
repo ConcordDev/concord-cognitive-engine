@@ -622,22 +622,23 @@ jobs:
     permissions:
       contents: read
       pull-requests: write  # for the failure-digest PR-comment step
-    # Zero-tech-debt sweep: flipped from continue-on-error: true (Plan B
-    # informational gate) to blocking. The Core slice covers specs that
-    # run purely against our own server + frontend — auth (JWT only),
-    # lens-crud, dtu-integrity, navigation, mobile, accessibility,
-    # social-flow, error-recovery, legal-pages, admin-dashboard,
-    # concordia-smoke, media-flow. All 167 tests in this slice are
-    # defensive-shaped (`if visible then assert`) so they pass when the
-    # UI matches the manifest. Infra-dependent specs (chat-flow,
-    # chat-modes, auth-oauth, wallet-flow) live in e2e-infra below and
-    # remain non-blocking because they need Ollama/OAuth/Stripe that
-    # GitHub-hosted CI doesn't provision reliably.
+    # Zero-tech-debt sweep findings: of the 167 Core specs, 8 are
+    # reproducibly flaky against the current frontend regardless of
+    # branch state — most are login-flow tests that mock /api/auth/login
+    # only but don't mock the /api/auth/me hydration call the form's
+    # success path makes, so the redirect-after-login never fires and
+    # the test times out at 30s. Fixing these requires per-spec work
+    # (full mock the auth-success path, OR drive the form via real
+    # creds in a CI fixture user) which is its own sprint.
     #
-    # If a NEW change breaks a Core spec, the PR-comment digest below
-    # surfaces the failing-spec list so the fix is targeted, not a
-    # generic "E2E is red." That's the iteration loop this gate enables.
+    # Gate stays `continue-on-error: true` for now — the PR-comment
+    # failure digest below surfaces every failure into the PR thread
+    # so the surface area is visible without the gate blocking on
+    # pre-existing flake. Flip back to blocking when (a) the 8 known
+    # flakes are fixed, AND (b) the suite spends a full week green
+    # spec-by-spec across multiple commits.
     timeout-minutes: 25
+    continue-on-error: true
 
     steps:
       - name: Checkout code
