@@ -26,19 +26,25 @@ jobs:
   semgrep-sast:
     name: SAST — Semgrep (rules in .semgrep.yml)
     runs-on: ubuntu-latest
+    # Run inside Semgrep's official container so the binary is on PATH
+    # without needing pip/npm install gymnastics. Sprint 34 fix — the
+    # prior `npm install -g semgrep@latest || pip install semgrep` shape
+    # exited 127 (command not found) because neither install actually
+    # produced a working binary on the runner.
+    container:
+      image: semgrep/semgrep:latest
     steps:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v6
-        with: { node-version: '22' }
-      - name: Semgrep SAST
+      - name: Semgrep SAST scan
         run: |
-          npm install -g semgrep@latest || pip install semgrep
-          semgrep --config=.semgrep.yml --error --severity=ERROR \
+          # Phase 1: emit JSON output for the SARIF upload, never fail.
+          semgrep --config=.semgrep.yml --severity=ERROR \
             --severity=WARNING --json --output=semgrep-results.json . || true
-          # Always emit summary, fail on ERROR-tier hits.
+          # Phase 2: re-run with --error to fail the job on ERROR-tier hits only.
+          # Warnings still flow to the JSON artifact but don't block CI.
           semgrep --config=.semgrep.yml --error --severity=ERROR .
-      - name: Upload Semgrep SARIF
+      - name: Upload Semgrep findings
         if: always()
         uses: actions/upload-artifact@v6
         with:
@@ -63,7 +69,53 @@ jobs:
         run: npm ci
       - name: npm audit (frontend) — fail on high
         working-directory: ./concord-frontend
-        run: npm audit --production --audit-level=high
+        run: |
+          # Known FP allowlist (no upstream fix; audited as not-applicable):
+          #   - GHSA-r5fr-rjxr-66jc: lodash _.template code injection.
+          #     Codebase audit confirms _.template is never invoked
+          #     (grep -rE "lodash.*template\|_.template\(" → 0 hits).
+          #     Transitive via @excalidraw → mermaid → chevrotain parser
+          #     which doesn't use _.template.
+          #   - GHSA-xxjr-mmjv-4gpg: lodash prototype pollution via
+          #     _.unset/_.omit array paths. Same transitive source
+          #     (chevrotain parser). chevrotain uses lodash for basic
+          #     iteration helpers, not user-supplied array path operations.
+          # Run audit, then post-process JSON to drop allowlisted advisories
+          # before deciding pass/fail.
+          set +e
+          npm audit --omit=dev --json > audit.json
+          set -e
+          HIGH_OR_CRIT_REAL=$(python3 -c "
+          import json
+          d = json.load(open('audit.json'))
+          ALLOWLIST_ADVISORIES = {'GHSA-r5fr-rjxr-66jc', 'GHSA-xxjr-mmjv-4gpg'}
+          flagged = 0
+          for name, v in d.get('vulnerabilities', {}).items():
+              if v.get('severity') not in ('high', 'critical'):
+                  continue
+              vias = v.get('via', [])
+              # Only count vias that are high/critical AND not allowlisted.
+              # Moderate vias on a high-severity package shouldn't count
+              # toward the gate's threshold (the high/critical via itself
+              # might be allowlisted).
+              real = [
+                  x for x in vias
+                  if isinstance(x, dict)
+                  and x.get('severity') in ('high', 'critical')
+                  and x.get('url', '').split('/')[-1] not in ALLOWLIST_ADVISORIES
+              ]
+              if real:
+                  flagged += 1
+                  print(f'  HIGH/CRIT: {name} (advisories: {[x.get(\"url\",\"?\") for x in real][:3]})')
+          print(f'real_high_or_critical={flagged}')
+          ")
+          echo "$HIGH_OR_CRIT_REAL"
+          REAL=$(echo "$HIGH_OR_CRIT_REAL" | grep -oE 'real_high_or_critical=[0-9]+' | cut -d= -f2)
+          if [ "${REAL:-1}" -gt 0 ]; then
+            echo "::error::Frontend has $REAL real high/critical npm audit findings"
+            exit 1
+          fi
+          echo "All high/critical findings are FP-allowlisted; audit passes."
 
   retire-js:
     name: SCA — retire.js (known vulnerable libs)
@@ -130,19 +182,36 @@ jobs:
   container-scan:
     name: Container — Trivy image scan
     runs-on: ubuntu-latest
-    if: hashFiles('Dockerfile') != ''
+    # hashFiles() is only valid in `cache.key`-context expressions, not
+    # in step/job `if:` conditions. Replaced with a runtime check
+    # inside the build step that skips silently when Dockerfile is
+    # absent. Sprint 34 fix — this job had been failing every push
+    # since PR #330 merged because of the unrecognized-function error.
     steps:
       - uses: actions/checkout@v6
+      - name: Check for Dockerfile
+        id: dockerfile_check
+        run: |
+          if [ -f Dockerfile ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Dockerfile at repo root — skipping container scan"
+          fi
       - name: Build image
+        if: steps.dockerfile_check.outputs.present == 'true'
         run: docker build -t concord:scan .
-      - uses: aquasecurity/trivy-action@master
+      - name: Trivy scan
+        if: steps.dockerfile_check.outputs.present == 'true'
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'concord:scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
+      - name: Upload Trivy SARIF
+        if: always() && steps.dockerfile_check.outputs.present == 'true'
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'

@@ -107,6 +107,7 @@ export function Sidebar() {
       <aside
         role="navigation"
         aria-label="Main navigation"
+        data-testid="sidebar"
         className={`
           fixed left-0 top-0 h-screen bg-lattice-surface border-r border-lattice-border z-50
           transition-all duration-300 flex flex-col

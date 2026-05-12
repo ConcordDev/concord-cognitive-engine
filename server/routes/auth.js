@@ -460,7 +460,7 @@ export default function createAuthRouter({
   });
 
   // Logout - clears auth cookie + blacklists token (Tier 1: Auth Hardening)
-  router.post("/logout", (req, res) => {
+  router.post("/logout", authRateLimitMiddleware, (req, res) => {
     // Blacklist current access token so it can't be replayed
     const cookieToken = req.cookies?.concord_auth;
     if (cookieToken && jwt) {
@@ -503,7 +503,7 @@ export default function createAuthRouter({
   });
 
   // ---- Refresh Token Endpoint (Tier 1: Auth Hardening) ----
-  router.post("/refresh", (req, res) => {
+  router.post("/refresh", authRateLimitMiddleware, (req, res) => {
     const refreshCookie = req.cookies?.[REFRESH_TOKEN_COOKIE];
     if (!refreshCookie) {
       return res.status(401).json({ ok: false, error: "No refresh token provided", code: "REFRESH_MISSING" });
@@ -566,7 +566,7 @@ export default function createAuthRouter({
   });
 
   // ---- Revoke All Sessions (Tier 1: Auth Hardening) ----
-  router.post("/revoke-all-sessions", (req, res) => {
+  router.post("/revoke-all-sessions", authRateLimitMiddleware, (req, res) => {
     if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
 
     _TOKEN_BLACKLIST.revokeAllForUser(req.user.id);
@@ -709,7 +709,7 @@ export default function createAuthRouter({
   });
 
   // API Key Rotation - creates new key and invalidates old one atomically
-  router.post("/api-keys/:keyId/rotate", requireRole("owner", "admin"), (req, res) => {
+  router.post("/api-keys/:keyId/rotate", authRateLimitMiddleware, requireRole("owner", "admin"), (req, res) => {
     const keyId = req.params.keyId;
 
     // Find the existing key
@@ -761,7 +761,7 @@ export default function createAuthRouter({
   });
 
   // Password change endpoint
-  router.post("/change-password", validate("changePassword"), (req, res) => {
+  router.post("/change-password", authRateLimitMiddleware, validate("changePassword"), (req, res) => {
     if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
 
     const { currentPassword, newPassword } = req.validated || req.body;

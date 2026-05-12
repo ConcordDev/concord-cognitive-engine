@@ -648,7 +648,7 @@ export default function registerEntityActions(registerLensAction) {
       }
 
       // Evaluate condition (simple expression support)
-      let passed = false;
+      let passed;
       const condition = rule.condition || "";
       try {
         if (condition.includes(">") || condition.includes("<") || condition.includes("===") || condition.includes("!==")) {

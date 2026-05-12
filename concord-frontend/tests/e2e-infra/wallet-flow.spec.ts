@@ -38,7 +38,7 @@ test.describe('Wallet Page', () => {
 
   test('wallet page displays heading', async ({ page }) => {
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -52,7 +52,7 @@ test.describe('Wallet Page', () => {
 
   test('balance card renders with CC Balance label', async ({ page }) => {
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -66,7 +66,7 @@ test.describe('Wallet Page', () => {
 
   test('balance card shows CC unit', async ({ page }) => {
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -81,7 +81,7 @@ test.describe('Wallet Page', () => {
 
   test('Buy CC button is visible', async ({ page }) => {
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -94,7 +94,7 @@ test.describe('Wallet Page', () => {
 
   test('clicking Buy CC opens purchase flow modal', async ({ page }) => {
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -113,7 +113,7 @@ test.describe('Wallet Page', () => {
 
   test('Withdraw button is visible', async ({ page }) => {
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -126,7 +126,7 @@ test.describe('Wallet Page', () => {
 
   test('transaction history section renders', async ({ page }) => {
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -140,7 +140,7 @@ test.describe('Wallet Page', () => {
 
   test('transaction tabs are clickable', async ({ page }) => {
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -158,7 +158,7 @@ test.describe('Wallet Page', () => {
 
   test('quick stats row renders', async ({ page }) => {
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -192,7 +192,7 @@ test.describe('Wallet Page', () => {
     );
 
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -213,7 +213,7 @@ test.describe('Wallet Widget in Header', () => {
 
   test('wallet widget renders CC balance indicator in header', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -226,7 +226,7 @@ test.describe('Wallet Widget in Header', () => {
 
   test('wallet widget links to wallet page', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -248,7 +248,7 @@ test.describe('Mobile Responsive Wallet', () => {
   test('wallet page renders without horizontal overflow on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     const response = await page.goto('/lenses/wallet').catch(() => null);
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
     // Wait for any redirects to settle
     await page.waitForLoadState('domcontentloaded').catch(() => {});
 
@@ -270,7 +270,7 @@ test.describe('Mobile Responsive Wallet', () => {
   test('wallet balance card is visible on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -284,7 +284,7 @@ test.describe('Mobile Responsive Wallet', () => {
   test('Buy CC and Withdraw buttons are accessible on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     const response = await page.goto('/lenses/wallet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 

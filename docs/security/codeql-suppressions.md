@@ -175,12 +175,30 @@ enforces this at a different layer.
 
 ---
 
+### 9. `js/server-side-request-forgery`
+
+| | |
+|---|---|
+| Scope | repo |
+| Audit date | 2026-05-11 (Sprint 34 / post-PR-#330) |
+| Allowlist | Every outbound fetch routes through `validateSafeFetchUrl()` in `lib/ssrf-guard.js`. Sites that still flag (audit-verified FPs): `mcp-client.js:365` (inline re-validation), `ssrf-guard.js:286` (fallback fetch with inline re-validation), and the validator helper itself. |
+| Drift gate | `platinum-codeql-drift.test.js` — "no raw fetch(req.body.url) or similar" + "no req.* → fs.* path-injection patterns" tests catch any new SSRF site at PR time |
+| Re-audit trigger | New outbound-fetch helper lands that doesn't route through `validateSafeFetchUrl`, OR `lib/ssrf-guard.js` is rewritten/removed |
+
+**Justification:** CodeQL's taint tracker doesn't follow user-defined sanitizer
+functions across call boundaries. Wave-1 + wave-3 refactors moved validation
+inline (right before `fetch()`) but the taint tracker still flags the URL as
+"derived from user input". The drift gate's source-side grep catches new
+fetch(req.*) shapes independently, providing equivalent coverage without the
+FP noise.
+
+---
+
 ## Kept-enabled queries (high blast radius, FP noise tolerated)
 
 These queries are NOT suppressed. Any new flag goes through manual triage.
 
 - `js/path-injection` (filesystem traversal — even with `containedPath()` helper, every new fs op is reviewed)
-- `js/server-side-request-forgery` (internal-network exfil)
 - `js/xss` family (output-context tampering)
 - `js/sensitive-data-exposure`
 - `js/incomplete-url-substring-sanitization`

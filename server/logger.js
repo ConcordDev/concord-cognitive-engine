@@ -12,9 +12,17 @@ const logBuffer = [];
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 
 // ── PII / secret scrub (Sprint 29 — privacy review finding) ─────────────────
+//
 // Sensitive field names + value shapes are recursively redacted before the
-// entry reaches the buffer or stdout. Defence-in-depth: callsites shouldn't
-// pass these, but a forgotten payload won't leak to docker logs / shippers.
+// entry reaches the buffer or stdout. The aim is defence-in-depth: callers
+// already shouldn't pass these, but a callsite that forgets won't
+// publish the secret to docker logs / log shipper.
+//
+// Patterns intentionally cover:
+//   - Auth: password, password_hash, jwt, token, bearer, authorization, session
+//   - Money: stripe_secret, stripe_key
+//   - API keys we route: sk-, sk-ant-, AIza-, xai-
+//   - Common secret keys: api_key, apiKey, secret, credentials
 const SENSITIVE_KEY_RE = /^(password|password_hash|passwd|pwd|jwt|jwtToken|token|bearer|auth|authorization|session|sessionId|cookie|stripe_secret|stripe_key|apiKey|api_key|secret|credentials|private_key|privateKey|refresh_token|access_token|refreshToken|accessToken)$/i;
 const SENSITIVE_VALUE_RE = /^(sk-ant-[a-z0-9_-]{8,}|sk-[a-z0-9_-]{20,}|AIza[a-z0-9_-]{20,}|xai-[a-z0-9_-]{20,}|eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+)$/i;
 const REDACTED = "[REDACTED]";

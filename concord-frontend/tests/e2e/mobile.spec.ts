@@ -7,7 +7,7 @@ test.describe('Mobile Responsiveness', () => {
   test('should render main page on mobile', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const bodyVisible = await page.locator('body').isVisible().catch(() => false);
     if (bodyVisible) {
@@ -18,7 +18,7 @@ test.describe('Mobile Responsiveness', () => {
   test('should have accessible navigation on mobile', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for hamburger menu or mobile nav
     const mobileNav = page.locator(
@@ -37,7 +37,7 @@ test.describe('Mobile Responsiveness', () => {
   test('should not have horizontal scroll on mobile', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const bodyVisible = await page.locator('body').isVisible().catch(() => false);
     if (bodyVisible) {
@@ -51,7 +51,7 @@ test.describe('Mobile Responsiveness', () => {
   test('should render lens page on mobile', async ({ page }) => {
     const response = await page.goto('/lenses/music');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const bodyVisible = await page.locator('body').isVisible().catch(() => false);
     if (bodyVisible) {

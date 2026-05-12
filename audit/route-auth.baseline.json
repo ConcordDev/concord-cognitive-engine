@@ -93,19 +93,19 @@
     "file": "server/routes/auth.js",
     "line": 463,
     "method": "POST",
-    "signature": "router.post(\"/logout\", (req, res) => { // Blacklist current access token so it can't be replayed const cookieTok"
+    "signature": "router.post(\"/logout\", authRateLimitMiddleware, (req, res) => { // Blacklist current access token so it can't be rep"
   },
   {
     "file": "server/routes/auth.js",
     "line": 506,
     "method": "POST",
-    "signature": "router.post(\"/refresh\", (req, res) => { const refreshCookie = req.cookies?.[REFRESH_TOKEN_COOKIE]; if (!refreshC"
+    "signature": "router.post(\"/refresh\", authRateLimitMiddleware, (req, res) => { const refreshCookie = req.cookies?.[REFRESH_TOKEN_C"
   },
   {
     "file": "server/routes/auth.js",
     "line": 569,
     "method": "POST",
-    "signature": "router.post(\"/revoke-all-sessions\", (req, res) => { if (!req.user) return res.status(401).json({ ok: false, error: \""
+    "signature": "router.post(\"/revoke-all-sessions\", authRateLimitMiddleware, (req, res) => { if (!req.user) return res.status(401).j"
   },
   {
     "file": "server/routes/auth.js",
@@ -123,13 +123,13 @@
     "file": "server/routes/auth.js",
     "line": 712,
     "method": "POST",
-    "signature": "router.post(\"/api-keys/:keyId/rotate\", requireRole(\"owner\", \"admin\"), (req, res) => { const keyId = req.params.keyId"
+    "signature": "router.post(\"/api-keys/:keyId/rotate\", authRateLimitMiddleware, requireRole(\"owner\", \"admin\"), (req, res) => { const"
   },
   {
     "file": "server/routes/auth.js",
     "line": 764,
     "method": "POST",
-    "signature": "router.post(\"/change-password\", validate(\"changePassword\"), (req, res) => { if (!req.user) return res.status(401).js"
+    "signature": "router.post(\"/change-password\", authRateLimitMiddleware, validate(\"changePassword\"), (req, res) => { if (!req.user) "
   },
   {
     "file": "server/routes/brains.js",
@@ -1369,13 +1369,13 @@
   },
   {
     "file": "server/routes/simulation.js",
-    "line": 146,
+    "line": 152,
     "method": "POST",
     "signature": "router.post('/run', async (req, res) => { try { const { type, input = {} } = req.body || {}; if (!type "
   },
   {
     "file": "server/routes/simulation.js",
-    "line": 196,
+    "line": 202,
     "method": "POST",
     "signature": "router.post('/:id/cancel', (req, res) => { try { const result = cancelJob(req.params.id); return res.jso"
   },

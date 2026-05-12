@@ -38,7 +38,7 @@ test.describe('User Profile', () => {
 
   test('profile page renders user content', async ({ page }) => {
     const response = await page.goto('/profile');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -76,7 +76,7 @@ test.describe('User Profile', () => {
     );
 
     const response = await page.goto('/profile');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -89,7 +89,7 @@ test.describe('User Profile', () => {
 
   test('profile tabs are present', async ({ page }) => {
     const response = await page.goto('/profile');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -106,7 +106,7 @@ test.describe('User Profile', () => {
 
   test('profile tab switching works', async ({ page }) => {
     const response = await page.goto('/profile');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -160,7 +160,7 @@ test.describe('Follow / Unfollow', () => {
     );
 
     const response = await page.goto('/profile');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -197,7 +197,7 @@ test.describe('Discovery Page', () => {
 
   test('hub page renders content', async ({ page }) => {
     const response = await page.goto('/hub');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -209,7 +209,7 @@ test.describe('Discovery Page', () => {
 
   test('discovery section shows trending or popular content', async ({ page }) => {
     const response = await page.goto('/hub');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -233,7 +233,7 @@ test.describe('Search Functionality', () => {
 
   test('command palette opens with Ctrl+K and accepts search queries', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -260,7 +260,7 @@ test.describe('Search Functionality', () => {
 
   test('search shows results or no results message', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -293,7 +293,7 @@ test.describe('Notification Center', () => {
 
   test('notifications button exists in topbar', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -305,7 +305,7 @@ test.describe('Notification Center', () => {
 
   test('clicking notifications button opens notification panel', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 

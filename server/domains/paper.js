@@ -39,7 +39,7 @@ export default function registerPaperActions(registerLensAction) {
     const fleschEase = Math.round((206.835 - 1.015 * avgWordsPerSentence - 84.6 * avgSyllables) * 10) / 10;
     const complexWords = words.filter(w => syllableCount(w) >= 3).length;
     const gunningFog = Math.round((avgWordsPerSentence + 100 * (complexWords / words.length)) * 0.4 * 10) / 10;
-    let level = "College";
+    let level;
     if (fleschKincaid <= 6) level = "Elementary";
     else if (fleschKincaid <= 8) level = "Middle School";
     else if (fleschKincaid <= 12) level = "High School";

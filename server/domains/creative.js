@@ -41,7 +41,7 @@ export default function registerCreativeActions(registerLensAction) {
 
   registerLensAction("creative", "distributionChecklist", (ctx, artifact, params) => {
     const type = artifact.data?.type || params.type || 'general';
-    let checklist = [];
+    let checklist;
     if (type === 'podcast') {
       checklist = [
         { platform: 'Apple Podcasts', status: 'pending' }, { platform: 'Spotify', status: 'pending' },

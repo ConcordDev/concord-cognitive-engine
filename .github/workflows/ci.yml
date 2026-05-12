@@ -211,22 +211,25 @@ jobs:
         # rendered log is hard to scrape.
         run: |
           set -o pipefail
-          # Excluded from the c8 run because their internal timeouts (30s)
-          # consistently hit under c8 instrumentation overhead, causing
-          # `cancelledByParent` subtests that propagate as exit 1 even
-          # when the test would otherwise pass uninstrumented:
-          #   - auth-security: long auth flow with 30s timeout
-          #   - storage-parity: heavy DB round-trip
-          #   - adversarial-critical-endpoints: 30s timeout, exercises 100+ routes
-          #   - edge-cases-critical-paths: 30s timeout on async chain
-          #   - error-paths: 30s timeout on error-handler matrix
-          # These files still run in the standard `npm test` suite without
-          # c8 instrumentation (see test:behavior). They contribute to
-          # coverage measurement only when they don't time out, which
-          # under c8 they consistently do.
+          # Sprint 33 re-audit found that the prior c8 exclusion list
+          # was overly defensive — every previously-excluded file
+          # actually runs cleanly under c8 instrumentation. The cost:
+          # spawned child server processes aren't instrumented by c8
+          # (it tracks parent-process only), so server.js code paths
+          # exercised only by integration spawns don't roll up — but
+          # the test assertions still run + still pass. Coverage gets
+          # measured separately on parent-process code paths anyway.
+          #
+          # Sprint 34: detectors-suite is the env-sensitive flake
+          # documented in CLAUDE.md — under c8 instrumentation each
+          # detector walks the full 1.3M-LOC tree (~70s per detector),
+          # blowing past the 20-minute CI ceiling. Still runs in
+          # `npm test` standalone for behavior coverage; excluded
+          # from c8 measurement only. Re-evaluate if a detector
+          # implementation becomes fast enough to fit the c8 budget.
           npx c8 --check-coverage --statements 45 --branches 45 --functions 33 --lines 45 \
             node --test --test-force-exit \
-            $(ls tests/*.test.js | grep -v -E 'auth-security|storage-parity|adversarial-critical-endpoints|edge-cases-critical-paths|error-paths') \
+            $(ls tests/*.test.js | grep -v -E 'detectors-suite') \
             2>&1 | tee /tmp/server-coverage.log
 
       - name: Surface failing tests on coverage step failure
@@ -614,6 +617,9 @@ jobs:
     name: E2E Core
     runs-on: ubuntu-latest
     needs: [lint-and-test]
+    permissions:
+      contents: read
+      pull-requests: write  # for the failure-digest PR-comment step
     # Plan B infra sprint deliverable: the prior single E2E job was
     # marked continue-on-error because some specs depended on infra CI
     # doesn't provision (Ollama, OAuth, Stripe). The Core slice covers
@@ -713,7 +719,13 @@ jobs:
         # separate `e2e-infra` job below.
         # CI=true switches the playwright webServer from `next dev`
         # to `npm run start:ci` (production build, ~5 s startup).
-        run: npm run test:e2e:core -- --project=chromium --reporter=list,html
+        # NO --reporter override here: playwright.config.ts ships the
+        # canonical [html, json, list] trio so playwright-report/
+        # results.json exists for the "Surface failing E2E specs"
+        # step below. Prior `--reporter=list,html` clobbered the
+        # config's JSON reporter, leaving the diagnostic step
+        # silently no-op (couldn't find results.json).
+        run: npm run test:e2e:core -- --project=chromium
 
       - name: Surface failing E2E specs on failure
         if: failure()
@@ -746,6 +758,115 @@ jobs:
           tail -n 200 ../server/server.log 2>/dev/null || echo "(no server.log)"
           echo "::endgroup::"
 
+      - name: Write E2E failure summary to GITHUB_STEP_SUMMARY
+        # Sprint 35 — duplicate the failure JSON into the run's Job
+        # Summary (markdown). The PR Checks tab renders this; it
+        # gives PR reviewers a one-click failure breakdown without
+        # downloading the 49 MB playwright-report artifact.
+        if: failure()
+        working-directory: ./concord-frontend
+        run: |
+          if [ -f playwright-report/results.json ]; then
+            echo "## E2E Core — failing specs" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            node -e "
+              const r = require('./playwright-report/results.json');
+              const fails = [];
+              const walk = (s) => {
+                for (const x of (s.suites || [])) walk(x);
+                for (const t of (s.specs || [])) {
+                  if (!t.ok) {
+                    const errors = (t.tests || []).flatMap(tt => (tt.results || []).flatMap(r => (r.errors || []).map(e => e.message || e.value || '<no msg>')));
+                    fails.push({ title: t.title, file: t.file, line: t.line, error: errors[0] || '<no error>' });
+                  }
+                }
+              };
+              walk(r);
+              const lines = [];
+              lines.push('Total failed: ' + fails.length);
+              lines.push('');
+              for (const f of fails.slice(0, 100)) {
+                lines.push('### ' + f.file + ':' + f.line);
+                lines.push('**' + f.title + '**');
+                lines.push('');
+                lines.push('\`\`\`');
+                lines.push((f.error || '').toString().slice(0, 400));
+                lines.push('\`\`\`');
+                lines.push('');
+              }
+              if (fails.length > 100) lines.push('_…and ' + (fails.length - 100) + ' more (see playwright-report-core artifact)_');
+              console.log(lines.join('\n'));
+            " >> "$GITHUB_STEP_SUMMARY" 2>&1 || echo "(failed to generate summary)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## E2E Core — no results.json found" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Post E2E Core failure digest as PR comment
+        # Sprint 35 — autonomous-readable failure digest. Posts the
+        # per-spec failure list as a PR comment so the MCP github
+        # client can fetch it via `pull_request_read get_comments`
+        # without needing artifact download. Limit: first 30 failures
+        # (the rest live in the html artifact).
+        if: failure() && github.event_name == 'pull_request'
+        working-directory: ./concord-frontend
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set +e
+          if [ ! -f playwright-report/results.json ]; then
+            echo "(no results.json — skipping PR-comment digest)"
+            exit 0
+          fi
+          DIGEST=$(node -e "
+            const r = require('./playwright-report/results.json');
+            const fails = [];
+            const walk = (s) => {
+              for (const x of (s.suites || [])) walk(x);
+              for (const t of (s.specs || [])) {
+                if (!t.ok) {
+                  const errs = (t.tests || []).flatMap(tt => (tt.results || []).flatMap(rr => (rr.errors || []).map(e => (e.message || e.value || '').toString().replace(/\[[0-9;]*m/g, '').slice(0, 300))));
+                  fails.push({ title: t.title, file: t.file, line: t.line, error: errs[0] || '(no msg)' });
+                }
+              }
+            };
+            walk(r);
+            const lines = [];
+            lines.push('### E2E Core failure digest');
+            lines.push('');
+            lines.push('Commit: \`' + (process.env.COMMIT_SHA || '?').slice(0, 12) + '\`');
+            lines.push('Total failed: **' + fails.length + '**');
+            lines.push('');
+            for (const f of fails.slice(0, 30)) {
+              lines.push('- \`' + (f.file || '?') + ':' + (f.line || '?') + '\` — ' + f.title);
+              lines.push('  \`\`\`');
+              lines.push('  ' + f.error.split('\n').slice(0, 3).join(' '));
+              lines.push('  \`\`\`');
+            }
+            if (fails.length > 30) lines.push('_…and ' + (fails.length - 30) + ' more in the playwright-report-core artifact._');
+            console.log(lines.join('\n'));
+          " 2>&1 | head -c 60000)
+          if [ -n "$DIGEST" ]; then
+            # POST via the GitHub REST API. Use jq to safely escape the
+            # multiline body.
+            BODY=$(jq -nc --arg b "$DIGEST" '{body: $b}')
+            curl -sS -X POST \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments" \
+              -d "$BODY" \
+              -o /tmp/comment-response.json
+            echo "Posted PR comment (HTTP $(jq -r '.id // "fail"' /tmp/comment-response.json))"
+          else
+            echo "(empty digest — skipped PR comment)"
+          fi
+          exit 0
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v6
@@ -765,6 +886,9 @@ jobs:
     name: E2E Infra
     runs-on: ubuntu-latest
     needs: [lint-and-test]
+    permissions:
+      contents: read
+      pull-requests: write  # for the failure-digest PR-comment step
     # Infra slice: chat-flow + chat-modes (Ollama), auth-oauth (Google
     # / Apple OAuth), wallet-flow (Stripe). These cannot reliably run
     # in GitHub-hosted CI because the upstream services either need
@@ -870,8 +994,65 @@ jobs:
           BASE_URL: http://localhost:3000
           NEXT_PUBLIC_API_URL: http://localhost:5050
         # CI=true flips the playwright webServer from `next dev` to
-        # `npm run start:ci` against the prod build above.
-        run: npm run test:e2e:infra -- --reporter=list,html
+        # `npm run start:ci` against the prod build above. No reporter
+        # override — playwright-infra.config.ts ships [html, json, list]
+        # so the diagnostic surface-failures step can read results.json.
+        run: npm run test:e2e:infra
+
+      - name: Post E2E Infra failure digest as PR comment
+        if: failure() && github.event_name == 'pull_request'
+        working-directory: ./concord-frontend
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set +e
+          if [ ! -f playwright-report/results.json ]; then
+            echo "(no results.json — skipping PR-comment digest)"
+            exit 0
+          fi
+          DIGEST=$(node -e "
+            const r = require('./playwright-report/results.json');
+            const fails = [];
+            const walk = (s) => {
+              for (const x of (s.suites || [])) walk(x);
+              for (const t of (s.specs || [])) {
+                if (!t.ok) {
+                  const errs = (t.tests || []).flatMap(tt => (tt.results || []).flatMap(rr => (rr.errors || []).map(e => (e.message || e.value || '').toString().replace(/\[[0-9;]*m/g, '').slice(0, 300))));
+                  fails.push({ title: t.title, file: t.file, line: t.line, error: errs[0] || '(no msg)' });
+                }
+              }
+            };
+            walk(r);
+            const lines = [];
+            lines.push('### E2E Infra failure digest');
+            lines.push('');
+            lines.push('Commit: \`' + (process.env.COMMIT_SHA || '?').slice(0, 12) + '\`');
+            lines.push('Total failed: **' + fails.length + '**');
+            lines.push('');
+            for (const f of fails.slice(0, 30)) {
+              lines.push('- \`' + (f.file || '?') + ':' + (f.line || '?') + '\` — ' + f.title);
+              lines.push('  \`\`\`');
+              lines.push('  ' + f.error.split('\n').slice(0, 3).join(' '));
+              lines.push('  \`\`\`');
+            }
+            if (fails.length > 30) lines.push('_…and ' + (fails.length - 30) + ' more in the playwright-report-infra artifact._');
+            console.log(lines.join('\n'));
+          " 2>&1 | head -c 60000)
+          if [ -n "$DIGEST" ]; then
+            BODY=$(jq -nc --arg b "$DIGEST" '{body: $b}')
+            curl -sS -X POST \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments" \
+              -d "$BODY" \
+              -o /tmp/comment-response.json
+            echo "Posted PR comment (id=$(jq -r '.id // "fail"' /tmp/comment-response.json))"
+          fi
+          exit 0
 
       - name: Upload infra-tier test results
         if: always()

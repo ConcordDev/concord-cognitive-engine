@@ -4,7 +4,7 @@ test.describe('Lens CRUD Operations', () => {
   test.beforeEach(async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('should navigate to a lens page', async ({ page }) => {
@@ -25,7 +25,7 @@ test.describe('Lens CRUD Operations', () => {
     if (response) {
       expect(response.status()).toBeLessThan(500);
     }
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     // Page should load without errors
     const body = page.locator('body');
     if (await body.isVisible().catch(() => false)) {
@@ -42,7 +42,7 @@ test.describe('Lens CRUD Operations', () => {
     if (response?.status()) {
       expect(response.status()).toBeLessThan(500);
     }
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
     // Should show error boundary or redirect, not crash
     const body = page.locator('body');
     if (await body.isVisible().catch(() => false)) {
@@ -55,7 +55,7 @@ test.describe('Lens CRUD Operations', () => {
     if (response) {
       expect(response.status()).toBeLessThan(500);
     }
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
     // Check that the page has some structure
     const main = page.locator('main, [role="main"], .lens-content, .page-content').first();
     if (await main.isVisible().catch(() => false)) {

@@ -73,7 +73,7 @@ function LoginForm() {
 
         {/* Form card */}
         <div className="bg-lattice-surface border border-lattice-border rounded-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-5" aria-describedby={error ? "login-error" : undefined}>
+          <form onSubmit={handleSubmit} className="space-y-5" aria-describedby={error ? "login-error" : undefined} data-testid="login-form">
             {searchParams.get('verified') === 'true' && (
               <div role="status" className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm">
                 Email verified! You can now sign in.
@@ -98,6 +98,7 @@ function LoginForm() {
               </label>
               <input
                 id="username"
+                data-testid="login-username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -118,6 +119,7 @@ function LoginForm() {
               <div className="relative">
                 <input
                   id="password"
+                  data-testid="login-password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -145,6 +147,7 @@ function LoginForm() {
 
             <button
               type="submit"
+              data-testid="login-submit"
               disabled={loading}
               aria-busy={loading}
               className="w-full py-3 bg-gradient-to-r from-neon-cyan to-neon-blue rounded-lg text-white font-semibold hover:shadow-lg hover:shadow-neon-cyan/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

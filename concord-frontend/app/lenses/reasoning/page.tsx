@@ -14,7 +14,7 @@ import {
   Search, ListTree, Workflow, Star, ChevronDown, ChevronRight,
   Shield, AlertTriangle, AlertOctagon, BookOpen, BarChart3,
   ThumbsUp, ThumbsDown, Link2, FileText, Sparkles,
-  Target, Scale, Eye, Layers, Zap, RefreshCw,
+  Target, Scale, Layers, Zap, RefreshCw,
   Download, X, Trash2, Flag,
   CircleDot, ArrowUpRight, MessageSquare, Hash,
   Loader2, Play
@@ -531,9 +531,6 @@ export default function ReasoningLensPage() {
   const [chainType, setChainType] = useState<ChainType>('deductive');
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const [newStep, setNewStep] = useState('');
-
-  // ----- Detail panel state -----
-  const [showDetailPanel, setShowDetailPanel] = useState(false);
 
   // ----- Template state -----
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -1184,7 +1181,7 @@ export default function ReasoningLensPage() {
                 {chains.map((chain) => (
                   <button
                     key={chain.id}
-                    onClick={() => { setSelectedChain(chain.id); setShowDetailPanel(true); }}
+                    onClick={() => setSelectedChain(chain.id)}
                     className={cn(
                       ds.panelHover, 'w-full text-left',
                       selectedChain === chain.id && 'ring-1 ring-neon-cyan'
@@ -1223,9 +1220,6 @@ export default function ReasoningLensPage() {
                     <span className={cn('text-xs px-2 py-1 rounded bg-neon-purple/20 text-neon-purple font-medium')}>
                       {selectedMap.chainType}
                     </span>
-                    <button onClick={() => setShowDetailPanel(!showDetailPanel)} className={ds.btnGhost}>
-                      <Eye className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
 

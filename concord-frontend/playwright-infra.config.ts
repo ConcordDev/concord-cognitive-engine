@@ -27,7 +27,14 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : undefined,
   globalTimeout: 20 * 60 * 1000,
-  reporter: 'html',
+  // Mirror the core config's reporter trio so the infra job emits
+  // json+html+list. The ci.yml infra job reads the JSON for failure
+  // surfacing (same shape as the core slice).
+  reporter: [
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    ['json', { outputFile: 'playwright-report/results.json' }],
+    ['list'],
+  ],
 
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3000',

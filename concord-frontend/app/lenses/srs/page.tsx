@@ -55,7 +55,7 @@ interface Deck {
 }
 
 type ViewMode = 'study' | 'decks' | 'browse' | 'stats' | 'create';
-type StudyMode = 'normal' | 'cram' | 'reverse' | 'quiz';
+type StudyMode = 'normal' | 'reverse';
 
 // --- SM-2 Algorithm (client-side) ---
 function _sm2(item: SRSItem, quality: number): { interval: number; easiness: number; repetitions: number } {
@@ -445,7 +445,7 @@ export default function SRSLensPage() {
             {/* Study mode selector + deck filter */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1 p-1 bg-lattice-surface border border-lattice-border rounded-lg">
-                {(['normal', 'cram', 'reverse', 'quiz'] as StudyMode[]).map(mode => (
+                {(['normal', 'reverse'] as StudyMode[]).map(mode => (
                   <button
                     key={mode}
                     onClick={() => { setStudyMode(mode); setCurrentIndex(0); setShowAnswer(false); }}

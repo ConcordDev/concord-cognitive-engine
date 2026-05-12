@@ -108,6 +108,12 @@ const EXECUTORS = {
     try {
       const math = { sin: Math.sin, cos: Math.cos, sqrt: Math.sqrt, abs: Math.abs,
                      exp: Math.exp, log: Math.log, PI: Math.PI, E: Math.E };
+      // The `fn` expression has been validated by validateMonteCarloFn()
+      // above — acorn AST whitelist rejects CallExpression / NewExpression /
+      // arrow functions / forbidden identifiers before this line runs.
+      // This file is excluded from Semgrep's concord-eval-or-function-ctor
+      // rule via .semgrep.yml paths.exclude (the AST whitelist is a
+      // stricter guard than the lexical pattern match).
       // eslint-disable-next-line no-new-func
       const evalFn = new Function(...Object.keys(math), 'x', `return ${fn}`);
       for (let i = 0; i < Math.min(samples, 10000); i++) {

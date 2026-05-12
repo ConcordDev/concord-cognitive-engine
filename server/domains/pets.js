@@ -43,9 +43,9 @@ export default function registerPetsActions(registerLensAction) {
         .filter(v => v.type === vaccine.type || v.vaccineType === vaccine.type)
         .sort((a, b) => new Date(b.date || b.vaccineDate || 0).getTime() - new Date(a.date || a.vaccineDate || 0).getTime())[0];
 
-      let status = "never-given";
-      let nextDue = null;
-      let daysUntilDue = null;
+      let status;
+      let nextDue;
+      let daysUntilDue;
 
       if (lastVax) {
         const lastDate = new Date(lastVax.date || lastVax.vaccineDate);

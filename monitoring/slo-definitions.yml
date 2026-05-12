@@ -1,0 +1,148 @@
+# Concord SLO Definitions
+#
+# Sprint 26 — Service-Level Objectives + Error Budget tracking.
+#
+# Each SLO has:
+#   - sli:        the Service Level Indicator (what we measure)
+#   - target:     the SLO target (e.g. 99.5% of requests succeed)
+#   - window:     the rolling window (typically 28 days)
+#   - error_budget_burn_alert: alert when error budget is consumed
+#     too fast (Google SRE multiwindow-multi-burn-rate pattern).
+#
+# Why these targets:
+#   - Availability 99.5%: maps to ~3.6h downtime per 28-day window.
+#     We aim higher in practice but pin a public commitment that
+#     leaves room for one bad deploy / month.
+#   - Latency p95 < 500ms: matches the k6 smoke gate in Sprint 18.
+#   - Error rate < 1%: standard SaaS floor; tighter (0.1%) on the
+#     money-path routes (marketplace, withdrawals, wallet).
+#
+# Reference: Google SRE Book Ch.4 (Service Level Objectives) +
+# Ch.5 (Eliminating Toil); Honeycomb's SLO docs; PagerDuty SLO guide.
+
+slos:
+  - name: api_availability
+    description: "Percentage of HTTP requests that complete with a non-5xx response"
+    sli:
+      good: 'sum(rate(http_requests_total{status!~"5.."}[5m]))'
+      total: 'sum(rate(http_requests_total[5m]))'
+    target: 0.995  # 99.5% — ~3.6h/28d budget
+    window: 28d
+    severity: critical
+    burn_alerts:
+      # Fast burn — exhausting 28-day budget in <1h → page immediately
+      - name: ApiAvailabilityFastBurn
+        burn_rate: 14.4
+        for: 2m
+        severity: critical
+      # Slow burn — exhausting 28-day budget in 6h → page during hours
+      - name: ApiAvailabilitySlowBurn
+        burn_rate: 3
+        for: 15m
+        severity: warning
+
+  - name: api_latency_p95
+    description: "95th-percentile HTTP request latency (concord_request_duration_seconds is in SECONDS — buckets are 0.5s etc, not 500ms)"
+    sli:
+      good: 'sum(rate(concord_request_duration_seconds_bucket{le="0.5"}[5m]))'
+      total: 'sum(rate(concord_request_duration_seconds_count[5m]))'
+    target: 0.95   # 95% of requests under 500ms
+    window: 28d
+    severity: warning
+    burn_alerts:
+      - name: LatencyP95FastBurn
+        burn_rate: 10
+        for: 5m
+        severity: warning
+
+  - name: api_latency_p99
+    description: "99th-percentile HTTP request latency"
+    sli:
+      good: 'sum(rate(concord_request_duration_seconds_bucket{le="1.5"}[5m]))'
+      total: 'sum(rate(concord_request_duration_seconds_count[5m]))'
+    target: 0.99   # 99% of requests under 1500ms
+    window: 28d
+    severity: warning
+
+  - name: marketplace_purchase_success
+    description: "Success rate of /api/marketplace/purchase* endpoints — money path is held to a higher floor"
+    sli:
+      good: 'sum(rate(http_requests_total{route=~"/api/marketplace/purchase.*",status!~"5.."}[5m]))'
+      total: 'sum(rate(http_requests_total{route=~"/api/marketplace/purchase.*"}[5m]))'
+    target: 0.999  # 99.9% — money flows can't drop requests
+    window: 28d
+    severity: critical
+    burn_alerts:
+      - name: MarketplacePurchaseFastBurn
+        burn_rate: 14.4
+        for: 1m
+        severity: critical
+
+  - name: heartbeat_continuity
+    description: "Heartbeat tick rate stays above floor (15s interval ⇒ 4 ticks/min)"
+    sli:
+      good: 'rate(concord_heartbeat_ticks_total[5m])'
+      total: '0.066667'  # 4/min = 0.0667/s expected baseline
+    target: 0.95   # 95% of expected ticks must land
+    window: 7d
+    severity: critical
+    burn_alerts:
+      - name: HeartbeatStallFastBurn
+        burn_rate: 14
+        for: 2m
+        severity: critical
+
+  - name: ai_completion_latency
+    description: "p95 latency on /api/chat/respond and /api/lens/run brain-routed calls"
+    sli:
+      good: 'sum(rate(ai_completion_duration_ms_bucket{le="8000"}[5m]))'
+      total: 'sum(rate(ai_completion_duration_ms_count[5m]))'
+    target: 0.90   # 90% of AI completions under 8s (LLM is slow by nature)
+    window: 28d
+    severity: warning
+
+  - name: webhook_delivery_success
+    description: "Inbound webhook auth + processing succeeds"
+    sli:
+      good: 'sum(rate(webhook_processed_total{outcome="success"}[5m]))'
+      total: 'sum(rate(webhook_processed_total[5m]))'
+    target: 0.99
+    window: 28d
+    severity: warning
+
+  - name: database_query_success
+    description: "SQLite query success — no constraint violations, no I/O errors"
+    sli:
+      good: 'sum(rate(db_queries_total{outcome="success"}[5m]))'
+      total: 'sum(rate(db_queries_total[5m]))'
+    target: 0.9999  # very tight — DB errors mean data loss risk
+    window: 28d
+    severity: critical
+
+# Multi-window burn-rate alert thresholds reference (Google SRE Workbook
+# Chapter 5, Table 5-1):
+#
+#   Long window / Short window / Burn rate / Budget consumed if sustained
+#   ---------------------------------------------------------------------
+#   1h          / 5m            / 14.4      / 2% in 1h     (page now)
+#   6h          / 30m           / 6         / 5% in 6h     (page hours)
+#   3d          / 6h            / 1         / 10% in 3d    (ticket)
+#   7d          / 1d            / 1         / 25% in 7d    (ticket)
+
+error_budget_policy:
+  # When error budget runs low, what we do.
+  thresholds:
+    - remaining: 0.30
+      action: "Code freeze on non-critical features; focus shifts to reliability."
+    - remaining: 0.10
+      action: "Hard freeze. No deploys except critical security + reliability fixes."
+    - remaining: 0.00
+      action: "Post-incident review mandatory. SLO target re-negotiated only after written postmortem."
+
+# Public-facing SLA derived from these SLOs (looser than internal targets
+# to leave headroom). Published at /sla.
+public_sla:
+  uptime: 99.5%  # internal target 99.7%, public commit 99.5%
+  support_response: "4 hours for critical, 24 hours for non-critical"
+  data_durability: 99.999%
+  withdrawal_processing: "Within 48 hours of request"  # ties to the 48h hold

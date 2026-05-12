@@ -20,7 +20,22 @@ export default defineConfig({
   // happily run for an hour and the GitHub runner gives up first
   // ('hosted runner lost communication') — a confusing failure mode.
   globalTimeout: 20 * 60 * 1000,
-  reporter: 'html',
+  // Multiple reporters so:
+  //   - `html`: human-browsable report at playwright-report/index.html
+  //     (uploaded as the artifact on every PR)
+  //   - `json` → playwright-report/results.json: read by ci.yml's
+  //     "Surface failing E2E specs on failure" step to emit the per-spec
+  //     failure list directly into the GitHub Actions run log so that
+  //     E2E Phase 2 triage doesn't require downloading + extracting the
+  //     49 MB html artifact. Without this entry the prior workflow step
+  //     silently no-op'd because the file it grepped didn't exist.
+  //   - `list`: live progress in stdout so the CI log is readable while
+  //     the run is in progress.
+  reporter: [
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    ['json', { outputFile: 'playwright-report/results.json' }],
+    ['list'],
+  ],
 
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3000',

@@ -59,7 +59,7 @@ test.describe('Media Upload Flow', () => {
 
   test('upload area is present on studio page', async ({ page }) => {
     const response = await page.goto('/lenses/studio');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -78,7 +78,7 @@ test.describe('Media Upload Flow', () => {
 
   test('file input exists for media upload', async ({ page }) => {
     const response = await page.goto('/lenses/studio');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -94,7 +94,7 @@ test.describe('Media Upload Flow', () => {
 
   test('upload form has metadata fields', async ({ page }) => {
     const response = await page.goto('/lenses/studio');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -155,7 +155,7 @@ test.describe('Media Player', () => {
     );
 
     const response = await page.goto('/lenses/feed');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify the page loaded without server errors
     expect(response?.status()).toBeLessThan(500);
@@ -176,7 +176,7 @@ test.describe('Media Player', () => {
 
   test('video controls render for video content', async ({ page }) => {
     const response = await page.goto('/lenses/studio');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -209,7 +209,7 @@ test.describe('Media Feed', () => {
 
   test('feed page loads and renders content area', async ({ page }) => {
     const response = await page.goto('/lenses/feed');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify the page loaded without server errors
     expect(response?.status()).toBeLessThan(500);
@@ -227,7 +227,7 @@ test.describe('Media Feed', () => {
     page.on('pageerror', (err) => errors.push(err.message));
 
     const response = await page.goto('/lenses/feed');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify the page loaded without server errors
     expect(response?.status()).toBeLessThan(500);
@@ -246,7 +246,7 @@ test.describe('Media Engagement', () => {
 
   test('like buttons are present on media cards', async ({ page }) => {
     const response = await page.goto('/lenses/feed');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -265,7 +265,7 @@ test.describe('Media Engagement', () => {
 
   test('comment section can be triggered', async ({ page }) => {
     const response = await page.goto('/lenses/feed');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 

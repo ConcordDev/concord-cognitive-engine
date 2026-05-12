@@ -338,8 +338,17 @@ export class MCPClient {
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
-      // Pinned-IP fetch: connect to the IP we validated at connect() time,
-      // eliminating DNS-rebinding between validation and request.
+      // SSRF posture:
+      //   - HAPPY PATH (this._urlSafety present from connect()): use
+      //     fetchWithPinnedIp which pins the validated IP from handshake.
+      //     No per-request DNS lookup, so transient DNS outage doesn't
+      //     break in-flight RPCs. Per code-review feedback on PR #333:
+      //     the previous per-request validateSafeFetchUrl call made
+      //     EVERY RPC fail during DNS hiccups, even with a still-valid
+      //     pinned IP.
+      //   - FALLBACK PATH (no _urlSafety — e.g. connect() was bypassed):
+      //     re-validate inline immediately before fetch so the sanitizer
+      //     dataflow is visible to CodeQL's taint tracker.
       const init = {
         method: "POST",
         headers: {
@@ -350,9 +359,20 @@ export class MCPClient {
         body: JSON.stringify(body),
         signal: controller.signal,
       };
-      const response = this._urlSafety
-        ? await fetchWithPinnedIp(this._urlSafety, init)
-        : await fetch(this._url, init);
+      let response;
+      if (this._urlSafety) {
+        // Pinned-IP fetch: connect to the IP we validated at connect() time,
+        // eliminating DNS-rebinding between validation and request.
+        // No per-call DNS lookup — connected MCP servers stay reachable
+        // through transient resolver outages.
+        response = await fetchWithPinnedIp(this._urlSafety, init);
+      } else {
+        const reChecked = await validateSafeFetchUrl(this._url);
+        if (!reChecked.ok) {
+          throw new Error(`SSRF re-validation failed: ${reChecked.error}`);
+        }
+        response = await fetch(reChecked.url, init);
+      }
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");

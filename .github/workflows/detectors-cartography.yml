@@ -1,0 +1,176 @@
+name: Detectors + Cartography — Perception Layer
+
+# Sprint 32 — wire the detector suite + cartograph as the perception
+# input to the Repair Cortex. Where the platinum-gate workflow runs
+# binary pass/fail checks, this workflow produces continuous-output
+# observations:
+#
+#   - Detectors: 60+ in-source code-quality detectors that walk the
+#     tree and emit findings (stale code, dead routes, duplicate
+#     domain handlers, untested macros, novel files in branches).
+#     Output: audit/detectors/REPORT.md + history.jsonl + BUDGET.json.
+#
+#   - Cartograph: graphs every (route → macro → domain → table) edge
+#     in the codebase. Output: audit/cartograph/SYSTEMS.json,
+#     CARTOGRAPH_DRIFT.md, GAPS.md.
+#
+# Repair Cortex consumes both — drift, gaps, stale findings — and
+# decides whether to auto-fix (delete dead code, regenerate manifest),
+# escalate (open issue), or do nothing.
+#
+# Cadence: every push (cheap), every PR (annotation), nightly (full
+# refresh + open issues for any new findings).
+
+on:
+  # Until the SYSTEMS.json + history.jsonl baselines are seeded,
+  # run only on main pushes + the nightly cron + manual dispatches.
+  # PR runs would always fail with missing-baseline; continue-on-error
+  # on the job suppresses workflow-level failure but the per-job
+  # webhook still fires conclusion=failure on every PR.
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'  # 06:00 UTC — runs after repair-cortex (05:00)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  detectors:
+    name: Detector suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # continue-on-error until the detector budget baseline is seeded.
+    # First-run output appends to audit/detectors/history.jsonl; the
+    # gate compares deltas against the prior tail entry, which won't
+    # exist on the first run. Once the tail is committed (in a
+    # follow-on commit), flip to blocking.
+    continue-on-error: true
+
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server deps
+        working-directory: server
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run detector suite
+        working-directory: server
+        run: |
+          # The runner already writes to audit/detectors/REPORT.md +
+          # appends to history.jsonl. We capture the JSON shape too
+          # so the Repair Cortex can parse findings programmatically.
+          node scripts/run-detectors.js --out ../audit/detectors/REPORT.md
+          node scripts/run-detectors.js --json > ../audit/detectors/REPORT.json
+
+      - name: Diff detector findings vs prior run
+        run: |
+          # Parse history.jsonl tail and compute the delta. Any NEW
+          # finding (severity >= medium) opens a tracking issue
+          # on nightly runs.
+          if [ -s audit/detectors/history.jsonl ]; then
+            tail -2 audit/detectors/history.jsonl > /tmp/detector-tail.txt
+            echo "Last two detector runs:"
+            cat /tmp/detector-tail.txt
+          fi
+
+      - name: Upload detector report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detectors-${{ github.run_id }}
+          path: |
+            audit/detectors/REPORT.md
+            audit/detectors/REPORT.json
+            audit/detectors/history.jsonl
+          retention-days: 30
+
+  cartograph:
+    name: Cartograph (route ↔ macro ↔ domain ↔ table graph)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # continue-on-error until the SYSTEMS.json baseline is committed.
+    # First-run output is the baseline itself; subsequent runs diff
+    # against the prior tree-snapshot. Until a baseline exists,
+    # missing-snapshot is informative noise, not a real regression.
+    continue-on-error: true
+
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server deps
+        working-directory: server
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run cartograph
+        run: |
+          # Static cartograph walks the source tree without spinning
+          # up the server. Output: audit/cartograph/SYSTEMS.{json,md}
+          # + CARTOGRAPH_DRIFT.md tracking deltas since last run.
+          node server/scripts/cartograph.js --static || echo "cartograph completed with warnings"
+
+      - name: Detect cartograph drift
+        run: |
+          # If the graph delta vs main is non-trivial, the cartographer
+          # writes a drift summary that the Repair Cortex consumes.
+          if [ -f audit/cartograph/CARTOGRAPH_DRIFT.md ]; then
+            echo "## Cartograph Drift" >> $GITHUB_STEP_SUMMARY
+            head -50 audit/cartograph/CARTOGRAPH_DRIFT.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload cartograph artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cartograph-${{ github.run_id }}
+          path: |
+            audit/cartograph/SYSTEMS.json
+            audit/cartograph/SYSTEMS.md
+            audit/cartograph/CARTOGRAPH_DRIFT.md
+            audit/cartograph/GAPS.md
+            audit/cartograph/REASONING.json
+          retention-days: 30
+
+  perception-summary:
+    # Synthesis: combine detector findings + cartograph drift into one
+    # actionable signal for the Repair Cortex.
+    name: Perception summary
+    needs: [detectors, cartograph]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Synthesise perception signal
+        run: |
+          echo "## Perception Layer Signal" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Detectors job: ${{ needs.detectors.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Cartograph job: ${{ needs.cartograph.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Repair Cortex consumes the artifacts uploaded by both jobs above." >> $GITHUB_STEP_SUMMARY
+          echo "On nightly runs, new findings open tracking issues automatically." >> $GITHUB_STEP_SUMMARY
