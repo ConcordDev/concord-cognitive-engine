@@ -4,12 +4,30 @@ name: Platinum Performance (Lighthouse + bundle size + load)
 # Lighthouse asserts Core Web Vitals; size-limit enforces bundle
 # budgets; k6 runs a smoke load test against critical endpoints.
 #
-# BATCHED ARCHITECTURE (Sprint 35): the original lighthouse +
-# bundle-size jobs each did `npm ci` + `npm run build:ci` from
-# scratch. That's the 5-10 min frontend build run TWICE per PR.
-# Combined into one `frontend-perf` job that builds once and runs
-# both scans as sequential steps. Saves ~7 min wall-clock + halves
-# the CDN pressure on `actions/setup-node` and `actions/checkout`.
+# BATCHED ARCHITECTURE v2 (Sprint 35): matrix-with-shared-build.
+#
+# Lighthouse + bundle-size both need a built `.next/` frontend.
+# Original shape did the 5-10 min `npm run build:ci` TWICE per PR
+# (once for each gate). v1 collapsed them into one sequential job
+# — saved the duplicate build but lost per-gate PR visibility.
+#
+# v2 keeps per-gate visibility via:
+#
+#   frontend-build      — runs `npm ci` + `npm run build:ci` once,
+#                         uploads `.next/` as an artifact
+#   frontend-perf-scan  — matrix: [lighthouse, bundle-size] in parallel,
+#                         each downloads the prebuilt `.next/` and runs
+#                         its specific check. Each is its own PR
+#                         check-run row.
+#
+# Net per-merge effect vs original 2-job shape:
+#   - Frontend builds:    2 → 1 (~5-10 min saved per PR — the big win)
+#   - Concurrent runners: 2 → 3 (build job + 2 matrix entries)
+#   - Per-gate PR rows:   2 → 2 (PRESERVED via matrix)
+#   - Artifact overhead:  +1 upload + 2 downloads of `.next/` (~50MB
+#                         compressed). Roughly ~10s artifact roundtrip
+#                         per matrix entry. Net win is still huge given
+#                         the ~5 min savings per skipped build.
 
 on:
   pull_request:
@@ -20,30 +38,33 @@ on:
   schedule:
     - cron: '0 6 * * *'  # nightly 06:00 UTC
   # Manual trigger so the k6 smoke can still be invoked from the
-  # Actions UI on demand. The frontend-perf job runs on every PR;
-  # only k6 has the schedule-only `if:` guard.
+  # Actions UI on demand. The frontend-perf-scan matrix runs on every
+  # PR; only k6 has the schedule-only `if:` guard.
   workflow_dispatch:
 
 jobs:
   # ════════════════════════════════════════════════════════════════════
-  # Batched gate — Sprint 35
-  # Combines Lighthouse CI + bundle-size into one job. Shared frontend
-  # build (the expensive part, ~5-10 min). Each scan is a separate
-  # step so failure surfaces clearly.
+  # Shared frontend build (Sprint 35 v2)
+  # The 5-10 min `npm run build:ci` runs once, uploads `.next/` for the
+  # matrix scan jobs to consume. Setup-node's npm cache makes the
+  # `npm ci` step nearly instant on warm cache (~5-15s).
   # ════════════════════════════════════════════════════════════════════
-  frontend-perf:
-    name: Frontend perf (Lighthouse + bundle size)
+  frontend-build:
+    name: Frontend perf setup (build .next/)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
-        with: { node-version: '22' }
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: concord-frontend/package-lock.json
 
       - name: Install frontend deps
         working-directory: ./concord-frontend
-        run: npm ci
+        run: npm ci --prefer-offline
 
       - name: Build frontend (production)
         working-directory: ./concord-frontend
@@ -51,115 +72,78 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: npm run build:ci
 
-      # ── Lighthouse CI — Core Web Vitals ──────────────────────────────
-      - name: Run Lighthouse CI
+      - name: Upload .next/ artifact for downstream scans
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-build
+          path: |
+            concord-frontend/.next
+            concord-frontend/public
+          # Auto-cleaned when run ends — only the matrix consumers
+          # need this artifact, not retained for history.
+          retention-days: 1
+          if-no-files-found: error
+
+  # ════════════════════════════════════════════════════════════════════
+  # Matrix-batched frontend perf gates (Sprint 35 v2)
+  # Each matrix entry is its own check-run in the PR UI:
+  #   frontend-perf-scan (lighthouse)
+  #   frontend-perf-scan (bundle-size)
+  # `fail-fast: false` lets both run independently so failure pattern
+  # is visible at a glance.
+  # ════════════════════════════════════════════════════════════════════
+  frontend-perf-scan:
+    name: ${{ matrix.scan.name }}
+    needs: frontend-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        scan:
+          - { id: lighthouse,   name: "Lighthouse CI — Core Web Vitals" }
+          - { id: bundle-size,  name: "Bundle size — size-limit" }
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: concord-frontend/package-lock.json
+
+      - name: Install frontend deps (cache-hit fast path)
         working-directory: ./concord-frontend
-        run: npx @lhci/cli@latest autorun --config=lighthouserc.json
+        run: npm ci --prefer-offline
+
+      - name: Download prebuilt .next/
+        uses: actions/download-artifact@v6
+        with:
+          name: frontend-build
+          path: concord-frontend
+
+      - name: Run ${{ matrix.scan.id }}
+        working-directory: ./concord-frontend
+        run: |
+          set -e
+          case "${{ matrix.scan.id }}" in
+            lighthouse)
+              npx @lhci/cli@latest autorun --config=lighthouserc.json
+              ;;
+            bundle-size)
+              npx size-limit
+              ;;
+          esac
 
       - name: Upload Lighthouse reports
-        if: always()
+        if: always() && matrix.scan.id == 'lighthouse'
         uses: actions/upload-artifact@v6
         with:
           name: lighthouse-reports
           path: concord-frontend/lighthouse-reports/
           retention-days: 14
 
-      # ── Bundle size — size-limit ─────────────────────────────────────
-      - name: Run size-limit (bundle size budget)
-        working-directory: ./concord-frontend
-        run: npx size-limit
-
   k6-smoke:
-    name: Load — k6 smoke
-    runs-on: ubuntu-latest
-    # hashFiles() isn't a valid expression in job-level `if:` context;
-    # the runtime check below skips silently when the k6 script is absent.
-    # Sprint 34 fix — same shape as the platinum-security.yml fix.
-    timeout-minutes: 10
-    # Round-10: schedule-only. The PR-gate has the entire suite of
-    # blocking checks (CodeQL, Semgrep, Trivy, gitleaks, license,
-    # SBOM, npm audit, retire.js, Bundle size, Lighthouse CI,
-    # Mobile perf, etc.) running on every PR; k6 smoke adds little
-    # signal value on top of those — it's chasing the same
-    # "server doesn't crash" outcome that every other job already
-    # confirms (Smoke Test (Everything Real), Integration Test, the
-    # E2E run, etc.). On a shared ubuntu-latest VM with both server
-    # and k6 co-located, no Ollama, even very wide smoke thresholds
-    # (p(95)<3000ms / checks>0.90 / 5 VUs after a 10s warm-up)
-    # flake about 1-in-3 runs from GC pauses + heartbeat ticks +
-    # noisy-neighbour CPU. Combined with continue-on-error, the
-    # PR-gate value was already nil; the webhook noise was the
-    # only effect.
-    #
-    # The cron schedule below still runs k6 nightly so any genuine
-    # perf-budget regression gets caught within 24h. For real
-    # load-testing (perf-budget gate enforcement) run on a dedicated
-    # perf box with K6_PROFILE=standard or =heavy.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v6
-      - name: Check for k6 smoke script
-        id: k6_check
-        run: |
-          if [ -f tests/k6/smoke.js ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::tests/k6/smoke.js missing — skipping k6 smoke"
-          fi
-      - uses: actions/setup-node@v6
-        if: steps.k6_check.outputs.present == 'true'
-        with: { node-version: '22' }
-      - name: Start server
-        if: steps.k6_check.outputs.present == 'true'
-        working-directory: ./server
-        env:
-          NODE_ENV: ci
-          JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
-          ADMIN_PASSWORD: testpassword123
-          PORT: 5050
-          # Skip 5-brain Ollama init in CI (no Ollama service running).
-          # Without this, server.js#initFiveBrains() runs 5 sequential
-          # probes with 15s AbortSignal.timeout each = ~75s of cold
-          # probe time, blowing past the 45s wait loop below.
-          CONCORD_DISABLE_BRAINS: 'true'
-        run: |
-          npm ci
-          node server.js > server.log 2>&1 &
-          # Bumped from 5+20*2=45s to 180s to match ci.yml's smoke +
-          # integration wait — TDZ fix + brain-disable get server up
-          # in <10s typically.
-          for i in {1..180}; do
-            if curl -sf http://localhost:5050/health > /dev/null 2>&1; then
-              echo "Server ready after ${i}s"
-              break
-            fi
-            sleep 1
-          done
-          curl -sf http://localhost:5050/health > /dev/null 2>&1 || {
-            echo "::error::server did not become ready within 180s"
-            cat server.log | tail -50
-            exit 1
-          }
-          # Post-ready warmup: even after /health returns 200, the
-          # server is still wiring heartbeats + lattice orchestrator +
-          # init paths in the background. Without this sleep, k6's
-          # first ~5s of requests catch the CPU-bound init tail and
-          # bust p(95). 10s is empirically sufficient on a shared
-          # ubuntu-latest VM (heartbeat fires every 15s; one full tick
-          # cycle completes inside this window).
-          echo "Warming up server for 10s before k6 launch..."
-          sleep 10
-          echo "Warmup done; launching k6"
-      - name: Install k6
-        if: steps.k6_check.outputs.present == 'true'
-        run: |
-          curl -L https://github.com/grafana/k6/releases/download/v0.50.0/k6-v0.50.0-linux-amd64.tar.gz | tar xz
-          sudo mv k6-v0.50.0-linux-amd64/k6 /usr/local/bin/
-      - name: Run k6 smoke
-        if: steps.k6_check.outputs.present == 'true'
-        run: k6 run tests/k6/smoke.js
     name: Load — k6 smoke
     runs-on: ubuntu-latest
     # hashFiles() isn't a valid expression in job-level `if:` context;
