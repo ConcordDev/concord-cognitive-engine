@@ -91,21 +91,35 @@ export default async function globalSetup() {
   console.log(`[playwright-warmup] warming ${routes.length} routes against ${baseUrl}`);
 
   const t0 = Date.now();
-  // Parallelism: 6 concurrent fetches keeps the Next.js server busy
-  // without saturating its compile thread pool. Each route gets up to
-  // 30 s for its compile; total wall-clock budget is ~3-5 min on a
-  // GitHub-hosted runner.
-  const concurrency = 6;
+  // Parallelism: 12 concurrent fetches + 15 s per-route timeout keeps
+  // the worst-case wall-clock under ~6 minutes. Previous 6-way × 30 s
+  // setting could hit ~22 minutes worst-case, which exceeded
+  // playwright.config.ts globalTimeout (20 min) and caused the test
+  // step to fail before any spec ran. The Next.js server compile pool
+  // can absorb 12 concurrent first-visits without thrashing.
+  // Hard cap for the entire warmup loop — if we hit this, abandon
+  // remaining routes and let tests run; missing-warm routes will just
+  // be slower on first visit, not broken.
+  const HARD_CAP_MS = 8 * 60 * 1000; // 8 minutes
+  const PER_ROUTE_MS = 15000;
+  const concurrency = 12;
+  const deadline = t0 + HARD_CAP_MS;
   const queue = [...routes];
   const inFlight: Promise<void>[] = [];
   let ok = 0;
   let failed = 0;
+  let skipped = 0;
 
   async function worker() {
     while (queue.length > 0) {
+      if (Date.now() >= deadline) {
+        skipped += queue.length;
+        queue.length = 0;
+        return;
+      }
       const route = queue.shift();
       if (!route) return;
-      const result = await warmRoute(baseUrl, route, 30000);
+      const result = await warmRoute(baseUrl, route, PER_ROUTE_MS);
       if (typeof result.status === "number" && result.status < 500) ok++;
       else { failed++; console.log(`[playwright-warmup] route=${result.route} status=${result.status} ms=${result.ms}`); }
     }
@@ -114,5 +128,5 @@ export default async function globalSetup() {
   for (let i = 0; i < concurrency; i++) inFlight.push(worker());
   await Promise.all(inFlight);
 
-  console.log(`[playwright-warmup] done — ${ok} ok, ${failed} failed, total ${Date.now() - t0}ms`);
+  console.log(`[playwright-warmup] done — ${ok} ok, ${failed} failed, ${skipped} skipped (deadline), total ${Date.now() - t0}ms`);
 }
