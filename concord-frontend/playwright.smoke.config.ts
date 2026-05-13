@@ -19,6 +19,10 @@ export default defineConfig({
   globalSetup: undefined,
   // Skip webServer launch — we have one running already.
   webServer: undefined,
+  // 230 lenses × up to 30s each (dev compile + render) can run past
+  // the base config's 20-min suite ceiling. 90 min covers the worst
+  // case with headroom.
+  globalTimeout: 90 * 60 * 1000,
   // Single project, single browser, real binary on disk.
   projects: [
     {

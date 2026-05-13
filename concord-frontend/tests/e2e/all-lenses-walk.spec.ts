@@ -44,7 +44,10 @@ const IGNORABLE = [
   /Connection lost/i,
 ];
 
-const LENSES = fs.readFileSync('/tmp/lens-routes.txt', 'utf8')
+// LENS_LIST env var lets a partial re-run target only specific lenses.
+// Defaults to the full enumeration at /tmp/lens-routes.txt.
+const LENS_LIST_PATH = process.env.LENS_LIST || '/tmp/lens-routes.txt';
+const LENSES = fs.readFileSync(LENS_LIST_PATH, 'utf8')
   .split('\n')
   .map((l) => l.trim())
   .filter(Boolean);
@@ -96,15 +99,27 @@ test.beforeAll(async ({ request }) => {
 });
 
 test.afterAll(async () => {
+  // Merge with any prior run so a partial re-run accumulates instead
+  // of overwriting earlier bucket assignments.
+  let prior: LensResult[] = [];
+  try {
+    const raw = fs.readFileSync(RESULTS_FILE, 'utf8');
+    prior = (JSON.parse(raw).results ?? []) as LensResult[];
+  } catch { /* no prior */ }
+  const byLens = new Map<string, LensResult>();
+  for (const r of prior) byLens.set(r.lens, r);
+  for (const r of _results) byLens.set(r.lens, r); // newer wins
+  const merged = Array.from(byLens.values()).sort((a, b) => a.lens.localeCompare(b.lens));
+
   fs.writeFileSync(RESULTS_FILE, JSON.stringify({
-    total: _results.length,
+    total: merged.length,
     buckets: {
-      green:   _results.filter((r) => r.bucket === 'green').length,
-      noisy:   _results.filter((r) => r.bucket === 'noisy').length,
-      crashed: _results.filter((r) => r.bucket === 'crashed').length,
-      timeout: _results.filter((r) => r.bucket === 'timeout').length,
+      green:   merged.filter((r) => r.bucket === 'green').length,
+      noisy:   merged.filter((r) => r.bucket === 'noisy').length,
+      crashed: merged.filter((r) => r.bucket === 'crashed').length,
+      timeout: merged.filter((r) => r.bucket === 'timeout').length,
     },
-    results: _results.sort((a, b) => a.lens.localeCompare(b.lens)),
+    results: merged,
   }, null, 2));
 });
 
