@@ -1,0 +1,25 @@
+{
+  "world_id": "bahiij",
+  "world_name": "Bahiij",
+  "theme": "elephant-plain",
+  "tech_level": "pre-industrial",
+  "magic_level": "low",
+  "is_hub": false,
+  "description": "Vast grass plains. The Bahiij elephants are the largest authored quadruped mounts — slow, heavy, indispensable for caravan trade.",
+  "culture_id": "tunyan_pure",
+  "faction_id": "bahiij",
+  "rule_modulators": {
+    "combatLethality": 0.9,
+    "refusalSensitivity": 0.7,
+    "questDensity": 0.9,
+    "weatherIntensity": 1.1,
+    "climate": { "temperature": 28, "humidity": 30, "airQuality": 0.95, "wind": "steady" }
+  },
+  "anchors": [
+    { "id": "bahiij_capital",   "name": "Bahiij Crossing",   "x": 0,   "z": 0,   "kind": "neutral_zone" },
+    { "id": "bahiij_elephant_corral", "name": "Bahiij Elephant Corral", "x": 50, "z": 50, "kind": "trade_zone" }
+  ],
+  "spawn_position": { "x": 0, "z": 0 },
+  "primary_currencies": ["concord_coin"],
+  "preferred_visit_order": 12
+}

@@ -1,0 +1,25 @@
+{
+  "world_id": "cactem-strip",
+  "world_name": "Cactem Strip",
+  "theme": "fluxom-frontier",
+  "tech_level": "pre-industrial",
+  "magic_level": "low",
+  "is_hub": false,
+  "description": "Disputed border strip with Fluxom. The cactem dye-bug breeding grounds. Source of the textile_cactem chain's first step (Phase 11). Routinely raided by Fluxom; defended by Tunyan caravans.",
+  "culture_id": "tunyan_pure",
+  "faction_id": "fluxom",
+  "rule_modulators": {
+    "combatLethality": 1.3,
+    "refusalSensitivity": 0.7,
+    "questDensity": 1.2,
+    "weatherIntensity": 1.3,
+    "climate": { "temperature": 31, "humidity": 50, "airQuality": 0.86, "wind": "dry" }
+  },
+  "anchors": [
+    { "id": "cactem_breeder",  "name": "Cactem Breeder Camp",  "x": 0,    "z": 0,   "kind": "trade_zone" },
+    { "id": "cactem_raid_marker", "name": "Last Raid Marker",  "x": -60,  "z": 30,  "kind": "lore_anchor" }
+  ],
+  "spawn_position": { "x": 0, "z": 0 },
+  "primary_currencies": ["concord_coin"],
+  "preferred_visit_order": 15
+}

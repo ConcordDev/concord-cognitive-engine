@@ -1,0 +1,25 @@
+{
+  "world_id": "akeia",
+  "world_name": "Akeia",
+  "theme": "matriarchy-coastal",
+  "tech_level": "pre-industrial",
+  "magic_level": "medium",
+  "is_hub": false,
+  "description": "Matriarchal Tunyan culture along the coast. Water-bloodline majority. Akeia's councils admit only those who pass the Tide-Honoring rite (Mig 158 festival).",
+  "culture_id": "akeia",
+  "faction_id": "akeia",
+  "rule_modulators": {
+    "combatLethality": 0.9,
+    "refusalSensitivity": 0.85,
+    "questDensity": 1.1,
+    "weatherIntensity": 1.0,
+    "climate": { "temperature": 22, "humidity": 80, "airQuality": 0.94, "wind": "sea" }
+  },
+  "anchors": [
+    { "id": "akeia_capital", "name": "Akeia Capital", "x": 0, "z": 0, "kind": "neutral_zone" },
+    { "id": "akeia_harbor",  "name": "Akeia Harbor",  "x": 50, "z": -80, "kind": "trade_zone" }
+  ],
+  "spawn_position": { "x": 5, "z": 5 },
+  "primary_currencies": ["concord_coin"],
+  "preferred_visit_order": 4
+}
