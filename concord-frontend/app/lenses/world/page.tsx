@@ -293,6 +293,8 @@ const VoiceAssistant = dynamic(() => import('@/components/world-lens/VoiceAssist
 const BuildingRenderer3D = dynamic(() => import('@/components/world-lens/BuildingRenderer3D'), {
   ssr: false,
 });
+const TreeLayer = dynamic(() => import('@/components/world-lens/TreeLayer').then((m) => ({ default: m.TreeLayer })), { ssr: false });
+const RockLayer = dynamic(() => import('@/components/world-lens/RockLayer').then((m) => ({ default: m.RockLayer })), { ssr: false });
 const TerrainRenderer = dynamic(() => import('@/components/world-lens/TerrainRenderer'), {
   ssr: false,
 });
@@ -3820,6 +3822,10 @@ export default function WorldLensPage() {
           {/* 3D scene rendering layers */}
           <TerrainRenderer districts={[]} lodCenter={{ x: 0, z: 0 }} quality="medium" />
           <BuildingRenderer3D buildings={[]} viewMode="normal" />
+          {/* Phase A3 — L-system trees + procedural rocks per biome.
+              Mounts when worldId resolves (worldIdForTheme). */}
+          <TreeLayer worldId={worldIdForTheme} biome="temperate_forest" quality="medium" />
+          <RockLayer worldId={worldIdForTheme} biome="temperate" quality="high" />
           <SkyWeatherRenderer
             timeOfDay={worldPhaseForSky * 24}
             weather={(() => {
