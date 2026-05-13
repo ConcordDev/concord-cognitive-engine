@@ -238,6 +238,104 @@ export default function MountAvatar3D({
  * caller (rider-ik / AvatarSystem3D) feeds this into the FABRIK chain
  * for the rider's pelvis.
  */
+/**
+ * Phase D2 — imperative factory used by AvatarSystem3D to spawn the
+ * player's active mount into the imperative scene. Returns a
+ * THREE.Group with a deterministic quadruped silhouette + per-frame
+ * gait tick (legs swing via phase-offset sine).
+ *
+ * The R3F MountAvatar3D component above remains the high-fidelity
+ * surface for MountDesigner previews. This factory is the in-world
+ * render path.
+ */
+export interface MountGroupResult {
+  group:   InstanceType<typeof import('three').Group>;
+  tick:    (dt: number, ridingVelocity?: number) => void;
+  setCoat: (color: string) => void;
+  setRotation: (yaw: number) => void;
+  dispose: () => void;
+}
+
+export function createMountGroup(
+  THREE: typeof import('three'),
+  opts: { species?: { display_name?: string; size_class?: 'small' | 'medium' | 'large' | 'huge' } | null; coatColor?: string; coatPattern?: 'plain' | 'dappled' | 'striped' } = {},
+): MountGroupResult {
+  const size = opts.species?.size_class || 'medium';
+  const scale = size === 'small' ? 0.7 : size === 'large' ? 1.3 : size === 'huge' ? 1.7 : 1.0;
+  const baseColor = opts.coatColor || '#8b5e3c';
+
+  const group = new THREE.Group();
+  group.name = 'mount_group';
+  group.scale.setScalar(scale);
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(baseColor), roughness: 0.7, metalness: 0 });
+
+  // Body: capsule-ish (cylinder + 2 spheres at the ends).
+  const bodyLen = 1.6, bodyR = 0.32;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(bodyR, bodyR, bodyLen, 12), bodyMat);
+  body.rotation.z = Math.PI / 2;
+  body.position.set(0, 0.9, 0);
+  group.add(body);
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(bodyR * 0.9, 12, 8), bodyMat);
+  head.position.set(bodyLen / 2 + 0.2, 1.0, 0);
+  group.add(head);
+  // Tail
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.02, 0.4, 6), bodyMat);
+  tail.position.set(-bodyLen / 2 - 0.1, 0.9, 0);
+  tail.rotation.z = Math.PI / 2.5;
+  group.add(tail);
+
+  // Legs: FL, FR, RL, RR
+  const legGeom = new THREE.CylinderGeometry(0.06, 0.06, 0.8, 8);
+  const legs: Array<{ mesh: InstanceType<typeof import('three').Mesh>; phaseOffset: number; rest: { x: number; z: number } }> = [];
+  const legPositions = [
+    { x:  bodyLen * 0.35, z:  bodyR * 0.7, phase: 0.0 },
+    { x:  bodyLen * 0.35, z: -bodyR * 0.7, phase: 0.5 },
+    { x: -bodyLen * 0.35, z:  bodyR * 0.7, phase: 0.5 },
+    { x: -bodyLen * 0.35, z: -bodyR * 0.7, phase: 0.0 },
+  ];
+  for (const lp of legPositions) {
+    const leg = new THREE.Mesh(legGeom, bodyMat);
+    leg.position.set(lp.x, 0.4, lp.z);
+    group.add(leg);
+    legs.push({ mesh: leg, phaseOffset: lp.phase, rest: { x: lp.x, z: lp.z } });
+  }
+
+  let t = 0;
+  function tick(dt: number, ridingVelocity = 1.0) {
+    if (ridingVelocity <= 0.001) return;
+    t += dt * (2 + ridingVelocity * 1.5);
+    for (const leg of legs) {
+      const phase = t + leg.phaseOffset * Math.PI * 2;
+      const swing = Math.sin(phase) * 0.18;
+      leg.mesh.rotation.x = swing;
+      leg.mesh.position.y = 0.4 + Math.max(0, Math.cos(phase)) * 0.05;
+    }
+    // Body bob
+    body.position.y = 0.9 + Math.sin(t * 2) * 0.02;
+  }
+
+  function setCoat(color: string) {
+    bodyMat.color.set(color);
+  }
+  function setRotation(yaw: number) {
+    group.rotation.y = yaw;
+  }
+  function dispose() {
+    group.traverse((m) => {
+      const mesh = m as { geometry?: { dispose?: () => void }; material?: { dispose?: () => void } };
+      mesh.geometry?.dispose?.();
+      mesh.material?.dispose?.();
+    });
+  }
+  // Coat pattern bias (basic).
+  if (opts.coatPattern === 'dappled') {
+    bodyMat.color.lerp(new THREE.Color('#ffffff'), 0.15);
+  }
+  return { group, tick, setCoat, setRotation, dispose };
+}
+
 export function computeSaddleAnchor(species: MountSpecies, frame: MountedFrame): {
   x: number; y: number; z: number; yaw: number;
 } {

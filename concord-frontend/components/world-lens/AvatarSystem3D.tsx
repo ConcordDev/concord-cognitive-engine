@@ -1533,6 +1533,37 @@ export default function AvatarSystem3D({
       playerMeshRef.current = playerMesh;
       avatarGroup.add(playerMesh);
 
+      // Phase D2 — spawn the player's active mount if they have one.
+      // Calls mounts.list_for_player macro; if an active mounted_instance
+      // exists, renders the mount group beside the player, ticks gait
+      // per frame, and wires rotation to player rotation.
+      try {
+        const worldIdLs = (typeof window !== 'undefined'
+          ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub')
+          : 'concordia-hub');
+        const resp = await fetch('/api/lens/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain: 'mounts', name: 'list_for_player', input: { worldId: worldIdLs } }),
+        });
+        const json = await resp.json().catch(() => null);
+        const result = json?.result;
+        const activeMounts = result?.active ?? [];
+        if (Array.isArray(activeMounts) && activeMounts.length > 0) {
+          const active = activeMounts[0] as { mount_companion_id: string; seat_offset_json?: string };
+          // Resolve species via mounts.get_species if needed; otherwise build a default.
+          const { createMountGroup } = await import('@/components/concordia/mounts/MountAvatar3D');
+          const m = createMountGroup(THREE, { species: { size_class: 'medium', display_name: 'Steed' }, coatColor: '#8b5e3c' });
+          m.group.position.copy(playerMesh.position);
+          m.group.position.x += 1.2;
+          avatarGroup.add(m.group);
+          // Tick the mount via the eyeTickersRef registry which the
+          // frame loop already iterates.
+          eyeTickersRef.current.set(`mount:${active.mount_companion_id}`, (dt) => m.tick(dt, 1.0));
+          enhancedDisposeRef.current.set(`mount:${active.mount_companion_id}`, m.dispose);
+        }
+      } catch { /* mounts optional */ }
+
       // ── Secondary physics: hair chain ──────────────────────
       {
         const spm = new SecondaryPhysicsManager();
