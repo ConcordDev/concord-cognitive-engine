@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { createInstancedMeshPool } from '@/lib/world-lens/instanced-mesh-pool';
 
 type TreeBiomeLocal = 'temperate_forest' | 'boreal' | 'desert' | 'wetland' | 'tropical' | 'alpine' | 'coastal' | 'volcanic';
 interface Props {
@@ -87,8 +88,29 @@ export function TreeLayer({ worldId, biome = 'temperate_forest', quality = 'medi
       // If scene is already up, request it now via a synthetic event.
       window.dispatchEvent(new CustomEvent('concordia:scene-request-ready'));
 
+      // Phase O — distance-cull trees against camera. ConcordiaScene
+      // emits concordia:camera-sync ~10Hz; we toggle visibility on the
+      // per-tree groups so trees >600m are dropped from the draw list.
+      const { distanceCullMeshes } = await import('@/lib/world-lens/lod');
+      const camPos = { x: 0, y: 0, z: 0, distanceTo: (other: unknown) => {
+        const o = other as { x: number; y: number; z: number };
+        const dx = camPos.x - o.x, dy = camPos.y - o.y, dz = camPos.z - o.z;
+        return Math.sqrt(dx*dx + dy*dy + dz*dz);
+      } };
+      function onCamSync(ev: Event) {
+        const d = (ev as CustomEvent).detail as { position?: { x: number; y: number; z: number } } | undefined;
+        if (!d?.position) return;
+        camPos.x = d.position.x; camPos.y = d.position.y; camPos.z = d.position.z;
+        const meshes = (treeGroup.children as Array<{ position: { distanceTo: (o: unknown) => number }; visible: boolean }>);
+        // distanceCullMeshes expects a position-like camera; we pass an
+        // object the per-tree position.distanceTo can consume.
+        distanceCullMeshes(meshes, { x: camPos.x, y: camPos.y, z: camPos.z }, 600);
+      }
+      window.addEventListener('concordia:camera-sync', onCamSync);
+
       return () => {
         window.removeEventListener('concordia:scene-ready', onSceneReady);
+        window.removeEventListener('concordia:camera-sync', onCamSync);
         detachScene?.();
       };
     })();
@@ -143,14 +165,17 @@ function renderTree(
     tg.add(mesh);
   }
   if (!tree.bare && tree.leaves.length > 0) {
+    // Phase O — one InstancedMesh per tree's leaves via the shared
+    // instanced-mesh-pool (one draw call). Pool capacity matches leaf
+    // count exactly; per-leaf scale captures the leaf.size variation.
     const leafMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(tree.leafColor), roughness: 0.85 });
-    // Instance leaves as a merged geometry would be ideal; for now use small spheres.
+    const unitLeaf = new THREE.SphereGeometry(1, 5, 4);
+    const pool = createInstancedMeshPool(THREE, tg, unitLeaf, leafMat, tree.leaves.length);
     for (const leaf of tree.leaves) {
-      const lg = new THREE.SphereGeometry(leaf.size, 5, 4);
-      const lm = new THREE.Mesh(lg, leafMat);
-      lm.position.set(leaf.position[0], leaf.position[1], leaf.position[2]);
-      lm.castShadow = false;
-      tg.add(lm);
+      pool.add({
+        position: { x: leaf.position[0], y: leaf.position[1], z: leaf.position[2] },
+        scale: leaf.size,
+      });
     }
   }
   return tg;

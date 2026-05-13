@@ -151,6 +151,22 @@ const ReflexBridge = dynamic(
   () => import('@/components/world/ReflexBridge').then((m) => ({ default: m.ReflexBridge })),
   { ssr: false },
 );
+// Phase O — transparent R3F canvas overlay so R3F-only orphan
+// components (WalkerOnHorizon, LandmarkSpires, etc.) can run alongside
+// the imperative ConcordiaScene without rewriting them. Camera is
+// mirrored from concordia:camera-sync events the scene now emits.
+const R3FOverlayLayer = dynamic(
+  () => import('@/components/world-lens/R3FOverlayLayer').then((m) => ({ default: m.R3FOverlayLayer })),
+  { ssr: false },
+);
+const WalkerOnHorizon = dynamic(
+  () => import('@/components/world-lens/WalkerOnHorizon'),
+  { ssr: false },
+);
+const LandmarkSpires = dynamic(
+  () => import('@/components/world-lens/LandmarkSpires'),
+  { ssr: false },
+);
 const CombatPolishLayer = dynamic(
   () =>
     import('@/components/world/CombatBridges').then((m) => ({
@@ -4413,6 +4429,18 @@ export default function WorldLensPage() {
           <ConcordiaHUD.NPCStressTooltip />
           {/* Phase M — cinematic-director event bridge. */}
           <ConcordiaHUD.CinematicTrigger />
+
+          {/* Phase O — R3F overlay layer hosting R3F-only orphan
+              components alongside the imperative scene. Walkers are
+              R3F-native; LandmarkSpires renders DOM and so mounts
+              outside the overlay. */}
+          <R3FOverlayLayer>
+            <WalkerOnHorizon worldId={activeDistrict?.id || 'concordia-hub'} />
+          </R3FOverlayLayer>
+          <LandmarkSpires
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            getCamera={() => null}
+          />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing

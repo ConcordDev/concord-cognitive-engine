@@ -92,6 +92,7 @@ const ZONE_MATERIALS: Record<TerrainZone, {
 // (river bluff, central plateau, creek). Only the natural-feel
 // perturbation switches to Simplex.
 import { createSimplexNoise2D, octaveNoise2D } from '@/lib/world-lens/simplex-noise';
+import { blendedBiomeWeights, type BiomeKind } from '@/lib/world-lens/biome-blend';
 const TERRAIN_SEED = 0xc0ffee;
 const _terrainNoise = createSimplexNoise2D(TERRAIN_SEED);
 
@@ -351,6 +352,18 @@ export default function TerrainRenderer({
           const _baseColor = new THREE.Color(matConfig.color);
           const AO_RADIUS = 2;
           const AO_OFFSETS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]] as const;
+          // Phase O — biome-blend at chunk borders. Zone lookup is a
+          // step function over the control map; we run the same
+          // 5-sample weighted blend that biome-blend.ts uses so chunk
+          // borders smear instead of cliff-edge.
+          const getZoneAt = (wx: number, wz: number): BiomeKind => {
+            const _nx = (wx + TERRAIN_SIZE / 2) / TERRAIN_SIZE;
+            const _nz = (wz + TERRAIN_SIZE / 2) / TERRAIN_SIZE;
+            const _ix = Math.max(0, Math.min(hmW - 1, Math.floor(_nx * hmW)));
+            const _iz = Math.max(0, Math.min(hmH - 1, Math.floor(_nz * hmH)));
+            return (zoneList[controlMap[_iz * hmW + _ix]] ?? 'wild_grass') as unknown as BiomeKind;
+          };
+
           for (let i = 0; i < posAttr.count; i++) {
             const vx = posAttr.getX(i) + chunkWorldX;
             const vz = posAttr.getZ(i) + chunkWorldZ;
@@ -360,7 +373,24 @@ export default function TerrainRenderer({
             const iz2 = Math.max(0, Math.min(hmH - 1, Math.floor(nz2 * hmH)));
             const vZoneIdx = controlMap[iz2 * hmW + ix2];
             const vZone = zoneList[vZoneIdx] || 'wild_grass';
-            const vColor = new THREE.Color(ZONE_MATERIALS[vZone].color);
+
+            // Blend the centre zone's colour with 4 neighbour zones
+            // weighted by biome-blend.ts's noise-perturbed kernel.
+            const weights = blendedBiomeWeights(vx, vz, TERRAIN_SEED, getZoneAt);
+            const vColor = new THREE.Color(0, 0, 0);
+            let totalW = 0;
+            for (const [zoneName, w] of weights.entries()) {
+              const z = (ZONE_MATERIALS as Record<string, { color: number } | undefined>)[zoneName as string];
+              if (!z) continue;
+              const c = new THREE.Color(z.color);
+              vColor.r += c.r * w;
+              vColor.g += c.g * w;
+              vColor.b += c.b * w;
+              totalW += w;
+            }
+            if (totalW <= 0) {
+              vColor.copy(new THREE.Color(ZONE_MATERIALS[vZone].color));
+            }
 
             // AO: vertices lower than their 8 neighbors are concave — darken up to 40%
             const thisH = hmData[iz2 * hmW + ix2];

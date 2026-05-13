@@ -82,8 +82,20 @@ export function RockLayer({ worldId, biome = 'temperate', quality = 'high', chun
       window.addEventListener('concordia:scene-ready', onSceneReady);
       window.dispatchEvent(new CustomEvent('concordia:scene-request-ready'));
 
+      // Phase O — distance-cull rocks at 500m (closer than trees; they
+      // read as silhouettes at distance and aren't worth the draw).
+      const { distanceCullMeshes } = await import('@/lib/world-lens/lod');
+      function onCamSync(ev: Event) {
+        const d = (ev as CustomEvent).detail as { position?: { x: number; y: number; z: number } } | undefined;
+        if (!d?.position) return;
+        const meshes = (rockGroup.children as Array<{ position: { distanceTo: (o: unknown) => number }; visible: boolean }>);
+        distanceCullMeshes(meshes, d.position, 500);
+      }
+      window.addEventListener('concordia:camera-sync', onCamSync);
+
       return () => {
         window.removeEventListener('concordia:scene-ready', onSceneReady);
+        window.removeEventListener('concordia:camera-sync', onCamSync);
         detachScene?.();
       };
     })();

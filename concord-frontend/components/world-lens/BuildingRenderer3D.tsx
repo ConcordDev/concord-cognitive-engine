@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import { TextureForge } from '@/lib/world-lens/texture-forge';
+import { makeStandardLOD } from '@/lib/world-lens/lod';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -635,13 +636,7 @@ export default function BuildingRenderer3D({
         const buildingGroup = await renderFromDTU(dtu, THREE, validation);
         if (disposed) return;
 
-        // ── LOD wrapper ─────────────────────────────────────────
-        const lod = new THREE.LOD();
-
-        // Full detail mesh (within 50m)
-        lod.addLevel(buildingGroup, 0);
-
-        // Simplified mesh (within 200m): single box
+        // Phase O — LOD via the standard-LOD helper.
         const simplifiedGeom = new THREE.BoxGeometry(
           dtu.dimensions.width,
           dtu.dimensions.height,
@@ -656,9 +651,7 @@ export default function BuildingRenderer3D({
         simplified.castShadow = true;
         const simplifiedGroup = new THREE.Group();
         simplifiedGroup.add(simplified);
-        lod.addLevel(simplifiedGroup, 50);
 
-        // Box proxy (within 500m): even simpler
         const proxyGeom = new THREE.BoxGeometry(
           dtu.dimensions.width,
           dtu.dimensions.height,
@@ -671,9 +664,7 @@ export default function BuildingRenderer3D({
         proxy.position.y = dtu.dimensions.height / 2;
         const proxyGroup = new THREE.Group();
         proxyGroup.add(proxy);
-        lod.addLevel(proxyGroup, 200);
 
-        // Billboard (500m+): flat sprite
         const billboardGeom = new THREE.PlaneGeometry(
           dtu.dimensions.width,
           dtu.dimensions.height,
@@ -687,7 +678,13 @@ export default function BuildingRenderer3D({
         billboard.position.y = dtu.dimensions.height / 2;
         const billboardGroup = new THREE.Group();
         billboardGroup.add(billboard);
-        lod.addLevel(billboardGroup, 500);
+
+        const lod = makeStandardLOD(THREE, {
+          high: buildingGroup,
+          medium: simplifiedGroup,
+          low: proxyGroup,
+          billboard: billboardGroup,
+        });
 
         lod.position.set(dtu.position.x, dtu.position.y, dtu.position.z);
         lod.userData = { buildingId: dtu.id, buildingName: dtu.name };
