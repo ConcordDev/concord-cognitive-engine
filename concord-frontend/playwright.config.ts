@@ -42,7 +42,17 @@ export default defineConfig({
     headless: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Bump the per-action timeouts so first-route compile latency
+    // under `next start` (which lazy-compiles each route on first
+    // visit even in production mode) doesn't trip the default 30 s
+    // goto. Mirrors playwright-infra.config.ts.
+    navigationTimeout: 60000,
+    actionTimeout: 30000,
   },
+  // Per-test timeout — covers the whole spec body including setup
+  // and teardown. 90 s leaves a comfortable margin over a 60 s goto
+  // plus a 15 s assertion budget.
+  timeout: 90000,
 
   projects: [
     {
