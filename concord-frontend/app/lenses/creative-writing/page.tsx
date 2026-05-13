@@ -804,7 +804,10 @@ export default function CreativeWritingPage() {
                 <p className="text-sm font-medium mb-1">Share for Peer Review</p>
                 <p className="text-xs text-gray-500">Get feedback from the community on your latest work.</p>
               </div>
-              <button className="px-4 py-2 text-xs bg-amber-500/20 border border-amber-500/30 rounded-lg hover:bg-amber-500/30 flex items-center gap-1.5 text-amber-400 whitespace-nowrap">
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('creative-writing:share-for-review')); }}
+                className="px-4 py-2 text-xs bg-amber-500/20 border border-amber-500/30 rounded-lg hover:bg-amber-500/30 flex items-center gap-1.5 text-amber-400 whitespace-nowrap"
+              >
                 <Users className="w-3.5 h-3.5" /> Share for Review
               </button>
             </div>

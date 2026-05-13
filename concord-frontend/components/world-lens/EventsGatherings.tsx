@@ -232,9 +232,17 @@ export default function EventsGatherings({
   const renderCalendar = () => (
     <div className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <button className="p-1 text-white/40 hover:text-white/70"><ChevronLeft size={16} /></button>
+        <button
+          onClick={() => { window.dispatchEvent(new CustomEvent('events:calendar-prev')); }}
+          aria-label="Previous month"
+          className="p-1 text-white/40 hover:text-white/70"
+        ><ChevronLeft size={16} /></button>
         <span className="text-sm text-white font-medium">April 2026</span>
-        <button className="p-1 text-white/40 hover:text-white/70"><ChevronRight size={16} /></button>
+        <button
+          onClick={() => { window.dispatchEvent(new CustomEvent('events:calendar-next')); }}
+          aria-label="Next month"
+          className="p-1 text-white/40 hover:text-white/70"
+        ><ChevronRight size={16} /></button>
       </div>
 
       <div className="grid grid-cols-7 gap-1">

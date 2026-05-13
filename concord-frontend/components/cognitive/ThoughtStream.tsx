@@ -138,6 +138,7 @@ export function ThoughtStream({
             </button>
           )}
           <button
+            onClick={() => { window.dispatchEvent(new CustomEvent('thought-stream:toggle-filter')); }}
             className="p-1.5 text-gray-400 hover:text-white transition-colors"
             title="Filter"
           >

@@ -496,7 +496,10 @@ export default function DigitalTwinDashboard() {
           </div>
         </div>
 
-        <button className="w-full py-2.5 text-xs font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 transition-colors">
+        <button
+          onClick={() => { window.dispatchEvent(new CustomEvent('digital-twin:create')); }}
+          className="w-full py-2.5 text-xs font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 transition-colors"
+        >
           Create Digital Twin
         </button>
       </div>

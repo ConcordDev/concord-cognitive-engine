@@ -636,7 +636,10 @@ function NotificationCenter({
       {/* Footer */}
       {filteredNotifications.length > 0 && mode === 'dropdown' && (
         <div className="border-t border-lattice-border px-4 py-2 flex-shrink-0">
-          <button className="w-full text-center text-sm text-neon-cyan hover:text-neon-cyan/80 transition-colors py-1">
+          <button
+            onClick={() => { window.dispatchEvent(new CustomEvent('notifications:open-all')); }}
+            className="w-full text-center text-sm text-neon-cyan hover:text-neon-cyan/80 transition-colors py-1"
+          >
             View all notifications
           </button>
         </div>

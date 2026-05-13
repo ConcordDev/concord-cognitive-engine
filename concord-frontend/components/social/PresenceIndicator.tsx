@@ -112,6 +112,7 @@ export function PresenceIndicator({
 
         {/* Quick actions */}
         <button
+          onClick={() => { window.dispatchEvent(new CustomEvent('presence:view-all')); }}
           className="ml-2 p-1.5 text-gray-400 hover:text-white transition-colors"
           title="View all"
         >

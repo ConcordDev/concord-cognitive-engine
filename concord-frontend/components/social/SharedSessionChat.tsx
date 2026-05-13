@@ -319,7 +319,9 @@ export function SharedSessionChat({ sessionId, currentUserId, onEnd }: SharedSes
                       <Save className="w-3 h-3" />
                       Save
                     </button>
-                    <button className="text-xs px-2 py-1 rounded bg-zinc-800
+                    <button
+                      onClick={() => { window.dispatchEvent(new CustomEvent('session-chat:download-transcript')); }}
+                      className="text-xs px-2 py-1 rounded bg-zinc-800
                       text-zinc-400 border border-zinc-700 flex items-center gap-1
                       hover:bg-zinc-700 transition-colors"
                     >

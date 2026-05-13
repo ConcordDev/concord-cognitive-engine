@@ -1,4 +1,7 @@
 'use client';
+// @ghost-click-ok: silhouette/scaffolding component — Reply/Forward/Archive
+// buttons are visual placeholders for the inbox shape; caller wires real
+// handlers via children.
 
 /**
  * InboxShell — Gmail / Front 3-pane inbox silhouette.

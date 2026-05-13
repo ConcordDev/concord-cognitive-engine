@@ -203,7 +203,11 @@ export default function HUDOverlay({
 
           {/* Right: notification bell + menu */}
           <div className="flex items-center gap-2">
-            <button className="relative p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('hud:open-notifications')); }}
+              aria-label="Notifications"
+              className="relative p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
+            >
               <Bell className="w-4 h-4 text-gray-400" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">

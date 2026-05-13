@@ -383,7 +383,10 @@ export default function CollaborationTools({
           </div>
         </div>
 
-        <button className="w-full px-4 py-2 rounded-lg bg-green-600/80 hover:bg-green-500 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2">
+        <button
+          onClick={() => { window.dispatchEvent(new CustomEvent('collaboration:craft-together')); }}
+          className="w-full px-4 py-2 rounded-lg bg-green-600/80 hover:bg-green-500 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+        >
           <Hammer size={14} /> Craft Together
         </button>
       </div>

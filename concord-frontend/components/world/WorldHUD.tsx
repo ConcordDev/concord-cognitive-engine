@@ -311,10 +311,16 @@ function DistrictActionBar({
         >
           <LogIn className="w-3.5 h-3.5" /> Enter Lens
         </button>
-        <button className="flex items-center gap-1 rounded-md border border-white/20 bg-white/5 hover:bg-white/10 text-gray-300 text-xs px-3 py-1.5 transition-colors">
+        <button
+          onClick={() => { window.dispatchEvent(new CustomEvent('world-hud:trade')); }}
+          className="flex items-center gap-1 rounded-md border border-white/20 bg-white/5 hover:bg-white/10 text-gray-300 text-xs px-3 py-1.5 transition-colors"
+        >
           <Coins className="w-3.5 h-3.5" /> Trade
         </button>
-        <button className="flex items-center gap-1 rounded-md border border-white/20 bg-white/5 hover:bg-white/10 text-gray-300 text-xs px-3 py-1.5 transition-colors">
+        <button
+          onClick={() => { window.dispatchEvent(new CustomEvent('world-hud:explore')); }}
+          className="flex items-center gap-1 rounded-md border border-white/20 bg-white/5 hover:bg-white/10 text-gray-300 text-xs px-3 py-1.5 transition-colors"
+        >
           <Compass className="w-3.5 h-3.5" /> Explore
         </button>
       </div>

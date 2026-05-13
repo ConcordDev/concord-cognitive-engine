@@ -1051,7 +1051,10 @@ export default function WhiteboardLensPage() {
                   <Save className="w-4 h-4" />{saveMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
                 <div className="relative group">
-                  <button className="px-4 py-2 bg-lattice-elevated rounded-lg hover:bg-lattice-bg flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => { window.dispatchEvent(new CustomEvent('whiteboard:toggle-export-menu')); }}
+                    className="px-4 py-2 bg-lattice-elevated rounded-lg hover:bg-lattice-bg flex items-center gap-2 text-sm"
+                  >
                     <Download className="w-4 h-4" />Export
                   </button>
                   <div className="absolute right-0 top-full mt-1 w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-30 overflow-hidden">

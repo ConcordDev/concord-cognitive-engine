@@ -10763,8 +10763,26 @@ register("voice","transcribe", async (ctx, input={}) => {
 
     if (audioBase64) {
       audioBuffer = Buffer.from(audioBase64, "base64");
-    } else if (audioPath && fs.existsSync(audioPath)) {
-      audioBuffer = fs.readFileSync(audioPath);
+    } else if (audioPath) {
+      // Path-traversal + arbitrary-read defense. The audioPath param
+      // comes straight from the lens caller — without these checks an
+      // attacker could pass /etc/passwd, server logs, or any readable
+      // file and exfiltrate its contents through OpenAI's
+      // transcription request. Constrain to the uploads dir + audio
+      // extensions only.
+      const path = await import("node:path");
+      const uploadsDir = path.resolve(process.cwd(), "data/uploads");
+      const resolved = path.resolve(audioPath);
+      const ALLOWED_EXT = /\.(wav|webm|mp3|m4a|ogg|flac)$/i;
+      if (!resolved.startsWith(uploadsDir + path.sep) && resolved !== uploadsDir) {
+        return { ok:false, error:"audioPath_outside_uploads_dir" };
+      }
+      if (!ALLOWED_EXT.test(resolved)) {
+        return { ok:false, error:"audioPath_disallowed_extension" };
+      }
+      if (fs.existsSync(resolved)) {
+        audioBuffer = fs.readFileSync(resolved);
+      }
     }
 
     if (!audioBuffer) return { ok:false, error:"audioBase64 or valid audioPath required" };
@@ -25983,6 +26001,12 @@ function getTimeInfo(timeZone = "America/New_York") {
 
 const _WEATHER_CACHE = new Map(); // key -> { ts:number, data:any }
 async function _fetchJson(url) {
+  // SSRF gate — same canonical guard the rest of the codebase uses
+  // (lib/ssrf-guard.js, wave-3). Blocks RFC1918 / loopback / link-local
+  // / metadata-service hosts so a caller can't smuggle in an attacker-
+  // controlled URL.
+  const ssrfCheck = await _ssrfValidate(url);
+  if (!ssrfCheck.ok) throw new Error(`fetch_blocked_ssrf:${ssrfCheck.error}`);
   const r = await fetch(url, { method: "GET", headers: { "accept":"application/json" }, signal: AbortSignal.timeout(10000) });
   if (!r.ok) throw new Error(`fetch_failed:${r.status}`);
   return r.json();

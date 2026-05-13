@@ -344,7 +344,11 @@ export function TrackCard({
               )}
             </div>
           )}
-          <button className="p-1 text-gray-500 hover:text-white">
+          <button
+            onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('track:menu', { detail: { trackId: track.id } })); }}
+            aria-label="Track menu"
+            className="p-1 text-gray-500 hover:text-white"
+          >
             <MoreHorizontal className="w-3.5 h-3.5" />
           </button>
         </div>

@@ -415,11 +415,17 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
                   exit={{ opacity: 0, y: -5, scale: 0.95 }}
                   className="absolute right-0 top-full mt-1 bg-lattice-surface border border-lattice-border rounded-lg overflow-hidden z-50 min-w-[160px] shadow-xl"
                 >
-                  <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors">
+                  <button
+                    onClick={() => { void navigator.clipboard?.writeText(profile.id).catch(() => {}); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
+                  >
                     <Copy className="w-4 h-4" /> Copy ID
                   </button>
                   {isOwnProfile && (
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors">
+                    <button
+                      onClick={() => { window.dispatchEvent(new CustomEvent('profile:edit', { detail: { userId: profile.id } })); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
+                    >
                       <Settings className="w-4 h-4" /> Edit Profile
                     </button>
                   )}

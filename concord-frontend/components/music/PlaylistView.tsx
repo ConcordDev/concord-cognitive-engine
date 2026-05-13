@@ -130,7 +130,11 @@ export function PlaylistView({
                 </button>
               </>
             )}
-            <button className="p-2 text-gray-400 hover:text-white">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('playlist:share', { detail: { playlistId: playlist?.id } })); }}
+              aria-label="Share playlist"
+              className="p-2 text-gray-400 hover:text-white"
+            >
               <Share2 className="w-4 h-4" />
             </button>
             <button onClick={onBack} className="text-xs text-gray-400 hover:text-white ml-auto">Back</button>

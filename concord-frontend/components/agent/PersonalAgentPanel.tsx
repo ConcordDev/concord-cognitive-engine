@@ -107,7 +107,9 @@ export function PersonalAgentPanel({ socket, onAction }: PersonalAgentPanelProps
             >
               Do it
             </button>
-            <button className="text-xs px-2 py-1 rounded bg-zinc-800
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('agent:insight-defer', { detail: { insight } })); }}
+              className="text-xs px-2 py-1 rounded bg-zinc-800
               text-zinc-500 border border-zinc-700
               hover:bg-zinc-700 transition-colors"
             >

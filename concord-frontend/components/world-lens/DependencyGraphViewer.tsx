@@ -665,7 +665,10 @@ export default function DependencyGraphViewer() {
                 </div>
               </div>
 
-              <button className="w-full mt-2 px-3 py-2 rounded-lg bg-blue-600/30 border border-blue-500/30 text-blue-300 text-xs hover:bg-blue-600/50 transition-colors">
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('dep-graph:open-dtu', { detail: { nodeId: selectedNode } })); }}
+                className="w-full mt-2 px-3 py-2 rounded-lg bg-blue-600/30 border border-blue-500/30 text-blue-300 text-xs hover:bg-blue-600/50 transition-colors"
+              >
                 Open DTU
               </button>
             </div>

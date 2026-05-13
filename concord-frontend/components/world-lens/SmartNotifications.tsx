@@ -284,10 +284,16 @@ export default function SmartNotifications({
             </p>
           </div>
           <div className="flex gap-1.5 shrink-0">
-            <button className="px-2 py-1 text-xs rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('smart-notifications:suggestion-accept', { detail: { suggestionId: suggestion.id, domain: suggestion.domain } })); }}
+              className="px-2 py-1 text-xs rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors"
+            >
               Yes
             </button>
-            <button className="px-2 py-1 text-xs rounded bg-white/5 text-gray-400 hover:bg-white/10 transition-colors">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('smart-notifications:suggestion-decline', { detail: { suggestionId: suggestion.id, domain: suggestion.domain } })); }}
+              className="px-2 py-1 text-xs rounded bg-white/5 text-gray-400 hover:bg-white/10 transition-colors"
+            >
               No
             </button>
           </div>

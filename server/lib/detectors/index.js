@@ -40,6 +40,7 @@ import { runObservabilityGapDetector } from "./observability-gap-detector.js";
 import { runAgentBudgetDetector } from "./agent-budget-detector.js";
 import { runLensDecorativeStateDetector } from "./lens-decorative-state-detector.js";
 import { runHttpErrorDetector } from "./http-error-detector.js";
+import { runFrontendGhostClickDetector } from "./frontend-ghost-click-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -348,6 +349,19 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Static patterns that surface as HTTP 400/404/409/429/504 — missing input validation, null-checks, conflict guards, per-route rate limiters, fetch/axios timeouts.",
   run: runHttpErrorDetector,
+});
+
+// Frontend ghost-click patterns — buttons without handlers, async
+// click handlers that swallow errors, forms that don't preventDefault,
+// stuck loading state. Complements http-error-detector on the
+// frontend side of the "click did nothing" UX bug class.
+registerDetector({
+  id: "frontend-ghost-click",
+  label: "FrontendGhostClickDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Frontend UI patterns where a button click does nothing visible — missing onClick handler, async fetch without error path, form submit without preventDefault, loading state without finally.",
+  run: runFrontendGhostClickDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same

@@ -41,7 +41,14 @@ export default defineConfig({
     headless: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Infra-tier specs hit cold-compiled routes via `next start`; the
+    // first goto per spec can stretch toward 60 s. Bump from the
+    // 30 s playwright default so we observe the actual page content
+    // instead of timing out on the first-route compile latency.
+    navigationTimeout: 60000,
+    actionTimeout: 30000,
   },
+  timeout: 90000,
 
   projects: [
     {

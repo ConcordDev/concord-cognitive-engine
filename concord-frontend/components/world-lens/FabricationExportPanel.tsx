@@ -406,6 +406,7 @@ export default function FabricationExportPanel() {
             {exportStage === 'completed' && (
               <div className="space-y-2 pt-1">
                 <button
+                  onClick={() => { window.dispatchEvent(new CustomEvent('fabrication:download', { detail: { extension: formatInfo.extension } })); }}
                   className="w-full py-2 rounded-lg bg-green-600 hover:bg-green-500 font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                 >
                   <span>&#8681;</span> Download {formatInfo.extension}
