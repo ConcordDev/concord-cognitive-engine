@@ -1,0 +1,12 @@
+{
+  "id": "rebellion_fired",
+  "name": "Rebellion Fired",
+  "trigger": "rebellion_fired",
+  "comment": "Phase W — torch-lit street tilt + raised-fist crowd shot + ruler's-eye reverse.",
+  "shots": [
+    { "camera": "dutch_tilt",         "duration_ms": 1200, "audio_sting": "torch_crackle" },
+    { "camera": "crane_pull",         "duration_ms": 1800 },
+    { "camera": "close_on",           "duration_ms": 1500, "time_scale": 0.6 },
+    { "camera": "reverse_over_shoulder", "duration_ms": 1800, "easing": "ease_in_quad" }
+  ]
+}

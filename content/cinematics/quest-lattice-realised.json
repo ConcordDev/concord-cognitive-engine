@@ -1,0 +1,13 @@
+{
+  "id": "quest_lattice_realised",
+  "name": "Lattice Quest Realised",
+  "trigger": "quest_lattice_realised",
+  "comment": "Phase W — fires when a lattice-born quest is realised. Slow zoom on quest's anchor NPC, three lattice-node light pulses, dwell.",
+  "shots": [
+    { "camera": "dolly_in",       "duration_ms": 1800, "easing": "ease_out_quad" },
+    { "camera": "close_on",       "duration_ms": 1200, "time_scale": 0.6, "audio_sting": "lattice_chime" },
+    { "camera": "whip_pan",       "duration_ms": 350 },
+    { "camera": "crane_pull",     "duration_ms": 1500, "easing": "ease_in_quad" },
+    { "camera": "pull_back",      "duration_ms": 2000 }
+  ]
+}

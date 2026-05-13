@@ -31,6 +31,9 @@ export function CinematicTriggerBridge() {
 
     (async () => {
       const dir = await import('@/lib/world-lens/cinematic-director');
+      // Phase W — load all authored sequences (idempotent).
+      const { ensureCinematicsRegistered } = await import('@/lib/world-lens/cinematic-sequences-registry');
+      ensureCinematicsRegistered();
       if (disposed) return;
 
       function fire(trigger: string, payload: unknown) {

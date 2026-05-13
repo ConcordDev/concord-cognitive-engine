@@ -1,0 +1,13 @@
+{
+  "id": "boss_arrival",
+  "name": "Boss Arrival",
+  "trigger": "boss_arrival",
+  "comment": "Phase W — wide environmental shot + boss silhouette emerge + name-card flash.",
+  "shots": [
+    { "camera": "crane_pull",     "duration_ms": 1500 },
+    { "camera": "whip_pan",       "duration_ms": 300, "audio_sting": "boss_bell" },
+    { "camera": "dolly_in",       "duration_ms": 2000, "easing": "ease_out_quad", "time_scale": 0.5 },
+    { "camera": "close_on",       "duration_ms": 1500 },
+    { "camera": "pull_back",      "duration_ms": 1800 }
+  ]
+}
