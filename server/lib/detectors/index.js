@@ -42,6 +42,12 @@ import { runLensDecorativeStateDetector } from "./lens-decorative-state-detector
 import { runHttpErrorDetector } from "./http-error-detector.js";
 import { runFrontendGhostClickDetector } from "./frontend-ghost-click-detector.js";
 import { runDeadEventListenerDetector } from "./dead-event-listener-detector.js";
+import { runUxBrokenLinkDetector } from "./ux-broken-link-detector.js";
+import { runUxA11yButtonNoLabelDetector } from "./ux-a11y-button-no-label-detector.js";
+import { runUxLoadingStateMissingDetector } from "./ux-loading-state-missing-detector.js";
+import { runUxFormErrorDisplayDetector } from "./ux-form-error-display-detector.js";
+import { runUxRouteEmptyRenderDetector } from "./ux-route-empty-render-detector.js";
+import { runUxModalNoEscapeDetector } from "./ux-modal-no-escape-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -377,6 +383,57 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Namespaced CustomEvent names dispatched with no addEventListener/useEventListener subscriber anywhere in the frontend tree.",
   run: runDeadEventListenerDetector,
+});
+
+// UX-quality detector suite — six per-shape regression gates so
+// "top-notch UX with no issues" stays a measurable property.
+registerDetector({
+  id: "ux-broken-link",
+  label: "UxBrokenLinkDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "<Link href>/router.push targets that don't match any concord-frontend/app/ route — clicking 404s.",
+  run: runUxBrokenLinkDetector,
+});
+registerDetector({
+  id: "ux-a11y-button-no-label",
+  label: "UxA11yButtonNoLabelDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Icon-only <button> with no aria-label / aria-labelledby / title / visible text.",
+  run: runUxA11yButtonNoLabelDetector,
+});
+registerDetector({
+  id: "ux-loading-state-missing",
+  label: "UxLoadingStateMissingDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Async onClick that hits the network with no visible loading state — double-click vulnerable.",
+  run: runUxLoadingStateMissingDetector,
+});
+registerDetector({
+  id: "ux-form-error-display",
+  label: "UxFormErrorDisplayDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "<form onSubmit> with a silent catch block — failed submissions invisible to the user.",
+  run: runUxFormErrorDisplayDetector,
+});
+registerDetector({
+  id: "ux-route-empty-render",
+  label: "UxRouteEmptyRenderDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Lens page that returns null/undefined/<></> with no EmptyState / Skeleton / loading guard — blank screen.",
+  run: runUxRouteEmptyRenderDetector,
+});
+registerDetector({
+  id: "ux-modal-no-escape",
+  label: "UxModalNoEscapeDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "<Modal>/<Dialog>/<Drawer>/<Sheet>/<Popover>/<Overlay> opened without onClose / onOpenChange / Esc handler — traps the user.",
+  run: runUxModalNoEscapeDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same

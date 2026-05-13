@@ -416,14 +416,14 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
                   className="absolute right-0 top-full mt-1 bg-lattice-surface border border-lattice-border rounded-lg overflow-hidden z-50 min-w-[160px] shadow-xl"
                 >
                   <button
-                    onClick={() => { void navigator.clipboard?.writeText(profile.id).catch(() => {}); }}
+                    onClick={() => { void navigator.clipboard?.writeText(profile.userId).catch(() => {}); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
                   >
                     <Copy className="w-4 h-4" /> Copy ID
                   </button>
                   {isOwnProfile && (
                     <button
-                      onClick={() => { window.dispatchEvent(new CustomEvent('profile:edit', { detail: { userId: profile.id } })); }}
+                      onClick={() => { window.dispatchEvent(new CustomEvent('profile:edit', { detail: { userId: profile.userId } })); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
                     >
                       <Settings className="w-4 h-4" /> Edit Profile

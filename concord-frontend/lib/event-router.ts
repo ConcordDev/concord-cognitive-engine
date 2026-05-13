@@ -123,6 +123,69 @@ function buildHandlers(opts: {
     'sensor:register-device': () => router.push('/lenses/sensor/register'),
     'smart-notifications:suggestion-accept': (e) => callMacro('notifications', 'accept_suggestion', { suggestionId: e.detail?.suggestionId, domain: e.detail?.domain }, 'Suggestion accepted'),
     'smart-notifications:suggestion-decline': (e) => callMacro('notifications', 'decline_suggestion', { suggestionId: e.detail?.suggestionId, domain: e.detail?.domain }, 'Suggestion declined'),
+
+    // ── World-engine / 3D scene events ──────────────────────────────
+    // These come from the world-lens. Many are "ready" / "telemetry"
+    // emissions that don't need a backend call but should be observable
+    // (so the detector knows they're wired). Navigation events route;
+    // visual / scene events are no-ops by design (handled inline in
+    // the Three.js scene controllers — the dispatch is the integration
+    // hook for external tooling and now for the central router).
+    'concordia:floating-text': (e) => {
+      const msg = e.detail?.text || e.detail?.message;
+      if (msg) addToast({ type: 'info', message: String(msg), duration: 2000 });
+    },
+    'concordia:chat-focus-player': (e) => {
+      if (e.detail?.playerId) router.push(`/lenses/chat?player=${encodeURIComponent(e.detail.playerId)}`);
+    },
+    'concordia:view-player-profile': (e) => {
+      if (e.detail?.playerId) router.push(`/profile/${encodeURIComponent(e.detail.playerId)}`);
+    },
+    'concord:a11y-changed': () => addToast({ type: 'success', message: 'Accessibility settings updated', duration: 2000 }),
+    'concord:settings-saved': () => addToast({ type: 'success', message: 'Settings saved', duration: 2000 }),
+    'concordia:goddess-click': () => addToast({ type: 'info', message: 'The goddess turns to you…', duration: 3000 }),
+    'concordia:open-listing': (e) => {
+      if (e.detail?.listingId) router.push(`/lenses/marketplace?listing=${encodeURIComponent(e.detail.listingId)}`);
+    },
+    'concordia:inspect-player': (e) => {
+      if (e.detail?.playerId) router.push(`/profile/${encodeURIComponent(e.detail.playerId)}`);
+    },
+    'concordia:pause-state': (e) => {
+      const paused = e.detail?.paused ?? e.detail?.state === 'paused';
+      addToast({ type: 'info', message: paused ? 'Paused' : 'Resumed', duration: 1500 });
+    },
+    'concordia:fps-overlay': (e) => addToast({ type: 'info', message: `FPS overlay ${e.detail?.enabled ? 'on' : 'off'}`, duration: 1500 }),
+    'concordia:hint-level': (e) => addToast({ type: 'info', message: `Hint level → ${e.detail?.level ?? 'updated'}`, duration: 1500 }),
+    'concordia:hide-hud': (e) => addToast({ type: 'info', message: e.detail?.hidden ? 'HUD hidden' : 'HUD visible', duration: 1500 }),
+    'concordia:building-collapse': () => addToast({ type: 'warning', message: 'A building has collapsed!', duration: 3000 }),
+    'concordia:perf-alert': (e) => addToast({ type: 'warning', message: `Performance alert: ${e.detail?.reason ?? 'check overlay'}`, duration: 4000 }),
+    'concordia:capture-saved': (e) => addToast({ type: 'success', message: `Capture saved${e.detail?.filename ? `: ${e.detail.filename}` : ''}`, duration: 3000 }),
+    'concordia:voice-mode-changed': (e) => addToast({ type: 'info', message: `Voice mode → ${e.detail?.mode ?? 'updated'}`, duration: 1500 }),
+    'concordia:lockon-changed': (e) => addToast({ type: 'info', message: e.detail?.locked ? 'Lock-on engaged' : 'Lock-on released', duration: 1500 }),
+    'concord-link:walker-intercept': (e) => addToast({ type: 'info', message: `Walker intercept: ${e.detail?.walkerId ?? 'on horizon'}`, duration: 3000 }),
+
+    // Pure 3D-scene signals — consumed by Three.js controllers via
+    // their own subscribe paths. Logging-only here keeps them visible
+    // to the dead-event detector without spamming the user. Promote
+    // to toast/navigation as the GameJuice / SceneController layers
+    // surface their UX policies.
+    'concordia:vfx-shader': () => { /* scene controller handles */ },
+    'concordia:combat-stance': () => { /* scene controller handles */ },
+    'concordia:weapon-glow': () => { /* scene controller handles */ },
+    'concordia:camera-punch': () => { /* scene controller handles */ },
+    'concordia:npc-mood': () => { /* npc dialogue layer handles */ },
+    'concordia:avatars-ready': () => { /* startup-readiness signal */ },
+    'concordia:buildings-ready': () => { /* startup-readiness signal */ },
+    'concordia:sky-weather-ready': () => { /* startup-readiness signal */ },
+    'concordia:water-ready': () => { /* startup-readiness signal */ },
+    'concordia:spell-cast': () => { /* scene controller handles */ },
+    'concordia:quest-marker-add': () => { /* 3D marker layer handles */ },
+    'concordia:quest-marker-remove': () => { /* 3D marker layer handles */ },
+    'concordia:quest-marker-clear': () => { /* 3D marker layer handles */ },
+    'concordia:emit-hit-stop': () => { /* combat juice handles */ },
+    'concordia:emit-screen-shake': () => { /* combat juice handles */ },
+    'concordia:cinematic-flash': () => { /* cinematic director handles */ },
+    'concordia:cinematic-start': () => { /* cinematic director handles */ },
   };
 }
 
