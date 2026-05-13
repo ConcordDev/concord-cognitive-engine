@@ -30,6 +30,7 @@ import { StaminaPanel } from './panels/StaminaPanel';
 import { UnderwaterPanel } from './panels/UnderwaterPanel';
 import { HUDSettingsPanel } from './panels/HUDSettingsPanel';
 import { DecreePanel } from './panels/DecreePanel';
+import { ConcordLinkPanel } from './panels/ConcordLinkPanel';
 
 const PANEL_REGISTRY: Record<string, { label: string; Component: React.ComponentType }> = {
   bloodline:    { label: 'Bloodline',  Component: BloodlinePanel },
@@ -46,6 +47,7 @@ const PANEL_REGISTRY: Record<string, { label: string; Component: React.Component
   underwater:   { label: 'Underwater', Component: UnderwaterPanel },
   'hud-settings':{ label: 'HUD Settings', Component: HUDSettingsPanel },
   decree:       { label: 'Issue Decree', Component: DecreePanel },
+  'concord-link':{ label: 'Concord Link', Component: ConcordLinkPanel },
 };
 
 export function PanelHost() {
