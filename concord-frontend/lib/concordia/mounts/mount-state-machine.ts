@@ -23,7 +23,8 @@ import type { MountedState } from "./mount-types";
 type TransitionMap = Record<MountedState, ReadonlySet<MountedState>>;
 
 export const MOUNT_TRANSITIONS: TransitionMap = {
-  unmounted:        new Set<MountedState>(["mounting"]),
+  // Player-driven mounted states.
+  unmounted:        new Set<MountedState>(["mounting", "wandering", "feeding", "fleeing"]),
   mounting:         new Set<MountedState>(["mounted_idle", "unmounted"]),
   mounted_idle:     new Set<MountedState>(["mounted_walk", "mounted_combat", "dismounting"]),
   mounted_walk:     new Set<MountedState>(["mounted_idle", "mounted_trot", "dismounting"]),
@@ -31,6 +32,10 @@ export const MOUNT_TRANSITIONS: TransitionMap = {
   mounted_gallop:   new Set<MountedState>(["mounted_trot", "dismounting"]),
   mounted_combat:   new Set<MountedState>(["mounted_idle", "mounted_walk", "dismounting"]),
   dismounting:      new Set<MountedState>(["unmounted"]),
+  // Phase U — substrate-driven loose mount behaviour.
+  wandering:        new Set<MountedState>(["unmounted", "fleeing", "feeding", "mounting"]),
+  fleeing:          new Set<MountedState>(["unmounted", "wandering"]),
+  feeding:          new Set<MountedState>(["unmounted", "wandering"]),
 };
 
 export function canTransition(from: MountedState, to: MountedState): boolean {

@@ -468,6 +468,12 @@ registerHeartbeat("npc-travel-cycle",      { frequency: 60, handler: runNpcTrave
 registerHeartbeat("npc-vs-npc-combat",     { frequency: 8,  handler: runNpcVsNpcCombatCycle });
 registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbitionCycle });
 
+// Phase U — substrate-driven loose mount behaviour. Picks
+// wandering / fleeing / feeding per loose mount, advances position
+// one step, emits mount:behavior socket events on state change.
+import { runMountBehaviorCycle } from "./emergent/mount-behavior-cycle.js";
+registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBehaviorCycle });
+
 // Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
 // (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
 // NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
