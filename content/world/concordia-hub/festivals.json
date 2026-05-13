@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "comment": "Concordia Phase 9 — 18 authored Tunyan observances, one per month.",
+  "festivals": [
+    { "monthIndex": 1,  "monthName": "Arbor",   "name": "Arbor Vigil",            "theme": "celebration of trees",   "participants": ["scholar","mystic"], "decree_kind": "festival", "loyalty_delta": 12 },
+    { "monthIndex": 2,  "monthName": "Cares",   "name": "Cares Ritual",           "theme": "love the land",          "participants": ["healer","mystic"],  "decree_kind": "festival", "loyalty_delta": 12 },
+    { "monthIndex": 3,  "monthName": "Wound",   "name": "Wound Wind-Sing",        "theme": "celebration of wind",    "participants": ["warrior","mystic"], "decree_kind": "festival", "loyalty_delta": 14 },
+    { "monthIndex": 4,  "monthName": "Prail",   "name": "First Furrow",           "theme": "planting begins",        "participants": ["farmer","trader"],  "decree_kind": "festival", "loyalty_delta": 10 },
+    { "monthIndex": 5,  "monthName": "Harvest", "name": "Reaping Bell",           "theme": "first harvest",          "participants": ["farmer","trader"],  "decree_kind": "festival", "loyalty_delta": 16 },
+    { "monthIndex": 6,  "monthName": "Pisces",  "name": "Salt of the Catch",      "theme": "salt-fish preservation", "participants": ["fisherman"],        "decree_kind": "festival", "loyalty_delta": 12 },
+    { "monthIndex": 7,  "monthName": "Brine",   "name": "Glean Walk",             "theme": "post-harvest glean",     "participants": ["trader","farmer"],  "decree_kind": "festival", "loyalty_delta": 10 },
+    { "monthIndex": 8,  "monthName": "Cull",    "name": "Cull Night",             "theme": "ritual slaughter",       "participants": ["hunter","warrior"], "decree_kind": "festival", "loyalty_delta": 12 },
+    { "monthIndex": 9,  "monthName": "Hearth",  "name": "Hearth-Long Telling",    "theme": "story season opens",     "participants": ["scholar","mystic"], "decree_kind": "festival", "loyalty_delta": 14 },
+    { "monthIndex": 10, "monthName": "Frost",   "name": "Frost Bell",             "theme": "first frost honored",    "participants": ["mystic"],            "decree_kind": "festival", "loyalty_delta": 10 },
+    { "monthIndex": 11, "monthName": "Hollow",  "name": "Hollow Night",           "theme": "darkest month",          "participants": ["mystic","healer"],  "decree_kind": "festival", "loyalty_delta": 12 },
+    { "monthIndex": 12, "monthName": "Embers",  "name": "Embers Kindling",        "theme": "Sanguire fire-rite",     "participants": ["warrior","mystic"], "decree_kind": "festival", "loyalty_delta": 14 },
+    { "monthIndex": 13, "monthName": "Quicken", "name": "Quicken Naming",         "theme": "newborn names",          "participants": ["healer","scholar"], "decree_kind": "festival", "loyalty_delta": 12 },
+    { "monthIndex": 14, "monthName": "Thaw",    "name": "Thaw Procession",        "theme": "river opens",            "participants": ["trader","fisherman"],"decree_kind": "festival", "loyalty_delta": 10 },
+    { "monthIndex": 15, "monthName": "Bloom",   "name": "Bloom Court",            "theme": "courtship dances",       "participants": ["trader","mystic"],  "decree_kind": "festival", "loyalty_delta": 12 },
+    { "monthIndex": 16, "monthName": "Lull",    "name": "Lull Repose",            "theme": "rest before peak",       "participants": ["healer"],            "decree_kind": "festival", "loyalty_delta": 10 },
+    { "monthIndex": 17, "monthName": "Tide",    "name": "Tide-Honoring",          "theme": "Akeia water-rite",       "participants": ["mystic","healer"],  "decree_kind": "festival", "loyalty_delta": 14 },
+    { "monthIndex": 18, "monthName": "Zenith",  "name": "Zenith Convocation",     "theme": "year crowns",            "participants": ["scholar","warrior","mystic","healer","trader","hunter"], "decree_kind": "festival", "loyalty_delta": 18 }
+  ]
+}
