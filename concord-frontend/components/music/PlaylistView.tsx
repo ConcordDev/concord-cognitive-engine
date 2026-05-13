@@ -131,7 +131,7 @@ export function PlaylistView({
               </>
             )}
             <button
-              onClick={() => { window.dispatchEvent(new CustomEvent('playlist:share', { detail: { playlistId: playlist?.id } })); }}
+              onClick={() => { window.dispatchEvent(new CustomEvent('playlist:share', { detail: { playlistId: playlist.id } })); }}
               aria-label="Share playlist"
               className="p-2 text-gray-400 hover:text-white"
             >

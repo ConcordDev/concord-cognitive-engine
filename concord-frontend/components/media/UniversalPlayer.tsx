@@ -735,7 +735,7 @@ function DocumentViewer({
         </button>
         <div className="w-px h-5 bg-lattice-border mx-1" />
         <button
-          onClick={() => { if (mediaDTU.url) { const a = document.createElement('a'); a.href = mediaDTU.url; a.download = mediaDTU.title || 'download'; a.click(); } }}
+          onClick={() => { const a = document.createElement('a'); a.href = `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`; a.download = mediaDTU.title || 'download'; a.click(); }}
           aria-label="Download"
           className="p-2 text-gray-400 hover:text-white hover:bg-lattice-surface rounded-lg transition-colors"
         >
@@ -919,14 +919,14 @@ export function UniversalPlayer({
             <MessageCircle className="w-5 h-5" />
           </button>
           <button
-            onClick={() => { if (navigator.share && mediaDTU.url) { void navigator.share({ title: mediaDTU.title, url: mediaDTU.url }).catch(() => {}); } else if (mediaDTU.url) { void navigator.clipboard?.writeText(mediaDTU.url).catch(() => {}); } }}
+            onClick={() => { const shareUrl = `${window.location.origin}/api/media/${encodeURIComponent(mediaDTU.id)}/stream`; if (navigator.share) { void navigator.share({ title: mediaDTU.title, url: shareUrl }).catch(() => {}); } else { void navigator.clipboard?.writeText(shareUrl).catch(() => {}); } }}
             aria-label="Share"
             className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
           >
             <Share2 className="w-5 h-5" />
           </button>
           <button
-            onClick={() => { if (mediaDTU.url) { const a = document.createElement('a'); a.href = mediaDTU.url; a.download = mediaDTU.title || 'download'; a.click(); } }}
+            onClick={() => { const a = document.createElement('a'); a.href = `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`; a.download = mediaDTU.title || 'download'; a.click(); }}
             aria-label="Download"
             className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
           >
