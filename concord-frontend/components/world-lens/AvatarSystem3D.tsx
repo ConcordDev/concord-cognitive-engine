@@ -325,6 +325,34 @@ export default function AvatarSystem3D({
   const secondaryPhysicsRef = useRef<SecondaryPhysicsManager | null>(null);
   const facialControllersRef = useRef<Map<string, FacialController>>(new Map());
 
+  // Phase L — NPC appearance hydration. On world change, fetch
+  // appearance.for_world and cache per-NPC hints (faction visual +
+  // appearance prose + heroMesh flag) so createAvatarMeshSmart picks
+  // them up. Stored in a window-level cache because the NPC mesh
+  // creation happens inside an async loop the React state doesn't
+  // own directly.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let cancelled = false;
+    const worldId = (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub');
+    fetch('/api/lens/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: 'appearance', name: 'for_world', input: { worldId, limit: 300 } }),
+    }).then((r) => r.json()).then((j) => {
+      if (cancelled) return;
+      const list = j?.result?.npcs;
+      if (!Array.isArray(list)) return;
+      const cache = (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ || new Map();
+      for (const hint of list) {
+        const h = hint as { npcId: string };
+        cache.set(h.npcId, hint);
+      }
+      (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ = cache;
+    }).catch(() => { /* hydration optional */ });
+    return () => { cancelled = true; };
+  }, []);
+
   // Phase B4 — lip-sync listener. DialoguePanel emits
   // `concordia:lip-sync` { npcId, text, wpm } when an NPC speaks; this
   // hook builds the phoneme schedule and drives the matching
@@ -716,13 +744,24 @@ export default function AvatarSystem3D({
             import('@/lib/world-lens/enhanced-avatar-builder'),
             import('@/lib/world-lens/character-schema'),
           ]);
+          // Phase L — pull hydrated hints from the world-load cache.
+          const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
+          const hint = cache?.get(avatarId) as {
+            factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
+            appearanceText?: string;
+            heroMesh?: boolean;
+            factionId?: string;
+            archetype?: string;
+          } | undefined;
           const rich = schemaMod.generateAppearance({
             id: avatarId,
             worldId: opts.worldId || 'concordia-hub',
-            factionId: opts.factionId ?? null,
-            archetype: opts.archetype ?? null,
+            factionId: opts.factionId ?? hint?.factionId ?? null,
+            archetype: opts.archetype ?? hint?.archetype ?? null,
             themeId: 'concordia-hub',
-            heroMesh: opts.isHero,
+            heroMesh: opts.isHero || !!hint?.heroMesh,
+            factionVisual: hint?.factionVisual ?? null,
+            npcAppearanceText: hint?.appearanceText ?? null,
             override: {
               skinColor: appearance.skinColor,
               hairColor: appearance.hairColor,
