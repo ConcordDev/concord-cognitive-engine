@@ -173,6 +173,58 @@ const QUEST_TEMPLATES = {
     ],
     location_kind: "workplace",
   },
+  // Phase 6 — ecology imbalance templates. Predator-prey collapse becomes
+  // a procedural quest the player can take to thin the herd back to
+  // balance. The lattice-quest-cycle drains ecology_imbalance_log rows
+  // into alerts of these types.
+  predator_excess: {
+    archetype_targets: ["hunter", "guard", "scholar"],
+    title_pool: [
+      "Thin the pack",
+      "The hunt that became a famine",
+      "Where the prey ran out",
+    ],
+    summary: "A predator population has outgrown its prey. The herd is in collapse. Reduce the predators before the biome empties.",
+    steps: [
+      { type: "investigate", prompt_pool: [
+        "Walk the biome and count the predators against the prey.",
+        "Find where the predators den at night.",
+      ] },
+      { type: "confront", prompt_pool: [
+        "Cull a predator pack at their hunting ground.",
+        "Drive a predator group into competing territory.",
+      ] },
+      { type: "resolve", prompt_pool: [
+        "Bring a hide DTU to the regional hunter and close the quest.",
+        "Plant a prey-protection ward at the herd's water source.",
+      ] },
+    ],
+    location_kind: "wilds",
+  },
+  prey_collapse: {
+    archetype_targets: ["healer", "mystic", "hunter"],
+    title_pool: [
+      "What's killing the herd",
+      "The empty grazing ground",
+      "Trace the disappearance",
+    ],
+    summary: "A herd has thinned past sustainable bounds — sickness, over-hunting, or something stranger. Find what's taking them.",
+    steps: [
+      { type: "investigate", prompt_pool: [
+        "Examine the grazing ground for tracks and tooth-marks.",
+        "Walk the herd's known watering holes after dusk.",
+      ] },
+      { type: "confront", prompt_pool: [
+        "Confront the cause — predator, plague, or poacher.",
+        "Sample the carcasses for sickness signals.",
+      ] },
+      { type: "resolve", prompt_pool: [
+        "Author a population-restoration DTU at the regional shrine.",
+        "Escort breeding stock from a healthy neighbouring biome.",
+      ] },
+    ],
+    location_kind: "wilds",
+  },
 };
 
 // ── Public API ──────────────────────────────────────────────────────────────

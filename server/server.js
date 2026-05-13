@@ -509,6 +509,16 @@ registerHeartbeat("lattice-quest-cycle", {
   handler: runLatticeQuestCycle,
 });
 
+// Phase 6: Ecology quest cycle. Drains ecology_imbalance_log rows (set
+// by fauna-spawner when predator/prey ratios fall out of bounds) into
+// procedural quests via the lattice-quest-composer. Frequency 240
+// (~60min); kill-switch CONCORD_ECOLOGY_QUESTS=0.
+import { runEcologyQuestCycle } from "./emergent/ecology-quest-cycle.js";
+registerHeartbeat("ecology-quest-cycle", {
+  frequency: 240,
+  handler: runEcologyQuestCycle,
+});
+
 // Phase 5c: Seasons + Long-cycle Time. Every 480 ticks (~2h) advances
 // world seasons (6 seasons × 7 days each = 42-day Concordia year).
 // Bias env signals via seasonalBias and modulate gather yield via
@@ -23152,6 +23162,12 @@ registerNpcLegacyMacros(register);
 import registerNemesisMacros from "./domains/nemesis.js";
 registerNemesisMacros(register);
 
+// Phase 6 — ecology surface. Creature homes (caves / nests / burrows),
+// sleep patterns, and predator-prey imbalance signals that the
+// lattice-quest-cycle drains into procedural quests.
+import registerEcologyMacros from "./domains/ecology.js";
+registerEcologyMacros(register);
+
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
 // recent_moves / get_relation reads.
@@ -28815,6 +28831,13 @@ if (db) {
         citizens: r.citizens_seeded,
       }));
     } catch (e) { console.warn("[kingdom-seeder]", e.message); }
+    // Phase 6 — seed creature sleep patterns (per-species circadian
+    // table). Idempotent. Spawner reads this to gate home-vs-roam.
+    try {
+      const { seedSleepPatterns } = await import("./lib/ecosystem/creature-homes.js");
+      const r = seedSleepPatterns(db);
+      console.log("[creature-sleep-seeder]", JSON.stringify({ patterns: r.seeded }));
+    } catch (e) { console.warn("[creature-sleep-seeder]", e.message); }
     // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
     try {
       const starter = await import("./lib/starter-content.js");

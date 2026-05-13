@@ -15,6 +15,7 @@ import crypto from "node:crypto";
 import { speciesForBiome } from "./loot-tables.js";
 import { signalsForWorld } from "../embodied/environment-sensor.js";
 import { getWorldMeta } from "../cross-world-effectiveness.js";
+import { ensureHomeFor, recordImbalance } from "./creature-homes.js";
 
 const BIOMES = ["plains", "forest", "highland", "mountain", "water", "arid"];
 
@@ -190,9 +191,49 @@ export function runFaunaSpawner({ state, db }) {
     for (const biome of biomesForWorld(worldId)) {
       if (spawned >= BATCH_LIMIT) break;
       const species = speciesForBiome(universe, biome);
+
+      // Phase 6 — ecology imbalance scan. For each biome, compare live
+      // predator total vs. live herbivore total against their summed
+      // targets. When predators exceed 1.5× target AND herbivores fall
+      // below 0.3× target, signal a "predator_excess" imbalance row.
+      try {
+        const bounds = biomesForWorld(worldId); // touch — avoid unused tag
+        void bounds;
+        let preyLive = 0, preyTarget = 0, predLive = 0, predTarget = 0;
+        for (const sp of species) {
+          const count = db.prepare(`
+            SELECT COUNT(*) AS c FROM world_npcs
+            WHERE world_id = ? AND archetype = ? AND is_dead = 0
+          `).get(worldId, `creature:${sp.id}`)?.c ?? 0;
+          if (sp.lifestyle === "herbivore") {
+            preyLive += count; preyTarget += sp.target;
+          } else if (sp.lifestyle === "carnivore") {
+            predLive += count; predTarget += sp.target;
+          }
+        }
+        if (
+          preyTarget > 0 && predTarget > 0 &&
+          predLive >= predTarget * 1.5 &&
+          preyLive <= preyTarget * 0.3
+        ) {
+          recordImbalance(db, {
+            worldId,
+            biome,
+            kind: "predator_excess",
+            severity: Math.min(5, Math.round(predLive / Math.max(1, predTarget))),
+            summary: `${biome} in ${worldId}: ${predLive} predators vs ${preyLive} prey (targets ${predTarget}/${preyTarget}). The herd is in collapse.`,
+          });
+        }
+      } catch { /* imbalance log is best-effort */ }
+
       for (const sp of species) {
         if (spawned >= BATCH_LIMIT) break;
         const popKey = `${worldId}::${biome}::${sp.id}`;
+
+        // Phase 6 — ensure this species has a home anchor in this biome
+        // so the population isn't spawning out of thin air with nowhere
+        // to retreat. Idempotent on (world, biome, species).
+        try { ensureHomeFor(db, { worldId, biome, speciesId: sp.id }); } catch { /* best-effort */ }
         // Upsert population row.
         const existing = db.prepare(`
           SELECT * FROM creature_population
