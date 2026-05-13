@@ -41,6 +41,7 @@ import { runAgentBudgetDetector } from "./agent-budget-detector.js";
 import { runLensDecorativeStateDetector } from "./lens-decorative-state-detector.js";
 import { runHttpErrorDetector } from "./http-error-detector.js";
 import { runFrontendGhostClickDetector } from "./frontend-ghost-click-detector.js";
+import { runDeadEventListenerDetector } from "./dead-event-listener-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -362,6 +363,20 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Frontend UI patterns where a button click does nothing visible — missing onClick handler, async fetch without error path, form submit without preventDefault, loading state without finally.",
   run: runFrontendGhostClickDetector,
+});
+
+// Ghost-event pattern — CustomEvent dispatched with no subscriber.
+// Closes the wiring loop: ghost-click ensures every button has an
+// onClick; dead-event-listener ensures every dispatched event has a
+// listener. Without it, a fully-wired button can still produce a
+// dead UX (the event fires but nothing acts on it).
+registerDetector({
+  id: "dead-event-listener",
+  label: "DeadEventListenerDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Namespaced CustomEvent names dispatched with no addEventListener/useEventListener subscriber anywhere in the frontend tree.",
+  run: runDeadEventListenerDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same
