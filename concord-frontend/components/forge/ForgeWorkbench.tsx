@@ -417,6 +417,8 @@ export function ForgeWorkbench() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setConcordNode(!concordNode)}
+                aria-label={`Concord node — ${concordNode ? 'on' : 'off'}`}
+                aria-pressed={concordNode}
                 className={cn(
                   'relative w-11 h-6 rounded-full transition-colors',
                   concordNode ? 'bg-orange-500' : 'bg-gray-700'

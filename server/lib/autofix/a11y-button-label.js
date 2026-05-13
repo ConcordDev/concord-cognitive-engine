@@ -225,8 +225,12 @@ function extractChildren(content, openTagEndIdx) {
 }
 
 function singleIconChild(children) {
-  // Strip whitespace. If what remains is a single JSX icon — possibly
-  // wrapped in 1-2 layers of <span>/<div> — return the icon name.
+  // Strip whitespace. If what remains is one or more JSX icons —
+  // possibly wrapped in 1-3 layers of <span>/<div> — return the
+  // FIRST icon's name. Multi-icon patterns like
+  // `<button><Shield /><ChevronDown /></button>` use the first icon
+  // (the action) as the label; the trailing icon (chevron, dot,
+  // etc.) is presentational.
   let trimmed = children.trim();
   // Peel up to 3 layers of single-element HTML wrappers
   // (<span>…</span>, <div>…</div>, <i>…</i>) that contain exactly
@@ -236,9 +240,16 @@ function singleIconChild(children) {
     if (!wrapper) break;
     trimmed = wrapper[2].trim();
   }
-  // Self-closing: <Icon ... />
-  const selfClose = /^<([A-Z]\w*)\b[^>]*\/>\s*$/.exec(trimmed);
-  if (selfClose) return selfClose[1];
+  // First-icon-wins: scan for the first self-closing JSX icon. If
+  // EVERYTHING that follows is icons-or-whitespace, accept it.
+  const firstIcon = /^<([A-Z]\w*)\b[^>]*\/>/.exec(trimmed);
+  if (firstIcon) {
+    const name = firstIcon[1];
+    const after = trimmed.slice(firstIcon[0].length);
+    // Confirm everything after is also icons-only (whitespace + more
+    // self-closing JSX). Refuse if any text or expression appears.
+    if (/^(?:\s|<[A-Z]\w*\b[^>]*\/>)*$/.test(after)) return name;
+  }
   // Paired: <Icon ... ></Icon>
   const paired = /^<([A-Z]\w*)\b[^>]*>\s*<\/[A-Z]\w*>\s*$/.exec(trimmed);
   if (paired) return paired[1];

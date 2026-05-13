@@ -350,6 +350,8 @@ export default function FabricationExportPanel() {
           <span className="text-xs text-white/60">Generate Supports</span>
           <button
             onClick={() => updateParam('supports', !params.supports)}
+            aria-label={`Generate Supports — ${params.supports ? 'on' : 'off'}`}
+            aria-pressed={params.supports}
             className={`relative w-10 h-5 rounded-full transition-colors ${
               params.supports ? 'bg-cyan-500' : 'bg-white/20'
             }`}

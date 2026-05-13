@@ -142,7 +142,7 @@ export default function CameraControls({
           <button
             onClick={() => onZoom(Math.max(0, cameraState.zoom - 5))}
             className="p-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
-          >
+          aria-label="Zoom out">
             <ZoomOut className="w-3.5 h-3.5 text-gray-400" />
           </button>
           <div className="flex-1 relative">
@@ -174,7 +174,7 @@ export default function CameraControls({
           <button
             onClick={() => onZoom(Math.min(100, cameraState.zoom + 5))}
             className="p-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
-          >
+          aria-label="Zoom in">
             <ZoomIn className="w-3.5 h-3.5 text-gray-400" />
           </button>
         </div>
@@ -188,7 +188,7 @@ export default function CameraControls({
           <button
             onClick={rotateLeft}
             className="p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
-          >
+          aria-label="Rotate cw">
             <RotateCw className="w-4 h-4 text-gray-400 -scale-x-100" />
           </button>
           <div className="flex gap-1">
@@ -209,7 +209,7 @@ export default function CameraControls({
           <button
             onClick={rotateRight}
             className="p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
-          >
+          aria-label="Rotate cw">
             <RotateCw className="w-4 h-4 text-gray-400" />
           </button>
         </div>
@@ -274,7 +274,7 @@ export default function CameraControls({
             <button
               onClick={() => onTransition({ cinematicTime: 0 })}
               className="p-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
-            >
+            aria-label="Previous track">
               <SkipBack className="w-3.5 h-3.5 text-gray-400" />
             </button>
             <button
@@ -308,7 +308,7 @@ export default function CameraControls({
                 onTransition({ cinematicTime: cameraState.cinematicDuration })
               }
               className="p-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
-            >
+            aria-label="Next track">
               <SkipForward className="w-3.5 h-3.5 text-gray-400" />
             </button>
           </div>

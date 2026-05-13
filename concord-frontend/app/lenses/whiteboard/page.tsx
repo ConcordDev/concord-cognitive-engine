@@ -1023,8 +1023,13 @@ export default function WhiteboardLensPage() {
 
                 <div className="flex items-center gap-1 bg-lattice-bg rounded-lg p-1">
                   {STROKE_WIDTHS.map(w => (
-                    <button key={w} onClick={() => setStrokeWidth(w)}
-                      className={`w-8 h-8 rounded flex items-center justify-center ${strokeWidth === w ? 'bg-lattice-elevated' : 'hover:bg-lattice-elevated'}`}>
+                    <button
+                      key={w}
+                      onClick={() => setStrokeWidth(w)}
+                      aria-label={`Stroke width ${w}`}
+                      aria-pressed={strokeWidth === w}
+                      className={`w-8 h-8 rounded flex items-center justify-center ${strokeWidth === w ? 'bg-lattice-elevated' : 'hover:bg-lattice-elevated'}`}
+                    >
                       <div className="rounded-full bg-current" style={{ width: w * 2, height: w * 2 }} />
                     </button>
                   ))}

@@ -140,7 +140,7 @@ export default function PlayerPresence({
             <span className="text-xs text-white/50">{player.profession}</span>
           </div>
         </div>
-        <button onClick={() => setSelectedPlayer(null)} className="text-white/40 hover:text-white"><X size={16} /></button>
+        <button onClick={() => setSelectedPlayer(null)} className="text-white/40 hover:text-white" aria-label="Close"><X size={16} /></button>
       </div>
 
       {player.firmName && (

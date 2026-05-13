@@ -133,10 +133,12 @@ const _DEFAULT_KEYBINDINGS: KeyBinding[] = [
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
-function Toggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () => void; label?: string }) {
   return (
     <button
       onClick={onToggle}
+      aria-label={label ? `${label} — ${enabled ? 'on' : 'off'}` : `Toggle — ${enabled ? 'on' : 'off'}`}
+      aria-pressed={enabled}
       className={`w-10 h-5 rounded-full transition-colors ${
         enabled ? 'bg-cyan-500' : 'bg-white/20'
       } relative`}
@@ -231,7 +233,7 @@ export default function SettingsPanel({ settings, onSave, onCancel }: SettingsPa
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
           <Settings className="w-5 h-5 text-cyan-400" /> Settings
         </h2>
-        <button onClick={onCancel} className="text-white/40 hover:text-white transition-colors">
+        <button onClick={onCancel} className="text-white/40 hover:text-white transition-colors" aria-label="Close">
           <X className="w-5 h-5" />
         </button>
       </div>

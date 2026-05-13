@@ -186,7 +186,7 @@ function TemplatePreview({
         >
           <ChevronLeft className="w-3.5 h-3.5" /> Back to Catalog
         </button>
-        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -467,7 +467,7 @@ export default function SnapBuildCatalog({
           </p>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         )}

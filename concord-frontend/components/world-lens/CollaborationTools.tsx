@@ -325,7 +325,7 @@ export default function CollaborationTools({
             onClick={handleAnnotate}
             disabled={!annotationDraft.trim()}
             className="p-1.5 rounded bg-blue-600/80 hover:bg-blue-500 disabled:opacity-30 text-white transition-colors"
-          >
+          aria-label="Send">
             <Send size={14} />
           </button>
         </div>

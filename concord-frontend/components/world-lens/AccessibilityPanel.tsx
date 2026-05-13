@@ -178,6 +178,8 @@ export default function AccessibilityPanel({ settings, onChange }: Accessibility
           </h3>
           <button
             onClick={() => update('screenReader', !settings.screenReader)}
+            aria-label={`Screen Reader Support — ${settings.screenReader ? 'on' : 'off'}`}
+            aria-pressed={settings.screenReader}
             className={`w-10 h-5 rounded-full transition-colors ${
               settings.screenReader ? 'bg-cyan-500' : 'bg-white/20'
             } relative`}
@@ -203,6 +205,8 @@ export default function AccessibilityPanel({ settings, onChange }: Accessibility
           </h3>
           <button
             onClick={() => update('keyboardNavigation', !settings.keyboardNavigation)}
+            aria-label={`Keyboard Navigation — ${settings.keyboardNavigation ? 'on' : 'off'}`}
+            aria-pressed={settings.keyboardNavigation}
             className={`w-10 h-5 rounded-full transition-colors ${
               settings.keyboardNavigation ? 'bg-cyan-500' : 'bg-white/20'
             } relative`}
@@ -242,6 +246,8 @@ export default function AccessibilityPanel({ settings, onChange }: Accessibility
           </h3>
           <button
             onClick={() => update('reducedMotion', !settings.reducedMotion)}
+            aria-label={`Reduced Motion — ${settings.reducedMotion ? 'on' : 'off'}`}
+            aria-pressed={settings.reducedMotion}
             className={`w-10 h-5 rounded-full transition-colors ${
               settings.reducedMotion ? 'bg-cyan-500' : 'bg-white/20'
             } relative`}
@@ -266,6 +272,8 @@ export default function AccessibilityPanel({ settings, onChange }: Accessibility
           </h3>
           <button
             onClick={() => update('subtitles', !settings.subtitles)}
+            aria-label={`NPC Dialogue Subtitles — ${settings.subtitles ? 'on' : 'off'}`}
+            aria-pressed={settings.subtitles}
             className={`w-10 h-5 rounded-full transition-colors ${
               settings.subtitles ? 'bg-cyan-500' : 'bg-white/20'
             } relative`}
@@ -345,6 +353,8 @@ export default function AccessibilityPanel({ settings, onChange }: Accessibility
           </h3>
           <button
             onClick={() => update('highContrast', !settings.highContrast)}
+            aria-label={`High Contrast Mode — ${settings.highContrast ? 'on' : 'off'}`}
+            aria-pressed={settings.highContrast}
             className={`w-10 h-5 rounded-full transition-colors ${
               settings.highContrast ? 'bg-cyan-500' : 'bg-white/20'
             } relative`}

@@ -149,7 +149,7 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
             <Anchor className="h-5 w-5 text-cyan-300" />
             Fishing
           </h3>
-          <button onClick={onClose} className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-cyan-200">
+          <button onClick={onClose} className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-cyan-200" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>

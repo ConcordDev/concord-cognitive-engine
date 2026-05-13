@@ -153,7 +153,7 @@ export default function EventsGatherings({
               <span className={`text-xs ${meta.color}`}>{meta.label}</span>
             </div>
           </div>
-          <button onClick={() => setSelectedEvent(null)} className="text-white/40 hover:text-white">
+          <button onClick={() => setSelectedEvent(null)} className="text-white/40 hover:text-white" aria-label="Close">
             <X size={16} />
           </button>
         </div>

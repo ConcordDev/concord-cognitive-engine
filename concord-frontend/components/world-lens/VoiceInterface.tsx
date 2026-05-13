@@ -266,7 +266,7 @@ export default function VoiceInterface({
           <button
             onClick={() => setShowSettings(s => !s)}
             className="p-1 rounded hover:bg-white/10 transition-colors"
-          >
+          aria-label="Settings">
             <Settings className="w-3.5 h-3.5 text-white/60" />
           </button>
         </div>

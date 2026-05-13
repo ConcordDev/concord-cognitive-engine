@@ -258,13 +258,13 @@ export default function SmartNotifications({
           <button
             onClick={() => { setShowAnalytics(!showAnalytics); setShowSettings(false); }}
             className="p-1.5 rounded hover:bg-white/10 transition-colors"
-          >
+          aria-label="Bar chart3">
             <BarChart3 className="w-4 h-4 text-gray-400" />
           </button>
           <button
             onClick={() => { setShowSettings(!showSettings); setShowAnalytics(false); }}
             className="p-1.5 rounded hover:bg-white/10 transition-colors"
-          >
+          aria-label="Settings">
             <Settings className="w-4 h-4 text-gray-400" />
           </button>
         </div>

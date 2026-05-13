@@ -97,18 +97,24 @@ function isInsideTemplateLiteral(content, idx) {
 }
 
 function hasNonIconText(children) {
-  // Walk the JSX children char-by-char, accumulating only PLAIN-TEXT
-  // segments — content outside any `<…>` tag and outside any `{…}`
-  // JSX expression. This is structurally bulletproof: the loop only
-  // ever copies single characters into the text accumulator, so
-  // there's no opportunity for incomplete-multi-character
-  // sanitization (CodeQL js/incomplete-multi-char-sanitization).
-  // Self-closing icons (<X/>) and paired tags (<X>…</X>) both have
-  // their `<…>` boundaries skipped, but the inner content of paired
-  // tags WILL be visited at the outer level — so a `<span>Save</span>`
-  // contributes "Save" to the text accumulator, which is what we want.
-  let inTag = 0;       // `<…>` nesting (tracks `<` … `>`)
-  let inExpr = 0;      // `{…}` nesting (JSX expression)
+  // Walk the JSX children char-by-char, accumulating PLAIN-TEXT or
+  // JSX-EXPRESSION segments. JSX expressions like `{t.label}` or
+  // `{title}` are treated as text-equivalent because they almost
+  // always evaluate to a string at runtime — the same string the
+  // screen reader will read. Conservative detection: false negatives
+  // on expressions that evaluate to icon JSX are acceptable; false
+  // positives on visible text are not.
+  //
+  // Single-character walker — no multi-character substring is ever
+  // produced, so CodeQL's js/incomplete-multi-char-sanitization is
+  // structurally inapplicable.
+  //
+  // The walker only counts text/expressions OUTSIDE any `<…>` tag.
+  // Inner content of paired tags (e.g. `<span>Save</span>` →
+  // contributes "Save"; `<span>{label}</span>` → contributes the
+  // expression token) is visited at the outer level once the closing
+  // `</span>` is consumed.
+  let inTag = 0;       // `<…>` nesting
   let inStr = "";      // current string / template-literal delimiter
   let textSeen = false;
   for (let i = 0; i < children.length; i++) {
@@ -124,14 +130,31 @@ function hasNonIconText(children) {
       else if (ch === '"' || ch === "'" || ch === "`") inStr = ch;
       continue;
     }
-    if (inExpr > 0) {
-      if (ch === "{") inExpr++;
-      else if (ch === "}") inExpr--;
-      else if (ch === '"' || ch === "'" || ch === "`") inStr = ch;
+    if (ch === "<") { inTag = 1; continue; }
+    if (ch === "{") {
+      // Found a JSX expression. Treat the brace as text-equivalent
+      // and skip past the matching close. Track nesting so a body
+      // like `{a ? <X/> : <Y/>}` doesn't terminate early on inner `}`.
+      textSeen = true;
+      let depth = 1;
+      i++;
+      while (i < children.length && depth > 0) {
+        const c = children[i];
+        if (c === "\\") { i += 2; continue; }
+        if (c === '"' || c === "'" || c === "`") {
+          inStr = c; i++;
+          while (i < children.length && children[i] !== inStr) {
+            if (children[i] === "\\") i++;
+            i++;
+          }
+          inStr = "";
+        } else if (c === "{") depth++;
+        else if (c === "}") depth--;
+        i++;
+      }
+      i--; // for-loop will i++
       continue;
     }
-    if (ch === "<") { inTag = 1; continue; }
-    if (ch === "{") { inExpr = 1; continue; }
     if (/\S/.test(ch)) textSeen = true;
   }
   return textSeen;

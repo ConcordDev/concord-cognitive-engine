@@ -272,11 +272,13 @@ function ToggleSwitch({
   onChange,
   disabled,
   nonRevocable,
+  label,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
   nonRevocable?: boolean;
+  label?: string;
 }) {
   const handleToggle = () => {
     if (disabled) return;
@@ -289,6 +291,7 @@ function ToggleSwitch({
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label || `Consent toggle — ${checked ? 'on' : 'off'}`}
       disabled={disabled}
       onClick={handleToggle}
       className={cn(

@@ -568,7 +568,7 @@ export default function ForumLensPage() {
               <div className="flex items-center gap-1.5 text-xs px-2 py-1 text-gray-500"><Eye className="w-3.5 h-3.5" />{post.views.toLocaleString()}</div>
               {/* Mod tools */}
               <div className="relative ml-auto">
-                <button onClick={() => setModToolsOpenId(modToolsOpenId === post.id ? null : post.id)} className="flex items-center gap-1 text-xs hover:bg-lattice-bg px-2 py-1 rounded transition-colors"><Shield className="w-3.5 h-3.5" /><ChevronDown className="w-3 h-3" /></button>
+                <button onClick={() => setModToolsOpenId(modToolsOpenId === post.id ? null : post.id)} className="flex items-center gap-1 text-xs hover:bg-lattice-bg px-2 py-1 rounded transition-colors" aria-label="Shield"><Shield className="w-3.5 h-3.5" /><ChevronDown className="w-3 h-3" /></button>
                 {modToolsOpenId === post.id && (
                 <div className="absolute right-0 top-full mt-1 w-40 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-20 py-1">
                   <button onClick={() => { handleModAction(post.id, 'pin'); setModToolsOpenId(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-300 hover:bg-lattice-bg"><Pin className="w-3.5 h-3.5" />{post.pinned ? 'Unpin' : 'Pin'}</button>

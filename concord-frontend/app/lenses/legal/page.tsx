@@ -2526,6 +2526,8 @@ export default function LegalLensPage() {
                     <button
                       type="button"
                       onClick={() => setFormBillable(!formBillable)}
+                      aria-label={`Billable — ${formBillable ? 'on' : 'off'}`}
+                      aria-pressed={formBillable}
                       className={cn(
                         'relative w-10 h-6 rounded-full transition-colors',
                         formBillable ? 'bg-neon-green' : 'bg-gray-600'
@@ -2723,6 +2725,8 @@ export default function LegalLensPage() {
                     <button
                       type="button"
                       onClick={() => setFormConflictCleared(!formConflictCleared)}
+                      aria-label={`Conflict Check Cleared — ${formConflictCleared ? 'on' : 'off'}`}
+                      aria-pressed={formConflictCleared}
                       className={cn(
                         'relative w-10 h-6 rounded-full transition-colors',
                         formConflictCleared ? 'bg-neon-green' : 'bg-gray-600'

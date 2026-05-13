@@ -845,6 +845,8 @@ export default function VoiceLensPage() {
                   </div>
                   <button
                     onClick={() => toggleEffect(fx.id)}
+                    aria-label={`${fx.name} effect — ${fx.enabled ? 'on' : 'off'}`}
+                    aria-pressed={fx.enabled}
                     className={cn(
                       'w-9 h-5 rounded-full transition-colors relative',
                       fx.enabled ? 'bg-neon-cyan' : 'bg-gray-700'

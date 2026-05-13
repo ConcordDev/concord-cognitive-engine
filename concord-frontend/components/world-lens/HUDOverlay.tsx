@@ -110,7 +110,7 @@ function NotificationToast({
       <button
         onClick={() => onDismiss(notification.id)}
         className="text-gray-500 hover:text-white transition-colors"
-      >
+      aria-label="Close">
         <X className="w-3 h-3" />
       </button>
     </div>
@@ -221,7 +221,7 @@ export default function HUDOverlay({
               <button
                 onClick={onChatToggle}
                 className="p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
-              >
+              aria-label="Message">
                 <MessageSquare className="w-4 h-4 text-gray-400" />
               </button>
             )}
@@ -231,7 +231,7 @@ export default function HUDOverlay({
               <button
                 onClick={() => setShowMenu((s) => !s)}
                 className="p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
-              >
+              aria-label="Menu">
                 <Menu className="w-4 h-4 text-gray-400" />
               </button>
               {showMenu && (
