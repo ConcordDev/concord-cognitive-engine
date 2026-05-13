@@ -1,0 +1,11 @@
+⚠The world lens hit an errorSomething broke while rendering this surface. The error has been logged; you can try recovering without losing your data.technical detailsnull pointer passed to rust
+
+Error: null pointer passed to rust
+    at I.wbg.__wbindgen_throw (webpack-internal:///(app-pages-browser)/./node_modules/@dimforge/rapier3d-compat/rapier.mjs:99:74704)
+    at wasm://wasm/005fccd2:wasm-function[1946]:0x16c706
+    at wasm://wasm/005fccd2:wasm-function[1947]:0x16c713
+    at wasm://wasm/005fccd2:wasm-function[1199]:0x152fd4
+    at BA.free (webpack-internal:///(app-pages-browser)/./node_modules/@dimforge/rapier3d-compat/rapier.mjs:99:37532)
+    at UI.free (webpack-internal:///(app-pages-browser)/./node_modules/@dimforge/rapier3d-compat/rapier.mjs:99:87515)
+    at ag.free (webpack-internal:///(app-pages-browser)/./node_modules/@dimforge/rapier3d-compat/rapier.mjs:99:118831)
+    at PhysicsWorld.destroy (webpack-internal:///(app-pages-browser)/./lib/world-lens/physics-world.ts:835Try againReload pageBack to hub
