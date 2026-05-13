@@ -1,0 +1,25 @@
+{
+  "world_id": "fluxom",
+  "world_name": "Fluxom",
+  "theme": "brutal-territory",
+  "tech_level": "pre-industrial",
+  "magic_level": "high",
+  "is_hub": false,
+  "description": "Brutal poison-bloodline territory. Where the cactem dye-bug strips grow. Refugees flow out under aggressive policies; players who drive a kingdom into Fluxom's territory can collapse it and scoop the assets.",
+  "culture_id": "fluxom",
+  "faction_id": "fluxom",
+  "rule_modulators": {
+    "combatLethality": 1.3,
+    "refusalSensitivity": 0.6,
+    "questDensity": 1.2,
+    "weatherIntensity": 1.4,
+    "climate": { "temperature": 30, "humidity": 70, "airQuality": 0.82, "wind": "stagnant" }
+  },
+  "anchors": [
+    { "id": "fluxom_gate",       "name": "Fluxom Gate",     "x": 0,   "z": 0,   "kind": "lore_anchor" },
+    { "id": "fluxom_dye_strip",  "name": "Cactem Dye-Strip","x": 80,  "z": 100, "kind": "trade_zone" }
+  ],
+  "spawn_position": { "x": 0, "z": -20 },
+  "primary_currencies": ["concord_coin"],
+  "preferred_visit_order": 9
+}

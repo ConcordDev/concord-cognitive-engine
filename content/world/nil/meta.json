@@ -1,0 +1,24 @@
+{
+  "world_id": "nil",
+  "world_name": "Nil",
+  "theme": "closed-ancestral-enclave",
+  "tech_level": "pre-industrial",
+  "magic_level": "high",
+  "is_hub": false,
+  "description": "Pure Tunyan ancestral enclave. Closed by ancient covenant — no outsider has ever passed the threshold and returned. Players who attempt entry experience refusal_field strength ≥ 6 (compound refusal, glyph algebra). The world watches what happens.",
+  "culture_id": "tunyan_pure",
+  "faction_id": "nil",
+  "rule_modulators": {
+    "combatLethality": 1.0,
+    "refusalSensitivity": 1.0,
+    "questDensity": 0.3,
+    "weatherIntensity": 1.0,
+    "climate": { "temperature": 20, "humidity": 60, "airQuality": 0.99, "wind": "still" }
+  },
+  "anchors": [
+    { "id": "nil_threshold", "name": "Nil Threshold",  "x": 0, "z": 0, "kind": "lore_anchor" }
+  ],
+  "spawn_position": { "x": 0, "z": -200 },
+  "primary_currencies": [],
+  "preferred_visit_order": 13
+}

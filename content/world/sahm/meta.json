@@ -1,0 +1,25 @@
+{
+  "world_id": "sahm",
+  "world_name": "Sahm Diaspora",
+  "theme": "meritocracy-diaspora",
+  "tech_level": "pre-industrial",
+  "magic_level": "medium",
+  "is_hub": false,
+  "description": "Sahm diaspora — 'smartest and strongest', a self-conception that drives both their imperial ambitions and their tendency to over-extend. Precision-bloodline majority. Wealthier than the Bloc, less close-knit.",
+  "culture_id": "sahm",
+  "faction_id": "sahm",
+  "rule_modulators": {
+    "combatLethality": 1.0,
+    "refusalSensitivity": 0.75,
+    "questDensity": 1.3,
+    "weatherIntensity": 1.0,
+    "climate": { "temperature": 25, "humidity": 50, "airQuality": 0.93, "wind": "moderate" }
+  },
+  "anchors": [
+    { "id": "sahm_academy",  "name": "Sahm Academy",   "x": 0,   "z": 0,   "kind": "lore_anchor" },
+    { "id": "sahm_emporium", "name": "Sahm Emporium",  "x": 100, "z": 60,  "kind": "trade_zone" }
+  ],
+  "spawn_position": { "x": 0, "z": 0 },
+  "primary_currencies": ["concord_coin"],
+  "preferred_visit_order": 3
+}
