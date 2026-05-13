@@ -45,6 +45,33 @@ export interface ActiveCraftBadge {
   current_step: number;
 }
 
+export interface RulerRealm {
+  id: string;
+  name: string;
+  world_id: string;
+  faction_id: string | null;
+  legitimacy: number;
+  treasury: number;
+  tax_rate: number;
+  capital_settlement_id: string | null;
+}
+export interface RulerLoyaltySummary {
+  citizen_count: number;
+  avg_loyalty: number;
+}
+export interface RulerDecreeBadge {
+  id: string;
+  kind: string;
+  popularity_delta: number;
+  issued_at: number;
+  expires_at: number | null;
+}
+export interface RulerThreat {
+  kind: string;        // 'rebellion' | 'faction_war' | 'scheme'
+  source: string;      // npcId / factionId
+  severity: number;    // 0..1
+}
+
 export interface HUDContextState {
   // Player & mode
   inputMode: InputMode;
@@ -68,6 +95,14 @@ export interface HUDContextState {
   activeSchemes: ActiveSchemeBadge[];
   activeCraftJobs: ActiveCraftBadge[];
   hasPendingHeir: boolean;
+
+  // Kingdom — populated only if player is current ruler of a realm
+  rulerOfRealmId: string | null;
+  myRealm: RulerRealm | null;
+  realmLoyalty: RulerLoyaltySummary | null;
+  realmRebellionRisk: number;   // 0..1
+  activeDecrees: RulerDecreeBadge[];
+  pendingThreats: RulerThreat[];
 
   // Realm + calendar
   currentRealmId: string | null;
@@ -97,6 +132,14 @@ export interface HUDContextState {
   setRealmContext: (realmId: string | null, exiled: boolean, sessionId: string | null) => void;
   setCalendar: (monthName: string, monthIndex: number, civic: string, festival: string | null) => void;
   setExpertise: (lvl: ExpertiseLevel) => void;
+  setRulerState: (snapshot: {
+    rulerOfRealmId: string | null;
+    myRealm: RulerRealm | null;
+    realmLoyalty: RulerLoyaltySummary | null;
+    realmRebellionRisk: number;
+    activeDecrees: RulerDecreeBadge[];
+    pendingThreats: RulerThreat[];
+  }) => void;
 }
 
 export const useHUDContext = create<HUDContextState>((set) => ({
@@ -118,6 +161,13 @@ export const useHUDContext = create<HUDContextState>((set) => ({
   activeSchemes: [],
   activeCraftJobs: [],
   hasPendingHeir: false,
+
+  rulerOfRealmId: null,
+  myRealm: null,
+  realmLoyalty: null,
+  realmRebellionRisk: 0,
+  activeDecrees: [],
+  pendingThreats: [],
 
   currentRealmId: null,
   exiledFromCurrentRealm: false,
@@ -144,6 +194,7 @@ export const useHUDContext = create<HUDContextState>((set) => ({
   setRealmContext: (realmId, exiled, sessionId) => set({ currentRealmId: realmId, exiledFromCurrentRealm: exiled, openCouncilSessionId: sessionId }),
   setCalendar: (monthName, monthIndex, civic, festival) => set({ tunyanMonthName: monthName, tunyanMonthIndex: monthIndex, civicBlockLabel: civic, festivalActive: festival }),
   setExpertise: (lvl) => set({ expertiseLevel: lvl }),
+  setRulerState: (snapshot) => set(snapshot),
 }));
 
 /**
@@ -211,16 +262,46 @@ export function HUDContextProvider() {
     if (typeof window === 'undefined') return;
     async function poll() {
       const worldId = useHUDContext.getState().worldId;
-      const [sch, crafts, stam, months] = await Promise.all([
+      const [sch, crafts, stam, months, realm] = await Promise.all([
         macroCall('schemes', 'list_for_user'),
         macroCall('craft_chains', 'my_jobs', { worldId }),
         macroCall('stamina', 'get', { worldId }),
         macroCall('tunyan', 'current_month', { yearDay: Math.floor(Date.now() / 1000 / 86400) % 42 }),
+        macroCall('kingdoms', 'my_realm'),
       ]);
       if (sch?.ok) setActiveSchemes(sch.schemes || []);
       if (crafts?.ok) setActiveCrafts(crafts.jobs || []);
       if (stam?.ok && stam.stamina) setStamina(stam.stamina.state, stam.stamina.value, stam.stamina.max_value);
       if (months?.ok && months.monthName) setCalendar(months.monthName, months.monthIndex, '5sun-7sun morning', null);
+      // Kingdom slice — null if player rules nothing.
+      if (realm?.ok) {
+        if (realm.realm) {
+          const r = realm.realm;
+          const rebellions = realm.rebellions || [];
+          const threats: RulerThreat[] = rebellions.map((reb: { leader_npc_id?: string; score?: number }) => ({
+            kind: 'rebellion',
+            source: reb.leader_npc_id || 'unknown',
+            severity: Math.max(0, Math.min(1, Number(reb.score) || 0)),
+          }));
+          useHUDContext.getState().setRulerState({
+            rulerOfRealmId: r.id,
+            myRealm: {
+              id: r.id, name: r.name, world_id: r.world_id, faction_id: r.faction_id,
+              legitimacy: r.legitimacy, treasury: r.treasury, tax_rate: r.tax_rate,
+              capital_settlement_id: r.capital_settlement_id,
+            },
+            realmLoyalty: realm.loyalty || null,
+            realmRebellionRisk: typeof realm.rebellionRisk === 'number' ? realm.rebellionRisk : (realm.rebellionRisk?.score ?? 0),
+            activeDecrees: realm.activeDecrees || [],
+            pendingThreats: threats,
+          });
+        } else {
+          useHUDContext.getState().setRulerState({
+            rulerOfRealmId: null, myRealm: null, realmLoyalty: null,
+            realmRebellionRisk: 0, activeDecrees: [], pendingThreats: [],
+          });
+        }
+      }
     }
     void poll();
     pollRef.current = window.setInterval(poll, POLL_INTERVAL_MS);

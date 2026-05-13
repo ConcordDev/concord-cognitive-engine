@@ -97,6 +97,7 @@ const ConcordiaHUD = {
   PanelHost: dynamic(() => import('@/components/world/concordia-hud/PanelHost').then((m) => ({ default: m.PanelHost })), { ssr: false }),
   InteractionSink: dynamic(() => import('@/components/world/concordia-hud/WorldInteractionSink').then((m) => ({ default: m.WorldInteractionSink })), { ssr: false }),
   AmbientFeedback: dynamic(() => import('@/components/world/concordia-hud/AmbientFeedback').then((m) => ({ default: m.AmbientFeedback })), { ssr: false }),
+  Ruler: dynamic(() => import('@/components/world/concordia-hud/RulerOverlay').then((m) => ({ default: m.RulerOverlay })), { ssr: false }),
 };
 const PersonalBeatWidget = dynamic(
   () =>
@@ -4332,6 +4333,10 @@ export default function WorldLensPage() {
           <ConcordiaHUD.PanelHost />
           <ConcordiaHUD.InteractionSink />
           <ConcordiaHUD.AmbientFeedback />
+          {/* Ruler overlay — surfaces when player is current_head of any realm;
+              KingdomBorderOverlay surfaces below when player crosses
+              a realm_territories edge. Both invisible by default. */}
+          <ConcordiaHUD.Ruler />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing
