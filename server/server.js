@@ -23199,6 +23199,12 @@ registerWarMacros(register);
 import registerSpawnMacros from "./domains/spawn.js";
 registerSpawnMacros(register);
 
+// Appearance — surfaces authored faction visual heraldry + NPC prose
+// for the frontend's character-schema generator. Lets the renderer
+// build deterministic, lore-faithful characters per world.
+import registerAppearanceMacros from "./domains/appearance.js";
+registerAppearanceMacros(register);
+
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
 // recent_moves / get_relation reads.

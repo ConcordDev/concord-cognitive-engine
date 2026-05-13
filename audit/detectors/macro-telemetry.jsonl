@@ -2922,3 +2922,12 @@
 {"generatedAt":"2026-05-13T17:15:27.236Z","key":"kingdoms.list","total":1,"lastFiredAt":1778692263204,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
 {"generatedAt":"2026-05-13T17:15:27.236Z","key":"kingdoms.my_realm","total":1,"lastFiredAt":1778692263323,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
 {"generatedAt":"2026-05-13T17:15:27.236Z","key":"kingdoms.propose_decree","total":1,"lastFiredAt":1778692263336,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-13T17:26:38.713Z","key":"emergent.list","total":1,"lastFiredAt":1778692900701,"sources":{"http":0,"heartbeat":0,"internal":0,"system":1}}
+{"generatedAt":"2026-05-13T17:26:38.713Z","key":"emergent.register","total":6,"lastFiredAt":1778692900702,"sources":{"http":0,"heartbeat":0,"internal":0,"system":6}}
+{"generatedAt":"2026-05-13T17:26:38.713Z","key":"emergent.get","total":1,"lastFiredAt":1778692900702,"sources":{"http":0,"heartbeat":0,"internal":0,"system":1}}
+{"generatedAt":"2026-05-13T17:26:38.713Z","key":"war.active","total":4,"lastFiredAt":1778692940245,"sources":{"http":4,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-13T17:26:38.713Z","key":"war.declare","total":1,"lastFiredAt":1778692919538,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-13T17:26:38.713Z","key":"war.rally","total":1,"lastFiredAt":1778692919573,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-13T17:26:38.713Z","key":"spawn.boss","total":1,"lastFiredAt":1778692919582,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-13T17:26:38.713Z","key":"spawn.enemies","total":1,"lastFiredAt":1778692919592,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-13T17:26:38.713Z","key":"spawn.creature_wave","total":1,"lastFiredAt":1778692919602,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}

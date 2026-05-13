@@ -28,6 +28,8 @@ import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
+import { themeForWorldId } from '@/lib/world-lens/concordia-theme';
+import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import {
   DeformationStore,
   replayDeformations,
@@ -1491,9 +1493,26 @@ export default function WorldLensPage() {
   const [cameraMode, setCameraMode] = useState<
     'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic'
   >('follow');
-  const [concordiaTheme, setConcordiaTheme] = useState<'neon-punk' | 'classic' | 'minimal'>(
-    'neon-punk'
-  );
+  // Concordia theme — auto-resolves from worldId so each canon world
+  // looks distinct (Tunya = sun-baked, Cyber = neon, Fantasy = cool
+  // forest, etc.). Player can override via the theme picker; the
+  // override is held in `concordiaThemeOverride` and wins when set.
+  // See lib/world-lens/concordia-theme.ts for the full registry.
+  const worldIdForTheme = useHUDContext((s) => s.worldId);
+  const [concordiaThemeOverride, setConcordiaThemeOverride] = useState<string | null>(null);
+  const concordiaTheme = (concordiaThemeOverride
+    ?? themeForWorldId(worldIdForTheme)) as
+    'neon-punk' | 'classic' | 'minimal' | 'tunya' | 'cyber' | 'crime' |
+    'fantasy' | 'superhero' | 'sovereign-ruins' | 'lattice-crucible' |
+    'concord-link-frontier' | 'concordia-hub';
+  const setConcordiaTheme = (t: typeof concordiaTheme) =>
+    setConcordiaThemeOverride(t === themeForWorldId(worldIdForTheme) ? null : t);
+
+  // SkyWeather inputs — driven by HUD context's worldPhase + worldSeason
+  // which are populated by the server's `world:clock` broadcast (every
+  // 30s; tweened locally between ticks) and the season substrate.
+  const worldPhaseForSky = useHUDContext((s) => s.worldPhase);
+  const worldSeasonForSky = useHUDContext((s) => s.worldSeason);
   const [concordiaRenderStyle, setConcordiaRenderStyle] = useState<'pbr' | 'toon'>('pbr');
   const [showPanel, setShowPanel] = useState<
     | 'none'
@@ -3802,7 +3821,7 @@ export default function WorldLensPage() {
           <TerrainRenderer districts={[]} lodCenter={{ x: 0, z: 0 }} quality="medium" />
           <BuildingRenderer3D buildings={[]} viewMode="normal" />
           <SkyWeatherRenderer
-            timeOfDay={12}
+            timeOfDay={worldPhaseForSky * 24}
             weather={(() => {
               const t = weatherData?.type ?? 'clear';
               if (t === 'clear' || t === 'rain' || t === 'snow' || t === 'fog' || t === 'overcast' || t === 'storm') return t;
@@ -3813,7 +3832,7 @@ export default function WorldLensPage() {
             })()}
             windDirection={0}
             windSpeed={2 + (weatherData?.intensity ?? 0) * 6}
-            season="summer"
+            season={worldSeasonForSky}
             quality="medium"
           />
           <WaterRenderer

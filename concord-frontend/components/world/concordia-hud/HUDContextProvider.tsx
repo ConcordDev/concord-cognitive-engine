@@ -116,6 +116,13 @@ export interface HUDContextState {
   // Adaptation
   expertiseLevel: ExpertiseLevel;
 
+  // World clock + season — populated by socket subscription. Drives
+  // the SkyWeather renderer's timeOfDay + season inputs so the visible
+  // sky / sun position / particle bias / star field actually update.
+  worldPhase: number;          // 0..1
+  worldDaySegment: 'dawn' | 'morning' | 'midday' | 'afternoon' | 'dusk' | 'night';
+  worldSeason: 'spring' | 'summer' | 'autumn' | 'winter';
+
   // Actions
   setMode: (mode: InputMode) => void;
   setPlayerPosition: (pos: { x: number; y: number; z: number }) => void;
@@ -132,6 +139,8 @@ export interface HUDContextState {
   setRealmContext: (realmId: string | null, exiled: boolean, sessionId: string | null) => void;
   setCalendar: (monthName: string, monthIndex: number, civic: string, festival: string | null) => void;
   setExpertise: (lvl: ExpertiseLevel) => void;
+  setWorldClock: (phase: number, segment: HUDContextState['worldDaySegment']) => void;
+  setWorldSeason: (s: HUDContextState['worldSeason']) => void;
   setRulerState: (snapshot: {
     rulerOfRealmId: string | null;
     myRealm: RulerRealm | null;
@@ -179,6 +188,10 @@ export const useHUDContext = create<HUDContextState>((set) => ({
 
   expertiseLevel: 'standard',
 
+  worldPhase: 0.25,            // default to midday so first frame doesn't look like midnight
+  worldDaySegment: 'midday',
+  worldSeason: 'summer',
+
   setMode: (mode) => set({ inputMode: mode }),
   setPlayerPosition: (pos) => set({ playerPosition: pos }),
   setWorldId: (id) => set({ worldId: id }),
@@ -194,6 +207,8 @@ export const useHUDContext = create<HUDContextState>((set) => ({
   setRealmContext: (realmId, exiled, sessionId) => set({ currentRealmId: realmId, exiledFromCurrentRealm: exiled, openCouncilSessionId: sessionId }),
   setCalendar: (monthName, monthIndex, civic, festival) => set({ tunyanMonthName: monthName, tunyanMonthIndex: monthIndex, civicBlockLabel: civic, festivalActive: festival }),
   setExpertise: (lvl) => set({ expertiseLevel: lvl }),
+  setWorldClock: (phase, segment) => set({ worldPhase: phase, worldDaySegment: segment }),
+  setWorldSeason: (s) => set({ worldSeason: s }),
   setRulerState: (snapshot) => set(snapshot),
 }));
 
@@ -228,7 +243,64 @@ export function HUDContextProvider() {
   const setRealmContext = useHUDContext((s) => s.setRealmContext);
   const setCalendar = useHUDContext((s) => s.setCalendar);
   const setRefusalStrength = useHUDContext((s) => s.setRefusalStrength);
+  const setWorldClock = useHUDContext((s) => s.setWorldClock);
+  const setWorldSeason = useHUDContext((s) => s.setWorldSeason);
   const pollRef = useRef<number | null>(null);
+
+  // World clock — subscribe to server's broadcast (every 30s). Drives
+  // SkyWeather's timeOfDay so day/night actually progresses on screen.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+    (async () => {
+      try {
+        const { io } = await import('socket.io-client');
+        const socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
+        const onClock = (p: { phase?: number; segment?: string; ts?: number }) => {
+          if (cancelled) return;
+          if (typeof p?.phase === 'number') {
+            const seg = (p.segment as 'dawn' | 'morning' | 'midday' | 'afternoon' | 'dusk' | 'night') || 'midday';
+            setWorldClock(p.phase, seg);
+          }
+        };
+        socket.on('world:clock', onClock);
+        // Also tween phase forward locally between server ticks so the
+        // sky updates smoothly between 30s broadcasts. One in-world day
+        // = 24 real minutes (see server/lib/world-clock.js).
+        const tweenId = window.setInterval(() => {
+          const cur = useHUDContext.getState().worldPhase;
+          const next = (cur + (1 / 24 / 60 / (60 / 5))) % 1;  // 5s tween step
+          const seg: HUDContextState['worldDaySegment'] =
+            next < 0.10 ? 'dawn'      :
+            next < 0.40 ? 'morning'   :
+            next < 0.55 ? 'midday'    :
+            next < 0.70 ? 'afternoon' :
+            next < 0.85 ? 'dusk'      : 'night';
+          setWorldClock(next, seg);
+        }, 5000);
+        cleanup = () => {
+          window.clearInterval(tweenId);
+          try { socket.off('world:clock', onClock); socket.disconnect(); } catch { /* noop */ }
+        };
+      } catch { /* socket optional in tests */ }
+    })();
+    return () => { cancelled = true; cleanup?.(); };
+  }, [setWorldClock]);
+
+  // Season — poll the season macro on world change. Cheap.
+  const worldIdForSeason = useHUDContext((s) => s.worldId);
+  useEffect(() => {
+    let stale = false;
+    macroCall('season', 'current', { worldId: worldIdForSeason }).then((r) => {
+      if (stale) return;
+      const seasonName = (r as { result?: { season?: string } } | null)?.result?.season;
+      if (seasonName === 'spring' || seasonName === 'summer' || seasonName === 'autumn' || seasonName === 'winter') {
+        setWorldSeason(seasonName);
+      }
+    }).catch(() => { /* season macro optional */ });
+    return () => { stale = true; };
+  }, [worldIdForSeason, setWorldSeason]);
 
   // Bootstrap worldId from localStorage and listen for changes.
   useEffect(() => {
