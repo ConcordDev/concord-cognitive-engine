@@ -1932,6 +1932,25 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
 
+      // ── Concordia Phase 3: mass-based combat physics ───────────────────────
+      // After env amplification, fold in attacker/target mass ratio clamped
+      // to [0.7, 1.4]. A 6'5" Sanguire striking a 5' Medici lands harder
+      // than the inverse, but the clamp keeps the gate composable with
+      // the anti-cheat cap upstream. Actors with no actor_physique row
+      // default to 75 kg → identity ratio → ×1.0 neutral pass-through.
+      try {
+        const { combatMassMultiplier } = await import("../lib/actor-physique.js");
+        const mm = combatMassMultiplier(db,
+          { kind: "player", id: userId },
+          { kind: "npc",    id: npcId });
+        if (mm.multiplier !== 1.0 && Number.isFinite(damageResult.finalDamage)) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * mm.multiplier * 10) / 10;
+          damageResult.massMultiplier = mm.multiplier;
+          damageResult.attackerMassKg = mm.attackerMassKg;
+          damageResult.targetMassKg   = mm.targetMassKg;
+        }
+      } catch { /* Phase 3 substrate not applied — neutral pass-through */ }
+
       // Phase 8 — combat-polish substrate. Player spends gas, records a
       // strike (combo + multiplier), and the multiplier amplifies damage
       // before applyDamageToNPC. NPC may be triggered into rocked state
