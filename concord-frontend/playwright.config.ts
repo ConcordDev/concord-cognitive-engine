@@ -47,7 +47,11 @@ export default defineConfig({
     // visit even in production mode) doesn't trip the default 30 s
     // goto. Mirrors playwright-infra.config.ts.
     navigationTimeout: 60000,
-    actionTimeout: 30000,
+    // Don't set actionTimeout — let actions inherit the per-test
+    // budget (90 s below). A tight per-action limit caused click
+    // timeouts on cold-compiled routes where the post-navigation
+    // hydration straddled the 30 s per-action ceiling even though
+    // the test as a whole had time left.
   },
   // Per-test timeout — covers the whole spec body including setup
   // and teardown. 90 s leaves a comfortable margin over a 60 s goto
