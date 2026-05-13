@@ -97,25 +97,44 @@ function isInsideTemplateLiteral(content, idx) {
 }
 
 function hasNonIconText(children) {
-  // Strip JSX tags and JSX expressions; KEEP text content inside
-  // paired tags so a `<span>Save</span>` child counts as a visible
-  // label. Iterate until stable to handle nested wrappers (CodeQL
-  // js/incomplete-multi-char-sanitization — multi-pass converges).
-  let stripped = children;
-  let prev;
-  let guard = 0;
-  do {
-    prev = stripped;
-    // Self-closing JSX (icons) — drop entirely.
-    stripped = stripped.replace(/<[A-Za-z][\w.]*\b[^>]*?\/>/g, "");
-    // Paired JSX — drop the wrapper tags, keep inner text.
-    stripped = stripped.replace(/<[A-Za-z][\w.]*\b[^>]*>([\s\S]*?)<\/[A-Za-z][\w.]*>/g, "$1");
-    // JSX expression {expr} — drop entirely (dynamic content is
-    // unknowable statically; conservative).
-    stripped = stripped.replace(/\{[^{}]*\}/g, "");
-    guard++;
-  } while (stripped !== prev && guard < 12);
-  return /\S/.test(stripped);
+  // Walk the JSX children char-by-char, accumulating only PLAIN-TEXT
+  // segments — content outside any `<…>` tag and outside any `{…}`
+  // JSX expression. This is structurally bulletproof: the loop only
+  // ever copies single characters into the text accumulator, so
+  // there's no opportunity for incomplete-multi-character
+  // sanitization (CodeQL js/incomplete-multi-char-sanitization).
+  // Self-closing icons (<X/>) and paired tags (<X>…</X>) both have
+  // their `<…>` boundaries skipped, but the inner content of paired
+  // tags WILL be visited at the outer level — so a `<span>Save</span>`
+  // contributes "Save" to the text accumulator, which is what we want.
+  let inTag = 0;       // `<…>` nesting (tracks `<` … `>`)
+  let inExpr = 0;      // `{…}` nesting (JSX expression)
+  let inStr = "";      // current string / template-literal delimiter
+  let textSeen = false;
+  for (let i = 0; i < children.length; i++) {
+    const ch = children[i];
+    if (inStr) {
+      if (ch === "\\") { i++; continue; }
+      if (ch === inStr) inStr = "";
+      continue;
+    }
+    if (inTag > 0) {
+      if (ch === "<") inTag++;
+      else if (ch === ">") inTag--;
+      else if (ch === '"' || ch === "'" || ch === "`") inStr = ch;
+      continue;
+    }
+    if (inExpr > 0) {
+      if (ch === "{") inExpr++;
+      else if (ch === "}") inExpr--;
+      else if (ch === '"' || ch === "'" || ch === "`") inStr = ch;
+      continue;
+    }
+    if (ch === "<") { inTag = 1; continue; }
+    if (ch === "{") { inExpr = 1; continue; }
+    if (/\S/.test(ch)) textSeen = true;
+  }
+  return textSeen;
 }
 
 export async function runUxA11yButtonNoLabelDetector({ root, opts = {} } = {}) {
