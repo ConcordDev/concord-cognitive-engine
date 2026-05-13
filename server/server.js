@@ -519,6 +519,17 @@ registerHeartbeat("ecology-quest-cycle", {
   handler: runEcologyQuestCycle,
 });
 
+// War-in-3D skirmish cycle. Advances active campaigns past their
+// next_skirmish_at — handles mustering → marching → engaging
+// state transitions + skirmish resolution + town capture + auto-kidnap.
+// Frequency 2 (~30s) so a player declaring war sees combat play out
+// within seconds. Kill-switch CONCORD_WAR_SKIRMISH=0.
+import { runWarSkirmishCycle } from "./emergent/war-skirmish-cycle.js";
+registerHeartbeat("war-skirmish-cycle", {
+  frequency: 2,
+  handler: runWarSkirmishCycle,
+});
+
 // Phase 5c: Seasons + Long-cycle Time. Every 480 ticks (~2h) advances
 // world seasons (6 seasons × 7 days each = 42-day Concordia year).
 // Bias env signals via seasonalBias and modulate gather yield via
@@ -23177,6 +23188,16 @@ registerEcologyMacros(register);
 // player can see what their subconscious has been doing while offline.
 import registerDreamsMacros from "./domains/dreams.js";
 registerDreamsMacros(register);
+
+// War-in-3D — surfaces declare-war as a real playable campaign
+// (rally / skirmish / town capture / kidnap) layered on faction-strategy.
+import registerWarMacros from "./domains/war.js";
+registerWarMacros(register);
+
+// Spawn macros — force-trigger boss/enemy/creature/NPC drops. Useful
+// for QA + live ops without waiting for procedural-spawner heartbeats.
+import registerSpawnMacros from "./domains/spawn.js";
+registerSpawnMacros(register);
 
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
