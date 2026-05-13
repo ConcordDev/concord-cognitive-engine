@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useContext, createCont
 import { Activity, Monitor, Settings } from 'lucide-react';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
+import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor } from '@/lib/world-lens/perf-monitor';
 
 // ── Device capability detection ────────────────────────────────────
 function detectInitialQuality(): QualityPreset {
@@ -420,6 +421,8 @@ export default function ConcordiaScene({
       (renderer as unknown as { __isWebGPU?: boolean }).__isWebGPU = useWebGPU;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, settings.pixelRatio));
       renderer.setSize(canvas!.clientWidth, canvas!.clientHeight);
+      // Phase AA — mount Stats.js widget when ?perf=1 or NODE_ENV=development.
+      try { mountPerfMonitor({ dev: process.env.NODE_ENV === 'development' }); } catch { /* SSR */ }
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1006,6 +1009,12 @@ export default function ConcordiaScene({
         } else {
           renderer.render(scene, camera);
         }
+
+        // Phase AA — feed perf-monitor (Stats.js + budget snapshot).
+        try {
+          attachPerfRenderer(renderer as unknown as { info: { render: { calls: number; triangles: number } } });
+          tickPerfMonitor();
+        } catch { /* perf-monitor optional */ }
 
         // Performance budget monitoring
         const info = renderer.info;
