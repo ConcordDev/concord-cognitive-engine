@@ -22904,6 +22904,8 @@ import registerSecretsMacros from "./domains/secrets.js";
 registerSecretsMacros(register);
 import registerSchemesMacros from "./domains/schemes.js";
 registerSchemesMacros(register);
+import registerCraftChainsMacros from "./domains/craft-chains.js";
+registerCraftChainsMacros(register);
 import registerKingdomsMacros from "./domains/kingdoms.js";
 registerKingdomsMacros(register);
 import registerBuildingsMacros from "./domains/buildings.js";
