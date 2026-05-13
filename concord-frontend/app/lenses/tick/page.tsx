@@ -1036,7 +1036,7 @@ export default function TickLensPage() {
             Tick Actions
           </h3>
           {tickActionResult && (
-            <button onClick={() => setTickActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400">
+            <button onClick={() => setTickActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

@@ -101,7 +101,7 @@ function CelestialCard({
         </div>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-        <button onClick={onRemove} className="text-gray-600 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-amber-500">
+        <button onClick={onRemove} className="text-gray-600 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-amber-500" aria-label="Delete">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
@@ -335,7 +335,7 @@ export default function AstronomyLensPage() {
                   <span className="text-sm font-medium">{obs.target || obs.title}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">{obs.date ? new Date(obs.date).toLocaleDateString() : ''}</span>
-                    <button onClick={() => removeObs(obs.id)} className="text-gray-600 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => removeObs(obs.id)} className="text-gray-600 hover:text-red-400" aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <p className="text-xs text-gray-400">{obs.telescope} - {obs.conditions}</p>

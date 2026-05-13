@@ -320,7 +320,7 @@ export default function TemporalLensPage() {
             <h3 className={ds.heading3}>
               {editingItem ? 'Edit' : 'New'} {activeArtifactType.replace(/([A-Z])/g, ' $1').trim()}
             </h3>
-            <button onClick={() => setEditorOpen(false)} className={ds.btnGhost}>
+            <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -731,7 +731,7 @@ export default function TemporalLensPage() {
                       handleAction('simulate', item.id);
                     }}
                     className={ds.btnGhost}
-                  >
+                  aria-label="Activate">
                     <Zap className="w-4 h-4 text-neon-cyan" />
                   </button>
                   <button
@@ -740,7 +740,7 @@ export default function TemporalLensPage() {
                       remove(item.id);
                     }}
                     className={ds.btnGhost}
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-4 h-4 text-red-400" />
                   </button>
                 </div>

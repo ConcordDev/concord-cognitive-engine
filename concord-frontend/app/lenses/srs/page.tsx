@@ -952,7 +952,7 @@ export default function SRSLensPage() {
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Plus className="w-5 h-5 text-neon-cyan" /> Create Card
                 </h2>
-                <button onClick={() => setShowCreateCard(false)} className="text-gray-400 hover:text-white">
+                <button onClick={() => setShowCreateCard(false)} className="text-gray-400 hover:text-white" aria-label="Xcircle">
                   <XCircle className="w-5 h-5" />
                 </button>
               </div>
@@ -1115,7 +1115,7 @@ export default function SRSLensPage() {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white">Card Details</h2>
-                <button onClick={() => setEditingCard(null)} className="text-gray-400 hover:text-white">
+                <button onClick={() => setEditingCard(null)} className="text-gray-400 hover:text-white" aria-label="Xcircle">
                   <XCircle className="w-5 h-5" />
                 </button>
               </div>
@@ -1181,7 +1181,7 @@ export default function SRSLensPage() {
                 >
                   Close
                 </button>
-                <button onClick={() => { if (editingCard) { removeCard(editingCard.dtuId || ''); setEditingCard(null); } }} className="py-2 px-4 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors text-sm">
+                <button onClick={() => { if (editingCard) { removeCard(editingCard.dtuId || ''); setEditingCard(null); } }} className="py-2 px-4 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors text-sm" aria-label="Delete">
                   <Trash2 className="w-4 h-4" />
                 </button>
 

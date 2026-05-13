@@ -189,10 +189,16 @@ export default function SaveSystem({ saveState, offlineCalcs, worldPersistence, 
             {/* Backup/Restore for owners */}
             {onManualSave && (
               <div className="flex gap-2 pt-2 border-t border-white/10">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-white/10 text-white/60 hover:text-white hover:border-white/30 transition-colors">
+                <button
+                  onClick={() => { window.dispatchEvent(new CustomEvent('save-system:backup-world')); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-white/10 text-white/60 hover:text-white hover:border-white/30 transition-colors"
+                >
                   <Download className="w-3.5 h-3.5" /> Backup World
                 </button>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-white/10 text-white/60 hover:text-white hover:border-white/30 transition-colors">
+                <button
+                  onClick={() => { window.dispatchEvent(new CustomEvent('save-system:restore-backup')); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-white/10 text-white/60 hover:text-white hover:border-white/30 transition-colors"
+                >
                   <Upload className="w-3.5 h-3.5" /> Restore from Backup
                 </button>
               </div>

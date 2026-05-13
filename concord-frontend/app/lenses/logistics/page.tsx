@@ -742,7 +742,7 @@ export default function LogisticsLensPage() {
                       openEdit(item.id);
                     }}
                     className={ds.btnGhost}
-                  >
+                  aria-label="Edit">
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
@@ -751,7 +751,7 @@ export default function LogisticsLensPage() {
                       remove(item.id);
                     }}
                     className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -969,7 +969,7 @@ export default function LogisticsLensPage() {
                       openEdit(item.id);
                     }}
                     className={ds.btnGhost}
-                  >
+                  aria-label="Edit">
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
@@ -978,7 +978,7 @@ export default function LogisticsLensPage() {
                       remove(item.id);
                     }}
                     className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -1177,7 +1177,7 @@ export default function LogisticsLensPage() {
                           advanceShipmentStatus(item);
                         }}
                         className={cn(ds.btnGhost, ds.btnSmall)}
-                      >
+                      aria-label="Forward">
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -1187,7 +1187,7 @@ export default function LogisticsLensPage() {
                         openEdit(item.id);
                       }}
                       className={ds.btnGhost}
-                    >
+                    aria-label="Edit">
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
@@ -1196,7 +1196,7 @@ export default function LogisticsLensPage() {
                         remove(item.id);
                       }}
                       className={cn(ds.btnGhost, 'hover:text-red-400')}
-                    >
+                    aria-label="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1384,7 +1384,7 @@ export default function LogisticsLensPage() {
                           openEdit(item.id);
                         }}
                         className={ds.btnGhost}
-                      >
+                      aria-label="Edit">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
@@ -1393,7 +1393,7 @@ export default function LogisticsLensPage() {
                           remove(item.id);
                         }}
                         className={cn(ds.btnGhost, 'hover:text-red-400')}
-                      >
+                      aria-label="Delete">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -1456,7 +1456,7 @@ export default function LogisticsLensPage() {
                               openEdit(item.id);
                             }}
                             className={ds.btnGhost}
-                          >
+                          aria-label="Edit">
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
@@ -1465,7 +1465,7 @@ export default function LogisticsLensPage() {
                               remove(item.id);
                             }}
                             className={cn(ds.btnGhost, 'hover:text-red-400')}
-                          >
+                          aria-label="Delete">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -1663,13 +1663,13 @@ export default function LogisticsLensPage() {
                   <span className="text-gray-400 ml-4">Avg Speed:</span>
                   <span className="font-medium">{String(d.avgSpeed)} mph</span>
                   <div className="ml-auto flex items-center gap-1">
-                    <button onClick={() => openEdit(item.id)} className={ds.btnGhost}>
+                    <button onClick={() => openEdit(item.id)} className={ds.btnGhost} aria-label="Edit">
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => remove(item.id)}
                       className={cn(ds.btnGhost, 'hover:text-red-400')}
-                    >
+                    aria-label="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     <button
@@ -2020,7 +2020,7 @@ export default function LogisticsLensPage() {
                     openEdit(item.id);
                   }}
                   className={ds.btnGhost}
-                >
+                aria-label="Edit">
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
                 <button
@@ -2029,7 +2029,7 @@ export default function LogisticsLensPage() {
                     remove(item.id);
                   }}
                   className={cn(ds.btnGhost, 'hover:text-red-400')}
-                >
+                aria-label="Delete">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -2276,7 +2276,7 @@ export default function LogisticsLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -2447,7 +2447,7 @@ export default function LogisticsLensPage() {
                       >
                         <Edit2 className="w-4 h-4" /> Edit
                       </button>
-                      <button onClick={() => setDetailId(null)} className={ds.btnGhost}>
+                      <button onClick={() => setDetailId(null)} className={ds.btnGhost} aria-label="Close">
                         <X className="w-5 h-5" />
                       </button>
                     </div>
@@ -2534,7 +2534,7 @@ export default function LogisticsLensPage() {
                 <h2 className={ds.heading2}>
                   {editing ? 'Edit' : 'New'} {currentType}
                 </h2>
-                <button onClick={resetForm} className={ds.btnGhost}>
+                <button onClick={resetForm} className={ds.btnGhost} aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

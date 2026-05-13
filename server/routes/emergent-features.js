@@ -168,7 +168,10 @@ export default function createEmergentFeaturesRouter({ STATE, requireAuth } = {}
   }));
 
   router.post("/ghost-threads/surface", auth, wrap((req, res) => {
-    const result = surfaceInsight(req.body.insightId, req.body.context);
+    const insightId = req.body?.insightId || "";
+    const context = req.body?.context || null;
+    if (!insightId) return res.status(400).json({ ok: false, error: "insightId required" });
+    const result = surfaceInsight(insightId, context);
     res.json({ ok: true, ...result });
   }));
 
@@ -205,7 +208,8 @@ export default function createEmergentFeaturesRouter({ STATE, requireAuth } = {}
   }));
 
   router.post("/constitution/rules/:id/toggle", auth, wrap((req, res) => {
-    const result = toggleUserRule(_userId(req), req.params.id, req.body.enabled);
+    const enabled = Boolean(req.body?.enabled);
+    const result = toggleUserRule(_userId(req), req.params.id, enabled);
     res.json(result);
   }));
 
@@ -331,7 +335,8 @@ export default function createEmergentFeaturesRouter({ STATE, requireAuth } = {}
   }));
 
   router.post("/pipelines/:id/advance", auth, wrap((req, res) => {
-    const result = advancePipeline(req.params.id, req.body.stageOutput);
+    const stageOutput = req.body?.stageOutput ?? null;
+    const result = advancePipeline(req.params.id, stageOutput);
     res.json({ ok: true, pipeline: result });
   }));
 

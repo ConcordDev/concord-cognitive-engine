@@ -90,7 +90,7 @@ export function ArenaPanel({ playerId, onClose }: ArenaPanelProps) {
           <Swords className="w-4 h-4 text-red-400" />
           <h2 className="text-white font-bold text-sm">Arena</h2>
         </div>
-        <button onClick={onClose} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+        <button onClick={onClose} className="text-white/40 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
       </div>
 
       {/* Match alert */}

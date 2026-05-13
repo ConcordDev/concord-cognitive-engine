@@ -191,7 +191,7 @@ export default function MentalHealthLensPage() {
           className="w-full bg-black/30 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:border-neon-purple/30"
         />
         {searchQuery && (
-          <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+          <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Add">
             <Plus className="w-4 h-4 rotate-45" />
           </button>
         )}
@@ -562,7 +562,7 @@ export default function MentalHealthLensPage() {
                     </div>
                     <span className="text-xs text-gray-500">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
                     <button onClick={() => update(entry.id, { data: { ...entry, notes: (entry.notes || '') + ' (updated)' } as unknown as Record<string, unknown> })} className="text-gray-500 hover:text-neon-cyan" title="Edit"><Search className="w-3 h-3" /></button>
-                    <button onClick={() => remove(entry.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                    <button onClick={() => remove(entry.id)} className="text-gray-500 hover:text-red-400" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                   </div>
                 );
               })
@@ -593,7 +593,7 @@ export default function MentalHealthLensPage() {
                   <span className="text-sm font-medium">{entry.title}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
-                    <button onClick={() => removeJournal(entry.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                    <button onClick={() => removeJournal(entry.id)} className="text-gray-500 hover:text-red-400" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                   </div>
                 </div>
                 <p className="text-sm text-gray-300">{entry.content}</p>

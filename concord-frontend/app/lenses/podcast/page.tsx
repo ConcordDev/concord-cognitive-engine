@@ -433,7 +433,7 @@ export default function PodcastLensPage() {
                   className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-400/50"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -524,7 +524,7 @@ export default function PodcastLensPage() {
                         <button
                           onClick={() => removeEpisode(episode.id)}
                           className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                        >
+                        aria-label="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -596,7 +596,7 @@ export default function PodcastLensPage() {
                     <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
                       <Check className="w-4 h-4 text-green-400" />
                       <span className="text-sm text-green-400">Audio uploaded (ID: {formMediaId.slice(0, 8)}...)</span>
-                      <button onClick={() => setFormMediaId(null)} className="ml-auto text-gray-500 hover:text-white">
+                      <button onClick={() => setFormMediaId(null)} className="ml-auto text-gray-500 hover:text-white" aria-label="Close">
                         <X className="w-4 h-4" />
                       </button>
                     </div>

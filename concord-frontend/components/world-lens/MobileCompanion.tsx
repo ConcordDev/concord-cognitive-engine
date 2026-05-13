@@ -214,6 +214,7 @@ export default function MobileCompanion() {
           {SEED_QUICK_ACTIONS.map((action) => (
             <button
               key={action.id}
+              onClick={() => { window.dispatchEvent(new CustomEvent('mobile-companion:quick-action', { detail: { actionId: action.id } })); }}
               className="flex flex-col items-center gap-2 p-3 rounded-lg bg-white/5 active:bg-white/15 transition-colors relative"
             >
               <span className="text-2xl">{action.icon}</span>
@@ -419,6 +420,7 @@ export default function MobileCompanion() {
             (loc) => (
               <button
                 key={loc}
+                onClick={() => { window.dispatchEvent(new CustomEvent('mobile-companion:teleport', { detail: { location: loc } })); }}
                 className="text-xs text-white/60 p-2.5 rounded-md bg-white/5 active:bg-white/15 transition-colors text-center"
               >
                 {loc}

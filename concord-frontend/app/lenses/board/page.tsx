@@ -879,7 +879,7 @@ export default function BoardLensPage() {
                   <button
                     onClick={() => setActionResult(null)}
                     className="p-1 rounded-md hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                  >
+                  aria-label="Xcircle">
                     <XCircle className="w-4 h-4" />
                   </button>
                 </div>
@@ -1225,7 +1225,7 @@ export default function BoardLensPage() {
                             column.bg,
                             'hover:opacity-80'
                           )}
-                        >
+                        aria-label="Add">
                           <Plus className={cn('w-3.5 h-3.5', column.color)} />
                         </button>
                       </div>
@@ -1646,7 +1646,7 @@ function TaskDetailPanel({
           <button
             onClick={onClose}
             className="p-1 rounded-md hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-          >
+          aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1846,7 +1846,7 @@ function TaskDetailPanel({
                   }
                 }}
                 className="p-1 rounded-md bg-white/5 hover:bg-white/10 text-gray-400"
-              >
+              aria-label="Add">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1920,7 +1920,7 @@ function TaskDetailPanel({
                   }
                 }}
                 className="p-1 rounded-md bg-purple-500/20 hover:bg-purple-500/30 text-purple-300"
-              >
+              aria-label="Message">
                 <MessageSquare className="w-3.5 h-3.5" />
               </button>
             </div>

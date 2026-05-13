@@ -205,7 +205,7 @@ export function AutomationView({
                 <button
                   onClick={() => onRemoveLane(track.id, lane.id)}
                   className="p-0.5 text-gray-600 hover:text-red-400"
-                >
+                aria-label="Delete">
                   <Trash2 className="w-2.5 h-2.5" />
                 </button>
               </div>

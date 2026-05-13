@@ -124,7 +124,7 @@ export function DistrictActivityFeed({
             <button
               onClick={() => setExpanded(false)}
               className="text-white/30 hover:text-white/60 transition-colors"
-            >
+            aria-label="Collapse">
               <ChevronUp className="w-3.5 h-3.5" />
             </button>
           </div>

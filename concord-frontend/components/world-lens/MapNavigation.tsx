@@ -235,13 +235,13 @@ function DistrictMap({
         <button
           onClick={() => setZoom((z) => Math.min(z + 0.25, 3))}
           className="p-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
-        >
+        aria-label="Zoom in">
           <ZoomIn className="w-4 h-4 text-gray-300" />
         </button>
         <button
           onClick={() => setZoom((z) => Math.max(z - 0.25, 0.5))}
           className="p-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
-        >
+        aria-label="Zoom out">
           <ZoomOut className="w-4 h-4 text-gray-300" />
         </button>
         <div className="text-[9px] text-gray-500 text-center">{Math.round(zoom * 100)}%</div>
@@ -361,13 +361,13 @@ function WorldMap({ districts }: { districts: DistrictRegion[] }) {
         <button
           onClick={() => setZoom((z) => Math.min(z + 0.25, 3))}
           className="p-1.5 rounded bg-white/10 hover:bg-white/20 transition-colors"
-        >
+        aria-label="Zoom in">
           <ZoomIn className="w-4 h-4 text-gray-300" />
         </button>
         <button
           onClick={() => setZoom((z) => Math.max(z - 0.25, 0.5))}
           className="p-1.5 rounded bg-white/10 hover:bg-white/20 transition-colors"
-        >
+        aria-label="Zoom out">
           <ZoomOut className="w-4 h-4 text-gray-300" />
         </button>
       </div>

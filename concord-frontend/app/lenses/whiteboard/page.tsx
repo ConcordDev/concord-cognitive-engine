@@ -1017,14 +1017,19 @@ export default function WhiteboardLensPage() {
 
                 <div className="w-px h-8 bg-lattice-border mx-1" />
 
-                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-2 rounded-lg border border-lattice-border hover:bg-lattice-elevated relative">
+                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-2 rounded-lg border border-lattice-border hover:bg-lattice-elevated relative" aria-label="Palette">
                   <Palette className="w-5 h-5" style={{ color: strokeColor }} />
                 </button>
 
                 <div className="flex items-center gap-1 bg-lattice-bg rounded-lg p-1">
                   {STROKE_WIDTHS.map(w => (
-                    <button key={w} onClick={() => setStrokeWidth(w)}
-                      className={`w-8 h-8 rounded flex items-center justify-center ${strokeWidth === w ? 'bg-lattice-elevated' : 'hover:bg-lattice-elevated'}`}>
+                    <button
+                      key={w}
+                      onClick={() => setStrokeWidth(w)}
+                      aria-label={`Stroke width ${w}`}
+                      aria-pressed={strokeWidth === w}
+                      className={`w-8 h-8 rounded flex items-center justify-center ${strokeWidth === w ? 'bg-lattice-elevated' : 'hover:bg-lattice-elevated'}`}
+                    >
                       <div className="rounded-full bg-current" style={{ width: w * 2, height: w * 2 }} />
                     </button>
                   ))}
@@ -1038,11 +1043,11 @@ export default function WhiteboardLensPage() {
 
                 <div className="w-px h-8 bg-lattice-border mx-1" />
 
-                <button onClick={() => setShowGrid(!showGrid)} className={`p-2 rounded-lg ${showGrid ? 'bg-lattice-elevated text-neon-cyan' : 'hover:bg-lattice-elevated text-gray-400'}`}><Grid3X3 className="w-5 h-5" /></button>
-                <button onClick={() => setZoom(z => clamp(z * 1.2, 0.25, 4))} className="p-2 rounded-lg hover:bg-lattice-elevated"><ZoomIn className="w-5 h-5" /></button>
+                <button onClick={() => setShowGrid(!showGrid)} className={`p-2 rounded-lg ${showGrid ? 'bg-lattice-elevated text-neon-cyan' : 'hover:bg-lattice-elevated text-gray-400'}`} aria-label="Grid3 x3"><Grid3X3 className="w-5 h-5" /></button>
+                <button onClick={() => setZoom(z => clamp(z * 1.2, 0.25, 4))} className="p-2 rounded-lg hover:bg-lattice-elevated" aria-label="Zoom in"><ZoomIn className="w-5 h-5" /></button>
                 <span className="text-sm text-gray-400 w-12 text-center">{Math.round(zoom * 100)}%</span>
-                <button onClick={() => setZoom(z => clamp(z / 1.2, 0.25, 4))} className="p-2 rounded-lg hover:bg-lattice-elevated"><ZoomOut className="w-5 h-5" /></button>
-                <button onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} className="p-2 rounded-lg hover:bg-lattice-elevated"><RotateCcw className="w-5 h-5" /></button>
+                <button onClick={() => setZoom(z => clamp(z / 1.2, 0.25, 4))} className="p-2 rounded-lg hover:bg-lattice-elevated" aria-label="Zoom out"><ZoomOut className="w-5 h-5" /></button>
+                <button onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} className="p-2 rounded-lg hover:bg-lattice-elevated" aria-label="Rotate ccw"><RotateCcw className="w-5 h-5" /></button>
 
                 <div className="flex-1" />
 
@@ -1051,7 +1056,10 @@ export default function WhiteboardLensPage() {
                   <Save className="w-4 h-4" />{saveMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
                 <div className="relative group">
-                  <button className="px-4 py-2 bg-lattice-elevated rounded-lg hover:bg-lattice-bg flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => { window.dispatchEvent(new CustomEvent('whiteboard:toggle-export-menu')); }}
+                    className="px-4 py-2 bg-lattice-elevated rounded-lg hover:bg-lattice-bg flex items-center gap-2 text-sm"
+                  >
                     <Download className="w-4 h-4" />Export
                   </button>
                   <div className="absolute right-0 top-full mt-1 w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-30 overflow-hidden">
@@ -1149,7 +1157,7 @@ export default function WhiteboardLensPage() {
                       <p className="text-xs text-gray-400 mb-2">Fill</p>
                       <div className="grid grid-cols-4 gap-2">
                         <button onClick={() => setFillColor('transparent')}
-                          className={`w-8 h-8 rounded-lg border-2 ${fillColor === 'transparent' ? 'border-white' : 'border-transparent'} bg-transparent`}>
+                          className={`w-8 h-8 rounded-lg border-2 ${fillColor === 'transparent' ? 'border-white' : 'border-transparent'} bg-transparent`} aria-label="Close">
                           <X className="w-4 h-4 mx-auto text-gray-500" />
                         </button>
                         {COLORS.slice(0, 7).map(c => (
@@ -1187,7 +1195,7 @@ export default function WhiteboardLensPage() {
                         className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold flex items-center gap-2"><PenTool className="w-4 h-4 text-neon-cyan" />Pin Audio Clip</h3>
-                          <button onClick={() => { setShowAudioDialog(false); setTextPosition(null); }}><X className="w-5 h-5" /></button>
+                          <button onClick={() => { setShowAudioDialog(false); setTextPosition(null); }} aria-label="Close"><X className="w-5 h-5" /></button>
                         </div>
                         <input type="text" placeholder="Clip name (e.g. Verse Vocal Take 3)" value={audioClipName}
                           onChange={e => setAudioClipName(e.target.value)} autoFocus
@@ -1213,7 +1221,7 @@ export default function WhiteboardLensPage() {
                         className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold flex items-center gap-2"><ImageIcon className="w-4 h-4 text-amber-400" />Pin Image Reference</h3>
-                          <button onClick={() => { setShowImageDialog(false); setTextPosition(null); }}><X className="w-5 h-5" /></button>
+                          <button onClick={() => { setShowImageDialog(false); setTextPosition(null); }} aria-label="Close"><X className="w-5 h-5" /></button>
                         </div>
                         <input type="text" placeholder="Label (e.g. Album Cover Ref)" value={imageLabel}
                           onChange={e => setImageLabel(e.target.value)} autoFocus
@@ -1236,7 +1244,7 @@ export default function WhiteboardLensPage() {
                         className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold flex items-center gap-2"><StickyNote className="w-4 h-4 text-yellow-400" />Note Card</h3>
-                          <button onClick={() => { setShowNoteDialog(false); setTextPosition(null); }}><X className="w-5 h-5" /></button>
+                          <button onClick={() => { setShowNoteDialog(false); setTextPosition(null); }} aria-label="Close"><X className="w-5 h-5" /></button>
                         </div>
                         <textarea placeholder="Note text..." value={noteText}
                           onChange={e => setNoteText(e.target.value)} autoFocus rows={3}
@@ -1267,7 +1275,7 @@ export default function WhiteboardLensPage() {
                         className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold flex items-center gap-2"><Bookmark className="w-4 h-4 text-purple-400" />Section Marker</h3>
-                          <button onClick={() => { setShowSectionDialog(false); setTextPosition(null); }}><X className="w-5 h-5" /></button>
+                          <button onClick={() => { setShowSectionDialog(false); setTextPosition(null); }} aria-label="Close"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="space-y-2 mb-4">
                           {SECTION_PRESETS.map(s => (
@@ -1297,7 +1305,7 @@ export default function WhiteboardLensPage() {
                         className="bg-lattice-surface border border-lattice-border rounded-lg p-4 w-96 max-h-96 overflow-y-auto">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold">Link DTU</h3>
-                          <button onClick={() => setShowDtuPicker(false)}><X className="w-5 h-5" /></button>
+                          <button onClick={() => setShowDtuPicker(false)} aria-label="Close"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="space-y-2">
                           {dtus?.dtus?.slice(0, 20).map((dtu: Record<string, unknown>) => (
@@ -1353,7 +1361,7 @@ export default function WhiteboardLensPage() {
                               className="w-6 h-6 rounded bg-lattice-bg text-gray-400 hover:text-white flex items-center justify-center text-xs">+</button>
                             <div className="flex-1" />
                             <button onClick={() => removeSection(sec.id)}
-                              className="w-6 h-6 rounded bg-lattice-bg text-red-400 hover:text-red-300 flex items-center justify-center"><Trash2 className="w-3 h-3" /></button>
+                              className="w-6 h-6 rounded bg-lattice-bg text-red-400 hover:text-red-300 flex items-center justify-center" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                           </div>
                         </div>
                       </motion.div>
@@ -1402,7 +1410,7 @@ export default function WhiteboardLensPage() {
                       <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                         {zone.label}
                         <button onClick={() => { setMoodTarget(zone.id); setMoodKind('text'); }}
-                          className="ml-auto w-6 h-6 rounded bg-lattice-bg text-gray-400 hover:text-white flex items-center justify-center">
+                          className="ml-auto w-6 h-6 rounded bg-lattice-bg text-gray-400 hover:text-white flex items-center justify-center" aria-label="Add">
                           <Plus className="w-3 h-3" />
                         </button>
                       </h3>
@@ -1428,7 +1436,7 @@ export default function WhiteboardLensPage() {
                               </div>
                             )}
                             <button onClick={() => removeMoodItem(zone.id, idx)}
-                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white items-center justify-center text-[9px] hidden group-hover:flex">
+                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white items-center justify-center text-[9px] hidden group-hover:flex" aria-label="Close">
                               <X className="w-2.5 h-2.5" />
                             </button>
                           </div>
@@ -1469,7 +1477,7 @@ export default function WhiteboardLensPage() {
                         className="bg-lattice-surface border border-lattice-border rounded-lg p-5 w-80">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold text-sm">Add to {moodZones.find(z => z.id === moodTarget)?.label}</h3>
-                          <button onClick={() => setMoodTarget(null)}><X className="w-5 h-5" /></button>
+                          <button onClick={() => setMoodTarget(null)} aria-label="Close"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="flex gap-2 mb-3">
                           {(['text', 'audio', 'image', 'color'] as const).map(k => (
@@ -1550,7 +1558,7 @@ export default function WhiteboardLensPage() {
             Whiteboard Actions
           </h3>
           {wbActionResult && (
-            <button onClick={() => setWbActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400">
+            <button onClick={() => setWbActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

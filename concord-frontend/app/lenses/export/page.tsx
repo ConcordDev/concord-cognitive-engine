@@ -248,7 +248,7 @@ export default function ExportLensPage() {
         {/* Action Results */}
         {actionResult && (
           <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
+            <button onClick={() => setActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 

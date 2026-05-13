@@ -342,7 +342,7 @@ function Modal({
       >
         <div className="flex items-center justify-between p-4 border-b border-lattice-border">
           <h3 className={ds.heading3}>{title}</h3>
-          <button onClick={onClose} className={ds.btnGhost}>
+          <button onClick={onClose} className={ds.btnGhost} aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -627,7 +627,7 @@ export default function HypothesisLabPage() {
               <button
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-              >
+              aria-label="Close">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}

@@ -857,7 +857,7 @@ export default function MathLensPage() {
                             <button
                               onClick={() => removeFormula(item.id)}
                               className="opacity-0 group-hover:opacity-100 p-1 hover:bg-neon-pink/20 rounded transition-all"
-                            >
+                            aria-label="Delete">
                               <Trash2 className="w-3 h-3 text-neon-pink" />
                             </button>
                           </div>

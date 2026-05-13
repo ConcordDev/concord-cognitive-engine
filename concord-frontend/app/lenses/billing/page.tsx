@@ -789,7 +789,7 @@ export default function BillingPage() {
               <button
                 onClick={() => setActionResult(null)}
                 className="text-gray-500 hover:text-white transition-colors"
-              >
+              aria-label="Xcircle">
                 <XCircle className="w-4 h-4" />
               </button>
             </div>

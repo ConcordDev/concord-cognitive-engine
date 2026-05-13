@@ -1496,7 +1496,7 @@ export default function StudioLensPage() {
                   <button
                     onClick={() => setShowNewProject(false)}
                     className="text-gray-400 hover:text-white"
-                  >
+                  aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -2110,7 +2110,7 @@ export default function StudioLensPage() {
                     <button
                       onClick={() => setAiResult(null)}
                       className="p-1 hover:bg-white/10 rounded"
-                    >
+                    aria-label="Close">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -2208,7 +2208,7 @@ export default function StudioLensPage() {
                 <button
                   onClick={() => setShowAddTrack(false)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -2487,7 +2487,7 @@ export default function StudioLensPage() {
                 <button
                   onClick={() => setShowPublishModal(false)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

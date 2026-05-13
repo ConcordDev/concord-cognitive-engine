@@ -273,7 +273,7 @@ export default function IntegrationsLensPage() {
                     onClick={() => deleteWebhookMutation.mutate(wh.id as string)}
                     disabled={deleteWebhookMutation.isPending}
                     className="text-gray-400 hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-5 h-5" />
                   </button>
                 </div>

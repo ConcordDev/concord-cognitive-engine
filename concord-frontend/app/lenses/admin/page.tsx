@@ -1043,10 +1043,10 @@ export default function AdminDashboardPage() {
           instance.
         </p>
         <div className="flex items-center gap-3">
+          {/* @broken-link-ok: extension installer page not yet built; the
+              button is a placeholder until the extension ships. */}
           <a
-            href="/extension"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#extension-installer-coming-soon"
             className="flex items-center gap-2 px-4 py-2 bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 rounded-lg hover:bg-neon-cyan/20 transition-colors text-sm"
           >
             <Download className="w-4 h-4" />

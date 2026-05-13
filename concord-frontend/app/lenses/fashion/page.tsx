@@ -217,7 +217,7 @@ export default function FashionLensPage() {
 
         {actionResult && (
           <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
+            <button onClick={() => setActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 
@@ -371,7 +371,7 @@ export default function FashionLensPage() {
             <div className="panel p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Add Wardrobe Item</h3>
-                <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+                <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <input value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))} placeholder="Item name..." className="input-lattice" />
@@ -434,8 +434,8 @@ export default function FashionLensPage() {
         </div>
         {tab === 'wardrobe' && (
           <div className="flex gap-1 bg-lattice-surface p-0.5 rounded-lg border border-lattice-border">
-            <button onClick={() => setViewMode('grid')} className={cn('p-1.5 rounded', viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-500')}><Grid3X3 className="w-4 h-4" /></button>
-            <button onClick={() => setViewMode('list')} className={cn('p-1.5 rounded', viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-500')}><List className="w-4 h-4" /></button>
+            <button onClick={() => setViewMode('grid')} className={cn('p-1.5 rounded', viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-500')} aria-label="Grid3 x3"><Grid3X3 className="w-4 h-4" /></button>
+            <button onClick={() => setViewMode('list')} className={cn('p-1.5 rounded', viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-500')} aria-label="List view"><List className="w-4 h-4" /></button>
           </div>
         )}
       </div>
@@ -471,7 +471,7 @@ export default function FashionLensPage() {
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-semibold text-white truncate">{g.name}</h3>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => toggleFavorite(g.id)} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => toggleFavorite(g.id)} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Like">
                         <Heart className={cn('w-4 h-4', favorites.has(g.id) ? 'fill-pink-500 text-pink-500' : 'text-gray-500')} />
                       </button>
                       <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
@@ -580,7 +580,7 @@ export default function FashionLensPage() {
               onKeyDown={e => { if (e.key === 'Enter' && newWishItem.trim()) { setWishlist(prev => [...prev, { name: newWishItem.trim(), price: Number(newWishPrice) || 0, link: '' }]); setNewWishItem(''); setNewWishPrice(''); } }}
             />
             <input value={newWishPrice} onChange={e => setNewWishPrice(e.target.value)} type="number" placeholder="Price" className="input-lattice w-24" />
-            <button onClick={() => { if (newWishItem.trim()) { setWishlist(prev => [...prev, { name: newWishItem.trim(), price: Number(newWishPrice) || 0, link: '' }]); setNewWishItem(''); setNewWishPrice(''); } }} className="btn-neon purple"><Plus className="w-4 h-4" /></button>
+            <button onClick={() => { if (newWishItem.trim()) { setWishlist(prev => [...prev, { name: newWishItem.trim(), price: Number(newWishPrice) || 0, link: '' }]); setNewWishItem(''); setNewWishPrice(''); } }} className="btn-neon purple" aria-label="Add"><Plus className="w-4 h-4" /></button>
           </div>
           {wishlist.length > 0 && (
             <div className="panel p-2">
@@ -595,7 +595,7 @@ export default function FashionLensPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {item.price > 0 && <span className="text-sm text-neon-green">${item.price}</span>}
-                    <button onClick={() => setWishlist(prev => prev.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setWishlist(prev => prev.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400" aria-label="Close"><X className="w-3.5 h-3.5" /></button>
                   </div>
                 </motion.div>
               ))}

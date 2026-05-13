@@ -918,7 +918,7 @@ export default function FinanceLensPage() {
                   useUIStore.getState().addToast({ type: 'info', message: 'Filter options' })
                 }
                 className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-              >
+              aria-label="Filter">
                 <Filter className="w-4 h-4" />
               </button>
             </div>
@@ -1620,7 +1620,7 @@ export default function FinanceLensPage() {
                         .addToast({ type: 'info', message: `Cancelling order ${order.id}` })
                     }
                     className="p-2 rounded hover:bg-lattice-elevated text-gray-400 hover:text-red-400"
-                  >
+                  aria-label="Close">
                     <X className="w-4 h-4" />
                   </button>
                 </td>
@@ -1776,7 +1776,7 @@ export default function FinanceLensPage() {
               refetch5();
             }}
             className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-          >
+          aria-label="Refresh">
             <RefreshCw className="w-5 h-5" />
           </button>
           <button
@@ -1791,7 +1791,7 @@ export default function FinanceLensPage() {
               URL.revokeObjectURL(url);
             }}
             className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-          >
+          aria-label="Download">
             <Download className="w-5 h-5" />
           </button>
           <button
@@ -1799,7 +1799,7 @@ export default function FinanceLensPage() {
               useUIStore.getState().addToast({ type: 'info', message: 'Finance settings' })
             }
             className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-          >
+          aria-label="Settings">
             <Settings className="w-5 h-5" />
           </button>
         </div>
@@ -1864,7 +1864,7 @@ export default function FinanceLensPage() {
             <button
               onClick={() => setFinanceActionResult(null)}
               className="absolute top-3 right-3 text-gray-500 hover:text-white"
-            >
+            aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 
@@ -2247,7 +2247,7 @@ export default function FinanceLensPage() {
                 <button
                   onClick={() => setSelectedAsset(null)}
                   className="p-2 rounded-lg hover:bg-lattice-elevated"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

@@ -107,11 +107,17 @@ export function PipelineProgress({
               )}>
                 {step.lens}: {step.action.replace(/-/g, ' ')}
               </span>
-              {typeof status === 'object' && status?.dtuId && (
-                <button className="text-xs text-cyan-400 underline ml-auto">
-                  View
-                </button>
-              )}
+              {typeof status === 'object' && status?.dtuId && (() => {
+                const dtuId = status.dtuId;
+                return (
+                  <button
+                    onClick={() => { window.dispatchEvent(new CustomEvent('pipeline:view-dtu', { detail: { dtuId } })); }}
+                    className="text-xs text-cyan-400 underline ml-auto"
+                  >
+                    View
+                  </button>
+                );
+              })()}
             </div>
           );
         })}

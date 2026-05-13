@@ -84,7 +84,7 @@ function ActionPreviewModal({
             <Shield className="w-4 h-4 text-neon-blue" />
             <span className="text-sm font-medium text-white">Action Preview</span>
           </div>
-          <button onClick={onCancel} className="text-gray-500 hover:text-white">
+          <button onClick={onCancel} className="text-gray-500 hover:text-white" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>

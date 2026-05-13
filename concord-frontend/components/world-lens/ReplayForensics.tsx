@@ -628,7 +628,10 @@ export default function ReplayForensics() {
                 </select>
               </div>
 
-              <button className="w-full py-2.5 text-xs font-medium rounded-lg bg-amber-600 hover:bg-amber-500 transition-colors">
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('replay:render-timelapse')); }}
+                className="w-full py-2.5 text-xs font-medium rounded-lg bg-amber-600 hover:bg-amber-500 transition-colors"
+              >
                 Render Timelapse
               </button>
 

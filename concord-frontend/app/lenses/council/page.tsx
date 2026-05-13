@@ -1527,7 +1527,7 @@ export default function CouncilLensPage() {
               onClick={() => handleAddComment(p.id)}
               disabled={!commentText.trim()}
               className={ds.btnPrimary}
-            >
+            aria-label="Send">
               <Send className="w-4 h-4" />
             </button>
           </div>
@@ -2015,13 +2015,13 @@ export default function CouncilLensPage() {
                         <button
                           onClick={() => handleApproveBudgetItem(b.id, true)}
                           className="p-1 text-green-400 hover:bg-green-500/20 rounded"
-                        >
+                        aria-label="Check circle2">
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleApproveBudgetItem(b.id, false)}
                           className="p-1 text-red-400 hover:bg-red-500/20 rounded"
-                        >
+                        aria-label="Xcircle">
                           <XCircle className="w-4 h-4" />
                         </button>
                       </div>
@@ -2093,13 +2093,13 @@ export default function CouncilLensPage() {
                         <button
                           onClick={() => handleApproveBudgetItem(b.id, true)}
                           className="p-1 text-green-400 hover:bg-green-500/20 rounded"
-                        >
+                        aria-label="Check circle2">
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleApproveBudgetItem(b.id, false)}
                           className="p-1 text-red-400 hover:bg-red-500/20 rounded"
-                        >
+                        aria-label="Xcircle">
                           <XCircle className="w-4 h-4" />
                         </button>
                       </div>
@@ -2291,7 +2291,7 @@ export default function CouncilLensPage() {
                       removeAuditItem(entry.id);
                     }}
                     className="text-red-400 hover:text-red-300 flex-shrink-0 ml-1"
-                  >
+                  aria-label="Close">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -2488,7 +2488,7 @@ export default function CouncilLensPage() {
                   <button
                     onClick={() => removeCommitteeItem(c.id)}
                     className="text-red-400 hover:text-red-300 text-[10px]"
-                  >
+                  aria-label="Close">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -2698,7 +2698,7 @@ export default function CouncilLensPage() {
                 <button
                   onClick={() => setShowCreateProposal(false)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -2808,7 +2808,7 @@ export default function CouncilLensPage() {
                 <button
                   onClick={() => setShowCreateBudgetItem(false)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -2927,7 +2927,7 @@ export default function CouncilLensPage() {
                 <button
                   onClick={() => setShowCreateCommittee(false)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -2981,7 +2981,7 @@ export default function CouncilLensPage() {
                 <button
                   onClick={() => setShowCreateDebate(false)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

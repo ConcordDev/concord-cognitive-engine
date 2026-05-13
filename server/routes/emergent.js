@@ -511,8 +511,10 @@ export default function createEmergentRouter({ makeCtx, runMacro }) {
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/actions/evaluate", asyncHandler(async (req, res) => {
+    const action = req.body?.action || "";
+    if (!action) return res.status(400).json({ ok: false, error: "action required" });
     const ctx = makeCtx(req);
-    const result = evaluateRulesForAction(ctx.STATE, req.body.action);
+    const result = evaluateRulesForAction(ctx.STATE, action);
     return res.json({ ok: true, ...result });
   }));
 

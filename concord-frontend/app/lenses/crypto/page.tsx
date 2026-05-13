@@ -992,7 +992,7 @@ export default function CryptoLensPage() {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold">Send {selectedChainData.symbol}</h2>
-                <button onClick={() => setShowSendModal(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowSendModal(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <p className="text-sm text-gray-400">
                 Available: {showBalances ? `${selectedChainData.balance} ${selectedChainData.symbol}` : '****'}
@@ -1060,7 +1060,7 @@ export default function CryptoLensPage() {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold">Add Wallet</h2>
-                <button onClick={() => setShowAddWallet(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowAddWallet(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <input
                 type="text"
@@ -1121,7 +1121,7 @@ export default function CryptoLensPage() {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold">Add Chain</h2>
-                <button onClick={() => setShowAddChain(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowAddChain(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <input
                 type="text"

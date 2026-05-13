@@ -167,7 +167,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
             </button>
           </div>
         ))}
-        <button onClick={onCancel} className="ml-auto text-gray-500 hover:text-white">
+        <button onClick={onCancel} className="ml-auto text-gray-500 hover:text-white" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -234,7 +234,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
               {tags.map(tag => (
                 <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-xs text-gray-300">
                   <Tag className="w-2.5 h-2.5" /> {tag}
-                  <button onClick={() => setTags(tags.filter(t => t !== tag))} className="text-gray-500 hover:text-white">
+                  <button onClick={() => setTags(tags.filter(t => t !== tag))} className="text-gray-500 hover:text-white" aria-label="Close">
                     <X className="w-2.5 h-2.5" />
                   </button>
                 </span>
@@ -248,7 +248,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
                 className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none focus:border-neon-cyan/50"
                 placeholder="Add a tag..."
               />
-              <button onClick={addTag} className="px-2 py-1.5 bg-white/5 rounded-lg text-xs hover:bg-white/10">
+              <button onClick={addTag} className="px-2 py-1.5 bg-white/5 rounded-lg text-xs hover:bg-white/10" aria-label="Add">
                 <Plus className="w-3 h-3" />
               </button>
             </div>
@@ -291,7 +291,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
                   className="flex-1 px-2 py-1 bg-white/5 border border-white/10 rounded text-xs focus:outline-none"
                   placeholder="Role (producer, vocalist...)"
                 />
-                <button onClick={() => setCredits(credits.filter((_, j) => j !== i))} className="text-gray-500 hover:text-red-400">
+                <button onClick={() => setCredits(credits.filter((_, j) => j !== i))} className="text-gray-500 hover:text-red-400" aria-label="Close">
                   <X className="w-3 h-3" />
                 </button>
               </div>

@@ -184,10 +184,10 @@ export function TrackCard({
               <button
                 onClick={() => setLiked(!liked)}
                 className={cn('p-1 transition-colors', liked ? 'text-neon-pink' : 'text-gray-600 hover:text-white')}
-              >
+              aria-label="Like">
                 <Heart className="w-3.5 h-3.5" fill={liked ? 'currentColor' : 'none'} />
               </button>
-              <button onClick={handleAddToQueue} className="p-1 text-gray-600 hover:text-white transition-colors">
+              <button onClick={handleAddToQueue} className="p-1 text-gray-600 hover:text-white transition-colors" aria-label="Add">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -312,10 +312,10 @@ export function TrackCard({
           <button
             onClick={() => setLiked(!liked)}
             className={cn('p-1', liked ? 'text-neon-pink' : 'text-gray-500 hover:text-white')}
-          >
+          aria-label="Like">
             <Heart className="w-3.5 h-3.5" fill={liked ? 'currentColor' : 'none'} />
           </button>
-          <button onClick={handleAddToQueue} className="p-1 text-gray-500 hover:text-white">
+          <button onClick={handleAddToQueue} className="p-1 text-gray-500 hover:text-white" aria-label="Add">
             <Plus className="w-3.5 h-3.5" />
           </button>
           {showTiers && (
@@ -323,7 +323,7 @@ export function TrackCard({
               <button
                 onClick={() => setShowTierMenu(!showTierMenu)}
                 className="p-1 text-gray-500 hover:text-white"
-              >
+              aria-label="Cart">
                 <ShoppingCart className="w-3.5 h-3.5" />
               </button>
               {showTierMenu && (
@@ -344,7 +344,11 @@ export function TrackCard({
               )}
             </div>
           )}
-          <button className="p-1 text-gray-500 hover:text-white">
+          <button
+            onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('track:menu', { detail: { trackId: track.id } })); }}
+            aria-label="Track menu"
+            className="p-1 text-gray-500 hover:text-white"
+          >
             <MoreHorizontal className="w-3.5 h-3.5" />
           </button>
         </div>

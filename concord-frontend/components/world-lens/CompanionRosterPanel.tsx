@@ -127,7 +127,7 @@ export function CompanionRosterPanel({ worldId }: Props) {
                               className="flex-1 rounded bg-slate-800 px-1.5 py-0.5 text-[11px]"
                             />
                             <button onClick={() => rename(c.id)} className="text-[10px] text-emerald-300">save</button>
-                            <button onClick={() => setEditing(null)} className="text-[10px] text-slate-500"><X className="h-3 w-3" /></button>
+                            <button onClick={() => setEditing(null)} className="text-[10px] text-slate-500" aria-label="Close"><X className="h-3 w-3" /></button>
                           </div>
                         ) : (
                           <>

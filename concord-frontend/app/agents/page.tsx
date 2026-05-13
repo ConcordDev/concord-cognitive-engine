@@ -648,7 +648,7 @@ export default function AgentMonitorPage() {
                   <Plus className="w-5 h-5 text-neon-cyan" />
                   Create Agent
                 </h2>
-                <button onClick={() => setShowCreateModal(false)} className={ds.btnGhost}>
+                <button onClick={() => setShowCreateModal(false)} className={ds.btnGhost} aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

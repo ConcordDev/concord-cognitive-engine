@@ -1,4 +1,7 @@
 'use client';
+// @ghost-click-ok: silhouette/scaffolding component — Reply/Forward/Archive
+// buttons are visual placeholders for the inbox shape; caller wires real
+// handlers via children.
 
 /**
  * InboxShell — Gmail / Front 3-pane inbox silhouette.
@@ -169,7 +172,7 @@ export function InboxShell({
               <button type="button" className="inline-flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5">
                 <Archive className="w-3.5 h-3.5" /> Archive
               </button>
-              <button type="button" className="ml-auto inline-flex items-center gap-1 text-sm text-gray-500 px-3 py-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5">
+              <button type="button" className="ml-auto inline-flex items-center gap-1 text-sm text-gray-500 px-3 py-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5" aria-label="Expand">
                 <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </div>

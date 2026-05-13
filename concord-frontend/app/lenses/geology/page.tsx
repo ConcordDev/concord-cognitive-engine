@@ -402,7 +402,7 @@ export default function GeologyLensPage() {
                       <button
                         onClick={() => remove(sample.id)}
                         className="text-gray-500 hover:text-red-400"
-                      >
+                      aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -466,7 +466,7 @@ export default function GeologyLensPage() {
                   <button
                     onClick={() => removeSite(site.id)}
                     className="text-gray-500 hover:text-red-400"
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>

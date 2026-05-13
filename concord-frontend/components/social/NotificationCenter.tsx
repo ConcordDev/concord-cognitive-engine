@@ -558,7 +558,7 @@ function NotificationCenter({
             <button
               onClick={onClose}
               className="p-1.5 text-gray-400 hover:text-white rounded-lg transition-colors"
-            >
+            aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -636,7 +636,10 @@ function NotificationCenter({
       {/* Footer */}
       {filteredNotifications.length > 0 && mode === 'dropdown' && (
         <div className="border-t border-lattice-border px-4 py-2 flex-shrink-0">
-          <button className="w-full text-center text-sm text-neon-cyan hover:text-neon-cyan/80 transition-colors py-1">
+          <button
+            onClick={() => { window.dispatchEvent(new CustomEvent('notifications:open-all')); }}
+            className="w-full text-center text-sm text-neon-cyan hover:text-neon-cyan/80 transition-colors py-1"
+          >
             View all notifications
           </button>
         </div>

@@ -483,7 +483,7 @@ function ItemCard({
             onAddToCart(item);
           }}
           className="btn-neon small flex items-center gap-1"
-        >
+        aria-label="Cart">
           <ShoppingCart className="w-3.5 h-3.5" />
         </button>
       </motion.div>
@@ -641,7 +641,7 @@ function AudioPreviewBar({
         <button
           onClick={onClose}
           className="p-1.5 text-gray-400 hover:text-white transition-colors"
-        >
+        aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -1454,13 +1454,13 @@ export default function MarketplaceLensPage() {
                         setFeaturedIdx((i) => (i - 1 + featuredItems.length) % featuredItems.length)
                       }
                       className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
-                    >
+                    aria-label="Previous">
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setFeaturedIdx((i) => (i + 1) % featuredItems.length)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
-                    >
+                    aria-label="Next">
                       <ChevronRight className="w-4 h-4" />
                     </button>
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
@@ -1540,7 +1540,7 @@ export default function MarketplaceLensPage() {
                       ? 'bg-neon-purple/20 text-neon-purple'
                       : 'text-gray-500 hover:text-white'
                   )}
-                >
+                aria-label="Grid3 x3">
                   <Grid3X3 className="w-4 h-4" />
                 </button>
                 <button
@@ -1551,7 +1551,7 @@ export default function MarketplaceLensPage() {
                       ? 'bg-neon-purple/20 text-neon-purple'
                       : 'text-gray-500 hover:text-white'
                   )}
-                >
+                aria-label="List view">
                   <List className="w-4 h-4" />
                 </button>
               </div>
@@ -1767,7 +1767,7 @@ export default function MarketplaceLensPage() {
                     <button
                       onClick={() => setShowNewListing(false)}
                       className="text-gray-400 hover:text-white"
-                    >
+                    aria-label="Close">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
@@ -1905,7 +1905,7 @@ export default function MarketplaceLensPage() {
                     <button
                       onClick={() => setShowPackBuilder(false)}
                       className="text-gray-400 hover:text-white"
-                    >
+                    aria-label="Close">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
@@ -2078,7 +2078,7 @@ export default function MarketplaceLensPage() {
                       <button
                         onClick={() => removeFromCart(ci.item.id)}
                         className="p-1.5 text-gray-400 hover:text-red-400 transition-colors"
-                      >
+                      aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -2509,7 +2509,7 @@ export default function MarketplaceLensPage() {
                 <button
                   onClick={() => setRoyaltyVizDtuId(null)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>

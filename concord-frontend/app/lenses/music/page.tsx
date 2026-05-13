@@ -1155,7 +1155,7 @@ export default function MusicLensPage() {
                     <button
                       onClick={() => setSearchQuery('')}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-                    >
+                    aria-label="Close">
                       <X className="w-4 h-4" />
                     </button>
                   )}
@@ -2126,7 +2126,7 @@ export default function MusicLensPage() {
                       ? 'text-pink-400'
                       : 'text-gray-500 hover:text-white'
                   )}
-                >
+                aria-label="Like">
                   <Heart
                     className={cn(
                       'w-4 h-4',

@@ -182,7 +182,7 @@ export default function CraftingPanel({
           <h2 className="text-sm font-semibold">Crafting</h2>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -332,7 +332,10 @@ export default function CraftingPanel({
 
               {/* Gather link */}
               {!canCraft(selectedRecipe) && (
-                <button className="flex items-center gap-1 text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors">
+                <button
+                  onClick={() => { window.dispatchEvent(new CustomEvent('crafting:open-exchange', { detail: { recipeId: selectedRecipe?.id } })); }}
+                  className="flex items-center gap-1 text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
                   <ShoppingCart className="w-3 h-3" />
                   Gather Materials from The Exchange
                 </button>

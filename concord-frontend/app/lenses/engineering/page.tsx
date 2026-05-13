@@ -485,7 +485,7 @@ export default function EngineeringPage() {
                         <button
                           onClick={() => removeNode(i)}
                           className="text-gray-600 hover:text-red-400"
-                        >
+                        aria-label="Delete">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </td>
@@ -578,7 +578,7 @@ export default function EngineeringPage() {
                         <button
                           onClick={() => removeMember(i)}
                           className="text-gray-600 hover:text-red-400"
-                        >
+                        aria-label="Delete">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </td>
@@ -684,7 +684,7 @@ export default function EngineeringPage() {
                       <button
                         onClick={() => removeLoad(i)}
                         className="text-gray-600 hover:text-red-400"
-                      >
+                      aria-label="Delete">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </td>

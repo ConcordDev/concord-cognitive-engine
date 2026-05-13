@@ -448,7 +448,7 @@ function NewJobForm({
             onClick={addDomain}
             disabled={!domainInput.trim()}
             className={ds.btnSecondary}
-          >
+          aria-label="Tag">
             <Tag className="w-4 h-4" />
           </button>
         </div>
@@ -460,7 +460,7 @@ function NewJobForm({
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20"
               >
                 {d}
-                <button onClick={() => removeDomain(d)} className="hover:text-white">
+                <button onClick={() => removeDomain(d)} className="hover:text-white" aria-label="Xcircle">
                   <XCircle className="w-3 h-3" />
                 </button>
               </span>
@@ -524,7 +524,7 @@ function JobResultsView({
             )}
           </div>
         </div>
-        <button onClick={onClose} className={ds.btnGhost}>
+        <button onClick={onClose} className={ds.btnGhost} aria-label="Xcircle">
           <XCircle className="w-4 h-4" />
         </button>
       </div>
@@ -969,7 +969,7 @@ export default function ResearchDashboardPage() {
                   <Eye className="w-4 h-4 text-neon-cyan" />
                   Job Detail
                 </h3>
-                <button onClick={() => setSelectedJobId(null)} className={cn(ds.btnGhost, 'p-1')}>
+                <button onClick={() => setSelectedJobId(null)} className={cn(ds.btnGhost, 'p-1')} aria-label="Xcircle">
                   <XCircle className="w-4 h-4" />
                 </button>
               </div>

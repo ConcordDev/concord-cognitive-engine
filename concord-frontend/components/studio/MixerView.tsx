@@ -166,7 +166,7 @@ function ChannelStrip({
             <button
               onClick={e => { e.stopPropagation(); onRemoveEffect(fx.id); }}
               className="opacity-0 group-hover/fx:opacity-100 p-0.5 text-gray-500 hover:text-red-400"
-            >
+            aria-label="Close">
               <X className="w-2 h-2" />
             </button>
           </div>

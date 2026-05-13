@@ -352,13 +352,13 @@ export default function OfflineLensPage() {
                   className="p-2 bg-neon-green/20 text-neon-green rounded"
                   disabled={!isOnline || isSyncing}
                   onClick={() => handleSyncSingle(item.id)}
-                >
+                aria-label="Upload">
                   <Upload className="w-4 h-4" />
                 </button>
                 <button
                   className="p-2 bg-neon-pink/20 text-neon-pink rounded"
                   onClick={() => handleDeleteSingle(item.id)}
-                >
+                aria-label="Delete">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>

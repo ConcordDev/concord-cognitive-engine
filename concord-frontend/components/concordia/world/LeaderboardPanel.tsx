@@ -60,7 +60,7 @@ export function LeaderboardPanel({ currentUserId, onClose }: LeaderboardPanelPro
           <Trophy className="w-4 h-4 text-yellow-400" />
           <h2 className="text-white font-bold text-sm">Leaderboard</h2>
         </div>
-        <button onClick={onClose} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+        <button onClick={onClose} className="text-white/40 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
       </div>
 
       {/* Category tabs */}

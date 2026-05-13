@@ -289,14 +289,16 @@ export default function registerSystemRoutes(app, {
 
   // ---- Backup ----
   app.post("/api/backup", requireRole("owner", "admin"), asyncHandler(async (req, res) => {
-    const result = await createBackup(req.body.name);
+    const name = req.body?.name || "";
+    const result = await createBackup(name);
     res.json(result);
   }));
   app.get("/api/backups", requireRole("owner", "admin"), (req, res) => {
     res.json(listBackups());
   });
   app.post("/api/backup/restore", requireRole("owner"), asyncHandler(async (req, res) => {
-    const result = await restoreBackup(req.body.path || req.body.name);
+    const target = req.body?.path || req.body?.name || "";
+    const result = await restoreBackup(target);
     res.json(result);
   }));
 

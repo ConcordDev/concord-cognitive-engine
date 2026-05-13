@@ -25,6 +25,7 @@ import { SessionSidebar } from '@/components/chat/SessionSidebar';
 import { OnboardingWizard, useOnboarding } from '@/components/onboarding/OnboardingWizard';
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/store/sessions';
+import { useEventRouter } from '@/lib/event-router';
 
 /** Routes that render their own chrome and should skip the AppShell layout. */
 const STANDALONE_PREFIXES = ['/legal/'];
@@ -34,6 +35,11 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  // Central event-router — subscribes to every namespaced CustomEvent
+  // dispatched across the app and routes it to the right macro /
+  // navigation / toast. See lib/event-router.ts for the table.
+  useEventRouter();
+
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);

@@ -612,7 +612,7 @@ export default function AnalyticsPage() {
                   <button
                     onClick={() => setActionResult(null)}
                     className="text-gray-400 hover:text-white"
-                  >
+                  aria-label="Xcircle">
                     <XCircle className="w-4 h-4" />
                   </button>
                 </div>

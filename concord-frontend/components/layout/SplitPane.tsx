@@ -172,7 +172,7 @@ export function SplitPane({
         <button
           onClick={() => setLeftCollapsed(false)}
           className="absolute left-0 top-1/2 -translate-y-1/2 p-2 bg-lattice-surface border border-lattice-border rounded-r-lg hover:bg-lattice-border transition-colors"
-        >
+        aria-label="Maximize">
           <Maximize2 className="w-4 h-4 text-gray-400" />
         </button>
       )}
@@ -180,7 +180,7 @@ export function SplitPane({
         <button
           onClick={() => setRightCollapsed(false)}
           className="absolute right-0 top-1/2 -translate-y-1/2 p-2 bg-lattice-surface border border-lattice-border rounded-l-lg hover:bg-lattice-border transition-colors"
-        >
+        aria-label="Maximize">
           <Maximize2 className="w-4 h-4 text-gray-400" />
         </button>
       )}
@@ -363,7 +363,7 @@ export function WorkspaceLayout({ panes, onClosePane, onSplitPane, className }: 
                   onClosePane?.(pane.id);
                 }}
                 className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-lattice-border rounded transition-all"
-              >
+              aria-label="Close">
                 <X className="w-3 h-3" />
               </button>
             )}

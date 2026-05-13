@@ -548,8 +548,8 @@ export default function AccountingLensPage() {
                             <td className={cn(ds.textMono, 'py-2 text-right', catColor)}>{fmt(d.balance || 0)}</td>
                             <td className="py-2 text-right">
                               <div className="flex items-center gap-1 justify-end">
-                                <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(acct as unknown as LensItem<ArtifactData>)}><Edit3 className="w-3 h-3" /></button>
-                                <button className={cn(ds.btnGhost, ds.btnSmall, 'text-red-400')} onClick={() => handleDelete(acct.id)}><Trash2 className="w-3 h-3" /></button>
+                                <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(acct as unknown as LensItem<ArtifactData>)} aria-label="Edit"><Edit3 className="w-3 h-3" /></button>
+                                <button className={cn(ds.btnGhost, ds.btnSmall, 'text-red-400')} onClick={() => handleDelete(acct.id)} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                               </div>
                             </td>
                           </tr>
@@ -616,7 +616,7 @@ export default function AccountingLensPage() {
                 </td>
                 <td className="py-2">
                   {journalRows.length > 2 && (
-                    <button className={cn(ds.btnGhost, ds.btnSmall, 'text-red-400')} onClick={() => removeJournalRow(row.id)}><X className="w-3.5 h-3.5" /></button>
+                    <button className={cn(ds.btnGhost, ds.btnSmall, 'text-red-400')} onClick={() => removeJournalRow(row.id)} aria-label="Close"><X className="w-3.5 h-3.5" /></button>
                   )}
                 </td>
               </tr>
@@ -680,8 +680,8 @@ export default function AccountingLensPage() {
                       <p className="text-xs text-gray-500">Credit</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(txn as unknown as LensItem<ArtifactData>)}><Edit3 className="w-3 h-3" /></button>
-                      <button className={cn(ds.btnGhost, ds.btnSmall, 'text-red-400')} onClick={() => handleDelete(txn.id)}><Trash2 className="w-3 h-3" /></button>
+                      <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(txn as unknown as LensItem<ArtifactData>)} aria-label="Edit"><Edit3 className="w-3 h-3" /></button>
+                      <button className={cn(ds.btnGhost, ds.btnSmall, 'text-red-400')} onClick={() => handleDelete(txn.id)} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                     </div>
                   </div>
                 </div>
@@ -722,7 +722,7 @@ export default function AccountingLensPage() {
             <div className="flex items-center gap-3">
               <span className={cn(ds.textMuted, 'text-xs')}>Generated: {(trialBalanceResult.generatedAt as string)?.split('T')[0] || '-'}</span>
               <span className={cn(ds.textMuted, 'text-xs')}>As of: {(trialBalanceResult.asOfDate as string) || '-'}</span>
-              <button onClick={() => setTrialBalanceResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+              <button onClick={() => setTrialBalanceResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
           </div>
           {Array.isArray(trialBalanceResult.accounts) && (trialBalanceResult.accounts as Array<Record<string, unknown>>).length > 0 && (
@@ -777,7 +777,7 @@ export default function AccountingLensPage() {
             <h3 className={cn(ds.heading3, 'flex items-center gap-2')}>
               <ListChecks className="w-5 h-5 text-neon-blue" /> Ledger Validation Result
             </h3>
-            <button onClick={() => setValidateLedgerResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setValidateLedgerResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <pre className={cn(ds.textMono, 'text-xs overflow-auto max-h-48 p-3 bg-lattice-elevated/50 rounded-lg')}>{JSON.stringify(validateLedgerResult, null, 2)}</pre>
         </div>
@@ -962,7 +962,7 @@ export default function AccountingLensPage() {
                 <span className={cn(ds.textMuted, 'text-xs')}>
                   Period: {((profitLossResult.period as Record<string, string>)?.start || '-')} to {((profitLossResult.period as Record<string, string>)?.end || '-')}
                 </span>
-                <button onClick={() => setProfitLossResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+                <button onClick={() => setProfitLossResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
               </div>
             </div>
 
@@ -1495,7 +1495,7 @@ export default function AccountingLensPage() {
                 <td className={cn('py-2 pr-3 text-right', ds.textMono, 'text-white')}>{fmt(line.amount)}</td>
                 <td className="py-2">
                   {invoiceLines.length > 1 && (
-                    <button className={cn(ds.btnGhost, ds.btnSmall, 'text-red-400')} onClick={() => removeInvoiceLine(line.id)}><X className="w-3.5 h-3.5" /></button>
+                    <button className={cn(ds.btnGhost, ds.btnSmall, 'text-red-400')} onClick={() => removeInvoiceLine(line.id)} aria-label="Close"><X className="w-3.5 h-3.5" /></button>
                   )}
                 </td>
               </tr>
@@ -1568,7 +1568,7 @@ export default function AccountingLensPage() {
             </h3>
             <div className="flex items-center gap-3">
               <span className={cn(ds.textMuted, 'text-xs')}>As of: {(backendAgingResult.asOfDate as string) || '-'}</span>
-              <button onClick={() => setBackendAgingResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+              <button onClick={() => setBackendAgingResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
           </div>
 
@@ -1815,7 +1815,7 @@ export default function AccountingLensPage() {
               </h3>
               <div className="flex items-center gap-3">
                 <span className={cn(ds.textMuted, 'text-xs')}>Period: {(backendVarianceResult.period as string) || '-'}</span>
-                <button onClick={() => setBackendVarianceResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+                <button onClick={() => setBackendVarianceResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
               </div>
             </div>
 
@@ -2508,7 +2508,7 @@ export default function AccountingLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <pre className={cn(ds.textMono, 'text-xs overflow-auto max-h-48')}>{JSON.stringify(actionResult, null, 2)}</pre>
         </div>
@@ -2530,7 +2530,7 @@ export default function AccountingLensPage() {
             <div className="mt-4 space-y-4">
               <div className="flex items-center justify-between">
                 <span className={cn(ds.textMuted, 'text-xs')}>As of: {(rentRollResult.asOfMonth as string) || '-'}</span>
-                <button onClick={() => setRentRollResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+                <button onClick={() => setRentRollResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
               </div>
 
               <div className={ds.grid4}>
@@ -2847,7 +2847,7 @@ export default function AccountingLensPage() {
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>
-                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)}><X className="w-5 h-5" /></button>
+                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)} aria-label="Close"><X className="w-5 h-5" /></button>
                 </div>
               </div>
               <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">

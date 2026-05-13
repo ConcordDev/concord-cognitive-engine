@@ -857,7 +857,7 @@ export default function AgricultureLensPage() {
               <h2 className={ds.heading2}>
                 {editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}
               </h2>
-              <button onClick={() => setEditorOpen(false)} className={ds.btnGhost}>
+              <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1656,7 +1656,7 @@ export default function AgricultureLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>

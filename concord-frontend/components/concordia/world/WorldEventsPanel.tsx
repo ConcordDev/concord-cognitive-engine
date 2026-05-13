@@ -76,7 +76,7 @@ export function WorldEventsPanel({ worldId = 'concordia-hub', onClose }: WorldEv
           <Calendar className="w-4 h-4 text-indigo-400" />
           <h2 className="text-white font-bold text-sm">World Events</h2>
         </div>
-        <button onClick={onClose} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+        <button onClick={onClose} className="text-white/40 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
       </div>
 
       {/* Tabs */}

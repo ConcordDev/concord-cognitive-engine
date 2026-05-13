@@ -113,7 +113,7 @@ export function ReportButton({
                   <AlertTriangle className="w-4 h-4 text-red-400" />
                   <h3 className="text-sm font-semibold">Report Content</h3>
                 </div>
-                <button onClick={handleClose} className="text-gray-500 hover:text-white p-1">
+                <button onClick={handleClose} className="text-gray-500 hover:text-white p-1" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>

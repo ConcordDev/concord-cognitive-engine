@@ -2,6 +2,12 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Warm every Next.js app route once after the webServer comes up.
+  // `next start` lazy-compiles each route on first visit; without
+  // pre-warm, the first test that hits a given route waits 30-60 s
+  // for compile. Across 270+ routes that compounds past the
+  // per-action timeout. See scripts/playwright-warmup.ts.
+  globalSetup: './scripts/playwright-warmup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   // CI retry budget: 1 retry per test (was 2). Three runs of every
@@ -42,7 +48,20 @@ export default defineConfig({
     headless: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Bump the per-action timeouts so first-route compile latency
+    // under `next start` (which lazy-compiles each route on first
+    // visit even in production mode) doesn't trip the default 30 s
+    // goto. Mirrors playwright-infra.config.ts.
+    // actionTimeout bumped to 60 s — Playwright's internal action
+    // default is 30 s even when this is unset, and post-navigation
+    // hydration on cold-compiled routes can straddle it.
+    navigationTimeout: 60000,
+    actionTimeout: 60000,
   },
+  // Per-test timeout — covers the whole spec body including setup
+  // and teardown. 90 s leaves a comfortable margin over a 60 s goto
+  // plus a 15 s assertion budget.
+  timeout: 90000,
 
   projects: [
     {

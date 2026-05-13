@@ -312,7 +312,7 @@ function StarRating({ value, onChange, readonly = false }: { value: number; onCh
           disabled={readonly}
           onClick={() => onChange?.(s)}
           className={cn('transition-colors', readonly ? 'cursor-default' : 'cursor-pointer hover:text-yellow-300')}
-        >
+        aria-label="Favorite">
           <Star className={cn('w-3.5 h-3.5', s <= value ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600')} />
         </button>
       ))}
@@ -1376,7 +1376,7 @@ export default function ReasoningLensPage() {
                       onClick={() => addStep.mutate()}
                       disabled={!newStep || addStep.isPending}
                       className={ds.btnPrimary}
-                    >
+                    aria-label="Forward">
                       <ArrowRight className="w-4 h-4" />
                     </button>
                     <button
@@ -2077,7 +2077,7 @@ export default function ReasoningLensPage() {
               >
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>New Argument Map</h2>
-                  <button onClick={() => setShowNewMapModal(false)} className={ds.btnGhost}>
+                  <button onClick={() => setShowNewMapModal(false)} className={ds.btnGhost} aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -2155,7 +2155,7 @@ export default function ReasoningLensPage() {
                   <h2 className={ds.heading2}>
                     Add {addNodeStance === 'pro' ? 'Supporting' : addNodeStance === 'con' ? 'Opposing' : 'Qualifying'} Argument
                   </h2>
-                  <button onClick={() => setShowAddNodeModal(false)} className={ds.btnGhost}>
+                  <button onClick={() => setShowAddNodeModal(false)} className={ds.btnGhost} aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -2251,7 +2251,7 @@ export default function ReasoningLensPage() {
               >
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>Add Premise</h2>
-                  <button onClick={() => setShowNewPremiseModal(false)} className={ds.btnGhost}>
+                  <button onClick={() => setShowNewPremiseModal(false)} className={ds.btnGhost} aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -2319,7 +2319,7 @@ export default function ReasoningLensPage() {
               >
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>Add Evidence</h2>
-                  <button onClick={() => setShowNewEvidenceModal(false)} className={ds.btnGhost}>
+                  <button onClick={() => setShowNewEvidenceModal(false)} className={ds.btnGhost} aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -2428,7 +2428,7 @@ export default function ReasoningLensPage() {
               >
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>Flag Logical Fallacy</h2>
-                  <button onClick={() => setShowFlagFallacyModal(false)} className={ds.btnGhost}>
+                  <button onClick={() => setShowFlagFallacyModal(false)} className={ds.btnGhost} aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>

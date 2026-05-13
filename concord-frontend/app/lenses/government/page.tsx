@@ -3414,7 +3414,7 @@ export default function GovernmentLensPage() {
             <h3 className={cn(ds.heading3, 'flex items-center gap-2')}>
               <Activity className="w-4 h-4 text-neon-cyan" /> Action Result
             </h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -3439,7 +3439,7 @@ export default function GovernmentLensPage() {
                   <h2 className={ds.heading2}>
                     {editingId ? 'Edit' : 'New'} {currentType}
                   </h2>
-                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)}>
+                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)} aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>

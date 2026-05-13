@@ -252,6 +252,7 @@ export default function AtlasLensPage() {
           <RefreshCw className="w-3.5 h-3.5" /> Query Tile
         </button>
         {tileData && (
+          // @modal-escape-ok: AtlasOverlay is an inline attribution card, not a focus-trap modal
           <AtlasOverlay query={`${queryLat}, ${queryLng}`} result={tileData} loading={tileLoading} />
         )}
       </div>
@@ -375,7 +376,7 @@ export default function AtlasLensPage() {
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-lattice-deep rounded-lg border border-lattice-border">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-neon-cyan" /> Result</h4>
-              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white"><XCircle className="w-4 h-4" /></button>
+              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Xcircle"><XCircle className="w-4 h-4" /></button>
             </div>
             {/* Geocode */}
             {actionResult.resolved !== undefined && actionResult.count !== undefined && (

@@ -165,7 +165,7 @@ export function ArrangementView({
                   <button
                     onClick={e => { e.stopPropagation(); onDeleteTrack(track.id); }}
                     className="p-0.5 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100"
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-2.5 h-2.5" />
                   </button>
                 </div>

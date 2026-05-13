@@ -250,7 +250,7 @@ export function ContentPublisher({
                 <h3 className="text-sm font-semibold">
                   {published ? 'Published!' : 'Share & Publish'}
                 </h3>
-                <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white p-1">
+                <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white p-1" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>

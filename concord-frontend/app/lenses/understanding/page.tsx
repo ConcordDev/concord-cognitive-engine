@@ -263,7 +263,7 @@ function BrowseTab({ subjectKinds }: { subjectKinds: SubjectKind[] }) {
             className="bg-transparent outline-none text-sm flex-1 placeholder:text-white/30"
           />
           {search && (
-            <button onClick={() => setSearch('')} className="text-white/40 hover:text-white">
+            <button onClick={() => setSearch('')} className="text-white/40 hover:text-white" aria-label="Close">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -353,7 +353,7 @@ function UnderstandingDetailModal({
       >
         <div className="flex items-start justify-between mb-3">
           <h3 className="text-base font-bold">Understanding</h3>
-          <button onClick={onClose} className="text-white/50 hover:text-white"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
         </div>
         <p className="text-[11px] font-mono text-white/40 break-all mb-3">{u.id}</p>
         {u.subjectId && (

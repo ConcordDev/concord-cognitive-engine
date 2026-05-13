@@ -492,9 +492,9 @@ export default function ForumLensPage() {
       <div key={comment.id} className={cn('border-l-2 pl-3 mt-3', depth === 0 ? 'border-orange-500/20' : depth === 1 ? 'border-amber-700/20' : 'border-gray-800')}>
         <div className="flex items-start gap-2">
           <div className="flex flex-col items-center gap-0.5 mt-1">
-            <button onClick={() => handleCommentVote(comment.id, 1)} className={cn('text-gray-500 hover:text-orange-400 transition-colors', comment.userVote === 1 && 'text-orange-500')}><ArrowBigUp className="w-4 h-4" /></button>
+            <button onClick={() => handleCommentVote(comment.id, 1)} className={cn('text-gray-500 hover:text-orange-400 transition-colors', comment.userVote === 1 && 'text-orange-500')} aria-label="Arrow big up"><ArrowBigUp className="w-4 h-4" /></button>
             <span className={cn('text-xs font-bold', comment.userVote === 1 ? 'text-orange-500' : comment.userVote === -1 ? 'text-blue-500' : 'text-gray-400')}>{comment.score}</span>
-            <button onClick={() => handleCommentVote(comment.id, -1)} className={cn('text-gray-500 hover:text-blue-400 transition-colors', comment.userVote === -1 && 'text-blue-500')}><ArrowBigDown className="w-4 h-4" /></button>
+            <button onClick={() => handleCommentVote(comment.id, -1)} className={cn('text-gray-500 hover:text-blue-400 transition-colors', comment.userVote === -1 && 'text-blue-500')} aria-label="Arrow big down"><ArrowBigDown className="w-4 h-4" /></button>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -515,8 +515,8 @@ export default function ForumLensPage() {
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mt-2">
                   <div className="flex gap-2">
                     <input value={replyContent} onChange={e => setReplyContent(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddComment(postId, comment.id, replyContent)} placeholder="Write a reply..." className="flex-1 px-3 py-1.5 bg-lattice-bg border border-lattice-border rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan input-lattice" />
-                    <button onClick={() => handleAddComment(postId, comment.id, replyContent)} className="px-3 py-1.5 bg-neon-cyan text-black text-sm font-medium rounded hover:bg-neon-cyan/90 btn-neon"><Send className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => setReplyTo(null)} className="px-2 py-1.5 text-gray-400 hover:text-white text-sm"><X className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleAddComment(postId, comment.id, replyContent)} className="px-3 py-1.5 bg-neon-cyan text-black text-sm font-medium rounded hover:bg-neon-cyan/90 btn-neon" aria-label="Send"><Send className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setReplyTo(null)} className="px-2 py-1.5 text-gray-400 hover:text-white text-sm" aria-label="Close"><X className="w-3.5 h-3.5" /></button>
                   </div>
                 </motion.div>
               )}
@@ -535,9 +535,9 @@ export default function ForumLensPage() {
         <div className="flex">
           {/* Vote column — orange/warm accent */}
           <div className="flex flex-col items-center p-2 bg-lattice-bg/50 rounded-l-lg min-w-[48px]">
-            <button onClick={() => handleVote(post.id, 1)} className={cn('p-1 rounded hover:bg-orange-500/10 transition-colors', post.userVote === 1 ? 'text-orange-500' : 'text-gray-400 hover:text-orange-500')}><ArrowBigUp className="w-6 h-6" /></button>
+            <button onClick={() => handleVote(post.id, 1)} className={cn('p-1 rounded hover:bg-orange-500/10 transition-colors', post.userVote === 1 ? 'text-orange-500' : 'text-gray-400 hover:text-orange-500')} aria-label="Arrow big up"><ArrowBigUp className="w-6 h-6" /></button>
             <span className={cn('text-sm font-bold py-0.5', post.userVote === 1 ? 'text-orange-500' : post.userVote === -1 ? 'text-blue-500' : 'text-white')}>{formatScore(post.score)}</span>
-            <button onClick={() => handleVote(post.id, -1)} className={cn('p-1 rounded hover:bg-blue-500/10 transition-colors', post.userVote === -1 ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500')}><ArrowBigDown className="w-6 h-6" /></button>
+            <button onClick={() => handleVote(post.id, -1)} className={cn('p-1 rounded hover:bg-blue-500/10 transition-colors', post.userVote === -1 ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500')} aria-label="Arrow big down"><ArrowBigDown className="w-6 h-6" /></button>
           </div>
           {/* Content */}
           <div className="flex-1 p-3 min-w-0">
@@ -568,7 +568,7 @@ export default function ForumLensPage() {
               <div className="flex items-center gap-1.5 text-xs px-2 py-1 text-gray-500"><Eye className="w-3.5 h-3.5" />{post.views.toLocaleString()}</div>
               {/* Mod tools */}
               <div className="relative ml-auto">
-                <button onClick={() => setModToolsOpenId(modToolsOpenId === post.id ? null : post.id)} className="flex items-center gap-1 text-xs hover:bg-lattice-bg px-2 py-1 rounded transition-colors"><Shield className="w-3.5 h-3.5" /><ChevronDown className="w-3 h-3" /></button>
+                <button onClick={() => setModToolsOpenId(modToolsOpenId === post.id ? null : post.id)} className="flex items-center gap-1 text-xs hover:bg-lattice-bg px-2 py-1 rounded transition-colors" aria-label="Shield"><Shield className="w-3.5 h-3.5" /><ChevronDown className="w-3 h-3" /></button>
                 {modToolsOpenId === post.id && (
                 <div className="absolute right-0 top-full mt-1 w-40 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-20 py-1">
                   <button onClick={() => { handleModAction(post.id, 'pin'); setModToolsOpenId(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-300 hover:bg-lattice-bg"><Pin className="w-3.5 h-3.5" />{post.pinned ? 'Unpin' : 'Pin'}</button>
@@ -593,9 +593,9 @@ export default function ForumLensPage() {
         <article className="bg-lattice-surface border border-lattice-border rounded-lg overflow-hidden lens-card">
           <div className="flex">
             <div className="flex flex-col items-center p-3 bg-lattice-bg/50 min-w-[56px]">
-              <button onClick={() => handleVote(selectedPost.id, 1)} className={cn('p-1 rounded hover:bg-lattice-surface', selectedPost.userVote === 1 ? 'text-orange-500' : 'text-gray-400 hover:text-orange-500')}><ArrowBigUp className="w-7 h-7" /></button>
+              <button onClick={() => handleVote(selectedPost.id, 1)} className={cn('p-1 rounded hover:bg-lattice-surface', selectedPost.userVote === 1 ? 'text-orange-500' : 'text-gray-400 hover:text-orange-500')} aria-label="Arrow big up"><ArrowBigUp className="w-7 h-7" /></button>
               <span className={cn('text-base font-bold py-1', selectedPost.userVote === 1 ? 'text-orange-500' : selectedPost.userVote === -1 ? 'text-blue-500' : 'text-white')}>{formatScore(selectedPost.score)}</span>
-              <button onClick={() => handleVote(selectedPost.id, -1)} className={cn('p-1 rounded hover:bg-lattice-surface', selectedPost.userVote === -1 ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500')}><ArrowBigDown className="w-7 h-7" /></button>
+              <button onClick={() => handleVote(selectedPost.id, -1)} className={cn('p-1 rounded hover:bg-lattice-surface', selectedPost.userVote === -1 ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500')} aria-label="Arrow big down"><ArrowBigDown className="w-7 h-7" /></button>
             </div>
             <div className="flex-1 p-4">
               <div className="flex items-center gap-2 text-xs text-gray-400 mb-2 flex-wrap">
@@ -736,7 +736,7 @@ export default function ForumLensPage() {
         <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 panel">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-white flex items-center gap-2 text-sm"><Users className="w-4 h-4" />Communities</h3>
-            <button onClick={() => setShowCreateCommunity(true)} className="text-neon-cyan hover:text-neon-cyan/80 transition-colors"><Plus className="w-4 h-4" /></button>
+            <button onClick={() => setShowCreateCommunity(true)} className="text-neon-cyan hover:text-neon-cyan/80 transition-colors" aria-label="Add"><Plus className="w-4 h-4" /></button>
           </div>
           <div className="space-y-1">
             <button onClick={() => { setSelectedCommunity('all'); if (viewMode !== 'feed') backToFeed(); }} className={cn('w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors', selectedCommunity === 'all' ? 'bg-neon-cyan/20 text-neon-cyan' : 'hover:bg-lattice-bg text-gray-300')}>
@@ -811,7 +811,7 @@ export default function ForumLensPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input ref={searchInputRef}
               type="text" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); if (viewMode !== 'feed') backToFeed(); }} placeholder="Search posts, tags, users..." className="w-full pl-10 pr-4 py-2 bg-lattice-bg border border-lattice-border rounded-full text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan input-lattice" />
-                {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"><X className="w-3.5 h-3.5" /></button>}
+                {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close"><X className="w-3.5 h-3.5" /></button>}
               </div>
               <button onClick={() => setShowCreatePost(true)} className="flex items-center gap-2 px-4 py-2 bg-neon-cyan text-black font-medium rounded-full hover:bg-neon-cyan/90 transition-colors text-sm flex-shrink-0 btn-neon">
                 <Plus className="w-4 h-4" />Create Post
@@ -864,7 +864,7 @@ export default function ForumLensPage() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="w-full max-w-xl bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className="text-lg font-bold text-white">Create a Post</h2>
-                <button onClick={() => setShowCreatePost(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowCreatePost(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-5 space-y-4">
                 {/* Community selection */}
@@ -919,7 +919,7 @@ export default function ForumLensPage() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="w-full max-w-md bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className="text-lg font-bold text-white">Create Community</h2>
-                <button onClick={() => setShowCreateCommunity(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowCreateCommunity(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-5 space-y-4">
                 <div>
@@ -947,7 +947,7 @@ export default function ForumLensPage() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="w-full max-w-sm bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2"><Award className="w-5 h-5 text-yellow-400" />Give Award</h2>
-                <button onClick={() => setShowAwardModal(null)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowAwardModal(null)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-5 grid grid-cols-3 gap-3">
                 {AWARDS.map(award => (
@@ -970,7 +970,7 @@ export default function ForumLensPage() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="w-full max-w-sm bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className="text-lg font-bold text-white">Share Post</h2>
-                <button onClick={() => setShowShareModal(null)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowShareModal(null)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-5 space-y-3">
                 <button onClick={() => { navigator.clipboard?.writeText(`https://concord.lattice/forum/${showShareModal}`); setShowShareModal(null); }} className="w-full flex items-center gap-3 p-3 bg-lattice-bg border border-lattice-border rounded-lg hover:border-neon-cyan/50 transition-colors text-left">
@@ -1016,7 +1016,7 @@ export default function ForumLensPage() {
 
         {forumActionResult && (
           <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setForumActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
+            <button onClick={() => setForumActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 

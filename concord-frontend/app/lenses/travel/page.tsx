@@ -215,7 +215,7 @@ export default function TravelLensPage() {
             <div className="panel p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Plan a New Trip</h3>
-                <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+                <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <input value={newTrip.name} onChange={e => setNewTrip(p => ({ ...p, name: e.target.value }))} placeholder="Trip name..." className="input-lattice" />
@@ -321,7 +321,7 @@ export default function TravelLensPage() {
                       <button onClick={() => { const nextStatus = trip.status === 'planning' ? 'booked' : trip.status === 'booked' ? 'in-progress' : trip.status === 'in-progress' ? 'completed' : 'planning'; update(trip.id, { data: { ...trip, status: nextStatus } as unknown as Partial<TripData> }); }} className="text-gray-500 hover:text-neon-cyan p-1" title="Advance status">
                         <CheckSquare className="w-4 h-4" />
                       </button>
-                      <button onClick={() => remove(trip.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1">
+                      <button onClick={() => remove(trip.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1" aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -372,7 +372,7 @@ export default function TravelLensPage() {
                 }
               }}
               className="btn-neon"
-            >
+            aria-label="Add">
               <Plus className="w-4 h-4" />
             </button>
           </div>
@@ -390,7 +390,7 @@ export default function TravelLensPage() {
                     {item.checked ? <CheckSquare className="w-4 h-4 text-neon-cyan" /> : <Square className="w-4 h-4 text-gray-500" />}
                   </button>
                   <span className={cn('flex-1 text-sm', item.checked && 'line-through text-gray-600')}>{item.text}</span>
-                  <button onClick={() => setPackingItems(prev => prev.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-opacity">
+                  <button onClick={() => setPackingItems(prev => prev.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-opacity" aria-label="Close">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </motion.div>
@@ -452,7 +452,7 @@ export default function TravelLensPage() {
             Travel Actions
           </h3>
           {travelActionResult && (
-            <button onClick={() => setTravelActionResult(null)} className="p-1 rounded hover:bg-white/5 text-gray-400">
+            <button onClick={() => setTravelActionResult(null)} className="p-1 rounded hover:bg-white/5 text-gray-400" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

@@ -1065,7 +1065,7 @@ function CityStreamingSection() {
             onClick={fetchStreams}
             disabled={isLoadingStreams}
             className="text-gray-400 hover:text-white transition-colors"
-          >
+          aria-label="Radio">
             <Radio className={`w-3.5 h-3.5 ${isLoadingStreams ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -5390,7 +5390,7 @@ export default function WorldLensPage() {
                   <button
                     onClick={() => setActiveTool(null)}
                     className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-white"
-                  >
+                  aria-label="Close">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -5469,7 +5469,7 @@ export default function WorldLensPage() {
             <button
               onClick={() => setWorldActionResult(null)}
               className="p-0.5 rounded hover:bg-white/5 text-gray-400"
-            >
+            aria-label="Close">
               <X className="w-3 h-3" />
             </button>
           )}

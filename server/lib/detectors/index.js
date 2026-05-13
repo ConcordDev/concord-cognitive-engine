@@ -39,6 +39,15 @@ import { runEnvConfigDriftDetector } from "./env-config-drift-detector.js";
 import { runObservabilityGapDetector } from "./observability-gap-detector.js";
 import { runAgentBudgetDetector } from "./agent-budget-detector.js";
 import { runLensDecorativeStateDetector } from "./lens-decorative-state-detector.js";
+import { runHttpErrorDetector } from "./http-error-detector.js";
+import { runFrontendGhostClickDetector } from "./frontend-ghost-click-detector.js";
+import { runDeadEventListenerDetector } from "./dead-event-listener-detector.js";
+import { runUxBrokenLinkDetector } from "./ux-broken-link-detector.js";
+import { runUxA11yButtonNoLabelDetector } from "./ux-a11y-button-no-label-detector.js";
+import { runUxLoadingStateMissingDetector } from "./ux-loading-state-missing-detector.js";
+import { runUxFormErrorDisplayDetector } from "./ux-form-error-display-detector.js";
+import { runUxRouteEmptyRenderDetector } from "./ux-route-empty-render-detector.js";
+import { runUxModalNoEscapeDetector } from "./ux-modal-no-escape-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -336,6 +345,95 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Unbounded agent loops, recursive LLM calls without caps, throttle-less heartbeats, output passthrough.",
   run: runAgentBudgetDetector,
+});
+
+// HTTP-error-shape patterns the rest of the matrix (500/401 already
+// covered by observability-gap + invariant-guardian).
+registerDetector({
+  id: "http-error",
+  label: "HttpErrorDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Static patterns that surface as HTTP 400/404/409/429/504 — missing input validation, null-checks, conflict guards, per-route rate limiters, fetch/axios timeouts.",
+  run: runHttpErrorDetector,
+});
+
+// Frontend ghost-click patterns — buttons without handlers, async
+// click handlers that swallow errors, forms that don't preventDefault,
+// stuck loading state. Complements http-error-detector on the
+// frontend side of the "click did nothing" UX bug class.
+registerDetector({
+  id: "frontend-ghost-click",
+  label: "FrontendGhostClickDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Frontend UI patterns where a button click does nothing visible — missing onClick handler, async fetch without error path, form submit without preventDefault, loading state without finally.",
+  run: runFrontendGhostClickDetector,
+});
+
+// Ghost-event pattern — CustomEvent dispatched with no subscriber.
+// Closes the wiring loop: ghost-click ensures every button has an
+// onClick; dead-event-listener ensures every dispatched event has a
+// listener. Without it, a fully-wired button can still produce a
+// dead UX (the event fires but nothing acts on it).
+registerDetector({
+  id: "dead-event-listener",
+  label: "DeadEventListenerDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Namespaced CustomEvent names dispatched with no addEventListener/useEventListener subscriber anywhere in the frontend tree.",
+  run: runDeadEventListenerDetector,
+});
+
+// UX-quality detector suite — six per-shape regression gates so
+// "top-notch UX with no issues" stays a measurable property.
+registerDetector({
+  id: "ux-broken-link",
+  label: "UxBrokenLinkDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "<Link href>/router.push targets that don't match any concord-frontend/app/ route — clicking 404s.",
+  run: runUxBrokenLinkDetector,
+});
+registerDetector({
+  id: "ux-a11y-button-no-label",
+  label: "UxA11yButtonNoLabelDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Icon-only <button> with no aria-label / aria-labelledby / title / visible text.",
+  run: runUxA11yButtonNoLabelDetector,
+});
+registerDetector({
+  id: "ux-loading-state-missing",
+  label: "UxLoadingStateMissingDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Async onClick that hits the network with no visible loading state — double-click vulnerable.",
+  run: runUxLoadingStateMissingDetector,
+});
+registerDetector({
+  id: "ux-form-error-display",
+  label: "UxFormErrorDisplayDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "<form onSubmit> with a silent catch block — failed submissions invisible to the user.",
+  run: runUxFormErrorDisplayDetector,
+});
+registerDetector({
+  id: "ux-route-empty-render",
+  label: "UxRouteEmptyRenderDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Lens page that returns null/undefined/<></> with no EmptyState / Skeleton / loading guard — blank screen.",
+  run: runUxRouteEmptyRenderDetector,
+});
+registerDetector({
+  id: "ux-modal-no-escape",
+  label: "UxModalNoEscapeDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "<Modal>/<Dialog>/<Drawer>/<Sheet>/<Popover>/<Overlay> opened without onClose / onOpenChange / Esc handler — traps the user.",
+  run: runUxModalNoEscapeDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same

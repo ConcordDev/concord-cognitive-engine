@@ -264,7 +264,7 @@ function VideoPreviewRender({ preview }: { preview: VideoPreview }) {
           <button
             onClick={() => setPlaying(true)}
             className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition"
-          >
+          aria-label="Play">
             <div className="w-14 h-14 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center border border-white/20">
               <Play className="w-6 h-6 ml-0.5" />
             </div>

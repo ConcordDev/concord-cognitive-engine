@@ -757,9 +757,9 @@ export default function ArtLensPage() {
             />
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
-                <button onClick={() => setCanvasZoom(Math.max(25, canvasZoom - 25))} className="p-1 text-gray-400 hover:text-white"><ZoomOut className="w-4 h-4" /></button>
+                <button onClick={() => setCanvasZoom(Math.max(25, canvasZoom - 25))} className="p-1 text-gray-400 hover:text-white" aria-label="Zoom out"><ZoomOut className="w-4 h-4" /></button>
                 <span className="text-xs text-gray-400 w-10 text-center">{canvasZoom}%</span>
-                <button onClick={() => setCanvasZoom(Math.min(400, canvasZoom + 25))} className="p-1 text-gray-400 hover:text-white"><ZoomIn className="w-4 h-4" /></button>
+                <button onClick={() => setCanvasZoom(Math.min(400, canvasZoom + 25))} className="p-1 text-gray-400 hover:text-white" aria-label="Zoom in"><ZoomIn className="w-4 h-4" /></button>
               </div>
               <button onClick={handleCanvasSave} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-pink/20 text-neon-pink rounded text-xs hover:bg-neon-pink/30">
                 <Save className="w-3.5 h-3.5" />
@@ -1002,8 +1002,8 @@ export default function ArtLensPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">My Artwork</h2>
         <div className="flex items-center gap-2">
-          <button onClick={() => setMyArtView('grid')} className={cn('p-2', myArtView === 'grid' ? 'text-white' : 'text-gray-400 hover:text-white')}><Grid className="w-5 h-5" /></button>
-          <button onClick={() => setMyArtView('list')} className={cn('p-2', myArtView === 'list' ? 'text-white' : 'text-gray-400 hover:text-white')}><Layers className="w-5 h-5" /></button>
+          <button onClick={() => setMyArtView('grid')} className={cn('p-2', myArtView === 'grid' ? 'text-white' : 'text-gray-400 hover:text-white')} aria-label="Grid view"><Grid className="w-5 h-5" /></button>
+          <button onClick={() => setMyArtView('list')} className={cn('p-2', myArtView === 'list' ? 'text-white' : 'text-gray-400 hover:text-white')} aria-label="Layers"><Layers className="w-5 h-5" /></button>
         </div>
       </div>
 
@@ -1024,9 +1024,9 @@ export default function ArtLensPage() {
               <span className="text-sm font-medium">{art.title}</span>
               <div className="flex gap-2">
                 <PullToSubstrate domain="art" artifactId={art.id} compact />
-                <button onClick={() => handleShareArt(art.id)} className="p-1.5 bg-white/10 rounded hover:bg-white/20"><Share2 className="w-4 h-4" /></button>
-                <button onClick={() => handleDownloadArt(art.id)} className="p-1.5 bg-white/10 rounded hover:bg-white/20"><Download className="w-4 h-4" /></button>
-                <button onClick={() => handleListArt(art.id)} className="p-1.5 bg-white/10 rounded hover:bg-white/20"><DollarSign className="w-4 h-4" /></button>
+                <button onClick={() => handleShareArt(art.id)} className="p-1.5 bg-white/10 rounded hover:bg-white/20" aria-label="Share"><Share2 className="w-4 h-4" /></button>
+                <button onClick={() => handleDownloadArt(art.id)} className="p-1.5 bg-white/10 rounded hover:bg-white/20" aria-label="Download"><Download className="w-4 h-4" /></button>
+                <button onClick={() => handleListArt(art.id)} className="p-1.5 bg-white/10 rounded hover:bg-white/20" aria-label="Dollar sign"><DollarSign className="w-4 h-4" /></button>
               </div>
             </div>
           </div>
@@ -1094,7 +1094,7 @@ export default function ArtLensPage() {
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-lattice-surface border border-white/10 rounded-xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold">Upload Artwork</h3>
-                <button onClick={() => setShowUpload(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowUpload(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="space-y-4">
                 <div>
@@ -1136,7 +1136,7 @@ export default function ArtLensPage() {
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-lattice-surface border border-white/10 rounded-xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold">List on Marketplace</h3>
-                <button onClick={() => setShowCreateListing(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowCreateListing(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="space-y-4">
                 <input type="text" value={listingTitle} onChange={e => setListingTitle(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none" placeholder="Listing title" />
@@ -1182,7 +1182,7 @@ export default function ArtLensPage() {
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-white/5 rounded-lg border border-white/10">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold flex items-center gap-2"><Palette className="w-4 h-4 text-neon-pink" /> Result</h4>
-              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
             {/* Color Harmony */}
             {actionResult.harmonies !== undefined && actionResult.paletteSize !== undefined && (

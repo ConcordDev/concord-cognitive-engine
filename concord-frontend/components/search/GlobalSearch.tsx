@@ -224,7 +224,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
                   <button
                     onClick={() => setQuery('')}
                     className="p-1 text-gray-400 hover:text-white"
-                  >
+                  aria-label="Close">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -255,7 +255,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
                       ? 'bg-lattice-surface text-white'
                       : 'text-gray-400 hover:text-white'
                   )}
-                >
+                aria-label="Filter">
                   <Filter className="w-4 h-4" />
                 </button>
               </div>

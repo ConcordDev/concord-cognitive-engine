@@ -242,7 +242,7 @@ function CreateDisputeForm({ onClose, onSuccess }: { onClose: () => void; onSucc
             <AlertTriangle size={18} className="text-orange-400" />
             Report a Problem
           </h2>
-          <button onClick={onClose} className={ds.btnGhost}><X size={16} /></button>
+          <button onClick={onClose} className={ds.btnGhost} aria-label="Close"><X size={16} /></button>
         </div>
 
         <div className="p-4 space-y-4">

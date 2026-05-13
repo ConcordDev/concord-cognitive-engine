@@ -130,7 +130,7 @@ export function BuildingInterior({
               <Users className="w-3 h-3" /> {totalOccupants}
             </div>
           )}
-          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>

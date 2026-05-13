@@ -463,7 +463,10 @@ export default function SensorDashboard() {
                 className="w-full bg-black/60 border border-white/10 rounded-md px-3 py-1.5 text-sm text-white placeholder:text-white/20 focus:border-cyan-500 outline-none"
               />
             </div>
-            <button className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-sm font-semibold transition-colors">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('sensor:register-device')); }}
+              className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-sm font-semibold transition-colors"
+            >
               Register Device
             </button>
           </div>

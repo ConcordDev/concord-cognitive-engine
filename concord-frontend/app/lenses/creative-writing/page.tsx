@@ -362,7 +362,7 @@ export default function CreativeWritingPage() {
                   <div className="rounded-lg bg-black/30 border border-amber-500/20 p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-amber-300 font-medium capitalize">{actionResult.action}</span>
-                      <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300">
+                      <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300" aria-label="Xcircle">
                         <XCircle className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -628,8 +628,8 @@ export default function CreativeWritingPage() {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <button onClick={e => { e.stopPropagation(); openWork(work); }} className="p-1 hover:bg-white/10 rounded"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={e => { e.stopPropagation(); removeWork(work.id).then(() => { refetch(); useUIStore.getState().addToast({ type: 'success', message: 'Work deleted' }); }).catch(() => useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete' })); }} className="p-1 hover:bg-white/10 rounded text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={e => { e.stopPropagation(); openWork(work); }} className="p-1 hover:bg-white/10 rounded" aria-label="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={e => { e.stopPropagation(); removeWork(work.id).then(() => { refetch(); useUIStore.getState().addToast({ type: 'success', message: 'Work deleted' }); }).catch(() => useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete' })); }} className="p-1 hover:bg-white/10 rounded text-red-400" aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
                       {work.content && <p className="text-xs text-gray-600 mt-2 line-clamp-2">{work.content.slice(0, 200)}</p>}
@@ -804,7 +804,10 @@ export default function CreativeWritingPage() {
                 <p className="text-sm font-medium mb-1">Share for Peer Review</p>
                 <p className="text-xs text-gray-500">Get feedback from the community on your latest work.</p>
               </div>
-              <button className="px-4 py-2 text-xs bg-amber-500/20 border border-amber-500/30 rounded-lg hover:bg-amber-500/30 flex items-center gap-1.5 text-amber-400 whitespace-nowrap">
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('creative-writing:share-for-review')); }}
+                className="px-4 py-2 text-xs bg-amber-500/20 border border-amber-500/30 rounded-lg hover:bg-amber-500/30 flex items-center gap-1.5 text-amber-400 whitespace-nowrap"
+              >
                 <Users className="w-3.5 h-3.5" /> Share for Review
               </button>
             </div>

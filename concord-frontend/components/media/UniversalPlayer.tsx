@@ -247,7 +247,11 @@ function AudioPlayer({
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button className="text-gray-400 hover:text-white transition-colors">
+            <button
+              onClick={() => { if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10); }}
+              aria-label="Rewind 10 seconds"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
               <SkipBack className="w-5 h-5" />
             </button>
             <button
@@ -256,7 +260,11 @@ function AudioPlayer({
             >
               {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
             </button>
-            <button className="text-gray-400 hover:text-white transition-colors">
+            <button
+              onClick={() => { if (audioRef.current) audioRef.current.currentTime = Math.min(audioRef.current.duration || Infinity, audioRef.current.currentTime + 10); }}
+              aria-label="Forward 10 seconds"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
               <SkipForward className="w-5 h-5" />
             </button>
           </div>
@@ -484,7 +492,11 @@ function VideoPlayer({
                   {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                 </button>
 
-                <button className="text-gray-300 hover:text-white transition-colors">
+                <button
+                  onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || Infinity, videoRef.current.currentTime + 10); }}
+                  aria-label="Forward 10 seconds"
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
                   <SkipForward className="w-4 h-4" />
                 </button>
 
@@ -516,7 +528,7 @@ function VideoPlayer({
                   <button
                     onClick={() => setShowQualityMenu(prev => !prev)}
                     className="text-gray-300 hover:text-white transition-colors"
-                  >
+                  aria-label="Settings">
                     <Settings className="w-4 h-4" />
                   </button>
                   <AnimatePresence>
@@ -708,7 +720,7 @@ function DocumentViewer({
           onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
           disabled={currentPage <= 1}
           className="p-2 text-gray-400 hover:text-white disabled:opacity-30 transition-colors rounded-lg"
-        >
+        aria-label="Previous">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <span className="text-xs text-gray-400 tabular-nums">
@@ -718,11 +730,15 @@ function DocumentViewer({
           onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
           disabled={currentPage >= totalPages}
           className="p-2 text-gray-400 hover:text-white disabled:opacity-30 transition-colors rounded-lg"
-        >
+        aria-label="Next">
           <ChevronRight className="w-4 h-4" />
         </button>
         <div className="w-px h-5 bg-lattice-border mx-1" />
-        <button className="p-2 text-gray-400 hover:text-white hover:bg-lattice-surface rounded-lg transition-colors">
+        <button
+          onClick={() => { const a = document.createElement('a'); a.href = `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`; a.download = mediaDTU.title || 'download'; a.click(); }}
+          aria-label="Download"
+          className="p-2 text-gray-400 hover:text-white hover:bg-lattice-surface rounded-lg transition-colors"
+        >
           <Download className="w-4 h-4" />
         </button>
       </div>
@@ -778,11 +794,17 @@ function StreamViewer({
       {isLive && (
         <div className="flex items-center justify-between p-3 border-t border-lattice-border bg-lattice-deep">
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neon-cyan/10 text-neon-cyan text-sm hover:bg-neon-cyan/20 transition-colors">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('media:like', { detail: { dtuId: mediaDTU.id } })); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neon-cyan/10 text-neon-cyan text-sm hover:bg-neon-cyan/20 transition-colors"
+            >
               <Heart className="w-4 h-4" />
               Like
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-lattice-surface text-gray-300 text-sm hover:text-white transition-colors">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('media:chat', { detail: { dtuId: mediaDTU.id } })); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-lattice-surface text-gray-300 text-sm hover:text-white transition-colors"
+            >
               <MessageCircle className="w-4 h-4" />
               Chat
             </button>
@@ -809,6 +831,7 @@ function StreamViewer({
                   {[5, 10, 25, 50, 100].map(amount => (
                     <button
                       key={amount}
+                      onClick={() => { window.dispatchEvent(new CustomEvent('media:tip', { detail: { dtuId: mediaDTU.id, amount } })); }}
                       className="px-3 py-1.5 rounded-lg bg-lattice-deep text-neon-cyan text-sm hover:bg-neon-cyan/20 transition-colors"
                     >
                       {amount}
@@ -885,16 +908,28 @@ export function UniversalPlayer({
               'p-2 rounded-lg transition-colors',
               liked ? 'text-neon-pink' : 'text-gray-400 hover:text-neon-pink'
             )}
-          >
+          aria-label="Like">
             <Heart className={cn('w-5 h-5', liked && 'fill-current')} />
           </button>
-          <button className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors">
+          <button
+            onClick={() => { window.dispatchEvent(new CustomEvent('media:comment', { detail: { dtuId: mediaDTU.id } })); }}
+            aria-label="Comment"
+            className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
+          >
             <MessageCircle className="w-5 h-5" />
           </button>
-          <button className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors">
+          <button
+            onClick={() => { const shareUrl = `${window.location.origin}/api/media/${encodeURIComponent(mediaDTU.id)}/stream`; if (navigator.share) { void navigator.share({ title: mediaDTU.title, url: shareUrl }).catch(() => {}); } else { void navigator.clipboard?.writeText(shareUrl).catch(() => {}); } }}
+            aria-label="Share"
+            className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
+          >
             <Share2 className="w-5 h-5" />
           </button>
-          <button className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors">
+          <button
+            onClick={() => { const a = document.createElement('a'); a.href = `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`; a.download = mediaDTU.title || 'download'; a.click(); }}
+            aria-label="Download"
+            className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
+          >
             <Download className="w-5 h-5" />
           </button>
         </div>

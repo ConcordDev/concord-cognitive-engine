@@ -66,7 +66,7 @@ export function GameModePicker({ open, onClose }: Props) {
                 <button
                   onClick={onClose}
                   className="text-white/40 hover:text-white transition-colors"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

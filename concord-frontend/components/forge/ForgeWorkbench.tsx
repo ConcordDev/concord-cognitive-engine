@@ -417,6 +417,8 @@ export function ForgeWorkbench() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setConcordNode(!concordNode)}
+                aria-label={`Concord node — ${concordNode ? 'on' : 'off'}`}
+                aria-pressed={concordNode}
                 className={cn(
                   'relative w-11 h-6 rounded-full transition-colors',
                   concordNode ? 'bg-orange-500' : 'bg-gray-700'
@@ -444,7 +446,7 @@ export function ForgeWorkbench() {
                   className="flex-1 px-3 py-2 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white focus:outline-none focus:border-orange-500/50"
                   placeholder="table_name"
                 />
-                <button onClick={handleAddTable} className="p-2 rounded-lg bg-lattice-elevated hover:bg-lattice-border text-gray-400 hover:text-white">
+                <button onClick={handleAddTable} className="p-2 rounded-lg bg-lattice-elevated hover:bg-lattice-border text-gray-400 hover:text-white" aria-label="Add">
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
@@ -454,7 +456,7 @@ export function ForgeWorkbench() {
                     <span key={t} className="flex items-center gap-1 px-2 py-1 bg-lattice-elevated rounded text-xs text-gray-300">
                       <Database className="w-3 h-3 text-green-400" />
                       {t}
-                      <button onClick={() => handleRemoveTable(t)} className="ml-1 hover:text-red-400"><X className="w-3 h-3" /></button>
+                      <button onClick={() => handleRemoveTable(t)} className="ml-1 hover:text-red-400" aria-label="Close"><X className="w-3 h-3" /></button>
                     </span>
                   ))}
                 </div>

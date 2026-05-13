@@ -1785,7 +1785,7 @@ export default function HealthcareLensPage() {
               >
                 <Download className="w-3.5 h-3.5 mr-1" /> Download
               </button>
-              <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+              <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1965,7 +1965,7 @@ export default function HealthcareLensPage() {
                         ? 'bg-neon-blue/20 text-neon-blue'
                         : 'text-gray-400 hover:text-white'
                     )}
-                  >
+                  aria-label="Layout grid">
                     <LayoutGrid className="w-4 h-4" />
                   </button>
                   <button
@@ -1976,7 +1976,7 @@ export default function HealthcareLensPage() {
                         ? 'bg-neon-blue/20 text-neon-blue'
                         : 'text-gray-400 hover:text-white'
                     )}
-                  >
+                  aria-label="List view">
                     <List className="w-4 h-4" />
                   </button>
                 </div>
@@ -2529,7 +2529,7 @@ export default function HealthcareLensPage() {
             <div className={ds.panel}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className={ds.heading2}>Patient Detail</h2>
-                <button onClick={() => setDrawerOpen(false)} className={ds.btnGhost}>
+                <button onClick={() => setDrawerOpen(false)} className={ds.btnGhost} aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -2940,7 +2940,7 @@ export default function HealthcareLensPage() {
             <div className={cn(ds.modalPanel, 'max-w-3xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>{editingItem ? 'Edit Record' : 'New Record'}</h2>
-                <button onClick={() => setShowEditor(false)} className={ds.btnGhost}>
+                <button onClick={() => setShowEditor(false)} className={ds.btnGhost} aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -3774,7 +3774,7 @@ export default function HealthcareLensPage() {
                             ds.btnSmall,
                             'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                           )}
-                        >
+                        aria-label="Add">
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
@@ -3810,7 +3810,7 @@ export default function HealthcareLensPage() {
                             ds.btnSmall,
                             'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                           )}
-                        >
+                        aria-label="Add">
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
@@ -3836,7 +3836,7 @@ export default function HealthcareLensPage() {
                             ds.btnSmall,
                             'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                           )}
-                        >
+                        aria-label="Add">
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>

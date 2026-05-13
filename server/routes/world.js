@@ -1151,7 +1151,11 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     const itemId = req.body.itemId || req.body.id || `item-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
     const quantity = Number(req.body.quantity) || 1;
     const slot = req.body.slot || null;
-    const metadata = req.body.metadata || { name: req.body.name, type: req.body.type, rarity: req.body.rarity };
+    const metadata = req.body.metadata || {
+      name: req.body.name || "",
+      type: req.body.type || "",
+      rarity: req.body.rarity || "common",
+    };
 
     // Check inventory capacity (only for NEW items, not stacking)
     const dbInv = getInventoryFromDb(userId);
@@ -1599,7 +1603,9 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   }));
 
   router.post("/sim/reviews/:id/verdict", auth, wrap((req, res) => {
-    res.json({ ok: true, reviewId: req.params.id, verdict: req.body.verdict, comments: req.body.comments });
+    const verdict = req.body?.verdict || "";
+    const comments = req.body?.comments || "";
+    res.json({ ok: true, reviewId: req.params.id, verdict, comments });
   }));
 
   // ── Analytics API ────────────────────────────────────────────────

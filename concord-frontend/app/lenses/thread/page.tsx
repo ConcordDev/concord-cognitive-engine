@@ -287,10 +287,10 @@ export default function ThreadLensPage() {
             <button onClick={() => {
               createThread({ title: `Fork: ${node.content.slice(0, 30)}...`, data: { messages: [{ content: node.content, author: node.author }], forkedFrom: node.id }, meta: {} });
               useUIStore.getState().addToast({ type: 'success', message: 'Thread forked' });
-            }} className="p-1 rounded hover:bg-lattice-border/50 text-gray-400 hover:text-white">
+            }} className="p-1 rounded hover:bg-lattice-border/50 text-gray-400 hover:text-white" aria-label="Git fork">
               <GitFork className="w-4 h-4" />
             </button>
-            <button onClick={() => setSelectedNode(node)} className="p-1 rounded hover:bg-lattice-border/50 text-gray-400 hover:text-white">
+            <button onClick={() => setSelectedNode(node)} className="p-1 rounded hover:bg-lattice-border/50 text-gray-400 hover:text-white" aria-label="More options">
               <MoreHorizontal className="w-4 h-4" />
             </button>
           </div>
@@ -465,13 +465,13 @@ export default function ThreadLensPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Merge branches' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white">
+                    <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Merge branches' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white" aria-label="Git merge">
                       <GitMerge className="w-4 h-4" />
                     </button>
-                    <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Fork thread' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white">
+                    <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Fork thread' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white" aria-label="Git fork">
                       <GitFork className="w-4 h-4" />
                     </button>
-                    <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Fullscreen view' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white">
+                    <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Fullscreen view' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white" aria-label="Maximize">
                       <Maximize2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -562,7 +562,7 @@ export default function ThreadLensPage() {
                   <button
                     onClick={() => setSelectedNode(null)}
                     className="p-1 rounded hover:bg-lattice-elevated text-gray-400"
-                  >
+                  aria-label="Next">
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -679,7 +679,7 @@ export default function ThreadLensPage() {
             Thread Actions
           </h3>
           {threadActionResult && (
-            <button onClick={() => setThreadActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400">
+            <button onClick={() => setThreadActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

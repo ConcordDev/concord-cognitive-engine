@@ -961,7 +961,7 @@ export default function DebateLensPage() {
                     disabled={!canSubmitArgument}
                     className="input-lattice flex-1 disabled:opacity-50 disabled:cursor-not-allowed" />
                   <button onClick={handleAddArgument} disabled={!newArgument.trim() || !canSubmitArgument}
-                    className="btn-neon disabled:opacity-50"><Send className="w-4 h-4" /></button>
+                    className="btn-neon disabled:opacity-50" aria-label="Send"><Send className="w-4 h-4" /></button>
                 </div>
                 {newArgument.trim() && canSubmitArgument && (
                   <div className="mt-3">

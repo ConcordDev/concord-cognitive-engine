@@ -127,7 +127,11 @@ function DTUEmpireCardInner({
           <ScopeBadge scope={dtu.scope || scopeDisplay.label.toLowerCase()} />
           <ProvenanceBadge source={dtu.source} model={dtu.meta?.model as string} authority={dtu.meta?.authority as string} />
         </div>
-        <button className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white">
+        <button
+          onClick={() => { window.dispatchEvent(new CustomEvent('dtu:open-external', { detail: { dtuId: dtu.id } })); }}
+          aria-label="Open DTU"
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white"
+        >
           <ExternalLink className="w-4 h-4" />
         </button>
       </div>

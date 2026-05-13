@@ -360,7 +360,7 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
             <input type="text" value={c.max} onChange={(e) => updateConstraint(idx, 'max', e.target.value)}
               placeholder="max" className="w-20 input-lattice text-sm" />
             {constraints.length > 1 && (
-              <button onClick={() => removeConstraint(idx)} className="text-gray-500 hover:text-red-400">
+              <button onClick={() => removeConstraint(idx)} className="text-gray-500 hover:text-red-400" aria-label="Delete">
                 <Trash2 className="w-4 h-4" />
               </button>
             )}

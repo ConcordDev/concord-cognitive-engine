@@ -172,7 +172,7 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
             {creating ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           </button>
           {onClose && (
-            <button onClick={onClose} className="p-1.5 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800">
+            <button onClick={onClose} className="p-1.5 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

@@ -1010,7 +1010,7 @@ export default function RealEstateLensPage() {
         <div className={ds.panel}>
           <div className={cn(ds.sectionHeader, 'mb-3')}>
             <h2 className={ds.heading3}>Domain Actions</h2>
-            <button onClick={() => setShowActionPanel(false)} className={ds.btnGhost}>
+            <button onClick={() => setShowActionPanel(false)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1036,7 +1036,7 @@ export default function RealEstateLensPage() {
             <div className={cn(ds.panel, 'mt-3')}>
               <div className={cn(ds.sectionHeader, 'mb-2')}>
                 <h3 className={ds.heading3}>Action Result</h3>
-                <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+                <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1188,7 +1188,7 @@ export default function RealEstateLensPage() {
         <div className={ds.panel}>
           <div className={cn(ds.sectionHeader, 'mb-4')}>
             <h2 className={ds.heading2}>Investment Calculator</h2>
-            <button onClick={() => setShowInvestCalc(false)} className={ds.btnGhost}>
+            <button onClick={() => setShowInvestCalc(false)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -2612,7 +2612,7 @@ export default function RealEstateLensPage() {
                 <h2 className={ds.heading2}>
                   {editingItem ? 'Edit' : 'New'} {formType}
                 </h2>
-                <button onClick={() => setShowEditor(false)} className={ds.btnGhost}>
+                <button onClick={() => setShowEditor(false)} className={ds.btnGhost} aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

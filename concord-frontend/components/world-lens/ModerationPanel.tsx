@@ -412,7 +412,11 @@ export default function ModerationPanel({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-white/30">{ban.duration}</span>
-                        <button className="text-white/30 hover:text-white/60 transition-colors">
+                        <button
+                          onClick={() => { window.dispatchEvent(new CustomEvent('moderation:unban', { detail: { userId: ban.userId } })); }}
+                          aria-label="Unban"
+                          className="text-white/30 hover:text-white/60 transition-colors"
+                        >
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -537,13 +541,22 @@ export default function ModerationPanel({
           <section className="pt-2 border-t border-white/10">
             <h3 className="text-sm font-medium text-white/70 mb-2">Quick Actions</h3>
             <div className="flex gap-2">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-colors">
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('moderation:mute-player')); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-colors"
+              >
                 <VolumeX className="w-3.5 h-3.5" /> Mute Player
               </button>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-colors">
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('moderation:kick-from-world')); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-colors"
+              >
                 <LogOut className="w-3.5 h-3.5" /> Kick from World
               </button>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-red-500/20 text-red-400/70 hover:text-red-400 hover:border-red-500/40 transition-colors">
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('moderation:remove-building')); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-red-500/20 text-red-400/70 hover:text-red-400 hover:border-red-500/40 transition-colors"
+              >
                 <Trash2 className="w-3.5 h-3.5" /> Remove Building
               </button>
             </div>

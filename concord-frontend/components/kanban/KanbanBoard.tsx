@@ -131,14 +131,14 @@ export function KanbanBoard({
               <button
                 onClick={() => setAddingToColumn(column.id)}
                 className="p-1 text-gray-400 hover:text-white transition-colors"
-              >
+              aria-label="Add">
                 <Plus className="w-4 h-4" />
               </button>
               {onDeleteColumn && (
                 <button
                   onClick={() => onDeleteColumn(column.id)}
                   className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                >
+                aria-label="Delete">
                   <Trash2 className="w-4 h-4" />
                 </button>
               )}
@@ -238,7 +238,7 @@ export function KanbanBoard({
                         setEditingCardTitle(card.title);
                       }}
                       className="p-1 text-gray-400 hover:text-neon-cyan transition-colors"
-                    >
+                    aria-label="Edit">
                       <Pencil className="w-3 h-3" />
                     </button>
                     <button
@@ -247,7 +247,7 @@ export function KanbanBoard({
                         onDeleteCard?.(card.id, column.id);
                       }}
                       className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                    >
+                    aria-label="Delete">
                       <Trash2 className="w-3 h-3" />
                     </button>
                     <GripVertical className="w-3 h-3 text-gray-500 cursor-grab" />

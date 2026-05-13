@@ -366,7 +366,7 @@ export default function CookingLensPage() {
           <div className="relative rounded-lg bg-lattice-deep border border-orange-500/20 p-3 text-xs space-y-1">
             <div className="flex items-center justify-between mb-1">
               <span className="text-orange-300 font-medium capitalize">{actionResult.action}</span>
-              <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300">
+              <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300" aria-label="Xcircle">
                 <XCircle className="w-3.5 h-3.5" />
               </button>
             </div>

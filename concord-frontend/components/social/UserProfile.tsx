@@ -224,7 +224,7 @@ function FollowList({
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">
           <h3 className="text-white font-medium">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Comment">
             <MessageCircle className="w-4 h-4" />
           </button>
         </div>
@@ -404,7 +404,7 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
             <button
               onClick={() => setShowOptions((prev) => !prev)}
               className="p-2 rounded-lg bg-black/30 backdrop-blur-sm text-white/80 hover:text-white transition-colors"
-            >
+            aria-label="More options">
               <MoreHorizontal className="w-4 h-4" />
             </button>
             <AnimatePresence>
@@ -415,11 +415,17 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
                   exit={{ opacity: 0, y: -5, scale: 0.95 }}
                   className="absolute right-0 top-full mt-1 bg-lattice-surface border border-lattice-border rounded-lg overflow-hidden z-50 min-w-[160px] shadow-xl"
                 >
-                  <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors">
+                  <button
+                    onClick={() => { void navigator.clipboard?.writeText(profile.userId).catch(() => {}); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
+                  >
                     <Copy className="w-4 h-4" /> Copy ID
                   </button>
                   {isOwnProfile && (
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors">
+                    <button
+                      onClick={() => { window.dispatchEvent(new CustomEvent('profile:edit', { detail: { userId: profile.userId } })); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
+                    >
                       <Settings className="w-4 h-4" /> Edit Profile
                     </button>
                   )}
@@ -543,13 +549,13 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
           <button
             onClick={() => setShowFollowers(true)}
             className="hover:bg-lattice-surface rounded-lg p-2 transition-colors"
-          >
+          aria-label="Stat card">
             <StatCard label="Followers" value={profile.stats.followerCount} icon={Users} />
           </button>
           <button
             onClick={() => setShowFollowing(true)}
             className="hover:bg-lattice-surface rounded-lg p-2 transition-colors"
-          >
+          aria-label="Stat card">
             <StatCard label="Following" value={profile.stats.followingCount} icon={UserPlus} />
           </button>
           <StatCard label="DTUs" value={profile.stats.dtuCount} icon={FileText} />

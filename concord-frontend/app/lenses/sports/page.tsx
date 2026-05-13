@@ -367,7 +367,7 @@ export default function SportsLensPage() {
                 <button
                   onClick={() => setShowCreate(false)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>

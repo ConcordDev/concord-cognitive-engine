@@ -119,7 +119,7 @@ export function BacklinksPanel({ dtuId, className, collapsed = false, onToggle }
         <button
           onClick={onToggle}
           className="p-1 text-gray-400 hover:text-white transition-colors"
-        >
+        aria-label="Next">
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
@@ -343,7 +343,10 @@ export function UnlinkedMentions({ dtuId, className }: UnlinkedMentionsProps) {
               <span className="text-xs text-gray-400">
                 {Math.round(mention.confidence * 100)}%
               </span>
-              <button className="px-2 py-1 text-xs bg-neon-cyan/20 text-neon-cyan rounded hover:bg-neon-cyan/30 transition-colors">
+              <button
+                onClick={() => { window.dispatchEvent(new CustomEvent('backlinks:create-link', { detail: { mention } })); }}
+                className="px-2 py-1 text-xs bg-neon-cyan/20 text-neon-cyan rounded hover:bg-neon-cyan/30 transition-colors"
+              >
                 Link
               </button>
             </div>

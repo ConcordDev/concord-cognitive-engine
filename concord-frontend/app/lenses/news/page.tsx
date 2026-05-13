@@ -332,7 +332,7 @@ export default function NewsLensPage() {
             <button
               onClick={() => setSearchText('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-            >
+            aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -515,7 +515,7 @@ export default function NewsLensPage() {
                         ? 'text-neon-yellow'
                         : 'text-gray-500 hover:text-neon-yellow'
                     }
-                  >
+                  aria-label="Bookmark">
                     <Bookmark className="w-3 h-3" />
                   </button>
                 </div>
@@ -635,7 +635,7 @@ export default function NewsLensPage() {
                               toggleBookmark(article.id);
                             }}
                             className={`transition-colors ${isBookmarked ? 'text-neon-yellow' : 'text-gray-400 hover:text-neon-yellow'}`}
-                          >
+                          aria-label="Bookmark">
                             <Bookmark className="w-4 h-4" />
                           </button>
                           <button
@@ -647,7 +647,7 @@ export default function NewsLensPage() {
                               addToast({ type: 'info', message: 'Link copied' });
                             }}
                             className="text-gray-400 hover:text-neon-purple transition-colors"
-                          >
+                          aria-label="Share">
                             <Share2 className="w-4 h-4" />
                           </button>
                           <ReportButton contentId={article.id} contentType="artifact" compact />

@@ -269,7 +269,7 @@ function DecisionDetail({ decision, onBack }: { decision: CouncilDecision; onBac
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={onBack} className={ds.btnGhost}>
+        <button onClick={onBack} className={ds.btnGhost} aria-label="Back">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex-1">

@@ -261,7 +261,11 @@ export function NowPlayingBar() {
               <p className="text-sm font-medium truncate">{track.title}</p>
               <p className="text-xs text-gray-400 truncate">{track.artistName}</p>
             </div>
-            <button className="text-gray-500 hover:text-neon-pink transition-colors flex-shrink-0" aria-label="Like track">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('music:like-track', { detail: { trackId: track.id } })); }}
+              className="text-gray-500 hover:text-neon-pink transition-colors flex-shrink-0"
+              aria-label="Like track"
+            >
               <Heart className="w-4 h-4" />
             </button>
           </div>

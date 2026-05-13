@@ -408,7 +408,7 @@ export default function MentorshipLensPage() {
                     <h3 className="font-semibold mb-3 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-neon-blue" />Add Session Note</h3>
                     <div className="flex gap-2">
                       <input value={newNote} onChange={e => setNewNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }} placeholder="Session notes..." className="input-lattice flex-1" />
-                      <button onClick={handleAddNote} disabled={!newNote.trim()} className="btn-neon"><Send className="w-4 h-4" /></button>
+                      <button onClick={handleAddNote} disabled={!newNote.trim()} className="btn-neon" aria-label="Send"><Send className="w-4 h-4" /></button>
                     </div>
                   </div>
                 </>

@@ -567,10 +567,10 @@ export default function VoiceLensPage() {
                         className="flex-1 bg-white/10 border border-lattice-border rounded px-2 py-0.5 text-xs focus:outline-none"
                         autoFocus
                       />
-                      <button onClick={confirmRename} className="text-neon-cyan">
+                      <button onClick={confirmRename} className="text-neon-cyan" aria-label="Confirm">
                         <Check className="w-3 h-3" />
                       </button>
-                      <button onClick={() => setRenamingId(null)} className="text-gray-500">
+                      <button onClick={() => setRenamingId(null)} className="text-gray-500" aria-label="Close">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
@@ -589,25 +589,25 @@ export default function VoiceLensPage() {
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleStar(take.id); }}
                       className={cn('p-1 rounded', take.starred ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400')}
-                    >
+                    aria-label="Favorite">
                       <Star className={cn('w-3 h-3', take.starred && 'fill-current')} />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); startRename(take); }}
                       className="p-1 rounded text-gray-600 hover:text-gray-300"
-                    >
+                    aria-label="Edit">
                       <Edit3 className="w-3 h-3" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); markBest(take.id); }}
                       className="p-1 rounded text-gray-600 hover:text-neon-pink"
-                    >
+                    aria-label="Award">
                       <Award className="w-3 h-3" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteTake(take.id); }}
                       className="p-1 rounded text-gray-600 hover:text-red-400"
-                    >
+                    aria-label="Delete">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -754,7 +754,7 @@ export default function VoiceLensPage() {
               }}
               disabled={takes.length === 0}
               className={cn('p-2.5 rounded-full bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors', takes.length === 0 && 'opacity-40 cursor-not-allowed')}
-            >
+            aria-label="Previous track">
               <SkipBack className="w-5 h-5" />
             </button>
             <button
@@ -793,7 +793,7 @@ export default function VoiceLensPage() {
               }}
               disabled={takes.length === 0}
               className={cn('p-2.5 rounded-full bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors', takes.length === 0 && 'opacity-40 cursor-not-allowed')}
-            >
+            aria-label="Next track">
               <SkipForward className="w-5 h-5" />
             </button>
           </div>
@@ -845,6 +845,8 @@ export default function VoiceLensPage() {
                   </div>
                   <button
                     onClick={() => toggleEffect(fx.id)}
+                    aria-label={`${fx.name} effect — ${fx.enabled ? 'on' : 'off'}`}
+                    aria-pressed={fx.enabled}
                     className={cn(
                       'w-9 h-5 rounded-full transition-colors relative',
                       fx.enabled ? 'bg-neon-cyan' : 'bg-gray-700'
@@ -987,7 +989,7 @@ export default function VoiceLensPage() {
             Voice Actions
           </h3>
           {voiceActionResult && (
-            <button onClick={() => setVoiceActionResult(null)} className="p-0.5 rounded hover:bg-lattice-elevated text-gray-400">
+            <button onClick={() => setVoiceActionResult(null)} className="p-0.5 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Close">
               <X className="w-3 h-3" />
             </button>
           )}

@@ -309,7 +309,7 @@ export default function AttentionLensPage() {
             <h3 className="font-semibold text-white flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-neon-cyan" /> Action Result
             </h3>
-            <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white">
+            <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Xcircle">
               <XCircle className="w-4 h-4" />
             </button>
           </div>

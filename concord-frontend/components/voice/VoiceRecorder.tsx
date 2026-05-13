@@ -237,7 +237,7 @@ export function VoiceRecorder({
           <button
             onClick={startRecording}
             className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 transition-colors flex items-center justify-center"
-          >
+          aria-label="Microphone">
             <Mic className="w-8 h-8 text-white" />
           </button>
         )}
@@ -246,7 +246,7 @@ export function VoiceRecorder({
           <button
             onClick={stopRecording}
             className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 transition-colors flex items-center justify-center animate-pulse"
-          >
+          aria-label="Stop">
             <Square className="w-6 h-6 text-white" />
           </button>
         )}

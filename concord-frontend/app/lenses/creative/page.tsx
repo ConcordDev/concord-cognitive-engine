@@ -684,8 +684,8 @@ export default function CreativeLensPage() {
                   {fmtPct(profitMargin)} margin
                 </span>
                 <PullToSubstrate domain="creative" artifactId={item.id} compact />
-                <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost}><Edit2 className="w-3.5 h-3.5" /></button>
-                <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost} aria-label="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           </motion.div>
@@ -760,8 +760,8 @@ export default function CreativeLensPage() {
                 <span className={ds.textMuted}><Eye className="w-3 h-3 inline mr-1" />{String(d.usageCount)} uses</span>
                 <span className={ds.textMuted}>{versions.length} version{versions.length !== 1 ? 's' : ''}</span>
                 <div className="flex gap-1">
-                  <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost}><Edit2 className="w-3 h-3" /></button>
-                  <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost} aria-label="Edit"><Edit2 className="w-3 h-3" /></button>
+                  <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                 </div>
               </div>
             </div>
@@ -838,8 +838,8 @@ export default function CreativeLensPage() {
                         {!!d.asset && <span><FileImage className="w-3 h-3 inline mr-1" />{String(d.asset)}</span>}
                       </div>
                       <div className="flex gap-1">
-                        <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost}><Edit2 className="w-3 h-3" /></button>
-                        <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost} aria-label="Edit"><Edit2 className="w-3 h-3" /></button>
+                        <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                     {!!d.feedbackNotes && (
@@ -907,8 +907,8 @@ export default function CreativeLensPage() {
                         <div className="flex items-center justify-between mt-2 pt-2 border-t border-lattice-border">
                           <span className={cn(ds.textMuted, 'text-xs')}>{String(d.project)}</span>
                           <div className="flex gap-1">
-                            <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost}><Edit2 className="w-3 h-3" /></button>
-                            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}><Trash2 className="w-3 h-3" /></button>
+                            <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost} aria-label="Edit"><Edit2 className="w-3 h-3" /></button>
+                            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                           </div>
                         </div>
                       </div>
@@ -1004,8 +1004,8 @@ export default function CreativeLensPage() {
                   <span className={cn(ds.textMuted, 'text-xs capitalize')}>{proofSt.replace(/_/g, ' ')}</span>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost}><Edit2 className="w-3.5 h-3.5" /></button>
-                  <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost} aria-label="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
             </div>
@@ -1150,8 +1150,8 @@ export default function CreativeLensPage() {
                       </td>
                       <td className="py-2.5">
                         <div className="flex gap-1 justify-end">
-                          <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost}><Edit2 className="w-3 h-3" /></button>
-                          <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}><Trash2 className="w-3 h-3" /></button>
+                          <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={ds.btnGhost} aria-label="Edit"><Edit2 className="w-3 h-3" /></button>
+                          <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       </td>
                     </tr>
@@ -1236,8 +1236,8 @@ export default function CreativeLensPage() {
                         <p className={cn(ds.textMuted, 'text-xs')}>{String(d.requirement).substring(0, 40)}{String(d.requirement).length > 40 ? '...' : ''}</p>
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <button onClick={() => openEdit(item)} className={ds.btnGhost}><Edit2 className="w-3 h-3" /></button>
-                        <button onClick={() => remove(item.id)} className={cn(ds.btnGhost, 'hover:text-red-400')}><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => openEdit(item)} className={ds.btnGhost} aria-label="Edit"><Edit2 className="w-3 h-3" /></button>
+                        <button onClick={() => remove(item.id)} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                   );
@@ -1281,7 +1281,7 @@ export default function CreativeLensPage() {
           <div className={cn(ds.modalPanel, 'max-w-2xl')}>
             <div className="flex items-center justify-between p-4 border-b border-lattice-border">
               <h2 className={ds.heading2}>{detailItem.title}</h2>
-              <button onClick={() => setShowDetail(false)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowDetail(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
               {/* Status */}
@@ -1534,7 +1534,7 @@ export default function CreativeLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <pre className={cn(ds.textMono, 'text-xs overflow-auto max-h-48')}>{JSON.stringify(actionResult, null, 2)}</pre>
         </div>
@@ -1548,7 +1548,7 @@ export default function CreativeLensPage() {
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>{editing ? 'Edit' : 'New'} {currentType}</h2>
-                <button onClick={resetForm} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                <button onClick={resetForm} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div>

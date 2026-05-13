@@ -1235,7 +1235,7 @@ export default function SimLensPage() {
           <div className={cn(ds.panel, 'w-[360px] flex-shrink-0 overflow-y-auto max-h-[calc(100vh-280px)]')}>
             <div className={ds.sectionHeader}>
               <h3 className={ds.heading3}>Scenario Details</h3>
-              <button onClick={() => setDetailPanelOpen(false)} className={ds.btnGhost}>
+              <button onClick={() => setDetailPanelOpen(false)} className={ds.btnGhost} aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1311,7 +1311,7 @@ export default function SimLensPage() {
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Scenario Builder</h2>
-                <button onClick={() => setShowScenarioBuilder(false)} className={ds.btnGhost}>
+                <button onClick={() => setShowScenarioBuilder(false)} className={ds.btnGhost} aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1808,7 +1808,7 @@ export default function SimLensPage() {
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-6 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Import Scenario</h2>
-                <button onClick={() => setShowImportModal(false)} className={ds.btnGhost}>
+                <button onClick={() => setShowImportModal(false)} className={ds.btnGhost} aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

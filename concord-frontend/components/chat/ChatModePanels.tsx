@@ -437,6 +437,7 @@ export function ModeSelector({ activeMode, onModeChange }: ModeSelectorProps) {
         return (
           <button
             key={mode}
+            data-mode={mode}
             onClick={() => onModeChange(mode)}
             className={cn(
               'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium',

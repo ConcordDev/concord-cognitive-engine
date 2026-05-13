@@ -138,7 +138,7 @@ function TaskDelegation({ className }: { className?: string }) {
                       onClick={() => executeMutation.mutate(task.id)}
                       disabled={executeMutation.isPending}
                       className="p-1 text-neon-cyan hover:bg-neon-cyan/20 rounded transition-colors"
-                    >
+                    aria-label="Play">
                       <Play className="w-3.5 h-3.5" />
                     </button>
                   )}

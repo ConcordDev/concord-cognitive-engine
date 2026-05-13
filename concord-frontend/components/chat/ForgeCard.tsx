@@ -255,7 +255,7 @@ export default function ForgeCard({
             <button
               onClick={handleDelete}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-500 hover:text-red-400 hover:bg-red-600/10 transition-colors ml-auto"
-            >
+            aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}

@@ -529,13 +529,13 @@ export default function MLLensPage() {
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 ${viewMode === 'grid' ? 'text-neon-purple' : 'text-gray-400'}`}
-              >
+              aria-label="Grid3 x3">
                 <Grid3X3 className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
                 className={`p-2 ${viewMode === 'list' ? 'text-neon-purple' : 'text-gray-400'}`}
-              >
+              aria-label="List view">
                 <List className="w-5 h-5" />
               </button>
             </div>
@@ -1153,7 +1153,7 @@ function ModelListItem({ model, statusConfig, typeConfig, onSelect, onDeploy, is
             onClick={(e) => { e.stopPropagation(); onDeploy(); }}
             disabled={isDeploying}
             className="btn-neon small disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          aria-label="Rocket">
             <Rocket className="w-4 h-4" />
           </button>
         )}
@@ -1192,7 +1192,7 @@ function ModelDetailModal({ model, onClose, onDeploy, onTrain, statusConfig, typ
                 <p className="text-gray-400">Version {model.version} · {model.framework}</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
+            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg" aria-label="Close">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -1317,7 +1317,7 @@ function NewExperimentModal({ models, datasets, onClose, onSubmit, submitting }:
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">New Experiment</h2>
-          <button onClick={onClose} className="p-1 hover:bg-white/10 rounded">
+          <button onClick={onClose} className="p-1 hover:bg-white/10 rounded" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

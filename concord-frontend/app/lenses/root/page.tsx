@@ -217,7 +217,7 @@ export default function RootLens() {
 
             {/* Swap */}
             <button onClick={swap}
-              className="mt-7 p-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-violet-400 transition-colors">
+              className="mt-7 p-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-violet-400 transition-colors" aria-label="Arrow right left">
               <ArrowRightLeft className="w-4 h-4" />
             </button>
 
@@ -316,7 +316,7 @@ export default function RootLens() {
               ⸱ (radix)
             </button>
             <button onClick={() => setGlyphInput('')}
-              className="px-3 py-2 bg-gray-800 hover:bg-red-900/30 border border-gray-700 hover:border-red-700 rounded-lg text-gray-500 hover:text-red-400 text-sm transition-colors">
+              className="px-3 py-2 bg-gray-800 hover:bg-red-900/30 border border-gray-700 hover:border-red-700 rounded-lg text-gray-500 hover:text-red-400 text-sm transition-colors" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>

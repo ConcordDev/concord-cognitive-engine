@@ -811,7 +811,7 @@ export default function CollabLensPage() {
               <button
                 onClick={() => setActionResult(null)}
                 className="text-gray-500 hover:text-white transition-colors"
-              >
+              aria-label="Xcircle">
                 <XCircle className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1766,7 +1766,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
               <button
                 onClick={sendMessage}
                 className="p-1.5 text-neon-blue hover:text-neon-cyan transition-colors"
-              >
+              aria-label="Send">
                 <Send className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1998,7 +1998,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
           <button
             onClick={onClose}
             className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
-          >
+          aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

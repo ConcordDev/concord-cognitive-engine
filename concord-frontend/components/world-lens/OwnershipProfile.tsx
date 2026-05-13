@@ -174,7 +174,10 @@ export default function OwnershipProfile({
               <span className="text-sm font-bold text-cyan-400">{emotionalOwnership}</span>
             </div>
           )}
-          <button className="text-[10px] px-2 py-1 rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors">
+          <button
+            onClick={() => { window.dispatchEvent(new CustomEvent('ownership:share-profile')); }}
+            className="text-[10px] px-2 py-1 rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors"
+          >
             Share Profile
           </button>
         </div>
@@ -460,7 +463,10 @@ export default function OwnershipProfile({
           )}
 
           {tourStops.length > 0 && (
-            <button className="mt-3 w-full text-[10px] py-2 rounded border border-cyan-500/30 text-cyan-400 bg-cyan-500/5 hover:bg-cyan-500/10 transition-colors">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('ownership:walk-tour', { detail: { stopCount: tourStops.length } })); }}
+              className="mt-3 w-full text-[10px] py-2 rounded border border-cyan-500/30 text-cyan-400 bg-cyan-500/5 hover:bg-cyan-500/10 transition-colors"
+            >
               Walk Through My Work
             </button>
           )}
@@ -473,7 +479,10 @@ export default function OwnershipProfile({
           <span className="text-[9px] text-gray-600">
             {portfolio.length} creations · {contributions.reduce((a, c) => a + c.buildingCount, 0)} placements
           </span>
-          <button className="text-[9px] text-gray-500 hover:text-cyan-400 transition-colors">
+          <button
+            onClick={() => { window.dispatchEvent(new CustomEvent('ownership:generate-share-card')); }}
+            className="text-[9px] text-gray-500 hover:text-cyan-400 transition-colors"
+          >
             Generate Share Card
           </button>
         </div>

@@ -174,14 +174,14 @@ function CombatSandboxInner() {
             onClick={removeDummy}
             className="rounded bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-amber-500"
             disabled={dummies.length <= 1}
-          >
+          aria-label="Remove">
             <Minus className="inline h-3 w-3" />
           </button>
           <button
             onClick={addDummy}
             className="rounded bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600 disabled:opacity-40"
             disabled={dummies.length >= MAX_DUMMIES}
-          >
+          aria-label="Add">
             <Plus className="inline h-3 w-3" />
           </button>
           <button

@@ -172,10 +172,10 @@ export function Soundboard({
             <Layers className="w-4 h-4 text-neon-cyan" /> Soundboard
           </h2>
           <div className="flex items-center gap-1">
-            <button onClick={() => setViewMode('grid')} className={cn('p-1 rounded', viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-500')}>
+            <button onClick={() => setViewMode('grid')} className={cn('p-1 rounded', viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-500')} aria-label="Grid3 x3">
               <Grid3X3 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => setViewMode('list')} className={cn('p-1 rounded', viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-500')}>
+            <button onClick={() => setViewMode('list')} className={cn('p-1 rounded', viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-500')} aria-label="List view">
               <List className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -265,7 +265,7 @@ export function Soundboard({
                   <button
                     onClick={e => { e.stopPropagation(); toggleFavorite(item.id); }}
                     className={cn('p-0.5', item.favorite ? 'text-yellow-400' : 'text-gray-600 opacity-0 group-hover:opacity-100')}
-                  >
+                  aria-label="Favorite">
                     <Star className="w-3 h-3" fill={item.favorite ? 'currentColor' : 'none'} />
                   </button>
                 </div>
@@ -296,13 +296,13 @@ export function Soundboard({
                 <button
                   onClick={e => { e.stopPropagation(); toggleFavorite(item.id); }}
                   className={cn('p-0.5', item.favorite ? 'text-yellow-400' : 'text-gray-600 opacity-0 group-hover:opacity-100')}
-                >
+                aria-label="Favorite">
                   <Star className="w-3 h-3" fill={item.favorite ? 'currentColor' : 'none'} />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleLoadItem(item.type, item.data); }}
                   className="opacity-0 group-hover:opacity-100 p-0.5 text-neon-cyan"
-                >
+                aria-label="Play">
                   <Play className="w-3 h-3" />
                 </button>
               </div>

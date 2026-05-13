@@ -597,9 +597,9 @@ export default function HouseholdLensPage() {
         {/* Week navigation */}
         <div className={ds.sectionHeader}>
           <div className="flex items-center gap-2">
-            <button className={ds.btnGhost} onClick={() => setMealWeekOffset(p => p - 1)}><ChevronLeft className="w-4 h-4" /></button>
+            <button className={ds.btnGhost} onClick={() => setMealWeekOffset(p => p - 1)} aria-label="Previous"><ChevronLeft className="w-4 h-4" /></button>
             <h3 className={ds.heading3}>{mealWeekOffset === 0 ? 'This Week' : mealWeekOffset > 0 ? `+${mealWeekOffset} Week` : `${mealWeekOffset} Week`}</h3>
-            <button className={ds.btnGhost} onClick={() => setMealWeekOffset(p => p + 1)}><ChevronRight className="w-4 h-4" /></button>
+            <button className={ds.btnGhost} onClick={() => setMealWeekOffset(p => p + 1)} aria-label="Next"><ChevronRight className="w-4 h-4" /></button>
           </div>
           <button className={ds.btnPrimary} onClick={() => openNew()}><Plus className="w-4 h-4" /> Add Meal</button>
         </div>
@@ -789,8 +789,8 @@ export default function HouseholdLensPage() {
                     )}
                   </div>
                   <div className="mt-3 flex items-center gap-2 ml-7">
-                    <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}><Edit3 className="w-3.5 h-3.5" /></button>
-                    <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => handleDelete(item.id)}><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)} aria-label="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+                    <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => handleDelete(item.id)} aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </motion.div>
               );
@@ -900,8 +900,8 @@ export default function HouseholdLensPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 ml-2">
-                        <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}><Edit3 className="w-3.5 h-3.5" /></button>
-                        <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => handleDelete(item.id)}><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)} aria-label="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => handleDelete(item.id)} aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
                   );
@@ -962,9 +962,9 @@ export default function HouseholdLensPage() {
             <button className={cn(calendarView === 'month' ? ds.btnPrimary : ds.btnSecondary, ds.btnSmall)} onClick={() => setCalendarView('month')}>Month</button>
           </div>
           <div className="flex items-center gap-2">
-            <button className={ds.btnGhost} onClick={() => setCalendarOffset(p => p - 1)}><ChevronLeft className="w-4 h-4" /></button>
+            <button className={ds.btnGhost} onClick={() => setCalendarOffset(p => p - 1)} aria-label="Previous"><ChevronLeft className="w-4 h-4" /></button>
             <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => setCalendarOffset(0)}>Today</button>
-            <button className={ds.btnGhost} onClick={() => setCalendarOffset(p => p + 1)}><ChevronRight className="w-4 h-4" /></button>
+            <button className={ds.btnGhost} onClick={() => setCalendarOffset(p => p + 1)} aria-label="Next"><ChevronRight className="w-4 h-4" /></button>
           </div>
           <button className={ds.btnPrimary} onClick={() => openNew()}><Plus className="w-4 h-4" /> Add Event</button>
         </div>
@@ -1053,7 +1053,7 @@ export default function HouseholdLensPage() {
                       })}
                     </div>
                     <button className="mt-2 w-full p-1 rounded text-xs text-gray-500 hover:text-neon-cyan hover:bg-lattice-elevated transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      onClick={() => { setFormData({ date }); openNew(); }}>
+                      onClick={() => { setFormData({ date }); openNew(); }} aria-label="Add">
                       <Plus className="w-3 h-3 mx-auto" />
                     </button>
                   </div>
@@ -1153,10 +1153,10 @@ export default function HouseholdLensPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-white">{formatCurrency(d.amount)}</span>
-                    <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => toggleBillPaid(item)}>
+                    <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => toggleBillPaid(item)} aria-label="Check circle2">
                       <CheckCircle2 className="w-4 h-4 text-green-400" />
                     </button>
-                    <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}><Edit3 className="w-3.5 h-3.5" /></button>
+                    <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)} aria-label="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
               );
@@ -1219,8 +1219,8 @@ export default function HouseholdLensPage() {
                 {Boolean(d.notes) && <p className="text-xs text-gray-500 mt-1">{d.notes}</p>}
               </div>
               <div className="flex items-center gap-1">
-                <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}><Edit3 className="w-3.5 h-3.5" /></button>
-                <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => handleDelete(item.id)}><Trash2 className="w-3.5 h-3.5" /></button>
+                <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)} aria-label="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+                <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => handleDelete(item.id)} aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           );
@@ -1708,7 +1708,7 @@ export default function HouseholdLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <div className="space-y-3">
             {/* generateGroceryList */}
@@ -1793,7 +1793,7 @@ export default function HouseholdLensPage() {
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>
-                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)}><X className="w-5 h-5" /></button>
+                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)} aria-label="Close"><X className="w-5 h-5" /></button>
                 </div>
               </div>
               <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">

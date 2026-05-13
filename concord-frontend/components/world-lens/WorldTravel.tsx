@@ -158,7 +158,7 @@ export default function WorldTravel({
             <h3 className="text-white font-semibold text-lg">{world.name}</h3>
             <span className="text-xs text-white/50">by {world.owner}</span>
           </div>
-          <button onClick={() => setSelectedWorld(null)} className="text-white/40 hover:text-white">
+          <button onClick={() => setSelectedWorld(null)} className="text-white/40 hover:text-white" aria-label="Close">
             <X size={16} />
           </button>
         </div>

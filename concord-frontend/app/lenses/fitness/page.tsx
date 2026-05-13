@@ -483,7 +483,7 @@ function ExerciseSetTracker() {
             <input type="number" value={s.reps} onChange={e => updateSet(i, 'reps', parseInt(e.target.value)||0)}
               className="w-12 bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs text-center" />
             <span className="text-xs text-gray-500">reps</span>
-            <button onClick={() => removeSet(i)} className="ml-auto text-gray-600 hover:text-red-400">
+            <button onClick={() => removeSet(i)} className="ml-auto text-gray-600 hover:text-red-400" aria-label="Close">
               <X className="w-3 h-3" />
             </button>
           </motion.div>
@@ -1021,7 +1021,7 @@ export default function FitnessLensPage() {
                 <button onClick={saveClientProgress} className={cn(ds.btnSmall, 'bg-red-400/20 text-red-400 border border-red-400/30')}>
                   Save Progress
                 </button>
-                <button onClick={() => setSelectedClient(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+                <button onClick={() => setSelectedClient(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
               </div>
             </div>
 
@@ -1059,7 +1059,7 @@ export default function FitnessLensPage() {
                       <input value={g.label} onChange={e => { const ng = [...clientGoals]; ng[i] = { ...g, label: e.target.value }; setClientGoals(ng); }} className={cn(ds.input, 'bg-transparent border-none p-0 text-sm font-medium')} placeholder="Goal name" />
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">{g.current}/{g.target}</span>
-                        <button onClick={() => setClientGoals(prev => prev.filter((_, idx) => idx !== i))} className={ds.btnGhost}><Trash2 className="w-3 h-3 text-red-400" /></button>
+                        <button onClick={() => setClientGoals(prev => prev.filter((_, idx) => idx !== i))} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3 h-3 text-red-400" /></button>
                       </div>
                     </div>
                     <ProgressBar value={g.current} max={g.target} color="neon-cyan" />
@@ -1120,7 +1120,7 @@ export default function FitnessLensPage() {
                               {weightTrend < 0 ? <ArrowDownRight className="w-4 h-4 text-red-400" /> : weightTrend > 0 ? <ArrowUpRight className="w-4 h-4 text-red-400" /> : <Minus className="w-4 h-4 text-gray-500" />}
                             </td>
                             <td className="py-2 px-2">
-                              <button onClick={() => setClientMetrics(prev => prev.filter((_, idx) => idx !== i))} className={ds.btnGhost}><Trash2 className="w-3 h-3 text-red-400" /></button>
+                              <button onClick={() => setClientMetrics(prev => prev.filter((_, idx) => idx !== i))} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3 h-3 text-red-400" /></button>
                             </td>
                           </tr>
                         );
@@ -1173,7 +1173,7 @@ export default function FitnessLensPage() {
                           <input type="date" value={pr.date} onChange={e => { const np = [...clientPRs]; np[i] = { ...pr, date: e.target.value }; setClientPRs(np); }} className={cn(ds.input, 'text-xs w-28')} />
                         </div>
                       </div>
-                      <button onClick={() => setClientPRs(prev => prev.filter((_, idx) => idx !== i))} className={ds.btnGhost}><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                      <button onClick={() => setClientPRs(prev => prev.filter((_, idx) => idx !== i))} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                     </div>
                   ))}
                 </div>
@@ -1358,7 +1358,7 @@ export default function FitnessLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <div className="space-y-3">
             {/* progressionCalc */}
@@ -1446,7 +1446,7 @@ export default function FitnessLensPage() {
             <div className={cn(ds.modalPanel, 'max-w-4xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Body Composition & Strength Tools</h2>
-                <button onClick={() => setShowBodyComp(false)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowBodyComp(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4 space-y-6 max-h-[75vh] overflow-y-auto">
 
@@ -1634,7 +1634,7 @@ export default function FitnessLensPage() {
             <div className={cn(ds.modalPanel, 'max-w-4xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>{editingItem ? 'Edit' : 'New'} {formType}</h2>
-                <button onClick={() => setShowEditor(false)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowEditor(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
 
@@ -1769,7 +1769,7 @@ export default function FitnessLensPage() {
                               {ex.category}
                             </span>
                           </div>
-                          <button onClick={() => removeExercise(ex.id)} className={ds.btnGhost}><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                          <button onClick={() => removeExercise(ex.id)} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                         </div>
                         <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                           <div>
@@ -1857,7 +1857,7 @@ export default function FitnessLensPage() {
                               <span className="text-xs text-gray-500">Block {idx + 1}</span>
                               <span className={ds.badge(phaseColor)}>{block.phase}</span>
                             </div>
-                            <button onClick={() => removeBlock(block.id)} className={ds.btnGhost}><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                            <button onClick={() => removeBlock(block.id)} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                             <div>
@@ -1937,7 +1937,7 @@ export default function FitnessLensPage() {
                                 <div key={slot.id} className={cn(ds.panel, 'mb-1')}>
                                   <div className="flex items-center justify-between mb-2">
                                     <input value={slot.name} onChange={e => updateClassSlot(slot.id, 'name', e.target.value)} className={cn(ds.input, 'text-sm font-medium bg-transparent border-none p-0 w-40')} />
-                                    <button onClick={() => removeClassSlot(slot.id)} className={ds.btnGhost}><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                                    <button onClick={() => removeClassSlot(slot.id)} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                                   </div>
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                     <div>
@@ -2038,7 +2038,7 @@ export default function FitnessLensPage() {
                                       <option value="reserve">Reserve</option>
                                     </select>
                                   </td>
-                                  <td className="py-1 px-2"><button onClick={() => removeRosterEntry(i)} className={ds.btnGhost}><Trash2 className="w-3 h-3 text-red-400" /></button></td>
+                                  <td className="py-1 px-2"><button onClick={() => removeRosterEntry(i)} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3 h-3 text-red-400" /></button></td>
                                 </tr>
                               ))}
                             </tbody>

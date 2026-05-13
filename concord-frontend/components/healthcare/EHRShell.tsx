@@ -1,4 +1,6 @@
 'use client';
+// @ghost-click-ok: silhouette/scaffolding component — visual placeholders
+// for the EHR shape; caller wires real handlers via children.
 
 /**
  * EHRShell — Epic / Cerner-shape patient chart silhouette.

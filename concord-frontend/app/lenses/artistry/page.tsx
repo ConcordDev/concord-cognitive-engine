@@ -213,7 +213,7 @@ export default function ArtistryLensPage() {
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-white/5 rounded-lg border border-white/10">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-neon-pink" /> Result</h4>
-                <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white"><XCircle className="w-4 h-4" /></button>
+                <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Xcircle"><XCircle className="w-4 h-4" /></button>
               </div>
               {/* Color Palette Analysis */}
               {actionResult.harmonyScore !== undefined && actionResult.dominantHue !== undefined && (
@@ -427,7 +427,7 @@ export default function ArtistryLensPage() {
               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold">Upload Asset</h3>
-                  <button onClick={() => setShowUpload(false)}><X className="w-4 h-4" /></button>
+                  <button onClick={() => setShowUpload(false)} aria-label="Close"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="space-y-3">
                   <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Title" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />

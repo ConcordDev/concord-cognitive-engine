@@ -408,16 +408,16 @@ export default function TimelineLensPage() {
             <span className="text-2xl font-bold text-blue-500">Timeline Lens</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="p-2 bg-[#3a3b3c] rounded-full hover:bg-[#4a4b4c] transition-colors">
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="p-2 bg-[#3a3b3c] rounded-full hover:bg-[#4a4b4c] transition-colors" aria-label="Home">
               <Home className="w-5 h-5 text-white" />
             </button>
-            <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Watch section' })} className="p-2 bg-[#3a3b3c] rounded-full hover:bg-[#4a4b4c] transition-colors">
+            <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Watch section' })} className="p-2 bg-[#3a3b3c] rounded-full hover:bg-[#4a4b4c] transition-colors" aria-label="Tv">
               <Tv className="w-5 h-5 text-gray-400" />
             </button>
-            <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Marketplace' })} className="p-2 bg-[#3a3b3c] rounded-full hover:bg-[#4a4b4c] transition-colors">
+            <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Marketplace' })} className="p-2 bg-[#3a3b3c] rounded-full hover:bg-[#4a4b4c] transition-colors" aria-label="Store">
               <Store className="w-5 h-5 text-gray-400" />
             </button>
-            <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Groups' })} className="p-2 bg-[#3a3b3c] rounded-full hover:bg-[#4a4b4c] transition-colors">
+            <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Groups' })} className="p-2 bg-[#3a3b3c] rounded-full hover:bg-[#4a4b4c] transition-colors" aria-label="Users2">
               <Users2 className="w-5 h-5 text-gray-400" />
             </button>
           </div>
@@ -774,7 +774,7 @@ export default function TimelineLensPage() {
                             <button
                               onClick={() => setSelectedEventId(null)}
                               className="p-1 rounded hover:bg-white/10 text-gray-400 transition-colors"
-                            >
+                            aria-label="Close">
                               <X className="w-4 h-4" />
                             </button>
                           </div>
@@ -856,7 +856,7 @@ export default function TimelineLensPage() {
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Post options' })} className="p-2 rounded-full hover:bg-[#3a3b3c] transition-colors">
+                    <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Post options' })} className="p-2 rounded-full hover:bg-[#3a3b3c] transition-colors" aria-label="More options">
                       <MoreHorizontal className="w-5 h-5 text-gray-400" />
                     </button>
                   </div>
@@ -945,10 +945,10 @@ export default function TimelineLensPage() {
                       className="flex-1 py-2 bg-transparent text-white placeholder-gray-500 focus:outline-none text-sm"
                     />
                     <div className="flex items-center gap-1">
-                      <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Emoji picker' })} className="p-1 text-gray-400 hover:text-gray-300">
+                      <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Emoji picker' })} className="p-1 text-gray-400 hover:text-gray-300" aria-label="Smile">
                         <Smile className="w-5 h-5" />
                       </button>
-                      <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Attach image to comment' })} className="p-1 text-gray-400 hover:text-gray-300">
+                      <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Attach image to comment' })} className="p-1 text-gray-400 hover:text-gray-300" aria-label="Image icon">
                         <ImageIcon className="w-5 h-5" />
                       </button>
                     </div>
@@ -1026,7 +1026,7 @@ export default function TimelineLensPage() {
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-white">Create Post</h3>
-                <button onClick={() => setShowPostModal(false)} className="text-gray-400 hover:text-white">
+                <button onClick={() => setShowPostModal(false)} className="text-gray-400 hover:text-white" aria-label="More options">
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
               </div>
@@ -1060,10 +1060,10 @@ export default function TimelineLensPage() {
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-gray-700">
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setPostContent(prev => prev + ' [Photo]')} className="p-2 rounded-lg hover:bg-[#3a3b3c] text-green-500 transition-colors">
+                  <button onClick={() => setPostContent(prev => prev + ' [Photo]')} className="p-2 rounded-lg hover:bg-[#3a3b3c] text-green-500 transition-colors" aria-label="Image icon">
                     <ImageIcon className="w-5 h-5" />
                   </button>
-                  <button onClick={() => setPostContent(prev => prev + ' :)')} className="p-2 rounded-lg hover:bg-[#3a3b3c] text-yellow-500 transition-colors">
+                  <button onClick={() => setPostContent(prev => prev + ' :)')} className="p-2 rounded-lg hover:bg-[#3a3b3c] text-yellow-500 transition-colors" aria-label="Smile">
                     <Smile className="w-5 h-5" />
                   </button>
                 </div>
@@ -1100,7 +1100,7 @@ export default function TimelineLensPage() {
             Timeline Actions
           </h3>
           {timelineActionResult && (
-            <button onClick={() => setTimelineActionResult(null)} className="p-1 rounded hover:bg-[#3a3b3c] text-gray-400">
+            <button onClick={() => setTimelineActionResult(null)} className="p-1 rounded hover:bg-[#3a3b3c] text-gray-400" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

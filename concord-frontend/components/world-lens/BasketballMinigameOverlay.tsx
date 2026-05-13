@@ -109,7 +109,7 @@ export function BasketballMinigameOverlay({
             <Trophy className="h-5 w-5 text-orange-300" />
             Basketball
           </h3>
-          <button onClick={onClose} className="rounded p-1 text-slate-400 hover:bg-slate-800">
+          <button onClick={onClose} className="rounded p-1 text-slate-400 hover:bg-slate-800" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>

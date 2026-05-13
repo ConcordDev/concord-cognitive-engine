@@ -373,7 +373,7 @@ export default function RoboticsLensPage() {
                         <button onClick={e => { e.stopPropagation(); update(robot.id, { data: { ...robot, lastUpdated: new Date().toISOString() } as unknown as Partial<Record<string, unknown>> }); }} className="text-gray-500 hover:text-yellow-400 ml-1" title="Update">
                           <Activity className="w-4 h-4" />
                         </button>
-                        <button onClick={e => { e.stopPropagation(); remove(robot.id); }} className="text-gray-500 hover:text-red-400 ml-1">
+                        <button onClick={e => { e.stopPropagation(); remove(robot.id); }} className="text-gray-500 hover:text-red-400 ml-1" aria-label="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -511,7 +511,7 @@ export default function RoboticsLensPage() {
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => removeTask(task.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => removeTask(task.id)} className="text-gray-500 hover:text-red-400" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                 </motion.div>
               ))
             )}

@@ -154,12 +154,18 @@ export default function DeitiesPage() {
                 <button
                   type="button"
                   onClick={async () => {
-                    await fetch('/api/lens/run', {
-                      method: 'POST', credentials: 'include',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ domain: 'deity', name: 'pilgrimage', input: { deityId: d.id } }),
-                    });
-                    void refresh();
+                    try {
+                      const r = await fetch('/api/lens/run', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ domain: 'deity', name: 'pilgrimage', input: { deityId: d.id } }),
+                      });
+                      if (!r.ok) console.error('pilgrimage failed', r.status);
+                    } catch (err) {
+                      console.error('pilgrimage threw', err);
+                    } finally {
+                      void refresh();
+                    }
                   }}
                   className="mt-3 w-full bg-purple-700 hover:bg-purple-600 text-white text-xs py-1.5 rounded font-medium"
                 >

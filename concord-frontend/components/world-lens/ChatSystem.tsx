@@ -408,7 +408,7 @@ export default function ChatSystem({
             <button
               onClick={() => setShowEmotes(!showEmotes)}
               className={`p-1.5 rounded transition-colors ${showEmotes ? 'bg-white/15 text-yellow-400' : 'text-white/40 hover:text-white/60'}`}
-            >
+            aria-label="Smile">
               <Smile size={18} />
             </button>
 
@@ -424,7 +424,7 @@ export default function ChatSystem({
               onClick={handleSend}
               disabled={!input.trim()}
               className="p-1.5 rounded bg-blue-600/80 hover:bg-blue-500 disabled:opacity-30 disabled:hover:bg-blue-600/80 text-white transition-colors"
-            >
+            aria-label="Send">
               <Send size={16} />
             </button>
           </div>

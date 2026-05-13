@@ -214,7 +214,7 @@ export default function OrganLensPage() {
             <Zap className="w-4 h-4 mr-1 inline" />
             {tickMutation.isPending ? 'Ticking...' : 'Tick'}
           </button>
-          <button onClick={() => { refetch(); refetchHealth(); }} className="p-2 text-gray-400 hover:text-white">
+          <button onClick={() => { refetch(); refetchHealth(); }} className="p-2 text-gray-400 hover:text-white" aria-label="Refresh">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
