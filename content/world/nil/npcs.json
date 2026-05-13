@@ -1,3 +1,0 @@
-[
-  { "id": "nil_elder_mevra", "world_id": "nil", "name": "Elder Mevra", "archetype": "mystic", "faction_id": "nil_keepers", "faction": "nil", "is_conscious": true, "is_immortal": true, "level": 18, "backstory": "Has stood at the Nil threshold for nine annums. Has not spoken in two.", "personality_traits": ["silent", "absolute", "ancient"], "narrative_context": { "secret": "Mevra knows what is inside Nil; the silence is intentional." } }
-]

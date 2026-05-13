@@ -1,3 +1,0 @@
-[
-  { "id": "strip_captain_mara", "world_id": "cactem-strip", "name": "Captain Mara", "archetype": "warrior", "faction_id": "strip_caravan_guard", "faction": "cactem_strip", "is_conscious": true, "level": 9, "backstory": "Lost her brother in a Fluxom raid two annums back.", "personality_traits": ["vengeful", "disciplined"] }
-]

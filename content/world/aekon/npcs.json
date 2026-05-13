@@ -1,5 +1,0 @@
-[
-  { "id": "aekon_warden_hild", "world_id": "aekon", "name": "Warden Hild", "archetype": "warrior", "faction_id": "aekon_glacier_court", "faction": "aekon", "is_conscious": true, "level": 10, "backstory": "Defends the glacier gate. Has never opened it to an outsider.", "personality_traits": ["stoic", "honorable", "cold"] },
-  { "id": "aekon_smith_jera", "world_id": "aekon", "name": "Ice-Smith Jera", "archetype": "trader", "faction_id": "aekon_glacier_court", "faction": "aekon", "is_conscious": true, "level": 6, "backstory": "Forges ice-bloodline blades.", "personality_traits": ["careful", "patient"] },
-  { "id": "aekon_courier_yon", "world_id": "aekon", "name": "Courier Yon", "archetype": "hunter", "faction_id": "aekon_glacier_court", "faction": "aekon", "is_conscious": false, "level": 4, "backstory": "Runs Bloc dispatches across the ice.", "personality_traits": ["taciturn", "enduring"] }
-]

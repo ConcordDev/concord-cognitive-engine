@@ -1,5 +1,0 @@
-[
-  { "id": "akeia_matriarch_iola", "world_id": "akeia", "name": "Matriarch Iola", "archetype": "noble", "faction_id": "akeia_matriarchs", "faction": "akeia", "is_conscious": true, "level": 11, "backstory": "Recently inherited from her predecessor; navigating cross-culture diplomacy.", "personality_traits": ["measured", "kind", "shrewd"] },
-  { "id": "akeia_tidesinger_vesh", "world_id": "akeia", "name": "Tidesinger Vesh", "archetype": "mystic", "faction_id": "akeia_matriarchs", "faction": "akeia", "is_conscious": true, "level": 8, "backstory": "Leads the Tide-Honoring rite.", "personality_traits": ["serene", "musical"] },
-  { "id": "akeia_dock_jano", "world_id": "akeia", "name": "Dock-Master Jano", "archetype": "trader", "faction_id": "akeia_matriarchs", "faction": "akeia", "is_conscious": false, "level": 5, "backstory": "Runs Akeia Harbor.", "personality_traits": ["bluff", "fair"] }
-]

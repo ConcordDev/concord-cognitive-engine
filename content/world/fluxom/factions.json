@@ -1,4 +1,0 @@
-[
-  { "id": "fluxom_dye_lords", "world_id": "fluxom", "name": "Dye Lords", "description": "The brutal cartel that controls cactem dye-bug strips.", "alignment": "chaotic_neutral", "rival_factions": ["dinye", "aekon", "akeia"], "allied_factions": [] },
-  { "id": "fluxom_refugees", "world_id": "fluxom", "name": "Fluxom Refugees", "description": "Those fleeing Fluxom policies into Tunyan territory.", "alignment": "neutral", "rival_factions": ["fluxom_dye_lords"], "allied_factions": [] }
-]

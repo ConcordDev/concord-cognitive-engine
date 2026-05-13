@@ -1,3 +1,0 @@
-[
-  { "id": "akeia_matriarchs", "world_id": "akeia", "name": "Matriarchal Council", "description": "Akeia's ruling council, traditionally matriarchal.", "alignment": "lawful_good", "rival_factions": ["fluxom"], "allied_factions": ["sahm"] }
-]

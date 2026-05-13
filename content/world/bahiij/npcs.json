@@ -1,4 +1,0 @@
-[
-  { "id": "bahiij_caravan_master_rema", "world_id": "bahiij", "name": "Caravan-Master Rema", "archetype": "trader", "faction_id": "bahiij_caravan", "faction": "bahiij", "is_conscious": true, "level": 9, "backstory": "Owns eight elephant mounts; runs the Sahm-Akeia route.", "personality_traits": ["pragmatic", "warm"] },
-  { "id": "bahiij_mahout_dev", "world_id": "bahiij", "name": "Mahout Dev", "archetype": "hunter", "faction_id": "bahiij_caravan", "faction": "bahiij", "is_conscious": true, "level": 5, "backstory": "Bonded with elephant since childhood.", "personality_traits": ["quiet", "loyal"] }
-]

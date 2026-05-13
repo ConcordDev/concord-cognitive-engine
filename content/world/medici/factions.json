@@ -1,3 +1,0 @@
-[
-  { "id": "medici_circle", "world_id": "medici", "name": "Medici Healing Circle", "description": "Healers' council on the crash island. Mix of healing-magic, biopower, and salvaged crash-tech.", "alignment": "lawful_good", "rival_factions": ["sangree"], "allied_factions": [] }
-]

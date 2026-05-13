@@ -1,4 +1,0 @@
-[
-  { "id": "sangree_chief_thal", "world_id": "sangree", "name": "Chief Thal", "archetype": "warrior", "faction_id": "sangree_fire_clans", "faction": "sangree", "is_conscious": true, "level": 12, "backstory": "Eldest of the Fire Clans. His punch reportedly cracks stone.", "personality_traits": ["proud", "honourable", "blunt"] },
-  { "id": "sangree_smith_orla", "world_id": "sangree", "name": "Smith Orla", "archetype": "trader", "faction_id": "sangree_fire_clans", "faction": "sangree", "is_conscious": true, "level": 7, "backstory": "Forges blades for the clans; her work is signed.", "personality_traits": ["proud", "patient"] }
-]
