@@ -17,6 +17,21 @@
 import { useEffect, useState } from 'react';
 import { useHUDContext } from './HUDContextProvider';
 import { BloodlinePanel } from './panels/BloodlinePanel';
+import { VoiceMesh } from '@/components/voice/VoiceMesh';
+
+/** Phase X — voice-mesh panel wrapper. Pulls roomId from the active
+ *  world (one mesh per world) and selfUserId from the user store. */
+function VoiceMeshPanel() {
+  const [roomId, setRoomId]       = useState<string | null>(null);
+  const [selfUserId, setSelfId]   = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setRoomId(localStorage.getItem('concordia:activeWorldId') || 'concordia-hub');
+    fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json()).then(j => setSelfId(j?.user?.id || null)).catch(() => {});
+  }, []);
+  if (!roomId || !selfUserId) return <div className="p-4 text-sm text-white/40">Loading voice room…</div>;
+  return <VoiceMesh roomId={roomId} selfUserId={selfUserId} />;
+}
 import { SchemesPanel } from './panels/SchemesPanel';
 import { HooksPanel } from './panels/HooksPanel';
 import { JobsPanel } from './panels/JobsPanel';
@@ -82,6 +97,8 @@ const PANEL_REGISTRY: Record<string, { label: string; Component: React.Component
   flywheel:              { label: 'Flywheel Dashboard',  Component: FlywheelDashboardPanel },
   predictions:           { label: 'Predictions',         Component: PredictionCardsPanel },
   leaderboard:           { label: 'Regional Leaderboard',Component: RegionalLeaderboardPanel },
+  // Phase X — multi-party voice mesh (~8 peer cap, RTCPeerConnection mesh).
+  voice:                 { label: 'Voice Mesh',          Component: VoiceMeshPanel },
 };
 
 export function PanelHost() {
