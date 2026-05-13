@@ -1,0 +1,1585 @@
+{
+  "total": 230,
+  "buckets": {
+    "green": 37,
+    "noisy": 2,
+    "crashed": 1,
+    "timeout": 190
+  },
+  "results": [
+    {
+      "lens": "accounting",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 21937
+    },
+    {
+      "lens": "admin",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8240
+    },
+    {
+      "lens": "affect",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7022
+    },
+    {
+      "lens": "agents",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7225
+    },
+    {
+      "lens": "agriculture",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11496
+    },
+    {
+      "lens": "all",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7437
+    },
+    {
+      "lens": "alliance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8832
+    },
+    {
+      "lens": "analytics",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_RESET at http://localhost:3000/lenses/analytics\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/lenses/analytics\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10431
+    },
+    {
+      "lens": "animation",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "anon",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 35304
+    },
+    {
+      "lens": "answers",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6629
+    },
+    {
+      "lens": "app-maker",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 6869
+    },
+    {
+      "lens": "ar",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8078
+    },
+    {
+      "lens": "art",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10040
+    },
+    {
+      "lens": "artistry",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: Timeout 25000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/lenses/artistry\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 25237
+    },
+    {
+      "lens": "astronomy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 34382
+    },
+    {
+      "lens": "atlas",
+      "bucket": "crashed",
+      "consoleErrorCount": 2,
+      "firstError": "%o\n\n%s Error: Map container is already initialized.\n    at NewClass._initContainer (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:4206:12)\n    at NewClass.initialize (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:3248:10)\n    at new NewClass (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:301:22)\n    at eval (webpack-internal:///(app-pages-browser)/./node_modules/react-leaflet/lib/MapContainer.js:37:25)\n    at commitAttachRef (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:12612:44)\n    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)\n    at safelyAttachRef (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:12630:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14242:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14189:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14233:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14189:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14189:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14296:13)\n    at doubleInvokeEffectsOnFiber (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16565:11)\n    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:875:13)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16543:19)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17) The above error occurred in the <div> component. It was handled by the <LensErrorBoundary> error boundary.",
+      "boundaryText": "⚠The atlas lens hit an errorSomething broke while rendering this surface. The error has been logged; you can try recovering without losing your data.technical detailsMap container is already initialized.\n\nError: Map container is already initialized.\n    at NewClass._initContainer (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:4206:12)\n    at NewClass.initialize (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:3248:10)\n    at",
+      "durationMs": 9649
+    },
+    {
+      "lens": "attention",
+      "bucket": "noisy",
+      "consoleErrorCount": 6,
+      "firstError": "[Dream] Failed to load history: ForbiddenError: Insufficient permissions\n    at fromAxiosError (webpack-internal:///(app-pages-browser)/./lib/errors.ts:131:20)\n    at eval (webpack-internal:///(app-pages-browser)/./lib/api/client.ts:352:86)\n    at async Axios.request (webpack-internal:///(app-pages-browser)/./node_modules/axios/lib/core/Axios.js:54:14)",
+      "durationMs": 7798
+    },
+    {
+      "lens": "audit",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15388
+    },
+    {
+      "lens": "automotive",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 17483
+    },
+    {
+      "lens": "aviation",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15492
+    },
+    {
+      "lens": "billing",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7334
+    },
+    {
+      "lens": "bio",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7473
+    },
+    {
+      "lens": "black-market",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10239
+    },
+    {
+      "lens": "board",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 38550
+    },
+    {
+      "lens": "bounties",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6484
+    },
+    {
+      "lens": "bridge",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8892
+    },
+    {
+      "lens": "byo-keys",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6280
+    },
+    {
+      "lens": "calendar",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8114
+    },
+    {
+      "lens": "carpentry",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10606
+    },
+    {
+      "lens": "chat",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 23344
+    },
+    {
+      "lens": "chem",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7402
+    },
+    {
+      "lens": "classroom",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6878
+    },
+    {
+      "lens": "code",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12006
+    },
+    {
+      "lens": "code-quality",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 14863
+    },
+    {
+      "lens": "cognition",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9446
+    },
+    {
+      "lens": "cognitive-replay",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7237
+    },
+    {
+      "lens": "collab",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 17824
+    },
+    {
+      "lens": "command-center",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9436
+    },
+    {
+      "lens": "commonsense",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9274
+    },
+    {
+      "lens": "construction",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 28806
+    },
+    {
+      "lens": "consulting",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 25944
+    },
+    {
+      "lens": "cooking",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11555
+    },
+    {
+      "lens": "council",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_SOCKET_NOT_CONNECTED at http://localhost:3000/lenses/council\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/lenses/council\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 22758
+    },
+    {
+      "lens": "crafting",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "creative",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "creative-writing",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "creator",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "cri",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "crisis-ops",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "crypto",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "custom",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "daily",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "database",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "death-insurance",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 14
+    },
+    {
+      "lens": "debate",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "debug",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "defense",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "deities",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "desert",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 5
+    },
+    {
+      "lens": "disputes",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "diy",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "docs",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "dreams",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "dtus",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "dx-platform",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "eco",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "education",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "electrical",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "emergency-services",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "energy",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "engineering",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "entity",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "environment",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "ethics",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "event-timeline",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "events",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "expedition-journal",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "experience",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "expert-mode",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "export",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "fashion",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "federation",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "feed",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "film-studios",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "finance",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "fitness",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "food",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "forecast",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "forestry",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "forge",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 5
+    },
+    {
+      "lens": "fork",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "forum",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "fractal",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "gallery",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "game",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "game-design",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "genesis",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "geology",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "ghost-tracker",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "global",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "goals",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "goddess",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "government",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 5
+    },
+    {
+      "lens": "graph",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "grounding",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "healthcare",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 5
+    },
+    {
+      "lens": "history",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "home-improvement",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "household",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "hr",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "hvac",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "hypothesis",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "import",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "inference",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "ingest",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "inheritance",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "insurance",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "integrations",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "invariant",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "kingdoms",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "lab",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "landscaping",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "lattice",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "law",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 14
+    },
+    {
+      "lens": "law-enforcement",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "legacy",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "legal",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "linguistics",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "lock",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "logistics",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "maker",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "manufacturing",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "market",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "marketing",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "marketplace",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "markets",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "masonry",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 14
+    },
+    {
+      "lens": "materials",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "math",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "mental-health",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "mentorship",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "mesh",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "message",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "meta",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "metacognition",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "metalearning",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "mining",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "ml",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "music",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "neuro",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "news",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "nonprofit",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 15
+    },
+    {
+      "lens": "observe",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "ocean",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "offline",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "ops",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "organ",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "paper",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "parenting",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "personas",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "pets",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "pharmacy",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "philosophy",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "photography",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 14
+    },
+    {
+      "lens": "physics",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "platform",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "plumbing",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "podcast",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "poetry",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "privacy",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "productivity",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "projects",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 5
+    },
+    {
+      "lens": "psyops",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "quantum",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "questmarket",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "queue",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "realestate",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "reasoning",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 14
+    },
+    {
+      "lens": "reflection",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "repos",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 14
+    },
+    {
+      "lens": "research",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "resonance",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "retail",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "robotics",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "root",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "sandbox",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "schema",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "science",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "security",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "self",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "sentinel",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "services",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "settings",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "sim",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "society",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 14
+    },
+    {
+      "lens": "space",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "sponsorship",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "sports",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "srs",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "staking",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "studio",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "sub-worlds",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "suffering",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "supplychain",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "sync",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "system",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "telecommunications",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "temporal",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "thread",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "tick",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 18
+    },
+    {
+      "lens": "timeline",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "tools",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "tournaments",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "trades",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "transfer",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "travel",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 7
+    },
+    {
+      "lens": "understanding",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 13
+    },
+    {
+      "lens": "urban-planning",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "ux-suite",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "veterinary",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 9
+    },
+    {
+      "lens": "voice",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "vote",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 12
+    },
+    {
+      "lens": "wallet",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "welding",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "wellness",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 11
+    },
+    {
+      "lens": "whiteboard",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 10
+    },
+    {
+      "lens": "world",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 8
+    },
+    {
+      "lens": "world-creator",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6
+    },
+    {
+      "lens": "worldmodel",
+      "bucket": "timeout",
+      "consoleErrorCount": 0,
+      "firstError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 14
+    }
+  ]
+}
