@@ -383,6 +383,10 @@ const NPCActivityTag = dynamic(
   () => import('@/components/world/NPCActivityTag').then((m) => ({ default: m.NPCActivityTag })),
   { ssr: false },
 );
+const NemesisGlyphLayer = dynamic(
+  () => import('@/components/world/NemesisGlyphLayer').then((m) => ({ default: m.NemesisGlyphLayer })),
+  { ssr: false },
+);
 const DamageBillboard = dynamic(
   () => import('@/components/world/DamageBillboard').then((m) => ({ default: m.DamageBillboard })),
   { ssr: false },
@@ -3916,6 +3920,10 @@ export default function WorldLensPage() {
               currentActivity: (n as { currentActivity?: string | null }).currentActivity ?? null,
               position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
             }))}
+            playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
+          />
+          <NemesisGlyphLayer
+            worldId={activeDistrict.id}
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
           <DamageBillboard />

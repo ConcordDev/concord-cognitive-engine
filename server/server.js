@@ -23146,6 +23146,12 @@ registerCombatPolishMacros(register);
 import registerNpcLegacyMacros from "./domains/npc-legacy.js";
 registerNpcLegacyMacros(register);
 
+// Phase 5 — nemesis surface. Read-only macros over the npc-asymmetry
+// substrate (grudges + preoccupations + stress + schemes) so the HUD
+// can render per-NPC nemesis glyphs over nearby NPCs.
+import registerNemesisMacros from "./domains/nemesis.js";
+registerNemesisMacros(register);
+
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
 // recent_moves / get_relation reads.
