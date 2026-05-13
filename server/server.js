@@ -23266,6 +23266,12 @@ registerVoiceChatMacros(register);
 import registerMessagingMacros from "./domains/messaging.js";
 registerMessagingMacros(register);
 
+// Phase V — game-mode dispatch surfaces for the new lenses.
+import registerCrisisMacros from "./domains/crisis.js";
+registerCrisisMacros(register);
+import registerGhostHuntMacros from "./domains/ghost-hunt.js";
+registerGhostHuntMacros(register);
+
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
 // recent_moves / get_relation reads.

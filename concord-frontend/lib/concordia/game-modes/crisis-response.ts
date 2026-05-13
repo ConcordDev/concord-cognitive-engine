@@ -18,6 +18,7 @@ const crisisResponseMode: GameMode = {
       name: 'Respond',
       description: 'Take action: combatants use skills, creators build counter-DTUs, diplomats dialogue.',
       inputMode: 'exploration',
+      lensId: 'crisis-ops', // Phase V — opens the active-crisis dispatch lens.
       advanceWhen: {
         type: 'any',
         triggers: [

@@ -18,6 +18,7 @@ const ghostHuntMode: GameMode = {
       name: 'Track',
       description: 'Zone proximity indicator active. Get close to engage.',
       inputMode: 'exploration',
+      lensId: 'ghost-tracker', // Phase V — residue list opens here.
       advanceWhen: {
         type: 'any',
         triggers: [
@@ -31,6 +32,7 @@ const ghostHuntMode: GameMode = {
       name: 'Confront',
       description: 'Combat engaged. Defeat your nemesis.',
       inputMode: 'combat',
+      lensId: 'ghost-tracker',
       advanceWhen: {
         type: 'any',
         triggers: [

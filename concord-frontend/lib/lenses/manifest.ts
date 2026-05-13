@@ -2114,6 +2114,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'lens.sub-worlds.list', get: 'lens.sub-worlds.get', create: 'lens.sub-worlds.create', update: 'lens.sub-worlds.update', delete: 'lens.sub-worlds.delete', run: 'lens.sub-worlds.run', export: 'lens.sub-worlds.export' }, exports: ['json'], actions: ['spawn', 'travel'], category: 'knowledge' },
   { domain: 'sync', label: 'Cross-Device Sync', artifacts: ['sync_session'], macros: { list: 'lens.sync.list', get: 'lens.sync.get', create: 'lens.sync.create', update: 'lens.sync.update', delete: 'lens.sync.delete', run: 'lens.sync.run', export: 'lens.sync.export' }, exports: ['json'], actions: ['enable', 'sync'], category: 'system' },
   { domain: 'wellness', label: 'Refusal Field Wellness', artifacts: ['active_refusal_field'], macros: { list: 'lens.wellness.list', get: 'lens.wellness.get', create: 'lens.wellness.create', update: 'lens.wellness.update', delete: 'lens.wellness.delete', run: 'lens.wellness.run', export: 'lens.wellness.export' }, exports: ['json'], actions: ['view', 'disable'], category: 'lifestyle' },
+  // Phase V — game-mode dispatch targets.
+  { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'lens.crisis-ops.list', get: 'lens.crisis-ops.get', run: 'lens.crisis-ops.run' }, exports: ['json'], actions: ['active_for_player', 'resolve'], category: 'social' },
+  { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage'], macros: { list: 'lens.expedition-journal.list', get: 'lens.expedition-journal.get', run: 'lens.expedition-journal.run' }, exports: ['json'], actions: ['advance_stage', 'mark_visited'], category: 'knowledge' },
+  { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'lens.ghost-tracker.list', get: 'lens.ghost-tracker.get', run: 'lens.ghost-tracker.run' }, exports: ['json'], actions: ['residues', 'confront'], category: 'knowledge' },
 ];
 
 // ---- Sub-lens auto-registration ----
