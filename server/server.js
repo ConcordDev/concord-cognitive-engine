@@ -28795,6 +28795,20 @@ if (db) {
       const r = await seedConcordiaNpcSubstrate(db);
       if (r.ok) console.log("[concordia-seeder]", JSON.stringify(r.seeded));
     } catch (e) { console.warn("[concordia-seeder]", e.message); }
+    // Kingdom seeder — for every authored faction with controlled_districts
+    // across the 8 Sovereign canon worlds, insert a procedural realm row,
+    // territories, and citizens. Idempotent. Concordia-hub excluded by
+    // Concordant Law. kingdom-decree-cycle (freq 16) starts running for
+    // these NPC rulers automatically.
+    try {
+      const { seedKingdoms } = await import("./lib/kingdom-seeder.js");
+      const r = seedKingdoms(db);
+      if (r.ok) console.log("[kingdom-seeder]", JSON.stringify({
+        realms: r.realms_created,
+        territories: r.territories_seeded,
+        citizens: r.citizens_seeded,
+      }));
+    } catch (e) { console.warn("[kingdom-seeder]", e.message); }
     // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
     try {
       const starter = await import("./lib/starter-content.js");
