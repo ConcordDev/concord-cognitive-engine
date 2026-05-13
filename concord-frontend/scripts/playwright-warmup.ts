@@ -87,8 +87,18 @@ export default async function globalSetup() {
   }
 
   const allRoutes = collectRoutes(APP_DIR);
-  const routes = allRoutes.filter((r) => !SKIP_ROUTE_PREFIXES.some((p) => r.startsWith(p)));
-  console.log(`[playwright-warmup] warming ${routes.length} routes against ${baseUrl}`);
+  let routes = allRoutes.filter((r) => !SKIP_ROUTE_PREFIXES.some((p) => r.startsWith(p)));
+
+  // Scope filter: CONCORD_PLAYWRIGHT_WARMUP_ROUTES=/a,/b,/c restricts
+  // warmup to just those routes. Used by playwright-infra.config.ts,
+  // where the 4 infra specs only visit 5 routes — warming all 270
+  // wastes 6-8 minutes of the 20-minute globalTimeout budget.
+  const scopeEnv = process.env.CONCORD_PLAYWRIGHT_WARMUP_ROUTES;
+  if (scopeEnv) {
+    const allow = new Set(scopeEnv.split(",").map((s) => s.trim()).filter(Boolean));
+    routes = routes.filter((r) => allow.has(r));
+  }
+  console.log(`[playwright-warmup] warming ${routes.length} routes against ${baseUrl}${scopeEnv ? ` (scoped via env)` : ""}`);
 
   const t0 = Date.now();
   // Parallelism: 12 concurrent fetches + 15 s per-route timeout keeps

@@ -20,17 +20,30 @@ import { defineConfig, devices } from '@playwright/test';
  * now only the genuinely-infra-dependent slice is non-blocking, and
  * everything else gates merges again.
  */
+// The 4 infra specs (chat-flow / chat-modes / auth-oauth / wallet-flow)
+// only visit these 5 routes. Pre-warm just those so the globalSetup
+// step doesn't burn 6-8 minutes warming all 270 app routes (the cause
+// of the recurring "0 test failures but job-level red" pattern: warmup
+// + tests + retry was straddling the 20-minute globalTimeout).
+process.env.CONCORD_PLAYWRIGHT_WARMUP_ROUTES = '/,/login,/register,/lenses/chat,/lenses/wallet';
+
 export default defineConfig({
   testDir: './tests/e2e-infra',
-  // Same route-warmup as the core config — pre-compiles every Next.js
-  // app route before infra-tier tests run, so per-action timeouts
-  // don't fire on first-route lazy-compile latency.
+  // Same route-warmup as the core config — but scoped to just the
+  // 5 routes the infra specs actually visit (see env above).
   globalSetup: './scripts/playwright-warmup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // Retries=0 for infra tier. These tests are inherently conditional
+  // (if (await x.isVisible().catch(() => false))) and rarely benefit
+  // from a retry. Retrying doubles the wall-clock budget consumed by
+  // a slow test and was contributing to globalTimeout overruns.
+  retries: 0,
   workers: process.env.CI ? 2 : undefined,
-  globalTimeout: 20 * 60 * 1000,
+  // 30 min globalTimeout (was 20). Even with scoped warmup and zero
+  // retries, the chat-modes specs do ~15 conditional flow probes and
+  // need headroom for cold-compile spikes on first visit per route.
+  globalTimeout: 30 * 60 * 1000,
   // Mirror the core config's reporter trio so the infra job emits
   // json+html+list. The ci.yml infra job reads the JSON for failure
   // surfacing (same shape as the core slice).
