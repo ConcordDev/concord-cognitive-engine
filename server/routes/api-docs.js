@@ -1,4 +1,5 @@
 // @resource-leak-ok: addEventListener calls live inside the served HTML template string, not real server code
+// @http-error-ok: fetch() calls in this file run in the browser (served HTML), not on the server
 /**
  * API Documentation Routes — v1.0
  *

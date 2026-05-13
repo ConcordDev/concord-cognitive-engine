@@ -664,12 +664,14 @@ export default function registerOperationRoutes(app, {
   });
 
   app.post("/api/agents/:id/enable", asyncHandler(async (req, res) => {
-    const out = await runMacro("agent", "enable", { id: req.params.id, enabled: req.body.enabled }, makeCtx(req));
+    const enabled = Boolean(req.body?.enabled);
+    const out = await runMacro("agent", "enable", { id: req.params.id, enabled }, makeCtx(req));
     return res.json(out);
   }));
 
   app.post("/api/agents/:id/tick", asyncHandler(async (req, res) => {
-    const out = await runMacro("agent", "tick", { id: req.params.id, prompt: req.body.prompt }, makeCtx(req));
+    const prompt = req.body?.prompt || "";
+    const out = await runMacro("agent", "tick", { id: req.params.id, prompt }, makeCtx(req));
     return res.json(out);
   }));
 

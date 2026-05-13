@@ -10640,7 +10640,8 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
         "Authorization": `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000),
     }).catch(_e => null);
 
     if (!r || !r.ok) {
@@ -10717,7 +10718,8 @@ register("multimodal","image_generate", (ctx, input={}) => {
         size,
         quality,
         response_format: "b64_json"
-      })
+      }),
+      signal: AbortSignal.timeout(60000),
     }).catch(_e => null);
 
     if (!r || !r.ok) {
@@ -10784,7 +10786,8 @@ register("voice","transcribe", async (ctx, input={}) => {
           "Authorization": `Bearer ${OPENAI_API_KEY}`,
           "Content-Type": `multipart/form-data; boundary=${boundary}`
         },
-        body
+        body,
+        signal: AbortSignal.timeout(45000),
       }).catch(_e => null);
 
       if (!r || !r.ok) {
@@ -10840,7 +10843,8 @@ register("voice","tts", async (ctx, input={}) => {
         "Authorization": `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ model, input: text, voice, response_format: "mp3" })
+      body: JSON.stringify({ model, input: text, voice, response_format: "mp3" }),
+      signal: AbortSignal.timeout(30000),
     }).catch(_e => null);
 
     if (!r || !r.ok) {
@@ -10875,7 +10879,7 @@ register("tools","web_search", (ctx, input={}) => {
   // Local-first default: DuckDuckGo HTML (no API key). If you run SearxNG locally, set SEARXNG_URL.
   const local = process.env.SEARXNG_URL || "";
   const url = local ? `${local}/search?q=${encodeURIComponent(q)}&format=json` : `https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
-  const r = await fetch(url, { method:"GET" }).catch(_e=>null);
+  const r = await fetch(url, { method: "GET", signal: AbortSignal.timeout(10000) }).catch(_e=>null);
   if (!r || !r.ok) return { ok:false, error:"search failed", status: r?.status || 0 };
 
   const text = await r.text().catch(()=> "");
@@ -25979,7 +25983,7 @@ function getTimeInfo(timeZone = "America/New_York") {
 
 const _WEATHER_CACHE = new Map(); // key -> { ts:number, data:any }
 async function _fetchJson(url) {
-  const r = await fetch(url, { method: "GET", headers: { "accept":"application/json" } });
+  const r = await fetch(url, { method: "GET", headers: { "accept":"application/json" }, signal: AbortSignal.timeout(10000) });
   if (!r.ok) throw new Error(`fetch_failed:${r.status}`);
   return r.json();
 }
@@ -35662,7 +35666,7 @@ app.get("/api/system/circuit-breakers", asyncHandler(async (req, res) => {
 }));
 
 app.post("/api/system/circuit-breakers/reset", asyncHandler(async (req, res) => {
-  const name = req.body.name;
+  const name = req.body?.name || "";
   if (name && _breakers[name]) {
     _breakers[name].reset();
     res.json({ ok: true, reset: name });
@@ -44124,7 +44128,7 @@ app.post("/api/federation/remove", requireAuth(), asyncHandler(async (req, res) 
   return res.json({ ok: true, note: "peer_marked_inactive" });
 }));
 // Probe a peer URL to check it responds + report its status payload.
-app.post("/api/federation/probe", requireAuth(), asyncHandler(async (req, res) => {
+app.post("/api/federation/probe", requireAuth(), perEndpointRateLimit("federation.probe"), asyncHandler(async (req, res) => {
   const { url } = req.body || {};
   if (!url) return res.status(400).json({ ok: false, error: "url_required" });
   try {
@@ -44179,7 +44183,7 @@ app.get("/api/federation/trust-graph", asyncHandler(async (_req, res) => {
 
 // Cross-instance semantic search. Fans out the query across known peers
 // in parallel, merges results by score, deduplicates by DTU id.
-app.get("/api/federation/search", asyncHandler(async (req, res) => {
+app.get("/api/federation/search", perEndpointRateLimit("federation.search"), asyncHandler(async (req, res) => {
   const q = String(req.query.q || "").slice(0, 500);
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   if (!q) return res.status(400).json({ ok: false, error: "q_required" });
@@ -44727,7 +44731,7 @@ app.post("/api/srs/:dtuId/review", (req, res) => {
 app.post("/api/workspaces", (req, res) => {
   try {
     const userId = req.user?.id || "anonymous";
-    const result = createWorkspace(userId, req.body.name, req.body.description);
+    const result = createWorkspace(userId, req.body?.name || "", req.body?.description || "");
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -44755,7 +44759,7 @@ app.get("/api/workspaces/:id/dtus", (req, res) => {
 
 app.post("/api/workspaces/:id/dtus", (req, res) => {
   try {
-    const result = addDTUToWorkspace(req.params.id, req.body.dtuId);
+    const result = addDTUToWorkspace(req.params.id, req.body?.dtuId || "");
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -44796,7 +44800,7 @@ app.post("/api/dtus/:id/comments", validate("dtuComment"), (req, res) => {
 
 app.post("/api/comments/:id/resolve", (req, res) => {
   try {
-    const result = resolveComment(req.params.id, req.body.resolved !== false);
+    const result = resolveComment(req.params.id, req.body?.resolved !== false);
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -44806,7 +44810,7 @@ app.post("/api/comments/:id/resolve", (req, res) => {
 app.post("/api/comments/:id/react", (req, res) => {
   try {
     const userId = req.user?.id || "anonymous";
-    const result = addReaction(req.params.id, userId, req.body.emoji);
+    const result = addReaction(req.params.id, userId, req.body?.emoji || "");
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -45024,7 +45028,7 @@ app.put("/api/config/shortcuts", (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "Auth required" });
-    const result = setUserShortcut(userId, req.body.key, req.body.action);
+    const result = setUserShortcut(userId, req.body?.key || "", req.body?.action || "");
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -45052,7 +45056,7 @@ app.post("/api/onboarding/complete", (req, res) => {
     // progress is tracked per-IP so callers can't write progress for
     // another user by supplying userId in the body.
     const userId = req.user?.id || `anon-${req.ip}`;
-    const result = completeOnboardingStep(userId, req.body.stepId);
+    const result = completeOnboardingStep(userId, req.body?.stepId || "");
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -45772,7 +45776,7 @@ async function fetchRSSFeed(feedId) {
   if (!feed) return { ok: false, error: "Feed not found" };
 
   try {
-    const response = await fetch(feed.url);
+    const response = await fetch(feed.url, { signal: AbortSignal.timeout(8000) });
     const text = await response.text();
 
     // Simple RSS parsing (basic implementation)
@@ -46315,7 +46319,8 @@ async function _triggerWebhooks(event, payload) {
           "X-Concord-Signature": signature,
           "X-Concord-Event": event
         },
-        body: JSON.stringify({ event, payload, timestamp: nowISO() })
+        body: JSON.stringify({ event, payload, timestamp: nowISO() }),
+        signal: AbortSignal.timeout(10000),
       });
 
       webhook.lastTriggered = nowISO();
@@ -46428,7 +46433,7 @@ app.get("/api/views/kanban", (req, res) => {
 
 app.post("/api/embed/parse", (req, res) => {
   try {
-    const result = parseEmbed(req.body.url);
+    const result = parseEmbed(req.body?.url || "");
     if (result.ok) {
       result.html = generateEmbedHtml(result);
     }
@@ -46494,7 +46499,7 @@ app.post("/api/feeds", asyncHandler(async (req, res) => {
   if (!safety.ok) {
     return res.status(400).json({ ok: false, error: `unsafe_url:${safety.error}` });
   }
-  const result = await addRSSFeed(safety.url, req.body.name);
+  const result = await addRSSFeed(safety.url, req.body?.name || "");
   res.json(result);
 }));
 
@@ -46549,7 +46554,7 @@ app.get("/api/feeds/sources", (req, res) => {
 
 app.post("/api/reminders", (req, res) => {
   try {
-    const result = createReminder(req.body.dtuId, req.body.reminderAt, req.body.message);
+    const result = createReminder(req.body?.dtuId || "", req.body?.reminderAt || null, req.body?.message || "");
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -46624,7 +46629,7 @@ app.delete("/api/workspaces/:id/templates/:templateId", (req, res) => {
 
 // ---- Wave 15: Ecosystem Endpoints ----
 app.post("/api/cli", asyncHandler(async (req, res) => {
-  const result = await executeCLICommand(req.body.command);
+  const result = await executeCLICommand(req.body?.command || "");
   res.json(result);
 }));
 
@@ -46634,7 +46639,7 @@ app.get("/api/sdk/types", (req, res) => {
 
 app.post("/api/webhooks/register", (req, res) => {
   try {
-    const result = registerWebhook(req.body.url, req.body.events);
+    const result = registerWebhook(req.body?.url || "", req.body?.events || []);
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -50887,10 +50892,10 @@ app.post("/api/admin/forgetting/run", requireAuth(), requireRole("owner"), async
   catch (e) { res.json({ ok: false, error: e.message }); }
 });
 app.post("/api/admin/forgetting/protect", requireAuth(), requireRole("owner"), (req, res) => {
-  import("./emergent/forgetting-engine.js").then(m => res.json(m.protectDTU(req.body.dtuId))).catch(e => res.json({ ok: false, error: e.message }));
+  import("./emergent/forgetting-engine.js").then(m => res.json(m.protectDTU(req.body?.dtuId || ""))).catch(e => res.json({ ok: false, error: e.message }));
 });
 app.post("/api/admin/forgetting/unprotect", requireAuth(), requireRole("owner"), (req, res) => {
-  import("./emergent/forgetting-engine.js").then(m => res.json(m.unprotectDTU(req.body.dtuId))).catch(e => res.json({ ok: false, error: e.message }));
+  import("./emergent/forgetting-engine.js").then(m => res.json(m.unprotectDTU(req.body?.dtuId || ""))).catch(e => res.json({ ok: false, error: e.message }));
 });
 app.get("/api/admin/forgetting/history", requireAuth(), requireRole("owner"), (req, res) => {
   import("./emergent/forgetting-engine.js").then(m => res.json(m.getHistory(parseInt(req.query.limit || "20", 10)))).catch(e => res.json({ ok: false, error: e.message }));
@@ -50904,7 +50909,7 @@ app.get("/api/admin/attention/status", requireAuth(), requireRole("owner"), asyn
 app.post("/api/admin/attention/focus", requireAuth(), requireRole("owner"), async (req, res) => {
   try {
     const m = await import("./emergent/attention-allocator.js");
-    res.json(m.setFocusOverride(req.body.domain, req.body.weight, req.body.minutes));
+    res.json(m.setFocusOverride(req.body?.domain || "", req.body?.weight || 0, req.body?.minutes || 0));
   } catch (e) { res.json({ ok: false, error: e.message }); }
 });
 app.post("/api/admin/attention/unfocus", requireAuth(), requireRole("owner"), async (_req, res) => {
@@ -50957,7 +50962,7 @@ app.post("/api/apps/:id/promote", requireAuth(), requireRole("owner"), asyncHand
 // Reality Explorer
 app.post("/api/explore", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/reality-explorer.js");
-  res.json(await m.exploreAdjacent(req.body.constraints, req.body.domain));
+  res.json(await m.exploreAdjacent(req.body?.constraints || {}, req.body?.domain || ""));
 }));
 app.get("/api/explore/history", requireAuth(), asyncHandler(async (_req, res) => {
   const m = await import("./emergent/reality-explorer.js");
@@ -53304,7 +53309,7 @@ app.post("/api/bounties/:id/submit", (req, res) => {
 });
 
 app.post("/api/bounties/:id/complete", (req, res) => {
-  const result = completeBounty(req.params.id, req.body.accepted !== false);
+  const result = completeBounty(req.params.id, req.body?.accepted !== false);
   res.json(result);
 });
 
@@ -53783,7 +53788,7 @@ app.post("/api/battles", async (req, res) => {
 });
 
 app.post("/api/battles/:id/respond", async (req, res) => {
-  const result = await submitBattleResponse(req.params.id, req.body.participant || "sovereign", req.body.response);
+  const result = await submitBattleResponse(req.params.id, req.body?.participant || "sovereign", req.body?.response || "");
   res.json(result);
 });
 

@@ -48,6 +48,52 @@ function assertReportShape(r) {
 }
 
 describe("HttpErrorDetector — req.body without validation (400)", () => {
+  it("does NOT flag when validate(\"schema\") middleware is in the route declaration", async () => {
+    const dir = withFixture({
+      "server/routes/foo.js":
+        `import { Router } from "express";\nconst router = Router();\nrouter.post('/x', validate("createUser"), async (req, res) => {\n  const name = req.body.name;\n  res.json({ name });\n});\nexport default router;\n`,
+    });
+    try {
+      const r = await runHttpErrorDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "req_body_used_without_validation").length, 0,
+        "validate() middleware in declaration should suppress every req.body finding in this handler");
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag req.body.X || default fallback pattern", async () => {
+    const dir = withFixture({
+      "server/routes/foo.js":
+        `import { Router } from "express";\nconst router = Router();\nrouter.post('/x', async (req, res) => {\n  const itemId = req.body.itemId || req.body.id || 'default';\n  const slot = req.body.slot || null;\n  res.json({ itemId, slot });\n});\nexport default router;\n`,
+    });
+    try {
+      const r = await runHttpErrorDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "req_body_used_without_validation").length, 0,
+        "`req.body.X || default` defensive coalesce should suppress the finding");
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag Number(req.body.X) coercion", async () => {
+    const dir = withFixture({
+      "server/routes/foo.js":
+        `import { Router } from "express";\nconst router = Router();\nrouter.post('/x', async (req, res) => {\n  const quantity = Number(req.body.quantity) || 1;\n  res.json({ quantity });\n});\nexport default router;\n`,
+    });
+    try {
+      const r = await runHttpErrorDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "req_body_used_without_validation").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag when enforceRequestInvariants is called in body", async () => {
+    const dir = withFixture({
+      "server/routes/foo.js":
+        `import { Router } from "express";\nconst router = Router();\nrouter.post('/x', async (req, res) => {\n  req.body = enforceRequestInvariants(req, req.body || {});\n  const mode = req.body.mode;\n  res.json({ mode });\n});\nexport default router;\n`,
+    });
+    try {
+      const r = await runHttpErrorDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "req_body_used_without_validation").length, 0);
+    } finally { teardown(dir); }
+  });
+
   it("flags req.body.field access in a handler with no Zod / Joi / explicit guard", async () => {
     const dir = withFixture({
       "server/routes/foo.js":
@@ -112,6 +158,55 @@ describe("HttpErrorDetector — req.params/.query used as number (400)", () => {
 });
 
 describe("HttpErrorDetector — DB .get() result without null check (404)", () => {
+  it("does NOT flag .get() on a Map (only db.prepare().get() chains are checked)", async () => {
+    const dir = withFixture({
+      "server/routes/foo.js":
+        `import { Router } from "express";\nconst cache = new Map();\nconst router = Router();\nrouter.get('/x', async (req, res) => {\n  const entry = cache.get(req.params.id);\n  res.json({ count: entry.count });\n});\nexport default router;\n`,
+    });
+    try {
+      const r = await runHttpErrorDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "db_get_used_without_null_check").length, 0,
+        "Map.get / Cache.get must not be flagged — only db.prepare().get()");
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag the `pop && pop.x` short-circuit pattern", async () => {
+    const dir = withFixture({
+      "server/routes/foo.js":
+        `import { Router } from "express";\nconst router = Router();\nrouter.get('/x', async (req, res) => {\n  const pop = db.prepare('SELECT count FROM populations WHERE id = ?').get(req.params.id);\n  const overflow = pop && pop.count > 1000;\n  res.json({ overflow });\n});\nexport default router;\n`,
+    });
+    try {
+      const r = await runHttpErrorDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "db_get_used_without_null_check").length, 0,
+        "`pop && pop.x` short-circuit is a valid guard");
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag a different statement's .get() chain after another const X = db.prepare(...).all() assignment", async () => {
+    const dir = withFixture({
+      "server/routes/foo.js":
+        `import { Router } from "express";\nconst router = Router();\nrouter.get('/x', async (req, res) => {\n  const rows = db.prepare('SELECT * FROM t').all(req.params.id);\n  const avg = db.prepare('SELECT AVG(x) FROM t').get()?.x || 0;\n  res.json({ count: rows.length, avg });\n});\nexport default router;\n`,
+    });
+    try {
+      const r = await runHttpErrorDetector({ root: dir });
+      // Both `rows` (.all → array) and `avg` (uses ?. optional chaining) are safe.
+      assert.equal(r.findings.filter(f => f.id === "db_get_used_without_null_check").length, 0,
+        "single-statement regex must not span across `;` boundaries");
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag when the truthy `if (row)` pattern wraps the property access", async () => {
+    const dir = withFixture({
+      "server/routes/foo.js":
+        `import { Router } from "express";\nconst router = Router();\nrouter.get('/users/:id', async (req, res) => {\n  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);\n  if (row) {\n    return res.json({ name: row.name });\n  }\n  res.status(404).json({ err: 'not_found' });\n});\nexport default router;\n`,
+    });
+    try {
+      const r = await runHttpErrorDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "db_get_used_without_null_check").length, 0,
+        "`if (row) { row.x }` is a valid truthy null-check pattern");
+    } finally { teardown(dir); }
+  });
+
   it("flags a .get() result property-accessed within 5 lines and no null guard", async () => {
     const dir = withFixture({
       "server/routes/foo.js":
@@ -149,6 +244,18 @@ describe("HttpErrorDetector — DB .get() result without null check (404)", () =
 });
 
 describe("HttpErrorDetector — INSERT without conflict guard (409)", () => {
+  it("does NOT flag when handler is wrapped by asyncHandler (throws routed to express error chain)", async () => {
+    const dir = withFixture({
+      "server/routes/foo.js":
+        `import { Router } from "express";\nconst router = Router();\nrouter.post('/users', asyncHandler(async (req, res) => {\n  db.prepare('INSERT INTO users (id, name) VALUES (?, ?)').run(req.body.id, req.body.name);\n  res.json({ ok: true });\n}));\nexport default router;\n`,
+    });
+    try {
+      const r = await runHttpErrorDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "insert_without_conflict_guard").length, 0,
+        "asyncHandler wrapper should suppress the conflict-guard rule");
+    } finally { teardown(dir); }
+  });
+
   it("flags INSERT INTO inside a handler with no try and no ON CONFLICT", async () => {
     const dir = withFixture({
       "server/routes/foo.js":

@@ -79,30 +79,65 @@ function shouldScan(rel) {
 // brace-count the handler body.
 const ROUTE_HANDLER_RE = /\b(?:app|router)\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*([^]*?)(async\s*)?\(([^)]*)\)\s*=>\s*\{/g;
 
-const VALIDATION_HINTS = /\b(?:z\.object|z\.string|z\.number|z\.array|z\.boolean|safeParse|\.parse\(|Joi\.|Yup\.|ajv\.|validate\()/;
+const VALIDATION_HINTS = /\b(?:z\.object|z\.string|z\.number|z\.array|z\.boolean|safeParse|\.parse\(|Joi\.|Yup\.|ajv\.|enforceRequestInvariants|req\.validated\b|req\.validatedQuery\b)/;
 const EXPLICIT_BODY_GUARD = /\bif\s*\(\s*!?\s*req\.body\b|\btypeof\s+req\.body\b/;
-const REQ_BODY_FIELD_RE = /\breq\.body\.([a-zA-Z_]\w*)/g;
+// Same-line short-circuit guards: `req.body && req.body.X`,
+// `req.body?.X && req.body.X` (optional-chaining + truthy gate). The
+// short-circuit makes the subsequent unguarded access safe.
+const FIELD_SHORT_CIRCUIT_RE = /\breq\.body\s*&&|\breq\.body\?\./;
+// Capture the field name AND a look-ahead char so we can detect the
+// "field || default" / "Number(req.body.x)" defensive patterns. The
+// look-ahead is non-consuming so the regex stays line-anchorable.
+const REQ_BODY_FIELD_RE = /\breq\.body\.([a-zA-Z_]\w*)(\s*(?:\|\||\?\?|\)\s*\|\||,))?/g;
 const REQ_BODY_DESTRUCTURE_RE = /\bconst\s*\{[^}]+\}\s*=\s*req\.body\b/;
+// Defensive-coercion seams that make a raw req.body.x access safe:
+//   • `req.body.x || default` / `req.body.x ?? default` (default-coalesce)
+//   • `Number(req.body.x)` / `String(req.body.x)` / `Boolean(req.body.x)` (coercion)
+//   • `Array.isArray(req.body.x)` (shape check)
+//   • `req.body.x &&` (short-circuit guard before use)
+const FIELD_DEFENSIVE_CONTEXT = /(?:Number|String|Boolean|Array\.isArray|parseInt|parseFloat|JSON\.stringify|typeof)\s*\(\s*req\.body\./;
+// Middleware-position validation seam: a `validate("schema")` call
+// inserted between the route path and the handler arrow function.
+// Routes that pass through validate() have already been Zod-checked
+// and would 400-fail before reaching the handler.
+const VALIDATE_MIDDLEWARE_RE = /\bvalidate\s*\(\s*['"`][^'"`)]+['"`]\s*[,)]/;
 
 const REQ_PARAM_AS_NUMBER_RE = /\breq\.(params|query)\.([a-zA-Z_]\w*)\s*([+\-*/%<>=!]=?|>=|<=|===|!==)\s*\d/g;
 const NUMERIC_COERCION_HINT = /\b(?:parseInt|parseFloat|Number)\s*\(|\bNumber\.parseInt\b|\|\s*0\b/;
 
-// .get() returns undefined when no row matches in better-sqlite3.
-// Match the assignment form so we have a variable name to track.
-const DB_GET_ASSIGN_RE = /\bconst\s+(\w+)\s*=\s*[^;]*\.get\s*\([^)]*\)\s*;/g;
+// better-sqlite3 .get() returns undefined when no row matches. We only
+// fire when the assignment chain includes a .prepare() call and the
+// entire chain lives in a single statement (no `;` between `const X =`
+// and `.get(`) — that's the canonical DB-query shape. Plain
+// Map/Cache/Headers .get() are allowed to return undefined and are not
+// 404-shaped.
+const DB_GET_ASSIGN_RE = /\bconst\s+(\w+)\s*=\s*[^;]*?\.prepare\s*\([^;]*?\)\s*\.get\s*\(/g;
 
 const INSERT_INTO_RE = /\bINSERT\s+INTO\s+(\w+)/gi;
 
 // External fetch / axios calls — skip Ollama brain ports.
 const FETCH_CALL_RE = /\b(fetch|axios(?:\.get|\.post|\.put|\.delete|\.patch)?)\s*\(\s*([^,)]+)/g;
 const TIMEOUT_HINT_RE = /\b(?:signal\s*:|timeout\s*:|AbortController|AbortSignal\.timeout|setTimeout\s*\([^,]+,\s*\d+)/;
-const OLLAMA_HOST_RE = /\b(?:1143[4-8]|ollama|BRAIN_\w+_URL|llm-router)\b/;
+// Ollama / local-brain URL patterns. The brain pool (CLAUDE.md §
+// Five-brain architecture) routes through ports 11434-11438 referenced
+// via env variables (OLLAMA_BASE_URL, BRAIN_*_URL) or per-pool
+// references (BRAIN.repair.url, brain.url, brainUrl). All of those
+// internally manage timeouts via callBrain() / llm-router. Case-
+// insensitive because the variable names use SHOUTY_SNAKE for env
+// vars and camelCase for runtime references.
+// Match leading-word-boundary only: `\b<token>\w*` (no trailing
+// boundary) so `OLLAMA` matches in `OLLAMA_BASE_URL` even though `_`
+// is a word char.
+const OLLAMA_HOST_RE = /\b(?:1143[4-8]|ollama|brain|llm.router|sd.?url|stable.{0,3}diffusion)\w*/i;
 
 // sendMail / mailer indicators — the canonical "expensive op" signal
 // for the rate-limit rule.
 const SEND_MAIL_RE = /\b(?:nodemailer|sendMail|transporter\.send|mailer\.send)\b/;
-// Per-route rate-limiter middleware (set in server.js:6492-6547).
-const RATE_LIMITER_MW_RE = /\b(?:authRateLimiter|uploadRateLimiter|unauthRateLimiter|rateLimiter|expensiveRateLimiter)\s*,/;
+// Per-route rate-limiter middleware. Recognised forms:
+//   • the canonical limiter binds defined in server.js:6492-6547
+//   • the project's *RateLimit* / *rateLimit* helper convention
+//     (authRateLimitMiddleware, chatRateLimit, perEndpointRateLimit(...))
+const RATE_LIMITER_MW_RE = /\b(?:[A-Za-z_]\w*[Rr]ate[Ll]imit(?:er|Middleware)?|perEndpointRateLimit\s*\(|rateLimiter)\s*[,(]/;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -144,31 +179,57 @@ function locOf(rel, lineNum) {
 // ── Per-handler rules ──────────────────────────────────────────────────────
 
 function checkReqBodyValidation(rel, content, handler, findings) {
-  const { body, bodyStart } = handler;
+  const { body, bodyStart, declMatch, declSlice } = handler;
+  // Middleware-position seam: `validate("schemaName")` between the
+  // route path and the handler runs Zod safeParse and 400s before the
+  // handler is invoked (server.js#validate, line 6072). declMatch is
+  // the full matched declaration text and reliably captures every
+  // middleware including those on continuation lines.
+  if (VALIDATE_MIDDLEWARE_RE.test(declMatch || declSlice || "")) return;
   // Per-handler short-circuit: if validation hint or guard appears
   // anywhere in the handler body, every field is presumed validated.
   if (VALIDATION_HINTS.test(body)) return;
   if (EXPLICIT_BODY_GUARD.test(body)) return;
   if (REQ_BODY_DESTRUCTURE_RE.test(body)) return;
+  const fileLines = content.split("\n");
   const re = new RegExp(REQ_BODY_FIELD_RE.source, "g");
   const seen = new Set();
   let m;
   while ((m = re.exec(body)) != null) {
     const field = m[1];
+    const trailingDefense = m[2];
     if (seen.has(field)) continue;
     seen.add(field);
+    // Defensive-coalesce pattern: `req.body.x || default` /
+    // `req.body.x ?? default`. The captured look-ahead group makes the
+    // access safe — the local variable always has a defined fallback.
+    if (trailingDefense) continue;
     const absIdx = bodyStart + m.index;
     const lineNum = lineNumberAt(content, absIdx);
-    if (lineExempt(content.split("\n"), lineNum)) continue;
+    if (lineExempt(fileLines, lineNum)) continue;
+    // Coercion-wrapped: `Number(req.body.x)`, `String(req.body.x)`,
+    // `Boolean(req.body.x)`, `Array.isArray(req.body.x)`,
+    // `parseInt(req.body.x)`, `parseFloat(req.body.x)`,
+    // `typeof req.body.x`. Inspect the line; coercion is always on the
+    // same line as the access.
+    const accessLine = fileLines[lineNum - 1] || "";
+    const prevLine = fileLines[lineNum - 2] || "";
+    if (FIELD_DEFENSIVE_CONTEXT.test(accessLine)) continue;
+    // Same-line short-circuit: `req.body && req.body.X` /
+    // `req.body?.field && req.body.field`. The short-circuit ensures
+    // the subsequent access is safe. Also check the previous line for
+    // an enclosing `if (... && req.body?.X)` guard.
+    if (FIELD_SHORT_CIRCUIT_RE.test(accessLine)) continue;
+    if (/\bif\s*\([^)]*\breq\.body\??\.\w+/.test(prevLine)) continue;
     findings.push({
       id: "req_body_used_without_validation",
       severity: "medium",
       kind: "static",
       category: CATEGORY,
-      message: `Route reads req.body.${field} without prior validation (Zod / Joi / explicit guard) — malformed bodies surface as 400 or 500.`,
+      message: `Route reads req.body.${field} without prior validation (Zod / Joi / explicit guard / defensive coalesce) — malformed bodies surface as 400 or 500.`,
       location: locOf(rel, lineNum),
       subject: { kind: "route", file: rel, field },
-      fixHint: "Validate req.body with a Zod schema (z.object({...}).safeParse(req.body)) before field access, or add an explicit `if (!req.body || typeof req.body.X !== 'string') return res.status(400).json(...)` guard.",
+      fixHint: "Validate req.body with a Zod schema (z.object({...}).safeParse(req.body)) before field access, OR add an explicit `if (!req.body || typeof req.body.X !== 'string') return res.status(400).json(...)` guard, OR use a defensive default `const x = req.body.X || <default>`.",
     });
   }
 }
@@ -214,8 +275,20 @@ function checkDbResultNullCheck(rel, content, handler, findings) {
     // the next 5 lines for the first property access on varName.
     const bodyLineIdx = (body.slice(0, m.index).match(/\n/g) || []).length;
     const window = bodyLines.slice(bodyLineIdx, bodyLineIdx + 6).join("\n");
-    // Guard: explicit null-check, optional chaining, or 404 short-circuit.
-    const guardRe = new RegExp(`if\\s*\\(\\s*!\\s*${varName}\\b|if\\s*\\(\\s*${varName}\\s*[=!]=|\\b${varName}\\s*\\?\\.|return\\s+res\\.status\\(404\\)|throw\\s+`, "");
+    // Guard: explicit null-check, truthy check, optional chaining,
+    // short-circuit `varName && varName.x`, ternary `varName ? x : y`,
+    // or a 404/throw short-circuit. These are all the patterns that
+    // make .get()-returns-undefined safe in this codebase.
+    const guardRe = new RegExp(
+      `if\\s*\\(\\s*!\\s*${varName}\\b` +              // if (!row)
+      `|if\\s*\\(\\s*${varName}\\s*[=!&|)]` +           // if (row), if (row &&, if (row ||, if (row ==
+      `|\\b${varName}\\s*\\?\\.` +                      // row?.field (optional chaining)
+      `|\\b${varName}\\s*&&\\s*${varName}\\b` +         // row && row.field
+      `|\\b${varName}\\s*\\?\\s*[^:]+:` +               // row ? x : y (ternary)
+      `|return\\s+res\\.status\\(404\\)` +
+      `|throw\\s+`,
+      ""
+    );
     if (guardRe.test(window)) continue;
     // Trigger: property access (varName.x or varName[x]) within window.
     const useRe = new RegExp(`\\b${varName}\\.[a-zA-Z_]`, "");
@@ -234,10 +307,14 @@ function checkDbResultNullCheck(rel, content, handler, findings) {
 }
 
 function checkInsertConflictGuard(rel, content, handler, findings) {
-  const { body, bodyStart } = handler;
+  const { body, bodyStart, declMatch, declSlice } = handler;
   // If the handler body has an explicit try, INSERT throws are caught
-  // and routed to the express error chain — skip.
+  // and the developer is in charge of mapping to 409 — skip.
   if (/\btry\s*\{/.test(body)) return;
+  // asyncHandler / errorHandler wrappers forward throws to express's
+  // error chain (server.js#asyncHandler) — the throw is observable
+  // even if 500-shaped. Acceptable; skip.
+  if (/\b(?:asyncHandler|errorHandler|safeHandler|wrapHandler)\s*\(/.test(declMatch || declSlice || "")) return;
   const lines = content.split("\n");
   const re = new RegExp(INSERT_INTO_RE.source, "gi");
   let m;
@@ -311,10 +388,11 @@ function checkExternalCallTimeout(rel, content, findings) {
     if (OLLAMA_HOST_RE.test(arg)) continue;
     const lineNum = lineNumberAt(content, m.index);
     if (lineExempt(lines, lineNum)) continue;
-    // Inspect 8 lines centred on the call for a timeout hint. The
-    // axios/fetch options object may span several lines.
+    // Inspect 20 lines centred on the call for a timeout hint. The
+    // axios/fetch options object can span 15+ lines in this codebase
+    // (multi-line headers + body + signal).
     const start = Math.max(0, lineNum - 2);
-    const end = Math.min(lines.length, lineNum + 8);
+    const end = Math.min(lines.length, lineNum + 20);
     const window = lines.slice(start, end).join("\n");
     if (TIMEOUT_HINT_RE.test(window)) continue;
     findings.push({
@@ -369,9 +447,17 @@ export async function runHttpErrorDetector({ root, opts = {} } = {}) {
         const declLine = lineNumberAt(content, m.index);
         const declSliceStart = Math.max(0, declLine - 3);
         const declSlice = fileLines.slice(declSliceStart, declLine).join("\n");
+        // declMatch is the full matched declaration text from
+        // `app.post(` to the opening `{`. Covers every middleware
+        // between the path and the handler body — including
+        // asyncHandler / validate / rate-limiter on continuation lines
+        // for multi-line declarations.
+        const declMatch = m[0];
         const handler = {
           method: m[1],
           routePath: m[2],
+          middlewares: m[3] || "",
+          declMatch,
           body,
           bodyStart: openIdx,
           bodyEnd: closeIdx,

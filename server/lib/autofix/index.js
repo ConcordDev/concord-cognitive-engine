@@ -19,6 +19,7 @@ import { selectStarFix } from "./select-star.js";
 import { preferConstFix } from "./prefer-const.js";
 import { dropConsoleLogFix } from "./drop-console-log.js";
 import { emptyCatchFix } from "./empty-catch.js";
+import { fetchTimeoutFix } from "./fetch-timeout.js";
 
 const FIXES = new Map();
 
@@ -59,3 +60,4 @@ registerFix(selectStarFix);
 registerFix(preferConstFix);
 registerFix(dropConsoleLogFix);
 registerFix(emptyCatchFix);
+registerFix(fetchTimeoutFix);
