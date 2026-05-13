@@ -5,6 +5,8 @@
   "tech_level": "modern",
   "magic_level": "none",
   "is_hub": false,
+  "universe_type": "crime",
+  "biomes": ["plains", "water"],
   "description": "A grounded modern setting — gritty city, organized crime, corrupt institutions, hard-boiled detectives. No bio powers, no magic. Skills that win here are stealth, weapon mastery, weapon attachments, infiltration, and deception. Gun skill in particular goes deeper than in the superhero world: caliber, recoil control, attachment combinations, suppressed vs unsuppressed, and so on are all distinct sub-skills players can master.",
   "skill_affinity": {
     "default": 0.6,

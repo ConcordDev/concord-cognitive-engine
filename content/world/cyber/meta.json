@@ -5,6 +5,8 @@
   "tech_level": "near_future",
   "magic_level": "trace",
   "is_hub": false,
+  "universe_type": "cyber",
+  "biomes": ["plains", "water"],
   "description": "Neon-lit megacity saturated with networks, drones, augmentations, and corporate dominions. Hacking, tech mastery, and engineering are the dominant capabilities. Magic exists only as faint residue (rumored to leak in from the fantasy world via emergent-substrate cracks); a wizard arriving here finds their power weakened to trace levels. Bio powers from the superhero world work but are dampened by the city's anti-meta countermeasures.",
   "skill_affinity": {
     "default": 0.6,

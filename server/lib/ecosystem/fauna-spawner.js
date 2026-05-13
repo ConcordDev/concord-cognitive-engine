@@ -14,8 +14,23 @@
 import crypto from "node:crypto";
 import { speciesForBiome } from "./loot-tables.js";
 import { signalsForWorld } from "../embodied/environment-sensor.js";
+import { getWorldMeta } from "../cross-world-effectiveness.js";
 
-const BIOMES = ["plains", "forest", "highland", "mountain", "water"];
+const BIOMES = ["plains", "forest", "highland", "mountain", "water", "arid"];
+
+/**
+ * Biomes to spawn into for a given world. If the world's meta.json declares
+ * `biomes`, only those are iterated — a cyber world doesn't need to scan
+ * for mountain-biome bears. Falls back to all BIOMES if the meta isn't
+ * registered yet (preserves legacy behaviour).
+ */
+function biomesForWorld(worldId) {
+  const meta = getWorldMeta(worldId);
+  if (meta && Array.isArray(meta.biomes) && meta.biomes.length > 0) {
+    return meta.biomes.filter((b) => BIOMES.includes(b));
+  }
+  return BIOMES;
+}
 
 // Layer 7: Climate-responsive species modifier. Reads current world
 // signals from the embodied substrate and produces a per-species
@@ -172,7 +187,7 @@ export function runFaunaSpawner({ state, db }) {
     try { worldSignals = signalsForWorld(db, worldId); }
     catch { /* signals are optional; spawner falls back to static targets */ }
 
-    for (const biome of BIOMES) {
+    for (const biome of biomesForWorld(worldId)) {
       if (spawned >= BATCH_LIMIT) break;
       const species = speciesForBiome(universe, biome);
       for (const sp of species) {

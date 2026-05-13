@@ -5,6 +5,8 @@
   "tech_level": "pre-industrial",
   "magic_level": "abundant",
   "is_hub": false,
+  "universe_type": "fantasy",
+  "biomes": ["plains", "forest", "highland", "mountain", "water"],
   "description": "A high-fantasy world with goblins, dragons, demons, orcs, and ancient magical bloodlines. Skyrim-class. The metaphysical substrate of the world is saturated with magic — wizards channel ambient magical fields directly. There's no electricity, no internet, no firearms. Tech skills brought from cyber or crime worlds simply have nothing to grip onto here.",
   "skill_affinity": {
     "default": 0.6,

@@ -260,6 +260,25 @@ function buildBreadcrumbs(breadcrumbs = []) {
   };
 }
 
+/**
+ * Upsert a row into the `worlds` table from a meta.json. Idempotent —
+ * uses INSERT OR IGNORE so previously-seeded worlds (e.g. from
+ * world-seed.js) keep their existing universe_type / description. The
+ * goal is to make `worlds.universe_type` queryable for canon worlds the
+ * fauna-spawner / cross-world-effectiveness rely on.
+ */
+function upsertWorldRow(db, meta) {
+  if (!meta?.world_id || !meta?.universe_type) return;
+  const id = meta.world_id;
+  const name = meta.world_name || meta.world_id;
+  const universeType = meta.universe_type;
+  const description = meta.description || "";
+  db.prepare(`
+    INSERT OR IGNORE INTO worlds (id, name, universe_type, description)
+    VALUES (?, ?, ?, ?)
+  `).run(id, name, universeType, description);
+}
+
 function seedQuestFile(quests) {
   let count = 0;
 
@@ -347,6 +366,8 @@ export async function seedContent({ db = null } = {}) {
     results.worlds = (results.worlds || 0) + 1;
     try { if (db) results.anchors = (results.anchors || 0) + seedAnchorsFromWorldMeta(db, concordiaMeta); }
     catch { /* anchor seeding best-effort */ }
+    try { if (db) upsertWorldRow(db, concordiaMeta); }
+    catch { /* world row upsert best-effort */ }
   }
 
   // Sub-worlds — each subdirectory under content/world/ may carry its own
@@ -359,6 +380,8 @@ export async function seedContent({ db = null } = {}) {
       results.worlds = (results.worlds || 0) + 1;
       try { if (db) results.anchors = (results.anchors || 0) + seedAnchorsFromWorldMeta(db, meta); }
       catch { /* anchor seeding best-effort */ }
+      try { if (db) upsertWorldRow(db, meta); }
+      catch { /* world row upsert best-effort */ }
     }
     const subFactions = readJSON(`${sub.path}/factions.json`);
     if (Array.isArray(subFactions)) results.factions += seedFactions(subFactions);
