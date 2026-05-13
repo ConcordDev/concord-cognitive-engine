@@ -125,11 +125,18 @@ export default function registerAppearanceMacros(register) {
 
     let rows;
     try {
+      // Phase T — LEFT JOIN npc_residency so the appearance hint
+      // includes home_world_id. A travelling NPC's mesh is keyed off
+      // their HOME world, not their current world, so a courier
+      // visiting concordia-hub still loads the concord-link mesh.
       rows = db.prepare(`
-        SELECT id, faction, archetype FROM world_npcs
-        WHERE world_id = ? AND COALESCE(is_dead, 0) = 0
-          AND COALESCE(archetype, '') NOT LIKE 'creature:%'
-        LIMIT ?
+        SELECT n.id, n.faction, n.archetype,
+               COALESCE(r.home_world_id, n.home_world_id, n.world_id) AS home_world_id
+          FROM world_npcs n
+          LEFT JOIN npc_residency r ON r.npc_id = n.id
+         WHERE n.world_id = ? AND COALESCE(n.is_dead, 0) = 0
+           AND COALESCE(n.archetype, '') NOT LIKE 'creature:%'
+         LIMIT ?
       `).all(worldId, Math.min(500, Math.max(1, Number(limit))));
     } catch {
       return { ok: false, reason: "world_npcs_missing" };
@@ -146,6 +153,7 @@ export default function registerAppearanceMacros(register) {
         factionVisual: faction?.visual || null,
         appearanceText: authored?.appearance || null,
         heroMesh: authored?.hero_mesh === true,
+        homeWorldId: row.home_world_id || worldId,
       };
     });
     return { ok: true, worldId, themeId, count: out.length, npcs: out };

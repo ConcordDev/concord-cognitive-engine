@@ -2005,6 +2005,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_cost: barCost,
       });
 
+      // Phase T — NPC defender accumulates skill XP. Same XP curve as
+      // user_skills, so a frequently-attacked NPC ends up better at
+      // resisting (combat skill bumps). NPCs that out-grind players
+      // become harder to kill — by design.
+      try {
+        const { awardNpcXp } = await import("../lib/npc-skill-progression.js");
+        awardNpcXp(db, npcId, 'combat', Math.floor((damageResult?.finalDamage ?? 0) * 0.3));
+      } catch { /* lib optional — combat still works */ }
+
       // Phase 2: NPC asymmetry. If the player kills this NPC, every other
       // NPC in this NPC's faction gets a grudge. Best-effort; tables may
       // not exist on minimal builds.

@@ -453,6 +453,21 @@ registerHeartbeat("npc-scheme-cycle", {
   handler: runNpcSchemeCycle,
 });
 
+// Phase T — NPC equal-agency cross-world. Three heartbeats:
+//   * npc-travel-cycle (60, ~15min)         — drains npc_travel_intents +
+//                                             ambition-driven goal-seeks
+//   * npc-vs-npc-combat-cycle (8, ~2min)    — pair-resolves grudges in cells
+//   * npc-ambition-cycle (80, ~20min)       — picks unilateral moves +
+//                                             distributes lattice-born quests
+// All exception-isolated per-NPC; no kill-switch (these are core to the
+// "every actor is equal" design).
+import { runNpcTravelCycle }       from "./emergent/npc-travel-cycle.js";
+import { runNpcVsNpcCombatCycle }  from "./emergent/npc-vs-npc-combat-cycle.js";
+import { runNpcAmbitionCycle }     from "./emergent/npc-ambition-cycle.js";
+registerHeartbeat("npc-travel-cycle",      { frequency: 60, handler: runNpcTravelCycle });
+registerHeartbeat("npc-vs-npc-combat",     { frequency: 8,  handler: runNpcVsNpcCombatCycle });
+registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbitionCycle });
+
 // Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
 // (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
 // NPC-ruler decree picker, and evaluates rebellion risk per kingdom.

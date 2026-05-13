@@ -167,6 +167,11 @@ const LandmarkSpires = dynamic(
   () => import('@/components/world-lens/LandmarkSpires'),
   { ssr: false },
 );
+// Phase T — NPC cross-world arrival ticker.
+const NpcArrivedTicker = dynamic(
+  () => import('@/components/world/NpcArrivedTicker'),
+  { ssr: false },
+);
 const CombatPolishLayer = dynamic(
   () =>
     import('@/components/world/CombatBridges').then((m) => ({
@@ -4441,6 +4446,7 @@ export default function WorldLensPage() {
             worldId={activeDistrict?.id || 'concordia-hub'}
             getCamera={() => null}
           />
+          <NpcArrivedTicker worldId={activeDistrict?.id || 'concordia-hub'} />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing
