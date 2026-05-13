@@ -302,6 +302,15 @@ export default function ConcordiaScene({
         physicsRef.current = null;
         return;
       }
+      // Phase B2 — attach ragdoll bridge so concordia:lethal-hit
+      // CustomEvents spawn ragdolls in this world's physics. Detacher
+      // is stored on physicsRef.current for cleanup on unmount.
+      try {
+        const { attachRagdollBridge } = await import('@/lib/concordia/ragdoll-bridge');
+        const detach = attachRagdollBridge(physicsWorld as unknown as { spawnRagdoll: (id: string, p: { x: number; y: number; z: number }, imp?: { x: number; y: number; z: number }) => unknown; despawnRagdoll?: (id: string) => void; removeCharacter?: (id: string) => void });
+        // Stash detach on the global so the disposer below can call it.
+        (physicsRef.current as unknown as { __detachRagdoll?: () => void }).__detachRagdoll = detach;
+      } catch { /* ragdoll bridge optional */ }
 
       // Listen for terrain-ready to register heightfield collider
       function onTerrainPhysics(e: Event) {

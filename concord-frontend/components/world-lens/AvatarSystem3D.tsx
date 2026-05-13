@@ -281,6 +281,10 @@ export default function AvatarSystem3D({
   // These two are new — per-frame eye tickers and enhanced-disposers.
   const eyeTickersRef = useRef<Map<string, (dt: number) => void>>(new Map());
   const enhancedDisposeRef = useRef<Map<string, () => void>>(new Map());
+  // Phase B3 — flight-physics shadow state. Initialised when player
+  // enters glide; ticked per frame; emitted as `concordia:flight-state`
+  // so HUD / camera systems can read it.
+  const flightStateRef = useRef<{ airspeed: number; heading: number; rollRad: number; pitchRad: number; vy: number; stalled: boolean; stallTimerMs: number } | null>(null);
 
   // Hide own avatar mesh in first-person so the camera doesn't see the
   // back of its own head. Effect runs whenever cameraMode flips.
@@ -320,6 +324,39 @@ export default function AvatarSystem3D({
   // Secondary physics + facial controllers
   const secondaryPhysicsRef = useRef<SecondaryPhysicsManager | null>(null);
   const facialControllersRef = useRef<Map<string, FacialController>>(new Map());
+
+  // Phase B4 — lip-sync listener. DialoguePanel emits
+  // `concordia:lip-sync` { npcId, text, wpm } when an NPC speaks; this
+  // hook builds the phoneme schedule and drives the matching
+  // FacialController.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stops = new Map<string, () => void>();
+    async function onLipSync(e: Event) {
+      const detail = (e as CustomEvent).detail as { npcId?: string; text?: string; wpm?: number } | undefined;
+      if (!detail?.npcId || !detail.text) return;
+      const ctrl = facialControllersRef.current.get(detail.npcId);
+      if (!ctrl) return;
+      try {
+        const m = await import('@/lib/concordia/lip-sync');
+        const sched = m.buildLipSyncSchedule(detail.text, { wpm: detail.wpm ?? 180 });
+        // Stop prior driver for this npc.
+        stops.get(detail.npcId)?.();
+        // Cast: lip-sync uses a structural FacialController shape with
+        // an optional setMorphTarget; facial-blend-shapes class is
+        // assignable structurally even though the nominal types differ.
+        const stop = m.drivePhonemes(ctrl as unknown as Parameters<typeof m.drivePhonemes>[0], sched);
+        stops.set(detail.npcId, stop);
+      } catch { /* lip-sync optional */ }
+    }
+    window.addEventListener('concordia:lip-sync', onLipSync);
+    return () => {
+      window.removeEventListener('concordia:lip-sync', onLipSync);
+      for (const stop of stops.values()) {
+        try { stop(); } catch { /* noop */ }
+      }
+    };
+  }, []);
 
   // Keep weather modifiers ref in sync so the game loop closure sees latest value
   const weatherModifiersRef = useRef(weatherModifiers);
@@ -1668,8 +1705,15 @@ export default function AvatarSystem3D({
           e.preventDefault();
           const ok = physicsWorld.requestJump?.('player');
           if (!ok) {
-            // Already airborne → start glide.
+            // Already airborne → start glide. Initialize flight-physics
+            // state when glide begins so the next per-frame step can
+            // integrate proper airspeed + stall handling.
             physicsWorld.setGlide?.('player', true);
+            try {
+              import('@/lib/concordia/flight-physics').then((m) => {
+                flightStateRef.current = m.newFlightState();
+              });
+            } catch { /* flight optional */ }
           }
         }
       }
@@ -1729,6 +1773,27 @@ export default function AvatarSystem3D({
           for (const ticker of eyeTickersRef.current.values()) {
             try { ticker(delta); } catch { /* never throw out of frame loop */ }
           }
+        }
+
+        // Phase B3 — flight-physics tick when player is gliding. Reads
+        // weather wind, integrates state, emits to HUD.
+        if (flightStateRef.current && physicsWorld) {
+          try {
+            const isAir = physicsWorld.isAirborne?.('player') ?? false;
+            if (!isAir) {
+              flightStateRef.current = null;
+            } else {
+              const wm = weatherModifiersRef.current;
+              const wx = wm ? Math.max(0, (12 - wm.lateralDamping) / 12) * 3 : 0;
+              const wind = { wind: { x: wx, y: 0, z: 0 }, lift: 0 };
+              import('@/lib/concordia/flight-physics').then((m) => {
+                if (flightStateRef.current) {
+                  flightStateRef.current = m.stepFlight(flightStateRef.current, { roll: 0, pitch: 0, active: true }, wind, delta);
+                  window.dispatchEvent(new CustomEvent('concordia:flight-state', { detail: flightStateRef.current }));
+                }
+              }).catch(() => { /* flight optional */ });
+            }
+          } catch { /* never throw */ }
         }
 
         // ── Movement style blend (0.4s transition) ─────────
