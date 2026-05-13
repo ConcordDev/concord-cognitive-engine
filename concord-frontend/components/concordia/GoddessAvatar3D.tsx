@@ -212,3 +212,109 @@ export default function GoddessAvatar3D({
     </group>
   );
 }
+
+/**
+ * Phase A5 — imperative factory used by AvatarSystem3D's
+ * createAvatarMeshSmart when an NPC matches one of the Three Above All
+ * (sovereign_first_refusal / concord_first_thought / concordia_first_breath)
+ * or has bodyType='legend'. Returns a THREE.Group that can be added to
+ * the imperative scene directly, plus a per-frame `tick(dt)` callback
+ * the scene's animation loop calls. Mirrors the R3F GoddessAvatar3D
+ * visual: robe + head + halo + point light + bob + drift + halo spin.
+ */
+export interface GoddessGroupResult {
+  group:   InstanceType<typeof import('three').Group>;
+  tick:    (dt: number) => void;
+  setEcosystemScore: (s: number) => void;
+  setTargetYaw: (yaw: number | null) => void;
+  dispose: () => void;
+}
+
+export function createGoddessGroup(
+  THREE: typeof import('three'),
+  opts: { ecosystemScore?: number; tint?: 'auto' | string } = {},
+): GoddessGroupResult {
+  const group = new THREE.Group();
+  group.name = 'goddess_avatar_group';
+  group.scale.setScalar(1.5);
+
+  let score = Math.max(0, Math.min(1, opts.ecosystemScore ?? 0.5));
+  const coldColor = new THREE.Color('#5a6e7a');
+  const warmColor = new THREE.Color('#f0e2b8');
+  const tint = coldColor.clone().lerp(warmColor, score);
+
+  const robeMaterial = new THREE.MeshStandardMaterial({
+    color: tint, emissive: tint, emissiveIntensity: 0.2 + score * 0.8,
+    roughness: 0.4, metalness: 0.1, transparent: true, opacity: 0.92,
+  });
+  const haloMaterial = new THREE.MeshStandardMaterial({
+    color: '#fff5d8', emissive: '#fff5d8',
+    emissiveIntensity: 0.6 + score * 0.4,
+    transparent: true, opacity: 0.65, side: THREE.DoubleSide,
+  });
+
+  // Robe (cone).
+  const robe = new THREE.Mesh(new THREE.ConeGeometry(0.6, BODY_HEIGHT, 16), robeMaterial);
+  group.add(robe);
+  // Head.
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), robeMaterial);
+  head.position.set(0, BODY_HEIGHT / 2 + 0.25, 0);
+  group.add(head);
+  // Halo.
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 8, 24), haloMaterial);
+  halo.position.set(0, BODY_HEIGHT / 2 + 0.45, -0.05);
+  halo.rotation.x = Math.PI / 2;
+  group.add(halo);
+  // Mood-tinted point light.
+  const moodLight = new THREE.PointLight(tint.getHex(), 0.6 + score * 0.8, 6, 1.5);
+  moodLight.position.set(0, 0.5, 0);
+  group.add(moodLight);
+
+  const startMs = performance.now();
+  let currentYaw = 0;
+  let targetYaw: number | null = null;
+
+  function tick(dt: number) {
+    const t = (performance.now() - startMs) / 1000;
+    const bob = Math.sin(t * Math.PI * 2 * BOB_HZ) * BOB_AMP;
+    group.position.y = (group.userData.baseY as number ?? HOVER_OFFSET) + bob;
+    if (targetYaw === null) {
+      currentYaw += dt * DRIFT_RATE;
+    } else {
+      let diff = targetYaw - currentYaw;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      const step = Math.min(Math.abs(diff), dt * 2.0);
+      currentYaw += Math.sign(diff) * step;
+      if (Math.abs(diff) < 0.02) targetYaw = null;
+    }
+    group.rotation.y = currentYaw;
+    halo.rotation.z = -t * 0.3;
+    halo.scale.setScalar(1 + Math.sin(t * Math.PI) * 0.04 * score);
+  }
+
+  function setEcosystemScore(s: number) {
+    score = Math.max(0, Math.min(1, s));
+    const next = coldColor.clone().lerp(warmColor, score);
+    robeMaterial.color.copy(next);
+    robeMaterial.emissive.copy(next);
+    robeMaterial.emissiveIntensity = 0.2 + score * 0.8;
+    haloMaterial.emissiveIntensity = 0.6 + score * 0.4;
+    moodLight.color.copy(next);
+    moodLight.intensity = 0.6 + score * 0.8;
+  }
+
+  function setTargetYaw(y: number | null) {
+    targetYaw = y;
+  }
+
+  function dispose() {
+    group.traverse((obj) => {
+      const m = obj as { geometry?: { dispose?: () => void }; material?: { dispose?: () => void } };
+      m.geometry?.dispose?.();
+      m.material?.dispose?.();
+    });
+  }
+
+  return { group, tick, setEcosystemScore, setTargetYaw, dispose };
+}

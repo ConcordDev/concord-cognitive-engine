@@ -651,6 +651,26 @@ export default function AvatarSystem3D({
         archetype?: string | null;
       } = {},
     ): Promise<InstanceType<typeof import('three').Group>> => {
+      // Phase A5 — Three Above All get the imperative GoddessGroup
+      // factory which mirrors the R3F GoddessAvatar3D look (robe +
+      // head + halo + mood-tinted point light + bob + drift) inside
+      // the imperative scene. Drives per-frame tick from the eye
+      // ticker registry so existing frame loop already calls it.
+      const GODDESS_IDS = new Set(['sovereign_first_refusal', 'concord_first_thought', 'concordia_first_breath']);
+      if (GODDESS_IDS.has(avatarId)) {
+        try {
+          const { createGoddessGroup } = await import('@/components/concordia/GoddessAvatar3D');
+          const goddess = createGoddessGroup(THREE, { ecosystemScore: 0.5 });
+          // Re-use the eye-ticker registry to drive per-frame tick.
+          eyeTickersRef.current.set(avatarId, (dt) => goddess.tick(dt));
+          enhancedDisposeRef.current.set(avatarId, goddess.dispose);
+          goddess.group.userData = { ...goddess.group.userData, isGoddess: true, npcId: avatarId, setEcosystemScore: goddess.setEcosystemScore, setTargetYaw: goddess.setTargetYaw };
+          return goddess.group as InstanceType<typeof import('three').Group>;
+        } catch (err) {
+          if (typeof console !== 'undefined') console.warn('[AvatarSystem3D] goddess group build failed, falling back', err);
+        }
+      }
+
       const wantEnhanced =
         opts.isLocalPlayer || opts.isHero || appearance.bodyType === 'legend';
       if (wantEnhanced) {
