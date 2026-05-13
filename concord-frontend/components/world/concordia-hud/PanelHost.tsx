@@ -34,6 +34,14 @@ import { ConcordLinkPanel } from './panels/ConcordLinkPanel';
 import { DreamPanel } from './panels/DreamPanel';
 import { WarPanel } from './panels/WarPanel';
 import { CharacterCustomizerPanel } from './panels/CharacterCustomizerPanel';
+import {
+  SchemeBoardPanel, SecretsCodexPanel, AtrophyWarningPanel,
+  MountDesignerPanel, NPCShopModalPanel, WagerModalPanel, TransitHubPanel,
+  QuestComposerPanel, NPCComposerPanel, GoddessArcComposerPanel, CommuneComposerPanel,
+  PatternFeedPanel, SkillMarketplacePanel, SkillEffectivenessPanelPanel,
+  MessagingChannelsPanelPanel, PersonalAgentPanelPanel, FlywheelDashboardPanel,
+  PredictionCardsPanel, RegionalLeaderboardPanel,
+} from './panels/SubstrateRevealPanels';
 
 const PANEL_REGISTRY: Record<string, { label: string; Component: React.ComponentType }> = {
   bloodline:    { label: 'Bloodline',  Component: BloodlinePanel },
@@ -54,6 +62,26 @@ const PANEL_REGISTRY: Record<string, { label: string; Component: React.Component
   dreams:       { label: 'Dreams & Anticipations', Component: DreamPanel },
   war:          { label: 'War Council',  Component: WarPanel },
   'character-customizer': { label: 'Character Customizer', Component: CharacterCustomizerPanel },
+  // Phase G — 19 substrate-reveal + composer + utility panels.
+  'scheme-board':        { label: 'Schemes Board',       Component: SchemeBoardPanel },
+  secrets:               { label: 'Secrets Codex',       Component: SecretsCodexPanel },
+  atrophy:               { label: 'Skill Atrophy',       Component: AtrophyWarningPanel },
+  mounts:                { label: 'Mount Designer',      Component: MountDesignerPanel },
+  'npc-shop':            { label: 'NPC Shop',            Component: NPCShopModalPanel },
+  wagers:                { label: 'Wagers',              Component: WagerModalPanel },
+  transit:               { label: 'Transit Hub',         Component: TransitHubPanel },
+  'quest-composer':      { label: 'Quest Composer',      Component: QuestComposerPanel },
+  'npc-composer':        { label: 'NPC Composer',        Component: NPCComposerPanel },
+  'goddess-arc-composer':{ label: 'Goddess Arc Composer',Component: GoddessArcComposerPanel },
+  'commune-composer':    { label: 'Commune Composer',    Component: CommuneComposerPanel },
+  'pattern-feed':        { label: 'Pattern Feed',        Component: PatternFeedPanel },
+  'skill-marketplace':   { label: 'Skill Marketplace',   Component: SkillMarketplacePanel },
+  'skill-effectiveness': { label: 'Skill Effectiveness', Component: SkillEffectivenessPanelPanel },
+  'messaging-channels':  { label: 'Messaging Channels',  Component: MessagingChannelsPanelPanel },
+  'personal-agent':      { label: 'Personal Agent',      Component: PersonalAgentPanelPanel },
+  flywheel:              { label: 'Flywheel Dashboard',  Component: FlywheelDashboardPanel },
+  predictions:           { label: 'Predictions',         Component: PredictionCardsPanel },
+  leaderboard:           { label: 'Regional Leaderboard',Component: RegionalLeaderboardPanel },
 };
 
 export function PanelHost() {
