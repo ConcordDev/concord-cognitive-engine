@@ -97,11 +97,15 @@ describe("Heartbeat Integration", () => {
     assert.ok(source.includes("CREATE TABLE IF NOT EXISTS archived_dtus"));
   });
 
-  // Brain routing check — Ollama-first sovereignty: conscious brain first, OpenAI as emergency fallback
-  it("should route chat LLM to conscious brain with OpenAI emergency fallback", () => {
+  // Brain routing check — Ollama-only sovereignty: conscious brain
+  // is the sole LLM source; OpenAI cloud fallback paths were removed
+  // (CLAUDE.md five-brain Ollama+LLaVA stack).
+  it("should route chat LLM exclusively to the local conscious brain", () => {
     assert.ok(source.includes("const consciousAvailable = BRAIN.conscious && BRAIN.conscious.enabled"));
-    assert.ok(source.includes("const openaiAvailable = Boolean(OPENAI_API_KEY)"));
-    assert.ok(source.includes("llm_openai_emergency_fallback"));
+    // Negative assertion: the prior OpenAI emergency fallback string
+    // must no longer appear anywhere in server.js.
+    assert.ok(!source.includes("llm_openai_emergency_fallback"), "OpenAI emergency fallback must be removed");
+    assert.ok(!source.includes("api.openai.com"), "No api.openai.com references should remain in server.js");
   });
 
   // Rate limiting check

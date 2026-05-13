@@ -4,12 +4,13 @@
  * GATED: every test runs only when CONCORD_BEHAVIOR_TEST_LLM=true. On the
  * normal local CI box (no Ollama, no GPU) the tests are skipped — green
  * by design. On RunPod (or any box with the five-brain stack live) the
- * tests exercise the real router + fallback chain.
+ * tests exercise the real router (Ollama-only after the OpenAI fallback
+ * removal — see CLAUDE.md five-brain Ollama+LLaVA stack).
  *
  * Verifies:
  *   1. ctx.llm.chat happy path → conscious brain returns {ok, content, brain, source}
- *   2. Conscious-down → OpenAI emergency fallback (when OPENAI_API_KEY set)
- *      OR clean failure (when no fallback configured)
+ *   2. Conscious-down → clean { ok:false, reason } envelope (OpenAI
+ *      cloud fallback was removed — see commit "remove OpenAI fallback")
  *   3. callVision happy path → multimodal brain returns {ok, content, source}
  *
  * Run locally:  node --test tests/llm-router-contract.test.js
@@ -54,11 +55,11 @@ describe("LLM router contract — gated on CONCORD_BEHAVIOR_TEST_LLM", () => {
     }
   });
 
-  $it("ctx.llm.chat — falls back cleanly when conscious is offline", async () => {
-    // Force conscious down by overriding BRAIN.conscious.enabled. The router
-    // (server.js:11157) reads BRAIN.conscious.enabled; flipping it forces the
-    // OpenAI emergency fallback path. With no OPENAI_API_KEY, the call must
-    // return a clean { ok:false, reason } envelope — never throw.
+  $it("ctx.llm.chat — fails cleanly when conscious is offline (no cloud fallback)", async () => {
+    // Force conscious down by overriding BRAIN.conscious.enabled. With
+    // the OpenAI cloud fallback removed, the call MUST return a clean
+    // { ok:false, reason } envelope — never throw and never report
+    // ok:true.
     const mod = await import("../server.js");
     const __TEST__ = mod.__TEST__;
     const BRAIN = __TEST__?.BRAIN ?? globalThis._concordBRAIN;
@@ -74,16 +75,10 @@ describe("LLM router contract — gated on CONCORD_BEHAVIOR_TEST_LLM", () => {
         timeoutMs: 15000,
       });
 
-      // Must not throw. Must return either ok:true (OpenAI fallback worked)
-      // or ok:false with a recognizable reason.
       assert.equal(typeof result, "object");
-      assert.equal(typeof result.ok, "boolean");
-      if (!result.ok) {
-        assert.ok(typeof result.reason === "string" && result.reason.length > 0,
-                  "ok:false must carry a non-empty reason");
-      } else {
-        assert.equal(result.source, "openai", "if ok with conscious down, source must be openai");
-      }
+      assert.equal(result.ok, false, "must report ok:false when conscious is down (no cloud fallback exists)");
+      assert.ok(typeof result.reason === "string" && result.reason.length > 0,
+                "ok:false must carry a non-empty reason");
     } finally {
       BRAIN.conscious.enabled = wasEnabled;
     }
