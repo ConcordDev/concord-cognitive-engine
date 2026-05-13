@@ -24,6 +24,14 @@ const PUBLIC_PREFIXES = [
   '/lens/',
   '/newsletter/',
   '/profile/',
+  // Static render-pipeline assets must serve unauthenticated. Without
+  // these, AvatarSystem3D's loadHeroMesh falls through to procedural
+  // for every hero NPC (Phase S bake wasted), the soundscape engine
+  // never loads stems, and procedural-buildings textures 307 to login.
+  '/meshes/',
+  '/music/',
+  '/sounds/',
+  '/textures/',
   '/manifest.json',
   '/robots.txt',
   '/favicon.ico',

@@ -12,6 +12,14 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
+import { installR3FShim } from '@/lib/react18-internals-shim';
+
+// Walkthrough hotfix — Next 15 bundles React 19; @react-three/fiber
+// v8 reaches into React 18's __SECRET_INTERNALS.ReactCurrentOwner at
+// module-evaluation time and throws TypeError. Install the shim
+// BEFORE any R3F chunk loads so the world lens 3D scene renders.
+// Long-term fix: upgrade @react-three/fiber to v9.
+installR3FShim();
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || '',

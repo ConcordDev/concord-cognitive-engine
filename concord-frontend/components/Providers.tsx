@@ -7,6 +7,7 @@ import { AppShell } from '@/components/shell/AppShell';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { PermissionProvider } from '@/components/common/PermissionGate';
 import { I18nProvider } from '@/components/providers/I18nProvider';
+import { KeyboardProvider } from '@/lib/keyboard';
 import { GlobalMediaController } from '@/components/media/GlobalMediaController';
 import SoundSystem from '@/components/world-lens/SoundSystem';
 import AdaptiveComplexity from '@/components/world-lens/AdaptiveComplexity';
@@ -108,13 +109,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
               wiring. AdaptiveComplexity outermost so HiddenAssistance
               can read expertise level via context if needed.
             */}
-            <AdaptiveComplexity>
-              <HiddenAssistance>
-                <SecretsDiscovery>
-                  <AppShell>{children}</AppShell>
-                </SecretsDiscovery>
-              </HiddenAssistance>
-            </AdaptiveComplexity>
+            <KeyboardProvider>
+              <AdaptiveComplexity>
+                <HiddenAssistance>
+                  <SecretsDiscovery>
+                    <AppShell>{children}</AppShell>
+                  </SecretsDiscovery>
+                </HiddenAssistance>
+              </AdaptiveComplexity>
+            </KeyboardProvider>
             {/* Global media layer — mounts once, survives all navigation.
                 Owns the <audio> element so playback continues across
                 lens switches. */}

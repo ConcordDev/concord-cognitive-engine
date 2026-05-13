@@ -4424,9 +4424,10 @@ export default function WorldLensPage() {
           <ConcordiaHUD.ConcordantLawBadge />
           <ConcordiaHUD.MaterialAvailability />
           <ConcordiaHUD.MentorshipNotifier />
-          {/* Phase F — ambient overlays. */}
+          {/* Phase F — ambient overlays. (TombMarker uses R3F hooks
+              so it lives inside the R3FOverlayLayer Canvas below
+              alongside WalkerOnHorizon.) */}
           <ConcordiaHUD.NamedEncounter />
-          <ConcordiaHUD.TombMarker worldId={activeDistrict?.id || 'concordia-hub'} />
           <ConcordiaHUD.WorldHealthBadge />
           <ConcordiaHUD.ControlLegend scheme={controlSchemeForLegend} />
           {/* Phase H — substantive substrate overlays. */}
@@ -4439,9 +4440,17 @@ export default function WorldLensPage() {
               components alongside the imperative scene. Walkers are
               R3F-native; LandmarkSpires renders DOM and so mounts
               outside the overlay. */}
-          <R3FOverlayLayer>
-            <WalkerOnHorizon worldId={activeDistrict?.id || 'concordia-hub'} />
-          </R3FOverlayLayer>
+          {/* R3F overlay is gated behind ?r3f=1 until @react-three/fiber
+              is upgraded to v9 (current v8 + Next-15's bundled React 19
+              triggers reconciler-internals crashes that even a shim
+              can't fully patch). The imperative ConcordiaScene below
+              already provides the 3D world; these are visual extras. */}
+          {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('r3f') === '1' && (
+            <R3FOverlayLayer>
+              <WalkerOnHorizon worldId={activeDistrict?.id || 'concordia-hub'} />
+              <ConcordiaHUD.TombMarker worldId={activeDistrict?.id || 'concordia-hub'} />
+            </R3FOverlayLayer>
+          )}
           <LandmarkSpires
             worldId={activeDistrict?.id || 'concordia-hub'}
             getCamera={() => null}
