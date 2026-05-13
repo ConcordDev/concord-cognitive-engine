@@ -23,6 +23,12 @@ import {
   getWorldMeta,
 } from "../lib/cross-world-effectiveness.js";
 import { SKILL_DOMAINS } from "../lib/skill-domains.js";
+import {
+  availabilityForMaterial,
+  classifyAvailability,
+  materialForSkill,
+  MATERIAL_KINDS,
+} from "../lib/embodied/material-availability.js";
 
 export default function registerCrossWorldEffectivenessMacros(register) {
   register("cross_world_effectiveness", "explain", async (ctx, input = {}) => {
@@ -62,6 +68,8 @@ export default function registerCrossWorldEffectivenessMacros(register) {
         const ex = explainEffectiveness({
           domain: r.domain, worldId, level: r.level, maxLevel,
         });
+        const materialKind = materialForSkill(r.domain);
+        const materialAvailability = materialKind ? availabilityForMaterial(worldId, materialKind) : 1.0;
         return {
           domain: r.domain,
           level: r.level,
@@ -70,9 +78,21 @@ export default function registerCrossWorldEffectivenessMacros(register) {
           floor: ex.floor,
           dominant: ex.dominant,
           note: ex.note,
+          materialKind,
+          materialAvailability,
+          materialTier: materialKind ? classifyAvailability(materialAvailability) : "abundant",
         };
       })
       .sort((a, b) => b.multiplier - a.multiplier);
+
+    // Material map snapshot — every declared kind for the HUD's
+    // material readout. Worlds that haven't declared availability use
+    // defaults (ballistic_ammo=1.0 / others 0.5).
+    const materials = {};
+    for (const kind of MATERIAL_KINDS) {
+      const v = availabilityForMaterial(worldId, kind);
+      materials[kind] = { value: v, tier: classifyAvailability(v) };
+    }
 
     return {
       ok: true,
@@ -80,12 +100,13 @@ export default function registerCrossWorldEffectivenessMacros(register) {
       worldKnown: true,
       worldDescription: meta.description || null,
       rows,
+      materials,
       // Convenience: the strongest + weakest domains in this world so
       // the HUD can highlight them.
       strongest: rows[0] || null,
       weakest: rows[rows.length - 1] || null,
     };
-  }, { note: "Per-domain potency snapshot for the player in the given world." });
+  }, { note: "Per-domain potency snapshot for the player in the given world, plus per-world material availability." });
 
   register("cross_world_effectiveness", "list_domains", async () => {
     return { ok: true, domains: SKILL_DOMAINS };

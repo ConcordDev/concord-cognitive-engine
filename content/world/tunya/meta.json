@@ -28,13 +28,19 @@
     "engineering": 0.45,
     "tech": 0.0,
     "hacking": 0.0,
-    "gun": 0.0,
-    "weapons_modern": 0.0,
+    "gun": 1.0,
+    "weapons_modern": 1.0,
     "driving": 0.05,
     "piloting": 0.05,
     "ark_archaeology": 1.0,
     "celestial_navigation": 0.9,
     "sea_navigation": 0.9
+  },
+  "material_availability": {
+    "ballistic_ammo": 0.05,
+    "magical_reagents": 0.15,
+    "tech_parts": 0.05,
+    "bloodline_fuel": 1.0
   },
   "calendar": {
     "hours_per_day": 32,

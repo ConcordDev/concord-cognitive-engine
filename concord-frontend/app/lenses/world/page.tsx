@@ -99,6 +99,7 @@ const ConcordiaHUD = {
   AmbientFeedback: dynamic(() => import('@/components/world/concordia-hud/AmbientFeedback').then((m) => ({ default: m.AmbientFeedback })), { ssr: false }),
   Ruler: dynamic(() => import('@/components/world/concordia-hud/RulerOverlay').then((m) => ({ default: m.RulerOverlay })), { ssr: false }),
   ConcordantLawBadge: dynamic(() => import('@/components/world/concordia-hud/ConcordantLawBadge').then((m) => ({ default: m.ConcordantLawBadge })), { ssr: false }),
+  MaterialAvailability: dynamic(() => import('@/components/world/concordia-hud/MaterialAvailabilityBadge').then((m) => ({ default: m.MaterialAvailabilityBadge })), { ssr: false }),
 };
 const PersonalBeatWidget = dynamic(
   () =>
@@ -4339,6 +4340,7 @@ export default function WorldLensPage() {
               a realm_territories edge. Both invisible by default. */}
           <ConcordiaHUD.Ruler />
           <ConcordiaHUD.ConcordantLawBadge />
+          <ConcordiaHUD.MaterialAvailability />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing

@@ -15,9 +15,9 @@
     "martial_arts": 1.0,
     "swordsmanship": 0.6,
     "archery": 0.5,
-    "gun": 0.7,
-    "weapons_modern": 0.7,
-    "weapon_attachments": 0.6,
+    "gun": 1.0,
+    "weapons_modern": 1.0,
+    "weapon_attachments": 1.0,
     "stealth": 0.7,
     "lockpicking": 0.7,
     "infiltration": 0.7,
@@ -32,6 +32,12 @@
     "magic": 0.05,
     "driving": 0.85,
     "piloting": 0.7
+  },
+  "material_availability": {
+    "ballistic_ammo": 1.0,
+    "magical_reagents": 0.05,
+    "tech_parts": 1.0,
+    "bloodline_fuel": 1.0
   },
   "concord_link": {
     "primary_access": "communicator_watch",

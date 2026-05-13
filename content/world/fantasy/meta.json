@@ -26,12 +26,18 @@
     "engineering": 0.4,
     "tech": 0.05,
     "hacking": 0.0,
-    "gun": 0.0,
-    "weapons_modern": 0.0,
-    "weapon_attachments": 0.0,
+    "gun": 1.0,
+    "weapons_modern": 1.0,
+    "weapon_attachments": 1.0,
     "bio_powers": 0.4,
     "driving": 0.0,
     "piloting": 0.0
+  },
+  "material_availability": {
+    "ballistic_ammo": 0.05,
+    "magical_reagents": 1.0,
+    "tech_parts": 0.02,
+    "bloodline_fuel": 0.7
   },
   "concord_link": {
     "primary_access": "crystal_orbs",

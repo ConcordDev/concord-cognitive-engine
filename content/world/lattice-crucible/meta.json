@@ -18,7 +18,15 @@
     "stealth": 0.9,
     "crafting": 1.05,
     "refusal_glyph_reading": 1.1,
-    "drift_navigation": 1.0
+    "drift_navigation": 1.0,
+    "gun": 1.0,
+    "weapons_modern": 1.0
+  },
+  "material_availability": {
+    "ballistic_ammo": 0.40,
+    "magical_reagents": 0.85,
+    "tech_parts": 0.50,
+    "bloodline_fuel": 0.50
   },
   "rule_modulators": {
     "combatLethality": 1.1,

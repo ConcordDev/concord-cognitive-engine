@@ -18,7 +18,15 @@
     "stealth": 0.85,
     "swordsmanship": 0.5,
     "combat": 0.5,
-    "destruction": 0.3
+    "destruction": 0.3,
+    "gun": 1.0,
+    "weapons_modern": 1.0
+  },
+  "material_availability": {
+    "ballistic_ammo": 0.10,
+    "magical_reagents": 0.85,
+    "tech_parts": 0.20,
+    "bloodline_fuel": 0.6
   },
   "rule_modulators": {
     "combatLethality": 0.6,
