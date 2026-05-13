@@ -45,11 +45,12 @@ export default defineConfig({
     // first goto per spec can stretch toward 60 s. Bump from the
     // 30 s playwright default so we observe the actual page content
     // instead of timing out on the first-route compile latency.
-    // Don't pin actionTimeout — let it inherit the per-test budget
-    // so a click that straddles a re-hydration doesn't fail just
-    // because the per-action ceiling was tighter than the per-test
-    // ceiling.
+    // actionTimeout: bumped to 60 s to match navigationTimeout —
+    // Playwright's internal action default is 30 s even when this is
+    // unset, and post-navigation hydration on cold-compiled routes
+    // can straddle it. Bump explicitly.
     navigationTimeout: 60000,
+    actionTimeout: 60000,
   },
   timeout: 90000,
 
