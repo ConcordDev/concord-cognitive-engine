@@ -23205,6 +23205,14 @@ registerSpawnMacros(register);
 import registerAppearanceMacros from "./domains/appearance.js";
 registerAppearanceMacros(register);
 
+// Phase H2 — player-placed POI markers.
+import registerMarkersMacros from "./domains/markers.js";
+registerMarkersMacros(register);
+
+// Phase H4 — emergent pattern feed (drift + breakthroughs + federation).
+import registerPatternsMacros from "./domains/patterns.js";
+registerPatternsMacros(register);
+
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
 // recent_moves / get_relation reads.

@@ -109,6 +109,9 @@ const ConcordiaHUD = {
   TombMarker: dynamic(() => import('@/components/world/TombMarker'), { ssr: false }),
   WorldHealthBadge: dynamic(() => import('@/components/hud/WorldHealthBadge').then((m) => ({ default: m.WorldHealthBadge })), { ssr: false }),
   ControlLegend: dynamic(() => import('@/components/concordia/controls/ControlLegend').then((m) => ({ default: m.ControlLegend })), { ssr: false }),
+  // Phase H — substantive substrate overlays.
+  QuestDiscovery: dynamic(() => import('@/components/world/QuestDiscoveryController').then((m) => ({ default: m.QuestDiscoveryController })), { ssr: false }),
+  NPCStressTooltip: dynamic(() => import('@/components/world/NPCStressTooltipController').then((m) => ({ default: m.NPCStressTooltipController })), { ssr: false }),
 };
 const PersonalBeatWidget = dynamic(
   () =>
@@ -4403,6 +4406,9 @@ export default function WorldLensPage() {
           <ConcordiaHUD.TombMarker worldId={activeDistrict?.id || 'concordia-hub'} />
           <ConcordiaHUD.WorldHealthBadge />
           <ConcordiaHUD.ControlLegend scheme={controlSchemeForLegend} />
+          {/* Phase H — substantive substrate overlays. */}
+          <ConcordiaHUD.QuestDiscovery />
+          <ConcordiaHUD.NPCStressTooltip />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing
