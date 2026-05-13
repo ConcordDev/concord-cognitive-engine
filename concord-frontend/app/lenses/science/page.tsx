@@ -1958,7 +1958,7 @@ export default function ScienceLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -2082,7 +2082,7 @@ export default function ScienceLensPage() {
                   <h2 className={ds.heading2}>
                     {editingId ? 'Edit' : 'New'} {currentType}
                   </h2>
-                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)}>
+                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)} aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>

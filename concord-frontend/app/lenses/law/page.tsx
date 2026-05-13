@@ -341,7 +341,7 @@ export default function LawLensPage() {
               className="input-lattice flex-1 text-xs"
               title="Filing deadline"
             />
-            <button onClick={handleCreateCase} className="btn-neon purple px-3">
+            <button onClick={handleCreateCase} className="btn-neon purple px-3" aria-label="Add">
               <Plus className="w-4 h-4" />
             </button>
           </div>

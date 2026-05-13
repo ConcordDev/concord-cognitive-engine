@@ -249,7 +249,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
             <p className="text-[11px] text-zinc-500">Tool-using assistant — 200+ apps, web, compute, citations</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800">
+        <button onClick={onClose} className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </header>

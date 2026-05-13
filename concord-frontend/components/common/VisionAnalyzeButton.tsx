@@ -38,7 +38,7 @@ export function VisionAnalyzeButton({ domain, prompt, onResult, className }: Pro
         <div className="mt-2 p-2 rounded bg-purple-500/10 border border-purple-500/20 text-xs">
           <div className="flex justify-between items-start">
             <span className="text-purple-300 font-medium">Vision Analysis</span>
-            <button onClick={() => { reset(); setPreview(null); }} className="text-zinc-500 hover:text-zinc-300"><X className="w-3 h-3" /></button>
+            <button onClick={() => { reset(); setPreview(null); }} className="text-zinc-500 hover:text-zinc-300" aria-label="Close"><X className="w-3 h-3" /></button>
           </div>
           <p className="text-zinc-300 mt-1 whitespace-pre-wrap">{result.analysis}</p>
           {result.suggestedTags && result.suggestedTags.length > 0 && (

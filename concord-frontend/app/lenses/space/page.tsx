@@ -527,10 +527,10 @@ export default function SpaceLensPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => handleAction('analyze', item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-neon-cyan">
+                    <button onClick={() => handleAction('analyze', item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-neon-cyan" aria-label="Activate">
                       <Zap className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400">
+                    <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400" aria-label="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>

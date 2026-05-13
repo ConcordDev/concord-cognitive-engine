@@ -388,12 +388,12 @@ export default function DailyLensPage() {
         <div className="p-4 border-b border-lattice-border">
           <div className="flex items-center justify-between mb-3">
             <button onClick={() => setCalMonth((m) => { const p = new Date(m.year, m.month - 1); return { year: p.getFullYear(), month: p.getMonth() }; })}
-              className="p-1 hover:bg-white/10 rounded"><ChevronLeft className="w-4 h-4" /></button>
+              className="p-1 hover:bg-white/10 rounded" aria-label="Previous"><ChevronLeft className="w-4 h-4" /></button>
             <span className="text-sm font-semibold">
               {new Date(calMonth.year, calMonth.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </span>
             <button onClick={() => setCalMonth((m) => { const n = new Date(m.year, m.month + 1); return { year: n.getFullYear(), month: n.getMonth() }; })}
-              className="p-1 hover:bg-white/10 rounded"><ChevronRight className="w-4 h-4" /></button>
+              className="p-1 hover:bg-white/10 rounded" aria-label="Next"><ChevronRight className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center text-xs">
             {['S','M','T','W','T','F','S'].map((d, i) => <span key={i} className="text-gray-500 font-medium py-1">{d}</span>)}
@@ -711,7 +711,7 @@ export default function DailyLensPage() {
                     </p>
                   </div>
                   <button onClick={() => handleCompleteReminder(r.id)}
-                    className="p-1.5 text-green-400 hover:bg-green-400/20 rounded-lg transition-colors">
+                    className="p-1.5 text-green-400 hover:bg-green-400/20 rounded-lg transition-colors" aria-label="Check circle2">
                     <CheckCircle2 className="w-4 h-4" />
                   </button>
                 </div>

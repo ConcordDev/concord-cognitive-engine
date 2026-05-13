@@ -764,10 +764,10 @@ export default function NonprofitLensPage() {
             ))}
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost}>
+            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost} aria-label="Edit">
               <Edit2 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}>
+            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -836,10 +836,10 @@ export default function NonprofitLensPage() {
             {acked ? `Ack: ${fmtDate(d.ackDate as string)}` : 'Not acknowledged'}
           </span>
           <div className="flex items-center gap-1">
-            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost}>
+            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost} aria-label="Edit">
               <Edit2 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}>
+            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1075,10 +1075,10 @@ export default function NonprofitLensPage() {
         <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
           <span className={ds.textMuted}>{d.timeline as string}</span>
           <div className="flex items-center gap-1">
-            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost}>
+            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost} aria-label="Edit">
               <Edit2 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}>
+            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1165,10 +1165,10 @@ export default function NonprofitLensPage() {
             <span>{d.email as string}</span>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost}>
+            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost} aria-label="Edit">
               <Edit2 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}>
+            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1249,10 +1249,10 @@ export default function NonprofitLensPage() {
             {d.category as string}
           </span>
           <div className="flex items-center gap-1">
-            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost}>
+            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost} aria-label="Edit">
               <Edit2 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}>
+            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1338,10 +1338,10 @@ export default function NonprofitLensPage() {
 
         <div className="flex items-center justify-end pt-2 border-t border-lattice-border">
           <div className="flex items-center gap-1">
-            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost}>
+            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost} aria-label="Edit">
               <Edit2 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}>
+            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1370,10 +1370,10 @@ export default function NonprofitLensPage() {
         <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
           <span className={ds.textMuted}>{new Date(item.updatedAt).toLocaleDateString()}</span>
           <div className="flex items-center gap-1">
-            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost}>
+            <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost} aria-label="Edit">
               <Edit2 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}>
+            <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')} aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1488,7 +1488,7 @@ export default function NonprofitLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-3">
             <h3 className={ds.heading3}>Domain Actions</h3>
-            <button onClick={() => setShowActionPanel(false)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setShowActionPanel(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2">
             {DOMAIN_ACTIONS.map(action => {
@@ -1604,7 +1604,7 @@ export default function NonprofitLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <div className="space-y-3">
             {/* donorRetention */}
@@ -1703,7 +1703,7 @@ export default function NonprofitLensPage() {
                   <button onClick={() => { openEdit(detailItem.id); setDetailItem(null); }} className={ds.btnSecondary}>
                     <Edit2 className="w-4 h-4" /> Edit
                   </button>
-                  <button onClick={() => setDetailItem(null)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                  <button onClick={() => setDetailItem(null)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
                 </div>
               </div>
               <div className="p-4 max-h-[70vh] overflow-y-auto">
@@ -1798,7 +1798,7 @@ export default function NonprofitLensPage() {
                   <Banknote className="w-5 h-5 text-green-400" />
                   <h2 className={ds.heading2}>Process Gift</h2>
                 </div>
-                <button onClick={() => setShowGiftEntry(false)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowGiftEntry(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div>
@@ -1878,7 +1878,7 @@ export default function NonprofitLensPage() {
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>{editing ? 'Edit' : 'New'} {currentType}</h2>
-                <button onClick={resetForm} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                <button onClick={resetForm} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div>

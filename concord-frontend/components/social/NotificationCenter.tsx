@@ -558,7 +558,7 @@ function NotificationCenter({
             <button
               onClick={onClose}
               className="p-1.5 text-gray-400 hover:text-white rounded-lg transition-colors"
-            >
+            aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

@@ -228,7 +228,7 @@ export default function PublicProfilePage() {
               <button
                 onClick={() => setShowOptions((p) => !p)}
                 className="p-2 rounded-lg bg-black/30 backdrop-blur-sm text-white/80 hover:text-white transition-colors"
-              >
+              aria-label="More options">
                 <MoreHorizontal className="w-4 h-4" />
               </button>
               <AnimatePresence>

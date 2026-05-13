@@ -335,7 +335,7 @@ export function UniversalImport({
                   <button
                     onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
                     className="flex-shrink-0 p-1 text-gray-500 hover:text-gray-300 transition-colors"
-                  >
+                  aria-label="Close">
                     <X className="w-3 h-3" />
                   </button>
                 )}

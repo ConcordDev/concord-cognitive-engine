@@ -434,7 +434,7 @@ export default function HypothesisLensPage() {
                           onClick={() => addEvidence.mutate()}
                           disabled={!newEvidence || addEvidence.isPending}
                           className="btn-neon"
-                        >
+                        aria-label="Forward">
                           <ArrowRight className="w-4 h-4" />
                         </button>
                       </div>

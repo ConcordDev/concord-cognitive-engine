@@ -613,14 +613,14 @@ export default function DatabaseLensPage() {
                           onClick={() => setResultPage(p => Math.max(0, p - 1))}
                           disabled={resultPage === 0}
                           className="p-1 rounded border border-lattice-border disabled:opacity-30 hover:bg-lattice-surface transition-colors"
-                        >
+                        aria-label="Previous">
                           <ChevronLeft className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setResultPage(p => Math.min(totalPages - 1, p + 1))}
                           disabled={resultPage >= totalPages - 1}
                           className="p-1 rounded border border-lattice-border disabled:opacity-30 hover:bg-lattice-surface transition-colors"
-                        >
+                        aria-label="Next">
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       </div>

@@ -2002,7 +2002,7 @@ export default function LegalLensPage() {
                 >
                   <Edit3 className="w-4 h-4" /> Edit
                 </button>
-                <button onClick={() => setShowDetailPanel(false)} className={ds.btnGhost}>
+                <button onClick={() => setShowDetailPanel(false)} className={ds.btnGhost} aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -2263,7 +2263,7 @@ export default function LegalLensPage() {
               <h2 className={ds.heading2}>
                 {editingItem ? 'Edit' : 'New'} {formatLabel(editorMode)}
               </h2>
-              <button onClick={() => setShowEditor(false)} className={ds.btnGhost}>
+              <button onClick={() => setShowEditor(false)} className={ds.btnGhost} aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -3157,7 +3157,7 @@ export default function LegalLensPage() {
         <div className={ds.panel}>
           <div className={cn(ds.sectionHeader, 'mb-2')}>
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>

@@ -180,11 +180,11 @@ export function PianoRoll({
         </button>
 
         <div className="flex items-center gap-1" title="Horizontal Zoom">
-          <button onClick={() => setZoomX(Math.max(0.25, zoomX - 0.25))} className="p-0.5 text-gray-500 hover:text-white">
+          <button onClick={() => setZoomX(Math.max(0.25, zoomX - 0.25))} className="p-0.5 text-gray-500 hover:text-white" aria-label="Zoom out">
             <ZoomOut className="w-3 h-3" />
           </button>
           <span className="text-[10px] text-gray-400 w-8 text-center">{Math.round(zoomX * 100)}%</span>
-          <button onClick={() => setZoomX(Math.min(4, zoomX + 0.25))} className="p-0.5 text-gray-500 hover:text-white">
+          <button onClick={() => setZoomX(Math.min(4, zoomX + 0.25))} className="p-0.5 text-gray-500 hover:text-white" aria-label="Zoom in">
             <ZoomIn className="w-3 h-3" />
           </button>
         </div>
@@ -193,11 +193,11 @@ export function PianoRoll({
 
         <div className="flex items-center gap-1" title="Vertical Zoom">
           <span className="text-[10px] text-gray-500">V:</span>
-          <button onClick={() => setZoomY(Math.max(0.5, zoomY - 0.25))} className="p-0.5 text-gray-500 hover:text-white">
+          <button onClick={() => setZoomY(Math.max(0.5, zoomY - 0.25))} className="p-0.5 text-gray-500 hover:text-white" aria-label="Zoom out">
             <ZoomOut className="w-3 h-3" />
           </button>
           <span className="text-[10px] text-gray-400 w-8 text-center">{Math.round(zoomY * 100)}%</span>
-          <button onClick={() => setZoomY(Math.min(3, zoomY + 0.25))} className="p-0.5 text-gray-500 hover:text-white">
+          <button onClick={() => setZoomY(Math.min(3, zoomY + 0.25))} className="p-0.5 text-gray-500 hover:text-white" aria-label="Zoom in">
             <ZoomIn className="w-3 h-3" />
           </button>
         </div>

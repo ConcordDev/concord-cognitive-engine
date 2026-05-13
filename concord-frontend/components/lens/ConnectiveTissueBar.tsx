@@ -315,7 +315,7 @@ function Panel({
     <div className="px-3 pb-3 space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-medium text-white">{title}</h4>
-        <button onClick={onClose} className="text-gray-500 hover:text-white">
+        <button onClick={onClose} className="text-gray-500 hover:text-white" aria-label="Close">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>

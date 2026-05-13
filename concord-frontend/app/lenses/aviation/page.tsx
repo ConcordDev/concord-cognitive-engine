@@ -1803,7 +1803,7 @@ export default function AviationLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           {/* currencyCheck */}
           {actionResult.checks !== undefined && actionResult.allCurrent !== undefined && (
@@ -1903,7 +1903,7 @@ export default function AviationLensPage() {
             <div className={cn(ds.modalPanel, 'max-w-3xl max-h-[90vh] overflow-hidden flex flex-col')}>
               <div className="p-6 border-b border-lattice-border flex items-center justify-between shrink-0">
                 <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {getTypeForTab(activeMode)}</h2>
-                <button onClick={resetForm} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                <button onClick={resetForm} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-6 overflow-y-auto flex-1">
                 {getEditorForTab()}

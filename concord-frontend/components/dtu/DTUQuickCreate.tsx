@@ -85,7 +85,7 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
             type="button"
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-lattice-elevated transition-colors"
-          >
+          aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

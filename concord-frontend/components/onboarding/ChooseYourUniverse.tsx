@@ -41,7 +41,7 @@ const PRIMARY_LENSES = [
 ];
 
 interface Props {
-  /** Called after successful universe selection. Default: router.push('/dashboard'). */
+  /** Called after successful universe selection. Default: router.push('/hub'). */
   onComplete?: () => void;
   /** Called if the user skips. Default: same as onComplete. */
   onSkip?: () => void;
@@ -65,7 +65,7 @@ export function ChooseYourUniverse({ onComplete, onSkip }: Props) {
     },
     onSuccess: () => {
       if (onComplete) onComplete();
-      else router.push('/dashboard');
+      else router.push('/hub');
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to save';
@@ -78,7 +78,7 @@ export function ChooseYourUniverse({ onComplete, onSkip }: Props) {
   const handleSkip = () => {
     if (onSkip) onSkip();
     else if (onComplete) onComplete();
-    else router.push('/dashboard');
+    else router.push('/hub');
   };
 
   return (

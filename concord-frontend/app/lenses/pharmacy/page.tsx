@@ -534,7 +534,7 @@ export default function PharmacyLensPage() {
                     <p className="text-xs text-gray-400 mt-1">{med.dosage} - {med.frequency} - {med.route}</p>
                   </div>
                   <button onClick={() => update(med.id, { data: { status: med.status === 'active' ? 'discontinued' : 'active' } })} className="text-xs px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-400 mr-2">{med.status === 'active' ? 'Discontinue' : 'Reactivate'}</button>
-                  <button onClick={() => remove(med.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => remove(med.id)} className="text-gray-500 hover:text-red-400" aria-label="Delete"><Trash2 className="w-4 h-4" /></button>
                 </motion.div>
               ))}
               </AnimatePresence>

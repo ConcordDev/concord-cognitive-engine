@@ -1982,7 +1982,7 @@ export default function CommandCenterPage() {
               <button
                 onClick={() => setActionResult(null)}
                 className="text-gray-500 hover:text-white transition-colors"
-              >
+              aria-label="Xcircle">
                 <XCircle className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -2110,7 +2110,7 @@ function PredictionMarketPanel() {
             onClick={() => newClaim.trim() && createMutation.mutate({ claim: newClaim, domain: newDomain })}
             disabled={!newClaim.trim() || createMutation.isPending}
             className="px-4 py-2 text-sm bg-neon-cyan text-black font-medium rounded-lg hover:bg-neon-cyan/90 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+          aria-label="Send">
             <Send className="w-4 h-4" />
           </button>
         </div>

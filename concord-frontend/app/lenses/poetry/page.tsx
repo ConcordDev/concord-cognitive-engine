@@ -231,7 +231,7 @@ function ReadingMode({ title, content, onClose }: { title: string; content: stri
       >
         <div className="flex items-center justify-between mb-8">
           <Moon className="w-5 h-5 text-rose-300/60" />
-          <button onClick={onClose} className="text-gray-600 hover:text-gray-300 transition-colors">
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-300 transition-colors" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -548,8 +548,8 @@ export default function PoetryPage() {
                       </div>
                       <div className="flex gap-1">
                         <PullToSubstrate domain="poetry" artifactId={poem.id} compact />
-                        <button onClick={e => { e.stopPropagation(); openPoem(poem); }} className="p-1 hover:bg-white/10 rounded"><Edit2 className="w-3.5 h-3.5" /></button>
-                        <button onClick={e => { e.stopPropagation(); removePoem(poem.id).then(() => refetch()).catch((err) => { console.error('[Poetry] Failed to delete poem:', err); useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete poem' }); }); }} className="p-1 hover:bg-white/10 rounded text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={e => { e.stopPropagation(); openPoem(poem); }} className="p-1 hover:bg-white/10 rounded" aria-label="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={e => { e.stopPropagation(); removePoem(poem.id).then(() => refetch()).catch((err) => { console.error('[Poetry] Failed to delete poem:', err); useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete poem' }); }); }} className="p-1 hover:bg-white/10 rounded text-red-400" aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
                     {poem.content && (

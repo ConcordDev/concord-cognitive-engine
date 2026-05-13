@@ -1369,7 +1369,7 @@ export default function FeedLensPage() {
                               setPostMenuOpen(postMenuOpen === post.id ? null : post.id)
                             }
                             className="p-1 text-gray-600 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded-full transition-colors"
-                          >
+                          aria-label="More options">
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
                           <AnimatePresence>
@@ -1570,7 +1570,7 @@ export default function FeedLensPage() {
                           <button
                             onClick={() => bookmarkMutation.mutate(post.id)}
                             className="p-1.5 rounded-full hover:bg-neon-cyan/15 hover:text-neon-cyan hover:scale-110 transition-all duration-200"
-                          >
+                          aria-label="Bookmark">
                             <Bookmark
                               className={cn(
                                 'w-4 h-4',
@@ -1581,7 +1581,7 @@ export default function FeedLensPage() {
                           <button
                             onClick={() => shareMutation.mutate(post.id)}
                             className="p-1.5 rounded-full hover:bg-neon-cyan/15 hover:text-neon-cyan hover:scale-110 transition-all duration-200"
-                          >
+                          aria-label="Share">
                             <Share className="w-4 h-4" />
                           </button>
                           <CrossPostExternal
@@ -1646,7 +1646,7 @@ export default function FeedLensPage() {
                                       commentMutation.isPending
                                     }
                                     className="p-1.5 rounded-full bg-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/30 disabled:opacity-40 transition-colors"
-                                  >
+                                  aria-label="Send">
                                     <Send className="w-4 h-4" />
                                   </button>
                                 </div>
@@ -1961,7 +1961,7 @@ export default function FeedLensPage() {
               <button
                 onClick={() => setFeedActionResult(null)}
                 className="absolute top-3 right-3 text-gray-500 hover:text-white"
-              >
+              aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
 

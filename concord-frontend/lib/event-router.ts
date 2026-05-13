@@ -88,15 +88,15 @@ function buildHandlers(opts: {
     'track:menu': () => addToast({ type: 'info', message: 'Track menu — open via right-click or three-dot icon', duration: 3000 }),
 
     // ── Social ────────────────────────────────────────────────────
-    'notifications:open-all': () => router.push('/notifications'),
-    'presence:view-all': () => router.push('/lenses/social'),
+    'notifications:open-all': () => router.push('/messages'),
+    'presence:view-all': () => router.push('/lenses/society'),
     'session-chat:download-transcript': () => addToast({ type: 'info', message: 'Use the chat export menu (settings → export transcript)', duration: 5000 }),
-    'profile:edit': () => router.push('/settings/profile'),
+    'profile:edit': () => router.push('/profile'),
 
     // ── World HUD ────────────────────────────────────────────────
     'world-hud:trade': () => router.push('/lenses/marketplace'),
     'world-hud:explore': () => router.push('/lenses/world'),
-    'hud:open-notifications': () => router.push('/notifications'),
+    'hud:open-notifications': () => router.push('/messages'),
 
     // ── World-lens features ──────────────────────────────────────
     'collaboration:craft-together': () => router.push('/lenses/crafting?mode=collab'),
@@ -119,7 +119,7 @@ function buildHandlers(opts: {
     'ownership:generate-share-card': () => callMacro('ownership', 'generate_share_card', {}, 'Share card generated'),
     'replay:render-timelapse': () => callMacro('replay', 'render_timelapse', {}, 'Timelapse render queued'),
     'save-system:backup-world': () => callMacro('world', 'backup', {}, 'World backup created'),
-    'save-system:restore-backup': () => router.push('/settings/backups'),
+    'save-system:restore-backup': () => router.push('/settings'),
     'sensor:register-device': () => router.push('/lenses/sensor/register'),
     'smart-notifications:suggestion-accept': (e) => callMacro('notifications', 'accept_suggestion', { suggestionId: e.detail?.suggestionId, domain: e.detail?.domain }, 'Suggestion accepted'),
     'smart-notifications:suggestion-decline': (e) => callMacro('notifications', 'decline_suggestion', { suggestionId: e.detail?.suggestionId, domain: e.detail?.domain }, 'Suggestion declined'),

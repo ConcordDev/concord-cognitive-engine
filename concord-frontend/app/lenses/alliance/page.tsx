@@ -444,7 +444,7 @@ export default function AllianceLensPage() {
                       <h4 className="text-sm font-semibold text-white flex items-center gap-2">
                         <BarChart3 className="w-4 h-4 text-neon-cyan" /> Result
                       </h4>
-                      <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white">
+                      <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Xcircle">
                         <XCircle className="w-4 h-4" />
                       </button>
                     </div>

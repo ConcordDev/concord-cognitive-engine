@@ -97,15 +97,24 @@ function isInsideTemplateLiteral(content, idx) {
 }
 
 function hasNonIconText(children) {
-  // Strip nested JSX tags <X .../> or <X>...</X> recursively (simple),
-  // then check whether anything non-whitespace remains.
-  let stripped = children.replace(/<[A-Z][a-zA-Z0-9]*\b[^>]*\/>/g, "");
-  // Strip pair tags (non-greedy)
-  for (let i = 0; i < 3; i++) stripped = stripped.replace(/<[A-Z][a-zA-Z0-9]*\b[^>]*>[^<]*<\/[A-Z][a-zA-Z0-9]*>/g, "");
-  // Strip JSX expressions {expr}
-  stripped = stripped.replace(/\{[^}]*\}/g, "");
-  // Strip lower-case HTML pair tags (span, p, etc.) and their contents (keep text)
-  stripped = stripped.replace(/<\/?[a-z][^>]*>/g, "");
+  // Strip JSX tags and JSX expressions; KEEP text content inside
+  // paired tags so a `<span>Save</span>` child counts as a visible
+  // label. Iterate until stable to handle nested wrappers (CodeQL
+  // js/incomplete-multi-char-sanitization — multi-pass converges).
+  let stripped = children;
+  let prev;
+  let guard = 0;
+  do {
+    prev = stripped;
+    // Self-closing JSX (icons) — drop entirely.
+    stripped = stripped.replace(/<[A-Za-z][\w.]*\b[^>]*?\/>/g, "");
+    // Paired JSX — drop the wrapper tags, keep inner text.
+    stripped = stripped.replace(/<[A-Za-z][\w.]*\b[^>]*>([\s\S]*?)<\/[A-Za-z][\w.]*>/g, "$1");
+    // JSX expression {expr} — drop entirely (dynamic content is
+    // unknowable statically; conservative).
+    stripped = stripped.replace(/\{[^{}]*\}/g, "");
+    guard++;
+  } while (stripped !== prev && guard < 12);
   return /\S/.test(stripped);
 }
 

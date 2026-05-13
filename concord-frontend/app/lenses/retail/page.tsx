@@ -1713,7 +1713,7 @@ export default function RetailLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <div className="space-y-3">
             {/* reorderCheck */}
@@ -1941,7 +1941,7 @@ export default function RetailLensPage() {
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>
-                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)}><X className="w-5 h-5" /></button>
+                  <button className={ds.btnGhost} onClick={() => setShowEditor(false)} aria-label="Close"><X className="w-5 h-5" /></button>
                 </div>
               </div>
               <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">

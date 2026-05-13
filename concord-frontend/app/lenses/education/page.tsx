@@ -1043,7 +1043,7 @@ export default function EducationLensPage() {
       <div className={ds.pageContainer}>
         <header className={ds.sectionHeader}>
           <div className="flex items-center gap-3">
-            <button onClick={() => setSelectedStudent(null)} className={ds.btnGhost}>
+            <button onClick={() => setSelectedStudent(null)} className={ds.btnGhost} aria-label="Back">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <User className="w-7 h-7 text-neon-blue" />
@@ -1161,7 +1161,7 @@ export default function EducationLensPage() {
       <div className={ds.pageContainer}>
         <header className={ds.sectionHeader}>
           <div className="flex items-center gap-3">
-            <button onClick={() => setSelectedCourse(null)} className={ds.btnGhost}>
+            <button onClick={() => setSelectedCourse(null)} className={ds.btnGhost} aria-label="Back">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <BookOpen className="w-7 h-7 text-neon-green" />
@@ -1512,7 +1512,7 @@ export default function EducationLensPage() {
               >
                 <Activity className="w-3.5 h-3.5 mr-1" /> Download
               </button>
-              <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+              <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
           </div>
           {typeof actionResult === 'object' && 'content' in actionResult && actionResult.content ? (
@@ -1932,7 +1932,7 @@ export default function EducationLensPage() {
                           />
                           <p className={cn(ds.textMuted, 'text-center text-xs mt-1')}>points</p>
                         </div>
-                        <button onClick={() => removeRubricCriterion(idx)} className={cn(ds.btnGhost, 'text-red-400 p-1')}>
+                        <button onClick={() => removeRubricCriterion(idx)} className={cn(ds.btnGhost, 'text-red-400 p-1')} aria-label="Minus circle">
                           <MinusCircle className="w-4 h-4" />
                         </button>
                       </div>
@@ -2792,7 +2792,7 @@ export default function EducationLensPage() {
             <div className={cn(ds.modalPanel, 'max-w-2xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>{editingItem ? 'Edit' : 'New'} {formType}</h2>
-                <button onClick={() => setShowEditor(false)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowEditor(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
                 <div>
@@ -2914,7 +2914,7 @@ export default function EducationLensPage() {
                         <div key={idx} className="flex items-center gap-2 mb-2">
                           <input value={c.name} onChange={e => updateRubricCriterion(idx, 'name', e.target.value)} placeholder="Criterion" className={cn(ds.input, 'text-sm flex-1')} />
                           <input type="number" value={c.maxPoints} onChange={e => updateRubricCriterion(idx, 'maxPoints', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-sm w-20 text-center')} />
-                          <button onClick={() => removeRubricCriterion(idx)} className="text-red-400 hover:text-red-300 p-1"><MinusCircle className="w-4 h-4" /></button>
+                          <button onClick={() => removeRubricCriterion(idx)} className="text-red-400 hover:text-red-300 p-1" aria-label="Minus circle"><MinusCircle className="w-4 h-4" /></button>
                         </div>
                       ))}
                     </div>
@@ -3007,7 +3007,7 @@ export default function EducationLensPage() {
                                     min={0}
                                   />
                                   <span className="text-xs text-gray-500">pts</span>
-                                  <button onClick={() => removeQuizQuestion(q.id)} className="text-red-400 hover:text-red-300 p-1">
+                                  <button onClick={() => removeQuizQuestion(q.id)} className="text-red-400 hover:text-red-300 p-1" aria-label="Minus circle">
                                     <MinusCircle className="w-4 h-4" />
                                   </button>
                                 </div>
@@ -3732,7 +3732,7 @@ function ProofByCitationPanel() {
                 className="flex items-center gap-1 px-2 py-1 bg-neon-pink/10 border border-neon-pink/30 text-neon-pink rounded-full text-xs"
               >
                 {c.title}
-                <button type="button" onClick={() => removeCitation(c.id)} className="hover:text-white">
+                <button type="button" onClick={() => removeCitation(c.id)} className="hover:text-white" aria-label="Close">
                   <X className="w-3 h-3" />
                 </button>
               </span>

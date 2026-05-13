@@ -106,7 +106,7 @@ export function ReminderList({
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             className="p-1.5 text-gray-400 hover:text-white transition-colors"
-          >
+          aria-label="Add">
             <Plus className="w-4 h-4" />
           </button>
         </div>

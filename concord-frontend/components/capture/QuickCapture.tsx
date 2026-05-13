@@ -175,7 +175,7 @@ export function QuickCapture({ isOpen, onClose, onCapture }: QuickCaptureProps) 
                 <button
                   onClick={onClose}
                   className="p-1 rounded hover:bg-lattice-surface text-gray-400 hover:text-white transition-colors"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -226,7 +226,7 @@ export function QuickCapture({ isOpen, onClose, onCapture }: QuickCaptureProps) 
                       <button
                         onClick={() => handleRemoveTag(tag)}
                         className="ml-1 hover:text-white"
-                      >
+                      aria-label="Close">
                         <X className="w-3 h-3" />
                       </button>
                     </motion.span>

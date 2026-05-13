@@ -107,7 +107,7 @@ export class LensErrorBoundary extends React.Component<Props, State> {
               Reload page
             </button>
             <Link
-              href="/lenses/hub"
+              href="/hub"
               className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm"
             >
               Back to hub

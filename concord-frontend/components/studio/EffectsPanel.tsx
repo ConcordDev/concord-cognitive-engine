@@ -74,7 +74,7 @@ function EffectSlot({
         <button
           onClick={e => { e.stopPropagation(); onToggle(); }}
           className={cn('p-0.5 rounded', effect.enabled ? 'text-neon-green' : 'text-gray-600')}
-        >
+        aria-label="Power">
           <Power className="w-3 h-3" />
         </button>
         <span className={cn('text-xs font-medium flex-1', !effect.enabled && 'text-gray-500')}>{effect.name}</span>
@@ -93,7 +93,7 @@ function EffectSlot({
         <button
           onClick={e => { e.stopPropagation(); onRemove(); }}
           className="p-0.5 text-gray-600 hover:text-red-400"
-        >
+        aria-label="Delete">
           <Trash2 className="w-3 h-3" />
         </button>
         {expanded ? <ChevronUp className="w-3 h-3 text-gray-500" /> : <ChevronDown className="w-3 h-3 text-gray-500" />}

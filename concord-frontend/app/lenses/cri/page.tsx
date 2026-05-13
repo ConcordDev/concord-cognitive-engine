@@ -546,7 +546,7 @@ export default function CRILensPage() {
             <div className="rounded-lg bg-lattice-deep border border-neon-cyan/20 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-neon-cyan font-medium capitalize text-xs">{String(actionResult.action)}</span>
-                <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300">
+                <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300" aria-label="Xcircle">
                   <XCircle className="w-3.5 h-3.5" />
                 </button>
               </div>

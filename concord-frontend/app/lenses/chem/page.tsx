@@ -473,7 +473,7 @@ export default function ChemLensPage() {
               <h4 className="font-semibold text-white flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-neon-cyan" /> Action Result
               </h4>
-              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white transition-colors">
+              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white transition-colors" aria-label="Xcircle">
                 <XCircle className="w-4 h-4" />
               </button>
             </div>

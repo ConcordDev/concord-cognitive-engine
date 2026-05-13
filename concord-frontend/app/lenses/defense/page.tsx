@@ -327,7 +327,7 @@ export default function DefenseLensPage() {
                 <button onClick={() => handleUpdate(item.id, item.data as ArtifactDataUnion)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-blue-400" title="Update">
                   <Eye className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400">
+                <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400" aria-label="Delete">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

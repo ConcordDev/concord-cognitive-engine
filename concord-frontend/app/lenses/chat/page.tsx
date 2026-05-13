@@ -3314,7 +3314,7 @@ export default function ChatLensPage() {
                 <button
                   onClick={() => setThreadSummarizeResult(null)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Xcircle">
                   <XCircle className="w-4 h-4" />
                 </button>
               </div>
@@ -3370,7 +3370,7 @@ export default function ChatLensPage() {
                 <button
                   onClick={() => setParticipantAnalysisResult(null)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Xcircle">
                   <XCircle className="w-4 h-4" />
                 </button>
               </div>
@@ -3441,7 +3441,7 @@ export default function ChatLensPage() {
                 <button
                   onClick={() => setTopicDetectionResult(null)}
                   className="text-gray-400 hover:text-white"
-                >
+                aria-label="Xcircle">
                   <XCircle className="w-4 h-4" />
                 </button>
               </div>

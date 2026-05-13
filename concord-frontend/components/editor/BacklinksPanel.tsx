@@ -119,7 +119,7 @@ export function BacklinksPanel({ dtuId, className, collapsed = false, onToggle }
         <button
           onClick={onToggle}
           className="p-1 text-gray-400 hover:text-white transition-colors"
-        >
+        aria-label="Next">
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>

@@ -280,7 +280,7 @@ export default function ConsultingLensPage() {
             <h3 className={ds.heading3}>
               {editingItem ? 'Edit' : 'New'} {activeArtifactType}
             </h3>
-            <button onClick={() => setEditorOpen(false)} className={ds.btnGhost}>
+            <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -490,7 +490,7 @@ export default function ConsultingLensPage() {
                       handleAction('analyze', item.id);
                     }}
                     className={ds.btnGhost}
-                  >
+                  aria-label="Activate">
                     <Zap className="w-4 h-4 text-neon-cyan" />
                   </button>
                   <button
@@ -499,7 +499,7 @@ export default function ConsultingLensPage() {
                       remove(item.id);
                     }}
                     className={ds.btnGhost}
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-4 h-4 text-red-400" />
                   </button>
                 </div>

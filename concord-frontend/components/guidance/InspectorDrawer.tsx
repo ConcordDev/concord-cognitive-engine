@@ -96,7 +96,7 @@ function InspectorDrawer({ entityType, entityId, onClose }: InspectorProps) {
           <Icon className="w-4 h-4 text-neon-blue" />
           <span className="text-sm font-medium text-white capitalize">{entityType} Inspector</span>
         </div>
-        <button onClick={onClose} className="text-gray-500 hover:text-white">
+        <button onClick={onClose} className="text-gray-500 hover:text-white" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -110,7 +110,7 @@ function InspectorDrawer({ entityType, entityId, onClose }: InspectorProps) {
           {/* ID bar */}
           <div className="px-4 py-2 flex items-center justify-between text-xs">
             <span className="font-mono text-gray-500 truncate">{entityId}</span>
-            <button onClick={copyId} className="text-gray-500 hover:text-white">
+            <button onClick={copyId} className="text-gray-500 hover:text-white" aria-label="Copy">
               <Copy className="w-3 h-3" />
             </button>
           </div>

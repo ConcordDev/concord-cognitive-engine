@@ -252,7 +252,7 @@ function CreateCRIModal({
       >
         <div className="flex items-center justify-between p-4 border-b border-lattice-border">
           <h2 className={ds.heading2}>Create New CRI</h2>
-          <button onClick={onClose} className={ds.btnGhost}>
+          <button onClick={onClose} className={ds.btnGhost} aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -338,7 +338,7 @@ function AddMemberModal({
       >
         <div className="flex items-center justify-between p-4 border-b border-lattice-border">
           <h2 className={ds.heading2}>Add Member</h2>
-          <button onClick={onClose} className={ds.btnGhost}>
+          <button onClick={onClose} className={ds.btnGhost} aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -422,7 +422,7 @@ function CreateProgramModal({
       >
         <div className="flex items-center justify-between p-4 border-b border-lattice-border">
           <h2 className={ds.heading2}>Create Research Program</h2>
-          <button onClick={onClose} className={ds.btnGhost}>
+          <button onClick={onClose} className={ds.btnGhost} aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -527,7 +527,7 @@ function CRIDetailView({ criId, onBack }: { criId: string; onBack: () => void })
     <div className={ds.pageContainer}>
       {/* Header */}
       <div className="flex items-center gap-4">
-        <button onClick={onBack} className={ds.btnGhost}>
+        <button onClick={onBack} className={ds.btnGhost} aria-label="Back">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex-1">
@@ -577,7 +577,7 @@ function CRIDetailView({ criId, onBack }: { criId: string; onBack: () => void })
               <Users className="w-4 h-4 inline mr-2 text-neon-blue" />
               Members
             </h2>
-            <button onClick={() => setShowAddMember(true)} className={ds.btnGhost}>
+            <button onClick={() => setShowAddMember(true)} className={ds.btnGhost} aria-label="Add user">
               <UserPlus className="w-4 h-4" />
             </button>
           </div>
@@ -614,7 +614,7 @@ function CRIDetailView({ criId, onBack }: { criId: string; onBack: () => void })
               <Beaker className="w-4 h-4 inline mr-2 text-neon-purple" />
               Research Programs
             </h2>
-            <button onClick={() => setShowCreateProgram(true)} className={ds.btnGhost}>
+            <button onClick={() => setShowCreateProgram(true)} className={ds.btnGhost} aria-label="Add">
               <Plus className="w-4 h-4" />
             </button>
           </div>

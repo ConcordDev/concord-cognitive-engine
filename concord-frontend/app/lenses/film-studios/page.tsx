@@ -269,7 +269,7 @@ export default function FilmStudiosPage() {
 
           {filmActionResult && (
             <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-              <button onClick={() => setFilmActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
+              <button onClick={() => setFilmActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
 
@@ -458,7 +458,7 @@ export default function FilmStudiosPage() {
                   </div>
                   <div className="flex gap-2 mt-3">
                     <button onClick={() => setPreviewFilm(film)} className="flex-1 text-xs py-1.5 bg-neon-purple/20 rounded hover:bg-neon-purple/30 flex items-center justify-center gap-1"><Play className="w-3 h-3" /> Preview</button>
-                    <button onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => showToast('success', 'Link copied to clipboard')).catch(() => showToast('error', 'Failed to copy link')); }} className="text-xs py-1.5 px-2 bg-white/5 rounded hover:bg-white/10"><Share2 className="w-3 h-3" /></button>
+                    <button onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => showToast('success', 'Link copied to clipboard')).catch(() => showToast('error', 'Failed to copy link')); }} className="text-xs py-1.5 px-2 bg-white/5 rounded hover:bg-white/10" aria-label="Share"><Share2 className="w-3 h-3" /></button>
                   </div>
                 </motion.div>
               ))}
@@ -746,7 +746,7 @@ export default function FilmStudiosPage() {
               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold">Create Film</h3>
-                  <button onClick={() => setShowCreateModal(false)}><X className="w-4 h-4" /></button>
+                  <button onClick={() => setShowCreateModal(false)} aria-label="Close"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="space-y-3">
                   <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Film title" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
@@ -787,7 +787,7 @@ export default function FilmStudiosPage() {
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{previewFilm.resolution}</span>
                     )}
                   </div>
-                  <button onClick={() => setPreviewFilm(null)} className="p-1 rounded hover:bg-white/10"><X className="w-4 h-4" /></button>
+                  <button onClick={() => setPreviewFilm(null)} className="p-1 rounded hover:bg-white/10" aria-label="Close"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="p-4">
                   <UniversalPlayer

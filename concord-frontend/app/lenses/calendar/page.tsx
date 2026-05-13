@@ -1029,13 +1029,13 @@ export default function CalendarLensPage() {
             {/* Mini calendar */}
             <div className="panel p-3">
               <div className="flex items-center justify-between mb-3">
-                <button onClick={() => navigateMonth(-1)} className="p-1 rounded hover:bg-lattice-elevated">
+                <button onClick={() => navigateMonth(-1)} className="p-1 rounded hover:bg-lattice-elevated" aria-label="Previous">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="text-sm font-medium">
                   {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
                 </span>
-                <button onClick={() => navigateMonth(1)} className="p-1 rounded hover:bg-lattice-elevated">
+                <button onClick={() => navigateMonth(1)} className="p-1 rounded hover:bg-lattice-elevated" aria-label="Next">
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -1196,7 +1196,7 @@ export default function CalendarLensPage() {
           <button
             onClick={() => setShowSidebar(!showSidebar)}
             className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-          >
+          aria-label="Calendar icon">
             <CalendarIcon className="w-5 h-5" />
           </button>
 
@@ -1212,7 +1212,7 @@ export default function CalendarLensPage() {
                 else navigateDay(-1);
               }}
               className="p-2 rounded-lg hover:bg-lattice-elevated"
-            >
+            aria-label="Previous">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
@@ -1222,7 +1222,7 @@ export default function CalendarLensPage() {
                 else navigateDay(1);
               }}
               className="p-2 rounded-lg hover:bg-lattice-elevated"
-            >
+            aria-label="Next">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -1264,10 +1264,10 @@ export default function CalendarLensPage() {
             ))}
           </div>
 
-          <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400">
+          <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400" aria-label="Search">
             <Search className="w-5 h-5" />
           </button>
-          <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Calendar settings' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400">
+          <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Calendar settings' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400" aria-label="Settings">
             <Settings className="w-5 h-5" />
           </button>
         </div>
@@ -1508,19 +1508,19 @@ export default function CalendarLensPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => { setShowEventModal(false); setEditingEventId(selectedEvent.id); setShowCreateModal(true); setNewEvent(selectedEvent); }} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400">
+                  <button onClick={() => { setShowEventModal(false); setEditingEventId(selectedEvent.id); setShowCreateModal(true); setNewEvent(selectedEvent); }} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400" aria-label="Edit">
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDeleteEvent(selectedEvent.id)}
                     className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-red-400"
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setShowEventModal(false)}
                     className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-                  >
+                  aria-label="Close">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -1649,7 +1649,7 @@ export default function CalendarLensPage() {
                 <button
                   onClick={() => setShowCreateModal(false)}
                   className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1795,7 +1795,7 @@ export default function CalendarLensPage() {
                       {(newEvent.collaborators || []).map((c) => (
                         <span key={c} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400">
                           {c}
-                          <button onClick={() => handleRemoveCollaborator(c)} className="hover:text-white">
+                          <button onClick={() => handleRemoveCollaborator(c)} className="hover:text-white" aria-label="Close">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
@@ -1927,7 +1927,7 @@ export default function CalendarLensPage() {
                 <button
                   onClick={() => setShowBookingModal(false)}
                   className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-                >
+                aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

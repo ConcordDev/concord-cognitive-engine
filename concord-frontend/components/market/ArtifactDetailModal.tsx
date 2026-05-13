@@ -50,7 +50,7 @@ function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModalProps) 
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
-          >
+          aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

@@ -961,6 +961,7 @@ export function PersistentChatRail({
 
               {/* Route overlay (shows lens attribution above assistant messages) */}
               {msg.role === 'assistant' && msg.route && (
+                // @modal-escape-ok: inline attribution overlay, not a focus-trap modal
                 <ChatRouteOverlay
                   route={msg.route}
                   requiresConfirmation={false}

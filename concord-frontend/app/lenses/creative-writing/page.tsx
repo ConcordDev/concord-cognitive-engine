@@ -362,7 +362,7 @@ export default function CreativeWritingPage() {
                   <div className="rounded-lg bg-black/30 border border-amber-500/20 p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-amber-300 font-medium capitalize">{actionResult.action}</span>
-                      <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300">
+                      <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300" aria-label="Xcircle">
                         <XCircle className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -628,8 +628,8 @@ export default function CreativeWritingPage() {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <button onClick={e => { e.stopPropagation(); openWork(work); }} className="p-1 hover:bg-white/10 rounded"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={e => { e.stopPropagation(); removeWork(work.id).then(() => { refetch(); useUIStore.getState().addToast({ type: 'success', message: 'Work deleted' }); }).catch(() => useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete' })); }} className="p-1 hover:bg-white/10 rounded text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={e => { e.stopPropagation(); openWork(work); }} className="p-1 hover:bg-white/10 rounded" aria-label="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={e => { e.stopPropagation(); removeWork(work.id).then(() => { refetch(); useUIStore.getState().addToast({ type: 'success', message: 'Work deleted' }); }).catch(() => useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete' })); }} className="p-1 hover:bg-white/10 rounded text-red-400" aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
                       {work.content && <p className="text-xs text-gray-600 mt-2 line-clamp-2">{work.content.slice(0, 200)}</p>}

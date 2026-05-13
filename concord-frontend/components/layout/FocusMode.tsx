@@ -181,7 +181,7 @@ export function PomodoroTimer({
         <button
           onClick={reset}
           className="p-1.5 text-gray-400 hover:text-white transition-colors"
-        >
+        aria-label="Rotate ccw">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>

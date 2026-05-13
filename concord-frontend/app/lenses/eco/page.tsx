@@ -406,7 +406,7 @@ export default function EcoLensPage() {
             className="w-full pl-10 pr-4 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:outline-none focus:border-neon-green/50"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -964,7 +964,7 @@ export default function EcoLensPage() {
         </div>
         <div className="flex items-center gap-2">
           <DTUExportButton domain="eco" data={{}} compact />
-          <button onClick={handleRefresh} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors">
+          <button onClick={handleRefresh} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors" aria-label="Refresh">
             <RefreshCw className="w-5 h-5" />
           </button>
         </div>

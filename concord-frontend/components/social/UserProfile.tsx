@@ -224,7 +224,7 @@ function FollowList({
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">
           <h3 className="text-white font-medium">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Comment">
             <MessageCircle className="w-4 h-4" />
           </button>
         </div>
@@ -404,7 +404,7 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
             <button
               onClick={() => setShowOptions((prev) => !prev)}
               className="p-2 rounded-lg bg-black/30 backdrop-blur-sm text-white/80 hover:text-white transition-colors"
-            >
+            aria-label="More options">
               <MoreHorizontal className="w-4 h-4" />
             </button>
             <AnimatePresence>
@@ -549,13 +549,13 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
           <button
             onClick={() => setShowFollowers(true)}
             className="hover:bg-lattice-surface rounded-lg p-2 transition-colors"
-          >
+          aria-label="Stat card">
             <StatCard label="Followers" value={profile.stats.followerCount} icon={Users} />
           </button>
           <button
             onClick={() => setShowFollowing(true)}
             className="hover:bg-lattice-surface rounded-lg p-2 transition-colors"
-          >
+          aria-label="Stat card">
             <StatCard label="Following" value={profile.stats.followingCount} icon={UserPlus} />
           </button>
           <StatCard label="DTUs" value={profile.stats.dtuCount} icon={FileText} />

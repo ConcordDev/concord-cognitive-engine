@@ -79,7 +79,7 @@ function CreateGroupModal({
             <Users className="w-4 h-4 text-neon-cyan" />
             <h2 className="text-sm font-semibold text-white">Create Group</h2>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white">
+          <button onClick={onClose} className="text-gray-500 hover:text-white" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -144,7 +144,7 @@ function CreateGroupModal({
                   <button
                     onClick={() => setTags(tags.filter((t) => t !== tag))}
                     className="text-gray-500 hover:text-white ml-0.5"
-                  >
+                  aria-label="Close">
                     <X className="w-2 h-2" />
                   </button>
                 </span>
@@ -274,7 +274,7 @@ export default function GroupsPage() {
                 setSearchQuery('');
               }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-            >
+            aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

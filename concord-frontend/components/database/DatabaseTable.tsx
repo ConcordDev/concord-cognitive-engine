@@ -334,7 +334,7 @@ export function DatabaseTable({
                     <button
                       onClick={() => onDeleteRow?.(row.id)}
                       className="p-1 text-gray-500 hover:text-red-400 transition-colors"
-                    >
+                    aria-label="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
@@ -359,7 +359,7 @@ export function DatabaseTable({
                     <button
                       onClick={handleAddRow}
                       className="p-1 text-neon-cyan hover:text-neon-cyan/80 transition-colors"
-                    >
+                    aria-label="Add">
                       <Plus className="w-4 h-4" />
                     </button>
                   </td>
@@ -421,7 +421,7 @@ export function DatabaseTable({
                   </div>
                 ))}
                 {onDeleteRow && (
-                  <button onClick={() => onDeleteRow(row.id)} className="text-red-400 hover:text-red-300 shrink-0">
+                  <button onClick={() => onDeleteRow(row.id)} className="text-red-400 hover:text-red-300 shrink-0" aria-label="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}

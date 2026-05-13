@@ -184,7 +184,7 @@ export function PresenceIndicator({
                         // Open chat
                       }}
                       className="p-1 text-gray-400 hover:text-white"
-                    >
+                    aria-label="Message">
                       <MessageSquare className="w-4 h-4" />
                     </button>
                   </div>

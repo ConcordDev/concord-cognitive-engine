@@ -20,6 +20,7 @@ import { preferConstFix } from "./prefer-const.js";
 import { dropConsoleLogFix } from "./drop-console-log.js";
 import { emptyCatchFix } from "./empty-catch.js";
 import { fetchTimeoutFix } from "./fetch-timeout.js";
+import { a11yButtonLabelFix } from "./a11y-button-label.js";
 
 const FIXES = new Map();
 
@@ -61,3 +62,4 @@ registerFix(preferConstFix);
 registerFix(dropConsoleLogFix);
 registerFix(emptyCatchFix);
 registerFix(fetchTimeoutFix);
+registerFix(a11yButtonLabelFix);

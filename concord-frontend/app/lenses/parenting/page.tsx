@@ -222,7 +222,7 @@ export default function ParentingLensPage() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)}>
         <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType.replace(/([A-Z])/g, ' $1').trim()}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost}><X className="w-4 h-4" /></button></div>
+          <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType.replace(/([A-Z])/g, ' $1').trim()}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button></div>
           <div className="space-y-3">
             <div><label className={ds.label}>Title</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -328,8 +328,8 @@ export default function ParentingLensPage() {
               <div className="flex items-center gap-2">
                 {d.date && <span className="text-xs text-gray-400">{d.date}</span>}
                 <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
-                <button onClick={e => { e.stopPropagation(); handleAction('analyze', item.id); }} className={ds.btnGhost}><Zap className="w-4 h-4 text-pink-400" /></button>
-                <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost}><Trash2 className="w-4 h-4 text-red-400" /></button>
+                <button onClick={e => { e.stopPropagation(); handleAction('analyze', item.id); }} className={ds.btnGhost} aria-label="Activate"><Zap className="w-4 h-4 text-pink-400" /></button>
+                <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-4 h-4 text-red-400" /></button>
               </div>
             </div>
           </motion.div>

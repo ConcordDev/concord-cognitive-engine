@@ -599,7 +599,7 @@ function CreateProposalModal({
             <Plus className="w-5 h-5 text-neon-purple" />
             New Proposal
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -782,7 +782,7 @@ function DiscussionThread({
         {replyTo && (
           <div className="flex items-center gap-2 mb-2 text-xs text-neon-blue">
             <span>Replying to comment</span>
-            <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white">
+            <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white" aria-label="Close">
               <X className="w-3 h-3" />
             </button>
           </div>
@@ -799,7 +799,7 @@ function DiscussionThread({
             onClick={handleSubmit}
             disabled={!newComment.trim() || addCommentMutation.isPending}
             className="px-4 py-2 bg-neon-blue/10 text-neon-blue border border-neon-blue/30 rounded-lg hover:bg-neon-blue/20 transition-colors disabled:opacity-50"
-          >
+          aria-label="Send">
             <Send className="w-4 h-4" />
           </button>
         </div>
@@ -1000,7 +1000,7 @@ function ResultsDashboard({
             Vote Actions
           </h3>
           {voteActionResult && (
-            <button onClick={() => setVoteActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400">
+            <button onClick={() => setVoteActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

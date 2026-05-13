@@ -46,7 +46,7 @@ function shouldScan(rel) {
 // composed `<UserProfileDialog>` while keeping the regex simple.
 const MODAL_OPEN_RE = /<([A-Z]\w*)\b/g;
 const MODAL_SUFFIX_RE = /(?:Modal|Dialog|Drawer|Sheet|Popover|Overlay)$/;
-const CLOSE_PROP_RE = /\bon(?:Close|OpenChange|Dismiss|Esc|EscapeKeyDown|InteractOutside)\b/;
+const CLOSE_PROP_RE = /\bon(?:Close|OpenChange|Dismiss|Esc|EscapeKeyDown|InteractOutside|Cancel|Abort|Hide|Done)\b/;
 const ESC_HANDLER_FILE_RE = /\bkey\s*===?\s*['"]Escape['"]|\bEscapeKeyDown\b|\baddEventListener\s*\(\s*['"`]keydown['"`]/;
 
 function extractOpeningTag(content, startIdx) {
@@ -105,6 +105,16 @@ export async function runUxModalNoEscapeDetector({ root, opts = {} } = {}) {
       while ((m = re.exec(content)) != null) {
         const tagName = m[1];
         if (!MODAL_SUFFIX_RE.test(tagName)) continue;
+        // Filter out TypeScript generic usages like
+        // `useState<JuiceOverlay[]>(…)` or `Map<Modal, X>`. JSX
+        // elements are preceded by whitespace / `>` / `(` / `{` / `,`
+        // / `=` / `/`; TS generics are preceded by an identifier
+        // character. Also skip when followed immediately by `[` (array
+        // type) or `,` (multi-type-arg).
+        const prevCh = m.index > 0 ? content[m.index - 1] : "\n";
+        if (/[A-Za-z0-9_$]/.test(prevCh)) continue;
+        const afterTag = content.slice(m.index + 1 + tagName.length, m.index + 1 + tagName.length + 2);
+        if (afterTag[0] === "[" || afterTag[0] === ",") continue;
         const opening = extractOpeningTag(content, m.index);
         if (!opening) continue;
         const attrs = opening.attrs;

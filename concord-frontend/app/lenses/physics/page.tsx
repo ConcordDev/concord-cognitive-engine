@@ -1154,7 +1154,7 @@ export default function PhysicsLensPage() {
           >
             <RotateCcw className="w-4 h-4" />
           </button>
-          <button onClick={() => setShowSettings(!showSettings)} className="btn-neon">
+          <button onClick={() => setShowSettings(!showSettings)} className="btn-neon" aria-label="Settings">
             <Settings className="w-4 h-4" />
           </button>
         </div>
@@ -1571,7 +1571,7 @@ export default function PhysicsLensPage() {
                   <button
                     onClick={e => { e.stopPropagation(); removeSim(sim.id); }}
                     className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>

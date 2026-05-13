@@ -1622,7 +1622,7 @@ export default function GameLensPage() {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white">Create Challenge</h2>
-                <button onClick={() => setShowCreateChallenge(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowCreateChallenge(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
 
               <div>
@@ -1709,7 +1709,7 @@ export default function GameLensPage() {
 
         {gameActionResult && (
           <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setGameActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
+            <button onClick={() => setGameActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 

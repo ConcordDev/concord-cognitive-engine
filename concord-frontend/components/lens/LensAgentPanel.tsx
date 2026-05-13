@@ -351,7 +351,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
             <p className="text-[11px] text-zinc-500">Lens-aware assistant — 200+ apps, web, compute, citations</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800">
+        <button onClick={onClose} className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </header>
@@ -486,7 +486,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
                 <button
                   onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
                   className="text-zinc-500 hover:text-zinc-100 ml-1"
-                ><X className="w-3 h-3" /></button>
+                aria-label="Close"><X className="w-3 h-3" /></button>
               </span>
             ))}
           </div>
@@ -528,7 +528,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
             onClick={submit}
             disabled={busy || !prompt.trim()}
             className="p-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-amber-50 disabled:opacity-40 shrink-0"
-          >
+          aria-label="Send">
             <Send className="w-4 h-4" />
           </button>
         </div>

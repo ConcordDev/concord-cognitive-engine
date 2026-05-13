@@ -469,7 +469,7 @@ export function SharedSessionChat({ sessionId, currentUserId, onEnd }: SharedSes
                 className="px-4 py-2 rounded-lg bg-cyan-500/20 text-cyan-400
                   border border-cyan-500/50 text-sm disabled:opacity-30
                   hover:bg-cyan-500/30 transition-colors"
-              >
+              aria-label="Send">
                 <Send className="w-4 h-4" />
               </button>
             </div>

@@ -1369,11 +1369,11 @@ export default function GraphLensPage() {
         {/* --- Right toolbar --- */}
         <div className="absolute bottom-6 right-6 flex flex-col gap-2">
           <div className="bg-[#0d1117]/90 backdrop-blur-md border border-cyan-900/20 rounded-xl overflow-hidden shadow-lg shadow-cyan-900/10">
-            <button onClick={() => setZoom(z => Math.min(z * 1.2, 8))} className="p-2.5 hover:bg-cyan-900/20 transition-colors block w-full">
+            <button onClick={() => setZoom(z => Math.min(z * 1.2, 8))} className="p-2.5 hover:bg-cyan-900/20 transition-colors block w-full" aria-label="Zoom in">
               <ZoomIn className="w-5 h-5 text-cyan-300 mx-auto" />
             </button>
             <div className="px-2 py-1 text-xs text-center text-cyan-400/70 border-y border-cyan-900/20 font-mono">{Math.round(zoom * 100)}%</div>
-            <button onClick={() => setZoom(z => Math.max(z / 1.2, 0.1))} className="p-2.5 hover:bg-cyan-900/20 transition-colors block w-full">
+            <button onClick={() => setZoom(z => Math.max(z / 1.2, 0.1))} className="p-2.5 hover:bg-cyan-900/20 transition-colors block w-full" aria-label="Zoom out">
               <ZoomOut className="w-5 h-5 text-cyan-300 mx-auto" />
             </button>
           </div>
@@ -1650,7 +1650,7 @@ export default function GraphLensPage() {
             className="w-80 border-l border-cyan-900/20 bg-[#0d1117]/95 backdrop-blur-md p-4 overflow-y-auto shadow-2xl shadow-cyan-900/10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-cyan-100">Node Details</h2>
-              <button onClick={() => setSelectedNode(null)} className="p-1 hover:bg-cyan-900/20 rounded-lg transition-colors">
+              <button onClick={() => setSelectedNode(null)} className="p-1 hover:bg-cyan-900/20 rounded-lg transition-colors" aria-label="Close">
                 <X className="w-5 h-5 text-cyan-500/50" />
               </button>
             </div>

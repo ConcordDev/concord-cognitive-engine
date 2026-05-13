@@ -486,7 +486,7 @@ function MineTab({ onChanged }: { onChanged: () => void }) {
             className="bg-transparent outline-none text-sm flex-1 placeholder:text-white/30"
           />
           {search && (
-            <button onClick={() => setSearch('')} className="text-white/40 hover:text-white">
+            <button onClick={() => setSearch('')} className="text-white/40 hover:text-white" aria-label="Close">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -614,7 +614,7 @@ function RecipeDetailModal({ recipe, onClose }: { recipe: RecipeRow; onClose: ()
             </div>
             <h3 className="text-base font-bold leading-tight">{recipe.title}</h3>
           </div>
-          <button onClick={onClose} className="text-white/50 hover:text-white">
+          <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -953,7 +953,7 @@ function BrowseTab({ onPurchased }: { onPurchased: () => void }) {
             className="bg-transparent outline-none text-sm flex-1 placeholder:text-white/30"
           />
           {search && (
-            <button onClick={() => setSearch('')} className="text-white/40 hover:text-white">
+            <button onClick={() => setSearch('')} className="text-white/40 hover:text-white" aria-label="Close">
               <X className="w-3.5 h-3.5" />
             </button>
           )}

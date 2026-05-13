@@ -112,7 +112,7 @@ export default function BillingDashboardPage() {
         <Card title="CC balance">
           <div className="text-3xl font-medium">{balance == null ? "—" : balance.toFixed(2)}</div>
           <div className="text-xs text-zinc-500 mt-1">Concord Coin</div>
-          <a href="/economy/wallet" className="text-xs underline">Top up via Stripe →</a>
+          <a href="/lenses/wallet" className="text-xs underline">Top up via Stripe →</a>
         </Card>
         <Card title="Spend (last 7d)">
           <div className="text-3xl font-medium">{totalCost7d.toFixed(2)}</div>

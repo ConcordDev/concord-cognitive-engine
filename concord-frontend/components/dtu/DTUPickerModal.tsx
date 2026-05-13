@@ -79,7 +79,7 @@ export function DTUPickerModal({
             <Package className="w-4 h-4 text-neon-cyan" />
             {title}
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

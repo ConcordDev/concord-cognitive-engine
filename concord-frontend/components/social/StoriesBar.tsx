@@ -186,7 +186,7 @@ function StoryViewer({
       <button
         onClick={onClose}
         className="absolute top-4 right-4 z-10 p-2 text-white/70 hover:text-white transition-colors"
-      >
+      aria-label="Close">
         <X className="w-6 h-6" />
       </button>
 
@@ -195,7 +195,7 @@ function StoryViewer({
         <button
           onClick={goPrev}
           className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 text-white/50 hover:text-white transition-colors"
-        >
+        aria-label="Previous">
           <ChevronLeft className="w-8 h-8" />
         </button>
       )}
@@ -203,7 +203,7 @@ function StoryViewer({
         <button
           onClick={goNext}
           className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 text-white/50 hover:text-white transition-colors"
-        >
+        aria-label="Next">
           <ChevronRight className="w-8 h-8" />
         </button>
       )}
@@ -340,13 +340,13 @@ function StoriesBar({ currentUserId, onCreateStory, className }: StoriesBarProps
         <button
           onClick={scrollLeft}
           className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-lattice-surface/80 backdrop-blur-sm border border-lattice-border rounded-full text-gray-400 hover:text-white transition-colors hidden sm:block"
-        >
+        aria-label="Previous">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <button
           onClick={scrollRight}
           className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-lattice-surface/80 backdrop-blur-sm border border-lattice-border rounded-full text-gray-400 hover:text-white transition-colors hidden sm:block"
-        >
+        aria-label="Next">
           <ChevronRight className="w-4 h-4" />
         </button>
 

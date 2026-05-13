@@ -467,7 +467,7 @@ export default function EnergyLensPage() {
                       <button
                         onClick={() => remove(asset.id)}
                         className="text-gray-500 hover:text-red-400"
-                      >
+                      aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

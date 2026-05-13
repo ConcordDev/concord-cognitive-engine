@@ -488,7 +488,7 @@ export default function AgentsLensPage() {
                           <button
                             onClick={(e) => { e.stopPropagation(); setSelectedAgent(agent); setDetailTab('logs'); }}
                             className="flex items-center justify-center gap-1 px-3 py-1.5 rounded text-xs font-medium bg-lattice-bg text-gray-400 hover:text-white transition-colors"
-                          >
+                          aria-label="Terminal">
                             <Terminal className="w-3 h-3" />
                           </button>
                           <button
@@ -716,7 +716,7 @@ export default function AgentsLensPage() {
                       <h3 className="font-semibold text-white flex items-center gap-2">
                         <BarChart3 className="w-4 h-4 text-neon-cyan" /> Action Result
                       </h3>
-                      <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white">
+                      <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Xcircle">
                         <XCircle className="w-4 h-4" />
                       </button>
                     </div>
@@ -1014,7 +1014,7 @@ export default function AgentsLensPage() {
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Plus className="w-5 h-5 text-neon-cyan" /> Create New Agent
                 </h2>
-                <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white">
+                <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white" aria-label="Xcircle">
                   <XCircle className="w-5 h-5" />
                 </button>
               </div>

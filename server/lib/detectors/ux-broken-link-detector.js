@@ -63,7 +63,14 @@ async function collectAppRoutes(repoRoot) {
     }
     const url = "/" + urlSegments.join("/");
     if (isDynamic) {
-      const pat = "^" + url.replace(/\//g, "\\/").replace(/__DYN__/g, "[^\\/]+") + "(?:\\/[^?#]*)?$";
+      // Build a regex that matches every literal segment + a wildcard
+      // for the dynamic placeholder. escapeRegexAll escapes every
+      // regex metachar so a folder name containing `.`, `+`, `*`,
+      // `(`, `[`, `\` etc. is treated as a literal — not a partial
+      // pattern (CodeQL js/incomplete-sanitization).
+      const escapeRegexAll = (s) => s.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+      const segments = url.split("/").map((seg) => seg === "__DYN__" ? "[^/]+" : escapeRegexAll(seg));
+      const pat = "^" + segments.join("\\/") + "(?:\\/[^?#]*)?$";
       dynamicPatterns.push(new RegExp(pat));
     } else {
       routes.add(url);

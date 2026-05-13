@@ -397,7 +397,7 @@ export default function AnimationPage() {
                 className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:border-orange-500/30"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -451,7 +451,7 @@ export default function AnimationPage() {
                       <button onClick={handlePlayPause} className={cn('p-2 rounded transition-colors', isPlaying ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-white/5 text-white hover:bg-white/10')}>
                         {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       </button>
-                      <button onClick={handleResetTimeline} className="p-2 bg-white/5 rounded hover:bg-white/10"><RotateCcw className="w-4 h-4" /></button>
+                      <button onClick={handleResetTimeline} className="p-2 bg-white/5 rounded hover:bg-white/10" aria-label="Rotate ccw"><RotateCcw className="w-4 h-4" /></button>
                     </div>
                   </div>
                 </div>
@@ -531,7 +531,7 @@ export default function AnimationPage() {
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 border border-white/10 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-orange-400" /> Result</h3>
-                  <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white"><XCircle className="w-4 h-4" /></button>
+                  <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Xcircle"><XCircle className="w-4 h-4" /></button>
                 </div>
 
                 {/* Interpolate Keyframes Result */}
@@ -649,7 +649,7 @@ export default function AnimationPage() {
               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold">New Animation Project</h3>
-                  <button onClick={() => setShowCreateModal(false)}><X className="w-4 h-4" /></button>
+                  <button onClick={() => setShowCreateModal(false)} aria-label="Close"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="space-y-3">
                   <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Project title" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />

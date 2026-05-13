@@ -795,7 +795,7 @@ function WalletPageInner() {
                       key={tx.id || i}
                       onClick={() => setActiveTx(tx)}
                       className="w-full text-left rounded-lg hover:bg-lattice-elevated/40 transition-colors"
-                    >
+                    aria-label="Transaction row">
                       <TransactionRow tx={tx} />
                     </button>
                   ))}
@@ -1031,7 +1031,7 @@ function WalletPageInner() {
             Wallet Actions
           </h3>
           {walletActionResult && (
-            <button onClick={() => setWalletActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400">
+            <button onClick={() => setWalletActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Xicon">
               <XIcon className="w-4 h-4" />
             </button>
           )}

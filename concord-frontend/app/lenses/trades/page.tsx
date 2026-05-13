@@ -831,10 +831,10 @@ export default function TradesLensPage() {
                         <div className="absolute left-0 top-1/2 w-2 h-px bg-neon-cyan" />
                       )}
                     </div>
-                    <button onClick={() => toggleMilestone(phase.id)} className={cn(ds.btnSmall, 'text-gray-500 hover:text-yellow-400 opacity-0 group-hover:opacity-100')}>
+                    <button onClick={() => toggleMilestone(phase.id)} className={cn(ds.btnSmall, 'text-gray-500 hover:text-yellow-400 opacity-0 group-hover:opacity-100')} aria-label="Favorite">
                       <Star className="w-3 h-3" />
                     </button>
-                    <button onClick={() => setPhases(prev => prev.filter(p => p.id !== phase.id))} className={cn(ds.btnSmall, 'text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100')}>
+                    <button onClick={() => setPhases(prev => prev.filter(p => p.id !== phase.id))} className={cn(ds.btnSmall, 'text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100')} aria-label="Close">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -951,7 +951,7 @@ export default function TradesLensPage() {
                       <span className={ds.textMono}>{fmtCurrency(lineTotal)}</span>
                     </td>
                     <td className="py-1 px-2">
-                      <button onClick={() => removeEstLineItem(li.id)} className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')}>
+                      <button onClick={() => removeEstLineItem(li.id)} className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')} aria-label="Delete">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </td>
@@ -1215,7 +1215,7 @@ export default function TradesLensPage() {
                       {te.isOvertime && <AlertTriangle className="w-4 h-4 text-red-400 mx-auto" />}
                     </td>
                     <td className="py-2 px-3">
-                      <button onClick={() => setTimeEntries(prev => prev.filter(t => t.id !== te.id))} className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')}>
+                      <button onClick={() => setTimeEntries(prev => prev.filter(t => t.id !== te.id))} className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')} aria-label="Delete">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </td>
@@ -1485,7 +1485,7 @@ export default function TradesLensPage() {
                         </select>
                       </td>
                       <td className="py-2 px-3">
-                        <button onClick={() => setMatEntries(prev => prev.filter(x => x.id !== m.id))} className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')}>
+                        <button onClick={() => setMatEntries(prev => prev.filter(x => x.id !== m.id))} className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')} aria-label="Delete">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </td>
@@ -1610,7 +1610,7 @@ export default function TradesLensPage() {
                               <p className={ds.textMuted}>{entry.date}</p>
                               {entry.notes && <p className="text-xs text-gray-500 mt-1">{entry.notes}</p>}
                             </div>
-                            <button onClick={() => setPhotoEntries(prev => prev.filter(p => p.id !== entry.id))} className={cn(ds.btnSmall, 'text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100')}>
+                            <button onClick={() => setPhotoEntries(prev => prev.filter(p => p.id !== entry.id))} className={cn(ds.btnSmall, 'text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100')} aria-label="Delete">
                               <Trash2 className="w-3 h-3" />
                             </button>
                           </div>
@@ -1761,7 +1761,7 @@ export default function TradesLensPage() {
               <h2 className={ds.heading2}>
                 {editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}
               </h2>
-              <button onClick={() => setEditorOpen(false)} className={ds.btnGhost}>
+              <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -2125,7 +2125,7 @@ export default function TradesLensPage() {
               <input type="number" value={li.quantity} onChange={e => { const next = [...invLineItems]; next[i] = { ...li, quantity: Number(e.target.value) || 0 }; setInvLineItems(next); }} className={cn(ds.input, 'w-20')} min={0} />
               <input type="number" value={li.unitPrice} onChange={e => { const next = [...invLineItems]; next[i] = { ...li, unitPrice: Number(e.target.value) || 0 }; setInvLineItems(next); }} className={cn(ds.input, 'w-24')} min={0} step={0.01} />
               {invLineItems.length > 1 && (
-                <button onClick={() => setInvLineItems(prev => prev.filter((_, j) => j !== i))} className={ds.btnGhost}><X className="w-3 h-3" /></button>
+                <button onClick={() => setInvLineItems(prev => prev.filter((_, j) => j !== i))} className={ds.btnGhost} aria-label="Close"><X className="w-3 h-3" /></button>
               )}
             </div>
           ))}
@@ -2257,7 +2257,7 @@ export default function TradesLensPage() {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neon-cyan/10 border border-neon-cyan/30">
               <CircleDot className="w-3 h-3 text-neon-cyan" />
               <span className="text-xs text-neon-cyan truncate max-w-[160px]">{selectedJob.title}</span>
-              <button onClick={() => setSelectedJobId(null)} className="text-neon-cyan/60 hover:text-neon-cyan">
+              <button onClick={() => setSelectedJobId(null)} className="text-neon-cyan/60 hover:text-neon-cyan" aria-label="Close">
                 <X className="w-3 h-3" />
               </button>
             </div>
@@ -2361,7 +2361,7 @@ export default function TradesLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <div className="space-y-3">
             {/* calculateEstimate */}

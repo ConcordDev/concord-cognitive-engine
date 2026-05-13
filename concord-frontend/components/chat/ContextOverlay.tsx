@@ -181,7 +181,7 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
-          >
+          aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>

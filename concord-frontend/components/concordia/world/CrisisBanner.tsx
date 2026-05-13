@@ -51,7 +51,7 @@ function CrisisItem({ crisis, onDismiss }: { crisis: Crisis; onDismiss: () => vo
           </button>
         </div>
       </div>
-      <button onClick={onDismiss} className="text-white/30 hover:text-white/60 flex-shrink-0">
+      <button onClick={onDismiss} className="text-white/30 hover:text-white/60 flex-shrink-0" aria-label="Close">
         <X className="w-3.5 h-3.5" />
       </button>
     </div>

@@ -180,7 +180,7 @@ export default function GlobalPage() {
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
               className="p-1 rounded hover:bg-lattice-surface disabled:opacity-30"
-            >
+            aria-label="Previous">
               <ChevronLeft className="w-4 h-4" />
             </button>
             <span>
@@ -190,7 +190,7 @@ export default function GlobalPage() {
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
               className="p-1 rounded hover:bg-lattice-surface disabled:opacity-30"
-            >
+            aria-label="Next">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

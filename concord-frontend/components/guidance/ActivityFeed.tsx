@@ -110,7 +110,7 @@ function ActivityFeed() {
           Activity Feed
           <span className="text-sm text-gray-500 font-normal">({total} events)</span>
         </h2>
-        <button onClick={() => refetch()} className="text-gray-400 hover:text-white p-1">
+        <button onClick={() => refetch()} className="text-gray-400 hover:text-white p-1" aria-label="Refresh">
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
@@ -214,7 +214,7 @@ function ActivityFeed() {
             onClick={() => setOffset(Math.max(0, offset - limit))}
             disabled={offset === 0}
             className="p-1 text-gray-400 hover:text-white disabled:opacity-30"
-          >
+          aria-label="Previous">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-xs text-gray-500">
@@ -224,7 +224,7 @@ function ActivityFeed() {
             onClick={() => setOffset(offset + limit)}
             disabled={currentPage >= totalPages}
             className="p-1 text-gray-400 hover:text-white disabled:opacity-30"
-          >
+          aria-label="Next">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>

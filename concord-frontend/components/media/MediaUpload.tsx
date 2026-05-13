@@ -327,7 +327,7 @@ export function MediaUpload({
           <button
             onClick={onCancel}
             className="p-1.5 text-gray-400 hover:text-white rounded-lg transition-colors"
-          >
+          aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         )}
@@ -427,7 +427,7 @@ export function MediaUpload({
                 <button
                   onClick={removeFile}
                   className="p-1.5 text-gray-400 hover:text-red-400 rounded-lg transition-colors"
-                >
+                aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -508,7 +508,7 @@ export function MediaUpload({
                     <button
                       onClick={() => removeTag(tag)}
                       className="hover:text-white transition-colors"
-                    >
+                    aria-label="Close">
                       <X className="w-3 h-3" />
                     </button>
                   </span>
@@ -527,7 +527,7 @@ export function MediaUpload({
                   onClick={addTag}
                   disabled={!tagInput.trim()}
                   className="px-3 py-1.5 rounded-lg bg-lattice-deep border border-lattice-border text-gray-400 hover:text-neon-cyan disabled:opacity-30 transition-colors"
-                >
+                aria-label="Add">
                   <Plus className="w-4 h-4" />
                 </button>
               </div>

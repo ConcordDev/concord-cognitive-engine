@@ -568,7 +568,7 @@ export default function FoodLensPage() {
                 <h2 className={ds.heading2}>Recipe Scaler</h2>
                 <p className={ds.textMuted}>{item.title}</p>
               </div>
-              <button onClick={() => setRecipeScaleId(null)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+              <button onClick={() => setRecipeScaleId(null)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-6">
               {/* Scale controls */}
@@ -826,7 +826,7 @@ export default function FoodLensPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-red-400 font-mono font-bold">${entry.cost.toFixed(2)}</span>
-                <button onClick={() => setWasteLog(prev => prev.filter(w => w.id !== entry.id))} className={cn(ds.btnSmall, 'text-red-400')}><Trash2 className="w-3 h-3" /></button>
+                <button onClick={() => setWasteLog(prev => prev.filter(w => w.id !== entry.id))} className={cn(ds.btnSmall, 'text-red-400')} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
               </div>
             </div>
           ))}
@@ -1141,7 +1141,7 @@ export default function FoodLensPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={ds.badge('purple-400')}>~{w.estimatedWait}min</span>
-                  <button onClick={() => setWaitlist(prev => prev.filter(x => x.id !== w.id))} className={cn(ds.btnSmall, 'text-red-400')}><X className="w-3 h-3" /></button>
+                  <button onClick={() => setWaitlist(prev => prev.filter(x => x.id !== w.id))} className={cn(ds.btnSmall, 'text-red-400')} aria-label="Close"><X className="w-3 h-3" /></button>
                 </div>
               </div>
             ))}
@@ -1535,8 +1535,8 @@ export default function FoodLensPage() {
                         <p className={ds.textMuted}>{d.quantity || 1} {d.shoppingUnit || 'ea'}</p>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}><Edit2 className="w-3 h-3" /></button>
-                        <button className={cn(ds.btnSmall, 'text-red-400')} onClick={() => removeShoppingItem(item.id)}><Trash2 className="w-3 h-3" /></button>
+                        <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)} aria-label="Edit"><Edit2 className="w-3 h-3" /></button>
+                        <button className={cn(ds.btnSmall, 'text-red-400')} onClick={() => removeShoppingItem(item.id)} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                   );
@@ -1777,8 +1777,8 @@ export default function FoodLensPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={e => { e.stopPropagation(); openEdit(item); }}><Edit2 className="w-3 h-3" /></button>
-                        <button className={cn(ds.btnSmall, 'text-red-400')} onClick={e => { e.stopPropagation(); remove(item.id); }}><Trash2 className="w-3 h-3" /></button>
+                        <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={e => { e.stopPropagation(); openEdit(item); }} aria-label="Edit"><Edit2 className="w-3 h-3" /></button>
+                        <button className={cn(ds.btnSmall, 'text-red-400')} onClick={e => { e.stopPropagation(); remove(item.id); }} aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                   );
@@ -1861,7 +1861,7 @@ export default function FoodLensPage() {
           <div className={ds.panel}>
             <div className="flex items-center justify-between mb-2">
               <h3 className={ds.heading3}>Action Result</h3>
-              <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+              <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-3">
               {/* scaleRecipe */}
@@ -2109,7 +2109,7 @@ export default function FoodLensPage() {
           <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <h2 className={ds.heading2}>{editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}</h2>
-              <button onClick={() => setEditorOpen(false)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+              <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
               <div>

@@ -218,7 +218,7 @@ export function VirtualDTUList({
                 onFavorite?.(dtu);
               }}
               className="p-1.5 text-gray-400 hover:text-yellow-400 transition-colors"
-            >
+            aria-label="Favorite">
               <Star className={cn('w-4 h-4', dtu.isFavorite && 'fill-yellow-400 text-yellow-400')} />
             </button>
             <button
@@ -227,7 +227,7 @@ export function VirtualDTUList({
                 handleContextMenu(e, dtu);
               }}
               className="p-1.5 text-gray-400 hover:text-white transition-colors"
-            >
+            aria-label="More options">
               <MoreHorizontal className="w-4 h-4" />
             </button>
           </div>

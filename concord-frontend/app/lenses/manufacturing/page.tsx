@@ -1120,7 +1120,7 @@ export default function ManufacturingLensPage() {
                       openEdit(item.id);
                     }}
                     className={ds.btnGhost}
-                  >
+                  aria-label="Edit">
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
@@ -1129,7 +1129,7 @@ export default function ManufacturingLensPage() {
                       remove(item.id);
                     }}
                     className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                   {isDetail ? (
@@ -1419,7 +1419,7 @@ export default function ManufacturingLensPage() {
                     openEdit(item.id);
                   }}
                   className={ds.btnGhost}
-                >
+                aria-label="Edit">
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
                 <button
@@ -1428,7 +1428,7 @@ export default function ManufacturingLensPage() {
                     remove(item.id);
                   }}
                   className={cn(ds.btnGhost, 'hover:text-red-400')}
-                >
+                aria-label="Delete">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1515,7 +1515,7 @@ export default function ManufacturingLensPage() {
                     openEdit(item.id);
                   }}
                   className={ds.btnGhost}
-                >
+                aria-label="Edit">
                   <Edit2 className="w-4 h-4" />
                 </button>
                 {isDetail ? (
@@ -1870,7 +1870,7 @@ export default function ManufacturingLensPage() {
                     openEdit(item.id);
                   }}
                   className={ds.btnGhost}
-                >
+                aria-label="Edit">
                   <Edit2 className="w-4 h-4" />
                 </button>
                 {isDetail ? (
@@ -2206,7 +2206,7 @@ export default function ManufacturingLensPage() {
                       openEdit(item.id);
                     }}
                     className={ds.btnGhost}
-                  >
+                  aria-label="Edit">
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
@@ -2215,7 +2215,7 @@ export default function ManufacturingLensPage() {
                       remove(item.id);
                     }}
                     className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                   {isDetail ? (
@@ -2413,7 +2413,7 @@ export default function ManufacturingLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -2559,7 +2559,7 @@ export default function ManufacturingLensPage() {
                 <h2 className={ds.heading2}>
                   {editing ? 'Edit' : 'New'} {currentType}
                 </h2>
-                <button onClick={resetForm} className={ds.btnGhost}>
+                <button onClick={resetForm} className={ds.btnGhost} aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

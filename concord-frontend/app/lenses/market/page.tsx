@@ -217,7 +217,7 @@ export default function MarketLensPage() {
         </div>
         <div className="flex items-center gap-2">
           <DTUExportButton domain="market" data={{}} compact />
-          <button className="px-3 py-2 text-sm bg-lattice-surface rounded-lg text-gray-400 hover:text-white transition-colors" onClick={() => refetch()}>
+          <button className="px-3 py-2 text-sm bg-lattice-surface rounded-lg text-gray-400 hover:text-white transition-colors" onClick={() => refetch()} aria-label="Refresh">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button className="btn-neon purple" onClick={() => setShowCreate(!showCreate)}>
@@ -372,7 +372,7 @@ export default function MarketLensPage() {
               <button
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-              >
+              aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -411,7 +411,7 @@ export default function MarketLensPage() {
               <span className="px-2 py-0.5 bg-neon-purple/10 text-neon-purple rounded flex items-center gap-1">
                 <Tag className="w-3 h-3" />
                 {filterType}
-                <button onClick={() => setFilterType('all')}>
+                <button onClick={() => setFilterType('all')} aria-label="Close">
                   <X className="w-3 h-3" />
                 </button>
               </span>

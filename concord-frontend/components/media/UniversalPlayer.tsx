@@ -528,7 +528,7 @@ function VideoPlayer({
                   <button
                     onClick={() => setShowQualityMenu(prev => !prev)}
                     className="text-gray-300 hover:text-white transition-colors"
-                  >
+                  aria-label="Settings">
                     <Settings className="w-4 h-4" />
                   </button>
                   <AnimatePresence>
@@ -720,7 +720,7 @@ function DocumentViewer({
           onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
           disabled={currentPage <= 1}
           className="p-2 text-gray-400 hover:text-white disabled:opacity-30 transition-colors rounded-lg"
-        >
+        aria-label="Previous">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <span className="text-xs text-gray-400 tabular-nums">
@@ -730,7 +730,7 @@ function DocumentViewer({
           onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
           disabled={currentPage >= totalPages}
           className="p-2 text-gray-400 hover:text-white disabled:opacity-30 transition-colors rounded-lg"
-        >
+        aria-label="Next">
           <ChevronRight className="w-4 h-4" />
         </button>
         <div className="w-px h-5 bg-lattice-border mx-1" />
@@ -908,7 +908,7 @@ export function UniversalPlayer({
               'p-2 rounded-lg transition-colors',
               liked ? 'text-neon-pink' : 'text-gray-400 hover:text-neon-pink'
             )}
-          >
+          aria-label="Like">
             <Heart className={cn('w-5 h-5', liked && 'fill-current')} />
           </button>
           <button

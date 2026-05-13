@@ -376,7 +376,7 @@ export default function CustomLensPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-400">Configuration</span>
-                  <button onClick={() => { const cfg = customLenses?.find((l: CustomLens) => l.id === selectedLens)?.config; if (cfg) navigator.clipboard.writeText(JSON.stringify(cfg, null, 2)); }} className="text-gray-400 hover:text-white">
+                  <button onClick={() => { const cfg = customLenses?.find((l: CustomLens) => l.id === selectedLens)?.config; if (cfg) navigator.clipboard.writeText(JSON.stringify(cfg, null, 2)); }} className="text-gray-400 hover:text-white" aria-label="Copy">
                     <Copy className="w-4 h-4" />
                   </button>
                 </div>

@@ -784,7 +784,7 @@ export default function PaperLensPage() {
           <div className={cn(ds.panel, 'w-[35%] min-w-[300px] max-h-[calc(100vh-200px)] overflow-y-auto space-y-4 sticky top-6')}>
             <div className="flex items-center justify-between">
               <h3 className={ds.heading3}>Detail</h3>
-              <button onClick={() => setDetailOpen(false)} className={ds.btnGhost}>
+              <button onClick={() => setDetailOpen(false)} className={ds.btnGhost} aria-label="Panel right close">
                 <PanelRightClose className="w-4 h-4" />
               </button>
             </div>
@@ -892,7 +892,7 @@ export default function PaperLensPage() {
                 <h2 className={ds.heading2}>
                   New {activeTab === 'bibliography' ? 'Citation' : activeTab.slice(0, -1).replace(/^./, c => c.toUpperCase())}
                 </h2>
-                <button onClick={() => setCreateModalOpen(false)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                <button onClick={() => setCreateModalOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
 
               <div className="space-y-3">

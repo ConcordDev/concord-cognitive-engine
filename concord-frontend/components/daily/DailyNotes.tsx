@@ -114,7 +114,7 @@ export function DailyNotes({
             <button
               onClick={prevMonth}
               className="p-1 text-gray-400 hover:text-white transition-colors"
-            >
+            aria-label="Previous">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <span className="font-medium text-white">
@@ -123,7 +123,7 @@ export function DailyNotes({
             <button
               onClick={nextMonth}
               className="p-1 text-gray-400 hover:text-white transition-colors"
-            >
+            aria-label="Next">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>

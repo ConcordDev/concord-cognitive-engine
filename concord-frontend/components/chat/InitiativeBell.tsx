@@ -110,7 +110,7 @@ export default function InitiativeBell() {
               <Sparkles className="w-4 h-4 text-amber-400" />
               <h3 className="text-sm font-semibold text-zinc-100">Initiatives</h3>
             </div>
-            <button onClick={() => setOpen(false)} className="p-1 rounded text-zinc-500 hover:text-zinc-200">
+            <button onClick={() => setOpen(false)} className="p-1 rounded text-zinc-500 hover:text-zinc-200" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </header>

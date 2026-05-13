@@ -271,7 +271,7 @@ export default function DTUBrowserPage() {
                   'p-1.5 transition-colors',
                   viewMode === 'list' ? 'bg-lattice-surface text-white' : 'text-gray-500 hover:text-white'
                 )}
-              >
+              aria-label="List view">
                 <List className="w-4 h-4" />
               </button>
               <button
@@ -280,7 +280,7 @@ export default function DTUBrowserPage() {
                   'p-1.5 transition-colors',
                   viewMode === 'grid' ? 'bg-lattice-surface text-white' : 'text-gray-500 hover:text-white'
                 )}
-              >
+              aria-label="Layout grid">
                 <LayoutGrid className="w-4 h-4" />
               </button>
             </div>
@@ -474,7 +474,7 @@ export default function DTUBrowserPage() {
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-lattice-surface rounded-lg border border-lattice-border">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-neon-cyan" /> Result</h4>
-                <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white"><XCircle className="w-4 h-4" /></button>
+                <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Xcircle"><XCircle className="w-4 h-4" /></button>
               </div>
 
               {/* Lineage Analysis */}

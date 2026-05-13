@@ -1158,7 +1158,7 @@ export default function EventsLensPage() {
                         openEdit(item.id);
                       }}
                       className={ds.btnGhost}
-                    >
+                    aria-label="Edit">
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
@@ -1167,7 +1167,7 @@ export default function EventsLensPage() {
                         removeEvent(item.id);
                       }}
                       className={cn(ds.btnGhost, 'hover:text-red-400')}
-                    >
+                    aria-label="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1686,7 +1686,7 @@ export default function EventsLensPage() {
                         openEdit(item.id);
                       }}
                       className={ds.btnGhost}
-                    >
+                    aria-label="Edit">
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
@@ -1695,7 +1695,7 @@ export default function EventsLensPage() {
                         removeVenue(item.id);
                       }}
                       className={cn(ds.btnGhost, 'hover:text-red-400')}
-                    >
+                    aria-label="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1857,7 +1857,7 @@ export default function EventsLensPage() {
                         openEdit(item.id);
                       }}
                       className={ds.btnGhost}
-                    >
+                    aria-label="Edit">
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
@@ -1866,7 +1866,7 @@ export default function EventsLensPage() {
                         removeVendor(item.id);
                       }}
                       className={cn(ds.btnGhost, 'hover:text-red-400')}
-                    >
+                    aria-label="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1921,13 +1921,13 @@ export default function EventsLensPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
-                  <button onClick={() => openEdit(item.id)} className={ds.btnGhost}>
+                  <button onClick={() => openEdit(item.id)} className={ds.btnGhost} aria-label="Edit">
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => removeROS(item.id)}
                     className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -2034,13 +2034,13 @@ export default function EventsLensPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
-                  <button onClick={() => openEdit(item.id)} className={ds.btnGhost}>
+                  <button onClick={() => openEdit(item.id)} className={ds.btnGhost} aria-label="Edit">
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => removeBudget(item.id)}
                     className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -2380,7 +2380,7 @@ export default function EventsLensPage() {
                                 openEdit(t.id);
                               }}
                               className={ds.btnGhost}
-                            >
+                            aria-label="Edit">
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
@@ -2389,7 +2389,7 @@ export default function EventsLensPage() {
                                 removeTicket(t.id);
                               }}
                               className={cn(ds.btnGhost, 'hover:text-red-400')}
-                            >
+                            aria-label="Delete">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -2453,7 +2453,7 @@ export default function EventsLensPage() {
                       openEdit(item.id);
                     }}
                     className={ds.btnGhost}
-                  >
+                  aria-label="Edit">
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
@@ -2462,7 +2462,7 @@ export default function EventsLensPage() {
                       removeGuest(item.id);
                     }}
                     className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  >
+                  aria-label="Delete">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -2676,7 +2676,7 @@ export default function EventsLensPage() {
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -2701,7 +2701,7 @@ export default function EventsLensPage() {
                       ? 'Ticket Tier'
                       : currentType}
                 </h2>
-                <button onClick={resetForm} className={ds.btnGhost}>
+                <button onClick={resetForm} className={ds.btnGhost} aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
               </div>

@@ -349,7 +349,7 @@ export function DesignHUD({ worldId, worldType = 'standard', onClose, onSaved }:
           <button
             onClick={onClose}
             className="ml-auto text-white/30 hover:text-white transition-colors"
-          >
+          aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -389,7 +389,7 @@ export function DesignHUD({ worldId, worldType = 'standard', onClose, onSaved }:
                 onClick={sendChat}
                 disabled={chatLoading}
                 className="p-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-30 transition-colors"
-              >
+              aria-label="Send">
                 <Send className="w-3 h-3 text-white" />
               </button>
             </div>

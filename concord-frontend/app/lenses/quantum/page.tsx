@@ -292,7 +292,7 @@ export default function QuantumLensPage() {
               <><Play className="w-4 h-4 mr-2 inline" />Run Circuit</>
             )}
           </button>
-          <button onClick={() => setResult(null)} className="btn-neon">
+          <button onClick={() => setResult(null)} className="btn-neon" aria-label="Rotate ccw">
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>

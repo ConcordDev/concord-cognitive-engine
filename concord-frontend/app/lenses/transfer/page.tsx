@@ -363,7 +363,7 @@ export default function TransferLensPage() {
             Transfer Actions
           </h3>
           {transferActionResult && (
-            <button onClick={() => setTransferActionResult(null)} className="p-1 rounded hover:bg-white/5 text-gray-400">
+            <button onClick={() => setTransferActionResult(null)} className="p-1 rounded hover:bg-white/5 text-gray-400" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}

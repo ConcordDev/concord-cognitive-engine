@@ -137,7 +137,7 @@ export default function SupplyChainLensPage() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)}>
         <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost}><X className="w-4 h-4" /></button></div>
+          <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button></div>
           <div className="space-y-3">
             <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
             <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={2} value={formDescription} onChange={e => setFormDescription(e.target.value)} /></div>
@@ -180,8 +180,8 @@ export default function SupplyChainLensPage() {
               <div className="flex items-center gap-2">
                 {d.totalCost && <span className="text-xs text-green-400">${d.totalCost.toLocaleString()}</span>}
                 <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
-                <button onClick={e => { e.stopPropagation(); handleAction('analyze', item.id); }} className={ds.btnGhost}><Zap className="w-4 h-4 text-neon-cyan" /></button>
-                <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost}><Trash2 className="w-4 h-4 text-red-400" /></button>
+                <button onClick={e => { e.stopPropagation(); handleAction('analyze', item.id); }} className={ds.btnGhost} aria-label="Activate"><Zap className="w-4 h-4 text-neon-cyan" /></button>
+                <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-4 h-4 text-red-400" /></button>
               </div>
             </div>
           </motion.div>

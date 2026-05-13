@@ -563,7 +563,7 @@ export default function PhotographyPage() {
                       <button
                         onClick={(e) => toggleFavorite(photo.id, e)}
                         className="absolute top-2 right-2 p-1.5 rounded-full bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
-                      >
+                      aria-label="Like">
                         <Heart
                           className={cn('w-3.5 h-3.5 transition-colors', favorites.has(photo.id) ? 'fill-rose-500 text-rose-500' : 'text-white/70')}
                         />
@@ -721,7 +721,7 @@ export default function PhotographyPage() {
               <button
                 onClick={closeLightbox}
                 className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-              >
+              aria-label="Close">
                 <X className="w-5 h-5 text-white" />
               </button>
 
@@ -730,7 +730,7 @@ export default function PhotographyPage() {
                 <button
                   onClick={(e) => { e.stopPropagation(); prevPhoto(); }}
                   className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                >
+                aria-label="Previous">
                   <ChevronLeft className="w-6 h-6 text-white" />
                 </button>
               )}
@@ -740,7 +740,7 @@ export default function PhotographyPage() {
                 <button
                   onClick={(e) => { e.stopPropagation(); nextPhoto(); }}
                   className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                >
+                aria-label="Next">
                   <ChevronRight className="w-6 h-6 text-white" />
                 </button>
               )}
@@ -931,7 +931,7 @@ export default function PhotographyPage() {
               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold">Quick Upload</h3>
-                  <button onClick={() => setShowUpload(false)}><X className="w-4 h-4" /></button>
+                  <button onClick={() => setShowUpload(false)} aria-label="Close"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="space-y-3">
                   <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Photo title" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />

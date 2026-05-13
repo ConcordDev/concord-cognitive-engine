@@ -654,7 +654,7 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
           <button
             onClick={onClose}
             className="text-white/30 hover:text-white transition-colors ml-1"
-          >
+          aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>

@@ -110,7 +110,7 @@ export function LineageTree({
             <button
               onClick={() => setZoom(z => Math.max(0.5, z - 0.1))}
               className="p-1 text-gray-400 hover:text-white transition-colors"
-            >
+            aria-label="Zoom out">
               <ZoomOut className="w-4 h-4" />
             </button>
             <span className="text-xs text-gray-500 w-10 text-center">
@@ -119,7 +119,7 @@ export function LineageTree({
             <button
               onClick={() => setZoom(z => Math.min(2, z + 0.1))}
               className="p-1 text-gray-400 hover:text-white transition-colors"
-            >
+            aria-label="Zoom in">
               <ZoomIn className="w-4 h-4" />
             </button>
           </div>

@@ -270,7 +270,7 @@ export default function CommonsenseLensPage() {
           <button
             onClick={() => { refetch(); refetch2(); }}
             className="p-2 rounded-lg text-gray-400 hover:text-neon-yellow hover:bg-lattice-elevated transition-colors"
-          >
+          aria-label="Refresh">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
@@ -407,7 +407,7 @@ export default function CommonsenseLensPage() {
           />
           {searchFilter && (
             <button onClick={() => setSearchFilter('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -529,7 +529,7 @@ export default function CommonsenseLensPage() {
                         <button
                           onClick={(e) => { e.stopPropagation(); handleCopyFact(f); }}
                           className={`shrink-0 transition-colors ${isCopied ? 'text-neon-green' : 'text-gray-500 hover:text-white'}`}
-                        >
+                        aria-label="Copy">
                           <Copy className="w-3 h-3" />
                         </button>
                       </motion.div>
@@ -790,7 +790,7 @@ export default function CommonsenseLensPage() {
             <div className="mt-2 rounded-lg bg-lattice-surface border border-neon-yellow/20 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-neon-yellow capitalize">{actionResult.action}</span>
-                <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-white transition-colors">
+                <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-white transition-colors" aria-label="Xcircle">
                   <XCircle className="w-3.5 h-3.5" />
                 </button>
               </div>
