@@ -276,6 +276,11 @@ export default function AvatarSystem3D({
 }: AvatarSystem3DProps) {
   const avatarGroupRef = useRef<unknown>(null);
   const playerMeshRef = useRef<unknown>(null);
+  // Phase A1 sidecars for enhanced-avatar-builder. Re-using the
+  // existing facialControllersRef declared further down (line ~324).
+  // These two are new — per-frame eye tickers and enhanced-disposers.
+  const eyeTickersRef = useRef<Map<string, (dt: number) => void>>(new Map());
+  const enhancedDisposeRef = useRef<Map<string, () => void>>(new Map());
 
   // Hide own avatar mesh in first-person so the camera doesn't see the
   // back of its own head. Effect runs whenever cameraMode flips.
@@ -627,6 +632,62 @@ export default function AvatarSystem3D({
       return group;
     },
     []
+  );
+
+  // Phase A1: smart wrapper — enhanced builder for local player + hero
+  // NPCs, legacy primitive path for crowd. Stores FacialController +
+  // tickEyes + dispose in sidecar refs so the per-frame loop + dispose
+  // path can find them by avatar id.
+  const createAvatarMeshSmart = useCallback(
+    async (
+      avatarId: string,
+      appearance: AppearanceConfig,
+      THREE: typeof import('three'),
+      opts: {
+        isLocalPlayer?: boolean;
+        isHero?: boolean;
+        worldId?: string;
+        factionId?: string | null;
+        archetype?: string | null;
+      } = {},
+    ): Promise<InstanceType<typeof import('three').Group>> => {
+      const wantEnhanced =
+        opts.isLocalPlayer || opts.isHero || appearance.bodyType === 'legend';
+      if (wantEnhanced) {
+        try {
+          const [{ buildEnhancedAvatar }, schemaMod] = await Promise.all([
+            import('@/lib/world-lens/enhanced-avatar-builder'),
+            import('@/lib/world-lens/character-schema'),
+          ]);
+          const rich = schemaMod.generateAppearance({
+            id: avatarId,
+            worldId: opts.worldId || 'concordia-hub',
+            factionId: opts.factionId ?? null,
+            archetype: opts.archetype ?? null,
+            themeId: 'concordia-hub',
+            heroMesh: opts.isHero,
+            override: {
+              skinColor: appearance.skinColor,
+              hairColor: appearance.hairColor,
+            },
+          });
+          const result = buildEnhancedAvatar(rich, { isLocalPlayer: opts.isLocalPlayer });
+          facialControllersRef.current.set(avatarId, result.facial);
+          eyeTickersRef.current.set(avatarId, result.tickEyes);
+          enhancedDisposeRef.current.set(avatarId, result.dispose);
+          result.group.userData = result.group.userData || {};
+          (result.group.userData as Record<string, unknown>).facial = result.facial;
+          (result.group.userData as Record<string, unknown>).tickEyes = result.tickEyes;
+          return result.group as InstanceType<typeof import('three').Group>;
+        } catch (err) {
+          if (typeof console !== 'undefined') {
+            console.warn('[AvatarSystem3D] enhanced avatar build failed, falling back to legacy', err);
+          }
+        }
+      }
+      return await createAvatarMesh(appearance, THREE);
+    },
+    [createAvatarMesh],
   );
 
   // ── Create procedural animation clips ─────────────────────────
@@ -1392,7 +1453,10 @@ export default function AvatarSystem3D({
       }
 
       // ── Player avatar ──────────────────────────────────────
-      const playerMesh = await createAvatarMesh(playerAvatar.appearance, THREE);
+      const playerMesh = await createAvatarMeshSmart(playerAvatar.id, playerAvatar.appearance, THREE, {
+        isLocalPlayer: true,
+        worldId: (typeof window !== 'undefined' ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub') : 'concordia-hub'),
+      });
       if (disposed) return;
 
       playerMesh.position.set(
@@ -1478,7 +1542,9 @@ export default function AvatarSystem3D({
       const sortedOthers = [...otherPlayers].slice(0, MAX_FULLY_ANIMATED);
 
       for (const other of sortedOthers) {
-        const mesh = await createAvatarMesh(other.appearance, THREE);
+        const mesh = await createAvatarMeshSmart(other.id, other.appearance, THREE, {
+          worldId: (typeof window !== 'undefined' ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub') : 'concordia-hub'),
+        });
         if (disposed) return;
 
         mesh.position.set(other.position.x, other.position.y, other.position.z);
@@ -1512,7 +1578,16 @@ export default function AvatarSystem3D({
       >();
 
       for (const npc of npcs.slice(0, MAX_FULLY_ANIMATED)) {
-        const mesh = await createAvatarMesh(npc.appearance, THREE);
+        // Hero NPCs (Three Above All + authored legends) get the enhanced
+        // builder; everyone else stays on the legacy primitive path.
+        const HERO_IDS = new Set(['sovereign_first_refusal', 'concord_first_thought', 'concordia_first_breath', 'weaver_of_echoes']);
+        const isHero = HERO_IDS.has(npc.id) || npc.appearance.bodyType === 'legend';
+        const mesh = await createAvatarMeshSmart(npc.id, npc.appearance, THREE, {
+          isHero,
+          worldId: (typeof window !== 'undefined' ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub') : 'concordia-hub'),
+          factionId: (npc as { faction?: string }).faction ?? null,
+          archetype: (npc as { occupation?: string }).occupation ?? null,
+        });
         if (disposed) return;
 
         mesh.position.set(npc.position.x, npc.position.y, npc.position.z);
@@ -1626,6 +1701,15 @@ export default function AvatarSystem3D({
         // Tier 2 deferral 10: tick all active ragdolls so their bones
         // copy from rigid-body transforms each frame.
         ragdollTickRef.current?.();
+
+        // Phase A1: per-frame eye tick for enhanced avatars (wetness
+        // sheen + iris animation). Bounded by tickerCount ≤ N players +
+        // hero NPCs (small).
+        if (eyeTickersRef.current.size > 0) {
+          for (const ticker of eyeTickersRef.current.values()) {
+            try { ticker(delta); } catch { /* never throw out of frame loop */ }
+          }
+        }
 
         // ── Movement style blend (0.4s transition) ─────────
         const sb = styleBlendRef.current;
@@ -2054,10 +2138,21 @@ export default function AvatarSystem3D({
     const cleanupPromise = init();
 
     const mixers = mixersRef.current;
+    const enhancedDisposals = enhancedDisposeRef.current;
+    const facialControllers = facialControllersRef.current;
+    const eyeTickers = eyeTickersRef.current;
     return () => {
       disposed = true;
       cleanupPromise.then((cleanup) => cleanup?.());
       mixers.clear();
+      // Phase A1: dispose every enhanced-avatar build so geometries +
+      // shader materials get freed.
+      for (const dispose of enhancedDisposals.values()) {
+        try { dispose(); } catch { /* never throw on unmount */ }
+      }
+      enhancedDisposals.clear();
+      facialControllers.clear();
+      eyeTickers.clear();
 
       if (avatarGroupRef.current) {
         const group = avatarGroupRef.current as {
