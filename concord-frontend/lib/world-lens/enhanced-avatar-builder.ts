@@ -214,41 +214,49 @@ export function buildEnhancedAvatar(rich: RichAppearanceConfig, opts: { isLocalP
     group.add(cape);
   }
 
-  /* ── Visible carry items ────────────────────────────────────── */
+  /* ── Visible carry items — proper weapon-archetypes meshes ─── */
+  // Phase C3: pull weapon meshes from lib/concordia/weapon-archetypes
+  // instead of inline procedural primitives. Faction-tinted, tier-3,
+  // optional enchantment glow.
   if (rich.accessories.carry?.includes('sword')) {
-    const swordGeom = new THREE.BoxGeometry(p.headWidth * 0.05, p.headWidth * 1.4, p.headWidth * 0.15);
-    const swordMat = new THREE.MeshStandardMaterial({
-      color: 0x8a8e92,
-      roughness: PBR_REFERENCE.steel.roughness,
-      metalness: PBR_REFERENCE.steel.metalness,
-    });
-    const sword = new THREE.Mesh(swordGeom, swordMat);
-    sword.position.set(p.shoulderWidth * 0.6, p.legLength + p.torsoLength * 0.3, -p.headDepth * 0.2);
-    sword.rotation.z = 0.15;
-    group.add(sword);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const wa = require('@/lib/concordia/weapon-archetypes') as typeof import('@/lib/concordia/weapon-archetypes');
+      const sword = wa.createWeapon({
+        archetype: rich.bodyArchetype === 'legend' ? 'greatsword' : 'longsword',
+        tier: 3,
+        accentColor: rich.clothing.cape?.color ?? rich.clothing.top.color,
+        seed: rich.worldId + ':' + (rich.factionId ?? ''),
+      });
+      sword.position.set(p.shoulderWidth * 0.6, p.legLength + p.torsoLength * 0.3, -p.headDepth * 0.2);
+      sword.rotation.z = 0.15;
+      group.add(sword);
+    } catch { /* fall back silently */ }
   }
   if (rich.accessories.carry?.includes('staff')) {
+    // Staff is bespoke (no weapon-archetypes equivalent yet) — keep
+    // procedural primitive.
     const staffGeom = new THREE.CylinderGeometry(p.headWidth * 0.04, p.headWidth * 0.04, p.totalHeight * 0.9, 8);
     const staffMat = new THREE.MeshStandardMaterial({
-      color: 0x6a4828,
-      roughness: PBR_REFERENCE.wood.roughness,
-      metalness: 0,
+      color: 0x6a4828, roughness: PBR_REFERENCE.wood.roughness, metalness: 0,
     });
     const staff = new THREE.Mesh(staffGeom, staffMat);
     staff.position.set(p.shoulderWidth * 0.6, p.totalHeight * 0.45, 0);
     group.add(staff);
   }
   if (rich.accessories.carry?.includes('bow')) {
-    const bowGeom = new THREE.TorusGeometry(p.headWidth * 0.9, 0.012, 8, 24, Math.PI);
-    const bowMat = new THREE.MeshStandardMaterial({
-      color: 0x4a3018,
-      roughness: PBR_REFERENCE.wood.roughness,
-      metalness: 0,
-    });
-    const bow = new THREE.Mesh(bowGeom, bowMat);
-    bow.position.set(-p.shoulderWidth * 0.6, p.legLength + p.torsoLength * 0.4, -p.headDepth * 0.2);
-    bow.rotation.z = Math.PI / 2;
-    group.add(bow);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const wa = require('@/lib/concordia/weapon-archetypes') as typeof import('@/lib/concordia/weapon-archetypes');
+      const bow = wa.createWeapon({
+        archetype: 'bow',
+        tier: 3,
+        accentColor: rich.clothing.top.color,
+        seed: rich.worldId + ':bow:' + (rich.factionId ?? ''),
+      });
+      bow.position.set(-p.shoulderWidth * 0.6, p.legLength + p.torsoLength * 0.4, -p.headDepth * 0.2);
+      group.add(bow);
+    } catch { /* fall back silently */ }
   }
 
   /* ── Augments (cyber/superhero — chrome arm, etc.) ──────────── */

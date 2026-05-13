@@ -132,6 +132,14 @@ const CombatPolishHUD = dynamic(
     })),
   { ssr: false }
 );
+const CombatMotorBridge = dynamic(
+  () => import('@/components/world/CombatMotorBridge').then((m) => ({ default: m.CombatMotorBridge })),
+  { ssr: false },
+);
+const ReflexBridge = dynamic(
+  () => import('@/components/world/ReflexBridge').then((m) => ({ default: m.ReflexBridge })),
+  { ssr: false },
+);
 const CombatPolishLayer = dynamic(
   () =>
     import('@/components/world/CombatBridges').then((m) => ({
@@ -4408,6 +4416,10 @@ export default function WorldLensPage() {
           {/* Phase 8 — combat polish HUD + animation/audio/camera/VFX bridges */}
           <CombatPolishHUD userId={playerAvatar?.id || null} />
           <CombatPolishLayer userId={playerAvatar?.id || null} />
+          {/* Phase C1 — combat-motor-driver event bridge. */}
+          <CombatMotorBridge userId={playerAvatar?.id || null} />
+          {/* Phase C4 — reflex-layer driver for the local player. */}
+          <ReflexBridge />
 
           {/* Body-language overlay — surfaces combat:telegraph (server
               fires immediately before applyAttack resolves) so the player
