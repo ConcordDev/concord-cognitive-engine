@@ -10787,6 +10787,28 @@ register("voice","transcribe", async (ctx, input={}) => {
 
     if (!audioBuffer) return { ok:false, error:"audioBase64 or valid audioPath required" };
 
+    // Audio-format magic-byte check. Prevents arbitrary file
+    // exfiltration to OpenAI even within the uploads dir — only
+    // recognised audio container formats (WebM/OGG, RIFF/WAV,
+    // ID3-tagged MP3, raw MP3 sync byte, MP4/M4A/FLAC) are sent.
+    // Also satisfies CodeQL's js/file-data-in-network-request flow:
+    // file data is structurally validated before reaching fetch.
+    const magic = audioBuffer.subarray(0, 4);
+    const hex4 = magic.toString("hex").toUpperCase();
+    const RECOGNISED_AUDIO_MAGIC = [
+      "1A45DFA3", // EBML / WebM / Matroska
+      "4F676753", // OggS (Ogg/Vorbis/Opus)
+      "52494646", // RIFF (WAV)
+      "49443303", // ID3v2.3 (MP3 w/ tag)
+      "49443304", // ID3v2.4 (MP3 w/ tag)
+      "664C6143", // fLaC (FLAC)
+    ];
+    const isMp3RawFrame = magic[0] === 0xFF && (magic[1] & 0xE0) === 0xE0;
+    const isMp4Container = audioBuffer.length > 8 && audioBuffer.subarray(4, 8).toString() === "ftyp";
+    if (!RECOGNISED_AUDIO_MAGIC.includes(hex4) && !isMp3RawFrame && !isMp4Container) {
+      return { ok:false, error:"audio_format_not_recognised" };
+    }
+
     const FormData = (await import("node:buffer")).Blob ? globalThis.FormData : null;
     if (!FormData) {
       // Node 18+ has native FormData, use fetch with multipart
@@ -26000,14 +26022,32 @@ function getTimeInfo(timeZone = "America/New_York") {
 }
 
 const _WEATHER_CACHE = new Map(); // key -> { ts:number, data:any }
+// Hostname allowlist for the weather/geocoding _fetchJson helper.
+// Explicit allowlist (rather than a deny-list-style SSRF check)
+// satisfies CodeQL's taint tracker, which doesn't recognize the
+// canonical _ssrfValidate as a sanitizer.
+const _FETCH_JSON_ALLOWED_HOSTS = new Set([
+  "api.open-meteo.com",
+  "geocoding-api.open-meteo.com",
+  "api.weatherapi.com",
+  "api.openweathermap.org",
+]);
 async function _fetchJson(url) {
-  // SSRF gate — same canonical guard the rest of the codebase uses
-  // (lib/ssrf-guard.js, wave-3). Blocks RFC1918 / loopback / link-local
-  // / metadata-service hosts so a caller can't smuggle in an attacker-
-  // controlled URL.
+  // Belt-and-suspenders: explicit hostname allowlist + the canonical
+  // wave-3 SSRF guard. The allowlist closes CodeQL's
+  // js/server-side-request-forgery flow; the SSRF guard catches the
+  // edge case where one of the allowed hosts resolves to a private
+  // IP via DNS rebinding.
+  let parsed;
+  try { parsed = new URL(url); }
+  catch { throw new Error("fetch_invalid_url"); }
+  if (!_FETCH_JSON_ALLOWED_HOSTS.has(parsed.hostname)) {
+    throw new Error(`fetch_host_not_allowed:${parsed.hostname}`);
+  }
   const ssrfCheck = await _ssrfValidate(url);
   if (!ssrfCheck.ok) throw new Error(`fetch_blocked_ssrf:${ssrfCheck.error}`);
-  const r = await fetch(url, { method: "GET", headers: { "accept":"application/json" }, signal: AbortSignal.timeout(10000) });
+  const safeUrl = parsed.toString();
+  const r = await fetch(safeUrl, { method: "GET", headers: { "accept":"application/json" }, signal: AbortSignal.timeout(10000) });
   if (!r.ok) throw new Error(`fetch_failed:${r.status}`);
   return r.json();
 }
