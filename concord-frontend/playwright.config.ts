@@ -2,6 +2,12 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Warm every Next.js app route once after the webServer comes up.
+  // `next start` lazy-compiles each route on first visit; without
+  // pre-warm, the first test that hits a given route waits 30-60 s
+  // for compile. Across 270+ routes that compounds past the
+  // per-action timeout. See scripts/playwright-warmup.ts.
+  globalSetup: './scripts/playwright-warmup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   // CI retry budget: 1 retry per test (was 2). Three runs of every

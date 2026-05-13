@@ -22,6 +22,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests/e2e-infra',
+  // Same route-warmup as the core config — pre-compiles every Next.js
+  // app route before infra-tier tests run, so per-action timeouts
+  // don't fire on first-route lazy-compile latency.
+  globalSetup: './scripts/playwright-warmup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
