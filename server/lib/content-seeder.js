@@ -38,6 +38,8 @@ function discoverSubWorlds() {
   try {
     const worldDir = join(CONTENT_ROOT, "world");
     for (const entry of readdirSync(worldDir)) {
+      // Skip underscore-prefixed entries (convention for shared / private dirs).
+      if (entry.startsWith("_")) continue;
       const full = join(worldDir, entry);
       try {
         if (statSync(full).isDirectory()) out.push({ id: entry, path: `world/${entry}` });
@@ -61,11 +63,16 @@ export const _authoredDialogues  = new Map();   // "npcId:questId:phase" → tre
 // ── File Readers ─────────────────────────────────────────────────────────────
 
 function readJSON(relPath) {
+  const abs = join(CONTENT_ROOT, relPath);
   try {
-    const abs = join(CONTENT_ROOT, relPath);
     return JSON.parse(readFileSync(abs, "utf8"));
   } catch (err) {
-    logger.warn({ err: err.message, relPath }, "content_seeder_read_failed");
+    // Quietly return null when the file simply doesn't exist — every
+    // callsite is opt-in (factions.json / lore.json / dialogue trees are
+    // optional per world). Only loud-warn on parse errors.
+    if (err && err.code !== "ENOENT") {
+      logger.warn({ err: err.message, relPath }, "content_seeder_read_failed");
+    }
     return null;
   }
 }
@@ -150,8 +157,86 @@ function seedFactions(factions) {
 
 // ── NPC Seeding ──────────────────────────────────────────────────────────────
 
-function seedNPCs(npcs) {
+/**
+ * Deterministic position from sha1(npc.id). Keeps the same NPC in the
+ * same place across server restarts so the player can find them.
+ */
+function _deterministicPos(npcId, bounds = { minX: -400, maxX: 400, minZ: -400, maxZ: 400 }) {
+  // Inline FNV-1a-ish double hash for stable coords without pulling
+  // node:crypto (content-seeder is mixed-context ESM). Same id → same
+  // coords across server restarts.
+  let h1 = 2166136261, h2 = 4127613007;
+  for (let i = 0; i < npcId.length; i++) {
+    h1 = ((h1 ^ npcId.charCodeAt(i)) * 16777619) >>> 0;
+    h2 = ((h2 ^ npcId.charCodeAt(i)) * 2246822507) >>> 0;
+  }
+  const u1 = h1 / 0xffffffff;
+  const u2 = h2 / 0xffffffff;
+  return {
+    x: bounds.minX + u1 * (bounds.maxX - bounds.minX),
+    z: bounds.minZ + u2 * (bounds.maxZ - bounds.minZ),
+  };
+}
+
+/**
+ * Insert (or update) one authored NPC row into world_npcs. Idempotent
+ * on (id). Pulls archetype + faction + world_id from the authored
+ * record; positions deterministically from sha-style hash. Failure is
+ * logged but never throws — content-seeder is best-effort.
+ */
+function _persistAuthoredNpcToWorld(db, npc, defaultWorldId) {
+  if (!db || !npc?.id) return false;
+  const worldId = npc.world_id || defaultWorldId || "concordia-hub";
+  const pos = (npc.spawn_location && typeof npc.spawn_location === "object")
+    ? { x: Number(npc.spawn_location.x) || 0, z: Number(npc.spawn_location.z) || 0 }
+    : _deterministicPos(npc.id);
+  const archetype = npc.archetype || npc.role || "civilian";
+  const factionId = npc.faction_id || npc.faction || null;
+  const isImmortal = npc.is_immortal === true || npc.is_immortal === 1 ? 1 : 0;
+  const isConscious = npc.is_conscious === false ? 0 : 1;
+  const universeType = npc.universe_type || null;
+  const npcType = npc.npc_type || (npc.role ? "role" : "generic");
+  const spawnLoc = JSON.stringify({ x: pos.x, y: 0, z: pos.z });
+
+  try {
+    db.prepare(`
+      INSERT INTO world_npcs (
+        id, world_id, npc_type, archetype, faction, universe_type,
+        spawn_location, current_location, x, y, z,
+        is_dead, is_immortal, is_conscious, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?, unixepoch())
+      ON CONFLICT(id) DO UPDATE SET
+        world_id      = excluded.world_id,
+        archetype     = excluded.archetype,
+        faction       = excluded.faction,
+        universe_type = excluded.universe_type,
+        is_immortal   = excluded.is_immortal,
+        is_conscious  = excluded.is_conscious,
+        x             = COALESCE(world_npcs.x, excluded.x),
+        z             = COALESCE(world_npcs.z, excluded.z)
+    `).run(
+      // 11 bind params, matching the 11 ? above. Column order:
+      // id, world_id, npc_type, archetype, faction, universe_type,
+      // spawn_location, current_location, x, z, is_immortal, is_conscious
+      // (y, is_dead, created_at are inlined as 0/0/unixepoch()).
+      npc.id, worldId, npcType, archetype, factionId, universeType,
+      spawnLoc, spawnLoc, pos.x, pos.z,
+      isImmortal, isConscious,
+    );
+    return true;
+  } catch (err) {
+    try { logger.warn({ npcId: npc.id, err: err?.message }, "content_seeder_world_npc_write_failed"); }
+    catch { /* noop */ }
+    return false;
+  }
+}
+
+function seedNPCs(npcs, opts = {}) {
+  const db = opts.db || null;
+  const defaultWorldId = opts.defaultWorldId || null;
   let count = 0;
+  let worldNpcs = 0;
   for (const npc of npcs) {
     const v = validateNpc(npc);
     if (!v.ok) {
@@ -159,6 +244,10 @@ function seedNPCs(npcs) {
       continue;
     }
     _authoredNPCs.set(npc.id, npc);
+    // Persist the NPC into world_npcs so the player can actually find
+    // them in the world — the in-memory registry alone makes them
+    // invisible to /:worldId/npcs queries and the rendering pipeline.
+    if (db && _persistAuthoredNpcToWorld(db, npc, defaultWorldId)) worldNpcs++;
     // Apply authored per-NPC schedule overrides via npc-schedules.
     // Surface failures: a hand-authored schedule that doesn't load means
     // the NPC silently falls back to the procedural archetype default,
@@ -173,6 +262,10 @@ function seedNPCs(npcs) {
         });
     }
     count++;
+  }
+  if (db) {
+    try { logger.info?.({ count, worldNpcs, defaultWorldId }, "content_seeder_world_npcs_persisted"); }
+    catch { /* noop */ }
   }
   return count;
 }
@@ -346,10 +439,13 @@ export async function seedContent({ db = null } = {}) {
     results.factions = seedFactions(factions);
   }
 
-  // NPCs
+  // NPCs — content/world/npcs.json is the hub-scoped roster. Pass db so
+  // each authored NPC also lands in world_npcs (the actual game-world
+  // table the rendering pipeline reads from). Without db they stay in
+  // the in-memory _authoredNPCs registry only.
   const npcs = readJSON("world/npcs.json");
   if (Array.isArray(npcs)) {
-    results.npcs = seedNPCs(npcs);
+    results.npcs = seedNPCs(npcs, { db, defaultWorldId: "concordia-hub" });
   }
 
   // Lore events
@@ -386,7 +482,7 @@ export async function seedContent({ db = null } = {}) {
     const subFactions = readJSON(`${sub.path}/factions.json`);
     if (Array.isArray(subFactions)) results.factions += seedFactions(subFactions);
     const subNpcs = readJSON(`${sub.path}/npcs.json`);
-    if (Array.isArray(subNpcs)) results.npcs += seedNPCs(subNpcs);
+    if (Array.isArray(subNpcs)) results.npcs += seedNPCs(subNpcs, { db, defaultWorldId: sub.id });
     const subLore = readJSON(`${sub.path}/lore.json`);
     if (subLore) results.lore += seedLore(subLore);
   }

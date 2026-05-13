@@ -1319,19 +1319,23 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Layer 7 disabled — neutral pass-through */ }
 
-      // Add gathered items to player inventory
+      // Add gathered items to player inventory. The table is keyed by
+      // (user_id, item_id) — no `id` column — so we upsert via that
+      // composite. world_id must be scoped (mig 101). Quality is stored
+      // in metadata JSON to preserve gather-time rarity.
       for (const item of result.gathered) {
         const existing = db.prepare(
-          'SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ?'
-        ).get(req.user.id, item.item);
+          'SELECT quantity FROM player_inventory WHERE user_id = ? AND item_id = ? AND world_id = ?'
+        ).get(req.user.id, item.item, worldId);
         if (existing) {
-          db.prepare('UPDATE player_inventory SET quantity = quantity + ? WHERE id = ?')
-            .run(item.quantity, existing.id);
+          db.prepare(
+            'UPDATE player_inventory SET quantity = quantity + ? WHERE user_id = ? AND item_id = ? AND world_id = ?'
+          ).run(item.quantity, req.user.id, item.item, worldId);
         } else {
           db.prepare(`
-            INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality)
-            VALUES (?, ?, 'material', ?, ?, ?, ?)
-          `).run(crypto.randomUUID(), req.user.id, item.item, item.name, item.quantity, item.quality);
+            INSERT INTO player_inventory (user_id, item_id, quantity, world_id, metadata)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(req.user.id, item.item, item.quantity, worldId, JSON.stringify({ name: item.name, quality: item.quality }));
         }
       }
 

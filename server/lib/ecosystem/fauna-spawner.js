@@ -291,7 +291,9 @@ export function runFaunaSpawner({ state, db }) {
               `creature:${sp.id}`,
               sp.id,
               pos.x, 0, pos.z,
-              1,
+              0,  // is_dead = 0 (alive). Previously this was 1 — every
+                  // spawned creature landed in world_npcs marked dead, so
+                  // none ever showed up in /npcs queries or flock cycles.
             );
             spawned++;
           } catch {

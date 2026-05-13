@@ -12177,6 +12177,10 @@ function makeCtx(req=null) {
   }
   return {
     state: STATE,
+    // Convenience accessor — every domain macro does `ctx?.db`. Without
+    // this, callers have to dig through ctx.state.db, and many forget,
+    // returning a spurious no_db. STATE.db is the same sqlite handle.
+    db: STATE?.db || null,
     actor: resolvedActor,
     env: {
       version: VERSION,
@@ -28830,7 +28834,13 @@ if (db) {
     // these NPC rulers automatically.
     try {
       const { seedKingdoms } = await import("./lib/kingdom-seeder.js");
-      const r = seedKingdoms(db);
+      // seedKingdoms reads content/world/<id>/factions.json — resolve repoRoot
+      // relative to this file so it works regardless of process.cwd().
+      const path = await import("node:path");
+      const url = await import("node:url");
+      const here = path.dirname(url.fileURLToPath(import.meta.url));
+      const repoRoot = path.resolve(here, "..");
+      const r = seedKingdoms(db, { repoRoot });
       if (r.ok) console.log("[kingdom-seeder]", JSON.stringify({
         realms: r.realms_created,
         territories: r.territories_seeded,
