@@ -28,7 +28,7 @@ import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
-import { themeForWorldId } from '@/lib/world-lens/concordia-theme';
+import { themeForWorldId, CONCORDIA_THEMES } from '@/lib/world-lens/concordia-theme';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import {
   DeformationStore,
@@ -1515,6 +1515,12 @@ export default function WorldLensPage() {
   // 30s; tweened locally between ticks) and the season substrate.
   const worldPhaseForSky = useHUDContext((s) => s.worldPhase);
   const worldSeasonForSky = useHUDContext((s) => s.worldSeason);
+  // Phase A4 — pull sky top + horizon colors from the canon theme so
+  // each world's sky shader matches the world palette.
+  const skyThemeColors = (() => {
+    const t = CONCORDIA_THEMES[concordiaTheme] || CONCORDIA_THEMES['neon-punk'];
+    return { top: t.skyTop, horizon: t.skyHorizon };
+  })();
   const [concordiaRenderStyle, setConcordiaRenderStyle] = useState<'pbr' | 'toon'>('pbr');
   const [showPanel, setShowPanel] = useState<
     | 'none'
@@ -3840,6 +3846,8 @@ export default function WorldLensPage() {
             windSpeed={2 + (weatherData?.intensity ?? 0) * 6}
             season={worldSeasonForSky}
             quality="medium"
+            themeSkyTop={skyThemeColors.top}
+            themeSkyHorizon={skyThemeColors.horizon}
           />
           <WaterRenderer
             riverConfig={{ width: 20, flowDirection: 0, flowSpeed: 1, centerX: 0, length: 100 }}

@@ -17,6 +17,12 @@ interface SkyWeatherRendererProps {
   windSpeed: number;
   season: Season;
   quality: 'low' | 'medium' | 'high' | 'ultra';
+  /** Phase A4: theme palette override — sky top + horizon colors come
+   * from the per-world theme so each canon world's sky reads correctly
+   * (cyber dark violet, tunya dusty ochre, etc.). Falls back to
+   * sky-shader defaults when unset. */
+  themeSkyTop?: number;       // hex (0xrrggbb)
+  themeSkyHorizon?: number;
 }
 
 // ── Sky Shader ──────────────────────────────────────────────────
@@ -38,6 +44,10 @@ const SKY_FRAGMENT_SHADER = `
   uniform vec3 uSunDirection;
   uniform float uCloudCover;
   uniform float uSeason;     // 0=spring, 1=summer, 2=autumn, 3=winter
+  // Phase A4: per-world theme tint. uThemeTintStrength = 0 disables.
+  uniform vec3 uThemeSkyTop;
+  uniform vec3 uThemeSkyHorizon;
+  uniform float uThemeTintStrength;
 
   varying vec3 vWorldPosition;
   varying vec2 vUv;
@@ -167,6 +177,13 @@ const SKY_FRAGMENT_SHADER = `
       skyColor += starfield(dir, starIntensity);
     }
 
+    // Phase A4: per-world theme tint. Mix the procedurally-derived
+    // sky color with the canon theme palette so each world reads
+    // distinct (cyber violet, tunya ochre, sovereign-ruins gold).
+    if (uThemeTintStrength > 0.0) {
+      vec3 themeMix = mix(uThemeSkyHorizon, uThemeSkyTop, height);
+      skyColor = mix(skyColor, skyColor * themeMix * 2.0, uThemeTintStrength);
+    }
     gl_FragColor = vec4(skyColor, 1.0);
   }
 `;
@@ -223,6 +240,14 @@ function computeSunIntensity(timeOfDay: number): number {
 
 // ── Component ────────────────────────────────────────────────────
 
+function hexToVec3(hex: number): { x: number; y: number; z: number } {
+  return {
+    x: ((hex >> 16) & 0xff) / 255,
+    y: ((hex >>  8) & 0xff) / 255,
+    z: ( hex        & 0xff) / 255,
+  };
+}
+
 export default function SkyWeatherRenderer({
   timeOfDay,
   weather,
@@ -230,6 +255,8 @@ export default function SkyWeatherRenderer({
   windSpeed,
   season,
   quality,
+  themeSkyTop,
+  themeSkyHorizon,
 }: SkyWeatherRendererProps) {
   const skyGroupRef = useRef<unknown>(null);
   const sunLightRef = useRef<unknown>(null);
@@ -263,11 +290,17 @@ export default function SkyWeatherRenderer({
 
       const seasonValue = { spring: 0, summer: 1, autumn: 2, winter: 3 }[season];
 
+      const themeTopVec = themeSkyTop != null ? hexToVec3(themeSkyTop) : new THREE.Vector3(1, 1, 1);
+      const themeHorVec = themeSkyHorizon != null ? hexToVec3(themeSkyHorizon) : new THREE.Vector3(1, 1, 1);
+      const themeStrength = themeSkyTop != null && themeSkyHorizon != null ? 0.35 : 0.0;
       const skyUniforms = {
         uTimeOfDay: { value: timeOfDay },
         uSunDirection: { value: sunDir },
         uCloudCover: { value: cloudCover },
         uSeason: { value: seasonValue },
+        uThemeSkyTop: { value: themeTopVec },
+        uThemeSkyHorizon: { value: themeHorVec },
+        uThemeTintStrength: { value: themeStrength },
       };
 
       const skyMaterial = new THREE.ShaderMaterial({
