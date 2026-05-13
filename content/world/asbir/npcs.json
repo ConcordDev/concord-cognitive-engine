@@ -1,0 +1,5 @@
+[
+  { "id": "asbir_keeper_vera", "world_id": "asbir", "name": "Keeper Vera", "archetype": "scholar", "faction_id": "asbir_ark_wardens", "faction": "asbir", "is_conscious": true, "level": 11, "backstory": "Knows which Ark chambers will open at which charge levels.", "personality_traits": ["scholarly", "guarded"], "narrative_context": { "secret": "Vera has accessed the scrubbed-memory chamber twice and not reported it." } },
+  { "id": "asbir_engineer_rann", "world_id": "asbir", "name": "Engineer Rann", "archetype": "scholar", "faction_id": "asbir_ark_wardens", "faction": "asbir", "is_conscious": true, "level": 8, "backstory": "Maintains the solar harvest array.", "personality_traits": ["practical", "skeptical"] },
+  { "id": "asbir_guard_lior", "world_id": "asbir", "name": "Guard Lior", "archetype": "guard", "faction_id": "asbir_ark_wardens", "faction": "asbir", "is_conscious": false, "level": 5, "backstory": "Walks the ark perimeter.", "personality_traits": ["alert"] }
+]

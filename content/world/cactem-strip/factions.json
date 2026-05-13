@@ -1,0 +1,3 @@
+[
+  { "id": "strip_caravan_guard", "world_id": "cactem-strip", "name": "Caravan Guard", "description": "Tunyan caravan guards defending dye-bug shipments from Fluxom raids. Mix of physical-combat and poison-resistance training.", "alignment": "lawful_neutral", "rival_factions": ["fluxom_dye_lords"], "allied_factions": ["dinye"] }
+]

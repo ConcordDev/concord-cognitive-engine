@@ -1,0 +1,3 @@
+[
+  { "id": "sahm_provost_kez", "world_id": "sahm", "name": "Provost Kez", "archetype": "scholar", "faction_id": "sahm_academy", "faction": "sahm", "is_conscious": true, "level": 11, "backstory": "Believes the Sahm diaspora deserves a seat at every council.", "personality_traits": ["ambitious", "articulate"], "narrative_context": { "secret": "Kez has drafted a Sahm-led federation charter that the other Tunyan factions have not seen." } }
+]

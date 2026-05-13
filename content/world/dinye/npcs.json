@@ -1,0 +1,5 @@
+[
+  { "id": "dinye_chair_oren", "world_id": "dinye", "name": "Chair Oren of Dinye", "archetype": "noble", "faction_id": "dinye_council", "faction": "dinye", "is_conscious": true, "level": 12, "backstory": "Chair of Dinye since the 409 demand. Believes in the Bloc.", "personality_traits": ["principled", "wary", "elder"], "narrative_context": { "secret": "Oren agreed to a back-channel mediation with the Akeia matriarch six annums ago." } },
+  { "id": "dinye_registrar_kira", "world_id": "dinye", "name": "Registrar Kira", "archetype": "scholar", "faction_id": "dinye_registrars", "faction": "dinye", "is_conscious": true, "level": 7, "backstory": "Records every birth, death, and migration through Dinye Gate.", "personality_traits": ["meticulous", "patient"], "narrative_context": { "secret": "Kira's grandmother was Fluxom-born; the lineage is hidden." } },
+  { "id": "dinye_guard_volk", "world_id": "dinye", "name": "Guard-Captain Volk", "archetype": "guard", "faction_id": "dinye_council", "faction": "dinye", "is_conscious": true, "level": 8, "backstory": "Has refused two outsider envoys this annum.", "personality_traits": ["loyal", "stubborn"] }
+]

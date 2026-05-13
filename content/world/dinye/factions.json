@@ -1,0 +1,4 @@
+[
+  { "id": "dinye_council", "world_id": "dinye", "name": "Dinye Council", "description": "Orthodox Tunyan governance. Closed to outsiders by treaty.", "alignment": "lawful", "rival_factions": ["fluxom"], "allied_factions": ["aekon", "asbir"] },
+  { "id": "dinye_registrars", "world_id": "dinye", "name": "Registrars", "description": "Keepers of the Bloc's records.", "alignment": "lawful", "rival_factions": [], "allied_factions": ["dinye_council"] }
+]

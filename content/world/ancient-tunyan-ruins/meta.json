@@ -9,17 +9,43 @@
   "culture_id": "tunyan_pure",
   "faction_id": "nil",
   "rule_modulators": {
-    "combatLethality": 1.0,
+    "combatLethality": 1,
     "refusalSensitivity": 0.9,
-    "questDensity": 1.0,
+    "questDensity": 1,
     "weatherIntensity": 1.6,
-    "climate": { "temperature": 35, "humidity": 20, "airQuality": 0.88, "wind": "scarce" }
+    "climate": {
+      "temperature": 35,
+      "humidity": 20,
+      "airQuality": 0.88,
+      "wind": "scarce"
+    }
   },
   "anchors": [
-    { "id": "ruins_entrance", "name": "Ruins Entrance", "x": 0, "z": 0, "kind": "lore_anchor" },
-    { "id": "ruins_archive",  "name": "Sealed Archive Chamber", "x": -150, "z": -100, "kind": "lore_anchor" }
+    {
+      "id": "ruins_entrance",
+      "name": "Ruins Entrance",
+      "x": 0,
+      "z": 0,
+      "kind": "lore_anchor"
+    },
+    {
+      "id": "ruins_archive",
+      "name": "Sealed Archive Chamber",
+      "x": -150,
+      "z": -100,
+      "kind": "lore_anchor"
+    }
   ],
-  "spawn_position": { "x": 0, "z": 5 },
+  "spawn_position": {
+    "x": 0,
+    "z": 5
+  },
   "primary_currencies": [],
-  "preferred_visit_order": 14
+  "preferred_visit_order": 14,
+  "extends_world": "lattice-crucible",
+  "combo_powers": [
+    "ancient_magic",
+    "salvaged_tech"
+  ],
+  "climate_warning": "wound_month_deadly"
 }

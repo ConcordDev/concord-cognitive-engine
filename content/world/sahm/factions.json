@@ -1,0 +1,3 @@
+[
+  { "id": "sahm_academy", "world_id": "sahm", "name": "Sahm Academy", "description": "Sahm's scholarly establishment. Mix of scholarship, magic-theory, and salvaged tech.", "alignment": "lawful_neutral", "rival_factions": [], "allied_factions": ["akeia"] }
+]

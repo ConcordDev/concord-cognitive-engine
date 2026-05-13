@@ -9,17 +9,44 @@
   "culture_id": "dinye",
   "faction_id": "dinye",
   "rule_modulators": {
-    "combatLethality": 1.0,
+    "combatLethality": 1,
     "refusalSensitivity": 0.95,
     "questDensity": 0.9,
     "weatherIntensity": 1.1,
-    "climate": { "temperature": 19, "humidity": 50, "airQuality": 0.93, "wind": "low" }
+    "climate": {
+      "temperature": 19,
+      "humidity": 50,
+      "airQuality": 0.93,
+      "wind": "low"
+    }
   },
   "anchors": [
-    { "id": "dinye_gate",  "name": "Dinye Gate",        "x": 0,    "z": 0,   "kind": "lore_anchor" },
-    { "id": "dinye_court", "name": "Dinye Council",     "x": 60,   "z": 40,  "kind": "neutral_zone" }
+    {
+      "id": "dinye_gate",
+      "name": "Dinye Gate",
+      "x": 0,
+      "z": 0,
+      "kind": "lore_anchor"
+    },
+    {
+      "id": "dinye_court",
+      "name": "Dinye Council",
+      "x": 60,
+      "z": 40,
+      "kind": "neutral_zone"
+    }
   ],
-  "spawn_position": { "x": -5, "z": 0 },
-  "primary_currencies": ["concord_coin"],
-  "preferred_visit_order": 6
+  "spawn_position": {
+    "x": -5,
+    "z": 0
+  },
+  "primary_currencies": [
+    "concord_coin"
+  ],
+  "preferred_visit_order": 6,
+  "extends_world": "tunya",
+  "combo_powers": [
+    "physical_combat",
+    "registry_records"
+  ]
 }

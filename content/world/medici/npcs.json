@@ -1,0 +1,4 @@
+[
+  { "id": "medici_archhealer_yev", "world_id": "medici", "name": "Arch-Healer Yev", "archetype": "healer", "faction_id": "medici_circle", "faction": "medici", "is_conscious": true, "level": 13, "backstory": "Survived the crash's third generation. Carries the original ship's manifest.", "personality_traits": ["gentle", "wise", "old"] },
+  { "id": "medici_apprentice_lin", "world_id": "medici", "name": "Apprentice Lin", "archetype": "healer", "faction_id": "medici_circle", "faction": "medici", "is_conscious": true, "level": 4, "backstory": "Learning the seven crash-rite tonics.", "personality_traits": ["earnest"] }
+]

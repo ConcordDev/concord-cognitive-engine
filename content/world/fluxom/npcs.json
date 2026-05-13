@@ -1,0 +1,5 @@
+[
+  { "id": "fluxom_lord_skarn", "world_id": "fluxom", "name": "Lord Skarn", "archetype": "warrior", "faction_id": "fluxom_dye_lords", "faction": "fluxom", "is_conscious": true, "level": 13, "backstory": "Owns the largest cactem strip in the territory.", "personality_traits": ["cruel", "calculating"], "narrative_context": { "secret": "Skarn is bleeding silver to bribe an Asbir Warden for ark intel." } },
+  { "id": "fluxom_breeder_rena", "world_id": "fluxom", "name": "Cactem Breeder Rena", "archetype": "trader", "faction_id": "fluxom_dye_lords", "faction": "fluxom", "is_conscious": true, "level": 6, "backstory": "Knows every dye-bug strain by smell.", "personality_traits": ["pragmatic", "tired"] },
+  { "id": "fluxom_refugee_tova", "world_id": "fluxom", "name": "Refugee Tova", "archetype": "healer", "faction_id": "fluxom_refugees", "faction": "fluxom", "is_conscious": true, "level": 5, "backstory": "Lost a child crossing the border last annum.", "personality_traits": ["resilient", "haunted"] }
+]

@@ -2017,6 +2017,27 @@ export default function createWorldsRouter({ requireAuth, db }) {
             `slain ${npcId}`,
           );
         } catch { /* npc_opinions absent on minimal builds */ }
+
+        // Concordia Phase 3+15 — broadcast lethal-hit + signature-kill
+        // events so the client ragdoll-bridge spawns a ragdoll and the
+        // cinematic director can frame the kill. Best-effort socket
+        // fan-out; safe if io not present.
+        try {
+          const io = req.app?.locals?.io;
+          if (io) {
+            const pos = db.prepare(`SELECT x, y, z FROM world_npcs WHERE id = ?`).get(npcId);
+            io.to(`world:${worldId}`).emit("concordia:lethal-hit", {
+              targetId: npcId,
+              attackerId: userId,
+              position: pos || { x: 0, y: 0, z: 0 },
+              massMultiplier: damageResult.massMultiplier || 1.0,
+            });
+            io.to(`world:${worldId}`).emit("combat:hero_kill", { attackerId: userId, targetId: npcId });
+            if (damageResult.bloodlineKind === "pure_match" && skillData.element === "fire") {
+              io.to(`world:${worldId}`).emit("combat:bloodline_fire_cast", { attackerId: userId, targetId: npcId });
+            }
+          }
+        } catch { /* socket optional */ }
       }
 
       // Phase 1 + 1.5: emit skill:tier-witnessed when an evolved skill

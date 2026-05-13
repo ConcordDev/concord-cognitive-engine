@@ -22904,6 +22904,31 @@ import registerSecretsMacros from "./domains/secrets.js";
 registerSecretsMacros(register);
 import registerSchemesMacros from "./domains/schemes.js";
 registerSchemesMacros(register);
+// Concordia Phase 2-16 — register the new player-experience domains.
+import registerBloodlineMacros from "./domains/bloodline.js";
+registerBloodlineMacros(register);
+import registerPhysiqueMacros from "./domains/physique.js";
+registerPhysiqueMacros(register);
+import registerRealmAccessMacros from "./domains/realm-access.js";
+registerRealmAccessMacros(register);
+import registerStaminaMacros from "./domains/stamina.js";
+registerStaminaMacros(register);
+import registerVehicleMacros from "./domains/vehicles.js";
+registerVehicleMacros(register);
+import registerWindMacros from "./domains/wind.js";
+registerWindMacros(register);
+import registerUnderwaterMacros from "./domains/underwater.js";
+registerUnderwaterMacros(register);
+import registerTunyanMacros from "./domains/tunyan.js";
+registerTunyanMacros(register);
+import registerJobsMacros from "./domains/jobs.js";
+registerJobsMacros(register);
+import registerCraftChainsMacros from "./domains/craft-chains.js";
+registerCraftChainsMacros(register);
+import registerDynastyMacros from "./domains/dynasty.js";
+registerDynastyMacros(register);
+import registerCultureMacros from "./domains/culture.js";
+registerCultureMacros(register);
 import registerRealmCouncilMacros from "./domains/realm-council.js";
 registerRealmCouncilMacros(register);
 import registerKingdomsMacros from "./domains/kingdoms.js";
@@ -23060,6 +23085,21 @@ registerHeartbeat("player-signs-cleanup", {
   frequency: 240,
   handler: runPlayerSignsCleanup,
 });
+
+// Concordia Phase 8/10/12/16 heartbeats — aging cycle, ration mint,
+// council session opener, underwater threat sweep. All wrapped
+// exception-safe in concordia-cycles.js so a missing table can't
+// break the governor tick.
+import {
+  runAgingCycle,
+  runRationFloorCycle,
+  runCouncilSessionCycle,
+  runUnderwaterThreatCycle,
+} from "./emergent/concordia-cycles.js";
+registerHeartbeat("aging-cycle", { frequency: 480, handler: runAgingCycle });
+registerHeartbeat("ration-floor-cycle", { frequency: 1440, handler: runRationFloorCycle });
+registerHeartbeat("council-session-cycle", { frequency: 480, handler: runCouncilSessionCycle });
+registerHeartbeat("underwater-threat-cycle", { frequency: 6, handler: runUnderwaterThreatCycle });
 
 // Theme deferred (game-feel pass): hidden quest triggers — substrate
 // for unmarked, environment-gated quest activation. Pure runMacro
@@ -28747,6 +28787,14 @@ if (db) {
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
     try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    // Concordia substrate seeder — populate npc_ancestry, actor_physique,
+    // actor_culture, npc_ages for every authored NPC so Phase 2/3/12/13
+    // calculation paths get real values. Idempotent on every boot.
+    try {
+      const { seedConcordiaNpcSubstrate } = await import("./lib/concordia-npc-seeder.js");
+      const r = await seedConcordiaNpcSubstrate(db);
+      if (r.ok) console.log("[concordia-seeder]", JSON.stringify(r.seeded));
+    } catch (e) { console.warn("[concordia-seeder]", e.message); }
     // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
     try {
       const starter = await import("./lib/starter-content.js");

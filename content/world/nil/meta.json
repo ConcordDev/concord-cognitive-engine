@@ -9,16 +9,36 @@
   "culture_id": "tunyan_pure",
   "faction_id": "nil",
   "rule_modulators": {
-    "combatLethality": 1.0,
-    "refusalSensitivity": 1.0,
+    "combatLethality": 1,
+    "refusalSensitivity": 1,
     "questDensity": 0.3,
-    "weatherIntensity": 1.0,
-    "climate": { "temperature": 20, "humidity": 60, "airQuality": 0.99, "wind": "still" }
+    "weatherIntensity": 1,
+    "climate": {
+      "temperature": 20,
+      "humidity": 60,
+      "airQuality": 0.99,
+      "wind": "still"
+    }
   },
   "anchors": [
-    { "id": "nil_threshold", "name": "Nil Threshold",  "x": 0, "z": 0, "kind": "lore_anchor" }
+    {
+      "id": "nil_threshold",
+      "name": "Nil Threshold",
+      "x": 0,
+      "z": 0,
+      "kind": "lore_anchor"
+    }
   ],
-  "spawn_position": { "x": 0, "z": -200 },
+  "spawn_position": {
+    "x": 0,
+    "z": -200
+  },
   "primary_currencies": [],
-  "preferred_visit_order": 13
+  "preferred_visit_order": 13,
+  "extends_world": "sovereign-ruins",
+  "combo_powers": [
+    "refusal_field",
+    "ancient_magic"
+  ],
+  "captured_by": "nil_keepers"
 }

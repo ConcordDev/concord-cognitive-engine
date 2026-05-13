@@ -13,13 +13,44 @@
     "refusalSensitivity": 0.7,
     "questDensity": 1.2,
     "weatherIntensity": 1.3,
-    "climate": { "temperature": 31, "humidity": 50, "airQuality": 0.86, "wind": "dry" }
+    "climate": {
+      "temperature": 31,
+      "humidity": 50,
+      "airQuality": 0.86,
+      "wind": "dry"
+    }
   },
   "anchors": [
-    { "id": "cactem_breeder",  "name": "Cactem Breeder Camp",  "x": 0,    "z": 0,   "kind": "trade_zone" },
-    { "id": "cactem_raid_marker", "name": "Last Raid Marker",  "x": -60,  "z": 30,  "kind": "lore_anchor" }
+    {
+      "id": "cactem_breeder",
+      "name": "Cactem Breeder Camp",
+      "x": 0,
+      "z": 0,
+      "kind": "trade_zone"
+    },
+    {
+      "id": "cactem_raid_marker",
+      "name": "Last Raid Marker",
+      "x": -60,
+      "z": 30,
+      "kind": "lore_anchor"
+    }
   ],
-  "spawn_position": { "x": 0, "z": 0 },
-  "primary_currencies": ["concord_coin"],
-  "preferred_visit_order": 15
+  "spawn_position": {
+    "x": 0,
+    "z": 0
+  },
+  "primary_currencies": [
+    "concord_coin"
+  ],
+  "preferred_visit_order": 15,
+  "extends_world": "crime",
+  "combo_powers": [
+    "physical_combat",
+    "poison_resistance"
+  ],
+  "disputed_border": [
+    "fluxom",
+    "dinye"
+  ]
 }

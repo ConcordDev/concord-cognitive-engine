@@ -88,6 +88,13 @@ const EmergentEventFeed = dynamic(
     })),
   { ssr: false }
 );
+const ConcordiaHUDPanels = dynamic(
+  () =>
+    import('@/components/world/ConcordiaHUDPanels').then((m) => ({
+      default: m.ConcordiaHUDPanels,
+    })),
+  { ssr: false }
+);
 const PersonalBeatWidget = dynamic(
   () =>
     import('@/components/world/PersonalBeatWidget').then((m) => ({
@@ -4307,6 +4314,8 @@ export default function WorldLensPage() {
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
           <PersonalBeatWidget />
+          {/* Concordia HUD — tabbed overlay for every Phase 1-16 substrate */}
+          <ConcordiaHUDPanels />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing

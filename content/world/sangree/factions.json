@@ -1,0 +1,3 @@
+[
+  { "id": "sangree_fire_clans", "world_id": "sangree", "name": "Fire Clans", "description": "Founders of the Sanguire fire-bloodline lineage. Mix of fire-magic and biopower kinship.", "alignment": "neutral", "rival_factions": ["medici"], "allied_factions": ["kree"] }
+]

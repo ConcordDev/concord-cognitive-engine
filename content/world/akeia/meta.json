@@ -12,14 +12,41 @@
     "combatLethality": 0.9,
     "refusalSensitivity": 0.85,
     "questDensity": 1.1,
-    "weatherIntensity": 1.0,
-    "climate": { "temperature": 22, "humidity": 80, "airQuality": 0.94, "wind": "sea" }
+    "weatherIntensity": 1,
+    "climate": {
+      "temperature": 22,
+      "humidity": 80,
+      "airQuality": 0.94,
+      "wind": "sea"
+    }
   },
   "anchors": [
-    { "id": "akeia_capital", "name": "Akeia Capital", "x": 0, "z": 0, "kind": "neutral_zone" },
-    { "id": "akeia_harbor",  "name": "Akeia Harbor",  "x": 50, "z": -80, "kind": "trade_zone" }
+    {
+      "id": "akeia_capital",
+      "name": "Akeia Capital",
+      "x": 0,
+      "z": 0,
+      "kind": "neutral_zone"
+    },
+    {
+      "id": "akeia_harbor",
+      "name": "Akeia Harbor",
+      "x": 50,
+      "z": -80,
+      "kind": "trade_zone"
+    }
   ],
-  "spawn_position": { "x": 5, "z": 5 },
-  "primary_currencies": ["concord_coin"],
-  "preferred_visit_order": 4
+  "spawn_position": {
+    "x": 5,
+    "z": 5
+  },
+  "primary_currencies": [
+    "concord_coin"
+  ],
+  "preferred_visit_order": 4,
+  "extends_world": "concord-link-frontier",
+  "combo_powers": [
+    "water_magic",
+    "maritime_trade"
+  ]
 }

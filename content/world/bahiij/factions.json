@@ -1,0 +1,3 @@
+[
+  { "id": "bahiij_caravan", "world_id": "bahiij", "name": "Bahiij Caravan", "description": "Elephant-mounted caravan trade syndicate.", "alignment": "neutral", "rival_factions": [], "allied_factions": ["sahm", "akeia"] }
+]

@@ -11,14 +11,35 @@
   "rule_modulators": {
     "combatLethality": 1.2,
     "refusalSensitivity": 0.8,
-    "questDensity": 1.0,
+    "questDensity": 1,
     "weatherIntensity": 1.2,
-    "climate": { "temperature": 32, "humidity": 35, "airQuality": 0.91, "wind": "warm" }
+    "climate": {
+      "temperature": 32,
+      "humidity": 35,
+      "airQuality": 0.91,
+      "wind": "warm"
+    }
   },
   "anchors": [
-    { "id": "sangree_forge", "name": "Sangree Fire Forge", "x": 0, "z": 0, "kind": "lore_anchor" }
+    {
+      "id": "sangree_forge",
+      "name": "Sangree Fire Forge",
+      "x": 0,
+      "z": 0,
+      "kind": "lore_anchor"
+    }
   ],
-  "spawn_position": { "x": 0, "z": 0 },
-  "primary_currencies": ["concord_coin"],
-  "preferred_visit_order": 8
+  "spawn_position": {
+    "x": 0,
+    "z": 0
+  },
+  "primary_currencies": [
+    "concord_coin"
+  ],
+  "preferred_visit_order": 8,
+  "extends_world": "fantasy",
+  "combo_powers": [
+    "fire_magic",
+    "biopower"
+  ]
 }
