@@ -34,8 +34,8 @@ const SKIP_ROUTE_PREFIXES = ["/legal/dmca", "/legal/privacy", "/legal/terms"];
 
 function collectRoutes(dir: string, urlSegments: string[] = []): string[] {
   const out: string[] = [];
-  let entries: ReturnType<typeof readdirSync>;
-  try { entries = readdirSync(dir); } catch { return out; }
+  let entries: string[];
+  try { entries = readdirSync(dir) as string[]; } catch { return out; }
   for (const entry of entries) {
     if (SKIP_DIRS.has(entry)) continue;
     const full = path.join(dir, entry);
