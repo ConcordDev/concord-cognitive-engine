@@ -20,7 +20,7 @@ import * as THREE from 'three';
 
 export interface HeroMeshLoadResult {
   group:         THREE.Group;
-  source:        'bespoke' | 'archetype' | 'procedural' | 'primitive';
+  source:        'bespoke' | 'archetype-world' | 'archetype' | 'procedural' | 'primitive';
   npcId:         string;
   /** Map of canonical bone names to THREE.Bone instances (Mixamo names). */
   boneMap:       Map<string, THREE.Bone>;
@@ -62,13 +62,30 @@ const ARCHETYPE_FALLBACK_PATH: Record<string, string> = {
 /**
  * Try to load a hero mesh. Returns null if not available — caller falls
  * back to the procedural BB1 path.
+ *
+ * Phase S/T extension: `homeWorldId` lets a travelling NPC carry their
+ * world's visual identity. A courier from `concord-link-frontier`
+ * visiting concordia-hub still loads
+ * `_archetype_trader__concord-link-frontier.glb`. If the per-world GLB
+ * doesn't exist, falls through to the universal archetype.
  */
-export async function loadHeroMesh(npcId: string, archetype: string): Promise<HeroMeshLoadResult | null> {
-  if (cache.has(npcId)) return cache.get(npcId)!;
+export async function loadHeroMesh(
+  npcId: string,
+  archetype: string,
+  homeWorldId?: string,
+): Promise<HeroMeshLoadResult | null> {
+  const cacheKey = `${npcId}::${homeWorldId ?? ''}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey)!;
 
   const candidates: { url: string; source: HeroMeshLoadResult['source'] }[] = [
     { url: `/meshes/heroes/${npcId}.glb`, source: 'bespoke' },
   ];
+  if (homeWorldId && ARCHETYPE_FALLBACK_PATH[archetype]) {
+    candidates.push({
+      url: `/meshes/heroes/_archetype_${archetype}__${homeWorldId}.glb`,
+      source: 'archetype-world',
+    });
+  }
   if (ARCHETYPE_FALLBACK_PATH[archetype]) {
     candidates.push({ url: ARCHETYPE_FALLBACK_PATH[archetype], source: 'archetype' });
   }
@@ -86,7 +103,7 @@ export async function loadHeroMesh(npcId: string, archetype: string): Promise<He
         npcId,
         boneMap,
       };
-      cache.set(npcId, result);
+      cache.set(cacheKey, result);
       return result;
     } catch (err) {
       // Try next candidate.

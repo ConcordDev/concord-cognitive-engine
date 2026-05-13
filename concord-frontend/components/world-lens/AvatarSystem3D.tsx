@@ -739,6 +739,28 @@ export default function AvatarSystem3D({
       const wantEnhanced =
         opts.isLocalPlayer || opts.isHero || appearance.bodyType === 'legend';
       if (wantEnhanced) {
+        // Phase S — try the baked GLB path first for hero NPCs. The
+        // home-world archetype carries an NPC's visual identity
+        // across cross-world travel (Phase T): a courier from
+        // concord-link-frontier still looks like a concord-link
+        // courier when visiting concordia-hub.
+        if (opts.isHero && !opts.isLocalPlayer) {
+          try {
+            const heroMod = await import('@/lib/concordia/hero-mesh-registry');
+            const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
+            const heroHint = cache?.get(avatarId) as { homeWorldId?: string; archetype?: string } | undefined;
+            const archetype = opts.archetype ?? heroHint?.archetype ?? 'warrior';
+            const homeWorld = heroHint?.homeWorldId ?? opts.worldId;
+            const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld);
+            if (loaded?.group) {
+              return loaded.group as InstanceType<typeof import('three').Group>;
+            }
+          } catch (err) {
+            if (typeof console !== 'undefined') {
+              console.warn('[AvatarSystem3D] hero GLB load failed, falling back to procedural', err);
+            }
+          }
+        }
         try {
           const [{ buildEnhancedAvatar }, schemaMod] = await Promise.all([
             import('@/lib/world-lens/enhanced-avatar-builder'),
