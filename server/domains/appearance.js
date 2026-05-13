@@ -153,6 +153,71 @@ export default function registerAppearanceMacros(register) {
     note: "Bulk-read appearance hints for every NPC in a world. Used by the scene's hydration pass.",
   });
 
+  // Phase E2 — save / load player character appearance.
+  register("appearance", "save", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const { appearance, avatarId } = input || {};
+    if (!appearance || typeof appearance !== "object") {
+      return { ok: false, reason: "missing_appearance" };
+    }
+    const json = JSON.stringify(appearance);
+    // Prefer avatar-scoped storage (mig 187 adds avatars.appearance_json).
+    if (avatarId) {
+      try {
+        const r = db.prepare(`
+          UPDATE avatars SET appearance_json = ? WHERE id = ? AND user_id = ?
+        `).run(json, avatarId, userId);
+        if (r.changes > 0) return { ok: true, scope: "avatar", avatarId };
+      } catch { /* table may lack column */ }
+    }
+    // Fall back to users.appearance_json.
+    try {
+      const r = db.prepare(`UPDATE users SET appearance_json = ? WHERE id = ?`).run(json, userId);
+      if (r.changes > 0) return { ok: true, scope: "user" };
+    } catch { /* column optional */ }
+    return { ok: false, reason: "no_storage_column" };
+  }, { note: "Persist a player's RichAppearanceConfig. Avatar-scoped if avatarId given, else user-scoped." });
+
+  register("appearance", "load_for_user", async (ctx) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_actor" };
+    try {
+      const row = db.prepare(`SELECT appearance_json FROM users WHERE id = ?`).get(userId);
+      if (row?.appearance_json) {
+        try { return { ok: true, appearance: JSON.parse(row.appearance_json) }; }
+        catch { return { ok: false, reason: "appearance_parse_failed" }; }
+      }
+      // Try the primary avatar.
+      try {
+        const a = db.prepare(`SELECT appearance_json FROM avatars WHERE user_id = ? AND is_primary = 1`).get(userId);
+        if (a?.appearance_json) return { ok: true, appearance: JSON.parse(a.appearance_json), scope: "avatar" };
+      } catch { /* optional */ }
+      return { ok: true, appearance: null };
+    } catch {
+      return { ok: false, reason: "load_failed" };
+    }
+  }, { note: "Load player's persisted appearance — user-scoped or primary-avatar-scoped." });
+
+  register("appearance", "load_for_avatar", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db || !userId) return { ok: false, reason: "missing_inputs" };
+    const { avatarId } = input || {};
+    if (!avatarId) return { ok: false, reason: "missing_avatar_id" };
+    try {
+      const a = db.prepare(`SELECT appearance_json FROM avatars WHERE id = ? AND user_id = ?`).get(avatarId, userId);
+      if (a?.appearance_json) return { ok: true, appearance: JSON.parse(a.appearance_json) };
+      return { ok: true, appearance: null };
+    } catch {
+      return { ok: false, reason: "load_failed" };
+    }
+  }, { note: "Load appearance for a specific avatar." });
+
   register("appearance", "faction_visual", async (ctx, input = {}) => {
     const { worldId, factionId } = input || {};
     if (!worldId || !factionId) return { ok: false, reason: "missing_inputs" };

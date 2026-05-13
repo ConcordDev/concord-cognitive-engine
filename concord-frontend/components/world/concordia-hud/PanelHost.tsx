@@ -33,6 +33,7 @@ import { DecreePanel } from './panels/DecreePanel';
 import { ConcordLinkPanel } from './panels/ConcordLinkPanel';
 import { DreamPanel } from './panels/DreamPanel';
 import { WarPanel } from './panels/WarPanel';
+import { CharacterCustomizerPanel } from './panels/CharacterCustomizerPanel';
 
 const PANEL_REGISTRY: Record<string, { label: string; Component: React.ComponentType }> = {
   bloodline:    { label: 'Bloodline',  Component: BloodlinePanel },
@@ -52,6 +53,7 @@ const PANEL_REGISTRY: Record<string, { label: string; Component: React.Component
   'concord-link':{ label: 'Concord Link', Component: ConcordLinkPanel },
   dreams:       { label: 'Dreams & Anticipations', Component: DreamPanel },
   war:          { label: 'War Council',  Component: WarPanel },
+  'character-customizer': { label: 'Character Customizer', Component: CharacterCustomizerPanel },
 };
 
 export function PanelHost() {
