@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useHUDContext, type ExpertiseLevel } from '../HUDContextProvider';
+import { LanguageSelector } from '@/components/common/LanguageSelector';
 
 const LEVELS: ExpertiseLevel[] = ['newcomer', 'standard', 'detailed', 'engineering'];
 
@@ -95,6 +96,10 @@ export function HUDSettingsPanel() {
       <button type="button" onClick={resetDismissedNudges} aria-label="Reset all dismissed nudges" className="text-xs px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200">
         Reset dismissed nudges
       </button>
+
+      {/* Phase P — language picker. 10 locales, dropdown variant. */}
+      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2 mt-4">Language</h3>
+      <LanguageSelector variant="dropdown" />
     </div>
   );
 }
