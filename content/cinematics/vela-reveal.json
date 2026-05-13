@@ -1,0 +1,12 @@
+{
+  "id": "vela_reveal",
+  "name": "Vela Reveal",
+  "trigger": "vela:reveal",
+  "comment": "Concordia Phase 15 — bespoke cinematic for the Vela reveal beat. Triggered when the player first interacts with the Vela NPC in the Akeia matriarchy.",
+  "shots": [
+    { "camera": "whip_pan",  "duration_ms": 500,  "audio_sting": "vela_chord" },
+    { "camera": "close_on",  "duration_ms": 2500, "time_scale": 0.3 },
+    { "camera": "dolly_in",  "duration_ms": 1500, "easing": "ease_out_quad" },
+    { "camera": "pull_back", "duration_ms": 2000 }
+  ]
+}
