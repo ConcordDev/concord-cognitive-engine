@@ -143,6 +143,41 @@ export default function BuildingRenderer3D({
     THREE: typeof import('three'),
     validation?: ValidationData,
   ) => {
+    // Phase A2: if the DTU has a recognised archetype (tavern / archive /
+    // forge / market / tower) AND faction visual heraldry, take the
+    // procedural-buildings path which builds richer silhouettes per
+    // architecture style (fortified / gracile / crystalline / organic /
+    // industrial). Falls through to the legacy box-composite path when
+    // archetype isn't in the procgen registry.
+    const knownArchetypes = ['tavern', 'archive', 'forge', 'market', 'tower'] as const;
+    type ProcArch = typeof knownArchetypes[number];
+    const dtuArch = (dtu as { archetype?: string }).archetype;
+    if (dtuArch && (knownArchetypes as readonly string[]).includes(dtuArch)) {
+      try {
+        const { createBuilding } = await import('@/lib/world-lens/procedural-buildings');
+        const factionVisual = (dtu as { faction_visual?: { primary_color?: string; secondary_color?: string; accent_color?: string } }).faction_visual;
+        const archStyleByArch: Record<ProcArch, 'fortified' | 'gracile' | 'crystalline' | 'organic' | 'industrial'> = {
+          tavern: 'organic', archive: 'gracile', forge: 'fortified',
+          market: 'gracile', tower: 'fortified',
+        };
+        const result = createBuilding(THREE, {
+          archetype: dtuArch as ProcArch,
+          seed: dtu.id,
+          factionStyle: factionVisual ? {
+            primary_color: factionVisual.primary_color,
+            secondary_color: factionVisual.secondary_color,
+            accent_color: factionVisual.accent_color,
+            architecture_style: archStyleByArch[dtuArch as ProcArch],
+          } : { architecture_style: archStyleByArch[dtuArch as ProcArch] },
+        });
+        result.name = `building_${dtu.id}`;
+        result.userData = { buildingId: dtu.id, dtuName: dtu.name };
+        result.scale.set(dtu.dimensions.width / 10, dtu.dimensions.height / 8, dtu.dimensions.depth / 8);
+        return result;
+      } catch (err) {
+        if (typeof console !== 'undefined') console.warn('[BuildingRenderer3D] procedural-buildings failed, falling back to legacy', err);
+      }
+    }
     const group = new THREE.Group();
     group.name = `building_${dtu.id}`;
     group.userData = { buildingId: dtu.id, dtuName: dtu.name };
