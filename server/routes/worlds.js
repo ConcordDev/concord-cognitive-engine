@@ -1806,6 +1806,20 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
 
+      // ── Concordant Law gate ────────────────────────────────────────────────
+      // Concordia-hub is the Three Above All's domain: Sovereign + Concord +
+      // Concordia have decreed all combat refused inside the hub. Refusal is
+      // server-authoritative so even a modified client can't deal damage in
+      // the city. Other worlds enforce combat-allowed via rule_modulators
+      // farther down (computeSkillEffectiveness).
+      if (worldId === "concordia-hub" || worldId === "concordia") {
+        return res.status(403).json({
+          ok: false,
+          error: "concordant_law_refusal",
+          reason: "The Three Above All refuse violence within Concordia. Travel out via Concord Link to engage in combat.",
+        });
+      }
+
       const {
         computeDamage,
         applyDamageToNPC,
@@ -2248,6 +2262,16 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { npcId } = req.body;
 
       if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
+
+      // Concordant Law: NPCs cannot harm players inside the hub. Mirror the
+      // player→NPC gate above.
+      if (worldId === "concordia-hub" || worldId === "concordia") {
+        return res.status(403).json({
+          ok: false,
+          error: "concordant_law_refusal",
+          reason: "The Three Above All refuse violence within Concordia.",
+        });
+      }
 
       const {
         computeDamage,
