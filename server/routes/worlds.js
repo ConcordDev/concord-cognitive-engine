@@ -1932,6 +1932,28 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
 
+      // ── Phase 2: bloodline-coupled potency ─────────────────────────────────
+      // After env amplification, apply the attacker's bloodline multiplier
+      // for this skill's element. Sanguire-pure fire casts at ×1.20; off-
+      // bloodline fire at ×0.85; ancestry-faded at ×0.60. A matched
+      // bloodline with dilution ≥ 0.90 refuses entirely (bloodline_too_faded).
+      // Players with no ancestry row get neutral pass-through (×1.0), so
+      // pre-Phase-2 combat continues to work identically until ancestry is
+      // chosen.
+      try {
+        const { attackerMultiplier } = await import("../lib/bloodline-powers.js");
+        const bm = attackerMultiplier(db, userId, skillData.element || 'none');
+        if (bm.refused) {
+          logger.info?.('worlds', 'combat_bloodline_refused', { userId, element: skillData.element, kind: bm.kind });
+          return res.status(422).json({ ok: false, error: "bloodline_too_faded", reason: bm.kind });
+        }
+        if (bm.multiplier !== 1.0 && Number.isFinite(damageResult.finalDamage)) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * bm.multiplier * 10) / 10;
+          damageResult.bloodlineMultiplier = bm.multiplier;
+          damageResult.bloodlineKind = bm.kind;
+        }
+      } catch { /* Phase 2 substrate not applied — neutral pass-through */ }
+
       // Phase 8 — combat-polish substrate. Player spends gas, records a
       // strike (combo + multiplier), and the multiplier amplifies damage
       // before applyDamageToNPC. NPC may be triggered into rocked state
