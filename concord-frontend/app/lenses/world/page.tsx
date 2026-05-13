@@ -88,13 +88,16 @@ const EmergentEventFeed = dynamic(
     })),
   { ssr: false }
 );
-const ConcordiaHUDPanels = dynamic(
-  () =>
-    import('@/components/world/ConcordiaHUDPanels').then((m) => ({
-      default: m.ConcordiaHUDPanels,
-    })),
-  { ssr: false }
-);
+const ConcordiaHUD = {
+  Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
+  Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
+  ContextPrompt: dynamic(() => import('@/components/world/concordia-hud/ContextPromptLayer').then((m) => ({ default: m.ContextPromptLayer })), { ssr: false }),
+  CommandPalette: dynamic(() => import('@/components/world/concordia-hud/CommandPalette').then((m) => ({ default: m.CommandPalette })), { ssr: false }),
+  ActionWheel: dynamic(() => import('@/components/world/concordia-hud/ActionWheel').then((m) => ({ default: m.ActionWheel })), { ssr: false }),
+  PanelHost: dynamic(() => import('@/components/world/concordia-hud/PanelHost').then((m) => ({ default: m.PanelHost })), { ssr: false }),
+  InteractionSink: dynamic(() => import('@/components/world/concordia-hud/WorldInteractionSink').then((m) => ({ default: m.WorldInteractionSink })), { ssr: false }),
+  AmbientFeedback: dynamic(() => import('@/components/world/concordia-hud/AmbientFeedback').then((m) => ({ default: m.AmbientFeedback })), { ssr: false }),
+};
 const PersonalBeatWidget = dynamic(
   () =>
     import('@/components/world/PersonalBeatWidget').then((m) => ({
@@ -4314,8 +4317,21 @@ export default function WorldLensPage() {
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
           <PersonalBeatWidget />
-          {/* Concordia HUD — tabbed overlay for every Phase 1-16 substrate */}
-          <ConcordiaHUDPanels />
+          {/* Concordia 5-layer dynamic HUD — replaces the old static
+              ConcordiaHUDPanels. See the plan file for layer breakdown:
+              ambient corner badges, contextual prompts, command palette,
+              action wheels, single-purpose modal panels + every-click
+              registers ambient-feedback sink. */}
+          <ConcordiaHUD.Provider />
+          <ConcordiaHUD.Ambient />
+          <ConcordiaHUD.ContextPrompt />
+          <ConcordiaHUD.CommandPalette />
+          <ConcordiaHUD.ActionWheel variant="quick_panel" />
+          <ConcordiaHUD.ActionWheel variant="skill" />
+          <ConcordiaHUD.ActionWheel variant="tool" />
+          <ConcordiaHUD.PanelHost />
+          <ConcordiaHUD.InteractionSink />
+          <ConcordiaHUD.AmbientFeedback />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing
