@@ -23168,6 +23168,12 @@ registerNemesisMacros(register);
 import registerEcologyMacros from "./domains/ecology.js";
 registerEcologyMacros(register);
 
+// Phase 7 — dreams + forward-sim surface. Read-only HUD reads over
+// dream-engine compositions and forward-sim anticipations so the
+// player can see what their subconscious has been doing while offline.
+import registerDreamsMacros from "./domains/dreams.js";
+registerDreamsMacros(register);
+
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
 // recent_moves / get_relation reads.
