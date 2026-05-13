@@ -5,6 +5,8 @@
   "tech_level": "varied",
   "magic_level": "high-and-unstable",
   "is_hub": false,
+  "universe_type": "lattice_crucible",
+  "biomes": ["plains", "forest", "highland", "mountain", "water", "arid"],
   "description": "A world the lattice-orchestrator cycles into existence from drift accumulation across the federation. Every region in the Crucible is a procgen response to a real drift alert — every quest is composed by lattice-quest-cycle from a real contradiction in the corpus. Players who travel here are knowingly walking into a place where the simulation actively writes itself in front of them. The drift density is six to ten times Concordia's; lattice-born quests fire about every fifteen in-game minutes.",
   "skill_affinity": {
     "default": 1.0,
@@ -16,7 +18,15 @@
     "stealth": 0.9,
     "crafting": 1.05,
     "refusal_glyph_reading": 1.1,
-    "drift_navigation": 1.0
+    "drift_navigation": 1.0,
+    "gun": 1.0,
+    "weapons_modern": 1.0
+  },
+  "material_availability": {
+    "ballistic_ammo": 0.40,
+    "magical_reagents": 0.85,
+    "tech_parts": 0.50,
+    "bloodline_fuel": 0.50
   },
   "rule_modulators": {
     "combatLethality": 1.1,

@@ -5,6 +5,8 @@
   "tech_level": "ruined-classical",
   "magic_level": "fading",
   "is_hub": false,
+  "universe_type": "sovereign_ruins",
+  "biomes": ["plains", "arid"],
   "description": "Concordia's sister-city before the Refusal Cascade — the place that tried to remember everything and could not refuse. After the Cascade, the city collapsed not in flame but in quiet: archives kept writing, spells kept casting, but no one remained to read them. Players arriving here find a still-functional library that still serves anyone who asks, three half-conscious archivists who are unsure if they are alive, and the Sovereign Refusal Archive itself — a monument to the moment refusal became possible. The Refusal Field is dense here; many actions are gated by glyph-strength.",
   "skill_affinity": {
     "default": 0.7,
@@ -16,7 +18,15 @@
     "stealth": 0.85,
     "swordsmanship": 0.5,
     "combat": 0.5,
-    "destruction": 0.3
+    "destruction": 0.3,
+    "gun": 1.0,
+    "weapons_modern": 1.0
+  },
+  "material_availability": {
+    "ballistic_ammo": 0.10,
+    "magical_reagents": 0.85,
+    "tech_parts": 0.20,
+    "bloodline_fuel": 0.6
   },
   "rule_modulators": {
     "combatLethality": 0.6,

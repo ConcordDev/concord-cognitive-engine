@@ -627,6 +627,38 @@ export function BuildingCollapseBridge({ userId }: { userId: string | null }) {
   return null;
 }
 
+// ── Phase B2: socket combat:hit (lethal) → concordia:lethal-hit ────────────
+/**
+ * Listens for the `combat:hit` socket event and, when `lethal=true`,
+ * dispatches `concordia:lethal-hit` so ragdoll-bridge can spawn a
+ * ragdoll at the target's last known position. Mass multiplier comes
+ * from the server's actor_physique compute (mig 153 npc_stress et al.).
+ */
+export function LethalHitBridge() {
+  useEffect(() => {
+    const off = subscribe('combat:hit' as Parameters<typeof subscribe>[0], (payload: unknown) => {
+      const ev = payload as {
+        lethal?: boolean;
+        targetId?: string;
+        targetPosition?: { x: number; y?: number; z: number };
+        impulse?: { x: number; y: number; z: number };
+        massMultiplier?: number;
+      };
+      if (!ev?.lethal || !ev.targetId || !ev.targetPosition) return;
+      window.dispatchEvent(new CustomEvent('concordia:lethal-hit', {
+        detail: {
+          targetId: ev.targetId,
+          position: { x: ev.targetPosition.x, y: ev.targetPosition.y ?? 0, z: ev.targetPosition.z },
+          impulse: ev.impulse,
+          massMultiplier: ev.massMultiplier,
+        },
+      }));
+    });
+    return () => { off(); };
+  }, []);
+  return null;
+}
+
 // ── Convenience: mount everything ───────────────────────────────────────────
 
 export function CombatPolishLayer({ userId }: { userId: string | null }) {
@@ -641,6 +673,8 @@ export function CombatPolishLayer({ userId }: { userId: string | null }) {
       <CombatTelegraphGlowBridge />
       <CombatStaggerCameraBridge userId={userId} />
       <BuildingCollapseBridge userId={userId} />
+      {/* Phase B2 — combat:hit (lethal) → ragdoll bridge */}
+      <LethalHitBridge />
     </>
   );
 }

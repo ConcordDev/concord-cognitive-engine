@@ -13,6 +13,8 @@ import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { X, Zap, Plus } from 'lucide-react';
 import type { DTUTier } from '@/lib/api/generated-types';
+// Phase P — wire the 5-tier VisibilityScopePicker.
+import { VisibilityScopePicker, type VisibilityScope } from '@/components/scope/VisibilityScopePicker';
 
 interface DTUQuickCreateProps {
   onClose: () => void;
@@ -29,6 +31,7 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
   const [tagsInput, setTagsInput] = useState(defaultTags?.join(', ') || '');
   const [tier, setTier] = useState<DTUTier>('regular');
   const [isGlobal, setIsGlobal] = useState(false);
+  const [visibilityScope, setVisibilityScope] = useState<VisibilityScope>('private');
 
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
@@ -45,8 +48,8 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
         content,
         tags: tags.length > 0 ? tags : undefined,
         source: source || 'manual',
-        isGlobal,
-        meta: { tier },
+        isGlobal: isGlobal || visibilityScope === 'global',
+        meta: { tier, visibilityScope },
       });
     },
     onSuccess: () => {
@@ -160,6 +163,16 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
                 <span className="text-sm text-gray-300">Make global</span>
               </label>
             </div>
+          </div>
+
+          {/* Phase P — 5-tier federation visibility (private / local /
+              regional / national / global). Caller's checkbox above
+              remains as a quick "global" shortcut. */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">
+              Who can see this?
+            </label>
+            <VisibilityScopePicker value={visibilityScope} onChange={setVisibilityScope} />
           </div>
         </div>
 

@@ -105,6 +105,8 @@ import IntelligenceCard from '@/components/chat/IntelligenceCard';
 import AtlasPrivacyMonitor from '@/components/chat/AtlasPrivacyMonitor';
 import { InitiativeChip, type Initiative } from '@/components/chat/InitiativeChip';
 import { ToolPalette } from '@/components/chat/ToolPalette';
+import { SafeCard } from '@/components/common/SafeCard';
+import { GracefulFallback } from '@/components/common/GracefulFallback';
 // Sprint 11 — Agent Mode + initiative bell (mounted alongside, no
 // modification to existing chat state). Dynamic to keep main-bundle
 // LCP/FCP from regressing (Sprint 15 Lighthouse fix).
@@ -2197,7 +2199,7 @@ export default function ChatLensPage() {
   // proactive initiative chips, and tool-execution traces. Defined
   // after renderMessage so the useCallback can close over it without a
   // forward reference.
-  const renderThreadItem = useCallback(
+  const renderThreadItemInner = useCallback(
     (idx: number, item: ThreadItem) => {
       if (item.__kind === 'initiative') {
         // pendingWorkReminder triggerType gets a "Create quest from
@@ -2239,6 +2241,15 @@ export default function ChatLensPage() {
       return renderMessage(idx, item);
     },
     [renderMessage, handleInitiativeDismiss, handleInitiativeRespond, handleInitiativeAction]
+  );
+
+  // Phase P — wrap each thread item in SafeCard so a single bad
+  // message can't tank the whole thread.
+  const renderThreadItem = useCallback(
+    (idx: number, item: ThreadItem) => (
+      <SafeCard label={`Message ${item.__kind}`}>{renderThreadItemInner(idx, item)}</SafeCard>
+    ),
+    [renderThreadItemInner],
   );
 
   // ──────────────────────────────────────────────
@@ -2965,6 +2976,13 @@ export default function ChatLensPage() {
                 />
               </>
             )}
+
+            {/* Phase P — GracefulFallback wraps the AI-dependent
+                streaming / thinking indicators so a downed conscious
+                brain shows a clear status instead of an empty pulse. */}
+            <GracefulFallback feature="Chat" brainRequired="conscious">
+              <></>
+            </GracefulFallback>
 
             {/* Streaming indicator */}
             {isStreaming && streamingContent && (

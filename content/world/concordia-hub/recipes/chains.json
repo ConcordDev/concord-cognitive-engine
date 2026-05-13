@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "comment": "Concordia Phase 11 — authored multi-step craft chains.",
+  "chains": [
+    {
+      "id": "textile_cactem",
+      "name": "Cactem Textile",
+      "output_item": "cactem_bolt",
+      "author_faction": "fluxom",
+      "steps": [
+        { "kind": "gather",   "name": "breed dye-bug strip",  "duration_s": 3600, "season_gate": null },
+        { "kind": "gather",   "name": "harvest dye bugs",     "duration_s": 1800, "season_gate": "prail" },
+        { "kind": "process",  "name": "kill + salt-mix",      "duration_s": 1800 },
+        { "kind": "cure",     "name": "dye fabric (cure)",    "duration_s": 86400 },
+        { "kind": "assemble", "name": "weave bolt",           "duration_s": 7200 },
+        { "kind": "finish",   "name": "cut + market",         "duration_s": 1800 }
+      ]
+    },
+    {
+      "id": "annual_foodstuff_cycle",
+      "name": "Foodstuffs Annual Cycle",
+      "output_item": "salted_provision_crate",
+      "author_faction": "tunyan",
+      "steps": [
+        { "kind": "gather",  "name": "plant",   "duration_s": 0, "season_gate": "prail" },
+        { "kind": "process", "name": "irrigate","duration_s": 86400 },
+        { "kind": "gather",  "name": "harvest", "duration_s": 0, "season_gate": "harvest" },
+        { "kind": "process", "name": "salt fish","duration_s": 0, "season_gate": "pisces" },
+        { "kind": "gather",  "name": "glean",   "duration_s": 0, "season_gate": "brine" },
+        { "kind": "finish",  "name": "slaughter + crate", "duration_s": 0, "season_gate": "cull" }
+      ]
+    },
+    {
+      "id": "alchemy_herb_tonic",
+      "name": "Herbalist Tonic",
+      "output_item": "tonic_phial",
+      "author_faction": "medici",
+      "steps": [
+        { "kind": "gather",   "name": "gather herbs", "duration_s": 1800 },
+        { "kind": "process",  "name": "decoct",       "duration_s": 3600 },
+        { "kind": "cure",     "name": "rest in stillroom", "duration_s": 43200 },
+        { "kind": "finish",   "name": "bottle + label", "duration_s": 600 }
+      ]
+    },
+    {
+      "id": "forging_blade",
+      "name": "Forged Blade",
+      "output_item": "forged_blade",
+      "author_faction": "iron_warden",
+      "steps": [
+        { "kind": "gather",   "name": "smelt ingot",  "duration_s": 1800 },
+        { "kind": "assemble", "name": "hammer to shape", "duration_s": 3600 },
+        { "kind": "finish",   "name": "quench + grind", "duration_s": 1800 }
+      ]
+    }
+  ]
+}

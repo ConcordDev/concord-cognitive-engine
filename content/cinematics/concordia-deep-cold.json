@@ -1,0 +1,11 @@
+{
+  "id": "concordia_deep_cold",
+  "name": "Concordia Deep Cold",
+  "trigger": "refusal:compound",
+  "comment": "Concordia Phase 15 — bespoke cinematic when refusal_field strength ≥ 6 (compound refusal, per Sprint 18.6 + CLAUDE.md invariant). The Concordia goddess goes into deep-cold dialogue tone; the camera mirrors that with a long slow pull, ultra-slow time scale, and a low chord.",
+  "shots": [
+    { "camera": "close_on",  "duration_ms": 2400, "time_scale": 0.12, "audio_sting": "concordia_deep_cold" },
+    { "camera": "dolly_in",  "duration_ms": 1800, "easing": "ease_in_cubic", "time_scale": 0.2 },
+    { "camera": "pull_back", "duration_ms": 3000, "easing": "ease_out_quad" }
+  ]
+}

@@ -453,6 +453,27 @@ registerHeartbeat("npc-scheme-cycle", {
   handler: runNpcSchemeCycle,
 });
 
+// Phase T — NPC equal-agency cross-world. Three heartbeats:
+//   * npc-travel-cycle (60, ~15min)         — drains npc_travel_intents +
+//                                             ambition-driven goal-seeks
+//   * npc-vs-npc-combat-cycle (8, ~2min)    — pair-resolves grudges in cells
+//   * npc-ambition-cycle (80, ~20min)       — picks unilateral moves +
+//                                             distributes lattice-born quests
+// All exception-isolated per-NPC; no kill-switch (these are core to the
+// "every actor is equal" design).
+import { runNpcTravelCycle }       from "./emergent/npc-travel-cycle.js";
+import { runNpcVsNpcCombatCycle }  from "./emergent/npc-vs-npc-combat-cycle.js";
+import { runNpcAmbitionCycle }     from "./emergent/npc-ambition-cycle.js";
+registerHeartbeat("npc-travel-cycle",      { frequency: 60, handler: runNpcTravelCycle });
+registerHeartbeat("npc-vs-npc-combat",     { frequency: 8,  handler: runNpcVsNpcCombatCycle });
+registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbitionCycle });
+
+// Phase U — substrate-driven loose mount behaviour. Picks
+// wandering / fleeing / feeding per loose mount, advances position
+// one step, emits mount:behavior socket events on state change.
+import { runMountBehaviorCycle } from "./emergent/mount-behavior-cycle.js";
+registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBehaviorCycle });
+
 // Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
 // (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
 // NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
@@ -507,6 +528,27 @@ import { runLatticeQuestCycle } from "./emergent/lattice-quest-cycle.js";
 registerHeartbeat("lattice-quest-cycle", {
   frequency: 180,
   handler: runLatticeQuestCycle,
+});
+
+// Phase 6: Ecology quest cycle. Drains ecology_imbalance_log rows (set
+// by fauna-spawner when predator/prey ratios fall out of bounds) into
+// procedural quests via the lattice-quest-composer. Frequency 240
+// (~60min); kill-switch CONCORD_ECOLOGY_QUESTS=0.
+import { runEcologyQuestCycle } from "./emergent/ecology-quest-cycle.js";
+registerHeartbeat("ecology-quest-cycle", {
+  frequency: 240,
+  handler: runEcologyQuestCycle,
+});
+
+// War-in-3D skirmish cycle. Advances active campaigns past their
+// next_skirmish_at — handles mustering → marching → engaging
+// state transitions + skirmish resolution + town capture + auto-kidnap.
+// Frequency 2 (~30s) so a player declaring war sees combat play out
+// within seconds. Kill-switch CONCORD_WAR_SKIRMISH=0.
+import { runWarSkirmishCycle } from "./emergent/war-skirmish-cycle.js";
+registerHeartbeat("war-skirmish-cycle", {
+  frequency: 2,
+  handler: runWarSkirmishCycle,
 });
 
 // Phase 5c: Seasons + Long-cycle Time. Every 480 ticks (~2h) advances
@@ -12167,6 +12209,10 @@ function makeCtx(req=null) {
   }
   return {
     state: STATE,
+    // Convenience accessor — every domain macro does `ctx?.db`. Without
+    // this, callers have to dig through ctx.state.db, and many forget,
+    // returning a spurious no_db. STATE.db is the same sqlite handle.
+    db: STATE?.db || null,
     actor: resolvedActor,
     env: {
       version: VERSION,
@@ -22904,6 +22950,33 @@ import registerSecretsMacros from "./domains/secrets.js";
 registerSecretsMacros(register);
 import registerSchemesMacros from "./domains/schemes.js";
 registerSchemesMacros(register);
+// Concordia Phase 2-16 — register the new player-experience domains.
+import registerBloodlineMacros from "./domains/bloodline.js";
+registerBloodlineMacros(register);
+import registerPhysiqueMacros from "./domains/physique.js";
+registerPhysiqueMacros(register);
+import registerRealmAccessMacros from "./domains/realm-access.js";
+registerRealmAccessMacros(register);
+import registerStaminaMacros from "./domains/stamina.js";
+registerStaminaMacros(register);
+import registerVehicleMacros from "./domains/vehicles.js";
+registerVehicleMacros(register);
+import registerWindMacros from "./domains/wind.js";
+registerWindMacros(register);
+import registerUnderwaterMacros from "./domains/underwater.js";
+registerUnderwaterMacros(register);
+import registerTunyanMacros from "./domains/tunyan.js";
+registerTunyanMacros(register);
+import registerJobsMacros from "./domains/jobs.js";
+registerJobsMacros(register);
+import registerCraftChainsMacros from "./domains/craft-chains.js";
+registerCraftChainsMacros(register);
+import registerDynastyMacros from "./domains/dynasty.js";
+registerDynastyMacros(register);
+import registerCultureMacros from "./domains/culture.js";
+registerCultureMacros(register);
+import registerRealmCouncilMacros from "./domains/realm-council.js";
+registerRealmCouncilMacros(register);
 import registerKingdomsMacros from "./domains/kingdoms.js";
 registerKingdomsMacros(register);
 import registerBuildingsMacros from "./domains/buildings.js";
@@ -23059,6 +23132,21 @@ registerHeartbeat("player-signs-cleanup", {
   handler: runPlayerSignsCleanup,
 });
 
+// Concordia Phase 8/10/12/16 heartbeats — aging cycle, ration mint,
+// council session opener, underwater threat sweep. All wrapped
+// exception-safe in concordia-cycles.js so a missing table can't
+// break the governor tick.
+import {
+  runAgingCycle,
+  runRationFloorCycle,
+  runCouncilSessionCycle,
+  runUnderwaterThreatCycle,
+} from "./emergent/concordia-cycles.js";
+registerHeartbeat("aging-cycle", { frequency: 480, handler: runAgingCycle });
+registerHeartbeat("ration-floor-cycle", { frequency: 1440, handler: runRationFloorCycle });
+registerHeartbeat("council-session-cycle", { frequency: 480, handler: runCouncilSessionCycle });
+registerHeartbeat("underwater-threat-cycle", { frequency: 6, handler: runUnderwaterThreatCycle });
+
 // Theme deferred (game-feel pass): hidden quest triggers — substrate
 // for unmarked, environment-gated quest activation. Pure runMacro
 // surface; no heartbeat (callers evaluate inline as players move /
@@ -23103,6 +23191,86 @@ registerCombatPolishMacros(register);
 // players can see tombs, last words, and inheritance lineage.
 import registerNpcLegacyMacros from "./domains/npc-legacy.js";
 registerNpcLegacyMacros(register);
+
+// Phase 5 — nemesis surface. Read-only macros over the npc-asymmetry
+// substrate (grudges + preoccupations + stress + schemes) so the HUD
+// can render per-NPC nemesis glyphs over nearby NPCs.
+import registerNemesisMacros from "./domains/nemesis.js";
+registerNemesisMacros(register);
+
+// Phase 6 — ecology surface. Creature homes (caves / nests / burrows),
+// sleep patterns, and predator-prey imbalance signals that the
+// lattice-quest-cycle drains into procedural quests.
+import registerEcologyMacros from "./domains/ecology.js";
+registerEcologyMacros(register);
+
+// Phase 7 — dreams + forward-sim surface. Read-only HUD reads over
+// dream-engine compositions and forward-sim anticipations so the
+// player can see what their subconscious has been doing while offline.
+import registerDreamsMacros from "./domains/dreams.js";
+registerDreamsMacros(register);
+
+// War-in-3D — surfaces declare-war as a real playable campaign
+// (rally / skirmish / town capture / kidnap) layered on faction-strategy.
+import registerWarMacros from "./domains/war.js";
+registerWarMacros(register);
+
+// Spawn macros — force-trigger boss/enemy/creature/NPC drops. Useful
+// for QA + live ops without waiting for procedural-spawner heartbeats.
+import registerSpawnMacros from "./domains/spawn.js";
+registerSpawnMacros(register);
+
+// Appearance — surfaces authored faction visual heraldry + NPC prose
+// for the frontend's character-schema generator. Lets the renderer
+// build deterministic, lore-faithful characters per world.
+import registerAppearanceMacros from "./domains/appearance.js";
+registerAppearanceMacros(register);
+
+// Phase H2 — player-placed POI markers.
+import registerMarkersMacros from "./domains/markers.js";
+registerMarkersMacros(register);
+
+// Phase H4 — emergent pattern feed (drift + breakthroughs + federation).
+import registerPatternsMacros from "./domains/patterns.js";
+registerPatternsMacros(register);
+
+// Phase J1 — Commune federation macros. Previously orphaned in domains/commune.js.
+import { registerCommune } from "./domains/commune.js";
+registerCommune(register);
+
+// Phase J2 — Register the two cross-world heartbeats that have lived
+// orphaned in server/emergent/.
+import { runCrossWorldEconomyCycle } from "./emergent/cross-world-economy-cycle.js";
+registerHeartbeat("cross-world-economy-cycle", {
+  frequency: 240,  // ~60 min
+  handler: runCrossWorldEconomyCycle,
+});
+import { runCrossWorldSchemeCycle } from "./emergent/cross-world-scheme-cycle.js";
+registerHeartbeat("cross-world-scheme-cycle", {
+  frequency: 60,   // ~15 min
+  handler: runCrossWorldSchemeCycle,
+});
+
+// Phase J4 — output-hooks macro surface (constitution + fingerprint
+// + ghost-thread pipeline). Callers opt in via output_hooks.process.
+import registerOutputHooksMacros from "./domains/output-hooks.js";
+registerOutputHooksMacros(register);
+
+// Phase I1-5 — minigames + voice chat + messaging.
+import registerRacingMacros from "./domains/racing.js";
+registerRacingMacros(register);
+import registerBasketballMacros from "./domains/basketball.js";
+registerBasketballMacros(register);
+import registerVoiceChatMacros from "./domains/voice-chat.js";
+registerVoiceChatMacros(register);
+import registerMessagingMacros from "./domains/messaging.js";
+registerMessagingMacros(register);
+
+// Phase V — game-mode dispatch surfaces for the new lenses.
+import registerCrisisMacros from "./domains/crisis.js";
+registerCrisisMacros(register);
+import registerGhostHuntMacros from "./domains/ghost-hunt.js";
+registerGhostHuntMacros(register);
 
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
@@ -28745,6 +28913,41 @@ if (db) {
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
     try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    // Concordia substrate seeder — populate npc_ancestry, actor_physique,
+    // actor_culture, npc_ages for every authored NPC so Phase 2/3/12/13
+    // calculation paths get real values. Idempotent on every boot.
+    try {
+      const { seedConcordiaNpcSubstrate } = await import("./lib/concordia-npc-seeder.js");
+      const r = await seedConcordiaNpcSubstrate(db);
+      if (r.ok) console.log("[concordia-seeder]", JSON.stringify(r.seeded));
+    } catch (e) { console.warn("[concordia-seeder]", e.message); }
+    // Kingdom seeder — for every authored faction with controlled_districts
+    // across the 8 Sovereign canon worlds, insert a procedural realm row,
+    // territories, and citizens. Idempotent. Concordia-hub excluded by
+    // Concordant Law. kingdom-decree-cycle (freq 16) starts running for
+    // these NPC rulers automatically.
+    try {
+      const { seedKingdoms } = await import("./lib/kingdom-seeder.js");
+      // seedKingdoms reads content/world/<id>/factions.json — resolve repoRoot
+      // relative to this file so it works regardless of process.cwd().
+      const path = await import("node:path");
+      const url = await import("node:url");
+      const here = path.dirname(url.fileURLToPath(import.meta.url));
+      const repoRoot = path.resolve(here, "..");
+      const r = seedKingdoms(db, { repoRoot });
+      if (r.ok) console.log("[kingdom-seeder]", JSON.stringify({
+        realms: r.realms_created,
+        territories: r.territories_seeded,
+        citizens: r.citizens_seeded,
+      }));
+    } catch (e) { console.warn("[kingdom-seeder]", e.message); }
+    // Phase 6 — seed creature sleep patterns (per-species circadian
+    // table). Idempotent. Spawner reads this to gate home-vs-roam.
+    try {
+      const { seedSleepPatterns } = await import("./lib/ecosystem/creature-homes.js");
+      const r = seedSleepPatterns(db);
+      console.log("[creature-sleep-seeder]", JSON.stringify({ patterns: r.seeded }));
+    } catch (e) { console.warn("[creature-sleep-seeder]", e.message); }
     // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
     try {
       const starter = await import("./lib/starter-content.js");

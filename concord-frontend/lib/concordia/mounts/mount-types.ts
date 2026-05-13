@@ -61,7 +61,9 @@ export interface ActiveMountPayload {
   seatOffset?: RiderSeatOffset;
 }
 
-/** Mounted state machine — see mount-state-machine.ts. */
+/** Mounted state machine — see mount-state-machine.ts.
+ *  Phase U adds wandering / fleeing / feeding for substrate-driven
+ *  loose mount behaviour. */
 export type MountedState =
   | "unmounted"
   | "mounting"
@@ -70,7 +72,10 @@ export type MountedState =
   | "mounted_trot"
   | "mounted_gallop"
   | "mounted_combat"
-  | "dismounting";
+  | "dismounting"
+  | "wandering"
+  | "fleeing"
+  | "feeding";
 
 export interface MountedFrame {
   /** Mount world position. */

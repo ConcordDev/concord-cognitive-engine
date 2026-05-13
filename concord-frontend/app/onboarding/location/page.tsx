@@ -21,8 +21,8 @@ export default function OnboardingLocationPage() {
 
   return (
     <ChooseYourUniverse
-      onComplete={() => router.push('/')}
-      onSkip={() => router.push('/')}
+      onComplete={() => router.push('/onboarding/character')}
+      onSkip={() => router.push('/onboarding/character')}
     />
   );
 }

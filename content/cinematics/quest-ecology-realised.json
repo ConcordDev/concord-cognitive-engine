@@ -1,0 +1,12 @@
+{
+  "id": "quest_ecology_realised",
+  "name": "Ecology Quest Realised",
+  "trigger": "quest_ecology_realised",
+  "comment": "Phase W — fires when an ecology-born quest is realised. Overhead orbit on the affected ecology region + a fauna-gathering close-up.",
+  "shots": [
+    { "camera": "crane_drop",     "duration_ms": 1600 },
+    { "camera": "dolly_out",      "duration_ms": 1400, "easing": "ease_in_quad" },
+    { "camera": "close_on",       "duration_ms": 1200, "audio_sting": "fauna_chord" },
+    { "camera": "pull_back",      "duration_ms": 2000 }
+  ]
+}

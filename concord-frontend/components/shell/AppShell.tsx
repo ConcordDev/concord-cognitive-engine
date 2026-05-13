@@ -26,6 +26,7 @@ import { OnboardingWizard, useOnboarding } from '@/components/onboarding/Onboard
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/store/sessions';
 import { useEventRouter } from '@/lib/event-router';
+import { LegalFooter } from '@/components/legal/LegalFooter';
 
 /** Routes that render their own chrome and should skip the AppShell layout. */
 const STANDALONE_PREFIXES = ['/legal/'];
@@ -158,6 +159,10 @@ export function AppShell({ children }: AppShellProps) {
           }`}
         >
           <LensErrorBoundary name="Main Content">{children}</LensErrorBoundary>
+          {/* Phase P — shared legal footer. Lives outside the world
+              lens (whose pathname-based exclusion happens above) and
+              shows Terms / Privacy / DMCA. */}
+          {pathname !== '/lenses/world' && <LegalFooter />}
         </main>
       </div>
 

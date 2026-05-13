@@ -58,6 +58,19 @@ const LOOT = Object.freeze({
     { item: "raw-fish",  qtyRange: [1, 1], rarity: "common", chance: 0.5 },
     { item: "shell",     qtyRange: [1, 2], rarity: "common", chance: 0.9 },
   ],
+  reef_eel: [
+    { item: "raw-fish",   qtyRange: [1, 2], rarity: "common",   chance: 1.0 },
+    { item: "snake-skin", qtyRange: [1, 1], rarity: "uncommon", chance: 0.6 },
+  ],
+  deep_octopus: [
+    { item: "raw-fish",  qtyRange: [2, 3], rarity: "uncommon", chance: 1.0 },
+    { item: "ink-sac",   qtyRange: [1, 1], rarity: "rare",     chance: 0.7 },
+  ],
+  reef_shark: [
+    { item: "raw-fish",  qtyRange: [3, 5], rarity: "common",   chance: 1.0 },
+    { item: "fang",      qtyRange: [1, 2], rarity: "uncommon", chance: 0.8 },
+    { item: "hide",      qtyRange: [1, 1], rarity: "rare",     chance: 0.4 },
+  ],
 
   // Fey / Concordia-only — these only appear when the world's universe
   // flavor includes 'concordia' or 'fantasy'.
@@ -67,6 +80,103 @@ const LOOT = Object.freeze({
   ],
   star_seed_kin: [
     { item: "seed-of-stars", qtyRange: [1, 1], rarity: "rare", chance: 0.6 },
+  ],
+
+  // Arid / desert species — added so worlds with desert regions (Tunya's
+  // Bahiij / cactem-strip, lattice-crucible procgen desert, sovereign-ruins
+  // dry-tier) don't get crocodile-in-the-desert spawns.
+  dust_jackal: [
+    { item: "raw-meat", qtyRange: [1, 2], rarity: "common",   chance: 0.8 },
+    { item: "pelt",     qtyRange: [1, 1], rarity: "uncommon", chance: 0.5 },
+    { item: "fang",     qtyRange: [1, 1], rarity: "uncommon", chance: 0.3 },
+  ],
+  desert_snake: [
+    { item: "raw-meat", qtyRange: [1, 1], rarity: "common",   chance: 0.7 },
+    { item: "snake-skin", qtyRange: [1, 1], rarity: "uncommon", chance: 0.9 },
+    { item: "venom-sac",  qtyRange: [1, 1], rarity: "rare",     chance: 0.25 },
+  ],
+  sand_scorpion: [
+    { item: "chitin",    qtyRange: [1, 2], rarity: "common",   chance: 1.0 },
+    { item: "venom-sac", qtyRange: [1, 1], rarity: "rare",     chance: 0.3 },
+  ],
+  sandsong_finch: [
+    { item: "feather",   qtyRange: [1, 2], rarity: "common", chance: 1.0 },
+  ],
+
+  // Tunya-flavor — bloodline-touched fauna unique to the post-arrival world
+  sangmoth: [
+    { item: "raw-meat",     qtyRange: [1, 2], rarity: "uncommon", chance: 0.8 },
+    { item: "ember-scale",  qtyRange: [1, 1], rarity: "rare",     chance: 0.4 },
+  ],
+  kraal_buck: [
+    { item: "raw-meat", qtyRange: [2, 3], rarity: "common",   chance: 1.0 },
+    { item: "hide",     qtyRange: [1, 2], rarity: "common",   chance: 1.0 },
+    { item: "horn",     qtyRange: [1, 2], rarity: "uncommon", chance: 0.45 },
+  ],
+  cliff_condor: [
+    { item: "feather", qtyRange: [2, 4], rarity: "uncommon", chance: 1.0 },
+    { item: "talon",   qtyRange: [1, 1], rarity: "rare",     chance: 0.4 },
+  ],
+
+  // Cyber-flavor — urban scavengers and tech-tainted strays
+  drone_rat: [
+    { item: "raw-meat",     qtyRange: [1, 1], rarity: "common",   chance: 0.8 },
+    { item: "scrap-circuit", qtyRange: [1, 2], rarity: "uncommon", chance: 0.6 },
+  ],
+  wire_corvid: [
+    { item: "feather",       qtyRange: [1, 2], rarity: "common",   chance: 1.0 },
+    { item: "scrap-circuit", qtyRange: [1, 1], rarity: "uncommon", chance: 0.4 },
+  ],
+
+  // Crime-flavor — gritty modern strays
+  alley_cat: [
+    { item: "raw-meat", qtyRange: [1, 1], rarity: "common", chance: 0.7 },
+    { item: "fur",      qtyRange: [1, 1], rarity: "common", chance: 0.9 },
+  ],
+  dock_rat: [
+    { item: "raw-meat", qtyRange: [1, 1], rarity: "common", chance: 0.7 },
+    { item: "fur",      qtyRange: [1, 1], rarity: "common", chance: 0.8 },
+  ],
+
+  // Superhero-flavor — bio-touched urban variants
+  meta_coyote: [
+    { item: "raw-meat",   qtyRange: [2, 3], rarity: "common",   chance: 1.0 },
+    { item: "pelt",       qtyRange: [1, 1], rarity: "uncommon", chance: 0.6 },
+    { item: "meta-essence", qtyRange: [1, 1], rarity: "rare",   chance: 0.3 },
+  ],
+  plasma_pigeon: [
+    { item: "feather",      qtyRange: [1, 2], rarity: "common", chance: 1.0 },
+    { item: "meta-essence", qtyRange: [1, 1], rarity: "rare",   chance: 0.15 },
+  ],
+
+  // Sovereign-Ruins flavor — half-faded archival fauna
+  archive_owl: [
+    { item: "feather",     qtyRange: [1, 2], rarity: "common", chance: 1.0 },
+    { item: "ley-essence", qtyRange: [1, 1], rarity: "rare",   chance: 0.35 },
+  ],
+  wraith_deer: [
+    { item: "ley-essence", qtyRange: [1, 1], rarity: "rare", chance: 0.7 },
+    { item: "antler",      qtyRange: [1, 1], rarity: "uncommon", chance: 0.4 },
+  ],
+
+  // Lattice-Crucible flavor — phase-shifting drift-born
+  drift_stag: [
+    { item: "raw-meat",    qtyRange: [1, 2], rarity: "uncommon", chance: 0.8 },
+    { item: "drift-shard", qtyRange: [1, 1], rarity: "rare",     chance: 0.5 },
+  ],
+  shimmer_finch: [
+    { item: "feather",     qtyRange: [1, 2], rarity: "common", chance: 1.0 },
+    { item: "drift-shard", qtyRange: [1, 1], rarity: "rare",   chance: 0.2 },
+  ],
+
+  // Frontier flavor — mesh-courier and trail fauna
+  walker_hound: [
+    { item: "raw-meat", qtyRange: [2, 3], rarity: "common",   chance: 0.9 },
+    { item: "pelt",     qtyRange: [1, 1], rarity: "uncommon", chance: 0.5 },
+  ],
+  trail_falcon: [
+    { item: "feather", qtyRange: [1, 3], rarity: "common",   chance: 1.0 },
+    { item: "talon",   qtyRange: [1, 1], rarity: "uncommon", chance: 0.3 },
   ],
 });
 
@@ -97,6 +207,14 @@ const BIOME_SPECIES = Object.freeze({
     forest:    [{ id: "deer",   target: 6, lifestyle: "herbivore" }, { id: "boar",   target: 4, lifestyle: "omnivore"  }, { id: "wolf", target: 2, lifestyle: "carnivore" }],
     highland:  [{ id: "goat",   target: 5, lifestyle: "herbivore" }, { id: "hawk",   target: 3, lifestyle: "carnivore" }],
     mountain:  [{ id: "bear",   target: 1, lifestyle: "carnivore" }, { id: "goat",   target: 3, lifestyle: "herbivore" }],
+    // Arid / desert — NO crocodile-in-the-desert. Snake + scorpion +
+    // jackal are the survival-tier carnivores; no large grazers (water
+    // scarcity gates herd size).
+    arid:      [
+      { id: "dust_jackal",   target: 2, lifestyle: "carnivore" },
+      { id: "desert_snake",  target: 4, lifestyle: "carnivore" },
+      { id: "sand_scorpion", target: 5, lifestyle: "carnivore" },
+    ],
     // Sprint C / Track C1 — aquatic biome gets procedural marine creatures.
     // topology drives the aquatic-mesh-builder (eel/cephalopod/shark).
     // swim_depth_min/max gate which depths spawn each species.
@@ -108,9 +226,51 @@ const BIOME_SPECIES = Object.freeze({
       { id: "reef_shark",  target: 1,  lifestyle: "carnivore", topology: "shark",       swim_depth_min: 3,  swim_depth_max: 25 },
     ],
   },
+  // Each canon-world flavor adds thematic species on top of the standard
+  // roster — it does NOT remove the base set. speciesForBiome returns
+  // [...base, ...flavor]. To prevent a species from appearing in a world,
+  // it has to be excluded from `standard` for that biome.
   fantasy: {
     forest:    [{ id: "moonbloom_sprite", target: 3, lifestyle: "herbivore" }, { id: "star_seed_kin", target: 2, lifestyle: "herbivore" }],
     highland:  [{ id: "star_seed_kin", target: 2, lifestyle: "herbivore" }],
+  },
+  tunya: {
+    plains:   [{ id: "kraal_buck", target: 4, lifestyle: "herbivore" }],
+    forest:   [{ id: "sangmoth",   target: 2, lifestyle: "herbivore" }],
+    highland: [{ id: "cliff_condor", target: 2, lifestyle: "carnivore" }],
+    arid:     [{ id: "sandsong_finch", target: 5, lifestyle: "herbivore" }],
+  },
+  cyber: {
+    plains:   [{ id: "drone_rat",   target: 6, lifestyle: "omnivore"  },
+               { id: "wire_corvid", target: 4, lifestyle: "omnivore"  }],
+  },
+  crime: {
+    plains:   [{ id: "alley_cat",   target: 5, lifestyle: "carnivore" },
+               { id: "dock_rat",    target: 7, lifestyle: "omnivore"  }],
+  },
+  superhero: {
+    plains:   [{ id: "meta_coyote",   target: 3, lifestyle: "carnivore" },
+               { id: "plasma_pigeon", target: 6, lifestyle: "omnivore"  }],
+  },
+  sovereign_ruins: {
+    plains:   [{ id: "archive_owl",  target: 3, lifestyle: "carnivore" },
+               { id: "wraith_deer",  target: 2, lifestyle: "herbivore" }],
+    arid:     [{ id: "wraith_deer",  target: 1, lifestyle: "herbivore" }],
+  },
+  lattice_crucible: {
+    plains:   [{ id: "drift_stag",     target: 2, lifestyle: "herbivore" },
+               { id: "shimmer_finch",  target: 4, lifestyle: "omnivore"  }],
+    forest:   [{ id: "drift_stag",     target: 2, lifestyle: "herbivore" }],
+  },
+  frontier: {
+    plains:   [{ id: "walker_hound",  target: 3, lifestyle: "carnivore" },
+               { id: "trail_falcon",  target: 2, lifestyle: "carnivore" }],
+    forest:   [{ id: "walker_hound",  target: 2, lifestyle: "carnivore" }],
+    highland: [{ id: "trail_falcon",  target: 3, lifestyle: "carnivore" }],
+  },
+  concordia_hub: {
+    // Hub is peaceful (Concordant Law). Only the gentlest base spawns;
+    // no carnivore-only flavor entries — predators come from the base set.
   },
 });
 
@@ -119,9 +279,14 @@ const BIOME_SPECIES = Object.freeze({
  * (standard / fantasy / etc.). Falls back to standard if a universe
  * doesn't define species for a biome — every world gets at least the
  * base set.
+ *
+ * When `universe === "standard"` we return ONLY the base set rather than
+ * doubling it (without the guard `[...base, ...flavor]` would concat the
+ * standard roster with itself).
  */
 export function speciesForBiome(universe, biome) {
   const base = BIOME_SPECIES.standard[biome] ?? [];
+  if (universe === "standard") return [...base];
   const flavor = (BIOME_SPECIES[universe]?.[biome]) ?? [];
   return [...base, ...flavor];
 }

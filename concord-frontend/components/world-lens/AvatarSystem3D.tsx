@@ -276,6 +276,15 @@ export default function AvatarSystem3D({
 }: AvatarSystem3DProps) {
   const avatarGroupRef = useRef<unknown>(null);
   const playerMeshRef = useRef<unknown>(null);
+  // Phase A1 sidecars for enhanced-avatar-builder. Re-using the
+  // existing facialControllersRef declared further down (line ~324).
+  // These two are new — per-frame eye tickers and enhanced-disposers.
+  const eyeTickersRef = useRef<Map<string, (dt: number) => void>>(new Map());
+  const enhancedDisposeRef = useRef<Map<string, () => void>>(new Map());
+  // Phase B3 — flight-physics shadow state. Initialised when player
+  // enters glide; ticked per frame; emitted as `concordia:flight-state`
+  // so HUD / camera systems can read it.
+  const flightStateRef = useRef<{ airspeed: number; heading: number; rollRad: number; pitchRad: number; vy: number; stalled: boolean; stallTimerMs: number } | null>(null);
 
   // Hide own avatar mesh in first-person so the camera doesn't see the
   // back of its own head. Effect runs whenever cameraMode flips.
@@ -315,6 +324,67 @@ export default function AvatarSystem3D({
   // Secondary physics + facial controllers
   const secondaryPhysicsRef = useRef<SecondaryPhysicsManager | null>(null);
   const facialControllersRef = useRef<Map<string, FacialController>>(new Map());
+
+  // Phase L — NPC appearance hydration. On world change, fetch
+  // appearance.for_world and cache per-NPC hints (faction visual +
+  // appearance prose + heroMesh flag) so createAvatarMeshSmart picks
+  // them up. Stored in a window-level cache because the NPC mesh
+  // creation happens inside an async loop the React state doesn't
+  // own directly.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let cancelled = false;
+    const worldId = (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub');
+    fetch('/api/lens/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: 'appearance', name: 'for_world', input: { worldId, limit: 300 } }),
+    }).then((r) => r.json()).then((j) => {
+      if (cancelled) return;
+      const list = j?.result?.npcs;
+      if (!Array.isArray(list)) return;
+      const cache = (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ || new Map();
+      for (const hint of list) {
+        const h = hint as { npcId: string };
+        cache.set(h.npcId, hint);
+      }
+      (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ = cache;
+    }).catch(() => { /* hydration optional */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Phase B4 — lip-sync listener. DialoguePanel emits
+  // `concordia:lip-sync` { npcId, text, wpm } when an NPC speaks; this
+  // hook builds the phoneme schedule and drives the matching
+  // FacialController.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stops = new Map<string, () => void>();
+    async function onLipSync(e: Event) {
+      const detail = (e as CustomEvent).detail as { npcId?: string; text?: string; wpm?: number } | undefined;
+      if (!detail?.npcId || !detail.text) return;
+      const ctrl = facialControllersRef.current.get(detail.npcId);
+      if (!ctrl) return;
+      try {
+        const m = await import('@/lib/concordia/lip-sync');
+        const sched = m.buildLipSyncSchedule(detail.text, { wpm: detail.wpm ?? 180 });
+        // Stop prior driver for this npc.
+        stops.get(detail.npcId)?.();
+        // Cast: lip-sync uses a structural FacialController shape with
+        // an optional setMorphTarget; facial-blend-shapes class is
+        // assignable structurally even though the nominal types differ.
+        const stop = m.drivePhonemes(ctrl as unknown as Parameters<typeof m.drivePhonemes>[0], sched);
+        stops.set(detail.npcId, stop);
+      } catch { /* lip-sync optional */ }
+    }
+    window.addEventListener('concordia:lip-sync', onLipSync);
+    return () => {
+      window.removeEventListener('concordia:lip-sync', onLipSync);
+      for (const stop of stops.values()) {
+        try { stop(); } catch { /* noop */ }
+      }
+    };
+  }, []);
 
   // Keep weather modifiers ref in sync so the game loop closure sees latest value
   const weatherModifiersRef = useRef(weatherModifiers);
@@ -627,6 +697,115 @@ export default function AvatarSystem3D({
       return group;
     },
     []
+  );
+
+  // Phase A1: smart wrapper — enhanced builder for local player + hero
+  // NPCs, legacy primitive path for crowd. Stores FacialController +
+  // tickEyes + dispose in sidecar refs so the per-frame loop + dispose
+  // path can find them by avatar id.
+  const createAvatarMeshSmart = useCallback(
+    async (
+      avatarId: string,
+      appearance: AppearanceConfig,
+      THREE: typeof import('three'),
+      opts: {
+        isLocalPlayer?: boolean;
+        isHero?: boolean;
+        worldId?: string;
+        factionId?: string | null;
+        archetype?: string | null;
+      } = {},
+    ): Promise<InstanceType<typeof import('three').Group>> => {
+      // Phase A5 — Three Above All get the imperative GoddessGroup
+      // factory which mirrors the R3F GoddessAvatar3D look (robe +
+      // head + halo + mood-tinted point light + bob + drift) inside
+      // the imperative scene. Drives per-frame tick from the eye
+      // ticker registry so existing frame loop already calls it.
+      const GODDESS_IDS = new Set(['sovereign_first_refusal', 'concord_first_thought', 'concordia_first_breath']);
+      if (GODDESS_IDS.has(avatarId)) {
+        try {
+          const { createGoddessGroup } = await import('@/components/concordia/GoddessAvatar3D');
+          const goddess = createGoddessGroup(THREE, { ecosystemScore: 0.5 });
+          // Re-use the eye-ticker registry to drive per-frame tick.
+          eyeTickersRef.current.set(avatarId, (dt) => goddess.tick(dt));
+          enhancedDisposeRef.current.set(avatarId, goddess.dispose);
+          goddess.group.userData = { ...goddess.group.userData, isGoddess: true, npcId: avatarId, setEcosystemScore: goddess.setEcosystemScore, setTargetYaw: goddess.setTargetYaw };
+          return goddess.group as InstanceType<typeof import('three').Group>;
+        } catch (err) {
+          if (typeof console !== 'undefined') console.warn('[AvatarSystem3D] goddess group build failed, falling back', err);
+        }
+      }
+
+      const wantEnhanced =
+        opts.isLocalPlayer || opts.isHero || appearance.bodyType === 'legend';
+      if (wantEnhanced) {
+        // Phase S — try the baked GLB path first for hero NPCs. The
+        // home-world archetype carries an NPC's visual identity
+        // across cross-world travel (Phase T): a courier from
+        // concord-link-frontier still looks like a concord-link
+        // courier when visiting concordia-hub.
+        if (opts.isHero && !opts.isLocalPlayer) {
+          try {
+            const heroMod = await import('@/lib/concordia/hero-mesh-registry');
+            const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
+            const heroHint = cache?.get(avatarId) as { homeWorldId?: string; archetype?: string } | undefined;
+            const archetype = opts.archetype ?? heroHint?.archetype ?? 'warrior';
+            const homeWorld = heroHint?.homeWorldId ?? opts.worldId;
+            const loaded = await heroMod.loadHeroMesh(avatarId, archetype, homeWorld);
+            if (loaded?.group) {
+              return loaded.group as InstanceType<typeof import('three').Group>;
+            }
+          } catch (err) {
+            if (typeof console !== 'undefined') {
+              console.warn('[AvatarSystem3D] hero GLB load failed, falling back to procedural', err);
+            }
+          }
+        }
+        try {
+          const [{ buildEnhancedAvatar }, schemaMod] = await Promise.all([
+            import('@/lib/world-lens/enhanced-avatar-builder'),
+            import('@/lib/world-lens/character-schema'),
+          ]);
+          // Phase L — pull hydrated hints from the world-load cache.
+          const cache = (typeof window !== 'undefined' ? (window as { __CONCORD_NPC_APPEARANCE_CACHE__?: Map<string, unknown> }).__CONCORD_NPC_APPEARANCE_CACHE__ : null);
+          const hint = cache?.get(avatarId) as {
+            factionVisual?: { primary_color?: string; secondary_color?: string; accent_color?: string };
+            appearanceText?: string;
+            heroMesh?: boolean;
+            factionId?: string;
+            archetype?: string;
+          } | undefined;
+          const rich = schemaMod.generateAppearance({
+            id: avatarId,
+            worldId: opts.worldId || 'concordia-hub',
+            factionId: opts.factionId ?? hint?.factionId ?? null,
+            archetype: opts.archetype ?? hint?.archetype ?? null,
+            themeId: 'concordia-hub',
+            heroMesh: opts.isHero || !!hint?.heroMesh,
+            factionVisual: hint?.factionVisual ?? null,
+            npcAppearanceText: hint?.appearanceText ?? null,
+            override: {
+              skinColor: appearance.skinColor,
+              hairColor: appearance.hairColor,
+            },
+          });
+          const result = buildEnhancedAvatar(rich, { isLocalPlayer: opts.isLocalPlayer });
+          facialControllersRef.current.set(avatarId, result.facial);
+          eyeTickersRef.current.set(avatarId, result.tickEyes);
+          enhancedDisposeRef.current.set(avatarId, result.dispose);
+          result.group.userData = result.group.userData || {};
+          (result.group.userData as Record<string, unknown>).facial = result.facial;
+          (result.group.userData as Record<string, unknown>).tickEyes = result.tickEyes;
+          return result.group as InstanceType<typeof import('three').Group>;
+        } catch (err) {
+          if (typeof console !== 'undefined') {
+            console.warn('[AvatarSystem3D] enhanced avatar build failed, falling back to legacy', err);
+          }
+        }
+      }
+      return await createAvatarMesh(appearance, THREE);
+    },
+    [createAvatarMesh],
   );
 
   // ── Create procedural animation clips ─────────────────────────
@@ -1392,7 +1571,10 @@ export default function AvatarSystem3D({
       }
 
       // ── Player avatar ──────────────────────────────────────
-      const playerMesh = await createAvatarMesh(playerAvatar.appearance, THREE);
+      const playerMesh = await createAvatarMeshSmart(playerAvatar.id, playerAvatar.appearance, THREE, {
+        isLocalPlayer: true,
+        worldId: (typeof window !== 'undefined' ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub') : 'concordia-hub'),
+      });
       if (disposed) return;
 
       playerMesh.position.set(
@@ -1411,6 +1593,37 @@ export default function AvatarSystem3D({
       mixersRef.current.set(playerAvatar.id, playerMixer);
       playerMeshRef.current = playerMesh;
       avatarGroup.add(playerMesh);
+
+      // Phase D2 — spawn the player's active mount if they have one.
+      // Calls mounts.list_for_player macro; if an active mounted_instance
+      // exists, renders the mount group beside the player, ticks gait
+      // per frame, and wires rotation to player rotation.
+      try {
+        const worldIdLs = (typeof window !== 'undefined'
+          ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub')
+          : 'concordia-hub');
+        const resp = await fetch('/api/lens/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain: 'mounts', name: 'list_for_player', input: { worldId: worldIdLs } }),
+        });
+        const json = await resp.json().catch(() => null);
+        const result = json?.result;
+        const activeMounts = result?.active ?? [];
+        if (Array.isArray(activeMounts) && activeMounts.length > 0) {
+          const active = activeMounts[0] as { mount_companion_id: string; seat_offset_json?: string };
+          // Resolve species via mounts.get_species if needed; otherwise build a default.
+          const { createMountGroup } = await import('@/components/concordia/mounts/MountAvatar3D');
+          const m = createMountGroup(THREE, { species: { size_class: 'medium', display_name: 'Steed' }, coatColor: '#8b5e3c' });
+          m.group.position.copy(playerMesh.position);
+          m.group.position.x += 1.2;
+          avatarGroup.add(m.group);
+          // Tick the mount via the eyeTickersRef registry which the
+          // frame loop already iterates.
+          eyeTickersRef.current.set(`mount:${active.mount_companion_id}`, (dt) => m.tick(dt, 1.0));
+          enhancedDisposeRef.current.set(`mount:${active.mount_companion_id}`, m.dispose);
+        }
+      } catch { /* mounts optional */ }
 
       // ── Secondary physics: hair chain ──────────────────────
       {
@@ -1478,7 +1691,9 @@ export default function AvatarSystem3D({
       const sortedOthers = [...otherPlayers].slice(0, MAX_FULLY_ANIMATED);
 
       for (const other of sortedOthers) {
-        const mesh = await createAvatarMesh(other.appearance, THREE);
+        const mesh = await createAvatarMeshSmart(other.id, other.appearance, THREE, {
+          worldId: (typeof window !== 'undefined' ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub') : 'concordia-hub'),
+        });
         if (disposed) return;
 
         mesh.position.set(other.position.x, other.position.y, other.position.z);
@@ -1512,7 +1727,16 @@ export default function AvatarSystem3D({
       >();
 
       for (const npc of npcs.slice(0, MAX_FULLY_ANIMATED)) {
-        const mesh = await createAvatarMesh(npc.appearance, THREE);
+        // Hero NPCs (Three Above All + authored legends) get the enhanced
+        // builder; everyone else stays on the legacy primitive path.
+        const HERO_IDS = new Set(['sovereign_first_refusal', 'concord_first_thought', 'concordia_first_breath', 'weaver_of_echoes']);
+        const isHero = HERO_IDS.has(npc.id) || npc.appearance.bodyType === 'legend';
+        const mesh = await createAvatarMeshSmart(npc.id, npc.appearance, THREE, {
+          isHero,
+          worldId: (typeof window !== 'undefined' ? (window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub') : 'concordia-hub'),
+          factionId: (npc as { faction?: string }).faction ?? null,
+          archetype: (npc as { occupation?: string }).occupation ?? null,
+        });
         if (disposed) return;
 
         mesh.position.set(npc.position.x, npc.position.y, npc.position.z);
@@ -1573,8 +1797,15 @@ export default function AvatarSystem3D({
           e.preventDefault();
           const ok = physicsWorld.requestJump?.('player');
           if (!ok) {
-            // Already airborne → start glide.
+            // Already airborne → start glide. Initialize flight-physics
+            // state when glide begins so the next per-frame step can
+            // integrate proper airspeed + stall handling.
             physicsWorld.setGlide?.('player', true);
+            try {
+              import('@/lib/concordia/flight-physics').then((m) => {
+                flightStateRef.current = m.newFlightState();
+              });
+            } catch { /* flight optional */ }
           }
         }
       }
@@ -1626,6 +1857,36 @@ export default function AvatarSystem3D({
         // Tier 2 deferral 10: tick all active ragdolls so their bones
         // copy from rigid-body transforms each frame.
         ragdollTickRef.current?.();
+
+        // Phase A1: per-frame eye tick for enhanced avatars (wetness
+        // sheen + iris animation). Bounded by tickerCount ≤ N players +
+        // hero NPCs (small).
+        if (eyeTickersRef.current.size > 0) {
+          for (const ticker of eyeTickersRef.current.values()) {
+            try { ticker(delta); } catch { /* never throw out of frame loop */ }
+          }
+        }
+
+        // Phase B3 — flight-physics tick when player is gliding. Reads
+        // weather wind, integrates state, emits to HUD.
+        if (flightStateRef.current && physicsWorld) {
+          try {
+            const isAir = physicsWorld.isAirborne?.('player') ?? false;
+            if (!isAir) {
+              flightStateRef.current = null;
+            } else {
+              const wm = weatherModifiersRef.current;
+              const wx = wm ? Math.max(0, (12 - wm.lateralDamping) / 12) * 3 : 0;
+              const wind = { wind: { x: wx, y: 0, z: 0 }, lift: 0 };
+              import('@/lib/concordia/flight-physics').then((m) => {
+                if (flightStateRef.current) {
+                  flightStateRef.current = m.stepFlight(flightStateRef.current, { roll: 0, pitch: 0, active: true }, wind, delta);
+                  window.dispatchEvent(new CustomEvent('concordia:flight-state', { detail: flightStateRef.current }));
+                }
+              }).catch(() => { /* flight optional */ });
+            }
+          } catch { /* never throw */ }
+        }
 
         // ── Movement style blend (0.4s transition) ─────────
         const sb = styleBlendRef.current;
@@ -2054,10 +2315,21 @@ export default function AvatarSystem3D({
     const cleanupPromise = init();
 
     const mixers = mixersRef.current;
+    const enhancedDisposals = enhancedDisposeRef.current;
+    const facialControllers = facialControllersRef.current;
+    const eyeTickers = eyeTickersRef.current;
     return () => {
       disposed = true;
       cleanupPromise.then((cleanup) => cleanup?.());
       mixers.clear();
+      // Phase A1: dispose every enhanced-avatar build so geometries +
+      // shader materials get freed.
+      for (const dispose of enhancedDisposals.values()) {
+        try { dispose(); } catch { /* never throw on unmount */ }
+      }
+      enhancedDisposals.clear();
+      facialControllers.clear();
+      eyeTickers.clear();
 
       if (avatarGroupRef.current) {
         const group = avatarGroupRef.current as {

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useContext, createCont
 import { Activity, Monitor, Settings } from 'lucide-react';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
+import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor } from '@/lib/world-lens/perf-monitor';
 
 // ── Device capability detection ────────────────────────────────────
 function detectInitialQuality(): QualityPreset {
@@ -302,6 +303,15 @@ export default function ConcordiaScene({
         physicsRef.current = null;
         return;
       }
+      // Phase B2 — attach ragdoll bridge so concordia:lethal-hit
+      // CustomEvents spawn ragdolls in this world's physics. Detacher
+      // is stored on physicsRef.current for cleanup on unmount.
+      try {
+        const { attachRagdollBridge } = await import('@/lib/concordia/ragdoll-bridge');
+        const detach = attachRagdollBridge(physicsWorld as unknown as { spawnRagdoll: (id: string, p: { x: number; y: number; z: number }, imp?: { x: number; y: number; z: number }) => unknown; despawnRagdoll?: (id: string) => void; removeCharacter?: (id: string) => void });
+        // Stash detach on the global so the disposer below can call it.
+        (physicsRef.current as unknown as { __detachRagdoll?: () => void }).__detachRagdoll = detach;
+      } catch { /* ragdoll bridge optional */ }
 
       // Listen for terrain-ready to register heightfield collider
       function onTerrainPhysics(e: Event) {
@@ -411,6 +421,8 @@ export default function ConcordiaScene({
       (renderer as unknown as { __isWebGPU?: boolean }).__isWebGPU = useWebGPU;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, settings.pixelRatio));
       renderer.setSize(canvas!.clientWidth, canvas!.clientHeight);
+      // Phase AA — mount Stats.js widget when ?perf=1 or NODE_ENV=development.
+      try { mountPerfMonitor({ dev: process.env.NODE_ENV === 'development' }); } catch { /* SSR */ }
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -968,6 +980,27 @@ export default function ConcordiaScene({
         const volFogAnim = (composerRef.current as unknown as { _volFogAnimate?: () => void } | null)?._volFogAnimate;
         if (volFogAnim) volFogAnim();
 
+        // Phase O — broadcast camera state so R3FOverlayLayer can mirror it.
+        // Throttled to ~10 Hz to keep dispatch cheap; overlay's per-frame
+        // lookAt() smooths between samples.
+        const _now = globalThis.performance.now();
+        const _last = (camera as unknown as { __concordLastSync?: number }).__concordLastSync ?? 0;
+        if (_now - _last > 100) {
+          (camera as unknown as { __concordLastSync?: number }).__concordLastSync = _now;
+          const target = new THREE.Vector3();
+          camera.getWorldDirection(target);
+          target.multiplyScalar(20).add(camera.position);
+          try {
+            window.dispatchEvent(new CustomEvent('concordia:camera-sync', {
+              detail: {
+                position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+                target:   { x: target.x,         y: target.y,         z: target.z         },
+                fov: (camera as unknown as { fov?: number }).fov ?? 55,
+              },
+            }));
+          } catch { /* SSR-safe */ }
+        }
+
         // Render: SSGI > EffectComposer > plain renderer
         if (ssgiPassRef.current) {
           ssgiPassRef.current.render(null);
@@ -976,6 +1009,12 @@ export default function ConcordiaScene({
         } else {
           renderer.render(scene, camera);
         }
+
+        // Phase AA — feed perf-monitor (Stats.js + budget snapshot).
+        try {
+          attachPerfRenderer(renderer as unknown as { info: { render: { calls: number; triangles: number } } });
+          tickPerfMonitor();
+        } catch { /* perf-monitor optional */ }
 
         // Performance budget monitoring
         const info = renderer.info;
