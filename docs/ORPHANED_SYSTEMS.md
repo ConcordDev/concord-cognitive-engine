@@ -1,5 +1,46 @@
 # Orphaned Systems Inventory
 
+> **Status (2026-05-13):** the 18-phase `claude/concordia-foundation`
+> wiring pass (A through R) closed every game-relevant orphan listed
+> below. The columns "What it does / How to wire" remain as-is for
+> archaeological purposes; for each entry the "natural home" is now
+> actually wired. The remaining 113 mechanically-orphan DB tables are
+> all accessed via macro indirection (the orphan label is grep noise),
+> and the three game-critical tables (`culture_dtus`,
+> `culture_reflections`, `sovereign_biomonitor`) are documented as
+> archived with no live readers expected.
+>
+> Per-phase landings:
+> - **A1** AvatarSystem3D → enhanced-avatar-builder for hero NPCs + local player
+> - **A2** BuildingRenderer3D → procedural-buildings.createBuilding
+> - **A3** TreeLayer + RockLayer mounted (l-system-tree.ts + rock-gen.ts wired)
+> - **A4** ConcordiaScene fog/sun deferred to SkyWeather (theme-tinted)
+> - **A5** GoddessAvatar3D for Three Above All
+> - **B1** secondary-physics integrateFrame in scene tick
+> - **B2** ragdoll-bridge + concordia:lethal-hit dispatch
+> - **B3** flight-physics + aquatic-gait hooks
+> - **B4** lip-sync drivePhonemes in DialoguePanel
+> - **B5** ProceduralFacialController fallback
+> - **C1** combat-motor-driver + combat-clips wired
+> - **C2** armor-system scaffolded
+> - **C3** weapon-archetypes via createWeapon
+> - **C4** reflex-layer driver mounted
+> - **D1-D5** mount substrate (domain, in-world render, state machine, gait, IK, coat, designer)
+> - **E1-E4** character creation (migration 187 + appearance domain + onboarding/character)
+> - **F** 7 ambient overlays mounted in /lenses/world (NamedEncounter, TombMarker, WorldHealthBadge, WalkerOnHorizon, LandmarkSpires, ControlLegend, ExplorationControls)
+> - **G** 19 panel registrations in PanelHost
+> - **H1-H4** NPCStressTooltip raycast hover, world_markers, QuestDiscovery, patterns domain
+> - **I1-I5** racing, basketball, voice-chat, voice-npc-mic, messaging-channels domains + UI
+> - **J1-J4** commune domain + cross-world cycles + boss-phases + output-hooks
+> - **K** game-mode dispatch barrel
+> - **L** NPC appearance hydration from authored faction visuals
+> - **M** cinematic-director event bridge (8 socket triggers)
+> - **N** GLB hero-mesh slot + README
+> - **O** R3FOverlayLayer + camera-sync + instanced-mesh-pool (trees) + lod (buildings) + biome-blend (terrain) + distance-cull
+> - **P** LegalFooter / LanguageSelector / /auth / SafeCard / GracefulFallback / SlashCommands / FreshnessBadge / VisibilityScopePicker / KnowledgeEntrepreneurBadge wired
+> - **Q** WorldHUD / WorldRenderer / IsometricEngine / RulerHUD deleted
+> - **R** docs refresh + verification (this section)
+
 Generated from a sweep of `concord-frontend` + `server` at HEAD. An
 "orphan" is a file / table / domain that exists in the working tree
 but isn't imported, called, or otherwise referenced by any active
@@ -180,9 +221,9 @@ Plus ~10 files under `lib/_archived/` — intentional, not worth re-wiring.
 
 Out of 116 mechanically-orphan tables, only 3 are game-substrate:
 
-- `culture_dtus` — culture-themed DTUs.
-- `culture_reflections` — periodic culture summaries.
-- `sovereign_biomonitor` — biometric sovereign tracking (Phase 3 substrate).
+- `culture_dtus` — culture-themed DTUs. **ARCHIVED** (no live readers; superseded by ordinary DTU `domain='culture'` filtering on the unified `dtus` table).
+- `culture_reflections` — periodic culture summaries. **ARCHIVED** (superseded by `dream-engine.js` retrospective composer + dtus `kind='dream'`).
+- `sovereign_biomonitor` — biometric sovereign tracking (Phase 3 substrate). **ARCHIVED** (the substrate moved to `embodied_signal_log` + `pain_signals` as documented in Layers 7-8 of CLAUDE.md).
 
 The remaining 113 are admin / economy / DTU-marketplace tables
 accessed through `runMacro` indirection.
