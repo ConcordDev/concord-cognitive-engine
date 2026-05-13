@@ -1,0 +1,112 @@
+name: Playthrough (Phase Z)
+
+# Phase Z — Playwright-driven per-world walkthrough on every push to
+# the concordia foundation branch. Boots backend + frontend, walks all
+# 6 canon worlds, exercises one action per category, captures
+# screenshots as artifacts.
+
+on:
+  push:
+    branches: [claude/concordia-foundation, main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  playthrough:
+    name: Per-world walkthrough
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            server/package-lock.json
+            concord-frontend/package-lock.json
+
+      - name: Install server deps
+        working-directory: ./server
+        run: npm ci
+
+      - name: Install frontend deps
+        working-directory: ./concord-frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ./concord-frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Apply migrations
+        working-directory: ./server
+        run: npm run migrate
+        env:
+          DB_PATH: ./data/concord.test.db
+
+      - name: Boot server (background)
+        working-directory: ./server
+        run: nohup npm start > server.log 2>&1 &
+        env:
+          NODE_ENV: test
+          DB_PATH: ./data/concord.test.db
+          PORT: 5050
+          JWT_SECRET: test_secret_for_e2e_playthrough_phase_z
+
+      - name: Wait for server
+        run: |
+          for i in {1..30}; do
+            curl -fsS http://localhost:5050/api/health && break
+            sleep 2
+          done
+
+      - name: Build + start frontend (background)
+        working-directory: ./concord-frontend
+        run: |
+          npm run build
+          nohup npm start > frontend.log 2>&1 &
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5050
+
+      - name: Wait for frontend
+        run: |
+          for i in {1..30}; do
+            curl -fsS http://localhost:3000 && break
+            sleep 2
+          done
+
+      - name: Run playthrough
+        working-directory: ./concord-frontend
+        run: npx playwright test tests/e2e/playthrough.spec.ts
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playthrough-screenshots
+          path: docs/smoke-screenshots/
+          retention-days: 14
+
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log
+          path: server/server.log
+          retention-days: 7
+
+      - name: Upload frontend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-log
+          path: concord-frontend/frontend.log
+          retention-days: 7
