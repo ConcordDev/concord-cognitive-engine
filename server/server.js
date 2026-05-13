@@ -23213,6 +23213,28 @@ registerMarkersMacros(register);
 import registerPatternsMacros from "./domains/patterns.js";
 registerPatternsMacros(register);
 
+// Phase J1 — Commune federation macros. Previously orphaned in domains/commune.js.
+import { registerCommune } from "./domains/commune.js";
+registerCommune(register);
+
+// Phase J2 — Register the two cross-world heartbeats that have lived
+// orphaned in server/emergent/.
+import { runCrossWorldEconomyCycle } from "./emergent/cross-world-economy-cycle.js";
+registerHeartbeat("cross-world-economy-cycle", {
+  frequency: 240,  // ~60 min
+  handler: runCrossWorldEconomyCycle,
+});
+import { runCrossWorldSchemeCycle } from "./emergent/cross-world-scheme-cycle.js";
+registerHeartbeat("cross-world-scheme-cycle", {
+  frequency: 60,   // ~15 min
+  handler: runCrossWorldSchemeCycle,
+});
+
+// Phase J4 — output-hooks macro surface (constitution + fingerprint
+// + ghost-thread pipeline). Callers opt in via output_hooks.process.
+import registerOutputHooksMacros from "./domains/output-hooks.js";
+registerOutputHooksMacros(register);
+
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
 // recent_moves / get_relation reads.

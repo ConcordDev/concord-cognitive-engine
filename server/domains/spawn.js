@@ -67,9 +67,28 @@ export default function registerSpawnMacros(register) {
       currentHp: 500 + level * 50,
       maxHp: 500 + level * 50,
     });
+    // Phase J3 — initialise boss-phases. Stores a phase-state object
+    // on STATE.bossPhases so the combat/attack hook can tick on hp
+    // changes. Default phase pack: 3 thresholds at 75% / 50% / 25%
+    // each granting +20% damage. Stored per npcId.
+    try {
+      const bp = await import("../lib/combat/boss-phases.js");
+      const phases = bp.createBossPhases({
+        bossId: id, worldId,
+        phases: [
+          { name: "enraged-1", when: (m) => m.hpPct <= 0.75, scaling: { damage: 1.2 } },
+          { name: "enraged-2", when: (m) => m.hpPct <= 0.50, scaling: { damage: 1.4 } },
+          { name: "death-throes", when: (m) => m.hpPct <= 0.25, scaling: { damage: 1.6 } },
+        ],
+      });
+      const STATE = (globalThis).__CONCORD_STATE__ || {};
+      STATE.bossPhases = STATE.bossPhases || new Map();
+      STATE.bossPhases.set(id, phases);
+      globalThis.__CONCORD_STATE__ = STATE;
+    } catch { /* boss-phases optional */ }
     _emit("spawn:boss", { worldId, npcId: id, archetype: resolvedArchetype, x, z, level });
     return { ok: true, npcId: id, archetype: resolvedArchetype, x, z };
-  }, { note: "Force-spawn a boss at (x, z). Archetype auto-picked from universe if omitted." });
+  }, { note: "Force-spawn a boss at (x, z). Initialises boss-phases for tick-on-hp." });
 
   register("spawn", "enemies", async (ctx, input = {}) => {
     const db = ctx?.db;
