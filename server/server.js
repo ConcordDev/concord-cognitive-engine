@@ -23235,6 +23235,16 @@ registerHeartbeat("cross-world-scheme-cycle", {
 import registerOutputHooksMacros from "./domains/output-hooks.js";
 registerOutputHooksMacros(register);
 
+// Phase I1-5 — minigames + voice chat + messaging.
+import registerRacingMacros from "./domains/racing.js";
+registerRacingMacros(register);
+import registerBasketballMacros from "./domains/basketball.js";
+registerBasketballMacros(register);
+import registerVoiceChatMacros from "./domains/voice-chat.js";
+registerVoiceChatMacros(register);
+import registerMessagingMacros from "./domains/messaging.js";
+registerMessagingMacros(register);
+
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
 // recent_moves / get_relation reads.
