@@ -29,6 +29,7 @@ import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
 import { themeForWorldId, CONCORDIA_THEMES } from '@/lib/world-lens/concordia-theme';
+import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import {
   DeformationStore,
@@ -103,6 +104,11 @@ const ConcordiaHUD = {
   ConcordantLawBadge: dynamic(() => import('@/components/world/concordia-hud/ConcordantLawBadge').then((m) => ({ default: m.ConcordantLawBadge })), { ssr: false }),
   MaterialAvailability: dynamic(() => import('@/components/world/concordia-hud/MaterialAvailabilityBadge').then((m) => ({ default: m.MaterialAvailabilityBadge })), { ssr: false }),
   MentorshipNotifier: dynamic(() => import('@/components/world/concordia-hud/MentorshipNotifier').then((m) => ({ default: m.MentorshipNotifier })), { ssr: false }),
+  // Phase F — page-level ambient overlays.
+  NamedEncounter: dynamic(() => import('@/components/world/NamedEncounterController').then((m) => ({ default: m.NamedEncounterController })), { ssr: false }),
+  TombMarker: dynamic(() => import('@/components/world/TombMarker'), { ssr: false }),
+  WorldHealthBadge: dynamic(() => import('@/components/hud/WorldHealthBadge').then((m) => ({ default: m.WorldHealthBadge })), { ssr: false }),
+  ControlLegend: dynamic(() => import('@/components/concordia/controls/ControlLegend').then((m) => ({ default: m.ControlLegend })), { ssr: false }),
 };
 const PersonalBeatWidget = dynamic(
   () =>
@@ -4392,6 +4398,11 @@ export default function WorldLensPage() {
           <ConcordiaHUD.ConcordantLawBadge />
           <ConcordiaHUD.MaterialAvailability />
           <ConcordiaHUD.MentorshipNotifier />
+          {/* Phase F — ambient overlays. */}
+          <ConcordiaHUD.NamedEncounter />
+          <ConcordiaHUD.TombMarker worldId={activeDistrict?.id || 'concordia-hub'} />
+          <ConcordiaHUD.WorldHealthBadge />
+          <ConcordiaHUD.ControlLegend scheme={controlSchemeForLegend} />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing
