@@ -112,6 +112,8 @@ const ConcordiaHUD = {
   // Phase H — substantive substrate overlays.
   QuestDiscovery: dynamic(() => import('@/components/world/QuestDiscoveryController').then((m) => ({ default: m.QuestDiscoveryController })), { ssr: false }),
   NPCStressTooltip: dynamic(() => import('@/components/world/NPCStressTooltipController').then((m) => ({ default: m.NPCStressTooltipController })), { ssr: false }),
+  // Phase M — cinematic-director event bridge.
+  CinematicTrigger: dynamic(() => import('@/components/world/CinematicTriggerBridge').then((m) => ({ default: m.CinematicTriggerBridge })), { ssr: false }),
 };
 const PersonalBeatWidget = dynamic(
   () =>
@@ -4409,6 +4411,8 @@ export default function WorldLensPage() {
           {/* Phase H — substantive substrate overlays. */}
           <ConcordiaHUD.QuestDiscovery />
           <ConcordiaHUD.NPCStressTooltip />
+          {/* Phase M — cinematic-director event bridge. */}
+          <ConcordiaHUD.CinematicTrigger />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing
