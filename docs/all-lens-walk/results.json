@@ -1,9 +1,9 @@
 {
-  "total": 84,
+  "total": 230,
   "buckets": {
-    "green": 77,
-    "noisy": 4,
-    "crashed": 2,
+    "green": 212,
+    "noisy": 14,
+    "crashed": 3,
     "timeout": 1
   },
   "results": [
@@ -518,6 +518,893 @@
       "consoleErrorCount": 0,
       "firstError": "page.waitForTimeout: Test ended.",
       "durationMs": 22007
+    },
+    {
+      "lens": "film-studios",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 19503
+    },
+    {
+      "lens": "finance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13380
+    },
+    {
+      "lens": "fitness",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 23134
+    },
+    {
+      "lens": "food",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 20504
+    },
+    {
+      "lens": "forecast",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8799
+    },
+    {
+      "lens": "forestry",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11804
+    },
+    {
+      "lens": "forge",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7575
+    },
+    {
+      "lens": "fork",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 8768
+    },
+    {
+      "lens": "forum",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 16687
+    },
+    {
+      "lens": "fractal",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12585
+    },
+    {
+      "lens": "gallery",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6617
+    },
+    {
+      "lens": "game",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 16350
+    },
+    {
+      "lens": "game-design",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9387
+    },
+    {
+      "lens": "genesis",
+      "bucket": "crashed",
+      "consoleErrorCount": 0,
+      "boundaryText": "⚠The genesis lens hit an errorSomething broke while rendering this surface. The error has been logged; you can try recovering without losing your data.technical detailsCannot read properties of undefined (reading 'replace')\n\nTypeError: Cannot read properties of undefined (reading 'replace')\n    at renderContent (webpack-internal:///(app-pages-browser)/./app/lenses/genesis/page.tsx:284:36)\n    at ActivityItem (webpack-internal:///(app-pages-browser)/./app/lenses/genesis/page.tsx:317:35)\n    at Ob",
+      "durationMs": 8055
+    },
+    {
+      "lens": "geology",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8454
+    },
+    {
+      "lens": "ghost-tracker",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6990
+    },
+    {
+      "lens": "global",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7202
+    },
+    {
+      "lens": "goals",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8712
+    },
+    {
+      "lens": "goddess",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7517
+    },
+    {
+      "lens": "government",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9454
+    },
+    {
+      "lens": "graph",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 28087
+    },
+    {
+      "lens": "grounding",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 36344
+    },
+    {
+      "lens": "healthcare",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 29561
+    },
+    {
+      "lens": "history",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 18164
+    },
+    {
+      "lens": "home-improvement",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7482
+    },
+    {
+      "lens": "household",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 18799
+    },
+    {
+      "lens": "hr",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11444
+    },
+    {
+      "lens": "hvac",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11614
+    },
+    {
+      "lens": "hypothesis",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11612
+    },
+    {
+      "lens": "import",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7709
+    },
+    {
+      "lens": "inference",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9561
+    },
+    {
+      "lens": "ingest",
+      "bucket": "noisy",
+      "consoleErrorCount": 1,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 8261
+    },
+    {
+      "lens": "inheritance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9786
+    },
+    {
+      "lens": "insurance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8127
+    },
+    {
+      "lens": "integrations",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8225
+    },
+    {
+      "lens": "invariant",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 8016
+    },
+    {
+      "lens": "kingdoms",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8052
+    },
+    {
+      "lens": "lab",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8957
+    },
+    {
+      "lens": "landscaping",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8828
+    },
+    {
+      "lens": "lattice",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10575
+    },
+    {
+      "lens": "law",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8737
+    },
+    {
+      "lens": "law-enforcement",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8668
+    },
+    {
+      "lens": "legacy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12452
+    },
+    {
+      "lens": "legal",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 61884
+    },
+    {
+      "lens": "linguistics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7821
+    },
+    {
+      "lens": "lock",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 9986
+    },
+    {
+      "lens": "logistics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 14292
+    },
+    {
+      "lens": "maker",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6699
+    },
+    {
+      "lens": "manufacturing",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7175
+    },
+    {
+      "lens": "market",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7107
+    },
+    {
+      "lens": "marketing",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7701
+    },
+    {
+      "lens": "marketplace",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15174
+    },
+    {
+      "lens": "markets",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6875
+    },
+    {
+      "lens": "masonry",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7779
+    },
+    {
+      "lens": "materials",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6865
+    },
+    {
+      "lens": "math",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9326
+    },
+    {
+      "lens": "mental-health",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7159
+    },
+    {
+      "lens": "mentorship",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8018
+    },
+    {
+      "lens": "mesh",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8462
+    },
+    {
+      "lens": "message",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7989
+    },
+    {
+      "lens": "meta",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7666
+    },
+    {
+      "lens": "metacognition",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11268
+    },
+    {
+      "lens": "metalearning",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 10387
+    },
+    {
+      "lens": "mining",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7083
+    },
+    {
+      "lens": "ml",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10764
+    },
+    {
+      "lens": "music",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11450
+    },
+    {
+      "lens": "neuro",
+      "bucket": "noisy",
+      "consoleErrorCount": 28,
+      "firstError": "Network error - no response received",
+      "durationMs": 9979
+    },
+    {
+      "lens": "news",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 19626
+    },
+    {
+      "lens": "nonprofit",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9660
+    },
+    {
+      "lens": "observe",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7206
+    },
+    {
+      "lens": "ocean",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7832
+    },
+    {
+      "lens": "offline",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9402
+    },
+    {
+      "lens": "ops",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9497
+    },
+    {
+      "lens": "organ",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8214
+    },
+    {
+      "lens": "paper",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8101
+    },
+    {
+      "lens": "parenting",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7979
+    },
+    {
+      "lens": "personas",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7277
+    },
+    {
+      "lens": "pets",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10416
+    },
+    {
+      "lens": "pharmacy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8118
+    },
+    {
+      "lens": "philosophy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8017
+    },
+    {
+      "lens": "photography",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13205
+    },
+    {
+      "lens": "physics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8608
+    },
+    {
+      "lens": "platform",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8630
+    },
+    {
+      "lens": "plumbing",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8307
+    },
+    {
+      "lens": "podcast",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12959
+    },
+    {
+      "lens": "poetry",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8546
+    },
+    {
+      "lens": "privacy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8401
+    },
+    {
+      "lens": "productivity",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 116261
+    },
+    {
+      "lens": "projects",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 23761
+    },
+    {
+      "lens": "psyops",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8941
+    },
+    {
+      "lens": "quantum",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10284
+    },
+    {
+      "lens": "questmarket",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15309
+    },
+    {
+      "lens": "queue",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 15212
+    },
+    {
+      "lens": "realestate",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 19114
+    },
+    {
+      "lens": "reasoning",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15027
+    },
+    {
+      "lens": "reflection",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 9144
+    },
+    {
+      "lens": "repos",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10446
+    },
+    {
+      "lens": "research",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13106
+    },
+    {
+      "lens": "resonance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 30317
+    },
+    {
+      "lens": "retail",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15757
+    },
+    {
+      "lens": "robotics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8310
+    },
+    {
+      "lens": "root",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9979
+    },
+    {
+      "lens": "sandbox",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7118
+    },
+    {
+      "lens": "schema",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7126
+    },
+    {
+      "lens": "science",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8993
+    },
+    {
+      "lens": "security",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 14432
+    },
+    {
+      "lens": "self",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8627
+    },
+    {
+      "lens": "sentinel",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9590
+    },
+    {
+      "lens": "services",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11518
+    },
+    {
+      "lens": "settings",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7521
+    },
+    {
+      "lens": "sim",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9673
+    },
+    {
+      "lens": "society",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7935
+    },
+    {
+      "lens": "space",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8065
+    },
+    {
+      "lens": "sponsorship",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7930
+    },
+    {
+      "lens": "sports",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10142
+    },
+    {
+      "lens": "srs",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8387
+    },
+    {
+      "lens": "staking",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7824
+    },
+    {
+      "lens": "studio",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 17605
+    },
+    {
+      "lens": "sub-worlds",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9979
+    },
+    {
+      "lens": "suffering",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7721
+    },
+    {
+      "lens": "supplychain",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10997
+    },
+    {
+      "lens": "sync",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7907
+    },
+    {
+      "lens": "system",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 33170
+    },
+    {
+      "lens": "telecommunications",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 29621
+    },
+    {
+      "lens": "temporal",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10897
+    },
+    {
+      "lens": "thread",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 16714
+    },
+    {
+      "lens": "tick",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9047
+    },
+    {
+      "lens": "timeline",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13899
+    },
+    {
+      "lens": "tools",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 109955
+    },
+    {
+      "lens": "tournaments",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15417
+    },
+    {
+      "lens": "trades",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 20349
+    },
+    {
+      "lens": "transfer",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 25018
+    },
+    {
+      "lens": "travel",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 17493
+    },
+    {
+      "lens": "understanding",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6480
+    },
+    {
+      "lens": "urban-planning",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8694
+    },
+    {
+      "lens": "ux-suite",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 21117
+    },
+    {
+      "lens": "veterinary",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10428
+    },
+    {
+      "lens": "voice",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 18312
+    },
+    {
+      "lens": "vote",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10710
+    },
+    {
+      "lens": "wallet",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12733
+    },
+    {
+      "lens": "welding",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8103
+    },
+    {
+      "lens": "wellness",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8195
+    },
+    {
+      "lens": "whiteboard",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 25214
+    },
+    {
+      "lens": "world",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 24975
+    },
+    {
+      "lens": "world-creator",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7454
+    },
+    {
+      "lens": "worldmodel",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8610
     }
   ]
 }
