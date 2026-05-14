@@ -9,10 +9,12 @@
  * Run: node --test tests/detectors-suite.test.js
  */
 
-import { describe, it } from "node:test";
+import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 import {
   listDetectors,
@@ -27,6 +29,67 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../");
 
 const REPORT_SHAPE = ["id", "ok", "summary", "findings", "durationMs"];
+
+// ── Fixture repo ──────────────────────────────────────────────────────
+// The lightweight contract tests below verify detector *behaviour*, not
+// the health of the real 1.3M-LOC tree. Pointing them at REPO_ROOT made
+// each one walk the whole monorepo — slow, and flaky under parallel-suite
+// I/O contention (this is the documented detectors-suite timeout). They
+// also silently broke whenever the real tree moved a file. A minimal
+// purpose-built fixture fixes both: millisecond runtime + deterministic
+// input. Full-tree integration stays covered by the HEAVY_RUN blocks and
+// the `npm run detectors -- --ci` parity gate.
+let FIXTURE_ROOT = null;
+let FIXTURE_HEARTBEAT_COUNT = 0;
+
+function buildFixtureRepo() {
+  const dir = mkdtempSync(path.join(tmpdir(), "detectors-suite-fixture-"));
+  const write = (rel, content) => {
+    const full = path.join(dir, rel);
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, content);
+  };
+
+  // invariant-guardian REQUIRED_CONSTANTS — object-literal constants at
+  // the exact values CLAUDE.md pins. The object-literal form (`KEY: v,`
+  // rather than `const KEY = v`) is the specific shape the
+  // "recognises object-literal constants" test exists to pin.
+  write("server/lib/creative-marketplace-constants.js",
+    "export const CREATIVE_MARKETPLACE_CONSTANTS = {\n" +
+    "  PLATFORM_FEE_RATE: 0.0146,\n" +
+    "  MARKETPLACE_FEE_RATE: 0.04,\n" +
+    "  INITIAL_ROYALTY_RATE: 0.21,\n" +
+    "  ROYALTY_HALVING: 2,\n" +
+    "  ROYALTY_FLOOR: 0.0005,\n" +
+    "  MAX_CASCADE_DEPTH: 50,\n" +
+    "};\n");
+  write("server/economy/royalty-cascade.js", "export const MAX_ROYALTY_RATE = 0.30;\n");
+  write("server/economy/withdrawals.js", "export const WITHDRAWAL_HOLD_HOURS = 48;\n");
+
+  // heartbeat-monitor static fallback — a server.js with a known set of
+  // registerHeartbeat() calls so the static parser has something to find.
+  // Frequencies 2..(HB+1): all > 0 and < the stale threshold, so no
+  // invalid/stale-frequency findings muddy the report.
+  const HB = 20;
+  let serverJs = "// fixture server.js — heartbeat registrations only\n";
+  for (let i = 1; i <= HB; i++) {
+    serverJs += `registerHeartbeat("fixture-hb-${i}", { frequency: ${i + 1} });\n`;
+  }
+  write("server/server.js", serverJs);
+  // emergent/ exists but is empty — heartbeat-monitor walks it for inline
+  // registrations, and an empty dir is a valid no-op for that walk.
+  mkdirSync(path.join(dir, "server/emergent"), { recursive: true });
+
+  FIXTURE_HEARTBEAT_COUNT = HB;
+  return dir;
+}
+
+before(() => { FIXTURE_ROOT = buildFixtureRepo(); });
+after(() => {
+  if (FIXTURE_ROOT) {
+    try { rmSync(FIXTURE_ROOT, { recursive: true, force: true }); } catch { /* best-effort cleanup */ }
+  }
+});
 
 // One full-suite report shared across tests — each detector walks the
 // 1.3M-LOC tree, so re-running per test pushes the suite over 120s.
@@ -208,7 +271,7 @@ describe("dtu-lineage gracefully handles missing db", () => {
 
 describe("invariant-guardian recognises object-literal constants", () => {
   it("does not flag PLATFORM_FEE_RATE as unset (it lives in a constants object)", async () => {
-    const r = await runDetector("invariant-guardian", { root: REPO_ROOT });
+    const r = await runDetector("invariant-guardian", { root: FIXTURE_ROOT });
     const unset = r.findings.filter(f => f.id === "invariant_constant_unset"
       && f.evidence?.name === "PLATFORM_FEE_RATE");
     assert.equal(unset.length, 0, `unexpected: ${JSON.stringify(unset[0])}`);
@@ -217,12 +280,14 @@ describe("invariant-guardian recognises object-literal constants", () => {
 
 describe("heartbeat-monitor static fallback", () => {
   it("populates 'static' source when registry is empty", async () => {
-    const r = await runDetector("heartbeat-monitor", { root: REPO_ROOT, opts: { useRegistry: false } });
+    const r = await runDetector("heartbeat-monitor", { root: FIXTURE_ROOT, opts: { useRegistry: false } });
     assertReportShape(r);
     const summary = r.findings.find(f => f.id === "heartbeat_summary");
     assert.ok(summary);
     assert.equal(summary.evidence.source, "static");
-    assert.ok(summary.evidence.count >= 18);
+    // The static parser should find every registerHeartbeat() call in
+    // the fixture server.js — deterministic, unlike a real-tree count.
+    assert.equal(summary.evidence.count, FIXTURE_HEARTBEAT_COUNT);
   });
 });
 
