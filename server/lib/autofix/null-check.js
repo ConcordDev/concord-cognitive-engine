@@ -32,12 +32,47 @@ export const nullCheckFix = {
   apply(content, finding) {
     const name = finding?.subject?.variable;
     if (!name) return null;
-    // Re-locate the .get() assignment for `name` (the line numbers in
-    // the finding may have drifted between detection and apply).
+    // Anchor on the OCCURRENCE the finding actually reported. Codex P2:
+    // a route file can have several `const row = ...get(...)` statements;
+    // matching the first one by name could insert the guard into an
+    // unrelated handler and leave the real unsafe access unfixed.
+    //
+    // finding.location is "file:line" — we use that line to pick the
+    // assignment that starts at (or nearest at-or-after) the reported
+    // line, instead of the first global match.
+    const reportedLine = (() => {
+      const loc = String(finding?.location || "");
+      const n = Number(loc.split(":").pop());
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })();
     const assignRe = new RegExp(
-      "((?:const|let|var)\\s+" + name + "\\s*=\\s*[^;]*\\.(?:get|findById|findOne|getOne)\\s*\\([\\s\\S]*?\\)\\s*;)"
+      "((?:const|let|var)\\s+" + name + "\\s*=\\s*[^;]*\\.(?:get|findById|findOne|getOne)\\s*\\([\\s\\S]*?\\)\\s*;)",
+      "g"
     );
-    const m = assignRe.exec(content);
+    let m = null;
+    if (reportedLine != null) {
+      // Walk all matches; keep the one whose start-line is the reported
+      // line (exact) or, failing an exact hit, the closest one at-or-after.
+      let best = null;
+      let bestDelta = Infinity;
+      let mm;
+      while ((mm = assignRe.exec(content)) !== null) {
+        const startLine = content.slice(0, mm.index).split("\n").length;
+        const delta = startLine - reportedLine;
+        if (delta === 0) { best = mm; break; }
+        // Prefer the closest match within ±3 lines (detection-vs-apply drift).
+        if (delta >= -3 && delta <= 3 && Math.abs(delta) < bestDelta) {
+          best = mm;
+          bestDelta = Math.abs(delta);
+        }
+      }
+      m = best;
+    }
+    // Fallback: no line info or no near-match — use the first by-name.
+    if (!m) {
+      assignRe.lastIndex = 0;
+      m = assignRe.exec(content);
+    }
     if (!m) return null;
     const insertAt = m.index + m[0].length;
     // Indent the inserted guard to match the assignment's line.

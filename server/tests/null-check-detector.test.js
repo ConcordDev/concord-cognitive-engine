@@ -86,6 +86,53 @@ describe("NullCheckDetector — guard forms suppress the finding", () => {
   }
 });
 
+describe("NullCheckDetector — bare if-guard is block-scoped (Codex P1)", () => {
+  it("FLAGS a use AFTER the if-block — `if (row) log(row.id); return row.name;`", async () => {
+    const dir = withFixture({
+      "server/routes/r.js":
+        `export function f(id) {\n` +
+        `  const row = db.prepare("SELECT * FROM w WHERE id=?").get(id);\n` +
+        `  if (row) { log(row.id); }\n` +          // guarded use inside block
+        `  return row.name;\n` +                  // ← unguarded use AFTER block
+        `}\n`,
+    });
+    try {
+      const r = await runNullCheckDetector({ root: dir });
+      assert.equal(findNull(r).length, 1, "use after the if-block must still be flagged");
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag a use INSIDE the if-block", async () => {
+    const dir = withFixture({
+      "server/routes/r.js":
+        `export function f(id) {\n` +
+        `  const row = db.prepare("SELECT * FROM w WHERE id=?").get(id);\n` +
+        `  if (row) { return row.name; }\n` +
+        `  return null;\n` +
+        `}\n`,
+    });
+    try {
+      const r = await runNullCheckDetector({ root: dir });
+      assert.equal(findNull(r).length, 0, "use inside the if-block is properly guarded");
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag a one-line `if (row) return row.x;`", async () => {
+    const dir = withFixture({
+      "server/routes/r.js":
+        `export function f(id) {\n` +
+        `  const row = db.prepare("SELECT * FROM w WHERE id=?").get(id);\n` +
+        `  if (row) return row.name;\n` +
+        `  return null;\n` +
+        `}\n`,
+    });
+    try {
+      const r = await runNullCheckDetector({ root: dir });
+      assert.equal(findNull(r).length, 0);
+    } finally { teardown(dir); }
+  });
+});
+
 describe("NullCheckDetector — structural skips", () => {
   it("does NOT flag aggregate queries (COUNT/AVG/SUM) — they always return a row", async () => {
     const dir = withFixture({

@@ -131,57 +131,110 @@ function isGuarded(content, name, fromIdx) {
   if (endIdx === fromIdx) endIdx = Math.min(content.length, fromIdx + 600);
   const window = content.slice(fromIdx, endIdx);
 
-  // Strong "the developer knows it's nullable" signal: the variable is
-  // used with optional-chaining (`name?.`) ANYWHERE in its scope, OR
-  // appears in a ternary test position (`name ? … : …`). Either means
-  // the nullable case was consciously handled — not a missing-guard bug.
-  if (new RegExp("\\b" + name + "\\?\\.").test(window)) return { guarded: true };
-  if (new RegExp("\\b" + name + "\\s*\\?[^?:]*:").test(window)) return { guarded: true };
-  // Look for guard first — any of these forms within the window before
-  // a non-optional property access counts. Includes:
-  //   if (!name)                     negative-check guard
-  //   if (name == null) / === null   explicit null compare
-  //   if (!name || …)                early-return chain
-  //   if (name && …)                 truthy short-circuit
-  //   if (name) { …name.x… }         positive bare check (use is inside the block)
-  //   if (name)return …              one-line positive
-  //   name ? name.x : default        ternary truthy
-  //   !!name && name.x               double-bang short-circuit
-  //   name && name.x                 ampersand short-circuit
-  const guardRe = new RegExp(
+  // Pre-compute the spans that count as "safe" for each guard class so
+  // we can check EVERY unsafe use, not just the first (Codex P1: a
+  // later `row.x` after a guarded block is still a real bug).
+
+  // 1. Scope-wide early-exit guards: `if (!name) return/throw`,
+  //    `if (!a || !name) …`, `if (name == null)`, `if (name &&` —
+  //    everything AFTER the guard's index is safe.
+  const earlyExitRe = new RegExp(
     "\\bif\\s*\\(\\s*!\\s*" + name + "\\b" +
     "|\\bif\\s*\\(\\s*" + name + "\\s*==\\s*null\\b" +
     "|\\bif\\s*\\(\\s*" + name + "\\s*===\\s*null\\b" +
     "|\\bif\\s*\\(\\s*!" + name + "\\s*\\|\\|" +
-    // `if (!other || !name)` — name as the 2nd+ operand of an OR-guard
     "|\\|\\|\\s*!" + name + "\\b" +
-    "|\\bif\\s*\\(\\s*" + name + "\\s*&&" +
-    "|\\bif\\s*\\(\\s*" + name + "\\s*\\)" +
-    // `if (name?.field)` — optional-chain truthy check on a property
-    "|\\bif\\s*\\(\\s*" + name + "\\?\\." +
-    "|!!" + name + "\\s*&&" +
-    // `name && name.x` OR `name && (name.x` — same guard intent, the
-    // paren version is common when there are multiple .x checks ORed.
-    "|\\b" + name + "\\s*&&\\s*\\(?\\s*" + name + "\\." +
-    "|\\b" + name + "\\s*\\?\\s*\\(?\\s*" + name + "\\." +
-    // `return name ? <anything>(name) : <anything>` — passes through to a parser
-    "|return\\s+" + name + "\\s*\\?\\s*\\w+\\s*\\(" + name + "\\s*\\)"
+    "|\\bif\\s*\\(\\s*" + name + "\\s*&&"
   );
-  const guardMatch = guardRe.exec(window);
-  // Look for unguarded property access: `name.x`, `name[y]`, or destructure
-  // `{ x } = name` — but NOT `name?.x`.
+  const earlyMatch = earlyExitRe.exec(window);
+  const earlyExitFrom = earlyMatch ? earlyMatch.index : Infinity;
+
+  // 2. Block-scoped positive guards: `if (name) { … }` / `if (name?.x) { … }`
+  //    — only the brace-balanced block body is safe. Collect all spans.
+  const safeBlocks = [];
+  const blockGuardRe = new RegExp(
+    "\\bif\\s*\\(\\s*" + name + "\\s*\\)\\s*\\{" +
+    "|\\bif\\s*\\(\\s*" + name + "\\?\\.[\\w.]+\\s*\\)\\s*\\{",
+    "g"
+  );
+  let bg;
+  while ((bg = blockGuardRe.exec(window)) !== null) {
+    const braceOpen = bg.index + bg[0].length - 1;
+    let d = 1;
+    let blockEnd = window.length;
+    for (let i = braceOpen + 1; i < window.length; i++) {
+      const ch = window[i];
+      if (ch === "{") d++;
+      else if (ch === "}") { d--; if (d === 0) { blockEnd = i; break; } }
+    }
+    safeBlocks.push([braceOpen, blockEnd]);
+  }
+  // 3. One-line block-less positive: `if (name) return name.x;` — the
+  //    use on the same statement is safe. Collect those spans too.
+  const inlineGuardRe = new RegExp(
+    "\\bif\\s*\\(\\s*" + name + "\\s*\\)\\s*(?!\\{)[^\\n;]*",
+    "g"
+  );
+  let ig;
+  while ((ig = inlineGuardRe.exec(window)) !== null) {
+    safeBlocks.push([ig.index, ig.index + ig[0].length]);
+  }
+  // 4. Short-circuit guard spans: `name && <rest>` and `!!name && <rest>`
+  //    short-circuit — `<rest>` only evaluates when name is truthy, so
+  //    EVERY `name.x` in `<rest>` is safe, not just the first. The span
+  //    runs from the `&&` to the end of that expression: a `;` / `,` at
+  //    the same paren depth, or a `)` that closes a paren we didn't open.
+  const scRe = new RegExp("(?:!!\\s*)?\\b" + name + "\\s*&&", "g");
+  let sc;
+  while ((sc = scRe.exec(window)) !== null) {
+    const spanStart = sc.index + sc[0].length;
+    let d = 0;
+    let spanEnd = window.length;
+    for (let i = spanStart; i < window.length; i++) {
+      const ch = window[i];
+      if (ch === "(" || ch === "[" || ch === "{") d++;
+      else if (ch === ")" || ch === "]" || ch === "}") {
+        if (d === 0) { spanEnd = i; break; }
+        d--;
+      } else if ((ch === ";" || ch === ",") && d === 0) { spanEnd = i; break; }
+    }
+    safeBlocks.push([spanStart, spanEnd]);
+  }
+
+  // Walk EVERY unsafe use. The first one not covered by any guard wins.
   const unsafeRe = new RegExp(
     "(?<!\\?\\.)\\b" + name + "(?:\\.[a-zA-Z_$]|\\[)" +
-    "|\\}\\s*=\\s*" + name + "(?!\\s*\\?)"
+    "|\\}\\s*=\\s*" + name + "(?!\\s*\\?)",
+    "g"
   );
-  // Find the FIRST unsafe use after the assignment.
-  const unsafeMatch = unsafeRe.exec(window);
-  if (!unsafeMatch) return { guarded: true };
-  // If a guard appears BEFORE the unsafe use, we're fine.
-  if (guardMatch && guardMatch.index < unsafeMatch.index) return { guarded: true };
-  // Optional chain on the use itself? Already excluded by the regex's
-  // negative lookbehind for `?.` — so reaching here means real-unsafe.
-  return { guarded: false, firstUseOffset: unsafeMatch.index };
+  let um;
+  while ((um = unsafeRe.exec(window)) !== null) {
+    const unsafeIdx = um.index;
+    // Early-exit guard before this use → safe.
+    if (earlyExitFrom < unsafeIdx) continue;
+    // Inside a block-scoped / inline positive guard → safe.
+    if (safeBlocks.some(([a, b]) => unsafeIdx > a && unsafeIdx < b)) continue;
+    // Optional-chain or ternary on the variable BEFORE this use → the
+    // developer consciously handled null; treat as safe.
+    const ocM = new RegExp("\\b" + name + "\\?\\.").exec(window);
+    if (ocM && ocM.index < unsafeIdx) continue;
+    const ternM = new RegExp("\\b" + name + "\\s*\\?[^?:]*:").exec(window);
+    if (ternM && ternM.index < unsafeIdx) continue;
+    // Short-circuit guard immediately preceding (`name &&`, `!!name &&`,
+    // `name ?`) → the access is guarded.
+    const preCtx = window.slice(Math.max(0, unsafeIdx - 40), unsafeIdx);
+    if (
+      new RegExp("\\b" + name + "\\s*&&\\s*\\(?\\s*$").test(preCtx) ||
+      new RegExp("!!" + name + "\\s*&&\\s*\\(?\\s*$").test(preCtx) ||
+      new RegExp("\\b" + name + "\\s*\\?\\s*\\(?\\s*$").test(preCtx)
+    ) {
+      continue;
+    }
+    // Reached here → genuinely unguarded.
+    return { guarded: false, firstUseOffset: unsafeIdx };
+  }
+  // No unsafe use survived the guard checks.
+  return { guarded: true };
 }
 
 export async function runNullCheckDetector({ root, opts = {} } = {}) {
