@@ -87,7 +87,7 @@ const INVOCATION_CAP_MS = 1_500;
 function callCapped(fn, args) {
   return Promise.race([
     Promise.resolve().then(() => fn(...args)).catch(() => {}),
-    new Promise((resolve) => setTimeout(resolve, INVOCATION_CAP_MS).unref?.()),
+    new Promise((resolve) => { setTimeout(resolve, INVOCATION_CAP_MS).unref?.(); }),
   ]).catch(() => {});
 }
 
