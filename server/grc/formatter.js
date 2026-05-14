@@ -232,7 +232,7 @@ function inferQuestion(payload, dtuRefs) {
 
 /**
  * Returns the system prompt that forces LLM output into GRC shape.
- * Feed this to MiniLlama / GPT-4.1-mini / any model.
+ * Feed this to any of the Ollama brains (conscious/subconscious/utility).
  */
 export function getGRCSystemPrompt(contextAnchors = {}) {
   const anchorStr = contextAnchors.dtus?.length

@@ -1650,7 +1650,6 @@ class CircuitBreaker {
 // Shared breakers for external services
 const BREAKERS = {
   ollama: new CircuitBreaker("ollama", { threshold: 5, resetMs: 30000 }),
-  openai: new CircuitBreaker("openai", { threshold: 3, resetMs: 60000 }),
   stripe: new CircuitBreaker("stripe", { threshold: 3, resetMs: 60000 }),
 };
 
@@ -2014,7 +2013,7 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000);
 const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 300);
-// LLM_READY: tracks Ollama conscious-brain readiness. The OpenAI cloud
+// LLM_READY: tracks Ollama conscious-brain readiness. The cloud LLM
 // fallbacks were removed (see CLAUDE.md — five-brain Ollama+LLaVA stack).
 let LLM_READY = false;
 function _refreshLlmReady() {
@@ -2196,7 +2195,7 @@ const CAPS = Object.freeze({
   rateLimit:    Boolean(rateLimit),
   helmet:       Boolean(helmet),
   compression:  Boolean(compression),
-  // LLM (OpenAI cloud fallback removed — Ollama-only)
+  // LLM (cloud fallback removed — Ollama-only)
   ollama:       Boolean((process.env.OLLAMA_HOST || "").trim()),
   // Unsafe surfaces (off by default)
   exec:         TERMINAL_EXEC_ENABLED,
@@ -6758,7 +6757,7 @@ const _LLM_BUDGET = {
   perUser: new Map(), // userId -> { tokens, requests, windowStart }
   MAX_PER_USER_ENTRIES: 50000,
 
-  // Budget limits — disabled (no cloud calls; OpenAI fallback removed,
+  // Budget limits — disabled (no cloud calls; cloud LLM fallback removed,
   // Ollama is local + free). Constants kept for shape compatibility.
   globalBudgetTokens: Number(process.env.LLM_BUDGET_TOKENS || 999999999),
   perUserBudgetTokens: Number(process.env.LLM_USER_BUDGET_TOKENS || 999999999),
@@ -6797,7 +6796,7 @@ const _LLM_BUDGET = {
 
   checkBudget(_userId) {
     // Local Ollama = free tokens, no budget gating needed. The cloud
-    // (OpenAI) fallback was removed; this method is now a no-op stub
+    // LLM fallback was removed; this method is now a no-op stub
     // kept to preserve the call-site contract.
     return { allowed: true };
   },
@@ -12261,8 +12260,8 @@ function makeCtx(req=null) {
       async chat({ system, messages, temperature=0.3, maxTokens=1500, model=null, timeoutMs=30000, dtuRefs, macroRefs, grcMode }) {
         // ===== OLLAMA-ONLY ROUTING =====
         // Sovereignty principle: only the local conscious brain.
-        // Cloud LLM fallbacks (OpenAI, etc.) were removed — this
-        // deployment is Ollama (qwen2.5) + LLaVA per CLAUDE.md.
+        // Cloud LLM fallbacks were removed — this deployment is
+        // Ollama (qwen2.5) + LLaVA per CLAUDE.md.
         const consciousAvailable = BRAIN.conscious && BRAIN.conscious.enabled;
         if (!consciousAvailable) {
           return { ok: false, reason: "LLM not configured: conscious brain offline. Set BRAIN_CONSCIOUS_URL and ensure Ollama is reachable." };
@@ -32329,7 +32328,7 @@ register("admin", "dashboard", (ctx, _input) => {
       healthy: Array.from(STATE.organs?.values() || []).filter(o => (o.maturity?.score || 0) > 0.5).length
     },
     llm: {
-      openaiReady: LLM_READY,
+      consciousReady: LLM_READY,
       ollamaEnabled: OLLAMA_ENABLED,
       defaultOn: DEFAULT_LLM_ON
     },

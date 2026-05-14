@@ -220,7 +220,15 @@ export async function pollVideoStatus(jobId) {
   const job = PENDING_JOBS.get(jobId);
   if (!job) return { ok: false, error: "job_not_found" };
   if (job.status === "completed" || job.status === "failed" || job.status === "error") {
-    return { ok: true, jobId, ...job };
+    // Never spread `job` wholesale — it holds the plaintext apiKey.
+    return {
+      ok: true, jobId,
+      provider: job.provider,
+      status: job.status,
+      url: job.url,
+      error: job.error,
+      elapsedMs: Date.now() - job.startedAt,
+    };
   }
   let r;
   if (job.provider === "openai" || job.provider === "sora") {
