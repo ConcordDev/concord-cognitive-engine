@@ -1,0 +1,18 @@
+{
+  "id": "arena-clash",
+  "name": "Arena Clash",
+  "description": "A fast cyber PvP arena — tuned physics, the full combat motor with elements and equipment, scripted boss phases, aerial and mounted combat, live spectating, and spectator betting on every match.",
+  "universeType": "cyber",
+  "systems": [
+    { "id": "physics-modifiers", "config": { "gravity": 90, "jumpHeight": 160 } },
+    { "id": "combat-motor", "config": { "lethality": "hardcore", "friendlyFire": true } },
+    { "id": "armor-weapon-reflex", "config": {} },
+    { "id": "elemental-status-effects", "config": { "enabledElements": "extended-six" } },
+    { "id": "boss-phases", "config": { "maxPhases": 4 } },
+    { "id": "aerial-mount-combat", "config": {} },
+    { "id": "realtime-coop-pvp", "config": { "mode": "pvp", "maxConcurrent": 32 } },
+    { "id": "live-spectator", "config": {} },
+    { "id": "marketplace-spectator-betting", "config": { "spectatorBetting": true, "bettingCurrency": "sparks" } }
+  ],
+  "rules": []
+}

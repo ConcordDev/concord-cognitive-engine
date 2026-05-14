@@ -23023,6 +23023,14 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+// Foundry (lens #66) — no-code game-builder. Builder surface
+// (registry / worldspec / publish / preview / templates / rules).
+import registerFoundryMacros from "./domains/foundry.js";
+registerFoundryMacros(register);
+// Foundry Phase 7 — the four net-new gameplay systems' macro surface
+// (size.* / skill_affinity.* / status.* / reincarnation.*).
+import registerFoundrySystemsMacros from "./domains/foundry-systems.js";
+registerFoundrySystemsMacros(register);
 import registerSecretsMacros from "./domains/secrets.js";
 registerSecretsMacros(register);
 import registerSchemesMacros from "./domains/schemes.js";
@@ -23223,6 +23231,9 @@ registerHeartbeat("aging-cycle", { frequency: 480, handler: runAgingCycle });
 registerHeartbeat("ration-floor-cycle", { frequency: 1440, handler: runRationFloorCycle });
 registerHeartbeat("council-session-cycle", { frequency: 480, handler: runCouncilSessionCycle });
 registerHeartbeat("underwater-threat-cycle", { frequency: 6, handler: runUnderwaterThreatCycle });
+// Foundry (lens #66) — sweep stale live-preview worlds (Phase 5).
+import { runFoundryPreviewCleanup } from "./emergent/foundry-preview-cleanup.js";
+registerHeartbeat("foundry-preview-cleanup", { frequency: 240, handler: runFoundryPreviewCleanup });
 
 // Theme deferred (game-feel pass): hidden quest triggers — substrate
 // for unmarked, environment-gated quest activation. Pure runMacro

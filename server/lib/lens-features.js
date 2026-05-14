@@ -1503,6 +1503,24 @@ const _FEATURES = {
     botAccess: false,
     usbIntegration: false,
   },
+
+  foundry: {
+    lensId: "foundry",
+    lensNumber: 125,
+    category: "AI_EXT",
+    features: [
+      f("system_registry", "Composable System Registry", "Browse and select from ~34 Concord systems as game-building blocks", "creation", ["foundry"]),
+      f("worldspec_builder", "Worldspec Builder", "Compose, configure, and persist a game/world as a worldspec", "creation", ["foundry"]),
+      f("publish_pipeline", "Publish to the Lattice", "Compile a worldspec into a real, travelable world node", "creation", ["foundry", "concord_link"]),
+      f("live_preview", "Live 3D Preview", "Preview the world being built in the 3D renderer in real time", "creation", ["foundry", "world_lens"]),
+      f("game_templates", "Game Templates & NL Rules", "Start from a template and author rules in natural language", "creation", ["foundry"]),
+    ],
+    featureCount: 5,
+    economicIntegrations: ["royalty_cascade"],
+    emergentAccess: false,
+    botAccess: false,
+    usbIntegration: false,
+  },
 };
 
 export const LENS_FEATURES = Object.freeze({ ..._FEATURES, ...EXTENDED_FEATURES });
