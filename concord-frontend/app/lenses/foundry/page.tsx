@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Foundry Lens (#66) — no-code game-builder.
+ * Foundry Lens (#125) — no-code game-builder.
  *
  * Build complete, persistent, cross-world games by composing Concord's
  * existing systems as configurable building blocks. This page is the

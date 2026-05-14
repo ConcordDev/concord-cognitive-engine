@@ -1,6 +1,6 @@
 // server/domains/foundry.js
 //
-// Foundry — no-code game-builder lens (#66). Macro surface.
+// Foundry — no-code game-builder lens (#125). Macro surface.
 //
 // Phase 1 — System Registry read surface (foundry.systems /
 //   system_schema / validate_systems).
