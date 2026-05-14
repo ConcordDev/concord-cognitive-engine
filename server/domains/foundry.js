@@ -432,4 +432,113 @@ export default function registerFoundryMacros(register) {
     const updated = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
     return { ok: true, disposition, formerWorldId: worldId, world: rowToWorld(updated) };
   });
+
+  // ===== Phase 5 — Live 3D preview ===========================================
+
+  /**
+   * foundry.preview — compile the current draft into a throwaway
+   * `worlds` row (status='preview') the 3D renderer can load by id.
+   * ConcordiaScene is hardwired to load-a-world-by-id, so the preview
+   * IS a real (transient) world. Reuses an existing preview row when
+   * one is already attached — never accumulates more than one per
+   * foundry world. The foundry-preview-cleanup heartbeat sweeps any
+   * that go stale (~2h).
+   *
+   * Forgiving by design: unlike publish this does NOT hard-gate on
+   * validation — the compiler skips unknown/stub systems gracefully,
+   * so you can preview a half-built world. Only an empty selection is
+   * rejected (nothing to render).
+   * input: { id }
+   * output: { ok, previewWorldId, universeType, activatedSystems }
+   */
+  register("foundry", "preview", (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const creatorId = ctx?.actor?.userId || ctx?.actor?.id;
+    if (!creatorId) return { ok: false, reason: "no_actor" };
+    const id = String((input && input.id) || "");
+    if (!id) return { ok: false, reason: "missing_id" };
+
+    const row = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
+    if (!row) return { ok: false, reason: "not_found" };
+    if (row.creator_id !== creatorId) return { ok: false, reason: "not_owner" };
+
+    let rawSpec;
+    try { rawSpec = JSON.parse(row.worldspec_json); }
+    catch { rawSpec = emptyWorldspec(); }
+    const worldspec = normalizeWorldspec(rawSpec);
+    if (worldspec.systems.length === 0) {
+      return { ok: false, reason: "no_systems", hint: "add a system before previewing" };
+    }
+
+    const compiled = compileWorldspec(worldspec);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const physJson = JSON.stringify(compiled.physics_modulators);
+    const ruleJson = JSON.stringify(compiled.rule_modulators);
+    const previewName = `${row.name} (preview)`;
+
+    // Reuse an attached preview row if it still exists; else mint one.
+    let previewWorldId = row.preview_world_id;
+    const existing = previewWorldId
+      ? db.prepare(`SELECT id FROM worlds WHERE id = ? AND status = 'preview'`).get(previewWorldId)
+      : null;
+
+    try {
+      if (existing) {
+        db.prepare(`
+          UPDATE worlds
+          SET name = ?, universe_type = ?, physics_modulators = ?, rule_modulators = ?, created_at = ?
+          WHERE id = ?
+        `).run(previewName, worldspec.theme.universeType, physJson, ruleJson, nowSec, previewWorldId);
+      } else {
+        previewWorldId = `preview-${randomUUID()}`;
+        db.prepare(`
+          INSERT INTO worlds
+            (id, name, universe_type, description, physics_modulators, rule_modulators, created_by, status, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'preview', ?)
+        `).run(
+          previewWorldId, previewName, worldspec.theme.universeType,
+          `Foundry live preview of ${row.name}.`, physJson, ruleJson, creatorId, nowSec,
+        );
+        db.prepare(`UPDATE foundry_worlds SET preview_world_id = ? WHERE id = ?`).run(previewWorldId, id);
+      }
+    } catch (e) {
+      return { ok: false, reason: "preview_failed", error: String(e?.message || e) };
+    }
+
+    return {
+      ok: true,
+      previewWorldId,
+      universeType: worldspec.theme.universeType,
+      activatedSystems: compiled.activatedSystems,
+      skippedStubs: compiled.skippedStubs,
+    };
+  });
+
+  /**
+   * foundry.preview_end — tear down a foundry world's preview row.
+   * Called when the builder closes the preview panel. Idempotent.
+   * input: { id }
+   */
+  register("foundry", "preview_end", (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const creatorId = ctx?.actor?.userId || ctx?.actor?.id;
+    if (!creatorId) return { ok: false, reason: "no_actor" };
+    const id = String((input && input.id) || "");
+    if (!id) return { ok: false, reason: "missing_id" };
+
+    const row = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
+    if (!row) return { ok: false, reason: "not_found" };
+    if (row.creator_id !== creatorId) return { ok: false, reason: "not_owner" };
+    if (!row.preview_world_id) return { ok: true, alreadyClear: true };
+
+    try {
+      db.prepare(`DELETE FROM worlds WHERE id = ? AND status = 'preview'`).run(row.preview_world_id);
+      db.prepare(`UPDATE foundry_worlds SET preview_world_id = NULL WHERE id = ?`).run(id);
+    } catch (e) {
+      return { ok: false, reason: "preview_end_failed", error: String(e?.message || e) };
+    }
+    return { ok: true };
+  });
 }

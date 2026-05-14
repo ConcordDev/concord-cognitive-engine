@@ -152,6 +152,18 @@ export function unpublishWorld(id: string) {
   }>('unpublish', { id });
 }
 
+// ── Phase 5 — live 3D preview ───────────────────────────────────────────────
+
+export function previewWorld(id: string) {
+  return foundryCall<{
+    ok: boolean; reason?: string; previewWorldId?: string;
+    universeType?: string; activatedSystems?: string[]; skippedStubs?: string[];
+  }>('preview', { id });
+}
+export function endPreview(id: string) {
+  return foundryCall<{ ok: boolean; reason?: string }>('preview_end', { id });
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 /** A blank worldspec — mirror of server emptyWorldspec(). */

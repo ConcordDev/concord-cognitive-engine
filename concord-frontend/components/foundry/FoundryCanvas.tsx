@@ -20,12 +20,16 @@ import {
   type SystemEntry, type CategoryGroup, type SystemCategory,
   type WorldspecSystem, type Worldspec, type FoundryWorld, type ValidationResult,
 } from '@/lib/foundry/api';
+import dynamic from 'next/dynamic';
 import { ComponentPalette } from './ComponentPalette';
 import { ConfigPanel } from './ConfigPanel';
 import {
   Loader2, Save, Rocket, Trash2, X, CheckCircle2, AlertTriangle,
-  Circle, FileStack, Undo2,
+  Circle, FileStack, Undo2, Eye,
 } from 'lucide-react';
+
+// Preview pulls in ConcordiaScene (Three.js) — load it only when opened.
+const FoundryPreview = dynamic(() => import('./FoundryPreview'), { ssr: false });
 
 const UNIVERSE_TYPES = [
   'fantasy', 'scifi', 'noir', 'cyber', 'post-apocalyptic',
@@ -52,6 +56,7 @@ export function FoundryCanvas() {
   const [myWorlds, setMyWorlds] = useState<FoundryWorld[]>([]);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
@@ -184,6 +189,20 @@ export function FoundryCanvas() {
     }
   }, [currentWorldId, worldName, worldDescription, buildWorldspec]);
 
+  const doPreview = useCallback(async () => {
+    if (!currentWorldId) { flash('err', 'Save before previewing.'); return; }
+    setBusy(true);
+    try {
+      // Persist the latest edits so the preview renders what's on screen.
+      await updateWorld(currentWorldId, { name: worldName, description: worldDescription, worldspec: buildWorldspec() });
+      setShowPreview(true);
+    } catch {
+      flash('err', 'Could not save before preview — backend unreachable.');
+    } finally {
+      setBusy(false);
+    }
+  }, [currentWorldId, worldName, worldDescription, buildWorldspec]);
+
   const doUnpublish = useCallback(async () => {
     if (!currentWorldId) return;
     setBusy(true);
@@ -302,6 +321,13 @@ export function FoundryCanvas() {
           className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs text-slate-100 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-40"
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Save
+        </button>
+        <button
+          type="button" onClick={doPreview} disabled={busy || !currentWorldId || selected.length === 0}
+          title={!currentWorldId ? 'Save first to preview' : selected.length === 0 ? 'Add a system to preview' : 'Render this world in 3D'}
+          className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs text-slate-100 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-40"
+        >
+          <Eye className="h-3 w-3" /> Preview
         </button>
         {worldStatus === 'published' ? (
           <button
@@ -450,6 +476,15 @@ export function FoundryCanvas() {
           )}
         </aside>
       </div>
+
+      {/* Live 3D preview — full-screen overlay (Phase 5) */}
+      {showPreview && currentWorldId && (
+        <FoundryPreview
+          foundryWorldId={currentWorldId}
+          worldName={worldName}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }

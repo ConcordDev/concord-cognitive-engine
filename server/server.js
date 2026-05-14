@@ -23227,6 +23227,9 @@ registerHeartbeat("aging-cycle", { frequency: 480, handler: runAgingCycle });
 registerHeartbeat("ration-floor-cycle", { frequency: 1440, handler: runRationFloorCycle });
 registerHeartbeat("council-session-cycle", { frequency: 480, handler: runCouncilSessionCycle });
 registerHeartbeat("underwater-threat-cycle", { frequency: 6, handler: runUnderwaterThreatCycle });
+// Foundry (lens #66) — sweep stale live-preview worlds (Phase 5).
+import { runFoundryPreviewCleanup } from "./emergent/foundry-preview-cleanup.js";
+registerHeartbeat("foundry-preview-cleanup", { frequency: 240, handler: runFoundryPreviewCleanup });
 
 // Theme deferred (game-feel pass): hidden quest triggers — substrate
 // for unmarked, environment-gated quest activation. Pure runMacro
