@@ -2,7 +2,7 @@
 
 This is how Concord prevents technical debt from re-accumulating.
 
-The detector substrate (Phase 0–9 of the May 2026 cleanup) shipped 11 detectors, a baseline + diff loop, repair-cortex auto-fix routing, Reflex Cortex governance, and cartograph reasoning. Phase 10 — *Permanence* — is the cognitive immune system that keeps it that way.
+The detector substrate (Phase 0–9 of the May 2026 cleanup) shipped a baseline + diff loop, repair-cortex auto-fix routing, Reflex Cortex governance, and cartograph reasoning. It has since grown to **27 detectors** (run `npm run detectors:report` for the current roster). Phase 10 — *Permanence* — is the cognitive immune system that keeps it that way.
 
 ## The cycle
 

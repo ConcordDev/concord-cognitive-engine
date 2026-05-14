@@ -321,7 +321,7 @@ curl -sf http://localhost:5050/ready || exit 1
 
 - Verify Ollama is running: `curl http://localhost:11434/api/tags`
 - Check VRAM: `nvidia-smi` -- models may fail silently if VRAM is exhausted
-- Pull models manually: `ollama pull qwen2.5:14b-instruct-q4_K_M`
+- Pull models manually (e.g. `ollama pull qwen2.5:7b-instruct-q4_K_M`, `ollama pull llava:13b-v1.6-vicuna-q4_K_M`)
 - Check brain URLs in `.env` match your Ollama deployment
 
 ### "DTUs disappeared" after restart
