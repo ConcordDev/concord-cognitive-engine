@@ -1922,7 +1922,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     domain: 'foundry',
     label: 'Foundry',
     artifacts: ['foundry_world', 'worldspec', 'system_registry'],
-    macros: { list: 'foundry.list', get: 'foundry.get', create: 'foundry.create', update: 'foundry.update', delete: 'foundry.delete', run: 'foundry.publish' },
+    macros: { list: 'lens.foundry.list', get: 'lens.foundry.get', create: 'lens.foundry.create', update: 'lens.foundry.update', delete: 'lens.foundry.delete', run: 'lens.foundry.run' },
     exports: [],
     actions: ['systems', 'system_schema', 'validate_systems', 'create', 'update', 'get', 'list', 'delete', 'validate', 'publish', 'unpublish'],
     category: 'creative',
