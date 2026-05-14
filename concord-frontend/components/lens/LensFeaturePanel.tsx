@@ -64,7 +64,7 @@ interface LensFeaturePanelProps {
   compact?: boolean;
 }
 
-const CATEGORY_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+const CATEGORY_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string; label: string }> = {
   economy: { icon: Coins, color: 'text-neon-green', label: 'Economy' },
   marketplace: { icon: Target, color: 'text-neon-purple', label: 'Marketplace' },
   creation: { icon: Sparkles, color: 'text-neon-cyan', label: 'Creation' },
@@ -77,7 +77,7 @@ const CATEGORY_CONFIG: Record<string, { icon: React.ElementType; color: string; 
   intelligence: { icon: Brain, color: 'text-violet-400', label: 'Intelligence' },
 };
 
-const STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+const STATUS_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string; label: string }> = {
   active: { icon: CheckCircle2, color: 'bg-neon-green/20 text-neon-green', label: 'Active' },
   beta: { icon: Zap, color: 'bg-yellow-500/20 text-yellow-400', label: 'Beta' },
   planned: { icon: Clock, color: 'bg-blue-500/20 text-blue-400', label: 'Planned' },

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Sparkles, Heart, Zap, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
+const TYPE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string }> = {
   session: { icon: BookOpen, color: 'text-blue-400' },
   insight: { icon: Sparkles, color: 'text-neon-cyan' },
   discovery: { icon: Zap, color: 'text-yellow-400' },

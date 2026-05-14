@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
+const STATUS_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string }> = {
   pending: { icon: Clock, color: 'text-gray-400' },
   running: { icon: Loader2, color: 'text-neon-cyan' },
   completed: { icon: CheckCircle, color: 'text-green-400' },

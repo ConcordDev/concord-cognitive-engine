@@ -27,7 +27,7 @@ interface QuickCaptureProps {
 
 type CaptureType = 'thought' | 'note' | 'idea' | 'question' | 'bookmark';
 
-const captureTypes: { type: CaptureType; icon: React.ElementType; label: string; color: string }[] = [
+const captureTypes: { type: CaptureType; icon: React.ComponentType<{ className?: string; size?: number | string }>; label: string; color: string }[] = [
   { type: 'thought', icon: Brain, label: 'Thought', color: 'text-neon-cyan' },
   { type: 'idea', icon: Lightbulb, label: 'Idea', color: 'text-neon-yellow' },
   { type: 'note', icon: FileText, label: 'Note', color: 'text-neon-purple' },

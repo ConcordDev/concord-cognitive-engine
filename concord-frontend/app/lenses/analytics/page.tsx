@@ -128,11 +128,13 @@ export default function AnalyticsPage() {
     queryKey: ['my-social-profile'],
     queryFn: async () => {
       const res = await api.get('/api/social/profile');
-      return res.data.profile as {
+      // React Query rejects undefined returns. Coerce a missing
+      // profile (new user, backend miss) to null.
+      return (res.data?.profile ?? null) as {
         userId: string;
         displayName: string;
         stats: Record<string, number>;
-      };
+      } | null;
     },
     retry: 1,
   });

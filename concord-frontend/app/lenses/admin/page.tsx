@@ -135,7 +135,7 @@ function StatCard({
   color = 'blue',
   trend,
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   label: string;
   value: string | number;
   subValue?: string;
@@ -2483,7 +2483,7 @@ function SystemHealthResultPanel({ result }: { result: Record<string, unknown> }
         : 'text-gray-400';
   };
 
-  const metricLabels: Record<string, { label: string; unit: string; icon: React.ElementType }> = {
+  const metricLabels: Record<string, { label: string; unit: string; icon: React.ComponentType<{ className?: string; size?: number | string }> }> = {
     cpu: { label: 'CPU', unit: '%', icon: Cpu },
     memory: { label: 'Memory', unit: '%', icon: Database },
     disk: { label: 'Disk', unit: '%', icon: HardDrive },

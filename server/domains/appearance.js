@@ -139,7 +139,21 @@ export default function registerAppearanceMacros(register) {
          LIMIT ?
       `).all(worldId, Math.min(500, Math.max(1, Number(limit))));
     } catch {
-      return { ok: false, reason: "world_npcs_missing" };
+      // Phase T's residency join is best-effort. On a DB that predates
+      // migration 159 (no npc_residency table) or lacks the
+      // world_npcs.home_world_id column, fall back to the base read
+      // and key home_world_id off the NPC's current world.
+      try {
+        rows = db.prepare(`
+          SELECT n.id, n.faction, n.archetype, n.world_id AS home_world_id
+            FROM world_npcs n
+           WHERE n.world_id = ? AND COALESCE(n.is_dead, 0) = 0
+             AND COALESCE(n.archetype, '') NOT LIKE 'creature:%'
+           LIMIT ?
+        `).all(worldId, Math.min(500, Math.max(1, Number(limit))));
+      } catch {
+        return { ok: false, reason: "world_npcs_missing" };
+      }
     }
 
     const themeId = _themeForWorldId(worldId);

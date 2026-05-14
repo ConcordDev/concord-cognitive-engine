@@ -3304,7 +3304,7 @@ function StudyModePanel() {
 // ═══════════════════════════════════════════════════════════════════
 
 function PanelShell({ title, subtitle, icon: Icon, accent = 'neon-cyan', children }: {
-  title: string; subtitle?: string; icon: React.ElementType; accent?: string; children: React.ReactNode;
+  title: string; subtitle?: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; accent?: string; children: React.ReactNode;
 }) {
   return (
     <section className="bg-lattice-surface border border-lattice-border rounded-xl p-6">

@@ -239,7 +239,7 @@ interface RealEstateArtifact {
   [key: string]: unknown;
 }
 
-const MODE_TABS: { id: ModeTab; icon: React.ElementType; defaultType?: ArtifactType }[] = [
+const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; size?: number | string }>; defaultType?: ArtifactType }[] = [
   { id: 'Dashboard', icon: BarChart3 },
   { id: 'Listings', icon: Home, defaultType: 'Listing' },
   { id: 'Transactions', icon: ArrowLeftRight, defaultType: 'Transaction' },

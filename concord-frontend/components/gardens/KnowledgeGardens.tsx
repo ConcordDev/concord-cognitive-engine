@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const STAGE_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+const STAGE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string; label: string }> = {
   seedling: { icon: Sprout, color: 'text-green-300', label: 'Seedling' },
   sprouting: { icon: Sprout, color: 'text-green-400', label: 'Sprouting' },
   blooming: { icon: Flower2, color: 'text-pink-400', label: 'Blooming' },

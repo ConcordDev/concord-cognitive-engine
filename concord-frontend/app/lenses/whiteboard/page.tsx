@@ -857,7 +857,7 @@ export default function WhiteboardLensPage() {
   }, [deleteSelected, undo, redo, duplicateSelected]);
 
   /* ---------- tools array ---------- */
-  const tools: { id: Tool; icon: React.ElementType; label: string; key: string }[] = [
+  const tools: { id: Tool; icon: React.ComponentType<{ className?: string; size?: number | string }>; label: string; key: string }[] = [
     { id: 'select', icon: MousePointer, label: 'Select', key: 'V' },
     { id: 'draw', icon: Pencil, label: 'Draw', key: 'P' },
     { id: 'rectangle', icon: Square, label: 'Rectangle', key: 'R' },

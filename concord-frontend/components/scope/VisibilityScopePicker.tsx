@@ -54,7 +54,7 @@ interface ScopeOption {
   id: VisibilityScope;
   label: string;
   description: (regional?: string | null, national?: string | null) => string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   color: string;
   requires?: 'regional' | 'national';
 }

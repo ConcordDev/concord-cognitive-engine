@@ -835,6 +835,8 @@ import { runCouncilVoices, getAllVoices as getAllCouncilVoices } from "./emergen
 
 // ── Brain Prompt Builders & Want Engine ────────────────────────────────────────
 import { buildConsciousPrompt, getConsciousParams } from "./prompts/conscious.js";
+import { humanize as personaHumanize } from "./lib/persona/humanizer.js";
+import { persistIdiolect as personaPersistIdiolect, getIdiolectSamples as personaGetIdiolectSamples } from "./lib/persona/idiolect-store.js";
 import { buildSubconsciousPrompt, getSubconsciousParams, SUBCONSCIOUS_MODES } from "./prompts/subconscious.js";
 import { buildUtilityPrompt, getUtilityParams } from "./prompts/utility.js";
 import { buildRepairPrompt, getRepairParams } from "./prompts/repair.js";
@@ -5711,6 +5713,10 @@ function authMiddleware(req, res, next) {
   // Gate 1 POST bypass: anonymous client telemetry pings (perf, error reports).
   if (req.method === "POST" && req.path === "/api/world/perf-telemetry") return next();
   if (req.method === "POST" && req.path === "/api/client-error") return next();
+  // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
+  // classifier (query intent + domain + projection rules) with zero DB
+  // writes — the POST sibling of the already-public /status GET.
+  if (req.method === "POST" && req.path === "/api/quality-pipeline/preview") return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
@@ -8809,7 +8815,7 @@ try {
   ["entities", "councilVotes", "customPersonas", "councilProposals",
    "marketplaceListings", "teamTemplates", "mlJobs", "mlModels",
    "gameProfiles", "chemCompounds", "chemReactions", "debates", "wallets",
-   "subscriptions", "cognitiveDigitalTwins", "pathWeights",
+   "cognitiveDigitalTwins", "pathWeights",
    "_pipelineExecutions", "_rateLimits", "_costAccounting"].forEach(_ensureMap);
 
   // Feature Arrays
@@ -16165,6 +16171,14 @@ async function consciousChat(userMessage, lens = null, options = {}) {
         recordEconomicsEvent({ type: "retrieval", inferenceMs: elapsed, userId });
         try { recordQueryMethod(STATE, "retrieval_sufficient"); } catch (_e) { logger.debug('server', 'learning metrics not critical', { error: _e?.message }); }
 
+        // Humanize utility-brain output too — the 3B model is more prone
+        // to LLM tells than the conscious brain.
+        try {
+          const intensity = options.voice_intensity || (lens === "code" || lens === "legal" || lens === "healthcare" ? "light" : "medium");
+          const hpass = personaHumanize(result.content, { intensity });
+          result.content = hpass.text || result.content;
+        } catch (_e) { logger.debug('server', 'humanizer best-effort', { error: _e?.message }); }
+
         try {
           const ctx = makeInternalCtx("system");
           await runMacro("dtu", "create", {
@@ -16176,6 +16190,18 @@ async function consciousChat(userMessage, lens = null, options = {}) {
           }, ctx);
           BRAIN.utility.stats.dtusGenerated++;
         } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+        // Idiolect harvest on retrieval-path responses too.
+        try {
+          const ictx = makeInternalCtx("system");
+          await personaPersistIdiolect({
+            runMacro,
+            ctx: ictx,
+            response: result.content,
+            userId,
+            lens,
+          });
+        } catch (_e) { logger.debug('server', 'idiolect persist best-effort', { error: _e?.message }); }
 
         return result;
       }
@@ -16257,6 +16283,13 @@ async function consciousChat(userMessage, lens = null, options = {}) {
     // Use comprehensive conscious brain prompt builder
     const personalityState = typeof getPersonality === "function" ? getPersonality(STATE) : null;
     const highWants = typeof getActiveWants === "function" ? (getActiveWants(STATE)?.wants || []).filter(w => w.intensity >= 0.6) : [];
+    // Pull voice exemplars (past Concord sentences that survived the
+    // AI-tell blocklist) so the prompt biases toward Concord's own
+    // idiolect instead of the median LLM register.
+    let voiceExemplars = [];
+    try {
+      voiceExemplars = personaGetIdiolectSamples({ STATE, n: 4 });
+    } catch (_e) { logger.debug('server', 'idiolect sample best-effort', { error: _e?.message }); }
     system = buildConsciousPrompt({
       dtu_count: contextCount,
       domain_count: STATE.dtus ? new Set(Array.from(STATE.dtus.values()).flatMap(d => d.tags || [])).size : 0,
@@ -16264,6 +16297,8 @@ async function consciousChat(userMessage, lens = null, options = {}) {
       context,
       personality_state: personalityState,
       active_wants: highWants,
+      voice_exemplars: voiceExemplars,
+      conversation_history: options.conversation_history || [],
     });
   }
 
@@ -16288,6 +16323,24 @@ async function consciousChat(userMessage, lens = null, options = {}) {
   try { recordQueryMethod(STATE, "llm_required"); } catch (_e) { logger.debug('server', 'learning metrics not critical', { error: _e?.message }); }
 
   if (result.ok && result.content) {
+    // ── Persona humanizer pass ─────────────────────────────────────
+    // Strip AI-tell openers/phrases, break tricolons, kill neg-parallelism,
+    // and rebalance burstiness BEFORE the response is persisted or returned.
+    // Intensity defaults to "medium" for chat; lens-specific overrides can
+    // pass options.voice_intensity ("light" for code/legal/healthcare where
+    // precision matters more than persona, "heavy" for casual lenses).
+    let humanizedContent = result.content;
+    let humanizerChanges = [];
+    let humanizerStats = null;
+    try {
+      const intensity = options.voice_intensity || (lens === "code" || lens === "legal" || lens === "healthcare" ? "light" : "medium");
+      const hpass = personaHumanize(result.content, { intensity });
+      humanizedContent = hpass.text || result.content;
+      humanizerChanges = hpass.changes || [];
+      humanizerStats = hpass.stats || null;
+      result.content = humanizedContent;
+    } catch (_e) { logger.debug('server', 'humanizer best-effort', { error: _e?.message }); }
+
     // Build sources list for the response
     const sources = webResults.map(wr => ({
       type: "web",
@@ -16303,19 +16356,36 @@ async function consciousChat(userMessage, lens = null, options = {}) {
       const ctx = makeInternalCtx("system");
       await runMacro("dtu", "create", {
         title: `Chat: ${userMessage.slice(0, 80)}`,
-        creti: result.content,
+        creti: humanizedContent,
         tags: [lens, "conscious", "chat", webResults.length > 0 ? "web-augmented" : null].filter(Boolean),
         source: "conscious.chat",
         meta: {
           brainSource: "conscious", confidence: 0.7, tokens: result.tokens,
           webAugmented: webResults.length > 0,
           webSources: sources.length > 0 ? sources.map(s => s.url) : undefined,
+          humanizerChanges: humanizerChanges.length,
+          voiceStats: humanizerStats,
         },
       }, ctx);
       BRAIN.conscious.stats.dtusGenerated++;
     } catch (e) {
       structuredLog("warn", "conscious_dtu_save_failed", { error: String(e?.message || e) });
     }
+
+    // ── Idiolect harvest ───────────────────────────────────────────
+    // Extract up to 2 distinctive Concord sentences from THIS response
+    // and persist as `voice:idiolect` DTUs so future prompt builds can
+    // surface them as voice exemplars. Best-effort; never throws.
+    try {
+      const ictx = makeInternalCtx("system");
+      await personaPersistIdiolect({
+        runMacro,
+        ctx: ictx,
+        response: humanizedContent,
+        userId,
+        lens,
+      });
+    } catch (_e) { logger.debug('server', 'idiolect persist best-effort', { error: _e?.message }); }
 
     // Knowledge loop: save web sources as DTUs so future similar queries are answered from substrate
     if (webResults.length > 0) {
@@ -25712,6 +25782,28 @@ register("paper","export", (ctx, input) => {
 }, { summary:"Export paper to a local file (md/txt)."} );
 
 // ---- Audit queries (best-effort) ----
+// observability.log_error — silent sink for client-side LensErrorBoundary
+// self-reports. Without this macro, the LensErrorBoundary's POST to
+// /api/lens/run fell through to the utility-brain AI route and 500'd
+// (no Ollama in dev), causing every boundary-caught error to also
+// emit a 'Server error' console.error on top of the original crash —
+// which made 6+ lenses appear permanently noisy.
+register("observability", "log_error", (ctx, input = {}) => {
+  try {
+    const { lensId, message, stack, componentStack } = input || {};
+    (STATE.logs ||= []).push({
+      at: Date.now(),
+      kind: "client_error",
+      lensId: String(lensId || "unknown"),
+      message: String(message || "").slice(0, 500),
+      stack: String(stack || "").slice(0, 4000),
+      componentStack: String(componentStack || "").slice(0, 2000),
+      userId: ctx?.actor?.userId || null,
+    });
+    return { ok: true };
+  } catch { return { ok: true, reason: "log_failed" }; }
+}, { note: "Sink for LensErrorBoundary client-side error reports." });
+
 register("audit","query", (ctx, input) => {
   const limit = clamp(Number(input.limit||100), 1, 500);
   const domain = normalizeText(input.domain||"");
@@ -53631,38 +53723,6 @@ app.post("/api/battles/:id/judge", async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
-});
-
-// ---------- SUBSCRIPTION TIERS ----------
-// Tiered access levels for the knowledge substrate
-
-const SUBSCRIPTION_TIERS = {
-  free: { name: "Explorer", dtusLimit: 100, brains: ["utility"], features: ["basic_search", "basic_capture"] },
-  pro: { name: "Scholar", dtusLimit: 10000, brains: ["conscious", "utility"], features: ["full_search", "capture", "gardens", "personas", "dreams"] },
-  sovereign: { name: "Sovereign", dtusLimit: Infinity, brains: ["conscious", "subconscious", "utility", "repair"], features: ["all"] },
-};
-
-if (!STATE.subscriptions) STATE.subscriptions = new Map();
-
-function getSubscription(userId) {
-  return STATE.subscriptions.get(userId || "default") || { tier: "sovereign", since: new Date().toISOString() };
-}
-
-function setSubscription(userId, tier) {
-  if (!SUBSCRIPTION_TIERS[tier]) return { ok: false, error: "Invalid tier" };
-  STATE.subscriptions.set(userId || "default", { tier, since: new Date().toISOString() });
-  return { ok: true, tier, features: SUBSCRIPTION_TIERS[tier] };
-}
-
-app.get("/api/subscription", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const sub = getSubscription(req.query.userId); // safe: public-filter
-  res.json({ ok: true, ...sub, details: SUBSCRIPTION_TIERS[sub.tier] });
-});
-
-app.get("/api/subscription/tiers", (_req, res) => {
-  res.json({ ok: true, tiers: SUBSCRIPTION_TIERS });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

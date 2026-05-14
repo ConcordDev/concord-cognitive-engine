@@ -1,0 +1,1394 @@
+{
+  "total": 230,
+  "buckets": {
+    "green": 227,
+    "noisy": 3,
+    "crashed": 0,
+    "timeout": 0
+  },
+  "results": [
+    {
+      "lens": "accounting",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 19777
+    },
+    {
+      "lens": "admin",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15408
+    },
+    {
+      "lens": "affect",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 14901
+    },
+    {
+      "lens": "agents",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 14943
+    },
+    {
+      "lens": "agriculture",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 27627
+    },
+    {
+      "lens": "all",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6510
+    },
+    {
+      "lens": "alliance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8514
+    },
+    {
+      "lens": "analytics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 34283
+    },
+    {
+      "lens": "animation",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 19256
+    },
+    {
+      "lens": "anon",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6936
+    },
+    {
+      "lens": "answers",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8004
+    },
+    {
+      "lens": "app-maker",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 16602
+    },
+    {
+      "lens": "ar",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7158
+    },
+    {
+      "lens": "art",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7931
+    },
+    {
+      "lens": "artistry",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 21078
+    },
+    {
+      "lens": "astronomy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7129
+    },
+    {
+      "lens": "atlas",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "%o\n\n%s Error: Map container is already initialized.\n    at NewClass._initContainer (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:4206:12)\n    at NewClass.initialize (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:3248:10)\n    at new NewClass (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:301:22)\n    at eval (webpack-internal:///(app-pages-browser)/./node_modules/react-leaflet/lib/MapContainer.js:37:25)\n    at commitAttachRef (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:12612:44)\n    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)\n    at safelyAttachRef (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:12630:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14242:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14189:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14233:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14189:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14189:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14296:13)\n    at doubleInvokeEffectsOnFiber (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16565:11)\n    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:875:13)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16543:19)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17) The above error occurred in the <div> component. It was handled by the <SafeCard> error boundary.",
+      "durationMs": 24082
+    },
+    {
+      "lens": "attention",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15783
+    },
+    {
+      "lens": "audit",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 4930
+    },
+    {
+      "lens": "automotive",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10333
+    },
+    {
+      "lens": "aviation",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 29592
+    },
+    {
+      "lens": "billing",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13564
+    },
+    {
+      "lens": "bio",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10997
+    },
+    {
+      "lens": "black-market",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9568
+    },
+    {
+      "lens": "board",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 23490
+    },
+    {
+      "lens": "bounties",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 20959
+    },
+    {
+      "lens": "bridge",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9232
+    },
+    {
+      "lens": "byo-keys",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9338
+    },
+    {
+      "lens": "calendar",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13585
+    },
+    {
+      "lens": "carpentry",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13507
+    },
+    {
+      "lens": "chat",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 36336
+    },
+    {
+      "lens": "chem",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 22587
+    },
+    {
+      "lens": "classroom",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7540
+    },
+    {
+      "lens": "code",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 27305
+    },
+    {
+      "lens": "code-quality",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 14518
+    },
+    {
+      "lens": "cognition",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7865
+    },
+    {
+      "lens": "cognitive-replay",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13830
+    },
+    {
+      "lens": "collab",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11240
+    },
+    {
+      "lens": "command-center",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13033
+    },
+    {
+      "lens": "commonsense",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11622
+    },
+    {
+      "lens": "construction",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 42676
+    },
+    {
+      "lens": "consulting",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7144
+    },
+    {
+      "lens": "cooking",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7056
+    },
+    {
+      "lens": "council",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 23139
+    },
+    {
+      "lens": "crafting",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 21888
+    },
+    {
+      "lens": "creative",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 17252
+    },
+    {
+      "lens": "creative-writing",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 23477
+    },
+    {
+      "lens": "creator",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8230
+    },
+    {
+      "lens": "cri",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11825
+    },
+    {
+      "lens": "crisis-ops",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6762
+    },
+    {
+      "lens": "crypto",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11775
+    },
+    {
+      "lens": "custom",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8873
+    },
+    {
+      "lens": "daily",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9150
+    },
+    {
+      "lens": "database",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8581
+    },
+    {
+      "lens": "death-insurance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8099
+    },
+    {
+      "lens": "debate",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7198
+    },
+    {
+      "lens": "debug",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7502
+    },
+    {
+      "lens": "defense",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7455
+    },
+    {
+      "lens": "deities",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7083
+    },
+    {
+      "lens": "desert",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7340
+    },
+    {
+      "lens": "disputes",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7534
+    },
+    {
+      "lens": "diy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8382
+    },
+    {
+      "lens": "docs",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 8807
+    },
+    {
+      "lens": "dreams",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7259
+    },
+    {
+      "lens": "dtus",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 45193
+    },
+    {
+      "lens": "dx-platform",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15100
+    },
+    {
+      "lens": "eco",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 17564
+    },
+    {
+      "lens": "education",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 20968
+    },
+    {
+      "lens": "electrical",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10970
+    },
+    {
+      "lens": "emergency-services",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13084
+    },
+    {
+      "lens": "energy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11414
+    },
+    {
+      "lens": "engineering",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9862
+    },
+    {
+      "lens": "entity",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10524
+    },
+    {
+      "lens": "environment",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13012
+    },
+    {
+      "lens": "ethics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8657
+    },
+    {
+      "lens": "event-timeline",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7920
+    },
+    {
+      "lens": "events",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11295
+    },
+    {
+      "lens": "expedition-journal",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8270
+    },
+    {
+      "lens": "experience",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10288
+    },
+    {
+      "lens": "expert-mode",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7987
+    },
+    {
+      "lens": "export",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12640
+    },
+    {
+      "lens": "fashion",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10703
+    },
+    {
+      "lens": "federation",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 34573
+    },
+    {
+      "lens": "feed",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 21154
+    },
+    {
+      "lens": "film-studios",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 19503
+    },
+    {
+      "lens": "finance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13380
+    },
+    {
+      "lens": "fitness",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 23134
+    },
+    {
+      "lens": "food",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 20504
+    },
+    {
+      "lens": "forecast",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8799
+    },
+    {
+      "lens": "forestry",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11804
+    },
+    {
+      "lens": "forge",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7575
+    },
+    {
+      "lens": "fork",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12782
+    },
+    {
+      "lens": "forum",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 16687
+    },
+    {
+      "lens": "fractal",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12585
+    },
+    {
+      "lens": "gallery",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6617
+    },
+    {
+      "lens": "game",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 16350
+    },
+    {
+      "lens": "game-design",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9387
+    },
+    {
+      "lens": "genesis",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 14674
+    },
+    {
+      "lens": "geology",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8454
+    },
+    {
+      "lens": "ghost-tracker",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6990
+    },
+    {
+      "lens": "global",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7202
+    },
+    {
+      "lens": "goals",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8712
+    },
+    {
+      "lens": "goddess",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7517
+    },
+    {
+      "lens": "government",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9454
+    },
+    {
+      "lens": "graph",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 28087
+    },
+    {
+      "lens": "grounding",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 17868
+    },
+    {
+      "lens": "healthcare",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 29561
+    },
+    {
+      "lens": "history",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 18164
+    },
+    {
+      "lens": "home-improvement",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7482
+    },
+    {
+      "lens": "household",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 18799
+    },
+    {
+      "lens": "hr",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11444
+    },
+    {
+      "lens": "hvac",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11614
+    },
+    {
+      "lens": "hypothesis",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11612
+    },
+    {
+      "lens": "import",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7709
+    },
+    {
+      "lens": "inference",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9561
+    },
+    {
+      "lens": "ingest",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13732
+    },
+    {
+      "lens": "inheritance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9786
+    },
+    {
+      "lens": "insurance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8127
+    },
+    {
+      "lens": "integrations",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8225
+    },
+    {
+      "lens": "invariant",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10256
+    },
+    {
+      "lens": "kingdoms",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8052
+    },
+    {
+      "lens": "lab",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8957
+    },
+    {
+      "lens": "landscaping",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8828
+    },
+    {
+      "lens": "lattice",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10575
+    },
+    {
+      "lens": "law",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8737
+    },
+    {
+      "lens": "law-enforcement",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8668
+    },
+    {
+      "lens": "legacy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12452
+    },
+    {
+      "lens": "legal",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 61884
+    },
+    {
+      "lens": "linguistics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7821
+    },
+    {
+      "lens": "lock",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8384
+    },
+    {
+      "lens": "logistics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 14292
+    },
+    {
+      "lens": "maker",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6699
+    },
+    {
+      "lens": "manufacturing",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7175
+    },
+    {
+      "lens": "market",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7107
+    },
+    {
+      "lens": "marketing",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7701
+    },
+    {
+      "lens": "marketplace",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15174
+    },
+    {
+      "lens": "markets",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6875
+    },
+    {
+      "lens": "masonry",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7779
+    },
+    {
+      "lens": "materials",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6865
+    },
+    {
+      "lens": "math",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9326
+    },
+    {
+      "lens": "mental-health",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7159
+    },
+    {
+      "lens": "mentorship",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8018
+    },
+    {
+      "lens": "mesh",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8462
+    },
+    {
+      "lens": "message",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7989
+    },
+    {
+      "lens": "meta",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7666
+    },
+    {
+      "lens": "metacognition",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11268
+    },
+    {
+      "lens": "metalearning",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12124
+    },
+    {
+      "lens": "mining",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7083
+    },
+    {
+      "lens": "ml",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10764
+    },
+    {
+      "lens": "music",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11450
+    },
+    {
+      "lens": "neuro",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8935
+    },
+    {
+      "lens": "news",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 19626
+    },
+    {
+      "lens": "nonprofit",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9660
+    },
+    {
+      "lens": "observe",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7206
+    },
+    {
+      "lens": "ocean",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7832
+    },
+    {
+      "lens": "offline",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9402
+    },
+    {
+      "lens": "ops",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9497
+    },
+    {
+      "lens": "organ",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8214
+    },
+    {
+      "lens": "paper",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8101
+    },
+    {
+      "lens": "parenting",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7979
+    },
+    {
+      "lens": "personas",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7277
+    },
+    {
+      "lens": "pets",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10416
+    },
+    {
+      "lens": "pharmacy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8118
+    },
+    {
+      "lens": "philosophy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8017
+    },
+    {
+      "lens": "photography",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13205
+    },
+    {
+      "lens": "physics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8608
+    },
+    {
+      "lens": "platform",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8630
+    },
+    {
+      "lens": "plumbing",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8307
+    },
+    {
+      "lens": "podcast",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12959
+    },
+    {
+      "lens": "poetry",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8546
+    },
+    {
+      "lens": "privacy",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8401
+    },
+    {
+      "lens": "productivity",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 116261
+    },
+    {
+      "lens": "projects",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 23761
+    },
+    {
+      "lens": "psyops",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8941
+    },
+    {
+      "lens": "quantum",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10284
+    },
+    {
+      "lens": "questmarket",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15309
+    },
+    {
+      "lens": "queue",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15343
+    },
+    {
+      "lens": "realestate",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 19114
+    },
+    {
+      "lens": "reasoning",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15027
+    },
+    {
+      "lens": "reflection",
+      "bucket": "noisy",
+      "consoleErrorCount": 2,
+      "firstError": "Server error: {error: Internal server error}",
+      "durationMs": 9512
+    },
+    {
+      "lens": "repos",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10446
+    },
+    {
+      "lens": "research",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13106
+    },
+    {
+      "lens": "resonance",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 30317
+    },
+    {
+      "lens": "retail",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15757
+    },
+    {
+      "lens": "robotics",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8310
+    },
+    {
+      "lens": "root",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9979
+    },
+    {
+      "lens": "sandbox",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7118
+    },
+    {
+      "lens": "schema",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7126
+    },
+    {
+      "lens": "science",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8993
+    },
+    {
+      "lens": "security",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 14432
+    },
+    {
+      "lens": "self",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8627
+    },
+    {
+      "lens": "sentinel",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9590
+    },
+    {
+      "lens": "services",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 11518
+    },
+    {
+      "lens": "settings",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7521
+    },
+    {
+      "lens": "sim",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9673
+    },
+    {
+      "lens": "society",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7935
+    },
+    {
+      "lens": "space",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8065
+    },
+    {
+      "lens": "sponsorship",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7930
+    },
+    {
+      "lens": "sports",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10142
+    },
+    {
+      "lens": "srs",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8387
+    },
+    {
+      "lens": "staking",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7824
+    },
+    {
+      "lens": "studio",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 17605
+    },
+    {
+      "lens": "sub-worlds",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9979
+    },
+    {
+      "lens": "suffering",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7721
+    },
+    {
+      "lens": "supplychain",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10997
+    },
+    {
+      "lens": "sync",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7907
+    },
+    {
+      "lens": "system",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 33170
+    },
+    {
+      "lens": "telecommunications",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 29621
+    },
+    {
+      "lens": "temporal",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10897
+    },
+    {
+      "lens": "thread",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 16714
+    },
+    {
+      "lens": "tick",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 9047
+    },
+    {
+      "lens": "timeline",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 13899
+    },
+    {
+      "lens": "tools",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 109955
+    },
+    {
+      "lens": "tournaments",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 15417
+    },
+    {
+      "lens": "trades",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 20349
+    },
+    {
+      "lens": "transfer",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12857
+    },
+    {
+      "lens": "travel",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 17493
+    },
+    {
+      "lens": "understanding",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 6480
+    },
+    {
+      "lens": "urban-planning",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8694
+    },
+    {
+      "lens": "ux-suite",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 21117
+    },
+    {
+      "lens": "veterinary",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10428
+    },
+    {
+      "lens": "voice",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 18312
+    },
+    {
+      "lens": "vote",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 10710
+    },
+    {
+      "lens": "wallet",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12733
+    },
+    {
+      "lens": "welding",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8103
+    },
+    {
+      "lens": "wellness",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8195
+    },
+    {
+      "lens": "whiteboard",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 25214
+    },
+    {
+      "lens": "world",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 28108
+    },
+    {
+      "lens": "world-creator",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 7454
+    },
+    {
+      "lens": "worldmodel",
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 8610
+    }
+  ]
+}

@@ -386,7 +386,7 @@ export default function MLLensPage() {
     scaling: { color: 'text-yellow-400 bg-yellow-400/10', icon: TrendingUp }
   };
 
-  const typeConfig: Record<string, { color: string; icon: React.ElementType }> = {
+  const typeConfig: Record<string, { color: string; icon: React.ComponentType<{ className?: string; size?: number | string }> }> = {
     classification: { color: 'text-neon-purple', icon: Target },
     regression: { color: 'text-neon-blue', icon: TrendingUp },
     clustering: { color: 'text-neon-cyan', icon: Grid3X3 },
@@ -1055,8 +1055,8 @@ function MetricCard({ icon, label, value, trend, color }: { icon: React.ReactNod
 }
 
 function ModelCard({ model, statusConfig, typeConfig, onSelect, onDeploy, isDeploying }: { model: Model; statusConfig: Record<string, Record<string, unknown>>; typeConfig: Record<string, Record<string, unknown>>; onSelect: () => void; onDeploy: () => void; isDeploying?: boolean }) {
-  const StatusIcon = (statusConfig[model.status]?.icon || Activity) as React.ElementType;
-  const TypeIcon = (typeConfig[model.type]?.icon || Brain) as React.ElementType;
+  const StatusIcon = (statusConfig[model.status]?.icon || Activity) as React.ComponentType<{ className?: string; size?: number | string }>;
+  const TypeIcon = (typeConfig[model.type]?.icon || Brain) as React.ComponentType<{ className?: string; size?: number | string }>;
 
   return (
     <motion.div
@@ -1124,8 +1124,8 @@ function ModelCard({ model, statusConfig, typeConfig, onSelect, onDeploy, isDepl
 }
 
 function ModelListItem({ model, statusConfig, typeConfig, onSelect, onDeploy, isDeploying }: { model: Model; statusConfig: Record<string, Record<string, unknown>>; typeConfig: Record<string, Record<string, unknown>>; onSelect: () => void; onDeploy: () => void; isDeploying?: boolean }) {
-  const StatusIcon = (statusConfig[model.status]?.icon || Activity) as React.ElementType;
-  const TypeIcon = (typeConfig[model.type]?.icon || Brain) as React.ElementType;
+  const StatusIcon = (statusConfig[model.status]?.icon || Activity) as React.ComponentType<{ className?: string; size?: number | string }>;
+  const TypeIcon = (typeConfig[model.type]?.icon || Brain) as React.ComponentType<{ className?: string; size?: number | string }>;
 
   return (
     <div
@@ -1163,8 +1163,8 @@ function ModelListItem({ model, statusConfig, typeConfig, onSelect, onDeploy, is
 }
 
 function ModelDetailModal({ model, onClose, onDeploy, onTrain, statusConfig, typeConfig, isDeploying }: { model: Model; onClose: () => void; onDeploy: () => void; onTrain: () => void; statusConfig: Record<string, Record<string, unknown>>; typeConfig: Record<string, Record<string, unknown>>; isDeploying?: boolean }) {
-  const StatusIcon = (statusConfig[model.status]?.icon || Activity) as React.ElementType;
-  const TypeIcon = (typeConfig[model.type]?.icon || Brain) as React.ElementType;
+  const StatusIcon = (statusConfig[model.status]?.icon || Activity) as React.ComponentType<{ className?: string; size?: number | string }>;
+  const TypeIcon = (typeConfig[model.type]?.icon || Brain) as React.ComponentType<{ className?: string; size?: number | string }>;
 
   return (
     <motion.div

@@ -46,7 +46,7 @@ function MetricCard({
 }: {
   label: string;
   value: string | number;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   color?: string;
   sub?: string;
 }) {

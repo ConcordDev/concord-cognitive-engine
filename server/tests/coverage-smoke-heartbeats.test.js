@@ -16,7 +16,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { HEARTBEATS, probe } from "./_coverage-smoke-heartbeats-shared.mjs";
 
-await probe(test, assert, HEARTBEATS.slice(0, 10));
+probe(test, assert, HEARTBEATS.slice(0, 10));
 
 test("heartbeat-smoke: aggregate run* declaration count ≥ 40", () => {
   // Static count from the HEARTBEATS table — sum of run-export names

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const BRAIN_ICONS: Record<string, React.ElementType> = {
+const BRAIN_ICONS: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
   'brain.conscious': Brain,
   'brain.subconscious': Sparkles,
   'brain.utility': Wrench,

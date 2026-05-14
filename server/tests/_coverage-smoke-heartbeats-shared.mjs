@@ -69,17 +69,39 @@ export function makeMockCtx() {
   };
 }
 
-export async function probe(test, assert, entries) {
+// Per-probe timeout. `probe` is intentionally SYNCHRONOUS — it only
+// registers `test()` cases in a loop, no awaits — so each `test()` is
+// its own test rather than being collapsed under a top-level await.
+const PROBE_TIMEOUT_MS = 120_000;
+
+// Per-invocation cap. The probe is function-coverage padding: it just
+// needs each heartbeat's first line to execute. But some heartbeats,
+// called with a null-db mock ctx, don't fail fast — they reach for an
+// LLM brain (multi-second fetch timeout) or enter a wait before
+// throwing. Imports themselves are cheap (~tens of ms total); the cost
+// is these hanging invocations. Race each call against a short cap so a
+// slow handler costs INVOCATION_CAP_MS instead of its full brain
+// timeout — keeps a 10-module slice well under any runner's budget.
+const INVOCATION_CAP_MS = 1_500;
+
+function callCapped(fn, args) {
+  return Promise.race([
+    Promise.resolve().then(() => fn(...args)).catch(() => {}),
+    new Promise((resolve) => { setTimeout(resolve, INVOCATION_CAP_MS).unref?.(); }),
+  ]).catch(() => {});
+}
+
+export function probe(test, assert, entries) {
   for (const [path, runs] of entries) {
-    test(`heartbeat-smoke: ${path} — probe ${runs.join(", ")}`, async () => {
+    test(`heartbeat-smoke: ${path} — probe ${runs.join(", ")}`, { timeout: PROBE_TIMEOUT_MS }, async () => {
       const mod = await import(path);
       for (const name of runs) {
         const fn = mod[name];
         assert.equal(typeof fn, "function", `${path} expected export ${name} as function, got ${typeof fn}`);
         const ctx = makeMockCtx();
-        try { await Promise.resolve(fn(ctx, { db: null, STATE: ctx.STATE })); } catch { /* expected */ }
-        try { await Promise.resolve(fn(ctx.STATE)); } catch { /* expected */ }
-        try { await Promise.resolve(fn()); } catch { /* expected */ }
+        await callCapped(fn, [ctx, { db: null, STATE: ctx.STATE }]);
+        await callCapped(fn, [ctx.STATE]);
+        await callCapped(fn, []);
       }
     });
   }

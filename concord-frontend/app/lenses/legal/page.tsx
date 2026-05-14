@@ -281,7 +281,7 @@ type LegalArtifact =
 
 const MODE_TABS: {
   id: ModeTab;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   defaultType: ArtifactType;
   label: string;
 }[] = [
@@ -961,7 +961,7 @@ export default function LegalLensPage() {
     sub,
     color = 'text-neon-blue',
   }: {
-    icon: React.ElementType;
+    icon: React.ComponentType<{ className?: string; size?: number | string }>;
     value: string | number;
     label: string;
     sub?: string;
@@ -1605,7 +1605,7 @@ export default function LegalLensPage() {
       groupedByDate[key].push(item);
     });
 
-    const eventTypeIcons: Record<string, React.ElementType> = {
+    const eventTypeIcons: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
       court_date: Gavel,
       filing_deadline: FileClock,
       hearing: BookOpen,
@@ -1703,7 +1703,7 @@ export default function LegalLensPage() {
   /* ---------- render: contacts ---------- */
 
   const renderContacts = () => {
-    const contactTypeIcons: Record<string, React.ElementType> = {
+    const contactTypeIcons: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
       client: UserCheck,
       opposing_party: Users,
       witness: Eye,
@@ -1869,7 +1869,7 @@ export default function LegalLensPage() {
   /* ---------- render: compliance ---------- */
 
   const renderCompliance = () => {
-    const complianceTypeIcons: Record<string, React.ElementType> = {
+    const complianceTypeIcons: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
       cle_credits: GraduationCap,
       bar_admission: BadgeCheck,
       malpractice_insurance: Shield,

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
+const TYPE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string }> = {
   hourly: { icon: Clock, color: 'text-cyan-400' },
   weekly: { icon: Calendar, color: 'text-purple-400' },
   domain: { icon: Diamond, color: 'text-yellow-400' },

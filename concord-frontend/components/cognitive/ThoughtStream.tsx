@@ -39,7 +39,7 @@ interface ThoughtStreamProps {
   realtime?: boolean;
 }
 
-const eventConfig: Record<EventType, { icon: React.ElementType; color: string; bgColor: string }> = {
+const eventConfig: Record<EventType, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string; bgColor: string }> = {
   create: { icon: Brain, color: 'text-green-400', bgColor: 'bg-green-500/20' },
   update: { icon: RefreshCw, color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
   connect: { icon: GitBranch, color: 'text-neon-cyan', bgColor: 'bg-neon-cyan/20' },

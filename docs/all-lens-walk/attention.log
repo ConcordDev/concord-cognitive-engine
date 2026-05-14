@@ -1,0 +1,26 @@
+[console.error] [Dream] Failed to load history: ForbiddenError: Insufficient permissions
+    at fromAxiosError (webpack-internal:///(app-pages-browser)/./lib/errors.ts:131:20)
+    at eval (webpack-internal:///(app-pages-browser)/./lib/api/client.ts:352:86)
+    at async Axios.request (webpack-internal:///(app-pages-browser)/./node_modules/axios/lib/core/Axios.js:54:14)
+[console.error] [Forgetting] Failed to load status: ForbiddenError: Insufficient permissions
+    at fromAxiosError (webpack-internal:///(app-pages-browser)/./lib/errors.ts:131:20)
+    at eval (webpack-internal:///(app-pages-browser)/./lib/api/client.ts:352:86)
+    at async Axios.request (webpack-internal:///(app-pages-browser)/./node_modules/axios/lib/core/Axios.js:54:14)
+[console.error] [RepairPanel] Failed to load status: ForbiddenError: Insufficient permissions
+    at fromAxiosError (webpack-internal:///(app-pages-browser)/./lib/errors.ts:131:20)
+    at eval (webpack-internal:///(app-pages-browser)/./lib/api/client.ts:352:86)
+    at async Axios.request (webpack-internal:///(app-pages-browser)/./node_modules/axios/lib/core/Axios.js:54:14)
+    at async loadStatus (webpack-internal:///(app-pages-browser)/./components/emergent/RepairPanel.tsx:32:26)
+[console.error] [Dream] Failed to load history: ForbiddenError: Insufficient permissions
+    at fromAxiosError (webpack-internal:///(app-pages-browser)/./lib/errors.ts:131:20)
+    at eval (webpack-internal:///(app-pages-browser)/./lib/api/client.ts:352:86)
+    at async Axios.request (webpack-internal:///(app-pages-browser)/./node_modules/axios/lib/core/Axios.js:54:14)
+[console.error] [Forgetting] Failed to load status: ForbiddenError: Insufficient permissions
+    at fromAxiosError (webpack-internal:///(app-pages-browser)/./lib/errors.ts:131:20)
+    at eval (webpack-internal:///(app-pages-browser)/./lib/api/client.ts:352:86)
+    at async Axios.request (webpack-internal:///(app-pages-browser)/./node_modules/axios/lib/core/Axios.js:54:14)
+[console.error] [RepairPanel] Failed to load status: ForbiddenError: Insufficient permissions
+    at fromAxiosError (webpack-internal:///(app-pages-browser)/./lib/errors.ts:131:20)
+    at eval (webpack-internal:///(app-pages-browser)/./lib/api/client.ts:352:86)
+    at async Axios.request (webpack-internal:///(app-pages-browser)/./node_modules/axios/lib/core/Axios.js:54:14)
+    at async loadStatus (webpack-internal:///(app-pages-browser)/./components/emergent/RepairPanel.tsx:32:26)

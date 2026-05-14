@@ -158,7 +158,7 @@ function StatCard({
   warning,
   index,
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   label: string;
   value: number | string;
   color: string;
@@ -1112,7 +1112,7 @@ function LensInfrastructureTab() {
 
 type TabKey = 'overview' | 'components' | 'lenses' | 'orphans' | 'wiring' | 'search' | 'lens-infra';
 
-const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
+const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string; size?: number | string }> }[] = [
   { key: 'overview', label: 'Overview', icon: Layers },
   { key: 'components', label: 'Components', icon: Package },
   { key: 'lenses', label: 'Lenses', icon: Eye },

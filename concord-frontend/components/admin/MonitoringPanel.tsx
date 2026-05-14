@@ -75,7 +75,7 @@ function MetricCard({
   subValue,
   status,
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   label: string;
   value: string | number;
   subValue?: string;

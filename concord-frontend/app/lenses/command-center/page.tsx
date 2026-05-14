@@ -73,7 +73,7 @@ function BreakerBadge({ name, state }: { name: string; state: string }) {
 }
 
 function ConfirmButton({ label, icon: Icon, color, onConfirm, description }: {
-  label: string; icon: React.ElementType; color: 'red' | 'green' | 'yellow';
+  label: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; color: 'red' | 'green' | 'yellow';
   onConfirm: () => void; description: string;
 }) {
   const [confirming, setConfirming] = useState(false);
