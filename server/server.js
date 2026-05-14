@@ -12341,17 +12341,25 @@ function makeCtx(req=null) {
                 ],
                 opts: { temperature, maxTokens, timeoutMs },
               });
-              structuredLog("info", "llm_byo_routed", { slot, provider: byo.provider, model: byo.model, ok: byo.ok });
-              return {
-                ok: byo.ok,
-                content: byo.text || "",
-                raw: byo,
-                brain: slot,
-                source: "byo",
-                provider: byo.provider,
-                model: byo.model,
-                ...(byo.ok ? {} : { error: byo.error || "byo_provider_error" }),
-              };
+              // byoBrainChat() reports API/auth/rate-limit failures as
+              // non-throwing { ok: false } objects, not exceptions. Only
+              // hand back a BYO success — on a provider failure (expired
+              // key, 429, outage) fall through to the default brain so
+              // ctx.llm.chat()'s resilience contract still holds.
+              if (byo.ok) {
+                structuredLog("info", "llm_byo_routed", { slot, provider: byo.provider, model: byo.model });
+                return {
+                  ok: true,
+                  content: byo.text || "",
+                  raw: byo,
+                  brain: slot,
+                  source: "byo",
+                  provider: byo.provider,
+                  model: byo.model,
+                };
+              }
+              structuredLog("warn", "llm_byo_failed", { slot, provider: byo.provider, error: byo.error || "byo_provider_error" });
+              // fall through to the default conscious brain below
             } catch (_byoErr) {
               structuredLog("warn", "llm_byo_exception", { slot, error: String(_byoErr?.message || _byoErr) });
               // fall through to the default conscious brain below
