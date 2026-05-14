@@ -23023,6 +23023,10 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+// Foundry (lens #66) — no-code game-builder. Phase 1: System Registry
+// read surface (foundry.systems / system_schema / validate_systems).
+import registerFoundryMacros from "./domains/foundry.js";
+registerFoundryMacros(register);
 import registerSecretsMacros from "./domains/secrets.js";
 registerSecretsMacros(register);
 import registerSchemesMacros from "./domains/schemes.js";
