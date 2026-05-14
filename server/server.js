@@ -8808,7 +8808,7 @@ try {
   ["entities", "councilVotes", "customPersonas", "councilProposals",
    "marketplaceListings", "teamTemplates", "mlJobs", "mlModels",
    "gameProfiles", "chemCompounds", "chemReactions", "debates", "wallets",
-   "subscriptions", "cognitiveDigitalTwins", "pathWeights",
+   "cognitiveDigitalTwins", "pathWeights",
    "_pipelineExecutions", "_rateLimits", "_costAccounting"].forEach(_ensureMap);
 
   // Feature Arrays
@@ -53714,38 +53714,6 @@ app.post("/api/battles/:id/judge", async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
-});
-
-// ---------- SUBSCRIPTION TIERS ----------
-// Tiered access levels for the knowledge substrate
-
-const SUBSCRIPTION_TIERS = {
-  free: { name: "Explorer", dtusLimit: 100, brains: ["utility"], features: ["basic_search", "basic_capture"] },
-  pro: { name: "Scholar", dtusLimit: 10000, brains: ["conscious", "utility"], features: ["full_search", "capture", "gardens", "personas", "dreams"] },
-  sovereign: { name: "Sovereign", dtusLimit: Infinity, brains: ["conscious", "subconscious", "utility", "repair"], features: ["all"] },
-};
-
-if (!STATE.subscriptions) STATE.subscriptions = new Map();
-
-function getSubscription(userId) {
-  return STATE.subscriptions.get(userId || "default") || { tier: "sovereign", since: new Date().toISOString() };
-}
-
-function setSubscription(userId, tier) {
-  if (!SUBSCRIPTION_TIERS[tier]) return { ok: false, error: "Invalid tier" };
-  STATE.subscriptions.set(userId || "default", { tier, since: new Date().toISOString() });
-  return { ok: true, tier, features: SUBSCRIPTION_TIERS[tier] };
-}
-
-app.get("/api/subscription", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const sub = getSubscription(req.query.userId); // safe: public-filter
-  res.json({ ok: true, ...sub, details: SUBSCRIPTION_TIERS[sub.tier] });
-});
-
-app.get("/api/subscription/tiers", (_req, res) => {
-  res.json({ ok: true, tiers: SUBSCRIPTION_TIERS });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
