@@ -1919,6 +1919,15 @@ export const LENS_MANIFESTS: LensManifest[] = [
     category: 'creative',
   },
   {
+    domain: 'foundry',
+    label: 'Foundry',
+    artifacts: ['foundry_world', 'worldspec', 'system_registry'],
+    macros: { list: 'foundry.list', get: 'foundry.get', create: 'foundry.create', update: 'foundry.update', delete: 'foundry.delete', run: 'foundry.publish' },
+    exports: [],
+    actions: ['systems', 'system_schema', 'validate_systems', 'create', 'update', 'get', 'list', 'delete', 'validate', 'publish', 'unpublish'],
+    category: 'creative',
+  },
+  {
     domain: 'kingdoms',
     label: 'Kingdoms',
     artifacts: ['kingdom', 'decree', 'contest', 'region'],
