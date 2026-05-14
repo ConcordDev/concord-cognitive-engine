@@ -3355,3 +3355,17 @@
 {"generatedAt":"2026-05-14T00:32:43.746Z","key":"emergent.bridge.heartbeatTick","total":3,"lastFiredAt":1778718720345,"sources":{"http":0,"heartbeat":0,"internal":3,"system":0}}
 {"generatedAt":"2026-05-14T00:32:43.746Z","key":"system.analogize","total":1,"lastFiredAt":1778718628978,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
 {"generatedAt":"2026-05-14T00:32:43.746Z","key":"emergent.repair.agent.tick","total":1,"lastFiredAt":1778718720355,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"ingest.processQueueOnce","total":15,"lastFiredAt":1778719065528,"sources":{"http":0,"heartbeat":0,"internal":15,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"lattice.resonance","total":10,"lastFiredAt":1778718957402,"sources":{"http":10,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"dtu.create","total":6,"lastFiredAt":1778718914173,"sources":{"http":0,"heartbeat":0,"internal":6,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"emergent.bridge.heartbeatTick","total":2,"lastFiredAt":1778718900742,"sources":{"http":0,"heartbeat":0,"internal":2,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"lens.list","total":16,"lastFiredAt":1778718957420,"sources":{"http":16,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"lens.get","total":3,"lastFiredAt":1778718957522,"sources":{"http":3,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"atlas.coverage","total":1,"lastFiredAt":1778718812553,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"cortex.taxonomy","total":1,"lastFiredAt":1778718812558,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"cortex.anomalies","total":1,"lastFiredAt":1778718812561,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"atlas.live","total":1,"lastFiredAt":1778718812563,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"cortex.spectrum","total":1,"lastFiredAt":1778718812566,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"dtu.list","total":2,"lastFiredAt":1778718941416,"sources":{"http":2,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"context.query","total":1,"lastFiredAt":1778718832451,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T00:37:46.106Z","key":"system.analogize","total":1,"lastFiredAt":1778718900767,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
