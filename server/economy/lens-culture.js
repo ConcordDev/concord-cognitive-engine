@@ -225,6 +225,7 @@ export function resonateCulture(db, { userId, dtuId }) {
     `).run(nowISO(), dtuId);
 
     const updated = db.prepare("SELECT resonance_count FROM culture_dtus WHERE id = ?").get(dtuId);
+    if (!updated) return { ok: false, error: "culture_dtu_not_found" };
 
     return { ok: true, dtuId, resonanceCount: updated.resonance_count };
   } catch (err) {
@@ -268,6 +269,7 @@ export function reflectOnCulture(db, { userId, dtuId, body, media }) {
     `).run(now, dtuId);
 
     const updated = db.prepare("SELECT reflection_count FROM culture_dtus WHERE id = ?").get(dtuId);
+    if (!updated) return { ok: false, error: "culture_dtu_not_found" };
 
     return {
       ok: true,
