@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const PHASE_ICONS: Record<string, React.ElementType> = {
+const PHASE_ICONS: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
   replay: Brain,
   consolidate: Zap,
   prune: Scissors,

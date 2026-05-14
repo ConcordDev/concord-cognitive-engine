@@ -236,7 +236,7 @@ function ActionButton({
   active,
   onClick,
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   label: string;
   color: string;
   active: boolean;

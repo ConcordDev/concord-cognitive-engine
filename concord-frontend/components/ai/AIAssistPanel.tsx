@@ -50,7 +50,7 @@ interface AIAssistPanelProps {
 
 const actionConfig: Record<
   AIAction,
-  { icon: React.ElementType; label: string; description: string }
+  { icon: React.ComponentType<{ className?: string; size?: number | string }>; label: string; description: string }
 > = {
   expand: { icon: Zap, label: 'Expand', description: 'Elaborate on the selected content' },
   summarize: { icon: FileText, label: 'Summarize', description: 'Create a concise summary' },

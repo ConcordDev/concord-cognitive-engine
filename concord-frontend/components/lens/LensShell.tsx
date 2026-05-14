@@ -117,7 +117,7 @@ export function LensShell({
     'data-one-handed': accessibility.oneHandedMode !== 'off' ? accessibility.oneHandedMode : undefined,
   };
 
-  const Wrapper = as as React.ElementType;
+  const Wrapper = as as unknown as React.ComponentType<React.PropsWithChildren<{ className?: string }>>;
   // Sprint 17 — error-boundary wrap (production-grade reliability gate).
   const wrappedChildren = (
     <LensErrorBoundary lensId={lensId}>{children}</LensErrorBoundary>

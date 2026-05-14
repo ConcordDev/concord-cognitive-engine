@@ -18,7 +18,7 @@ interface Achievement {
   id: string;
   title: string;
   description: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   iconColor: string;
   bgColor: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';

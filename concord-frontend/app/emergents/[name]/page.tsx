@@ -54,7 +54,7 @@ function formatRelativeTime(ts: number | null): string {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
+function Section({ title, icon: Icon, children }: { title: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; children: React.ReactNode }) {
   return (
     <section className="mb-8">
       <div className="flex items-center gap-2 mb-4">

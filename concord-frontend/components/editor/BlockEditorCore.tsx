@@ -493,7 +493,7 @@ export function SlashCommandMenu({
   onSelect
 }: {
   editor: unknown;
-  items: Array<{ icon: React.ElementType; label: string; description: string; command: (editor?: unknown) => void }>;
+  items: Array<{ icon: React.ComponentType<{ className?: string; size?: number | string }>; label: string; description: string; command: (editor?: unknown) => void }>;
   onSelect: () => void;
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0);

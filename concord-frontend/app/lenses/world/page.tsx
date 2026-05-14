@@ -4440,17 +4440,14 @@ export default function WorldLensPage() {
               components alongside the imperative scene. Walkers are
               R3F-native; LandmarkSpires renders DOM and so mounts
               outside the overlay. */}
-          {/* R3F overlay is gated behind ?r3f=1 until @react-three/fiber
-              is upgraded to v9 (current v8 + Next-15's bundled React 19
-              triggers reconciler-internals crashes that even a shim
-              can't fully patch). The imperative ConcordiaScene below
-              already provides the 3D world; these are visual extras. */}
-          {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('r3f') === '1' && (
-            <R3FOverlayLayer>
-              <WalkerOnHorizon worldId={activeDistrict?.id || 'concordia-hub'} />
-              <ConcordiaHUD.TombMarker worldId={activeDistrict?.id || 'concordia-hub'} />
-            </R3FOverlayLayer>
-          )}
+          {/* R3F overlay — TombMarker + WalkerOnHorizon mount alongside
+              the imperative ConcordiaScene. Previously gated behind
+              ?r3f=1 while R3F v8 was incompatible with Next-15's
+              bundled React 19; now native via R3F v9. */}
+          <R3FOverlayLayer>
+            <WalkerOnHorizon worldId={activeDistrict?.id || 'concordia-hub'} />
+            <ConcordiaHUD.TombMarker worldId={activeDistrict?.id || 'concordia-hub'} />
+          </R3FOverlayLayer>
           <LandmarkSpires
             worldId={activeDistrict?.id || 'concordia-hub'}
             getCamera={() => null}

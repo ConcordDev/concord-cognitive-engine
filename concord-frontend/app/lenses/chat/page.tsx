@@ -187,14 +187,14 @@ interface Conversation {
 interface AIMode {
   id: string;
   name: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   description: string;
 }
 
 interface Persona {
   id: string;
   name: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   description: string;
   systemPrompt: string;
 }
@@ -203,7 +203,7 @@ interface SlashCommand {
   command: string;
   label: string;
   description: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   args?: string;
 }
 

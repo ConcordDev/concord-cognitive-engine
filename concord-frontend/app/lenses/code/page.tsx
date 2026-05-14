@@ -59,7 +59,7 @@ interface Tab {
 
 type ScriptType = 'snippet' | 'project' | 'pipeline' | 'notebook' | 'algorithm' | 'library';
 
-const SCRIPT_TYPES: { id: ScriptType; name: string; icon: React.ElementType; color: string; description: string }[] = [
+const SCRIPT_TYPES: { id: ScriptType; name: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string; description: string }[] = [
   { id: 'snippet', name: 'Snippet', icon: FileCode, color: 'text-neon-blue', description: 'Quick code snippets and utilities' },
   { id: 'project', name: 'Project', icon: Layers, color: 'text-neon-purple', description: 'Multi-file project scaffolding' },
   { id: 'pipeline', name: 'Pipeline', icon: Waves, color: 'text-neon-yellow', description: 'Data processing and ETL pipelines' },

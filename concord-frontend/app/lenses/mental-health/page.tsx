@@ -36,7 +36,7 @@ interface JournalEntry {
   tags: string[];
 }
 
-const MOOD_CONFIG: Record<MoodLevel, { label: string; color: string; icon: React.ElementType }> = {
+const MOOD_CONFIG: Record<MoodLevel, { label: string; color: string; icon: React.ComponentType<{ className?: string; size?: number | string }> }> = {
   great: { label: 'Great', color: 'text-green-400', icon: Smile },
   good: { label: 'Good', color: 'text-neon-cyan', icon: Smile },
   neutral: { label: 'Neutral', color: 'text-yellow-400', icon: Meh },

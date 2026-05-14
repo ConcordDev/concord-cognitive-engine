@@ -59,7 +59,7 @@ interface Props {
   className?: string;
 }
 
-const SCOPE_CONFIG: Record<Scope, { label: string; icon: React.ElementType; color: string }> = {
+const SCOPE_CONFIG: Record<Scope, { label: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string }> = {
   regional: { label: 'Regional', icon: MapPin, color: 'text-neon-cyan' },
   national: { label: 'National', icon: Flag, color: 'text-neon-purple' },
   global: { label: 'Global', icon: Globe, color: 'text-neon-blue' },

@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ── Section icon mapping ────────────────────────────────────────────────
-const SECTION_ICONS: Record<string, React.ElementType> = {
+const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
   dependencies: Layers,
   config: Settings,
   database: Database,

@@ -54,7 +54,7 @@ interface ConsumptionRecord {
   source: string;
 }
 
-const SOURCE_CONFIG: Record<EnergySource, { icon: React.ElementType; color: string }> = {
+const SOURCE_CONFIG: Record<EnergySource, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string }> = {
   solar: { icon: Sun, color: 'text-yellow-400' },
   wind: { icon: Wind, color: 'text-cyan-400' },
   hydro: { icon: Droplets, color: 'text-blue-400' },

@@ -20,14 +20,14 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const BRAIN_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+const BRAIN_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string; label: string }> = {
   conscious: { icon: Brain, color: 'text-blue-400', label: 'Conscious' },
   subconscious: { icon: Sparkles, color: 'text-purple-400', label: 'Subconscious' },
   utility: { icon: Wrench, color: 'text-green-400', label: 'Utility' },
   repair: { icon: Shield, color: 'text-red-400', label: 'Repair' },
 };
 
-const VOTE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
+const VOTE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string }> = {
   approve: { icon: CheckCircle, color: 'text-green-400' },
   reject: { icon: XCircle, color: 'text-red-400' },
   modify: { icon: MinusCircle, color: 'text-yellow-400' },

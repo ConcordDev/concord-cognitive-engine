@@ -29,7 +29,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 type Tab = 'overview' | 'pipeline' | 'nerve' | 'empirical' | 'scope' | 'events';
 
-const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] = [
+const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; desc: string }[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3, desc: 'System-wide dashboard' },
   { id: 'pipeline', label: 'Pipeline', icon: Activity, desc: 'Autogen pipeline monitor' },
   { id: 'nerve', label: 'Nerve Center', icon: Brain, desc: 'Beacon, strategy, hypothesis' },

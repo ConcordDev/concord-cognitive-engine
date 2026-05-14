@@ -19,7 +19,7 @@ import {
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
-const WEATHER_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+const WEATHER_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string; bg: string }> = {
   clear: { icon: Sun, color: 'text-yellow-400', bg: 'from-yellow-500/10 to-orange-500/10' },
   breezy: { icon: Wind, color: 'text-blue-400', bg: 'from-blue-500/10 to-cyan-500/10' },
   stormy: {
@@ -30,7 +30,7 @@ const WEATHER_CONFIG: Record<string, { icon: React.ElementType; color: string; b
   foggy: { icon: CloudFog, color: 'text-gray-400', bg: 'from-gray-500/10 to-gray-600/10' },
 };
 
-const BRAIN_ICONS: Record<string, React.ElementType> = {
+const BRAIN_ICONS: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
   conscious: Brain,
   subconscious: Sparkles,
   utility: Wrench,

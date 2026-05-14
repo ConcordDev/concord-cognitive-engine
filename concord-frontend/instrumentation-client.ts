@@ -12,14 +12,9 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
-import { installR3FShim } from '@/lib/react18-internals-shim';
 
-// Walkthrough hotfix — Next 15 bundles React 19; @react-three/fiber
-// v8 reaches into React 18's __SECRET_INTERNALS.ReactCurrentOwner at
-// module-evaluation time and throws TypeError. Install the shim
-// BEFORE any R3F chunk loads so the world lens 3D scene renders.
-// Long-term fix: upgrade @react-three/fiber to v9.
-installR3FShim();
+// R3F v9 + React 19 native compat — the React-18-internals shim that
+// lived here through the walkthrough is no longer needed.
 
 // Walkthrough hotfix — @monaco-editor/loader fires a window 'error'
 // Event when its CDN is unreachable (no body, no proper Error

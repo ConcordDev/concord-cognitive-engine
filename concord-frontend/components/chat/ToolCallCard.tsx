@@ -27,7 +27,7 @@ interface ToolCallCardProps {
   call: ToolCall;
 }
 
-const TOOL_META: Record<string, { icon: React.ElementType; label: string; color: string }> = {
+const TOOL_META: Record<string, { icon: React.ComponentType<{ className?: string; size?: number | string }>; label: string; color: string }> = {
   web_search: { icon: Globe, label: 'Web Search', color: 'text-blue-400' },
   run_compute: { icon: Calculator, label: 'Compute', color: 'text-green-400' },
   browse_url: { icon: Link, label: 'Browse URL', color: 'text-purple-400' },
