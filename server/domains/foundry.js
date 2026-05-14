@@ -27,6 +27,10 @@ import {
   validateWorldspec,
 } from "../lib/foundry/worldspec.js";
 import { compileWorldspec, buildConcordLinkAnchor } from "../lib/foundry/compiler.js";
+import { listTemplates, getTemplate } from "../lib/foundry/templates.js";
+import {
+  composeRuleDeterministic, validateRule, buildRulePrompt, parseRuleFromLLM,
+} from "../lib/foundry/rules.js";
 
 // ── Row <-> API shape ───────────────────────────────────────────────────────
 function rowToWorld(row) {
@@ -126,9 +130,20 @@ export default function registerFoundryMacros(register) {
     if (name.length > 200) return { ok: false, reason: "name_too_long" };
     const description = String((input && input.description) || "").slice(0, 2000);
 
-    const worldspec = input && input.worldspec
-      ? normalizeWorldspec(input.worldspec)
-      : emptyWorldspec();
+    // Worldspec source priority: an explicit worldspec, then a
+    // templateId (Phase 6), then a blank slate. Templates are
+    // normalized like any other spec so a stale template can't
+    // corrupt anything.
+    let worldspec;
+    if (input && input.worldspec) {
+      worldspec = normalizeWorldspec(input.worldspec);
+    } else if (input && input.templateId) {
+      const tpl = getTemplate(input.templateId);
+      if (!tpl) return { ok: false, reason: "unknown_template", templateId: input.templateId };
+      worldspec = normalizeWorldspec(tpl.worldspec);
+    } else {
+      worldspec = emptyWorldspec();
+    }
 
     const id = `fw_${randomUUID().replace(/-/g, "").slice(0, 20)}`;
     const now = Date.now();
@@ -513,6 +528,83 @@ export default function registerFoundryMacros(register) {
       activatedSystems: compiled.activatedSystems,
       skippedStubs: compiled.skippedStubs,
     };
+  });
+
+  // ===== Phase 6 — templates + NL rules ======================================
+
+  /**
+   * foundry.templates — the game-template catalog. Each is a pre-filled
+   * worldspec; foundry.create accepts a templateId to start from one.
+   * input: {} — no args
+   */
+  register("foundry", "templates", () => {
+    const templates = listTemplates();
+    return { ok: true, count: templates.length, templates };
+  });
+
+  /**
+   * foundry.compose_rule — translate a natural-language game rule into a
+   * structured rule. Tries the conscious brain first; on any failure or
+   * unparseable output it falls back to a deterministic keyword parse —
+   * the macro ALWAYS returns a usable rule (brain-offline is not an
+   * error here, same posture as the dream/forward-sim engines).
+   *
+   * If `id` is given, the composed rule is appended to that foundry
+   * world's worldspec.rules[] and persisted. Otherwise the rule is just
+   * returned for the canvas to hold client-side.
+   * input: { naturalLanguage, id? }
+   * output: { ok, rule, composedBy, warnings, saved? }
+   */
+  register("foundry", "compose_rule", async (ctx, input = {}) => {
+    const nl = String((input && input.naturalLanguage) || "").trim();
+    if (!nl) return { ok: false, reason: "missing_natural_language" };
+    if (nl.length > 500) return { ok: false, reason: "rule_too_long" };
+
+    // Try the LLM path; fall back to deterministic on any hiccup.
+    let rule = null;
+    try {
+      if (ctx?.llm?.enabled && typeof ctx.llm.chat === "function") {
+        const r = await ctx.llm.chat({
+          system: "You convert plain-language game rules into strict JSON. Reply with JSON only.",
+          messages: [{ role: "user", content: buildRulePrompt(nl) }],
+          temperature: 0.2,
+          maxTokens: 300,
+          timeoutMs: 20000,
+        });
+        const text = r && (r.content || r.message?.content || r.text);
+        if (r && r.ok !== false && text) rule = parseRuleFromLLM(nl, text);
+      }
+    } catch {
+      rule = null; // deterministic fallback below
+    }
+    if (!rule) rule = composeRuleDeterministic(nl);
+
+    const validated = validateRule(rule);
+    if (!validated.ok) return { ok: false, reason: "rule_invalid", warnings: validated.warnings };
+    rule = validated.rule;
+
+    // Optionally persist onto a stored foundry world.
+    let saved = false;
+    const id = input && input.id ? String(input.id) : null;
+    if (id) {
+      const db = ctx?.db;
+      const creatorId = ctx?.actor?.userId || ctx?.actor?.id;
+      if (db && creatorId) {
+        const row = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
+        if (!row) return { ok: false, reason: "not_found" };
+        if (row.creator_id !== creatorId) return { ok: false, reason: "not_owner" };
+        let spec;
+        try { spec = JSON.parse(row.worldspec_json); }
+        catch { spec = emptyWorldspec(); }
+        const normalized = normalizeWorldspec(spec);
+        normalized.rules = [...normalized.rules, rule].slice(-200);
+        db.prepare(`UPDATE foundry_worlds SET worldspec_json = ?, updated_at = ? WHERE id = ?`)
+          .run(JSON.stringify(normalized), Date.now(), id);
+        saved = true;
+      }
+    }
+
+    return { ok: true, rule, composedBy: rule.composedBy, warnings: validated.warnings, saved };
   });
 
   /**

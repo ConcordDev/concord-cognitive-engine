@@ -93,13 +93,18 @@ export function compileWorldspec(worldspec) {
   }
 
   // Provenance marker — lets the runtime + a future "promote" step
-  // recognise a Foundry-built world and know what it was assembled from.
+  // recognise a Foundry-built world and know what it was assembled
+  // from. The authored rules ride along here too: this is the stable
+  // place a runtime rule-evaluator reads them from once that layer
+  // lands (Phase 6 ships composition + persistence; the evaluator
+  // that fires rules against live world events is a later layer).
   rule_modulators.foundry = {
     worldspecVersion: worldspec?.version || 1,
     template: worldspec?.template || null,
     systems: activatedSystems,
     stubs: skippedStubs,
     contentSeeds: contentSeeds.map((c) => c.key),
+    rules: Array.isArray(worldspec?.rules) ? worldspec.rules : [],
   };
 
   return {

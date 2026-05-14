@@ -16,13 +16,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchSystems, listWorlds, createWorld, updateWorld, getWorld,
-  publishWorld, unpublishWorld, validateWorld, defaultConfig,
+  publishWorld, unpublishWorld, validateWorld, defaultConfig, fetchTemplates,
   type SystemEntry, type CategoryGroup, type SystemCategory,
   type WorldspecSystem, type Worldspec, type FoundryWorld, type ValidationResult,
+  type FoundryRule, type TemplateSummary,
 } from '@/lib/foundry/api';
 import dynamic from 'next/dynamic';
 import { ComponentPalette } from './ComponentPalette';
 import { ConfigPanel } from './ConfigPanel';
+import { FoundryRulesPanel } from './FoundryRulesPanel';
 import {
   Loader2, Save, Rocket, Trash2, X, CheckCircle2, AlertTriangle,
   Circle, FileStack, Undo2, Eye,
@@ -48,6 +50,8 @@ export function FoundryCanvas() {
   const [worldDescription, setWorldDescription] = useState('');
   const [universeType, setUniverseType] = useState('fantasy');
   const [selected, setSelected] = useState<WorldspecSystem[]>([]);
+  const [rules, setRules] = useState<FoundryRule[]>([]);
+  const [templates, setTemplates] = useState<TemplateSummary[]>([]);
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
 
   // Persistence + lifecycle
@@ -80,6 +84,10 @@ export function FoundryCanvas() {
         const w = await listWorlds();
         if (alive && w.ok) setMyWorlds(w.worlds);
       } catch { /* my-worlds strip is best-effort */ }
+      try {
+        const t = await fetchTemplates();
+        if (alive && t.ok) setTemplates(t.templates);
+      } catch { /* template picker is best-effort */ }
     })();
     return () => { alive = false; };
   }, []);
@@ -90,8 +98,8 @@ export function FoundryCanvas() {
     template: null,
     theme: { universeType, displayName: worldName, palette: null },
     systems: selected,
-    rules: [],
-  }), [universeType, worldName, selected]);
+    rules,
+  }), [universeType, worldName, selected, rules]);
 
   // ── Live validation (debounced) ────────────────────────────────────────────
   const validateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,7 +161,7 @@ export function FoundryCanvas() {
         if (!r.ok) { flash('err', `Save failed: ${r.reason}`); return; }
         flash('ok', 'Saved.');
       } else {
-        const r = await createWorld(worldName, worldDescription, ws);
+        const r = await createWorld(worldName, worldDescription, { worldspec: ws });
         if (!r.ok || !r.world) { flash('err', `Save failed: ${r.reason}`); return; }
         setCurrentWorldId(r.world.id);
         setWorldStatus(r.world.status);
@@ -229,6 +237,7 @@ export function FoundryCanvas() {
       setWorldDescription(w.description);
       setUniverseType(w.worldspec.theme.universeType);
       setSelected(w.worldspec.systems);
+      setRules((w.worldspec.rules as FoundryRule[]) ?? []);
       setWorldStatus(w.status);
       setActiveConfigId(w.worldspec.systems[0]?.id ?? null);
     } catch {
@@ -238,12 +247,33 @@ export function FoundryCanvas() {
     }
   }, []);
 
+  // Start a fresh draft from a template — created server-side so the
+  // template's curated worldspec is normalized + validated on the way in.
+  const createFromTemplate = useCallback(async (templateId: string) => {
+    if (!templateId) return;
+    setBusy(true);
+    try {
+      const tpl = templates.find((t) => t.id === templateId);
+      const r = await createWorld(tpl?.name ?? 'New Game', '', { templateId });
+      if (!r.ok || !r.world) { flash('err', `Template start failed: ${r.reason}`); return; }
+      await loadWorld(r.world.id);
+      const w = await listWorlds();
+      if (w.ok) setMyWorlds(w.worlds);
+      flash('ok', `Started from “${tpl?.name ?? templateId}”.`);
+    } catch {
+      flash('err', 'Template start failed — could not reach the backend.');
+    } finally {
+      setBusy(false);
+    }
+  }, [templates, loadWorld]);
+
   const newWorld = useCallback(() => {
     setCurrentWorldId(null);
     setWorldName('Untitled Game');
     setWorldDescription('');
     setUniverseType('fantasy');
     setSelected([]);
+    setRules([]);
     setActiveConfigId(null);
     setWorldStatus(null);
     setValidation(null);
@@ -310,6 +340,20 @@ export function FoundryCanvas() {
           </span>
         )}
 
+        {templates.length > 0 && (
+          <select
+            value=""
+            onChange={(e) => { if (e.target.value) createFromTemplate(e.target.value); }}
+            disabled={busy}
+            aria-label="Start from a template"
+            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-40"
+          >
+            <option value="">Start from template…</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>{t.name} ({t.systemCount})</option>
+            ))}
+          </select>
+        )}
         <button
           type="button" onClick={newWorld} disabled={busy}
           className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-40"
@@ -433,6 +477,15 @@ export function FoundryCanvas() {
                 );
               })}
             </div>
+          )}
+
+          {/* Rules — natural-language game logic (Phase 6) */}
+          {selected.length > 0 && (
+            <FoundryRulesPanel
+              foundryWorldId={currentWorldId}
+              rules={rules}
+              onRulesChange={setRules}
+            />
           )}
 
           {/* My worlds strip */}

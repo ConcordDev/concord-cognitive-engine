@@ -112,9 +112,13 @@ export function validateSystems(systems: WorldspecSystem[]) {
 
 // ── Phase 2 — worldspec persistence ─────────────────────────────────────────
 
-export function createWorld(name: string, description?: string, worldspec?: Partial<Worldspec>) {
+export function createWorld(
+  name: string,
+  description?: string,
+  opts?: { worldspec?: Partial<Worldspec>; templateId?: string },
+) {
   return foundryCall<{ ok: boolean; world?: FoundryWorld; reason?: string }>('create', {
-    name, description, worldspec,
+    name, description, worldspec: opts?.worldspec, templateId: opts?.templateId,
   });
 }
 export function updateWorld(
@@ -162,6 +166,34 @@ export function previewWorld(id: string) {
 }
 export function endPreview(id: string) {
   return foundryCall<{ ok: boolean; reason?: string }>('preview_end', { id });
+}
+
+// ── Phase 6 — templates + NL rules ──────────────────────────────────────────
+
+export interface TemplateSummary {
+  id: string;
+  name: string;
+  description: string;
+  universeType: string;
+  systemCount: number;
+}
+export interface FoundryRule {
+  id: string;
+  source: string;
+  trigger: { kind: string; target: string | null };
+  effect: { kind: string; target: string | null; value: unknown };
+  confidence: number;
+  composedBy: 'llm' | 'deterministic';
+}
+
+export function fetchTemplates() {
+  return foundryCall<{ ok: boolean; count: number; templates: TemplateSummary[] }>('templates', {});
+}
+export function composeRule(naturalLanguage: string, id?: string) {
+  return foundryCall<{
+    ok: boolean; reason?: string; rule?: FoundryRule;
+    composedBy?: string; warnings?: string[]; saved?: boolean;
+  }>('compose_rule', { naturalLanguage, id });
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
