@@ -3496,3 +3496,6 @@
 {"generatedAt":"2026-05-14T12:23:40.333Z","key":"emergent.register","total":6,"lastFiredAt":1778761122669,"sources":{"http":0,"heartbeat":0,"internal":0,"system":6}}
 {"generatedAt":"2026-05-14T12:23:40.333Z","key":"emergent.get","total":1,"lastFiredAt":1778761122669,"sources":{"http":0,"heartbeat":0,"internal":0,"system":1}}
 {"generatedAt":"2026-05-14T12:23:40.333Z","key":"chat.respond","total":2,"lastFiredAt":1778761140881,"sources":{"http":2,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-14T12:45:28.096Z","key":"emergent.list","total":1,"lastFiredAt":1778762429206,"sources":{"http":0,"heartbeat":0,"internal":0,"system":1}}
+{"generatedAt":"2026-05-14T12:45:28.096Z","key":"emergent.register","total":6,"lastFiredAt":1778762429208,"sources":{"http":0,"heartbeat":0,"internal":0,"system":6}}
+{"generatedAt":"2026-05-14T12:45:28.096Z","key":"emergent.get","total":1,"lastFiredAt":1778762429208,"sources":{"http":0,"heartbeat":0,"internal":0,"system":1}}
