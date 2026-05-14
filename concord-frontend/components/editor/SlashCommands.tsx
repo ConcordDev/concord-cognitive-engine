@@ -45,7 +45,7 @@ function dispatchEditorEvent(name: string, detail?: Record<string, unknown>) {
 
 export interface SlashCommand {
   id: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   label: string;
   description: string;
   keywords: string[];

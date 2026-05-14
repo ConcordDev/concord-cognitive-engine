@@ -1,8 +1,13 @@
 import { io, Socket } from 'socket.io-client';
 import { updateClockOffset } from '../offline/db';
 
-// Socket URL: uses NEXT_PUBLIC_SOCKET_URL in production, falls back to API server port (5050) for local dev
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || '';
+// Socket URL: explicit NEXT_PUBLIC_SOCKET_URL wins; otherwise fall back
+// to the API base URL (which is the backend's host:port). Defaulting
+// to empty string meant the socket tried same-origin (the frontend
+// port), which has no socket server — surfaced as the persistent
+// "Connection lost. Working offline with cached data." banner on
+// every lens load in dev.
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL || '';
 
 let socket: Socket | null = null;
 

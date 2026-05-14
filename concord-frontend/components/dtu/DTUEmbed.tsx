@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils';
 import { CreatorBadge, type CreatorBadgeProps } from './CreatorBadge';
 import { TierBadge, type DTUTier } from './TierBadge';
 import { FederationBadge, type FederationStatus } from '@/components/federation/FederationBadge';
+// Phase P — surface the previously-orphan provenance/freshness badges.
+import { FreshnessBadge } from '@/components/common/FreshnessBadge';
 
 export interface DTUEmbedRecord {
   id: string;
@@ -45,6 +47,10 @@ export interface DTUEmbedRecord {
   provenance?: CreatorBadgeProps['provenance'];
   royaltyRate?: number;
   royaltyEarnedCc?: number;
+  /** Last-touched timestamp drives the optional FreshnessBadge. */
+  updatedAt?: string;
+  freshnessScore?: number | null;
+  freshnessLabel?: string | null;
   federation?: {
     status: FederationStatus;
     instanceName?: string;
@@ -187,6 +193,14 @@ export function DTUEmbed({ dtu, mode = 'card', onOpen, className }: DTUEmbedProp
                 status={dtu.federation.status}
                 instanceName={dtu.federation.instanceName}
                 lastSync={dtu.federation.lastSync}
+                size="sm"
+              />
+            )}
+            {(dtu.updatedAt || dtu.freshnessScore != null) && (
+              <FreshnessBadge
+                updatedAt={dtu.updatedAt}
+                freshnessScore={dtu.freshnessScore}
+                freshnessLabel={dtu.freshnessLabel}
                 size="sm"
               />
             )}

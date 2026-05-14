@@ -112,6 +112,26 @@ export function DialoguePanel({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [state.messages]);
 
+  // Phase B4 — lip-sync. When the NPC speaks a new line, dispatch
+  // `concordia:lip-sync` so AvatarSystem3D can drive phonemes on the
+  // NPC's FacialController (set up in createAvatarMeshSmart).
+  const lastNpcMessageIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const msgs = state.messages;
+    if (!msgs || msgs.length === 0 || !state.npcId) return;
+    const last = msgs[msgs.length - 1] as { id?: string; role?: string; speaker?: string; body?: string; text?: string };
+    const isNpc = last.role === 'npc' || last.speaker === 'npc';
+    if (!isNpc) return;
+    const id = String(last.id ?? msgs.length);
+    if (lastNpcMessageIdRef.current === id) return;
+    lastNpcMessageIdRef.current = id;
+    const text = String(last.body ?? last.text ?? '');
+    if (!text) return;
+    window.dispatchEvent(new CustomEvent('concordia:lip-sync', {
+      detail: { npcId: state.npcId, text, wpm: 180 },
+    }));
+  }, [state.messages, state.npcId]);
+
   const handleSend = useCallback((text: string, skillCheck?: SkillCheckOption) => {
     if (!text.trim()) return;
     onSend(text, skillCheck);

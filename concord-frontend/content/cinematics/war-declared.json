@@ -1,0 +1,13 @@
+{
+  "id": "war_declared",
+  "name": "War Declared",
+  "trigger": "war_declared",
+  "comment": "Phase W — sky tint to crimson, banner-anchor zoom on declaring faction, 2-shot enemy banner counterpoint.",
+  "shots": [
+    { "camera": "whip_pan",       "duration_ms": 400, "audio_sting": "war_horn" },
+    { "camera": "dolly_in",       "duration_ms": 1500, "easing": "ease_out_quad" },
+    { "camera": "match_cut",      "duration_ms": 200 },
+    { "camera": "dolly_in",       "duration_ms": 1500, "easing": "ease_out_quad" },
+    { "camera": "crane_pull",     "duration_ms": 1800, "time_scale": 0.7 }
+  ]
+}

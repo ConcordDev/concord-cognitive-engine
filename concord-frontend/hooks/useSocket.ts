@@ -175,6 +175,18 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'yjs:update',
   // Server health checks
   'health:pulse',
+  // Concordia Phase 3+15 — lethal-hit (ragdoll spawn) + signature kills
+  // (cinematic director trigger).
+  'concordia:lethal-hit' as SocketEvent,
+  'combat:hero_kill' as SocketEvent,
+  'combat:bloodline_fire_cast' as SocketEvent,
+  // Concordia Phase 1 / 12 — scheme resolution + heir takeover
+  'scheme:complete' as SocketEvent,
+  'dynasty:heir_acceded' as SocketEvent,
+  // Concordia Phase 15 — refusal field deep-cold + ark archive unlock
+  'refusal:compound' as SocketEvent,
+  'ark:archive_unlocked' as SocketEvent,
+  'vela:reveal' as SocketEvent,
 ];
 
 interface UseSocketOptions {
@@ -232,6 +244,24 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
           emitEvent(event, data);
           // 2. Push into Zustand stores for relevant events
           routeToStores(event, data, qc);
+          // 3. Concordia bridge — for events the cinematic director +
+          //    ragdoll bridge listen for as window CustomEvents, dispatch
+          //    a matching DOM event. Concordia is the only namespace
+          //    with this dual-channel; other events stay event-bus-only.
+          if (
+            typeof window !== 'undefined' && (
+              event === ('concordia:lethal-hit' as SocketEvent) ||
+              event === ('combat:hero_kill' as SocketEvent) ||
+              event === ('combat:bloodline_fire_cast' as SocketEvent) ||
+              event === ('scheme:complete' as SocketEvent) ||
+              event === ('dynasty:heir_acceded' as SocketEvent) ||
+              event === ('refusal:compound' as SocketEvent) ||
+              event === ('ark:archive_unlocked' as SocketEvent) ||
+              event === ('vela:reveal' as SocketEvent)
+            )
+          ) {
+            window.dispatchEvent(new CustomEvent(event as string, { detail: data }));
+          }
         });
       }
     }

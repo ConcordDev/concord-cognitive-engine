@@ -28,6 +28,9 @@ import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
+import { themeForWorldId, CONCORDIA_THEMES } from '@/lib/world-lens/concordia-theme';
+import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
+import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import {
   DeformationStore,
   replayDeformations,
@@ -88,6 +91,30 @@ const EmergentEventFeed = dynamic(
     })),
   { ssr: false }
 );
+const ConcordiaHUD = {
+  Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
+  Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
+  ContextPrompt: dynamic(() => import('@/components/world/concordia-hud/ContextPromptLayer').then((m) => ({ default: m.ContextPromptLayer })), { ssr: false }),
+  CommandPalette: dynamic(() => import('@/components/world/concordia-hud/CommandPalette').then((m) => ({ default: m.CommandPalette })), { ssr: false }),
+  ActionWheel: dynamic(() => import('@/components/world/concordia-hud/ActionWheel').then((m) => ({ default: m.ActionWheel })), { ssr: false }),
+  PanelHost: dynamic(() => import('@/components/world/concordia-hud/PanelHost').then((m) => ({ default: m.PanelHost })), { ssr: false }),
+  InteractionSink: dynamic(() => import('@/components/world/concordia-hud/WorldInteractionSink').then((m) => ({ default: m.WorldInteractionSink })), { ssr: false }),
+  AmbientFeedback: dynamic(() => import('@/components/world/concordia-hud/AmbientFeedback').then((m) => ({ default: m.AmbientFeedback })), { ssr: false }),
+  Ruler: dynamic(() => import('@/components/world/concordia-hud/RulerOverlay').then((m) => ({ default: m.RulerOverlay })), { ssr: false }),
+  ConcordantLawBadge: dynamic(() => import('@/components/world/concordia-hud/ConcordantLawBadge').then((m) => ({ default: m.ConcordantLawBadge })), { ssr: false }),
+  MaterialAvailability: dynamic(() => import('@/components/world/concordia-hud/MaterialAvailabilityBadge').then((m) => ({ default: m.MaterialAvailabilityBadge })), { ssr: false }),
+  MentorshipNotifier: dynamic(() => import('@/components/world/concordia-hud/MentorshipNotifier').then((m) => ({ default: m.MentorshipNotifier })), { ssr: false }),
+  // Phase F — page-level ambient overlays.
+  NamedEncounter: dynamic(() => import('@/components/world/NamedEncounterController').then((m) => ({ default: m.NamedEncounterController })), { ssr: false }),
+  TombMarker: dynamic(() => import('@/components/world/TombMarker'), { ssr: false }),
+  WorldHealthBadge: dynamic(() => import('@/components/hud/WorldHealthBadge').then((m) => ({ default: m.WorldHealthBadge })), { ssr: false }),
+  ControlLegend: dynamic(() => import('@/components/concordia/controls/ControlLegend').then((m) => ({ default: m.ControlLegend })), { ssr: false }),
+  // Phase H — substantive substrate overlays.
+  QuestDiscovery: dynamic(() => import('@/components/world/QuestDiscoveryController').then((m) => ({ default: m.QuestDiscoveryController })), { ssr: false }),
+  NPCStressTooltip: dynamic(() => import('@/components/world/NPCStressTooltipController').then((m) => ({ default: m.NPCStressTooltipController })), { ssr: false }),
+  // Phase M — cinematic-director event bridge.
+  CinematicTrigger: dynamic(() => import('@/components/world/CinematicTriggerBridge').then((m) => ({ default: m.CinematicTriggerBridge })), { ssr: false }),
+};
 const PersonalBeatWidget = dynamic(
   () =>
     import('@/components/world/PersonalBeatWidget').then((m) => ({
@@ -115,6 +142,35 @@ const CombatPolishHUD = dynamic(
       default: m.CombatPolishHUD,
     })),
   { ssr: false }
+);
+const CombatMotorBridge = dynamic(
+  () => import('@/components/world/CombatMotorBridge').then((m) => ({ default: m.CombatMotorBridge })),
+  { ssr: false },
+);
+const ReflexBridge = dynamic(
+  () => import('@/components/world/ReflexBridge').then((m) => ({ default: m.ReflexBridge })),
+  { ssr: false },
+);
+// Phase O — transparent R3F canvas overlay so R3F-only orphan
+// components (WalkerOnHorizon, LandmarkSpires, etc.) can run alongside
+// the imperative ConcordiaScene without rewriting them. Camera is
+// mirrored from concordia:camera-sync events the scene now emits.
+const R3FOverlayLayer = dynamic(
+  () => import('@/components/world-lens/R3FOverlayLayer').then((m) => ({ default: m.R3FOverlayLayer })),
+  { ssr: false },
+);
+const WalkerOnHorizon = dynamic(
+  () => import('@/components/world-lens/WalkerOnHorizon'),
+  { ssr: false },
+);
+const LandmarkSpires = dynamic(
+  () => import('@/components/world-lens/LandmarkSpires'),
+  { ssr: false },
+);
+// Phase T — NPC cross-world arrival ticker.
+const NpcArrivedTicker = dynamic(
+  () => import('@/components/world/NpcArrivedTicker'),
+  { ssr: false },
 );
 const CombatPolishLayer = dynamic(
   () =>
@@ -277,6 +333,8 @@ const VoiceAssistant = dynamic(() => import('@/components/world-lens/VoiceAssist
 const BuildingRenderer3D = dynamic(() => import('@/components/world-lens/BuildingRenderer3D'), {
   ssr: false,
 });
+const TreeLayer = dynamic(() => import('@/components/world-lens/TreeLayer').then((m) => ({ default: m.TreeLayer })), { ssr: false });
+const RockLayer = dynamic(() => import('@/components/world-lens/RockLayer').then((m) => ({ default: m.RockLayer })), { ssr: false });
 const TerrainRenderer = dynamic(() => import('@/components/world-lens/TerrainRenderer'), {
   ssr: false,
 });
@@ -368,6 +426,10 @@ const BazaarLayer = dynamic(
 );
 const NPCActivityTag = dynamic(
   () => import('@/components/world/NPCActivityTag').then((m) => ({ default: m.NPCActivityTag })),
+  { ssr: false },
+);
+const NemesisGlyphLayer = dynamic(
+  () => import('@/components/world/NemesisGlyphLayer').then((m) => ({ default: m.NemesisGlyphLayer })),
   { ssr: false },
 );
 const DamageBillboard = dynamic(
@@ -1473,9 +1535,32 @@ export default function WorldLensPage() {
   const [cameraMode, setCameraMode] = useState<
     'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic'
   >('follow');
-  const [concordiaTheme, setConcordiaTheme] = useState<'neon-punk' | 'classic' | 'minimal'>(
-    'neon-punk'
-  );
+  // Concordia theme — auto-resolves from worldId so each canon world
+  // looks distinct (Tunya = sun-baked, Cyber = neon, Fantasy = cool
+  // forest, etc.). Player can override via the theme picker; the
+  // override is held in `concordiaThemeOverride` and wins when set.
+  // See lib/world-lens/concordia-theme.ts for the full registry.
+  const worldIdForTheme = useHUDContext((s) => s.worldId);
+  const [concordiaThemeOverride, setConcordiaThemeOverride] = useState<string | null>(null);
+  const concordiaTheme = (concordiaThemeOverride
+    ?? themeForWorldId(worldIdForTheme)) as
+    'neon-punk' | 'classic' | 'minimal' | 'tunya' | 'cyber' | 'crime' |
+    'fantasy' | 'superhero' | 'sovereign-ruins' | 'lattice-crucible' |
+    'concord-link-frontier' | 'concordia-hub';
+  const setConcordiaTheme = (t: typeof concordiaTheme) =>
+    setConcordiaThemeOverride(t === themeForWorldId(worldIdForTheme) ? null : t);
+
+  // SkyWeather inputs — driven by HUD context's worldPhase + worldSeason
+  // which are populated by the server's `world:clock` broadcast (every
+  // 30s; tweened locally between ticks) and the season substrate.
+  const worldPhaseForSky = useHUDContext((s) => s.worldPhase);
+  const worldSeasonForSky = useHUDContext((s) => s.worldSeason);
+  // Phase A4 — pull sky top + horizon colors from the canon theme so
+  // each world's sky shader matches the world palette.
+  const skyThemeColors = (() => {
+    const t = CONCORDIA_THEMES[concordiaTheme] || CONCORDIA_THEMES['neon-punk'];
+    return { top: t.skyTop, horizon: t.skyHorizon };
+  })();
   const [concordiaRenderStyle, setConcordiaRenderStyle] = useState<'pbr' | 'toon'>('pbr');
   const [showPanel, setShowPanel] = useState<
     | 'none'
@@ -3783,8 +3868,12 @@ export default function WorldLensPage() {
           {/* 3D scene rendering layers */}
           <TerrainRenderer districts={[]} lodCenter={{ x: 0, z: 0 }} quality="medium" />
           <BuildingRenderer3D buildings={[]} viewMode="normal" />
+          {/* Phase A3 — L-system trees + procedural rocks per biome.
+              Mounts when worldId resolves (worldIdForTheme). */}
+          <TreeLayer worldId={worldIdForTheme} biome="temperate_forest" quality="medium" />
+          <RockLayer worldId={worldIdForTheme} biome="temperate" quality="high" />
           <SkyWeatherRenderer
-            timeOfDay={12}
+            timeOfDay={worldPhaseForSky * 24}
             weather={(() => {
               const t = weatherData?.type ?? 'clear';
               if (t === 'clear' || t === 'rain' || t === 'snow' || t === 'fog' || t === 'overcast' || t === 'storm') return t;
@@ -3795,8 +3884,10 @@ export default function WorldLensPage() {
             })()}
             windDirection={0}
             windSpeed={2 + (weatherData?.intensity ?? 0) * 6}
-            season="summer"
+            season={worldSeasonForSky}
             quality="medium"
+            themeSkyTop={skyThemeColors.top}
+            themeSkyHorizon={skyThemeColors.horizon}
           />
           <WaterRenderer
             riverConfig={{ width: 20, flowDirection: 0, flowSpeed: 1, centerX: 0, length: 100 }}
@@ -3903,6 +3994,10 @@ export default function WorldLensPage() {
               currentActivity: (n as { currentActivity?: string | null }).currentActivity ?? null,
               position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
             }))}
+            playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
+          />
+          <NemesisGlyphLayer
+            worldId={activeDistrict.id}
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
           <DamageBillboard />
@@ -4307,6 +4402,57 @@ export default function WorldLensPage() {
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
           <PersonalBeatWidget />
+          {/* Concordia 5-layer dynamic HUD — replaces the old static
+              ConcordiaHUDPanels. See the plan file for layer breakdown:
+              ambient corner badges, contextual prompts, command palette,
+              action wheels, single-purpose modal panels + every-click
+              registers ambient-feedback sink. */}
+          <ConcordiaHUD.Provider />
+          <ConcordiaHUD.Ambient />
+          <ConcordiaHUD.ContextPrompt />
+          <ConcordiaHUD.CommandPalette />
+          <ConcordiaHUD.ActionWheel variant="quick_panel" />
+          <ConcordiaHUD.ActionWheel variant="skill" />
+          <ConcordiaHUD.ActionWheel variant="tool" />
+          <ConcordiaHUD.PanelHost />
+          <ConcordiaHUD.InteractionSink />
+          <ConcordiaHUD.AmbientFeedback />
+          {/* Ruler overlay — surfaces when player is current_head of any realm;
+              KingdomBorderOverlay surfaces below when player crosses
+              a realm_territories edge. Both invisible by default. */}
+          <ConcordiaHUD.Ruler />
+          <ConcordiaHUD.ConcordantLawBadge />
+          <ConcordiaHUD.MaterialAvailability />
+          <ConcordiaHUD.MentorshipNotifier />
+          {/* Phase F — ambient overlays. (TombMarker uses R3F hooks
+              so it lives inside the R3FOverlayLayer Canvas below
+              alongside WalkerOnHorizon.) */}
+          <ConcordiaHUD.NamedEncounter />
+          <ConcordiaHUD.WorldHealthBadge />
+          <ConcordiaHUD.ControlLegend scheme={controlSchemeForLegend} />
+          {/* Phase H — substantive substrate overlays. */}
+          <ConcordiaHUD.QuestDiscovery />
+          <ConcordiaHUD.NPCStressTooltip />
+          {/* Phase M — cinematic-director event bridge. */}
+          <ConcordiaHUD.CinematicTrigger />
+
+          {/* Phase O — R3F overlay layer hosting R3F-only orphan
+              components alongside the imperative scene. Walkers are
+              R3F-native; LandmarkSpires renders DOM and so mounts
+              outside the overlay. */}
+          {/* R3F overlay — TombMarker + WalkerOnHorizon mount alongside
+              the imperative ConcordiaScene. Previously gated behind
+              ?r3f=1 while R3F v8 was incompatible with Next-15's
+              bundled React 19; now native via R3F v9. */}
+          <R3FOverlayLayer>
+            <WalkerOnHorizon worldId={activeDistrict?.id || 'concordia-hub'} />
+            <ConcordiaHUD.TombMarker worldId={activeDistrict?.id || 'concordia-hub'} />
+          </R3FOverlayLayer>
+          <LandmarkSpires
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            getCamera={() => null}
+          />
+          <NpcArrivedTicker worldId={activeDistrict?.id || 'concordia-hub'} />
 
           {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
               macro registered in Phases 2-7. Silent when there's nothing
@@ -4331,6 +4477,10 @@ export default function WorldLensPage() {
           {/* Phase 8 — combat polish HUD + animation/audio/camera/VFX bridges */}
           <CombatPolishHUD userId={playerAvatar?.id || null} />
           <CombatPolishLayer userId={playerAvatar?.id || null} />
+          {/* Phase C1 — combat-motor-driver event bridge. */}
+          <CombatMotorBridge userId={playerAvatar?.id || null} />
+          {/* Phase C4 — reflex-layer driver for the local player. */}
+          <ReflexBridge />
 
           {/* Body-language overlay — surfaces combat:telegraph (server
               fires immediately before applyAttack resolves) so the player

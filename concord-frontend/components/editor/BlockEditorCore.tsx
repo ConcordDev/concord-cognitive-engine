@@ -36,6 +36,13 @@ import {
 import { cn } from '@/lib/utils';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { createUndoableAction, batchUndoable } from '@/store/history';
+// Phase P — orphan SlashCommands.tsx mounted here so the editor gets
+// 22 slash commands + Fuse search + 5 categories. Replaces the bare
+// hand-rolled SlashCommandMenu that lived in this file.
+import {
+  SlashCommandMenu as RichSlashCommandMenu,
+  useSlashCommand as useRichSlashCommand,
+} from './SlashCommands';
 
 interface BlockEditorProps {
   content?: string;
@@ -206,6 +213,10 @@ export function BlockEditor({
       },
     ]);
   }, [editor]);
+
+  // Phase P — slash-command hook driven by the orphan picker. Reads
+  // editor selection on '/' keypress and shows the rich menu.
+  const richSlash = useRichSlashCommand(editor);
 
   if (!editor) return null;
 
@@ -416,6 +427,16 @@ export function BlockEditor({
       <div style={{ minHeight }}>
         <EditorContent editor={editor} />
       </div>
+
+      {/* Phase P — rich slash-command menu (22 commands, 5 categories). */}
+      {editor && (
+        <RichSlashCommandMenu
+          editor={editor}
+          isOpen={richSlash.isOpen}
+          onClose={richSlash.close}
+          position={richSlash.position}
+        />
+      )}
     </div>
   );
 }
@@ -472,7 +493,7 @@ export function SlashCommandMenu({
   onSelect
 }: {
   editor: unknown;
-  items: Array<{ icon: React.ElementType; label: string; description: string; command: (editor?: unknown) => void }>;
+  items: Array<{ icon: React.ComponentType<{ className?: string; size?: number | string }>; label: string; description: string; command: (editor?: unknown) => void }>;
   onSelect: () => void;
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0);

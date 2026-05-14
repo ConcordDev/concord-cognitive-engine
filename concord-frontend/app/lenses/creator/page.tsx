@@ -25,6 +25,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import KnowledgeEntrepreneurBadge from '@/components/creator/KnowledgeEntrepreneurBadge';
 import {
   useArtifacts,
   useCreateArtifact,
@@ -206,6 +207,8 @@ export default function CreatorDashboardPage() {
             <p className="text-gray-400 mt-1">
               Earnings, lineage, profile, followers — one workspace.
             </p>
+            {/* Phase P — knowledge-entrepreneur composite tier headline */}
+            {me?.userId && <KnowledgeEntrepreneurBadge userId={me.userId} />}
           </div>
           <button
             onClick={() => { refreshDashboard(); refreshListings(); refreshWithdrawal(); }}

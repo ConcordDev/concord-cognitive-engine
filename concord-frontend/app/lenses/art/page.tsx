@@ -708,7 +708,7 @@ export default function ArtLensPage() {
   );
 
   const renderCanvas = () => {
-    const tools: { id: CanvasTool; icon: React.ElementType; label: string }[] = [
+    const tools: { id: CanvasTool; icon: React.ComponentType<{ className?: string; size?: number | string }>; label: string }[] = [
       { id: 'brush', icon: Brush, label: 'Brush' },
       { id: 'pen', icon: Pen, label: 'Pen' },
       { id: 'eraser', icon: Eraser, label: 'Eraser' },

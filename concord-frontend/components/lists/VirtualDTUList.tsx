@@ -423,7 +423,7 @@ const ContextMenuItem = React.memo(function ContextMenuItem({
   onClick,
   danger = false
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   label: string;
   onClick: () => void;
   danger?: boolean;

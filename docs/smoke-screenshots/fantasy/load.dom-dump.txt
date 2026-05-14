@@ -1,0 +1,9 @@
+⚠The world lens hit an errorSomething broke while rendering this surface. The error has been logged; you can try recovering without losing your data.technical detailsR3F: Hooks can only be used within the Canvas component!
+
+Error: R3F: Hooks can only be used within the Canvas component!
+    at useStore (webpack-internal:///(app-pages-browser)/./node_modules/@react-three/fiber/dist/events-776716bd.esm.js:1687:21)
+    at useFrame (webpack-internal:///(app-pages-browser)/./node_modules/@react-three/fiber/dist/events-776716bd.esm.js:1705:17)
+    at TombMarker (webpack-internal:///(app-pages-browser)/./components/world/TombMarker.tsx:161:58)
+    at Object.react_stack_bottom_frame (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:23584:20)
+    at renderWithHooks (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:6793:22)
+    at updateFunctionComponent (webpack-internal:///(appTry againReload pageBack to hub

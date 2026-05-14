@@ -153,7 +153,7 @@ interface FitnessArtifact {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const MODE_TABS: { id: ModeTab; icon: React.ElementType; defaultType: ArtifactType }[] = [
+const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; size?: number | string }>; defaultType: ArtifactType }[] = [
   { id: 'Clients', icon: Users, defaultType: 'Client' },
   { id: 'Programs', icon: ListChecks, defaultType: 'Program' },
   { id: 'Workouts', icon: Dumbbell, defaultType: 'Workout' },
@@ -286,7 +286,7 @@ function ProgressBar({ value, max, color = 'red-400' }: { value: number; max: nu
   );
 }
 
-function StatCard({ icon: Icon, label, value, sub, color = 'red-400' }: { icon: React.ElementType; label: string; value: string | number; sub?: string; color?: string }) {
+function StatCard({ icon: Icon, label, value, sub, color = 'red-400' }: { icon: React.ComponentType<{ className?: string; size?: number | string }>; label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div className={ds.panel}>
       <Icon className={cn('w-5 h-5 mb-2', `text-${color}`)} />

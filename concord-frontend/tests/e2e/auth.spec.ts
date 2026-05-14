@@ -350,8 +350,12 @@ test.describe('Authentication Flow', () => {
       await page.locator('#email').fill('new@example.com');
       await page.locator('#password').fill('password12345678');
       await page.locator('#confirm-password').fill('differentpassword');
+      // Submit is disabled={loading || !agreedToTerms}; without ticking
+      // the terms checkbox the click below waits out the full action
+      // timeout on a permanently-disabled node.
+      await page.locator('input[type="checkbox"]').check();
 
-      await page.locator('button[type="submit"]').click();
+      await page.locator('button[type="submit"]').click({ timeout: 15000 });
 
       // Client-side validation: "Passwords do not match"
       const mismatchError = page.locator('text=Passwords do not match');
@@ -376,8 +380,12 @@ test.describe('Authentication Flow', () => {
       await page.locator('#email').fill('new@example.com');
       await page.locator('#password').fill('short');
       await page.locator('#confirm-password').fill('short');
+      // Submit is disabled={loading || !agreedToTerms} — tick the terms
+      // checkbox so the click can land instead of timing out on a
+      // permanently-disabled node.
+      await page.locator('input[type="checkbox"]').check();
 
-      await page.locator('button[type="submit"]').click();
+      await page.locator('button[type="submit"]').click({ timeout: 15000 });
 
       // Client-side validation: password must be at least 12 characters
       const lengthError = page.locator('text=/at least 12 characters|Password must be/i');
@@ -439,8 +447,12 @@ test.describe('Authentication Flow', () => {
       await page.locator('#email').fill('new@example.com');
       await page.locator('#password').fill('securepassword12');
       await page.locator('#confirm-password').fill('securepassword12');
+      // Submit is disabled={loading || !agreedToTerms} — tick the terms
+      // checkbox so the click can land instead of timing out on a
+      // permanently-disabled node.
+      await page.locator('input[type="checkbox"]').check();
 
-      await page.locator('button[type="submit"]').click();
+      await page.locator('button[type="submit"]').click({ timeout: 15000 });
 
       // Should redirect away from /register
       await expect(page).not.toHaveURL(/\/register/);

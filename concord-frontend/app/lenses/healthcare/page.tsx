@@ -163,7 +163,7 @@ interface HealthcareArtifact {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const MODE_TABS: { id: ModeTab; icon: React.ElementType; defaultType: ArtifactType }[] = [
+const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; size?: number | string }>; defaultType: ArtifactType }[] = [
   { id: 'Patients', icon: Users, defaultType: 'Patient' },
   { id: 'Encounters', icon: Stethoscope, defaultType: 'Encounter' },
   { id: 'Protocols', icon: ClipboardList, defaultType: 'CareProtocol' },
@@ -1077,7 +1077,7 @@ export default function HealthcareLensPage() {
     label: string;
     value?: number;
     vitalKey: string;
-    icon: React.ElementType;
+    icon: React.ComponentType<{ className?: string; size?: number | string }>;
     unit?: string;
   }) => {
     const range = VITAL_RANGES[vitalKey];
@@ -1134,7 +1134,7 @@ export default function HealthcareLensPage() {
   /* ================================================================== */
   const TimelineItem = ({ item }: { item: LensItem<HealthcareArtifact> }) => {
     const d = item.data as unknown as HealthcareArtifact;
-    const typeIcons: Record<string, React.ElementType> = {
+    const typeIcons: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
       Encounter: Stethoscope,
       Prescription: Pill,
       LabResult: FlaskConical,

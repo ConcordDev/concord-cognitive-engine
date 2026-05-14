@@ -1319,19 +1319,23 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Layer 7 disabled — neutral pass-through */ }
 
-      // Add gathered items to player inventory
+      // Add gathered items to player inventory. The table is keyed by
+      // (user_id, item_id) — no `id` column — so we upsert via that
+      // composite. world_id must be scoped (mig 101). Quality is stored
+      // in metadata JSON to preserve gather-time rarity.
       for (const item of result.gathered) {
         const existing = db.prepare(
-          'SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ?'
-        ).get(req.user.id, item.item);
+          'SELECT quantity FROM player_inventory WHERE user_id = ? AND item_id = ? AND world_id = ?'
+        ).get(req.user.id, item.item, worldId);
         if (existing) {
-          db.prepare('UPDATE player_inventory SET quantity = quantity + ? WHERE id = ?')
-            .run(item.quantity, existing.id);
+          db.prepare(
+            'UPDATE player_inventory SET quantity = quantity + ? WHERE user_id = ? AND item_id = ? AND world_id = ?'
+          ).run(item.quantity, req.user.id, item.item, worldId);
         } else {
           db.prepare(`
-            INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality)
-            VALUES (?, ?, 'material', ?, ?, ?, ?)
-          `).run(crypto.randomUUID(), req.user.id, item.item, item.name, item.quantity, item.quality);
+            INSERT INTO player_inventory (user_id, item_id, quantity, world_id, metadata)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(req.user.id, item.item, item.quantity, worldId, JSON.stringify({ name: item.name, quality: item.quality }));
         }
       }
 
@@ -1806,6 +1810,20 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
 
+      // ── Concordant Law gate ────────────────────────────────────────────────
+      // Concordia-hub is the Three Above All's domain: Sovereign + Concord +
+      // Concordia have decreed all combat refused inside the hub. Refusal is
+      // server-authoritative so even a modified client can't deal damage in
+      // the city. Other worlds enforce combat-allowed via rule_modulators
+      // farther down (computeSkillEffectiveness).
+      if (worldId === "concordia-hub" || worldId === "concordia") {
+        return res.status(403).json({
+          ok: false,
+          error: "concordant_law_refusal",
+          reason: "The Three Above All refuse violence within Concordia. Travel out via Concord Link to engage in combat.",
+        });
+      }
+
       const {
         computeDamage,
         applyDamageToNPC,
@@ -1932,6 +1950,25 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
 
+      // ── Concordia Phase 3: mass-based combat physics ───────────────────────
+      // After env amplification, fold in attacker/target mass ratio clamped
+      // to [0.7, 1.4]. A 6'5" Sanguire striking a 5' Medici lands harder
+      // than the inverse, but the clamp keeps the gate composable with
+      // the anti-cheat cap upstream. Actors with no actor_physique row
+      // default to 75 kg → identity ratio → ×1.0 neutral pass-through.
+      try {
+        const { combatMassMultiplier } = await import("../lib/actor-physique.js");
+        const mm = combatMassMultiplier(db,
+          { kind: "player", id: userId },
+          { kind: "npc",    id: npcId });
+        if (mm.multiplier !== 1.0 && Number.isFinite(damageResult.finalDamage)) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * mm.multiplier * 10) / 10;
+          damageResult.massMultiplier = mm.multiplier;
+          damageResult.attackerMassKg = mm.attackerMassKg;
+          damageResult.targetMassKg   = mm.targetMassKg;
+        }
+      } catch { /* Phase 3 substrate not applied — neutral pass-through */ }
+
       // Phase 8 — combat-polish substrate. Player spends gas, records a
       // strike (combo + multiplier), and the multiplier amplifies damage
       // before applyDamageToNPC. NPC may be triggered into rocked state
@@ -1968,6 +2005,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_cost: barCost,
       });
 
+      // Phase T — NPC defender accumulates skill XP. Same XP curve as
+      // user_skills, so a frequently-attacked NPC ends up better at
+      // resisting (combat skill bumps). NPCs that out-grind players
+      // become harder to kill — by design.
+      try {
+        const { awardNpcXp } = await import("../lib/npc-skill-progression.js");
+        awardNpcXp(db, npcId, 'combat', Math.floor((damageResult?.finalDamage ?? 0) * 0.3));
+      } catch { /* lib optional — combat still works */ }
+
       // Phase 2: NPC asymmetry. If the player kills this NPC, every other
       // NPC in this NPC's faction gets a grudge. Best-effort; tables may
       // not exist on minimal builds.
@@ -1998,6 +2044,27 @@ export default function createWorldsRouter({ requireAuth, db }) {
             `slain ${npcId}`,
           );
         } catch { /* npc_opinions absent on minimal builds */ }
+
+        // Concordia Phase 3+15 — broadcast lethal-hit + signature-kill
+        // events so the client ragdoll-bridge spawns a ragdoll and the
+        // cinematic director can frame the kill. Best-effort socket
+        // fan-out; safe if io not present.
+        try {
+          const io = req.app?.locals?.io;
+          if (io) {
+            const pos = db.prepare(`SELECT x, y, z FROM world_npcs WHERE id = ?`).get(npcId);
+            io.to(`world:${worldId}`).emit("concordia:lethal-hit", {
+              targetId: npcId,
+              attackerId: userId,
+              position: pos || { x: 0, y: 0, z: 0 },
+              massMultiplier: damageResult.massMultiplier || 1.0,
+            });
+            io.to(`world:${worldId}`).emit("combat:hero_kill", { attackerId: userId, targetId: npcId });
+            if (damageResult.bloodlineKind === "pure_match" && skillData.element === "fire") {
+              io.to(`world:${worldId}`).emit("combat:bloodline_fire_cast", { attackerId: userId, targetId: npcId });
+            }
+          }
+        } catch { /* socket optional */ }
       }
 
       // Phase 1 + 1.5: emit skill:tier-witnessed when an evolved skill
@@ -2208,6 +2275,16 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { npcId } = req.body;
 
       if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
+
+      // Concordant Law: NPCs cannot harm players inside the hub. Mirror the
+      // player→NPC gate above.
+      if (worldId === "concordia-hub" || worldId === "concordia") {
+        return res.status(403).json({
+          ok: false,
+          error: "concordant_law_refusal",
+          reason: "The Three Above All refuse violence within Concordia.",
+        });
+      }
 
       const {
         computeDamage,

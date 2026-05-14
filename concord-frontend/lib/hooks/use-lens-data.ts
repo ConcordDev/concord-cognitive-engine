@@ -69,7 +69,16 @@ export function useLensData<T = Record<string, unknown>>(
     },
     enabled,
     staleTime: 30000,
-    retry: 2,
+    // Don't retry on connection refused (server bouncing) or 5xx —
+    // a flapping backend used to spam console.error 20-30× per lens
+    // visit (neuro had 28 errors per visit). Bounded retry on
+    // transient network errors only.
+    retry: (failureCount, err) => {
+      const e = err as Error & { response?: { status?: number }; code?: string };
+      if (e?.response?.status && e.response.status >= 500) return false;
+      if (e?.code === 'ECONNREFUSED' || /Network error/i.test(e?.message || '')) return false;
+      return failureCount < 1;
+    },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 

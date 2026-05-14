@@ -202,7 +202,7 @@ export default function ReposLensPage() {
     return date.toLocaleDateString();
   };
 
-  const tabs: { id: ActiveTab; label: string; icon: React.ElementType; count?: number }[] = [
+  const tabs: { id: ActiveTab; label: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; count?: number }[] = [
     { id: 'code', label: 'Code', icon: Code },
     { id: 'issues', label: 'Issues', icon: AlertCircle, count: 12 },
     { id: 'pulls', label: 'Pull requests', icon: GitPullRequest, count: 3 },

@@ -19,6 +19,7 @@ function worldStages(worldId: string, index: number) {
       name: `Travel: ${worldId}`,
       description: `Travel to ${worldId}. (${index + 1}/6)`,
       inputMode: 'exploration' as const,
+      lensId: 'expedition-journal', // Phase V — journal opens on arrival.
       advanceWhen: { type: 'event' as const, event: `world:arrived:${worldId}` },
     },
     {
@@ -26,6 +27,7 @@ function worldStages(worldId: string, index: number) {
       name: 'Act',
       description: 'Use a skill or complete a quest in this world.',
       inputMode: 'exploration' as const,
+      lensId: 'expedition-journal',
       advanceWhen: {
         type: 'any' as const,
         triggers: [
@@ -39,6 +41,7 @@ function worldStages(worldId: string, index: number) {
       name: 'Chronicle',
       description: 'Your deeds in this world are recorded.',
       inputMode: 'exploration' as const,
+      lensId: 'expedition-journal',
       advanceWhen: { type: 'time' as const, ms: 3000 },
       onEnter: () => {
         fetch('/api/worlds/expedition/progress', {

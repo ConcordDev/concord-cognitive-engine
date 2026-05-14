@@ -5,4 +5,4 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { HEARTBEATS, probe } from "./_coverage-smoke-heartbeats-shared.mjs";
 
-await probe(test, assert, HEARTBEATS.slice(10, 20));
+probe(test, assert, HEARTBEATS.slice(10, 20));

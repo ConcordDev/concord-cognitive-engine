@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthSuccess } from './_helpers';
+import { mockAuthSuccess, gotoStable } from './_helpers';
 
 /**
  * Helper: set a session cookie so middleware allows access to protected routes.
@@ -230,14 +230,13 @@ test.describe('App Shell Navigation', () => {
   });
 
   test('sidebar collapse toggle works', async ({ page }) => {
-    const response = await page.goto('/lenses/chat');
+    const response = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('domcontentloaded');
 
     // Find the collapse button (desktop only, hidden on mobile)
     const collapseButton = page.getByRole('button', { name: /collapse sidebar|expand sidebar/i });
     if (await collapseButton.isVisible().catch(() => false)) {
-      await collapseButton.click();
+      await collapseButton.click({ timeout: 15000 });
 
       // After collapsing, the button label should change
       const expandButton = page.getByRole('button', { name: /expand sidebar/i });

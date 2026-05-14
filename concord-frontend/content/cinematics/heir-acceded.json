@@ -1,0 +1,12 @@
+{
+  "id": "heir_acceded",
+  "name": "Heir Accedes",
+  "trigger": "dynasty:heir_acceded",
+  "comment": "Concordia Phase 15 — bespoke cinematic for player heir takeover (Phase 12). New head accedes; previous head's renown attrites to 0.7×; generation counter advances.",
+  "shots": [
+    { "camera": "crane_drop", "duration_ms": 2000, "audio_sting": "inheritance" },
+    { "camera": "close_on",   "duration_ms": 2200, "time_scale": 0.4 },
+    { "camera": "match_cut",  "duration_ms": 800 },
+    { "camera": "pull_back",  "duration_ms": 2400 }
+  ]
+}

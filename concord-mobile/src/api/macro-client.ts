@@ -148,3 +148,59 @@ export const DtuPortability = {
   validate: (envelope: unknown) => getMacroClient().runMacro("dtu_portability", "validate", { envelope }),
   importEnvelope: (envelope: unknown) => getMacroClient().runMacro("dtu_portability", "import", { envelope }),
 };
+
+// ── Phase Y: parity for the 6 web-only domains ─────────────────────────────
+
+export const Racing = {
+  startRace:    (worldId: string, courtX = 0, courtZ = 0, durationS = 180) =>
+    getMacroClient().runMacro("racing", "start_race", { worldId, courtX, courtZ, durationS }),
+  submitLap:    (raceId: string, lapMs: number) =>
+    getMacroClient().runMacro("racing", "submit_lap", { raceId, lapMs }),
+  leaderboard:  (raceId: string) =>
+    getMacroClient().runMacro("racing", "leaderboard", { raceId }),
+};
+
+export const Basketball = {
+  startMatch:   (worldId: string, courtX = 0, courtZ = 0, durationS = 180) =>
+    getMacroClient().runMacro("basketball", "start_match", { worldId, courtX, courtZ, durationS }),
+  score:        (courtId: string, points = 2) =>
+    getMacroClient().runMacro("basketball", "score", { courtId, points }),
+  leaderboard:  (courtId: string) =>
+    getMacroClient().runMacro("basketball", "leaderboard", { courtId }),
+};
+
+export const VoiceChatSignalling = {
+  roomState:    (roomId: string) => getMacroClient().runMacro("voice_chat", "room_state", { roomId }),
+  join:         (roomId: string) => getMacroClient().runMacro("voice_chat", "join", { roomId }),
+  leaveRoom:    (roomId: string) => getMacroClient().runMacro("voice_chat", "leave_room", { roomId }),
+  offer:        (targetUserId: string, sdp: unknown) =>
+    getMacroClient().runMacro("voice_chat", "offer", { targetUserId, sdp }),
+  answer:       (targetUserId: string, sdp: unknown) =>
+    getMacroClient().runMacro("voice_chat", "answer", { targetUserId, sdp }),
+  ice:          (targetUserId: string, candidate: unknown) =>
+    getMacroClient().runMacro("voice_chat", "ice", { targetUserId, candidate }),
+  leave:        (targetUserId: string) =>
+    getMacroClient().runMacro("voice_chat", "leave", { targetUserId }),
+};
+
+export const Markers = {
+  list:    (worldId: string) => getMacroClient().runMacro("markers", "list", { worldId }),
+  place:   (worldId: string, kind: 'poi'|'quest'|'caution'|'celebration'|'system', x: number, z: number, label?: string, expiresAt?: number) =>
+    getMacroClient().runMacro("markers", "place", { worldId, kind, x, z, label, expiresAt }),
+  remove:  (markerId: string) => getMacroClient().runMacro("markers", "remove", { markerId }),
+};
+
+export const Messaging = {
+  listBindings:   () => getMacroClient().runMacro("messaging", "list_bindings", {}),
+  addBinding:     (platform: string, handle: string) =>
+    getMacroClient().runMacro("messaging", "add_binding", { platform, handle }),
+  removeBinding:  (bindingId: string) =>
+    getMacroClient().runMacro("messaging", "remove_binding", { bindingId }),
+  setDefault:     (bindingId: string) =>
+    getMacroClient().runMacro("messaging", "set_default", { bindingId }),
+};
+
+export const Patterns = {
+  discover: (query?: string, limit?: number) =>
+    getMacroClient().runMacro("patterns", "discover", { query, limit }),
+};

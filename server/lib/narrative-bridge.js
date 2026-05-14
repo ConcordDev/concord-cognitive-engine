@@ -209,6 +209,42 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
         if (line) traits.coping_state = line;
       }
     } catch { /* stress table absent on minimal builds */ }
+
+    // Concordia Phase 2 — bloodline ancestry line. Sanguire fire-bloodline
+    // characters carry "fire-bloodline of the Sangree founders" etc. Pure
+    // (dilution < 0.30) reads stronger; faded barely registers.
+    try {
+      const anc = db.prepare(`SELECT primary_bloodline, dilution FROM npc_ancestry WHERE npc_id = ?`).get(npcId);
+      if (anc?.primary_bloodline) {
+        const bld = String(anc.primary_bloodline);
+        const dil = Number(anc.dilution) || 1;
+        let line;
+        if (dil < 0.30)       line = `Pure ${bld} bloodline — the lineage marks them visibly.`;
+        else if (dil < 0.60)  line = `Of the ${bld} bloodline, marks visible in features.`;
+        else if (dil < 0.90)  line = `Faintly of ${bld} ancestry; mostly mixed.`;
+        else                  line = `Ancestry too faded to read; ${bld} only by record.`;
+        traits.bloodline_ancestry = line;
+      }
+    } catch { /* npc_ancestry table absent on minimal builds */ }
+
+    // Concordia Phase 13 — culture line.
+    try {
+      const cul = db.prepare(`SELECT culture_id, faith_id FROM actor_culture WHERE actor_kind = 'npc' AND actor_id = ?`).get(npcId);
+      if (cul?.culture_id) {
+        traits.culture_id = cul.culture_id;
+        if (cul.faith_id) traits.faith_id = cul.faith_id;
+      }
+    } catch { /* actor_culture absent on minimal builds */ }
+
+    // Concordia Phase 3 — body type line for visual identity.
+    try {
+      const phy = db.prepare(`SELECT body_type, mass_kg, height_m FROM actor_physique WHERE actor_kind = 'npc' AND actor_id = ?`).get(npcId);
+      if (phy?.body_type) {
+        const h = phy.height_m ? `${phy.height_m.toFixed(2)}m` : "";
+        const m = phy.mass_kg ? `${Math.round(phy.mass_kg)}kg` : "";
+        traits.physical_build = [phy.body_type, h, m].filter(Boolean).join(" / ");
+      }
+    } catch { /* actor_physique absent on minimal builds */ }
   }
 
   // Defense-in-depth: scan the materialized traits for the secret canary.

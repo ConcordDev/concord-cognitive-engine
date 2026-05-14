@@ -5,6 +5,8 @@
   "tech_level": "pre-industrial",
   "magic_level": "rare-bloodline",
   "is_hub": false,
+  "universe_type": "tunya",
+  "biomes": ["plains", "forest", "highland", "mountain", "water", "arid"],
   "description": "A planet reached through a wormhole by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations. Africa came first; Eurasia fourth; South America stranded mid-transit and limped in last. Native Americans walked off the North American ark and settled separately. Pre-industrial — wood, stone, brick, iron, animal-drawn transport. No electricity has ever been made to work on Tunya. Powers replace some of what electricity would do: fire-bloodlines warm and forge, ice-bloodlines preserve and heal. The Sanguire of Sandrun are revered for fire; the Medici (an alien-origin people living among Kree) wield ice and healing. The story opens four generations after the first arrival, when the arks themselves have been ruins for decades but their archives can still be accessed with enough solar charge — making them objects of pilgrimage, sabotage, and obsession.",
   "skill_affinity": {
     "default": 0.7,
@@ -26,13 +28,19 @@
     "engineering": 0.45,
     "tech": 0.0,
     "hacking": 0.0,
-    "gun": 0.0,
-    "weapons_modern": 0.0,
+    "gun": 1.0,
+    "weapons_modern": 1.0,
     "driving": 0.05,
     "piloting": 0.05,
     "ark_archaeology": 1.0,
     "celestial_navigation": 0.9,
     "sea_navigation": 0.9
+  },
+  "material_availability": {
+    "ballistic_ammo": 0.05,
+    "magical_reagents": 0.15,
+    "tech_parts": 0.05,
+    "bloodline_fuel": 1.0
   },
   "calendar": {
     "hours_per_day": 32,

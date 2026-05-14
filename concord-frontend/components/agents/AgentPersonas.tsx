@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const AVATAR_ICONS: Record<string, React.ElementType> = {
+const AVATAR_ICONS: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
   chart: BarChart3,
   palette: Palette,
   wrench: Wrench,

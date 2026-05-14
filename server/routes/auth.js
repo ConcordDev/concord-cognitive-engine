@@ -104,6 +104,13 @@ export default function createAuthRouter({
   // ── Bot Prevention: per-IP daily registration cap ──────────────────
   const _regIpDaily = new Map(); // ip → { count, day }
   const MAX_REGISTRATIONS_PER_IP_PER_DAY = 3;
+  // CI / e2e jobs register many fresh test users from one runner IP and
+  // would exhaust the daily cap mid-suite (the Phase Z playthrough's
+  // beforeAll registers a user per run). CONCORD_RATE_LIMIT_BYPASS=1 is
+  // the same flag ci.yml already sets to relax the unauth throttle
+  // (server.js:6590) — the registration cap is a rate limit, so it
+  // honors the same flag. Unit tests don't set it; production never does.
+  const _REG_CAP_BYPASS = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
 
   // Cleanup stale entries from _regIpDaily every hour to prevent memory leak
   // @resource-leak-ok: process-lifetime — auth-attempt rate-limit cleanup
@@ -137,7 +144,7 @@ export default function createAuthRouter({
     const today = new Date().toISOString().slice(0, 10);
     const ipKey = req.ip || "unknown";
     const ipEntry = _regIpDaily.get(ipKey);
-    if (ipEntry && ipEntry.day === today && ipEntry.count >= MAX_REGISTRATIONS_PER_IP_PER_DAY) {
+    if (!_REG_CAP_BYPASS && ipEntry && ipEntry.day === today && ipEntry.count >= MAX_REGISTRATIONS_PER_IP_PER_DAY) {
       return res.status(429).json({ ok: false, error: "Too many registrations from this network today. Try again tomorrow." });
     }
 

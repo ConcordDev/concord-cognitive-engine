@@ -1,0 +1,18 @@
+{
+  "id": "starter-rpg",
+  "name": "Starter RPG",
+  "description": "A classic fantasy RPG world — terrain and weather, living NPCs with daily lives, melee combat with equipment, persistent factions, and cross-world travel. The friendliest place to start.",
+  "universeType": "fantasy",
+  "systems": [
+    { "id": "terrain-biomes", "config": { "biomeSet": "temperate", "ruggedness": 45 } },
+    { "id": "weather-ecology", "config": { "baseClimate": "temperate" } },
+    { "id": "llm-npcs", "config": { "npcCount": 30, "grudgesEnabled": true } },
+    { "id": "npc-schedules", "config": {} },
+    { "id": "combat-motor", "config": { "lethality": "standard" } },
+    { "id": "armor-weapon-reflex", "config": {} },
+    { "id": "persistent-inventory", "config": {} },
+    { "id": "factions-politics", "config": { "factionCount": 4 } },
+    { "id": "concord-link", "config": { "travelMode": "portal" } }
+  ],
+  "rules": []
+}

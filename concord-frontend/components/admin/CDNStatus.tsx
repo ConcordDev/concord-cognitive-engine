@@ -437,7 +437,7 @@ function StatCard({
 }: {
   label: string;
   value: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   color: 'cyan' | 'purple' | 'green' | 'yellow';
 }) {
   const colors = {

@@ -39,7 +39,7 @@ export interface CameraShot {
   subject?:      string;
   target_npc?:   string;
   duration_ms:   number;
-  easing?:       'linear' | 'ease_in_quad' | 'ease_out_quad' | 'ease_in_out_quad';
+  easing?:       'linear' | 'ease_in_quad' | 'ease_out_quad' | 'ease_in_out_quad' | 'ease_in_cubic' | 'ease_out_cubic' | 'ease_in_out_cubic';
   /** Time scale during this shot. 1 = normal, 0.2 = slow-mo, 0 = pause. */
   time_scale?:   number;
   /** Music stem layer to enable for this shot (EE3 hooks here). */
@@ -117,6 +117,29 @@ const AUTO_TEMPLATES: Record<string, CameraShot[]> = {
     { camera: 'whip_pan',  duration_ms: 600, audio_sting: 'reveal' },
     { camera: 'close_on',  duration_ms: 1400, time_scale: 0.5 },
   ],
+  // Concordia Phase 15 — extended trigger coverage.
+  'scheme:complete': [
+    { camera: 'whip_pan',  duration_ms: 500, time_scale: 0.4, audio_sting: 'scheme_resolved' },
+    { camera: 'close_on',  duration_ms: 1500, time_scale: 0.6 },
+    { camera: 'pull_back', duration_ms: 1200 },
+  ],
+  'dynasty:heir_acceded': [
+    { camera: 'crane_drop', duration_ms: 1800, audio_sting: 'inheritance' },
+    { camera: 'close_on',   duration_ms: 2200, time_scale: 0.4 },
+  ],
+  'combat:hero_kill': [
+    { camera: 'whip_pan',  duration_ms: 400, time_scale: 0.3, audio_sting: 'killshot' },
+    { camera: 'close_on',  duration_ms: 1000, time_scale: 0.25 },
+    { camera: 'pull_back', duration_ms: 900 },
+  ],
+  'combat:bloodline_fire_cast': [
+    { camera: 'dutch_tilt', duration_ms: 800, time_scale: 0.6, audio_sting: 'sanguire_chord' },
+    { camera: 'pull_back',  duration_ms: 1200 },
+  ],
+  'refusal:compound': [
+    { camera: 'close_on',  duration_ms: 2000, time_scale: 0.15, audio_sting: 'concordia_deep_cold' },
+    { camera: 'pull_back', duration_ms: 2400, easing: 'ease_in_out_cubic' },
+  ],
   'world:building-state-collapsed': [
     { camera: 'dutch_tilt', duration_ms: 1100, time_scale: 0.45 },
     { camera: 'pull_back',  duration_ms: 1100 },
@@ -128,6 +151,16 @@ const AUTO_TEMPLATES: Record<string, CameraShot[]> = {
   'quest:complete': [
     { camera: 'close_on',  duration_ms: 1000, audio_sting: 'resolution' },
     { camera: 'pull_back', duration_ms: 1500 },
+  ],
+  'ark:archive_unlocked': [
+    { camera: 'crane_drop', duration_ms: 2400, audio_sting: 'archive_chord' },
+    { camera: 'close_on',   duration_ms: 1800, time_scale: 0.35 },
+    { camera: 'pull_back',  duration_ms: 2200 },
+  ],
+  'vela:reveal': [
+    { camera: 'whip_pan',  duration_ms: 500, audio_sting: 'vela_chord' },
+    { camera: 'close_on',  duration_ms: 2500, time_scale: 0.3 },
+    { camera: 'pull_back', duration_ms: 2000 },
   ],
 };
 

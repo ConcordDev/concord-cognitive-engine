@@ -8,6 +8,7 @@ import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { GraphView } from '@/components/atlas/GraphView';
+import { SafeCard } from '@/components/common/SafeCard';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -219,11 +220,13 @@ export default function AtlasLensPage() {
         transition={{ duration: 0.5, delay: 0.2 }}
         className="rounded-lg overflow-hidden border border-zinc-800"
       >
-        <MapView
-          markers={markers}
-          className="h-[360px]"
-          onMarkerClick={handleMarkerClick}
-        />
+        <SafeCard label="Map view" className="h-[360px]">
+          <MapView
+            markers={markers}
+            className="h-[360px]"
+            onMarkerClick={handleMarkerClick}
+          />
+        </SafeCard>
       </motion.div>
 
       {/* Coordinate Query */}

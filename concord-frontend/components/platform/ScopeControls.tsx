@@ -22,7 +22,7 @@ type ScopeFilter = 'all' | 'global' | 'national' | 'regional' | 'marketplace' | 
 
 const SCOPE_META: Record<
   string,
-  { icon: React.ElementType; color: string; label: string; desc: string }
+  { icon: React.ComponentType<{ className?: string; size?: number | string }>; color: string; label: string; desc: string }
 > = {
   global: {
     icon: Globe,

@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "comment": "Concordia Phase 8 — authored underwater POIs near Fall Kill Creek. Seeded by content-seeder.js#discoverSubWorlds (or manually via underwater.spawn_feature macro).",
+  "features": [
+    {
+      "id": "uw_fk_kelp_north",
+      "kind": "kelp_forest",
+      "name": "Fall Kill Kelp Forest",
+      "pos_x": 35,
+      "pos_z": 12,
+      "depth_min_m": 4,
+      "depth_max_m": 18,
+      "radius_m": 28,
+      "aggression": 0,
+      "lore": "Tall dark fronds sway with the current. Small fish dart between stems."
+    },
+    {
+      "id": "uw_fk_coral",
+      "kind": "coral_garden",
+      "name": "Sangree Coral Garden",
+      "pos_x": -22,
+      "pos_z": 38,
+      "depth_min_m": 6,
+      "depth_max_m": 22,
+      "radius_m": 35,
+      "aggression": 0,
+      "lore": "Vivid reds and oranges, descended from the fire-bloodline's gardens."
+    },
+    {
+      "id": "uw_fk_wreck",
+      "kind": "wreck_site",
+      "name": "The Medici Crash",
+      "pos_x": 78,
+      "pos_z": -41,
+      "depth_min_m": 25,
+      "depth_max_m": 60,
+      "radius_m": 22,
+      "aggression": 1,
+      "lore": "Original Medici landing ship, half-buried. Eels nest in the wreckage."
+    },
+    {
+      "id": "uw_fk_trench",
+      "kind": "trench_cave",
+      "name": "Trench of the Forgotten",
+      "pos_x": -65,
+      "pos_z": -88,
+      "depth_min_m": 60,
+      "depth_max_m": 140,
+      "radius_m": 45,
+      "aggression": 3,
+      "lore": "Below 80m, light fails. Something with no name lives here."
+    }
+  ]
+}

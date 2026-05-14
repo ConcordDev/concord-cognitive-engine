@@ -5,6 +5,8 @@
   "tech_level": "modern_high_tech",
   "magic_level": "none",
   "is_hub": false,
+  "universe_type": "superhero",
+  "biomes": ["plains", "water"],
   "description": "Modern metropolis (Manhattan + outer boroughs) where Concord's emergent layer has begun to rewrite individuals at the biological level. Bio powers — purple shadow-reasoning energy, red-gold plasma manipulation, and other emergent-substrate abilities — are the dominant exotic capability. Tech and weapons are present but secondary. Magic doesn't work here at all (no metaphysical substrate to channel).",
   "skill_affinity": {
     "default": 0.7,
@@ -13,9 +15,9 @@
     "martial_arts": 1.0,
     "swordsmanship": 0.6,
     "archery": 0.5,
-    "gun": 0.7,
-    "weapons_modern": 0.7,
-    "weapon_attachments": 0.6,
+    "gun": 1.0,
+    "weapons_modern": 1.0,
+    "weapon_attachments": 1.0,
     "stealth": 0.7,
     "lockpicking": 0.7,
     "infiltration": 0.7,
@@ -30,6 +32,12 @@
     "magic": 0.05,
     "driving": 0.85,
     "piloting": 0.7
+  },
+  "material_availability": {
+    "ballistic_ammo": 1.0,
+    "magical_reagents": 0.05,
+    "tech_parts": 1.0,
+    "bloodline_fuel": 1.0
   },
   "concord_link": {
     "primary_access": "communicator_watch",

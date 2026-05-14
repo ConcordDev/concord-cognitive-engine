@@ -1,0 +1,18 @@
+{
+  "id": "survival-frontier",
+  "name": "Survival Frontier",
+  "description": "A harsh post-apocalyptic survival world — volatile weather, predatory fauna, a six-season year, low gravity, crafting and construction economies, and tameable mounts to cross the wastes.",
+  "universeType": "post-apocalyptic",
+  "systems": [
+    { "id": "terrain-biomes", "config": { "biomeSet": "arid", "ruggedness": 70 } },
+    { "id": "weather-ecology", "config": { "baseClimate": "storm-locked", "weatherVolatility": 80 } },
+    { "id": "fauna-flocks", "config": { "density": "abundant", "predators": true } },
+    { "id": "seasons", "config": { "startingSeason": "deep-winter" } },
+    { "id": "physics-modifiers", "config": { "gravity": 80 } },
+    { "id": "combat-motor", "config": { "lethality": "hardcore" } },
+    { "id": "recipe-authoring", "config": {} },
+    { "id": "insurance-construction", "config": {} },
+    { "id": "mount-system", "config": { "wildMounts": true } }
+  ],
+  "rules": []
+}

@@ -67,7 +67,7 @@ type TabId = 'sources' | 'computations' | 'connections' | 'epistemic' | 'phases'
 interface TabDef {
   id: TabId;
   label: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
   count?: number;
   available: boolean;
 }
@@ -354,7 +354,7 @@ function ConnectionCard({
 
 const EPISTEMIC_STYLES: Record<
   keyof OracleEpistemicBreakdown,
-  { label: string; border: string; text: string; bg: string; icon: React.ElementType }
+  { label: string; border: string; text: string; bg: string; icon: React.ComponentType<{ className?: string; size?: number | string }> }
 > = {
   known: {
     label: 'Known',

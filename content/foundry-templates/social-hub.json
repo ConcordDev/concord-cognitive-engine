@@ -1,0 +1,18 @@
+{
+  "id": "social-hub",
+  "name": "Social Hub",
+  "description": "A low-stakes slice-of-life gathering world — gentle terrain, expressive NPCs with their own voices and routines, proximity voice chat, co-op presence, a marketplace, and player-run guilds. No combat.",
+  "universeType": "slice-of-life",
+  "systems": [
+    { "id": "terrain-biomes", "config": { "biomeSet": "temperate", "ruggedness": 20 } },
+    { "id": "weather-ecology", "config": { "baseClimate": "temperate", "weatherVolatility": 20 } },
+    { "id": "llm-npcs", "config": { "npcCount": 24, "dreamsEnabled": true } },
+    { "id": "npc-schedules", "config": {} },
+    { "id": "npc-voice-idiolect", "config": { "voiceVariety": "per-npc" } },
+    { "id": "voice-chat-proximity", "config": { "voiceMode": "proximity" } },
+    { "id": "realtime-coop-pvp", "config": { "mode": "coop" } },
+    { "id": "marketplace-spectator-betting", "config": { "spectatorBetting": false } },
+    { "id": "player-orgs", "config": { "orgTypes": "guilds-only", "kingdomsEnabled": false } }
+  ],
+  "rules": []
+}

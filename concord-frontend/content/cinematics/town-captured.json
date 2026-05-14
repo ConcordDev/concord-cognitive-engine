@@ -1,0 +1,12 @@
+{
+  "id": "town_captured",
+  "name": "Town Captured",
+  "trigger": "town_captured",
+  "comment": "Phase W — slow push-in on captured town anchor + banner flip animation + crowd murmur SFX cue.",
+  "shots": [
+    { "camera": "crane_drop",     "duration_ms": 1500 },
+    { "camera": "dolly_in",       "duration_ms": 2000, "easing": "ease_in_quad", "audio_sting": "crowd_murmur" },
+    { "camera": "close_on",       "duration_ms": 1500, "time_scale": 0.5 },
+    { "camera": "pull_back",      "duration_ms": 1800 }
+  ]
+}

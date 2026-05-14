@@ -5,6 +5,8 @@
   "tech_level": "scattered-modern",
   "magic_level": "low",
   "is_hub": false,
+  "universe_type": "frontier",
+  "biomes": ["plains", "forest", "highland", "water"],
   "description": "Beyond the walled cities, where the Concordant Web actually does its work — peer-to-peer mesh routing, walker journeys, federation handshakes. Settlements are small, sparse, and connected by a network of human-scale anchors. The Frontier is a player's first contact with the cnet-federation substrate; quests here require you to deliver something across a mesh you cannot see, only trust.",
   "skill_affinity": {
     "default": 0.85,
@@ -16,7 +18,15 @@
     "swordsmanship": 0.85,
     "stealth": 0.95,
     "magic": 0.55,
-    "concord_link_routing": 1.0
+    "concord_link_routing": 1.0,
+    "gun": 1.0,
+    "weapons_modern": 1.0
+  },
+  "material_availability": {
+    "ballistic_ammo": 0.50,
+    "magical_reagents": 0.40,
+    "tech_parts": 0.55,
+    "bloodline_fuel": 0.50
   },
   "rule_modulators": {
     "combatLethality": 1.0,

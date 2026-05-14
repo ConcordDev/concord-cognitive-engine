@@ -6,6 +6,8 @@
   "tech_level": "pre-industrial",
   "magic_level": "moderate",
   "is_hub": true,
+  "universe_type": "concordia_hub",
+  "biomes": ["plains", "forest", "highland", "water"],
   "description": "The walled city-state and the main hub. Players spawn here and travel out to other worlds. Founded by four factions who once agreed, through the Founding Compact, that no single power would control what Concordia knows or forgets.",
   "skill_affinity": {
     "default": 0.85,
@@ -31,6 +33,12 @@
     "infiltration": 0.9,
     "driving": 0.3,
     "piloting": 0.2
+  },
+  "material_availability": {
+    "ballistic_ammo": 0.20,
+    "magical_reagents": 0.60,
+    "tech_parts": 0.30,
+    "bloodline_fuel": 0.40
   },
   "concord_link": {
     "primary_access": "the_veil_directly",

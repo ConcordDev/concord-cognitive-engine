@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthSuccess } from './_helpers';
+import { mockAuthSuccess, gotoStable } from './_helpers';
 
 /**
  * Helper: set a session cookie so middleware allows access to protected routes.
@@ -107,8 +107,7 @@ test.describe('User Profile', () => {
   });
 
   test('profile tab switching works', async ({ page }) => {
-    const response = await page.goto('/profile');
-    await page.waitForLoadState('domcontentloaded');
+    const response = await gotoStable(page, '/profile');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -117,7 +116,7 @@ test.describe('User Profile', () => {
     for (const tabText of tabTexts) {
       const tab = page.locator(`button:has-text("${tabText}")`);
       if (await tab.first().isVisible().catch(() => false)) {
-        await tab.first().click();
+        await tab.first().click({ timeout: 15000 });
         // No crash on click
         const bodyVisible = await page.locator('body').isVisible().catch(() => false);
         if (bodyVisible) {
@@ -310,14 +309,13 @@ test.describe('Notification Center', () => {
   });
 
   test('clicking notifications button opens notification panel', async ({ page }) => {
-    const response = await page.goto('/lenses/chat');
-    await page.waitForLoadState('domcontentloaded');
+    const response = await gotoStable(page, '/lenses/chat');
 
     expect(response?.status()).toBeLessThan(500);
 
     const notificationsButton = page.getByRole('button', { name: /notifications/i });
     if (await notificationsButton.isVisible().catch(() => false)) {
-      await notificationsButton.click();
+      await notificationsButton.click({ timeout: 15000 });
 
       // Notification panel or dropdown should appear
       const notifPanel = page.locator(

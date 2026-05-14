@@ -1,12 +1,16 @@
 # Frontend Dockerfile
+# Uses node:20-bookworm-slim (Debian glibc) rather than alpine: the
+# Next.js toolchain pulls glibc-linked native binaries (@next/swc,
+# @sentry/cli) and alpine's musl libc is a recurring source of silent
+# build breakage. Debian-slim trades ~40MB of image size for a
+# build/runtime environment that matches the host CI runners.
 # To fully pin with SHA256 digest (recommended for production):
-#   docker pull node:20-alpine && docker inspect --format='{{index .RepoDigests 0}}' node:20-alpine
-# Then replace: FROM node:20-alpine@sha256:<digest> AS base
-FROM node:20-alpine AS base
+#   docker pull node:20-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:20-bookworm-slim
+# Then replace: FROM node:20-bookworm-slim@sha256:<digest> AS base
+FROM node:20-bookworm-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 ENV npm_config_cache=/tmp/npm-cache
 
@@ -52,9 +56,11 @@ ENV NODE_ENV=production
 ENV NEXT_CACHE_DIR=/data/next-cache
 ENV npm_config_cache=/data/npm-cache
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create non-root user. groupadd/useradd are from the `passwd` package
+# (always present in debian-slim); the alpine busybox addgroup/adduser
+# flag syntax does not carry over.
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs nextjs
 RUN mkdir -p /data/next-cache /data/npm-cache
 RUN chown -R nextjs:nodejs /data
 

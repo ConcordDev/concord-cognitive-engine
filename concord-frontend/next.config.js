@@ -88,7 +88,12 @@ const nextConfig = {
       },
     ];
   },
-  // WebXR opts for AR lens
+  // WebXR opts for AR lens + force-resolve react to the package.json
+  // version (18.3.1). Without this alias, Next 15.5 substitutes its
+  // bundled React 19 in app-pages-browser chunks, which breaks
+  // @react-three/fiber v8 (react-reconciler reaches into 18.x's
+  // __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner
+  // — gone in React 19, throws TypeError on every R3F mount).
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

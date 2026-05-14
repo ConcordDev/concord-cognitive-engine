@@ -56,6 +56,43 @@ export default function registerKingdomsMacros(register) {
     };
   });
 
+  // kingdoms.my_realm — used by the in-world RulerHUD. Returns the
+  // first realm where ruler_kind='player' AND ruler_id=actor.userId,
+  // bundled with loyalty + rebellion risk + active decrees +
+  // pending-threat (rebellion-leader) list. Null if player rules
+  // nothing.
+  register("kingdoms", "my_realm", async (ctx) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: true, realm: null };
+    let realm;
+    try {
+      realm = db.prepare(`
+        SELECT id, name, world_id, capital_settlement_id, faction_id,
+               ruler_kind, ruler_id, legitimacy, treasury, tax_rate,
+               founded_at, next_decree_at, updated_at
+        FROM realms WHERE ruler_kind = 'player' AND ruler_id = ?
+        ORDER BY founded_at ASC LIMIT 1
+      `).get(userId);
+    } catch { return { ok: true, realm: null }; }
+    if (!realm) return { ok: true, realm: null };
+
+    let loyalty = null, rebellionRisk = null, activeDecrees = [], rebellions = [];
+    try { loyalty = kingdomLoyaltySummary(db, realm.id); } catch { /* noop */ }
+    try { rebellionRisk = evaluateRebellionRisk(db, realm.id); } catch { /* noop */ }
+    try {
+      activeDecrees = db.prepare(`
+        SELECT id, kind, body_json, issued_at, expires_at, popularity_delta
+        FROM realm_decrees WHERE kingdom_id = ? AND effect_state = 'active'
+        ORDER BY issued_at DESC LIMIT 10
+      `).all(realm.id);
+    } catch { /* noop */ }
+    try { rebellions = listRebellionsForKingdom(db, realm.id); } catch { /* noop */ }
+
+    return { ok: true, realm, loyalty, rebellionRisk, activeDecrees, rebellions };
+  });
+
   register("kingdoms", "decrees_for_region", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db || !input.regionId) return { ok: false, reason: "missing_inputs" };

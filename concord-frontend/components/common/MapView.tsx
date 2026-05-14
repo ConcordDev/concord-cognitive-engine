@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -55,9 +55,17 @@ export default function MapView({
     return zoom;
   }, [markers, zoom]);
 
+  // React 18 strict-mode mounts components twice in dev. react-leaflet
+  // 4's MapContainer re-binds Leaflet to the same DOM node on the
+  // second mount and throws "Map container is already initialized."
+  // Mount-stable random key forces a fresh container per mount cycle
+  // without remounting on every parent re-render.
+  const [mapKey] = useState(() => `lf-${Math.random().toString(36).slice(2, 10)}`);
+
   return (
     <div className={`rounded-lg overflow-hidden border border-white/10 ${className}`} style={{ minHeight: 320 }}>
       <MapContainer
+        key={mapKey}
         center={mapCenter}
         zoom={mapZoom}
         bounds={bounds}

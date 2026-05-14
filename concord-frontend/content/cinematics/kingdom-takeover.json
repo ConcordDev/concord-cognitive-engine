@@ -1,0 +1,13 @@
+{
+  "id": "kingdom_takeover",
+  "name": "Kingdom Takeover",
+  "trigger": "kingdom_takeover",
+  "comment": "Phase W — overhead realm sweep + new ruler portrait dwell + decree-table pan.",
+  "shots": [
+    { "camera": "crane_pull",     "duration_ms": 2200 },
+    { "camera": "dolly_in",       "duration_ms": 1800, "easing": "ease_out_quad" },
+    { "camera": "close_on",       "duration_ms": 2000, "time_scale": 0.4, "audio_sting": "regnant_chord" },
+    { "camera": "whip_pan",       "duration_ms": 350 },
+    { "camera": "dolly_out",      "duration_ms": 1500 }
+  ]
+}

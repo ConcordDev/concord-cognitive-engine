@@ -130,7 +130,7 @@ function ActivityItem({ event }: { event: FeedEvent }) {
           </span>
         );
       default:
-        return <span><EmergentLink>{emergentName}</EmergentLink> — {event.type.replace(/_/g, ' ')}</span>;
+        return <span><EmergentLink>{emergentName}</EmergentLink> — {(event.type ?? 'event').replace(/_/g, ' ')}</span>;
     }
   };
 

@@ -1,0 +1,13 @@
+{
+  "id": "ark_archive_unlock",
+  "name": "Ark Archive Unlock",
+  "trigger": "ark:archive_unlocked",
+  "comment": "Concordia Phase 15 — bespoke cinematic for unlocking the Asbir Ark archive. Triggered when player accumulates enough solar charge to access the pre-arrival N.A. cultural memory store.",
+  "shots": [
+    { "camera": "crane_drop", "duration_ms": 2400, "audio_sting": "archive_chord" },
+    { "camera": "close_on",   "duration_ms": 1800, "time_scale": 0.35 },
+    { "camera": "match_cut",  "duration_ms": 800,  "audio_sting": "archive_open" },
+    { "camera": "dolly_in",   "duration_ms": 1600, "time_scale": 0.4 },
+    { "camera": "pull_back",  "duration_ms": 2200 }
+  ]
+}

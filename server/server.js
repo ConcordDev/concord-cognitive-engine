@@ -453,6 +453,27 @@ registerHeartbeat("npc-scheme-cycle", {
   handler: runNpcSchemeCycle,
 });
 
+// Phase T — NPC equal-agency cross-world. Three heartbeats:
+//   * npc-travel-cycle (60, ~15min)         — drains npc_travel_intents +
+//                                             ambition-driven goal-seeks
+//   * npc-vs-npc-combat-cycle (8, ~2min)    — pair-resolves grudges in cells
+//   * npc-ambition-cycle (80, ~20min)       — picks unilateral moves +
+//                                             distributes lattice-born quests
+// All exception-isolated per-NPC; no kill-switch (these are core to the
+// "every actor is equal" design).
+import { runNpcTravelCycle }       from "./emergent/npc-travel-cycle.js";
+import { runNpcVsNpcCombatCycle }  from "./emergent/npc-vs-npc-combat-cycle.js";
+import { runNpcAmbitionCycle }     from "./emergent/npc-ambition-cycle.js";
+registerHeartbeat("npc-travel-cycle",      { frequency: 60, handler: runNpcTravelCycle });
+registerHeartbeat("npc-vs-npc-combat",     { frequency: 8,  handler: runNpcVsNpcCombatCycle });
+registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbitionCycle });
+
+// Phase U — substrate-driven loose mount behaviour. Picks
+// wandering / fleeing / feeding per loose mount, advances position
+// one step, emits mount:behavior socket events on state change.
+import { runMountBehaviorCycle } from "./emergent/mount-behavior-cycle.js";
+registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBehaviorCycle });
+
 // Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
 // (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
 // NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
@@ -507,6 +528,27 @@ import { runLatticeQuestCycle } from "./emergent/lattice-quest-cycle.js";
 registerHeartbeat("lattice-quest-cycle", {
   frequency: 180,
   handler: runLatticeQuestCycle,
+});
+
+// Phase 6: Ecology quest cycle. Drains ecology_imbalance_log rows (set
+// by fauna-spawner when predator/prey ratios fall out of bounds) into
+// procedural quests via the lattice-quest-composer. Frequency 240
+// (~60min); kill-switch CONCORD_ECOLOGY_QUESTS=0.
+import { runEcologyQuestCycle } from "./emergent/ecology-quest-cycle.js";
+registerHeartbeat("ecology-quest-cycle", {
+  frequency: 240,
+  handler: runEcologyQuestCycle,
+});
+
+// War-in-3D skirmish cycle. Advances active campaigns past their
+// next_skirmish_at — handles mustering → marching → engaging
+// state transitions + skirmish resolution + town capture + auto-kidnap.
+// Frequency 2 (~30s) so a player declaring war sees combat play out
+// within seconds. Kill-switch CONCORD_WAR_SKIRMISH=0.
+import { runWarSkirmishCycle } from "./emergent/war-skirmish-cycle.js";
+registerHeartbeat("war-skirmish-cycle", {
+  frequency: 2,
+  handler: runWarSkirmishCycle,
 });
 
 // Phase 5c: Seasons + Long-cycle Time. Every 480 ticks (~2h) advances
@@ -796,6 +838,8 @@ import { runCouncilVoices, getAllVoices as getAllCouncilVoices } from "./emergen
 
 // ── Brain Prompt Builders & Want Engine ────────────────────────────────────────
 import { buildConsciousPrompt, getConsciousParams } from "./prompts/conscious.js";
+import { humanize as personaHumanize } from "./lib/persona/humanizer.js";
+import { persistIdiolect as personaPersistIdiolect, getIdiolectSamples as personaGetIdiolectSamples } from "./lib/persona/idiolect-store.js";
 import { buildSubconsciousPrompt, getSubconsciousParams, SUBCONSCIOUS_MODES } from "./prompts/subconscious.js";
 import { buildUtilityPrompt, getUtilityParams } from "./prompts/utility.js";
 import { buildRepairPrompt, getRepairParams } from "./prompts/repair.js";
@@ -5671,6 +5715,10 @@ function authMiddleware(req, res, next) {
   // Gate 1 POST bypass: anonymous client telemetry pings (perf, error reports).
   if (req.method === "POST" && req.path === "/api/world/perf-telemetry") return next();
   if (req.method === "POST" && req.path === "/api/client-error") return next();
+  // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
+  // classifier (query intent + domain + projection rules) with zero DB
+  // writes — the POST sibling of the already-public /status GET.
+  if (req.method === "POST" && req.path === "/api/quality-pipeline/preview") return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
@@ -6508,6 +6556,13 @@ if (rateLimit) {
       const identity = req.body?.username || req.body?.email || "";
       return `${req.ip}:${identity}`;
     },
+    // Integration/smoke/e2e CI jobs set CONCORD_RATE_LIMIT_BYPASS=1 — a
+    // single suite legitimately does many register/login calls (real-creds
+    // fixtures plus invalid-credential specs) and would otherwise trip the
+    // 5-attempt cap, 429-ing later specs (e.g. playthrough's login). Unit
+    // tests don't set the var; production never sets it. Mirrors the skip
+    // on unauthRateLimiter below.
+    skip: () => process.env.CONCORD_RATE_LIMIT_BYPASS === "1",
     skipSuccessfulRequests: true // Don't count successful logins
   });
 }
@@ -8762,7 +8817,7 @@ try {
   ["entities", "councilVotes", "customPersonas", "councilProposals",
    "marketplaceListings", "teamTemplates", "mlJobs", "mlModels",
    "gameProfiles", "chemCompounds", "chemReactions", "debates", "wallets",
-   "subscriptions", "cognitiveDigitalTwins", "pathWeights",
+   "cognitiveDigitalTwins", "pathWeights",
    "_pipelineExecutions", "_rateLimits", "_costAccounting"].forEach(_ensureMap);
 
   // Feature Arrays
@@ -12169,6 +12224,10 @@ function makeCtx(req=null) {
   }
   return {
     state: STATE,
+    // Convenience accessor — every domain macro does `ctx?.db`. Without
+    // this, callers have to dig through ctx.state.db, and many forget,
+    // returning a spurious no_db. STATE.db is the same sqlite handle.
+    db: STATE?.db || null,
     actor: resolvedActor,
     env: {
       version: VERSION,
@@ -16154,6 +16213,14 @@ async function consciousChat(userMessage, lens = null, options = {}) {
         recordEconomicsEvent({ type: "retrieval", inferenceMs: elapsed, userId });
         try { recordQueryMethod(STATE, "retrieval_sufficient"); } catch (_e) { logger.debug('server', 'learning metrics not critical', { error: _e?.message }); }
 
+        // Humanize utility-brain output too — the 3B model is more prone
+        // to LLM tells than the conscious brain.
+        try {
+          const intensity = options.voice_intensity || (lens === "code" || lens === "legal" || lens === "healthcare" ? "light" : "medium");
+          const hpass = personaHumanize(result.content, { intensity });
+          result.content = hpass.text || result.content;
+        } catch (_e) { logger.debug('server', 'humanizer best-effort', { error: _e?.message }); }
+
         try {
           const ctx = makeInternalCtx("system");
           await runMacro("dtu", "create", {
@@ -16165,6 +16232,18 @@ async function consciousChat(userMessage, lens = null, options = {}) {
           }, ctx);
           BRAIN.utility.stats.dtusGenerated++;
         } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+        // Idiolect harvest on retrieval-path responses too.
+        try {
+          const ictx = makeInternalCtx("system");
+          await personaPersistIdiolect({
+            runMacro,
+            ctx: ictx,
+            response: result.content,
+            userId,
+            lens,
+          });
+        } catch (_e) { logger.debug('server', 'idiolect persist best-effort', { error: _e?.message }); }
 
         return result;
       }
@@ -16246,6 +16325,13 @@ async function consciousChat(userMessage, lens = null, options = {}) {
     // Use comprehensive conscious brain prompt builder
     const personalityState = typeof getPersonality === "function" ? getPersonality(STATE) : null;
     const highWants = typeof getActiveWants === "function" ? (getActiveWants(STATE)?.wants || []).filter(w => w.intensity >= 0.6) : [];
+    // Pull voice exemplars (past Concord sentences that survived the
+    // AI-tell blocklist) so the prompt biases toward Concord's own
+    // idiolect instead of the median LLM register.
+    let voiceExemplars = [];
+    try {
+      voiceExemplars = personaGetIdiolectSamples({ STATE, n: 4 });
+    } catch (_e) { logger.debug('server', 'idiolect sample best-effort', { error: _e?.message }); }
     system = buildConsciousPrompt({
       dtu_count: contextCount,
       domain_count: STATE.dtus ? new Set(Array.from(STATE.dtus.values()).flatMap(d => d.tags || [])).size : 0,
@@ -16253,6 +16339,8 @@ async function consciousChat(userMessage, lens = null, options = {}) {
       context,
       personality_state: personalityState,
       active_wants: highWants,
+      voice_exemplars: voiceExemplars,
+      conversation_history: options.conversation_history || [],
     });
   }
 
@@ -16277,6 +16365,24 @@ async function consciousChat(userMessage, lens = null, options = {}) {
   try { recordQueryMethod(STATE, "llm_required"); } catch (_e) { logger.debug('server', 'learning metrics not critical', { error: _e?.message }); }
 
   if (result.ok && result.content) {
+    // ── Persona humanizer pass ─────────────────────────────────────
+    // Strip AI-tell openers/phrases, break tricolons, kill neg-parallelism,
+    // and rebalance burstiness BEFORE the response is persisted or returned.
+    // Intensity defaults to "medium" for chat; lens-specific overrides can
+    // pass options.voice_intensity ("light" for code/legal/healthcare where
+    // precision matters more than persona, "heavy" for casual lenses).
+    let humanizedContent = result.content;
+    let humanizerChanges = [];
+    let humanizerStats = null;
+    try {
+      const intensity = options.voice_intensity || (lens === "code" || lens === "legal" || lens === "healthcare" ? "light" : "medium");
+      const hpass = personaHumanize(result.content, { intensity });
+      humanizedContent = hpass.text || result.content;
+      humanizerChanges = hpass.changes || [];
+      humanizerStats = hpass.stats || null;
+      result.content = humanizedContent;
+    } catch (_e) { logger.debug('server', 'humanizer best-effort', { error: _e?.message }); }
+
     // Build sources list for the response
     const sources = webResults.map(wr => ({
       type: "web",
@@ -16292,19 +16398,36 @@ async function consciousChat(userMessage, lens = null, options = {}) {
       const ctx = makeInternalCtx("system");
       await runMacro("dtu", "create", {
         title: `Chat: ${userMessage.slice(0, 80)}`,
-        creti: result.content,
+        creti: humanizedContent,
         tags: [lens, "conscious", "chat", webResults.length > 0 ? "web-augmented" : null].filter(Boolean),
         source: "conscious.chat",
         meta: {
           brainSource: "conscious", confidence: 0.7, tokens: result.tokens,
           webAugmented: webResults.length > 0,
           webSources: sources.length > 0 ? sources.map(s => s.url) : undefined,
+          humanizerChanges: humanizerChanges.length,
+          voiceStats: humanizerStats,
         },
       }, ctx);
       BRAIN.conscious.stats.dtusGenerated++;
     } catch (e) {
       structuredLog("warn", "conscious_dtu_save_failed", { error: String(e?.message || e) });
     }
+
+    // ── Idiolect harvest ───────────────────────────────────────────
+    // Extract up to 2 distinctive Concord sentences from THIS response
+    // and persist as `voice:idiolect` DTUs so future prompt builds can
+    // surface them as voice exemplars. Best-effort; never throws.
+    try {
+      const ictx = makeInternalCtx("system");
+      await personaPersistIdiolect({
+        runMacro,
+        ctx: ictx,
+        response: humanizedContent,
+        userId,
+        lens,
+      });
+    } catch (_e) { logger.debug('server', 'idiolect persist best-effort', { error: _e?.message }); }
 
     // Knowledge loop: save web sources as DTUs so future similar queries are answered from substrate
     if (webResults.length > 0) {
@@ -22942,10 +23065,45 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+// Foundry (lens #66) — no-code game-builder. Builder surface
+// (registry / worldspec / publish / preview / templates / rules).
+import registerFoundryMacros from "./domains/foundry.js";
+registerFoundryMacros(register);
+// Foundry Phase 7 — the four net-new gameplay systems' macro surface
+// (size.* / skill_affinity.* / status.* / reincarnation.*).
+import registerFoundrySystemsMacros from "./domains/foundry-systems.js";
+registerFoundrySystemsMacros(register);
 import registerSecretsMacros from "./domains/secrets.js";
 registerSecretsMacros(register);
 import registerSchemesMacros from "./domains/schemes.js";
 registerSchemesMacros(register);
+// Concordia Phase 2-16 — register the new player-experience domains.
+import registerBloodlineMacros from "./domains/bloodline.js";
+registerBloodlineMacros(register);
+import registerPhysiqueMacros from "./domains/physique.js";
+registerPhysiqueMacros(register);
+import registerRealmAccessMacros from "./domains/realm-access.js";
+registerRealmAccessMacros(register);
+import registerStaminaMacros from "./domains/stamina.js";
+registerStaminaMacros(register);
+import registerVehicleMacros from "./domains/vehicles.js";
+registerVehicleMacros(register);
+import registerWindMacros from "./domains/wind.js";
+registerWindMacros(register);
+import registerUnderwaterMacros from "./domains/underwater.js";
+registerUnderwaterMacros(register);
+import registerTunyanMacros from "./domains/tunyan.js";
+registerTunyanMacros(register);
+import registerJobsMacros from "./domains/jobs.js";
+registerJobsMacros(register);
+import registerCraftChainsMacros from "./domains/craft-chains.js";
+registerCraftChainsMacros(register);
+import registerDynastyMacros from "./domains/dynasty.js";
+registerDynastyMacros(register);
+import registerCultureMacros from "./domains/culture.js";
+registerCultureMacros(register);
+import registerRealmCouncilMacros from "./domains/realm-council.js";
+registerRealmCouncilMacros(register);
 import registerKingdomsMacros from "./domains/kingdoms.js";
 registerKingdomsMacros(register);
 import registerBuildingsMacros from "./domains/buildings.js";
@@ -23101,6 +23259,24 @@ registerHeartbeat("player-signs-cleanup", {
   handler: runPlayerSignsCleanup,
 });
 
+// Concordia Phase 8/10/12/16 heartbeats — aging cycle, ration mint,
+// council session opener, underwater threat sweep. All wrapped
+// exception-safe in concordia-cycles.js so a missing table can't
+// break the governor tick.
+import {
+  runAgingCycle,
+  runRationFloorCycle,
+  runCouncilSessionCycle,
+  runUnderwaterThreatCycle,
+} from "./emergent/concordia-cycles.js";
+registerHeartbeat("aging-cycle", { frequency: 480, handler: runAgingCycle });
+registerHeartbeat("ration-floor-cycle", { frequency: 1440, handler: runRationFloorCycle });
+registerHeartbeat("council-session-cycle", { frequency: 480, handler: runCouncilSessionCycle });
+registerHeartbeat("underwater-threat-cycle", { frequency: 6, handler: runUnderwaterThreatCycle });
+// Foundry (lens #66) — sweep stale live-preview worlds (Phase 5).
+import { runFoundryPreviewCleanup } from "./emergent/foundry-preview-cleanup.js";
+registerHeartbeat("foundry-preview-cleanup", { frequency: 240, handler: runFoundryPreviewCleanup });
+
 // Theme deferred (game-feel pass): hidden quest triggers — substrate
 // for unmarked, environment-gated quest activation. Pure runMacro
 // surface; no heartbeat (callers evaluate inline as players move /
@@ -23145,6 +23321,86 @@ registerCombatPolishMacros(register);
 // players can see tombs, last words, and inheritance lineage.
 import registerNpcLegacyMacros from "./domains/npc-legacy.js";
 registerNpcLegacyMacros(register);
+
+// Phase 5 — nemesis surface. Read-only macros over the npc-asymmetry
+// substrate (grudges + preoccupations + stress + schemes) so the HUD
+// can render per-NPC nemesis glyphs over nearby NPCs.
+import registerNemesisMacros from "./domains/nemesis.js";
+registerNemesisMacros(register);
+
+// Phase 6 — ecology surface. Creature homes (caves / nests / burrows),
+// sleep patterns, and predator-prey imbalance signals that the
+// lattice-quest-cycle drains into procedural quests.
+import registerEcologyMacros from "./domains/ecology.js";
+registerEcologyMacros(register);
+
+// Phase 7 — dreams + forward-sim surface. Read-only HUD reads over
+// dream-engine compositions and forward-sim anticipations so the
+// player can see what their subconscious has been doing while offline.
+import registerDreamsMacros from "./domains/dreams.js";
+registerDreamsMacros(register);
+
+// War-in-3D — surfaces declare-war as a real playable campaign
+// (rally / skirmish / town capture / kidnap) layered on faction-strategy.
+import registerWarMacros from "./domains/war.js";
+registerWarMacros(register);
+
+// Spawn macros — force-trigger boss/enemy/creature/NPC drops. Useful
+// for QA + live ops without waiting for procedural-spawner heartbeats.
+import registerSpawnMacros from "./domains/spawn.js";
+registerSpawnMacros(register);
+
+// Appearance — surfaces authored faction visual heraldry + NPC prose
+// for the frontend's character-schema generator. Lets the renderer
+// build deterministic, lore-faithful characters per world.
+import registerAppearanceMacros from "./domains/appearance.js";
+registerAppearanceMacros(register);
+
+// Phase H2 — player-placed POI markers.
+import registerMarkersMacros from "./domains/markers.js";
+registerMarkersMacros(register);
+
+// Phase H4 — emergent pattern feed (drift + breakthroughs + federation).
+import registerPatternsMacros from "./domains/patterns.js";
+registerPatternsMacros(register);
+
+// Phase J1 — Commune federation macros. Previously orphaned in domains/commune.js.
+import { registerCommune } from "./domains/commune.js";
+registerCommune(register);
+
+// Phase J2 — Register the two cross-world heartbeats that have lived
+// orphaned in server/emergent/.
+import { runCrossWorldEconomyCycle } from "./emergent/cross-world-economy-cycle.js";
+registerHeartbeat("cross-world-economy-cycle", {
+  frequency: 240,  // ~60 min
+  handler: runCrossWorldEconomyCycle,
+});
+import { runCrossWorldSchemeCycle } from "./emergent/cross-world-scheme-cycle.js";
+registerHeartbeat("cross-world-scheme-cycle", {
+  frequency: 60,   // ~15 min
+  handler: runCrossWorldSchemeCycle,
+});
+
+// Phase J4 — output-hooks macro surface (constitution + fingerprint
+// + ghost-thread pipeline). Callers opt in via output_hooks.process.
+import registerOutputHooksMacros from "./domains/output-hooks.js";
+registerOutputHooksMacros(register);
+
+// Phase I1-5 — minigames + voice chat + messaging.
+import registerRacingMacros from "./domains/racing.js";
+registerRacingMacros(register);
+import registerBasketballMacros from "./domains/basketball.js";
+registerBasketballMacros(register);
+import registerVoiceChatMacros from "./domains/voice-chat.js";
+registerVoiceChatMacros(register);
+import registerMessagingMacros from "./domains/messaging.js";
+registerMessagingMacros(register);
+
+// Phase V — game-mode dispatch surfaces for the new lenses.
+import registerCrisisMacros from "./domains/crisis.js";
+registerCrisisMacros(register);
+import registerGhostHuntMacros from "./domains/ghost-hunt.js";
+registerGhostHuntMacros(register);
 
 // Sprint B Phase 10 — faction-strategy surface for the cross-world
 // signature quest's witness_next_move objective + the Crucible HUD's
@@ -25579,6 +25835,28 @@ register("paper","export", (ctx, input) => {
 }, { summary:"Export paper to a local file (md/txt)."} );
 
 // ---- Audit queries (best-effort) ----
+// observability.log_error — silent sink for client-side LensErrorBoundary
+// self-reports. Without this macro, the LensErrorBoundary's POST to
+// /api/lens/run fell through to the utility-brain AI route and 500'd
+// (no Ollama in dev), causing every boundary-caught error to also
+// emit a 'Server error' console.error on top of the original crash —
+// which made 6+ lenses appear permanently noisy.
+register("observability", "log_error", (ctx, input = {}) => {
+  try {
+    const { lensId, message, stack, componentStack } = input || {};
+    (STATE.logs ||= []).push({
+      at: Date.now(),
+      kind: "client_error",
+      lensId: String(lensId || "unknown"),
+      message: String(message || "").slice(0, 500),
+      stack: String(stack || "").slice(0, 4000),
+      componentStack: String(componentStack || "").slice(0, 2000),
+      userId: ctx?.actor?.userId || null,
+    });
+    return { ok: true };
+  } catch { return { ok: true, reason: "log_failed" }; }
+}, { note: "Sink for LensErrorBoundary client-side error reports." });
+
 register("audit","query", (ctx, input) => {
   const limit = clamp(Number(input.limit||100), 1, 500);
   const domain = normalizeText(input.domain||"");
@@ -28787,6 +29065,43 @@ if (db) {
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
     try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    // Concordia substrate seeder — populate npc_ancestry, actor_physique,
+    // actor_culture, npc_ages for every authored NPC so Phase 2/3/12/13
+    // calculation paths get real values. Idempotent on every boot.
+    try {
+      const { seedConcordiaNpcSubstrate } = await import("./lib/concordia-npc-seeder.js");
+      const r = await seedConcordiaNpcSubstrate(db);
+      if (r.ok) console.log("[concordia-seeder]", JSON.stringify(r.seeded));
+    } catch (e) { console.warn("[concordia-seeder]", e.message); }
+    // Kingdom seeder — for every authored faction with controlled_districts
+    // across the 8 Sovereign canon worlds, insert a procedural realm row,
+    // territories, and citizens. Idempotent. Concordia-hub excluded by
+    // Concordant Law. kingdom-decree-cycle (freq 16) starts running for
+    // these NPC rulers automatically.
+    try {
+      const { seedKingdoms } = await import("./lib/kingdom-seeder.js");
+      // seedKingdoms reads content/world/<id>/factions.json — resolve repoRoot
+      // relative to this file so it works regardless of process.cwd().
+      const path = await import("node:path");
+      const url = await import("node:url");
+      const here = path.dirname(url.fileURLToPath(import.meta.url));
+      const repoRoot = path.resolve(here, "..");
+      const r = seedKingdoms(db, { repoRoot });
+      if (r.ok) {
+        console.log("[kingdom-seeder]", JSON.stringify({
+          realms: r.realms_created,
+          territories: r.territories_seeded,
+          citizens: r.citizens_seeded,
+        }));
+      }
+    } catch (e) { console.warn("[kingdom-seeder]", e.message); }
+    // Phase 6 — seed creature sleep patterns (per-species circadian
+    // table). Idempotent. Spawner reads this to gate home-vs-roam.
+    try {
+      const { seedSleepPatterns } = await import("./lib/ecosystem/creature-homes.js");
+      const r = seedSleepPatterns(db);
+      console.log("[creature-sleep-seeder]", JSON.stringify({ patterns: r.seeded }));
+    } catch (e) { console.warn("[creature-sleep-seeder]", e.message); }
     // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
     try {
       const starter = await import("./lib/starter-content.js");
@@ -53461,38 +53776,6 @@ app.post("/api/battles/:id/judge", async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
-});
-
-// ---------- SUBSCRIPTION TIERS ----------
-// Tiered access levels for the knowledge substrate
-
-const SUBSCRIPTION_TIERS = {
-  free: { name: "Explorer", dtusLimit: 100, brains: ["utility"], features: ["basic_search", "basic_capture"] },
-  pro: { name: "Scholar", dtusLimit: 10000, brains: ["conscious", "utility"], features: ["full_search", "capture", "gardens", "personas", "dreams"] },
-  sovereign: { name: "Sovereign", dtusLimit: Infinity, brains: ["conscious", "subconscious", "utility", "repair"], features: ["all"] },
-};
-
-if (!STATE.subscriptions) STATE.subscriptions = new Map();
-
-function getSubscription(userId) {
-  return STATE.subscriptions.get(userId || "default") || { tier: "sovereign", since: new Date().toISOString() };
-}
-
-function setSubscription(userId, tier) {
-  if (!SUBSCRIPTION_TIERS[tier]) return { ok: false, error: "Invalid tier" };
-  STATE.subscriptions.set(userId || "default", { tier, since: new Date().toISOString() });
-  return { ok: true, tier, features: SUBSCRIPTION_TIERS[tier] };
-}
-
-app.get("/api/subscription", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const sub = getSubscription(req.query.userId); // safe: public-filter
-  res.json({ ok: true, ...sub, details: SUBSCRIPTION_TIERS[sub.tier] });
-});
-
-app.get("/api/subscription/tiers", (_req, res) => {
-  res.json({ ok: true, tiers: SUBSCRIPTION_TIERS });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

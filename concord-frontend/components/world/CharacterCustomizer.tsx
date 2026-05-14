@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 interface SlotDefinition {
   id: string;
   label: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; size?: number | string }>;
 }
 
 interface SlotOption {

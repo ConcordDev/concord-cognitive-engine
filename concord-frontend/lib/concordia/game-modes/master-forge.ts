@@ -18,6 +18,7 @@ const masterForgeMode: GameMode = {
       name: 'Activate Skill A',
       description: 'Use the first skill in the pair.',
       inputMode: 'combat',
+      lensId: 'forge', // Phase V — opens the ForgeWorkbench during the cast.
       advanceWhen: { type: 'event', event: 'skill:xp-awarded' },
     },
     {
@@ -25,6 +26,7 @@ const masterForgeMode: GameMode = {
       name: 'Activate Skill B',
       description: 'Now use the second skill — hybrid detection fires.',
       inputMode: 'combat',
+      lensId: 'forge',
       advanceWhen: {
         type: 'any',
         triggers: [

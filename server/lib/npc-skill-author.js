@@ -238,7 +238,29 @@ export async function autoEvolveNpcSkills(db, npcId, ctx = {}) {
     }
 
     const result = applyEvolution(db, "npc", npcId, evolution, { unlockId: unlock.id });
-    if (result?.ok) applied++;
+    if (result?.ok) {
+      applied++;
+      // Phase 8 — when an NPC's revision is biased by a witnessed
+      // demonstration, emit a `mentorship:npc-adopted` socket event so
+      // the player whose lineage was witnessed gets a HUD notification
+      // ("Hild adopted your striking pattern"). Best-effort; doesn't
+      // break the apply path if the realtime layer is absent.
+      if (demonstrations.length > 0 && evolution.witnessedFrom) {
+        try {
+          const casterUserId = demonstrations.find((d) => d.caster_user_id)?.caster_user_id;
+          if (casterUserId && globalThis?.__CONCORD_REALTIME__?.io) {
+            globalThis.__CONCORD_REALTIME__.io.to(`user:${casterUserId}`).emit("mentorship:npc-adopted", {
+              npcId,
+              recipeDtuId: evolution.recipeId,
+              witnessedFromDtuId: evolution.witnessedFrom,
+              newName: evolution.nameAfter,
+              revisionNum: evolution.revisionNum,
+              ts: Date.now(),
+            });
+          }
+        } catch { /* realtime is best-effort */ }
+      }
+    }
   }
   return { applied };
 }
