@@ -39,6 +39,7 @@ import { runEnvConfigDriftDetector } from "./env-config-drift-detector.js";
 import { runObservabilityGapDetector } from "./observability-gap-detector.js";
 import { runAgentBudgetDetector } from "./agent-budget-detector.js";
 import { runLensDecorativeStateDetector } from "./lens-decorative-state-detector.js";
+import { runNullCheckDetector } from "./null-check-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -325,6 +326,19 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Production paths missing try/catch, telemetry, error logging.",
   run: runObservabilityGapDetector,
+});
+
+// HTTP 404-class — DB query results used without null-check. Catches
+// the "missing row → 500 'Cannot read properties of null' → user sees
+// generic error" pattern that should have been a clean 404. Pairs with
+// the insert_null_check_404 autofix in lib/autofix/null-check.js.
+registerDetector({
+  id: "null-check",
+  label: "NullCheckDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "DB query results used without null-check — missing row becomes 500 instead of 404.",
+  run: runNullCheckDetector,
 });
 
 // Category #10 — AI/agent-specific risks (cost spirals, recursion,

@@ -115,6 +115,9 @@ export function recordDecision(db, args) {
       FROM codebase_severity_weights
       WHERE codebase_id = ? AND detector_id = ? AND rule_id = ?
     `).get(codebaseId, detectorId, ruleId);
+    // The UPSERT above means the row should exist — but a concurrent
+    // delete (codebase de-registration mid-cycle) could race it away.
+    if (!row) return { weight: 1, samples: 0, adjusted: false };
     const samples = (row.accept_count || 0) + (row.reject_count || 0) + (row.ignore_count || 0);
     if (samples < MIN_SAMPLES) return { weight: row.weight, samples, adjusted: false };
 

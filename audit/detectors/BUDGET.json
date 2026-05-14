@@ -1,8 +1,8 @@
 {
-  "version": 6,
+  "version": 7,
   "generatedAt": "2026-05-12T22:00:00.000Z",
   "maxTotal": 100,
-  "rationale": "Budget v6 — after second-pass sweep (PRs A-G + H-M + N + #347-followup) the detector floor is 62 fingerprints. Every remaining finding is either a positive observation (48 macro_runtime_live, 2 architectural_leaf_utility) or a summary entry (10 detector-level info summaries). Zero actionable debt. Per-detector budgets tightened to match. Future detector findings that aren't observability-noise will block CI by simply existing.",
+  "rationale": "Budget v7 \u2014 adds null-check detector (404-class: DB query results used without null-check). First run found 5 real race-vulnerable sites, all fixed in this PR; detector now at 0. Budget 10 for normal churn. Total floor: 62 (all positive observations + summaries).",
   "perDetector": {
     "stale-code": 5,
     "invariant-guardian": 5,
@@ -21,6 +21,7 @@
     "resource-leak": 10,
     "env-config-drift": 5,
     "observability-gap": 10,
-    "agent-budget": 5
+    "agent-budget": 5,
+    "null-check": 10
   }
 }

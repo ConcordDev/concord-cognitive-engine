@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-12T23:01:37.998Z",
+  "generatedAt": "2026-05-14T12:21:06.786Z",
   "totals": {
     "critical": 0,
     "high": 0,
@@ -9,7 +9,7 @@
     "info": 62,
     "total": 62
   },
-  "detectorCount": 18,
+  "detectorCount": 19,
   "fingerprints": {
     "7702b52eea3af593": {
       "detector": "stale-code",
@@ -449,7 +449,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3317 files; flagged 0"
+      "message": "Scanned 3322 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
@@ -457,7 +457,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 1808 server files"
+      "message": "Scanned 1811 server files"
     },
     "3b5cf89535467e0d": {
       "detector": "historical-trend",
@@ -481,7 +481,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": null,
-      "message": "Scanned 1808 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+      "message": "Scanned 1811 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
     },
     "8124c3bcdf890d24": {
       "detector": "architectural-hub",

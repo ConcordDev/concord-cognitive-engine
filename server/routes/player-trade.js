@@ -188,6 +188,7 @@ export default function createPlayerTradeRouter({ requireAuth, db, emitToUser })
 
       // If both sides are now ready, execute atomically.
       const updated = db.prepare(`SELECT * FROM player_trades WHERE id = ?`).get(trade.id);
+      if (!updated) return res.status(404).json({ ok: false, error: "trade_not_found" });
       if (updated.initiator_ready_at && updated.recipient_ready_at) {
         const result = _executeTrade(db, updated);
         if (!result.ok) return res.status(400).json({ ok: false, error: result.error });
