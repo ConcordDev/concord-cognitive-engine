@@ -39,10 +39,14 @@ ENV CI_SKIP_LINT_IN_BUILD=$CI_SKIP_LINT_IN_BUILD
 
 # Build Next.js app
 # Skip prophet-check (requires ../server which isn't in the Docker context).
-# Bump Node heap to 6GB — default ~3.8GB OOMs on the full 1.3M-line
-# codebase + 175 lenses + Sentry webpack passes. Same fix as ci.yml's
-# direct-node build step.
-RUN NODE_OPTIONS="--max-old-space-size=6144" npx next build
+# Bump Node heap to 8GB — default ~3.8GB OOMs on the full 1.3M-line
+# codebase + 175 lenses + Sentry webpack passes. The direct-node
+# build step in ci.yml uses 6GB, but buildkit-inside-Docker shares
+# the runner's 16GB with the daemon + cache restore + alpine
+# container overhead; 6GB is on the edge and Docker Build has been
+# flaking exit-1 (silent OOM) for several main commits. 8GB leaves
+# ~6GB headroom for daemon + cache on the 16GB Linux runner.
+RUN NODE_OPTIONS="--max-old-space-size=8192" npx next build
 
 # Production image, copy all the files and run next
 FROM base AS runner
