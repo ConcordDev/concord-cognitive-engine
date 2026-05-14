@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { SafeCard } from '@/components/common/SafeCard';
 import { LensShell } from '@/components/lens/LensShell';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
@@ -1574,13 +1575,18 @@ export default function CodeLensPage() {
                 </div>
               </div>
               <div className="flex-1 relative">
-                <MonacoWrapper
-                  value={activeTab.content}
-                  onChange={(val) => updateTabContent(val)}
-                  language={activeTab.language || 'javascript'}
-                  onEditorReady={(ed) => { editorInstanceRef.current = ed; }}
-                  onSelectionChange={(s) => setSelection(s.text ? s : null)}
-                />
+                {/* SafeCard isolates Monaco load failures (sandbox network
+                    egress can block its CDN). Page stays up even if the
+                    editor can't initialise. */}
+                <SafeCard label="Code editor">
+                  <MonacoWrapper
+                    value={activeTab.content}
+                    onChange={(val) => updateTabContent(val)}
+                    language={activeTab.language || 'javascript'}
+                    onEditorReady={(ed) => { editorInstanceRef.current = ed; }}
+                    onSelectionChange={(s) => setSelection(s.text ? s : null)}
+                  />
+                </SafeCard>
                 {selection?.text && !aiEditOpen && (
                   <div className="pointer-events-none absolute top-2 right-2 px-2 py-1 rounded bg-neon-cyan/20 border border-neon-cyan/40 text-[10px] text-neon-cyan font-mono">
                     {selection.endLine - selection.startLine + 1} line{selection.endLine !== selection.startLine ? 's' : ''} selected · ⌘K to edit
