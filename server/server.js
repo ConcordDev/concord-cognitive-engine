@@ -25705,6 +25705,28 @@ register("paper","export", (ctx, input) => {
 }, { summary:"Export paper to a local file (md/txt)."} );
 
 // ---- Audit queries (best-effort) ----
+// observability.log_error — silent sink for client-side LensErrorBoundary
+// self-reports. Without this macro, the LensErrorBoundary's POST to
+// /api/lens/run fell through to the utility-brain AI route and 500'd
+// (no Ollama in dev), causing every boundary-caught error to also
+// emit a 'Server error' console.error on top of the original crash —
+// which made 6+ lenses appear permanently noisy.
+register("observability", "log_error", (ctx, input = {}) => {
+  try {
+    const { lensId, message, stack, componentStack } = input || {};
+    (STATE.logs ||= []).push({
+      at: Date.now(),
+      kind: "client_error",
+      lensId: String(lensId || "unknown"),
+      message: String(message || "").slice(0, 500),
+      stack: String(stack || "").slice(0, 4000),
+      componentStack: String(componentStack || "").slice(0, 2000),
+      userId: ctx?.actor?.userId || null,
+    });
+    return { ok: true };
+  } catch { return { ok: true, reason: "log_failed" }; }
+}, { note: "Sink for LensErrorBoundary client-side error reports." });
+
 register("audit","query", (ctx, input) => {
   const limit = clamp(Number(input.limit||100), 1, 500);
   const domain = normalizeText(input.domain||"");
