@@ -912,9 +912,17 @@ class PhysicsWorld {
     return [...this.ragdolls.keys()];
   }
 
-  /** Dispose the entire physics world. */
+  /** Dispose the entire physics world.
+   *  React 18 strict-mode double-mounts components in dev; if a fresh
+   *  PhysicsWorld is constructed between two destroy() calls some
+   *  internal Rapier handles can end up null when free() walks them
+   *  ("null pointer passed to rust"). try/catch keeps the page alive
+   *  through the harmless double-destroy. */
   destroy(): void {
-    this.world?.free();
+    if (this._destroyed) return;
+    this._destroyed = true;
+    try { this.world?.free(); }
+    catch (err) { /* harmless under strict-mode double-mount */ void err; }
     this.world  = null;
     this.RAPIER = null;
     this.THREE  = null;
@@ -922,6 +930,7 @@ class PhysicsWorld {
     this.bodies.clear();
     this.colliders.clear();
   }
+  private _destroyed = false;
 }
 
 export const physicsWorld = new PhysicsWorld();
