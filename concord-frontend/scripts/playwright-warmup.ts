@@ -22,11 +22,14 @@
 
 import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const FRONTEND_ROOT = path.resolve(__dirname, "..");
+// Playwright transpiles globalSetup with a CJS target; using
+// `import.meta.url` here forced Node to treat the emitted module as
+// ESM, which then crashed on the CJS `exports` reference in the
+// transpiled output ("exports is not defined in ES module scope").
+// Playwright always runs globalSetup with cwd = the config's
+// directory (concord-frontend/), so derive the root from cwd instead.
+const FRONTEND_ROOT = process.cwd();
 const APP_DIR = path.join(FRONTEND_ROOT, "app");
 
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "dist", "build", "__tests__"]);

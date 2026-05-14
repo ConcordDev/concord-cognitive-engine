@@ -6548,6 +6548,13 @@ if (rateLimit) {
       const identity = req.body?.username || req.body?.email || "";
       return `${req.ip}:${identity}`;
     },
+    // Integration/smoke/e2e CI jobs set CONCORD_RATE_LIMIT_BYPASS=1 — a
+    // single suite legitimately does many register/login calls (real-creds
+    // fixtures plus invalid-credential specs) and would otherwise trip the
+    // 5-attempt cap, 429-ing later specs (e.g. playthrough's login). Unit
+    // tests don't set the var; production never sets it. Mirrors the skip
+    // on unauthRateLimiter below.
+    skip: () => process.env.CONCORD_RATE_LIMIT_BYPASS === "1",
     skipSuccessfulRequests: true // Don't count successful logins
   });
 }
@@ -28935,11 +28942,13 @@ if (db) {
       const here = path.dirname(url.fileURLToPath(import.meta.url));
       const repoRoot = path.resolve(here, "..");
       const r = seedKingdoms(db, { repoRoot });
-      if (r.ok) console.log("[kingdom-seeder]", JSON.stringify({
-        realms: r.realms_created,
-        territories: r.territories_seeded,
-        citizens: r.citizens_seeded,
-      }));
+      if (r.ok) {
+        console.log("[kingdom-seeder]", JSON.stringify({
+          realms: r.realms_created,
+          territories: r.territories_seeded,
+          citizens: r.citizens_seeded,
+        }));
+      }
     } catch (e) { console.warn("[kingdom-seeder]", e.message); }
     // Phase 6 — seed creature sleep patterns (per-species circadian
     // table). Idempotent. Spawner reads this to gate home-vs-roam.

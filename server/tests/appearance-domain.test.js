@@ -25,10 +25,18 @@ import("../domains/appearance.js").then((mod) => {
 
 function setupDb() {
   const db = new Database(":memory:");
+  // Schema mirrors migration 189 (Phase T): world_npcs now carries
+  // home_world_id, and npc_residency LEFT JOINs in appearance.for_world.
   db.exec(`
     CREATE TABLE world_npcs (
       id TEXT PRIMARY KEY, world_id TEXT NOT NULL,
-      faction TEXT, archetype TEXT, is_dead INTEGER DEFAULT 0
+      faction TEXT, archetype TEXT, is_dead INTEGER DEFAULT 0,
+      home_world_id TEXT
+    );
+    CREATE TABLE npc_residency (
+      npc_id TEXT PRIMARY KEY,
+      home_world_id TEXT NOT NULL,
+      current_world_id TEXT
     );
   `);
   db.prepare(`INSERT INTO world_npcs (id, world_id, faction, archetype) VALUES (?, ?, ?, ?)`)
@@ -47,7 +55,9 @@ describe("appearance.for_npc", () => {
     // Wait for the module to register (the dynamic import above is async)
     for (let i = 0; i < 50; i++) {
       if (_registry.has("appearance.for_npc")) break;
-      await new Promise((r) => setTimeout(r, 20));
+      await new Promise((r) => {
+        setTimeout(r, 20);
+      });
     }
   });
 
@@ -96,7 +106,9 @@ describe("appearance.for_world", () => {
     db = setupDb();
     for (let i = 0; i < 50; i++) {
       if (_registry.has("appearance.for_world")) break;
-      await new Promise((r) => setTimeout(r, 20));
+      await new Promise((r) => {
+        setTimeout(r, 20);
+      });
     }
   });
 

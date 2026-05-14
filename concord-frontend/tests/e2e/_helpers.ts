@@ -100,3 +100,25 @@ export async function mockAuthUnauthenticated(page: Page) {
     })
   );
 }
+
+/**
+ * Navigate and wait out post-navigation hydration before probing the DOM.
+ *
+ * The Core specs probe with `if (await el.isVisible()) { await el.click() }`.
+ * When `.click()` lands mid-hydration the element detaches and the click
+ * burns the full 60s action timeout — which, ×retry across several specs,
+ * pushes the whole E2E Core job past its 25-min budget (observed: the job
+ * gets cancelled before finishing). Settling the network first — capped,
+ * since the app holds websockets open so 'networkidle' never fully
+ * settles — makes the probe race-free.
+ *
+ * No error-swallowing: a genuinely broken interaction still throws and
+ * fails the spec. Pair with a bounded `.click({ timeout })` at call sites
+ * so a stuck interaction fails fast instead of eating the job budget.
+ */
+export async function gotoStable(page: Page, path: string) {
+  const response = await page.goto(path);
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+  return response;
+}
