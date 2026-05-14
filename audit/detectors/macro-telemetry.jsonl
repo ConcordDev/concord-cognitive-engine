@@ -3452,3 +3452,9 @@
 {"generatedAt":"2026-05-14T01:14:03.457Z","key":"dtu.list","total":1,"lastFiredAt":1778721022439,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
 {"generatedAt":"2026-05-14T01:14:03.457Z","key":"context.query","total":1,"lastFiredAt":1778721022478,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
 {"generatedAt":"2026-05-14T01:14:03.457Z","key":"system.analogize","total":1,"lastFiredAt":1778721168122,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-14T01:19:03.613Z","key":"ingest.processQueueOnce","total":20,"lastFiredAt":1778721542940,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-14T01:19:03.613Z","key":"emergent.bridge.heartbeatTick","total":4,"lastFiredAt":1778721529488,"sources":{"http":0,"heartbeat":0,"internal":4,"system":0}}
+{"generatedAt":"2026-05-14T01:19:03.613Z","key":"dtu.create","total":10,"lastFiredAt":1778721513268,"sources":{"http":0,"heartbeat":0,"internal":10,"system":0}}
+{"generatedAt":"2026-05-14T01:19:03.613Z","key":"emergent.scope.globalTick","total":1,"lastFiredAt":1778721344165,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-14T01:19:03.613Z","key":"emergent.repair.agent.tick","total":1,"lastFiredAt":1778721350235,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-14T01:19:03.613Z","key":"system.analogize","total":1,"lastFiredAt":1778721438177,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
