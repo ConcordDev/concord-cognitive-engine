@@ -26,6 +26,7 @@ import {
   normalizeWorldspec,
   validateWorldspec,
 } from "../lib/foundry/worldspec.js";
+import { compileWorldspec, buildConcordLinkAnchor } from "../lib/foundry/compiler.js";
 
 // ── Row <-> API shape ───────────────────────────────────────────────────────
 function rowToWorld(row) {
@@ -282,5 +283,153 @@ export default function registerFoundryMacros(register) {
       warnings: result.warnings,
       normalized: result.normalized,
     };
+  });
+
+  // ===== Phase 3 — Publish pipeline (overlay model) ==========================
+
+  /**
+   * foundry.publish — compile a draft worldspec into a real `worlds`
+   * row. The hybrid model's "overlay" half: the published game IS a
+   * first-class worlds row, driven by compiled rule_modulators /
+   * physics_modulators rather than an authored content directory.
+   *
+   * Hard-gated: the worldspec must validate (errors block) and have at
+   * least one non-stub system. Stub systems persist in the spec but
+   * don't activate until Phase 7 flips their status.
+   *
+   * input: { id }
+   * output: { ok, publishedWorldId, world, activatedSystems, skippedStubs, contentSeeds }
+   */
+  register("foundry", "publish", (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const creatorId = ctx?.actor?.userId || ctx?.actor?.id;
+    if (!creatorId) return { ok: false, reason: "no_actor" };
+    const id = String((input && input.id) || "");
+    if (!id) return { ok: false, reason: "missing_id" };
+
+    const row = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
+    if (!row) return { ok: false, reason: "not_found" };
+    if (row.creator_id !== creatorId) return { ok: false, reason: "not_owner" };
+    if (row.status === "published" && row.published_world_id) {
+      return { ok: false, reason: "already_published", publishedWorldId: row.published_world_id };
+    }
+
+    let rawSpec;
+    try { rawSpec = JSON.parse(row.worldspec_json); }
+    catch { rawSpec = emptyWorldspec(); }
+    const validation = validateWorldspec(rawSpec);
+    if (!validation.ok) {
+      return { ok: false, reason: "worldspec_invalid", errors: validation.errors, warnings: validation.warnings };
+    }
+    const worldspec = validation.normalized;
+    if (worldspec.systems.length === 0) {
+      return { ok: false, reason: "no_systems", hint: "select at least one system before publishing" };
+    }
+
+    const compiled = compileWorldspec(worldspec);
+    const worldId = `world-${randomUUID()}`;
+    const now = Date.now();
+
+    const publishTx = db.transaction(() => {
+      db.prepare(`
+        INSERT INTO worlds
+          (id, name, universe_type, description, physics_modulators, rule_modulators, created_by, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
+      `).run(
+        worldId,
+        row.name,
+        worldspec.theme.universeType,
+        row.description || worldspec.theme.displayName || "",
+        JSON.stringify(compiled.physics_modulators),
+        JSON.stringify(compiled.rule_modulators),
+        creatorId,
+      );
+
+      // Concord Link anchor — best-effort; a missing table must not
+      // abort the publish (the world is still valid without an anchor).
+      if (compiled.concordLinkAnchor) {
+        try {
+          const a = buildConcordLinkAnchor(worldId, row.name, compiled.concordLinkAnchor);
+          db.prepare(`
+            INSERT INTO concord_link_anchors
+              (id, world_id, name, access_method, description, location, controlled_by_faction, stability)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET access_method = excluded.access_method, stability = excluded.stability
+          `).run(a.id, a.world_id, a.name, a.access_method, a.description, a.location, a.controlled_by_faction, a.stability);
+        } catch (_e) { /* anchor table optional in some contexts */ }
+      }
+
+      db.prepare(`
+        UPDATE foundry_worlds
+        SET status = 'published', published_world_id = ?, updated_at = ?
+        WHERE id = ?
+      `).run(worldId, now, id);
+    });
+
+    try { publishTx(); }
+    catch (e) { return { ok: false, reason: "publish_failed", error: String(e?.message || e) }; }
+
+    const updated = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
+    return {
+      ok: true,
+      publishedWorldId: worldId,
+      world: rowToWorld(updated),
+      activatedSystems: compiled.activatedSystems,
+      skippedStubs: compiled.skippedStubs, // stub systems — activate once Phase 7 ships
+      contentSeeds: compiled.contentSeeds.map((c) => c.key), // declared; deep seeding is promote-tier
+    };
+  });
+
+  /**
+   * foundry.unpublish — take a published Foundry world back to draft.
+   * The overlay `worlds` row is deleted if nobody has visited it, or
+   * archived (status='archived') if it has visits — so live worlds
+   * people have used are never silently destroyed. The Concord Link
+   * anchor is removed best-effort.
+   * input: { id }
+   */
+  register("foundry", "unpublish", (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const creatorId = ctx?.actor?.userId || ctx?.actor?.id;
+    if (!creatorId) return { ok: false, reason: "no_actor" };
+    const id = String((input && input.id) || "");
+    if (!id) return { ok: false, reason: "missing_id" };
+
+    const row = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
+    if (!row) return { ok: false, reason: "not_found" };
+    if (row.creator_id !== creatorId) return { ok: false, reason: "not_owner" };
+    if (row.status !== "published" || !row.published_world_id) {
+      return { ok: false, reason: "not_published" };
+    }
+
+    const worldId = row.published_world_id;
+    let disposition = "deleted";
+    const unpublishTx = db.transaction(() => {
+      const w = db.prepare(`SELECT total_visits FROM worlds WHERE id = ?`).get(worldId);
+      if (w && Number(w.total_visits) > 0) {
+        db.prepare(`UPDATE worlds SET status = 'archived' WHERE id = ?`).run(worldId);
+        disposition = "archived";
+      } else if (w) {
+        db.prepare(`DELETE FROM worlds WHERE id = ?`).run(worldId);
+        disposition = "deleted";
+      } else {
+        disposition = "world_already_gone";
+      }
+      try { db.prepare(`DELETE FROM concord_link_anchors WHERE world_id = ?`).run(worldId); }
+      catch (_e) { /* anchor table optional */ }
+      db.prepare(`
+        UPDATE foundry_worlds
+        SET status = 'draft', published_world_id = NULL, updated_at = ?
+        WHERE id = ?
+      `).run(Date.now(), id);
+    });
+
+    try { unpublishTx(); }
+    catch (e) { return { ok: false, reason: "unpublish_failed", error: String(e?.message || e) }; }
+
+    const updated = db.prepare(`SELECT * FROM foundry_worlds WHERE id = ?`).get(id);
+    return { ok: true, disposition, formerWorldId: worldId, world: rowToWorld(updated) };
   });
 }
