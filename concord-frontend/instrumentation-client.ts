@@ -21,6 +21,25 @@ import { installR3FShim } from '@/lib/react18-internals-shim';
 // Long-term fix: upgrade @react-three/fiber to v9.
 installR3FShim();
 
+// Walkthrough hotfix — @monaco-editor/loader fires a window 'error'
+// Event when its CDN is unreachable (no body, no proper Error
+// object). The bare Event escapes React's render boundary and gets
+// counted as a fatal pageerror — crashing the /lenses/code lens for
+// every user without CDN access. Swallow Monaco-loader error events
+// specifically; surface everything else.
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (ev) => {
+    const target = ev?.target as { src?: string; tagName?: string } | null;
+    const src = target?.src ?? '';
+    if (target?.tagName === 'SCRIPT' && /monaco|@monaco-editor|jsdelivr|unpkg.*monaco|cdn.+monaco/i.test(src)) {
+      ev.stopImmediatePropagation();
+      ev.preventDefault();
+      // Quiet client-side log for ops.
+      console.warn('[Monaco] loader fetch failed, editor will be unavailable:', src);
+    }
+  }, true);
+}
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || '',
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,

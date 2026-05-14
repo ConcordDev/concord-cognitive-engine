@@ -1,8 +1,8 @@
 {
   "total": 230,
   "buckets": {
-    "green": 222,
-    "noisy": 6,
+    "green": 226,
+    "noisy": 2,
     "crashed": 2,
     "timeout": 0
   },
@@ -109,7 +109,7 @@
       "consoleErrorCount": 2,
       "firstError": "%o\n\n%s Error: Map container is already initialized.\n    at NewClass._initContainer (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:4206:12)\n    at NewClass.initialize (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:3248:10)\n    at new NewClass (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:301:22)\n    at eval (webpack-internal:///(app-pages-browser)/./node_modules/react-leaflet/lib/MapContainer.js:37:25)\n    at commitAttachRef (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:12612:44)\n    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)\n    at safelyAttachRef (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:12630:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14242:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14189:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14233:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14189:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14189:11)\n    at recursivelyTraverseReappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14322:9)\n    at reappearLayoutEffects (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14296:13)\n    at doubleInvokeEffectsOnFiber (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16565:11)\n    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:875:13)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16543:19)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17)\n    at recursivelyTraverseAndDoubleInvokeEffectsInDEV (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16536:17) The above error occurred in the <div> component. It was handled by the <LensErrorBoundary> error boundary.",
       "boundaryText": "⚠The atlas lens hit an errorSomething broke while rendering this surface. The error has been logged; you can try recovering without losing your data.technical detailsMap container is already initialized.\n\nError: Map container is already initialized.\n    at NewClass._initContainer (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:4206:12)\n    at NewClass.initialize (webpack-internal:///(app-pages-browser)/./node_modules/leaflet/dist/leaflet-src.js:3248:10)\n    at",
-      "durationMs": 54382
+      "durationMs": 9494
     },
     {
       "lens": "attention",
@@ -119,10 +119,9 @@
     },
     {
       "lens": "audit",
-      "bucket": "noisy",
-      "consoleErrorCount": 2,
-      "firstError": "Server error: {error: Internal server error}",
-      "durationMs": 26459
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 4930
     },
     {
       "lens": "automotive",
@@ -213,7 +212,7 @@
       "bucket": "crashed",
       "consoleErrorCount": 2,
       "firstError": "Event",
-      "durationMs": 19730
+      "durationMs": 29694
     },
     {
       "lens": "code-quality",
@@ -386,9 +385,9 @@
     {
       "lens": "docs",
       "bucket": "noisy",
-      "consoleErrorCount": 1,
+      "consoleErrorCount": 2,
       "firstError": "Server error: {error: Internal server error}",
-      "durationMs": 12826
+      "durationMs": 17004
     },
     {
       "lens": "dreams",
@@ -494,10 +493,9 @@
     },
     {
       "lens": "export",
-      "bucket": "noisy",
-      "consoleErrorCount": 2,
-      "firstError": "Server error: {error: Internal server error}",
-      "durationMs": 19835
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12640
     },
     {
       "lens": "fashion",
@@ -561,10 +559,9 @@
     },
     {
       "lens": "fork",
-      "bucket": "noisy",
-      "consoleErrorCount": 2,
-      "firstError": "Server error: {error: Internal server error}",
-      "durationMs": 15846
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12782
     },
     {
       "lens": "forum",
@@ -1091,9 +1088,9 @@
     {
       "lens": "reflection",
       "bucket": "noisy",
-      "consoleErrorCount": 1,
+      "consoleErrorCount": 2,
       "firstError": "Server error: {error: Internal server error}",
-      "durationMs": 19763
+      "durationMs": 14427
     },
     {
       "lens": "repos",
@@ -1307,10 +1304,9 @@
     },
     {
       "lens": "transfer",
-      "bucket": "noisy",
-      "consoleErrorCount": 2,
-      "firstError": "Server error: {error: Internal server error}",
-      "durationMs": 8966
+      "bucket": "green",
+      "consoleErrorCount": 0,
+      "durationMs": 12857
     },
     {
       "lens": "travel",
