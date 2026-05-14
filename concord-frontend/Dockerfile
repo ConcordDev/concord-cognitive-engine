@@ -22,6 +22,14 @@ RUN npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
 FROM base AS builder
 WORKDIR /app
 
+# libc6-compat must be present in the builder stage too — @sentry/cli
+# (loaded by withSentryConfig at next build time) ships a glibc binary
+# under @sentry/cli-linux-x64 and silently fails on alpine's musl libc.
+# Without this, `npx next build` exits 1 after the webpack pass without
+# emitting a useful TypeScript/lint error, which is the long-standing
+# Docker Build failure mode on main.
+RUN apk add --no-cache libc6-compat
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
