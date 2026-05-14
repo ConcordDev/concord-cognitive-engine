@@ -162,7 +162,7 @@ export const SYSTEM_REGISTRY = Object.freeze([
     displayName: 'Size Scaling (Ant-Man / Giant)',
     description: 'Player size as a core loop — shrink for stealth/flight access, grow for destruction/reach. Render scale + physics scale + combat scale.',
     worldScope: 'world',
-    status: 'stub', // Phase 7 — does not exist yet
+    status: 'available', // Phase 7 — built: server/lib/foundry/size-scaling.js
     activation: { kind: 'rule_modulator', key: 'size_scaling' },
     configSchema: {
       minScale: f.number('Minimum scale (%)', 5, 100, 15),
@@ -214,7 +214,7 @@ export const SYSTEM_REGISTRY = Object.freeze([
     displayName: 'Status Window (Isekai-Style)',
     description: 'World-adaptive character status panel — stats, titles, skills surfaced as a diegetic isekai-style overlay.',
     worldScope: 'world',
-    status: 'stub', // Phase 7
+    status: 'available', // Phase 7 — built
     activation: { kind: 'rule_modulator', key: 'status_window' },
     configSchema: {
       style: f.enum('Window style', ['classic-rpg', 'minimal', 'ornate', 'sci-fi-hud'], 'classic-rpg'),
@@ -248,7 +248,7 @@ export const SYSTEM_REGISTRY = Object.freeze([
     displayName: 'Per-Player Skill Learning',
     description: 'Skills a player uses heavily grow personal affinity that travels with them — distinct from the per-world multipliers.',
     worldScope: 'player',
-    status: 'stub', // Phase 7
+    status: 'available', // Phase 7 — built
     activation: { kind: 'always_on' },
     configSchema: {
       learnRate: f.number('Learn rate (%)', 25, 400, 100),
@@ -264,7 +264,7 @@ export const SYSTEM_REGISTRY = Object.freeze([
     displayName: 'Isekai Reincarnation',
     description: 'On death, a character can reincarnate into the world — carrying a fraction of prior progress as an inherited boon.',
     worldScope: 'world',
-    status: 'stub', // Phase 7
+    status: 'available', // Phase 7 — built
     activation: { kind: 'rule_modulator', key: 'reincarnation' },
     configSchema: {
       enabled: f.bool('Reincarnation enabled', true),
@@ -391,7 +391,7 @@ export const SYSTEM_REGISTRY = Object.freeze([
     displayName: 'Size-Scaled Combat',
     description: 'Combat mechanics that change with player scale — small = precision/evasion, large = AoE/knockback.',
     worldScope: 'world',
-    status: 'stub', // Phase 7 — rides on size-scaling
+    status: 'available', // Phase 7 — built: scaledCombatProfile in size-scaling.js
     activation: { kind: 'rule_modulator', key: 'size_combat' },
     configSchema: {
       smallDamageModel: f.enum('Small-scale damage', ['precision', 'evasion', 'swarm'], 'precision'),
