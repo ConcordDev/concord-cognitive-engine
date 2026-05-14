@@ -5713,6 +5713,10 @@ function authMiddleware(req, res, next) {
   // Gate 1 POST bypass: anonymous client telemetry pings (perf, error reports).
   if (req.method === "POST" && req.path === "/api/world/perf-telemetry") return next();
   if (req.method === "POST" && req.path === "/api/client-error") return next();
+  // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
+  // classifier (query intent + domain + projection rules) with zero DB
+  // writes — the POST sibling of the already-public /status GET.
+  if (req.method === "POST" && req.path === "/api/quality-pipeline/preview") return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
