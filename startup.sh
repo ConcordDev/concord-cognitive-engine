@@ -5,6 +5,8 @@
 # Usage:
 #   ./startup.sh              # Auto-detect: RunPod (pm2) or Docker Compose
 #   ./startup.sh --runpod     # RunPod / bare-metal with pm2
+#   ./startup.sh --cloudflare # RunPod/bare-metal behind a Cloudflare tunnel
+#                             # (requires TUNNEL_PUBLIC_URL set in .env)
 #   ./startup.sh --dev        # Dev mode (direct node, no pm2)
 #   ./startup.sh --recover    # Recovery mode (restore from latest backup)
 
@@ -54,17 +56,45 @@ if [ "${NODE_ENV:-}" = "production" ] && [ "${1:-}" != "--dev" ]; then
   fi
 fi
 
-# ── RunPod: auto-fill ALLOWED_ORIGINS from RUNPOD_PUBLIC_URL ─────────────────
-if $IS_RUNPOD && [ -n "${RUNPOD_PUBLIC_URL:-}" ]; then
-  # Strip trailing slash
-  BASE_URL="${RUNPOD_PUBLIC_URL%/}"
-  export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-$BASE_URL}"
-  export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-$BASE_URL}"
-  export NEXT_PUBLIC_SOCKET_URL="${NEXT_PUBLIC_SOCKET_URL:-$BASE_URL}"
+# ── Cloudflare tunnel detection ──────────────────────────────────────────────
+# When the pod is fronted by a Cloudflare tunnel (or any reverse proxy on a
+# custom domain), the public URL is NOT the *.proxy.runpod.net address. Set
+# TUNNEL_PUBLIC_URL in .env — or pass --cloudflare with it set — and the
+# public-facing vars below are derived from the tunnel domain instead of
+# RUNPOD_PUBLIC_URL.
+USE_TUNNEL=false
+for _arg in "$@"; do
+  [ "$_arg" = "--cloudflare" ] && USE_TUNNEL=true
+done
+[ -n "${TUNNEL_PUBLIC_URL:-}" ] && USE_TUNNEL=true
+if $USE_TUNNEL && [ -z "${TUNNEL_PUBLIC_URL:-}" ]; then
+  log "ERROR: --cloudflare given but TUNNEL_PUBLIC_URL is not set in .env"
+  log "  Set TUNNEL_PUBLIC_URL=https://your-tunnel-domain.example then re-run."
+  exit 1
+fi
+
+# ── Auto-fill public-facing vars ─────────────────────────────────────────────
+# Precedence: TUNNEL_PUBLIC_URL (Cloudflare / reverse proxy) > RUNPOD_PUBLIC_URL.
+# Every var still respects an explicit value already in .env (the ${VAR:-...}
+# default only fills when blank), so a hand-set value is never clobbered.
+PUBLIC_BASE_URL=""
+if $USE_TUNNEL; then
+  PUBLIC_BASE_URL="${TUNNEL_PUBLIC_URL%/}"
+  log "Public ingress: Cloudflare tunnel — $PUBLIC_BASE_URL"
+elif $IS_RUNPOD && [ -n "${RUNPOD_PUBLIC_URL:-}" ]; then
+  PUBLIC_BASE_URL="${RUNPOD_PUBLIC_URL%/}"
+  log "Public ingress: RunPod proxy — $PUBLIC_BASE_URL"
+fi
+if [ -n "$PUBLIC_BASE_URL" ]; then
+  export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-$PUBLIC_BASE_URL}"
+  export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-$PUBLIC_BASE_URL}"
+  export NEXT_PUBLIC_SOCKET_URL="${NEXT_PUBLIC_SOCKET_URL:-$PUBLIC_BASE_URL}"
   # Cookie domain = hostname only
-  DOMAIN=$(echo "$BASE_URL" | sed 's|https\?://||' | cut -d'/' -f1)
+  DOMAIN=$(echo "$PUBLIC_BASE_URL" | sed 's|https\?://||' | cut -d'/' -f1)
   export COOKIE_DOMAIN="${COOKIE_DOMAIN:-$DOMAIN}"
-  log "RunPod URL: $BASE_URL (domain: $DOMAIN)"
+  log "  ALLOWED_ORIGINS=$ALLOWED_ORIGINS"
+  log "  NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL"
+  log "  COOKIE_DOMAIN=$COOKIE_DOMAIN"
 fi
 
 # ── Recovery mode ─────────────────────────────────────────────────────────────
@@ -100,7 +130,7 @@ if [ "${1:-}" = "--dev" ]; then
 fi
 
 # ── RunPod / bare-metal: pm2 ──────────────────────────────────────────────────
-if $IS_RUNPOD || [ "${1:-}" = "--runpod" ]; then
+if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; then
   log "Starting with pm2 (RunPod / bare-metal)..."
 
   # Check pm2 installed
@@ -121,10 +151,22 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ]; then
   # Install deps if needed
   [ ! -d server/node_modules ] && { log "Installing server deps..."; (cd server && npm install --production); }
 
-  # Build frontend if needed
+  # Build frontend if needed. NEXT_PUBLIC_* are baked into the bundle at
+  # build time, so a build produced for a different public URL (e.g. switched
+  # from the RunPod proxy to a Cloudflare tunnel) is stale and must be rebuilt.
+  # Stamp the URL each build used and compare on every start.
+  BUILD_STAMP="concord-frontend/.next/.concord-public-url"
+  NEED_BUILD=false
   if [ ! -d concord-frontend/.next/standalone ]; then
-    log "Building frontend..."
+    NEED_BUILD=true
+  elif [ "$(cat "$BUILD_STAMP" 2>/dev/null || echo)" != "${NEXT_PUBLIC_API_URL:-}" ]; then
+    log "Frontend bundle was built for a different public URL — rebuilding..."
+    NEED_BUILD=true
+  fi
+  if $NEED_BUILD; then
+    log "Building frontend (NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-<unset>})..."
     (cd concord-frontend && npm install && npm run build)
+    echo "${NEXT_PUBLIC_API_URL:-}" > "$BUILD_STAMP"
   fi
 
   # Start or restart with RunPod env

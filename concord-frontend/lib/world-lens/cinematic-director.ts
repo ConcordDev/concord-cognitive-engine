@@ -39,7 +39,7 @@ export interface CameraShot {
   subject?:      string;
   target_npc?:   string;
   duration_ms:   number;
-  easing?:       'linear' | 'ease_in_quad' | 'ease_out_quad' | 'ease_in_out_quad' | 'ease_in_out_cubic';
+  easing?:       'linear' | 'ease_in_quad' | 'ease_out_quad' | 'ease_in_out_quad' | 'ease_in_cubic' | 'ease_out_cubic' | 'ease_in_out_cubic';
   /** Time scale during this shot. 1 = normal, 0.2 = slow-mo, 0 = pause. */
   time_scale?:   number;
   /** Music stem layer to enable for this shot (EE3 hooks here). */
