@@ -1,12 +1,16 @@
 # Frontend Dockerfile
+# Uses node:20-bookworm-slim (Debian glibc) rather than alpine: the
+# Next.js toolchain pulls glibc-linked native binaries (@next/swc,
+# @sentry/cli) and alpine's musl libc is a recurring source of silent
+# build breakage. Debian-slim trades ~40MB of image size for a
+# build/runtime environment that matches the host CI runners.
 # To fully pin with SHA256 digest (recommended for production):
-#   docker pull node:20-alpine && docker inspect --format='{{index .RepoDigests 0}}' node:20-alpine
-# Then replace: FROM node:20-alpine@sha256:<digest> AS base
-FROM node:20-alpine AS base
+#   docker pull node:20-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:20-bookworm-slim
+# Then replace: FROM node:20-bookworm-slim@sha256:<digest> AS base
+FROM node:20-bookworm-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 ENV npm_config_cache=/tmp/npm-cache
 
@@ -21,14 +25,6 @@ RUN npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-
-# libc6-compat must be present in the builder stage too — @sentry/cli
-# (loaded by withSentryConfig at next build time) ships a glibc binary
-# under @sentry/cli-linux-x64 and silently fails on alpine's musl libc.
-# Without this, `npx next build` exits 1 after the webpack pass without
-# emitting a useful TypeScript/lint error, which is the long-standing
-# Docker Build failure mode on main.
-RUN apk add --no-cache libc6-compat
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -47,14 +43,10 @@ ENV CI_SKIP_LINT_IN_BUILD=$CI_SKIP_LINT_IN_BUILD
 
 # Build Next.js app
 # Skip prophet-check (requires ../server which isn't in the Docker context).
-# Bump Node heap to 8GB — default ~3.8GB OOMs on the full 1.3M-line
-# codebase + 175 lenses + Sentry webpack passes. The direct-node
-# build step in ci.yml uses 6GB, but buildkit-inside-Docker shares
-# the runner's 16GB with the daemon + cache restore + alpine
-# container overhead; 6GB is on the edge and Docker Build has been
-# flaking exit-1 (silent OOM) for several main commits. 8GB leaves
-# ~6GB headroom for daemon + cache on the 16GB Linux runner.
-RUN NODE_OPTIONS="--max-old-space-size=8192" npx next build
+# Bump Node heap to 6GB — default ~3.8GB OOMs on the full 1.3M-line
+# codebase + 175 lenses + Sentry webpack passes. Same fix as ci.yml's
+# direct-node build step.
+RUN NODE_OPTIONS="--max-old-space-size=6144" npx next build
 
 # Production image, copy all the files and run next
 FROM base AS runner
@@ -64,9 +56,11 @@ ENV NODE_ENV=production
 ENV NEXT_CACHE_DIR=/data/next-cache
 ENV npm_config_cache=/data/npm-cache
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create non-root user. groupadd/useradd are from the `passwd` package
+# (always present in debian-slim); the alpine busybox addgroup/adduser
+# flag syntax does not carry over.
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs nextjs
 RUN mkdir -p /data/next-cache /data/npm-cache
 RUN chown -R nextjs:nodejs /data
 

@@ -4,23 +4,26 @@
  * module ensures the matching authored sequence beats the generic
  * auto-template.
  *
- * Bundles every JSON in content/cinematics/ at build time via Next's
- * static-asset import — no fetch round-trip needed.
+ * Bundles every JSON in concord-frontend/content/cinematics/ at build
+ * time via Next's static-asset import — no fetch round-trip needed.
+ * These JSON files live inside the frontend tree (not the repo-root
+ * content/ dir) so they're present inside the Docker build context,
+ * whose root is ./concord-frontend.
  */
 
 import { registerSequence, type CinematicSequence } from './cinematic-director';
 
-import questLatticeRealised   from '../../../content/cinematics/quest-lattice-realised.json';
-import questEcologyRealised   from '../../../content/cinematics/quest-ecology-realised.json';
-import warDeclared            from '../../../content/cinematics/war-declared.json';
-import townCaptured           from '../../../content/cinematics/town-captured.json';
-import kingdomTakeover        from '../../../content/cinematics/kingdom-takeover.json';
-import rebellionFired         from '../../../content/cinematics/rebellion-fired.json';
-import bossArrival            from '../../../content/cinematics/boss-arrival.json';
-import velaReveal             from '../../../content/cinematics/vela-reveal.json';
-import arkArchiveUnlock       from '../../../content/cinematics/ark-archive-unlock.json';
-import heirAcceded            from '../../../content/cinematics/heir-acceded.json';
-import concordiaDeepCold      from '../../../content/cinematics/concordia-deep-cold.json';
+import questLatticeRealised   from '../../content/cinematics/quest-lattice-realised.json';
+import questEcologyRealised   from '../../content/cinematics/quest-ecology-realised.json';
+import warDeclared            from '../../content/cinematics/war-declared.json';
+import townCaptured           from '../../content/cinematics/town-captured.json';
+import kingdomTakeover        from '../../content/cinematics/kingdom-takeover.json';
+import rebellionFired         from '../../content/cinematics/rebellion-fired.json';
+import bossArrival            from '../../content/cinematics/boss-arrival.json';
+import velaReveal             from '../../content/cinematics/vela-reveal.json';
+import arkArchiveUnlock       from '../../content/cinematics/ark-archive-unlock.json';
+import heirAcceded            from '../../content/cinematics/heir-acceded.json';
+import concordiaDeepCold      from '../../content/cinematics/concordia-deep-cold.json';
 
 const ALL_SEQUENCES = [
   questLatticeRealised,
