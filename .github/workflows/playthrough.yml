@@ -58,6 +58,10 @@ jobs:
           DB_PATH: ./data/concord.test.db
           PORT: 5050
           JWT_SECRET: test_secret_for_e2e_playthrough_phase_z
+          # The spec's beforeAll registers a fresh test user every run;
+          # the per-IP daily registration cap (3/day) would 429 it after
+          # a few CI runs. Same flag ci.yml sets to relax rate limits.
+          CONCORD_RATE_LIMIT_BYPASS: '1'
 
       - name: Wait for server
         run: |

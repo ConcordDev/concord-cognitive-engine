@@ -119,6 +119,10 @@ jobs:
           PORT: 5050
           CONCORD_NO_LISTEN: "false"
           JWT_SECRET: test-secret-only-for-ci
+          # Relax rate limits + the per-IP daily registration cap so any
+          # auth-backed visual spec can mint test users from the single
+          # runner IP without 429ing mid-suite.
+          CONCORD_RATE_LIMIT_BYPASS: "1"
           # Skip 5-brain Ollama init in CI (no Ollama service running).
           # Same fix shape as platinum-security + platinum-performance +
           # main CI + ZAP — initFiveBrains() probes 5 instances at ~15s
