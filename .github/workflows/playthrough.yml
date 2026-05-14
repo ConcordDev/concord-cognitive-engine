@@ -70,11 +70,15 @@ jobs:
             sleep 2
           done
 
-      - name: Build + start frontend (background)
+      # Build the prod artifact only — do NOT start the frontend here.
+      # playwright.config.ts owns the webServer (`npm run start:ci` on
+      # :3000, reuseExistingServer:false in CI). Pre-starting it here
+      # caused playwright to fail at launch with "http://localhost:3000
+      # is already used". Same shape as ci.yml's E2E Core job: build,
+      # then let playwright manage the server.
+      - name: Build frontend (production)
         working-directory: ./concord-frontend
-        run: |
-          npm run build
-          nohup npm start > frontend.log 2>&1 &
+        run: npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5050
           # Default Node heap (~3.8GB) OOMs the Next.js prod compile
@@ -82,17 +86,14 @@ jobs:
           # ci.yml / lighthouse.yml / platinum-performance.yml.
           NODE_OPTIONS: --max-old-space-size=6144
 
-      - name: Wait for frontend
-        run: |
-          for i in {1..30}; do
-            curl -fsS http://localhost:3000 && break
-            sleep 2
-          done
-
       - name: Run playthrough
         working-directory: ./concord-frontend
+        # playwright.config.ts's webServer block starts `npm run start:ci`
+        # on :3000 and waits for it before any spec runs — no manual
+        # frontend boot or readiness poll needed.
         run: npx playwright test tests/e2e/playthrough.spec.ts
         env:
+          CI: 'true'
           PLAYWRIGHT_BASE_URL: http://localhost:3000
 
       - name: Upload screenshots
