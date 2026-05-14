@@ -19,8 +19,9 @@ data/
 ### `data/concord.db`
 
 The primary SQLite database. Schema is managed by numbered migration files in
-`server/migrations/` (e.g. `001_core_tables.js` through `030_repair_enhanced.js`).
-Migrations run automatically on server startup via `server/migrate.js`.
+`server/migrations/` (`001_core_tables.js` through `192_foundry_phase7.js` — 192
+numbered migrations at HEAD). Migrations run automatically on server startup via
+`server/migrate.js`.
 
 To export the current schema to SQL:
 

@@ -46,7 +46,7 @@ update feed-manager polling interval default
    concord-frontend/app/lenses/{domain}/page.tsx
    ```
 
-2. **Register it** in `concord-frontend/lib/lens-registry.ts` (176+ lenses already registered — follow the existing pattern).
+2. **Register it** in `concord-frontend/lib/lens-registry.ts` (232 lenses already registered — follow the existing pattern).
 
 3. **Use `LensPageShell`** — do NOT copy-paste boilerplate from other pages:
 
@@ -81,7 +81,7 @@ CI runs `npm run validate-lens-quality` — it will fail if the lens is register
 
 ## Adding a Server Route
 
-The server is mid-extraction: `server.js` (61k lines) is being split into `server/routes/` (79 files done). New routes go in the new structure.
+The server is mid-extraction: `server.js` (70k lines) is being split into `server/routes/` (131 files done). New routes go in the new structure.
 
 **New namespace:**
 

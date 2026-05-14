@@ -4,17 +4,19 @@
 
 Concord runs five Ollama instances tuned for the **NVIDIA RTX PRO 4500 Blackwell** (32GB GDDR7, 5th-gen tensor cores). Override any model via env var.
 
-| Brain | Default model (q4_K_M) | VRAM | Port | Role |
+| Brain | Default model | VRAM | Port | Role |
 |-------|---|---|---|---|
-| Conscious | `qwen2.5:32b-instruct-q4_K_M` | ~18GB | 11434 | Chat, deep reasoning, council deliberation |
-| Subconscious | `qwen2.5:7b-instruct-q5_K_M` | ~5GB | 11435 | Autogen, dream, evolution, synthesis, birth |
-| Utility | `qwen2.5:3b-instruct-q5_K_M` | ~2GB | 11436 | Lens interactions, entity actions, quick tasks (~65% of requests) |
-| Repair | `qwen2.5:1.5b-instruct-q5_K_M` | ~1GB | 11437 | Error detection, auto-fix, runtime repair |
+| Conscious | `concord-conscious:latest` (custom Ollama model built on qwen2.5) | ~18GB | 11434 | Chat, deep reasoning, council deliberation |
+| Subconscious | `qwen2.5:7b-instruct-q4_K_M` | ~5GB | 11435 | Autogen, dream, evolution, synthesis, birth |
+| Utility | `qwen2.5:3b` | ~2GB | 11436 | Lens interactions, entity actions, quick tasks (~65% of requests) |
+| Repair | `qwen2.5:0.5b` | ~1GB | 11437 | Error detection, auto-fix, runtime repair |
 | Vision (multimodal) | `llava:13b-v1.6-vicuna-q4_K_M` | ~9GB | 11438 | Image understanding, food vision, doc layout |
+
+All five default models are env-overridable (see `server/lib/brain-config.js`).
 
 All five Ollama services run with `OLLAMA_FLASH_ATTENTION=1` + `OLLAMA_KV_CACHE_TYPE=q8_0` for tensor-core acceleration and halved KV cache.
 
-`ctx.llm.chat()` routes to the conscious brain (Ollama-first sovereignty principle). If conscious fails AND `OPENAI_API_KEY` is configured, OpenAI serves as emergency cloud fallback (`server.js:11157-11210`); subconscious does NOT serve as the chat fallback path. `initFiveBrains()` probes all five on startup and auto-pulls missing models. Vision queries route through `server/lib/vision-inference.js#callVision` reading `BRAIN_VISION_URL`. `BRAIN_PRIORITY` (`server/lib/brain-config.js:131`) — `repair: 0, conscious: 1, subconscious: 2, multimodal: 2, utility: 3` — feeds the LLM queue priority.
+`ctx.llm.chat()` routes to the conscious brain (Ollama-first sovereignty principle). If conscious fails, the subconscious brain serves as the chat fallback path. There is no OpenAI emergency cloud fallback — that path was removed ("drop OpenAI relics"). When a user supplies their own external API key, their individual brain slots route per-slot through the BYO (bring-your-own) key router (migration 170 `byo_brain_overrides`). `initFiveBrains()` probes all five on startup and auto-pulls missing models. Vision queries route through `server/lib/vision-inference.js#callVision` reading `BRAIN_VISION_URL`. `BRAIN_PRIORITY` (`server/lib/brain-config.js:131`) — `repair: 0, conscious: 1, subconscious: 2, multimodal: 2, utility: 3` — feeds the LLM queue priority.
 
 ## DTU Lifecycle
 
@@ -42,10 +44,10 @@ Forgetting (unconsolidatable DTUs only)
 
 ### Consolidation Constants (Hardware-Derived)
 
-- Memory ceiling: ~170,000 DTUs in-heap (1.3GB available)
-- Consolidation runs every 30 ticks (~7.5 minutes)
+- No hard DTU ceiling; memory pressure is governed against `MAX_OLD_SPACE_SIZE` (~1.5M DTU capacity with the 32GB-heap default)
+- Consolidation runs inline on the heartbeat every 30 ticks (~7.5 minutes)
 - MEGA: 5-20 regular DTUs → 1 consolidated MEGA
-- HYPER: 3-10 MEGAs → 1 meta-consolidated HYPER
+- HYPER: 50-200 originals → 1 meta-consolidated HYPER
 - Effective compression ratio: ~33:1 (regular → HYPER)
 - Forgetting engine only handles unconsolidatable noise
 

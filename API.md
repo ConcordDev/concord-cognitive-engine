@@ -107,7 +107,7 @@ Modes: `overview` (default), `deep`, `creative`.
 
 Response:
 ```json
-{"ok": true, "reply": "...", "meta": {"model": "qwen2.5:14b-instruct-q4_K_M", "tokens": 342}}
+{"ok": true, "reply": "...", "meta": {"model": "concord-conscious:latest", "tokens": 342}}
 ```
 
 ### POST /api/chat (streaming)

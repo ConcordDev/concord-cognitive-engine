@@ -35,7 +35,7 @@ This document is the pre-deploy checklist for shipping a Concord instance to a r
 
 ## Database
 
-- [ ] All migrations applied: `npm run migrate:status` shows latest = 137 (Phase 5e).
+- [ ] All migrations applied: `npm run migrate:status` shows latest = 192 (`192_foundry_phase7.js`).
 - [ ] `better-sqlite3` build is current (rebuilds happen automatically; verify after Node version changes).
 - [ ] WAL mode enabled (default, but verify: `PRAGMA journal_mode;` returns `wal`).
 - [ ] Daily backup script wired (cron + the existing backup-restore round-trip test confirms recovery).

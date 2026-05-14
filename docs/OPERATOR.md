@@ -21,7 +21,7 @@ You can run on lower specs; performance scales with cuts to brain quality and co
 git clone https://github.com/<your-fork>/concord-cognitive-engine
 cd concord-cognitive-engine
 ./setup.sh                  # installs deps + creates data dirs + .env + runs migrations
-docker-compose up           # starts backend + frontend + 4 Ollama instances + LLaVA
+docker-compose up           # starts the full 13-service stack (backend + frontend + nginx + certbot + prometheus + grafana + redis + qdrant + 5 Ollama brains)
 ```
 
 ### RunPod + Cloudflare Tunnel (recommended for solo operators)
