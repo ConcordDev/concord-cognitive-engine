@@ -124,7 +124,7 @@ export function stepFlight(
 
   // Vertical velocity. Glide descent floor, modified by lift, plus
   // stall drop.
-  let vy = clamp(state.vy + (wind?.lift ?? 0) * dt - (stalled ? GRAVITY_FALLBACK * 0.5 * dt : 0),
+  const vy = clamp(state.vy + (wind?.lift ?? 0) * dt - (stalled ? GRAVITY_FALLBACK * 0.5 * dt : 0),
                   stalled ? -GRAVITY_FALLBACK : GLIDE_DESCENT_CAP, // floor
                   4.0); // cap on climb
 

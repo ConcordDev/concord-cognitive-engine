@@ -60,12 +60,14 @@ function getNemesisRowsForWorld(db, worldId, userId, originX, originZ, radius) {
     let stress = null;
     try {
       const s = db.prepare(`SELECT stress, updated_at, coping_trait FROM npc_stress WHERE npc_id = ?`).get(r.npcId);
-      if (s) stress = {
-        level: Math.round((s.stress ?? 0) / 10),
-        raw: s.stress,
-        copingTrait: s.coping_trait,
-        updatedAt: s.updated_at,
-      };
+      if (s) {
+        stress = {
+          level: Math.round((s.stress ?? 0) / 10),
+          raw: s.stress,
+          copingTrait: s.coping_trait,
+          updatedAt: s.updated_at,
+        };
+      }
     } catch { /* npc_stress may be absent */ }
 
     // Active scheme against this player (mig 155). Schemer is keyed via

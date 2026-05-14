@@ -73,6 +73,10 @@ jobs:
           nohup npm start > frontend.log 2>&1 &
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5050
+          # Default Node heap (~3.8GB) OOMs the Next.js prod compile
+          # of the 200+-lens codebase + Sentry webpack passes; matches
+          # ci.yml / lighthouse.yml / platinum-performance.yml.
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Wait for frontend
         run: |

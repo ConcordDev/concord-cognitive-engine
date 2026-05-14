@@ -28935,11 +28935,13 @@ if (db) {
       const here = path.dirname(url.fileURLToPath(import.meta.url));
       const repoRoot = path.resolve(here, "..");
       const r = seedKingdoms(db, { repoRoot });
-      if (r.ok) console.log("[kingdom-seeder]", JSON.stringify({
-        realms: r.realms_created,
-        territories: r.territories_seeded,
-        citizens: r.citizens_seeded,
-      }));
+      if (r.ok) {
+        console.log("[kingdom-seeder]", JSON.stringify({
+          realms: r.realms_created,
+          territories: r.territories_seeded,
+          citizens: r.citizens_seeded,
+        }));
+      }
     } catch (e) { console.warn("[kingdom-seeder]", e.message); }
     // Phase 6 — seed creature sleep patterns (per-species circadian
     // table). Idempotent. Spawner reads this to gate home-vs-roam.
