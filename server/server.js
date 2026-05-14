@@ -835,6 +835,8 @@ import { runCouncilVoices, getAllVoices as getAllCouncilVoices } from "./emergen
 
 // ── Brain Prompt Builders & Want Engine ────────────────────────────────────────
 import { buildConsciousPrompt, getConsciousParams } from "./prompts/conscious.js";
+import { humanize as personaHumanize } from "./lib/persona/humanizer.js";
+import { persistIdiolect as personaPersistIdiolect, getIdiolectSamples as personaGetIdiolectSamples } from "./lib/persona/idiolect-store.js";
 import { buildSubconsciousPrompt, getSubconsciousParams, SUBCONSCIOUS_MODES } from "./prompts/subconscious.js";
 import { buildUtilityPrompt, getUtilityParams } from "./prompts/utility.js";
 import { buildRepairPrompt, getRepairParams } from "./prompts/repair.js";
@@ -16158,6 +16160,14 @@ async function consciousChat(userMessage, lens = null, options = {}) {
         recordEconomicsEvent({ type: "retrieval", inferenceMs: elapsed, userId });
         try { recordQueryMethod(STATE, "retrieval_sufficient"); } catch (_e) { logger.debug('server', 'learning metrics not critical', { error: _e?.message }); }
 
+        // Humanize utility-brain output too — the 3B model is more prone
+        // to LLM tells than the conscious brain.
+        try {
+          const intensity = options.voice_intensity || (lens === "code" || lens === "legal" || lens === "healthcare" ? "light" : "medium");
+          const hpass = personaHumanize(result.content, { intensity });
+          result.content = hpass.text || result.content;
+        } catch (_e) { logger.debug('server', 'humanizer best-effort', { error: _e?.message }); }
+
         try {
           const ctx = makeInternalCtx("system");
           await runMacro("dtu", "create", {
@@ -16169,6 +16179,18 @@ async function consciousChat(userMessage, lens = null, options = {}) {
           }, ctx);
           BRAIN.utility.stats.dtusGenerated++;
         } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+        // Idiolect harvest on retrieval-path responses too.
+        try {
+          const ictx = makeInternalCtx("system");
+          await personaPersistIdiolect({
+            runMacro,
+            ctx: ictx,
+            response: result.content,
+            userId,
+            lens,
+          });
+        } catch (_e) { logger.debug('server', 'idiolect persist best-effort', { error: _e?.message }); }
 
         return result;
       }
@@ -16250,6 +16272,13 @@ async function consciousChat(userMessage, lens = null, options = {}) {
     // Use comprehensive conscious brain prompt builder
     const personalityState = typeof getPersonality === "function" ? getPersonality(STATE) : null;
     const highWants = typeof getActiveWants === "function" ? (getActiveWants(STATE)?.wants || []).filter(w => w.intensity >= 0.6) : [];
+    // Pull voice exemplars (past Concord sentences that survived the
+    // AI-tell blocklist) so the prompt biases toward Concord's own
+    // idiolect instead of the median LLM register.
+    let voiceExemplars = [];
+    try {
+      voiceExemplars = personaGetIdiolectSamples({ STATE, n: 4 });
+    } catch (_e) { logger.debug('server', 'idiolect sample best-effort', { error: _e?.message }); }
     system = buildConsciousPrompt({
       dtu_count: contextCount,
       domain_count: STATE.dtus ? new Set(Array.from(STATE.dtus.values()).flatMap(d => d.tags || [])).size : 0,
@@ -16257,6 +16286,8 @@ async function consciousChat(userMessage, lens = null, options = {}) {
       context,
       personality_state: personalityState,
       active_wants: highWants,
+      voice_exemplars: voiceExemplars,
+      conversation_history: options.conversation_history || [],
     });
   }
 
@@ -16281,6 +16312,24 @@ async function consciousChat(userMessage, lens = null, options = {}) {
   try { recordQueryMethod(STATE, "llm_required"); } catch (_e) { logger.debug('server', 'learning metrics not critical', { error: _e?.message }); }
 
   if (result.ok && result.content) {
+    // ── Persona humanizer pass ─────────────────────────────────────
+    // Strip AI-tell openers/phrases, break tricolons, kill neg-parallelism,
+    // and rebalance burstiness BEFORE the response is persisted or returned.
+    // Intensity defaults to "medium" for chat; lens-specific overrides can
+    // pass options.voice_intensity ("light" for code/legal/healthcare where
+    // precision matters more than persona, "heavy" for casual lenses).
+    let humanizedContent = result.content;
+    let humanizerChanges = [];
+    let humanizerStats = null;
+    try {
+      const intensity = options.voice_intensity || (lens === "code" || lens === "legal" || lens === "healthcare" ? "light" : "medium");
+      const hpass = personaHumanize(result.content, { intensity });
+      humanizedContent = hpass.text || result.content;
+      humanizerChanges = hpass.changes || [];
+      humanizerStats = hpass.stats || null;
+      result.content = humanizedContent;
+    } catch (_e) { logger.debug('server', 'humanizer best-effort', { error: _e?.message }); }
+
     // Build sources list for the response
     const sources = webResults.map(wr => ({
       type: "web",
@@ -16296,19 +16345,36 @@ async function consciousChat(userMessage, lens = null, options = {}) {
       const ctx = makeInternalCtx("system");
       await runMacro("dtu", "create", {
         title: `Chat: ${userMessage.slice(0, 80)}`,
-        creti: result.content,
+        creti: humanizedContent,
         tags: [lens, "conscious", "chat", webResults.length > 0 ? "web-augmented" : null].filter(Boolean),
         source: "conscious.chat",
         meta: {
           brainSource: "conscious", confidence: 0.7, tokens: result.tokens,
           webAugmented: webResults.length > 0,
           webSources: sources.length > 0 ? sources.map(s => s.url) : undefined,
+          humanizerChanges: humanizerChanges.length,
+          voiceStats: humanizerStats,
         },
       }, ctx);
       BRAIN.conscious.stats.dtusGenerated++;
     } catch (e) {
       structuredLog("warn", "conscious_dtu_save_failed", { error: String(e?.message || e) });
     }
+
+    // ── Idiolect harvest ───────────────────────────────────────────
+    // Extract up to 2 distinctive Concord sentences from THIS response
+    // and persist as `voice:idiolect` DTUs so future prompt builds can
+    // surface them as voice exemplars. Best-effort; never throws.
+    try {
+      const ictx = makeInternalCtx("system");
+      await personaPersistIdiolect({
+        runMacro,
+        ctx: ictx,
+        response: humanizedContent,
+        userId,
+        lens,
+      });
+    } catch (_e) { logger.debug('server', 'idiolect persist best-effort', { error: _e?.message }); }
 
     // Knowledge loop: save web sources as DTUs so future similar queries are answered from substrate
     if (webResults.length > 0) {
