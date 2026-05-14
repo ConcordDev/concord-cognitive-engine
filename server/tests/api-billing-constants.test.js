@@ -172,7 +172,7 @@ describe("API_PRICING", () => {
     });
 
     it("read cost is lowest non-zero", () => {
-      assert.strictEqual(cats.read.costPerCall, 0.0001);
+      assert.strictEqual(cats.read.costPerCall, 0.0002);
     });
 
     it("write cost is higher than read", () => {
@@ -182,7 +182,7 @@ describe("API_PRICING", () => {
 
     it("compute cost is highest", () => {
       assert.ok(cats.compute.costPerCall > cats.write.costPerCall);
-      assert.strictEqual(cats.compute.costPerCall, 0.01);
+      assert.strictEqual(cats.compute.costPerCall, 0.005);
     });
 
     it("storage has both per-call and per-MB cost", () => {

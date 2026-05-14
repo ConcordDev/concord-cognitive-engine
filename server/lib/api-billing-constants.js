@@ -61,10 +61,19 @@ export const API_KEY_SYSTEM = Object.freeze({
 });
 
 // ── API Pricing — Per Call Metering ──────────────────────────────────
+//
+// Anchored to GPT-4.1-mini token pricing ($0.40 / 1M input,
+// $1.60 / 1M output). Concord Coin is USD-pegged 1:1
+// (economy/coin-service.js — coins minted == USD received), so these
+// per-call CC figures are effectively dollars. The three tiers map onto
+// what a light / typical / heavy 4.1-mini call costs:
+//   read    $0.0002  ≈ a ~200-in / ~100-out call
+//   write   $0.001   ≈ a ~1k-in  / ~500-out call
+//   compute $0.005   ≈ a ~4k-in  / ~2k-out  call
 export const API_PRICING = Object.freeze({
   categories: {
     read: {
-      costPerCall: 0.0001,
+      costPerCall: 0.0002,
       examples: [
         "GET /api/dtu/:id",
         "GET /api/search",
@@ -83,7 +92,7 @@ export const API_PRICING = Object.freeze({
       ],
     },
     compute: {
-      costPerCall: 0.01,
+      costPerCall: 0.005,
       examples: [
         "POST /api/consolidate",
         "POST /api/meta-derive",
@@ -175,10 +184,10 @@ export const API_BALANCE_ALERTS = Object.freeze({
 
 // ── Flat Constants ───────────────────────────────────────────────────
 export const API_CONSTANTS = Object.freeze({
-  // Pricing
-  READ_COST: 0.0001,
+  // Pricing — anchored to GPT-4.1-mini token rates (see API_PRICING above).
+  READ_COST: 0.0002,
   WRITE_COST: 0.001,
-  COMPUTE_COST: 0.01,
+  COMPUTE_COST: 0.005,
   STORAGE_CALL_COST: 0.0005,
   STORAGE_PER_MB_COST: 0.001,
   CASCADE_COST: 0,

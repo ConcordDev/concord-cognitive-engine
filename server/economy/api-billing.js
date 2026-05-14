@@ -437,10 +437,16 @@ function distributeFees(db, usageId, cost) {
 
   const C = API_CONSTANTS;
   const id = uid("afd");
-  const treasuryAmount = Math.round(cost * C.TREASURY_SHARE * 10000) / 10000;
-  const infraAmount = Math.round(cost * C.INFRA_SHARE * 10000) / 10000;
-  const payrollAmount = Math.round(cost * C.PAYROLL_SHARE * 10000) / 10000;
-  const opsAmount = Math.round(cost * C.OPS_SHARE * 10000) / 10000;
+  // Round the first three shares to 4dp; the last share (ops) takes the
+  // remainder so the four always reconcile exactly to `cost`. Rounding
+  // each share independently drifts when the split doesn't land on 4dp
+  // boundaries — e.g. a $0.005 compute call splits to 0.00375/0.0005/
+  // 0.0005/0.00025 and the naive sum lost/gained a fraction of a cent.
+  const round4 = (n) => Math.round(n * 10000) / 10000;
+  const treasuryAmount = round4(cost * C.TREASURY_SHARE);
+  const infraAmount = round4(cost * C.INFRA_SHARE);
+  const payrollAmount = round4(cost * C.PAYROLL_SHARE);
+  const opsAmount = round4(cost - treasuryAmount - infraAmount - payrollAmount);
   const now = nowISO();
 
   db.prepare(`

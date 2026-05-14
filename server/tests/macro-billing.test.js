@@ -18,12 +18,14 @@ import Database from "better-sqlite3";
 
 import * as mig002 from "../migrations/002_economy_tables.js";
 import * as mig004 from "../migrations/004_ledger_idempotency.js";
+import * as mig017 from "../migrations/017_api_billing.js";
 import * as mig145 from "../migrations/145_macro_call_billing.js";
 import {
   recordMacroCall,
   chargeMacroCall,
   billMacroCall,
   costForMacro,
+  categoryForMacro,
 } from "../lib/macro-billing.js";
 import { getFlag, getFlagNumber } from "../lib/feature-flags.js";
 
@@ -33,6 +35,7 @@ beforeEach(() => {
   db = new Database(":memory:");
   mig002.up(db);
   mig004.up(db);
+  mig017.up(db); // api_monthly_usage — the monthly free-allowance counter
   mig145.up(db);
 });
 
@@ -133,6 +136,7 @@ describe("recordMacroCall", () => {
     db = new Database(":memory:");
     mig002.up(db);
     mig004.up(db);
+    mig017.up(db);
     mig145.up(db);
   });
 
@@ -207,17 +211,51 @@ describe("chargeMacroCall", () => {
 
 describe("billMacroCall — combined log + charge", () => {
   it("logs + charges a plugin call atomically (no throw)", () => {
+    // detectors:run is compute-tier ($0.005). Exhaust this user's
+    // monthly free compute allowance first so the call actually charges.
+    const month = new Date().toISOString().slice(0, 7);
+    db.prepare("INSERT INTO api_monthly_usage (user_id, month, computes) VALUES (?, ?, 100000)")
+      .run("alice", month);
     const r = billMacroCall(db, {
       userId: "alice", apiKeyId: "csk_x", domain: "detectors", name: "run",
       durationMs: 100, status: "ok", refId: "ref_combined_1",
     });
     assert.equal(r.recorded.ok, true);
+    assert.equal(r.category, "compute");
     assert.equal(r.charged.ok, true);
-    assert.equal(r.charged.charged, 5);
+    assert.equal(r.charged.charged, 0.005);
     const log = db.prepare(`SELECT * FROM macro_call_log WHERE ref_id = ?`).get("ref_combined_1");
     const led = db.prepare(`SELECT * FROM economy_ledger WHERE ref_id = ?`).get("ref_combined_1");
     assert.ok(log);
     assert.ok(led);
+  });
+
+  it("first compute call of the month is free (monthly allowance)", () => {
+    const r = billMacroCall(db, {
+      userId: "fresh_dev", apiKeyId: "csk_y", domain: "detectors", name: "run",
+      durationMs: 100, status: "ok", refId: "ref_free_allowance",
+    });
+    assert.equal(r.recorded.ok, true);
+    assert.equal(r.freeAllowanceUsed, true);
+    assert.equal(r.charged.ok, false);
+    assert.equal(r.charged.reason, "zero_cost");
+    // allowance counter advanced
+    const month = new Date().toISOString().slice(0, 7);
+    const usage = db.prepare("SELECT computes FROM api_monthly_usage WHERE user_id = ? AND month = ?")
+      .get("fresh_dev", month);
+    assert.equal(usage.computes, 1);
+  });
+
+  it("does not charge or meter a non-ok (quota_exceeded) call", () => {
+    const r = billMacroCall(db, {
+      userId: "alice", apiKeyId: "csk_x", domain: "marketplace", name: "buy",
+      durationMs: 0, status: "quota_exceeded", refId: "ref_quota_x",
+    });
+    assert.equal(r.charged.ok, false);
+    const month = new Date().toISOString().slice(0, 7);
+    const usage = db.prepare("SELECT * FROM api_monthly_usage WHERE user_id = ? AND month = ?")
+      .get("alice", month);
+    assert.equal(usage, undefined, "non-ok call must not touch the monthly allowance");
   });
 
   it("logs but does not charge a free-tier call", () => {
@@ -238,20 +276,39 @@ describe("billMacroCall — combined log + charge", () => {
   });
 });
 
-describe("costForMacro", () => {
-  it("returns the configured cost for a known macro", () => {
-    assert.equal(costForMacro("detectors", "run"), 5);
-    assert.equal(costForMacro("repair", "runProphet"), 20);
-    assert.equal(costForMacro("dtu", "upsert_shadow"), 1);
+describe("costForMacro + categoryForMacro — tiered pricing", () => {
+  it("compute-tier: codebase-analysis + LLM-backed macros = $0.005", () => {
+    assert.equal(categoryForMacro("detectors", "run"), "compute");
+    assert.equal(costForMacro("detectors", "run"), 0.005);
+    assert.equal(costForMacro("repair", "runProphet"), 0.005);
+    assert.equal(categoryForMacro("chat", "respond"), "compute");
+    assert.equal(costForMacro("chat", "respond"), 0.005);
   });
 
-  it("returns 0 for an unknown macro (free)", () => {
-    assert.equal(costForMacro("unknown_domain", "unknown_macro"), 0);
+  it("read-tier: get/list/search/... lookups = $0.0002", () => {
+    assert.equal(categoryForMacro("dtu", "list"), "read");
+    assert.equal(costForMacro("dtu", "get"), 0.0002);
+    assert.equal(costForMacro("marketplace", "search"), 0.0002);
   });
 
-  it("returns 0 for billing.* read macros (free)", () => {
+  it("write-tier: mutations + unrecognised macros default to $0.001", () => {
+    assert.equal(categoryForMacro("dtu", "create"), "write");
+    assert.equal(costForMacro("dtu", "create"), 0.001);
+    assert.equal(costForMacro("dtu", "upsert_shadow"), 0.001);
+    assert.equal(costForMacro("unknown_domain", "unknown_macro"), 0.001);
+  });
+
+  it("free-tier: billing introspection macros stay $0", () => {
+    assert.equal(categoryForMacro("billing", "balance"), "free");
     assert.equal(costForMacro("billing", "balance"), 0);
     assert.equal(costForMacro("billing", "usage"), 0);
+  });
+
+  it("CONCORD_MACRO_COSTS_JSON would override the tier (documented escape hatch)", () => {
+    // The override map is read once at module load; this test just pins
+    // that an unrecognised macro falls back to the write tier rather
+    // than the old `0` default — the behaviour the wiring depends on.
+    assert.ok(costForMacro("some_new_domain", "frobnicate") > 0);
   });
 });
 
