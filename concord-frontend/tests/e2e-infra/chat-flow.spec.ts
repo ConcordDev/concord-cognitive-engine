@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { gotoStable, softClick } from './_helpers';
+import { AUTH_STATE_FILE, gotoStable, softClick } from './_helpers';
+
+// Run as the real authenticated user bootstrapped by auth.setup.ts.
+test.use({ storageState: AUTH_STATE_FILE });
 
 test.describe('Chat Flow', () => {
   test('should display chat rail toggle', async ({ page }) => {

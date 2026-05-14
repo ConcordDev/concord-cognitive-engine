@@ -1,25 +1,28 @@
 import { test, expect } from '@playwright/test';
-import { authenticateContext, gotoStable, softClick } from './_helpers';
+import { AUTH_STATE_FILE, gotoStable, softClick } from './_helpers';
 
 /**
- * Wallet specs run against the live e2e-infra backend, which rejects the
- * fake session token — so a protected route can client-redirect to /login
- * a beat after first paint. Every test navigates via `gotoStable` (settles
- * the network so the redirect resolves before any probe) and returns early
- * on `redirectedToLogin`. Clicking a button on a page that is navigating
- * away is what produced the flaky 60s `locator.click` timeouts.
+ * Wallet specs, run as the real authenticated user bootstrapped by
+ * auth.setup.ts (storageState below). `gotoStable` settles the network
+ * after navigation so element probes don't race post-navigation
+ * hydration; its `redirectedToLogin` signal stays as a defensive
+ * fallback — the canary spec asserts it is false so a broken seeded
+ * session fails loudly instead of every spec silently skipping.
  */
+test.use({ storageState: AUTH_STATE_FILE });
 
 // ── Wallet Page ──────────────────────────────────────────────────
 
 test.describe('Wallet Page', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('wallet page loads without server errors', async ({ page }) => {
-    const { response } = await gotoStable(page, '/lenses/wallet');
+    const { response, redirectedToLogin } = await gotoStable(page, '/lenses/wallet');
     expect(response?.status()).toBeLessThan(500);
+    // Canary: the seeded session must be accepted. If this fails, auth
+    // setup broke — every other spec would otherwise skip silently.
+    expect(
+      redirectedToLogin,
+      'seeded e2e-infra session was rejected — check auth.setup.ts',
+    ).toBe(false);
   });
 
   test('wallet page displays heading', async ({ page }) => {
@@ -147,10 +150,6 @@ test.describe('Wallet Page', () => {
 // ── Wallet Widget (Header) ──────────────────────────────────────
 
 test.describe('Wallet Widget in Header', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('wallet widget renders CC balance indicator in header', async ({ page }) => {
     const { response, redirectedToLogin } = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
@@ -173,10 +172,6 @@ test.describe('Wallet Widget in Header', () => {
 // ── Mobile Responsive Wallet ────────────────────────────────────
 
 test.describe('Mobile Responsive Wallet', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('wallet page renders without horizontal overflow on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     const { response, redirectedToLogin } = await gotoStable(page, '/lenses/wallet');

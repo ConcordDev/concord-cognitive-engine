@@ -1,26 +1,28 @@
 import { test, expect } from '@playwright/test';
-import { authenticateContext, gotoStable, softClick } from './_helpers';
+import { AUTH_STATE_FILE, gotoStable, softClick } from './_helpers';
 
 /**
- * These specs exercise the chat rail against the live e2e-infra backend.
- * The fake session token is rejected by backend JWT validation, so a
- * protected route can client-redirect to /login. Every test navigates via
- * `gotoStable` (settles the network so the redirect completes before any
- * probe) and returns early when `redirectedToLogin` — interacting with a
- * page that is navigating away is what produced the flaky 60s click
- * timeouts this suite used to emit.
+ * Chat-rail specs, run as the real authenticated user bootstrapped by
+ * auth.setup.ts (storageState below). `gotoStable` settles the network
+ * after navigation so element probes don't race post-navigation
+ * hydration; its `redirectedToLogin` signal stays as a defensive
+ * fallback — the canary spec asserts it is false so a broken seeded
+ * session fails loudly instead of every spec silently skipping.
  */
+test.use({ storageState: AUTH_STATE_FILE });
 
 // ── Chat Rail Mode Selector ──────────────────────────────────────
 
 test.describe('Chat Rail Mode Selector', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('chat page loads without server errors', async ({ page }) => {
-    const { response } = await gotoStable(page, '/lenses/chat');
+    const { response, redirectedToLogin } = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
+    // Canary: the seeded session must be accepted. If this fails, auth
+    // setup broke — every other spec would otherwise skip silently.
+    expect(
+      redirectedToLogin,
+      'seeded e2e-infra session was rejected — check auth.setup.ts',
+    ).toBe(false);
   });
 
   test('chat rail renders mode selector with 5 modes', async ({ page }) => {
@@ -67,10 +69,6 @@ test.describe('Chat Rail Mode Selector', () => {
 // ── Welcome Mode ──────────────────────────────────────────────────
 
 test.describe('Welcome Mode', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('welcome mode shows greeting content', async ({ page }) => {
     const { response, redirectedToLogin } = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
@@ -99,10 +97,6 @@ test.describe('Welcome Mode', () => {
 // ── Assist Mode ──────────────────────────────────────────────────
 
 test.describe('Assist Mode', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('assist mode renders task-focused interface', async ({ page }) => {
     const { response, redirectedToLogin } = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
@@ -122,10 +116,6 @@ test.describe('Assist Mode', () => {
 // ── Explore Mode ──────────────────────────────────────────────────
 
 test.describe('Explore Mode', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('explore mode renders discovery interface', async ({ page }) => {
     const { response, redirectedToLogin } = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
@@ -160,10 +150,6 @@ test.describe('Explore Mode', () => {
 // ── Connect Mode ──────────────────────────────────────────────────
 
 test.describe('Connect Mode', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('connect mode renders collaboration options', async ({ page }) => {
     const { response, redirectedToLogin } = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
@@ -183,10 +169,6 @@ test.describe('Connect Mode', () => {
 // ── Mode Switching ──────────────────────────────────────────────────
 
 test.describe('Mode Switch Behavior', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('switching between modes preserves page state', async ({ page }) => {
     const { response, redirectedToLogin } = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
@@ -234,10 +216,6 @@ test.describe('Mode Switch Behavior', () => {
 // ── Cross-Lens Memory Bar ──────────────────────────────────────────
 
 test.describe('Cross-Lens Memory Bar', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('memory bar renders in chat rail', async ({ page }) => {
     const { response, redirectedToLogin } = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
@@ -276,10 +254,6 @@ test.describe('Cross-Lens Memory Bar', () => {
 // ── Proactive Message Chips ──────────────────────────────────────
 
 test.describe('Proactive Message Chips', () => {
-  test.beforeEach(async ({ context }) => {
-    await authenticateContext(context);
-  });
-
   test('proactive chips render when triggered', async ({ page }) => {
     const { response, redirectedToLogin } = await gotoStable(page, '/lenses/chat');
     expect(response?.status()).toBeLessThan(500);

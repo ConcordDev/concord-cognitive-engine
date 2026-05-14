@@ -72,9 +72,21 @@ export default defineConfig({
   timeout: 90000,
 
   projects: [
+    // Auth bootstrap — logs in against the live e2e-infra backend for
+    // real and writes storageState (see tests/e2e-infra/auth.setup.ts).
+    // The chat/wallet specs depend on this so they run as an
+    // authenticated user instead of bouncing to /login.
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
     {
       name: 'chromium',
+      // Spec files only — never re-run auth.setup.ts as a test here.
+      testMatch: /.*\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
     },
   ],
 
