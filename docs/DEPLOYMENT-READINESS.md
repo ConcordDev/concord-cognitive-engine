@@ -13,7 +13,7 @@ The deployment surface for Concord is unusually mature for a single-developer pr
 |---|---|---|
 | Backend image | `server/Dockerfile` | ✅ |
 | Frontend image | `concord-frontend/Dockerfile` | ✅ |
-| Compose stack | `docker-compose.yml` (backend + frontend + 4 Ollama instances) | ✅ |
+| Compose stack | `docker-compose.yml` — 13 services (backend, frontend, nginx, certbot, prometheus, grafana, redis, qdrant + 5 Ollama brains) | ✅ |
 | Process manager | `ecosystem.config.cjs` (PM2) | ✅ |
 | Reverse proxy | `nginx/` config dir | ✅ |
 | Kubernetes | full set: namespace / deployment / service / ingress / hpa / network-policies / pvc / configmap / secrets / cronjob-backup / ci-cd | ✅ |
@@ -85,7 +85,7 @@ Build failures must be fixed before tagging a deploy.
 ## Operations Gaps Worth Closing Before Launch
 
 ### 6. Heartbeat helper for try/catch invariant — **MEDIUM**
-The 62k-line `server.js` heartbeat now has 8+ tick blocks added across phases (walker advance, black-market expire, news pull, creature bond decay, NPC schedule replan, combat state tick, weather advance, world-clock broadcast). Each is hand-wrapped in try/catch. One missed wrap crashes the simulation.
+The `server.js` heartbeat (the monolith is ~70k lines as of HEAD `6d32663`) now has 8+ tick blocks added across phases (walker advance, black-market expire, news pull, creature bond decay, NPC schedule replan, combat state tick, weather advance, world-clock broadcast). Each is hand-wrapped in try/catch. One missed wrap crashes the simulation.
 
 **Action**: Add a `runHeartbeatModule(name, fn)` helper that does `try { await fn() } catch (e) { structuredLog(...) }` once. Refactor existing tick blocks to use it. Out of scope for this commit but a good first PR after deploy.
 
@@ -184,13 +184,14 @@ npm run build            # prophet-check then next build; build blockers exit 1
 # 6. Pull models (if not already)
 cd ..
 ./scripts/pull-models.sh
-# Confirm: ollama list shows qwen2.5:14b, qwen2.5:7b, qwen2.5:3b, qwen2.5:0.5b, llava:7b, nomic-embed-text
+# Confirm: ollama list shows concord-conscious:latest, qwen2.5:7b-instruct-q4_K_M, qwen2.5:3b, qwen2.5:0.5b, llava:13b-v1.6-vicuna-q4_K_M, nomic-embed-text
 
-# 7. Smoke test the four-brain wiring
+# 7. Smoke test the five-brain wiring
 curl http://localhost:11434/api/tags  # conscious
 curl http://localhost:11435/api/tags  # subconscious
 curl http://localhost:11436/api/tags  # utility
 curl http://localhost:11437/api/tags  # repair
+curl http://localhost:11438/api/tags  # vision (LLaVA)
 
 # 8. Boot stack
 docker-compose up -d   # OR: pm2 start ecosystem.config.cjs

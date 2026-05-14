@@ -27,10 +27,10 @@ The four cognitive brains + LLaVA all run on the same GPU via Ollama. With 32GB 
 
 | Service | Default model | VRAM |
 |---|---|---|
-| `ollama-conscious` | `qwen2.5:32b-instruct-q4_K_M` | ~18GB |
-| `ollama-subconscious` | `qwen2.5:7b-instruct-q5_K_M` | ~5GB |
-| `ollama-utility` | `qwen2.5:3b-instruct-q5_K_M` | ~2GB |
-| `ollama-repair` | `qwen2.5:1.5b-instruct-q5_K_M` | ~1GB |
+| `ollama-conscious` | `concord-conscious:latest` (custom, built on qwen2.5) | ~18GB |
+| `ollama-subconscious` | `qwen2.5:7b-instruct-q4_K_M` | ~5GB |
+| `ollama-utility` | `qwen2.5:3b` | ~2GB |
+| `ollama-repair` | `qwen2.5:0.5b` | ~0.5GB |
 | `ollama-vision` | `llava:13b-v1.6-vicuna-q4_K_M` + `nomic-embed-text` | ~9GB + ~0.3GB |
 
 That's ~35GB of model weights. With `OLLAMA_KV_CACHE_TYPE=q8_0` (halves KV memory) and `OLLAMA_GPU_OVERHEAD=1GB` reserved for headroom, models swap between GPU and CPU as needed under load. The sets of models that are co-resident at any moment are decided by `OLLAMA_KEEP_ALIVE=24h` plus inference traffic.
@@ -51,8 +51,8 @@ To run on a smaller box, override all three together (they need to match).
 | Service | Container port | RunPod template should expose |
 |---|---|---|
 | Concord server | 5050 | HTTP (proxied via RunPod's public URL) |
-| Ollama brains | 11434–11437 | not exposed publicly — internal only |
-| Ollama vision | 11434 (different container) | not exposed publicly |
+| Ollama brains | 11434–11437 (conscious / subconscious / utility / repair) | not exposed publicly — internal only |
+| Ollama vision | 11438 | not exposed publicly |
 | Redis | 6379 | not exposed publicly |
 | Qdrant | 6333 | optional — not exposed publicly |
 
@@ -68,9 +68,10 @@ Production-required:
 
 Optional but recommended for full performance:
 - `CONCORD_FEDERATION_TOKEN` — if you peer with another instance
-- `OPENAI_API_KEY` — fallback for LLM features when local Ollama is overloaded
 - `STRIPE_SECRET_KEY` — payments
 - `RUNPOD_API_KEY` — if you want the horizontal-scaling module to spin up overflow pods
+
+There is no OpenAI emergency-fallback path — it was removed. The five local Ollama brains are the only inference path; `ctx.llm.chat()` falls back to the subconscious brain when the conscious brain is unreachable, and per-user bring-your-own external API keys route per-brain-slot through the BYO key router.
 
 ## Scaling caps tuned for 32GB / RTX PRO 4500
 

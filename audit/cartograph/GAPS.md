@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-11T04:20:06.947Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-14T19:49:30.357Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (22)
 
@@ -37,10 +37,11 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (24)
+## Headless backend domains (25)
 
 | Domain | Macro count | Suggested frontend lens dir |
 |---|---:|---|
+| `observability` | 1 | `concord-frontend/app/lenses/observability/page.tsx` |
 | `refusal` | 4 | `concord-frontend/app/lenses/refusal/page.tsx` |
 | `npc` | 3 | `concord-frontend/app/lenses/npc/page.tsx` |
 | `forward_sim` | 3 | `concord-frontend/app/lenses/forward-sim/page.tsx` |
@@ -66,10 +67,11 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `sub_world` | 2 | `concord-frontend/app/lenses/sub-world/page.tsx` |
 | `therapy` | 3 | `concord-frontend/app/lenses/therapy/page.tsx` |
 
-## Orphan lenses (2)
+## Orphan lenses (3)
 
 | Lens dir | Reason | Action |
 |---|---|---|
+| `expedition-journal` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `root` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `ux-suite` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 
@@ -79,15 +81,33 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 
 _None._
 
-## Unshaped socket events (5)
+## Unshaped socket events (23)
 
 | Event | First emitter | Action |
 |---|---|---|
+| `world:basketball-started` | server/domains/basketball.js:19 | add to event-shapes.js |
+| `ghost-hunt:residue-confronted` | server/domains/ghost-hunt.js:55 | add to event-shapes.js |
+| `world:racing-started` | server/domains/racing.js:17 | add to event-shapes.js |
+| `voice:participant-joined` | server/domains/voice-chat.js:45 | add to event-shapes.js |
+| `voice:participant-left` | server/domains/voice-chat.js:62 | add to event-shapes.js |
+| `voice:ice` | server/domains/voice-chat.js:104 | add to event-shapes.js |
+| `voice:leave` | server/domains/voice-chat.js:117 | add to event-shapes.js |
+| `quest:ecology-born` | server/emergent/ecology-quest-cycle.js:66 | add to event-shapes.js |
+| `mount:behavior` | server/emergent/mount-behavior-cycle.js:164 | add to event-shapes.js |
 | `mount:hungry` | server/emergent/mount-care-cycle.js:77 | add to event-shapes.js |
 | `mount:loyalty-low` | server/emergent/mount-care-cycle.js:80 | add to event-shapes.js |
+| `npc:travelled` | server/emergent/npc-travel-cycle.js:48 | add to event-shapes.js |
+| `npc:combat-resolved` | server/emergent/npc-vs-npc-combat-cycle.js:76 | add to event-shapes.js |
 | `subscribe.error` | server/lib/dx/dx-socket-bus.js:141 | add to event-shapes.js |
 | `subscribe.ok` | server/lib/dx/dx-socket-bus.js:148 | add to event-shapes.js |
 | `world:sonic-pulse` | server/lib/embodied/signals.js:105 | add to event-shapes.js |
+| `npc:quest-accepted` | server/lib/npc-quest-runner.js:36 | add to event-shapes.js |
+| `npc:quest-completed` | server/lib/npc-quest-runner.js:56 | add to event-shapes.js |
+| `mentorship:npc-adopted` | server/lib/npc-skill-author.js:252 | add to event-shapes.js |
+| `npc:level-up` | server/lib/npc-skill-progression.js:52 | add to event-shapes.js |
+| `concordia:lethal-hit` | server/routes/worlds.js:2056 | add to event-shapes.js |
+| `combat:hero_kill` | server/routes/worlds.js:2062 | add to event-shapes.js |
+| `combat:bloodline_fire_cast` | server/routes/worlds.js:2064 | add to event-shapes.js |
 
 ## Universe-coverage gaps (in-scope categories)
 

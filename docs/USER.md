@@ -126,9 +126,9 @@ At level 20,000, the Sovereign holds court. The Mass Raid is a four-phase boss: 
 
 ---
 
-## Lens Tour (the 203-window OS)
+## Lens Tour (the 232-window OS)
 
-You can do all of this in the `/lenses/world` lens. But Concord has 202 other lenses for everything else — chat, code, music, healthcare, accounting, council voting, atlas, marketplace. Same DTU substrate underneath. Same royalty cascade. Same federation.
+You can do all of this in the `/lenses/world` lens. But Concord has 231 other lenses for everything else — chat, code, music, healthcare, accounting, council voting, atlas, marketplace. Same DTU substrate underneath. Same royalty cascade. Same federation.
 
 Run `npm run score-lenses` (server-side) to see implementation completeness per lens.
 

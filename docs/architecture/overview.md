@@ -1,6 +1,6 @@
 # System Architecture Overview
 
-**Last updated:** 2026-04-28
+**Last updated:** 2026-05-14
 
 ---
 
@@ -12,22 +12,22 @@ The backend is a single Node.js process built on Express, backed by SQLite via `
 
 | Fact | Detail |
 |------|--------|
-| Entry point | `server/server.js` (61,753 lines) |
-| Inline route handlers | 977 (active extraction in progress) |
-| Extracted route modules | 79 files under `server/routes/` |
+| Entry point | `server/server.js` (70,238 lines) |
+| Inline route handlers | 1,087 (active extraction in progress) |
+| Extracted route modules | 131 files under `server/routes/` |
 | Database | SQLite with WAL mode enabled |
-| LLM inference | Ollama (local, no external API dependency) |
+| LLM inference | Ollama (local; optional per-user BYO external API keys via the BYO key router) |
 
 `server.js` contains two conceptually distinct layers that currently live in the same file:
 
 - **Route layer** — REST handlers being incrementally moved to `server/routes/`.
 - **Macro/lifecycle layer** — DB initialisation, WebSocket setup, Feed Manager startup, heartbeat, state bootstrap. This layer stays in `server.js`; it is not an Express router and cannot be extracted without larger architectural refactoring.
 
-### concord-frontend/ — Next.js 14 Web App
+### concord-frontend/ — Next.js 15 Web App
 
-The primary user interface. Key areas:
+The primary user interface (Next.js 15.5, React 19, TypeScript 5.9). Key areas:
 
-- `app/lenses/` — 176+ domain-specific lens pages.
+- `app/lenses/` — 232 domain-specific lens pages.
 - `components/` — Shared UI: `LensPageShell`, `FeedDTUCard`, `LiveIndicator`, `DTUExportButton`, `RealtimeDataPanel`.
 - `hooks/` — `useSocket`, `useLensDTUs`, `useAuth`, `useRealtimeLens`.
 - `lib/` — `lens-registry`, `realtime/event-bus`, `design-system`.
@@ -88,7 +88,7 @@ The atomic content type of the system. Every piece of content — a note, a feed
 
 ### Lens Domains
 
-176+ domain-specific workspaces (e.g. `finance`, `health`, `law`, `philosophy`). Each lens:
+232 domain-specific workspaces (e.g. `finance`, `health`, `law`, `philosophy`), backed by 249 domain handler files. Each lens:
 
 - Has a dedicated page under `concord-frontend/app/lenses/`.
 - Is registered in `lib/lens-registry`.
@@ -100,7 +100,7 @@ Located in `server/lib/feed-manager.js`. Polls RSS and JSON feed sources on conf
 
 ### Lens Action Registry
 
-A dispatch table mapping `domain.action` keys to handler functions. All 176 lenses use this registry pattern for their server-side logic, keeping route files thin and testable.
+A dispatch table mapping `domain.action` keys to handler functions. All 232 lenses use this registry pattern for their server-side logic, keeping route files thin and testable.
 
 ---
 
@@ -162,13 +162,13 @@ See [ADR-002](adr/ADR-002-auth-pattern.md) for full rationale.
 
 ```
 server/                   # Node.js backend
-  server.js               # 61K-line monolith (active extraction in progress)
-  routes/                 # 79 extracted route modules
+  server.js               # 70K-line monolith (active extraction in progress)
+  routes/                 # 131 extracted route modules
   lib/                    # feed-manager, feed-sources, storage, etc.
   tests/                  # node:test test suite
 
-concord-frontend/         # Next.js 14 app
-  app/lenses/             # 176+ lens pages
+concord-frontend/         # Next.js 15 app
+  app/lenses/             # 232 lens pages
   components/             # Shared UI: LensPageShell, FeedDTUCard, etc.
   hooks/                  # useSocket, useLensDTUs, useAuth, useRealtimeLens
   lib/                    # lens-registry, realtime/event-bus, design-system

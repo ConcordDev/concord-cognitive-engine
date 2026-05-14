@@ -1,6 +1,6 @@
 # Concord — RunPod Deploy Guide
 
-Single-pod deployment of the full Concord stack (backend + frontend + 4 Ollama brains) on a RunPod GPU pod. End-to-end takes about 25 minutes the first time, ~5 minutes for redeploys.
+Single-pod deployment of the full Concord stack (backend + frontend + 5 Ollama brains) on a RunPod GPU pod. End-to-end takes about 25 minutes the first time, ~5 minutes for redeploys.
 
 ---
 
@@ -8,9 +8,9 @@ Single-pod deployment of the full Concord stack (backend + frontend + 4 Ollama b
 
 | Component | Minimum | Recommended | Why |
 |---|---|---|---|
-| GPU VRAM | 16 GB | 32 GB (RTX Pro 4500 / 4090) | conscious 14b + subconscious 7b loaded together |
-| vCPU | 8 | 16+ | tick loop + 33 emergent modules |
-| RAM | 32 GB | 62 GB | 170k DTU heap ceiling |
+| GPU VRAM | 16 GB | 32 GB (RTX PRO 4500 Blackwell, GDDR7) | conscious + subconscious + vision loaded together |
+| vCPU | 8 | 16+ | tick loop + 178 emergent modules |
+| RAM | 32 GB | 62 GB | 32GB Node heap (`MAX_OLD_SPACE_SIZE=32768`) |
 | Disk | 50 GB | 150 GB | Ollama models alone are 30+ GB |
 
 **Template**: `runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04` — has CUDA + Python + Node 20 deps.
@@ -54,17 +54,18 @@ Leave `ALLOWED_ORIGINS`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SOCKET_URL`, `COOKI
 ## 3. Pull Ollama models
 
 ```bash
-# Pull the four-brain models (run in tmux/screen — first pull is slow)
+# Pull the five-brain models (run in tmux/screen — first pull is slow)
 ollama serve &
 sleep 3
-ollama pull qwen2.5:14b-instruct-q4_K_M    # conscious
 ollama pull qwen2.5:7b-instruct-q4_K_M     # subconscious
-ollama pull qwen2.5:3b-instruct-q4_K_M     # utility
-ollama pull qwen2.5:1.5b                   # repair
+ollama pull qwen2.5:3b                     # utility
+ollama pull qwen2.5:0.5b                   # repair
+ollama pull llava:13b-v1.6-vicuna-q4_K_M   # vision
 ollama pull nomic-embed-text               # embeddings
+# concord-conscious:latest is a custom model built from a Modelfile on top of qwen2.5
 ```
 
-Total disk hit: ~28 GB. Verify with `ollama list`.
+Total disk hit: ~30 GB. Verify with `ollama list`.
 
 ---
 
@@ -85,7 +86,7 @@ What it checks:
 | `ADMIN_PASSWORD` (≥ 12 chars) | first-run admin login |
 | `NODE_ENV=production` | feature gates key on this |
 | `ALLOWED_ORIGINS` or `RUNPOD_PUBLIC_URL` or `DOMAIN` | CORS + WebSocket allowlist |
-| LLM provider (one of) | `OPENAI_API_KEY` / `BRAIN_CONSCIOUS_URL` / `ANTHROPIC_API_KEY` / `OLLAMA_HOST` |
+| LLM provider | `BRAIN_CONSCIOUS_URL` / `OLLAMA_HOST` reachable (the five local Ollama brains are the only inference path; there is no OpenAI emergency-fallback — `ctx.llm.chat()` falls back to the subconscious brain, and per-user BYO external API keys route per-brain-slot through the BYO key router) |
 | Stripe pair | `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` if either is set |
 | S3 backup pair | `AWS_BUCKET` + `BACKUP_ENCRYPTION_KEY` if either is set |
 
@@ -115,7 +116,7 @@ This runs:
 8. Tails the logs
 
 Verify the boot log includes:
-- `schema_migration_complete {"currentVersion":171}` — all migrations applied
+- `schema_migration_complete {"currentVersion":192}` — all migrations applied
 - `content_seeded` — authored world content loaded
 - `server_listening` with the public URL
 

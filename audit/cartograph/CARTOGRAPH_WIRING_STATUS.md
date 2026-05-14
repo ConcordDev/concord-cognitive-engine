@@ -2,11 +2,12 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-11T04:20:06.947Z.
+Generated 2026-05-14T19:49:30.357Z.
 
 ## Heartbeat-registered modules
 
 - `refusal-field-sweep` (frequency 1)
+- `war-skirmish-cycle` (frequency 2)
 - `combat-recovery-cycle` (frequency 2)
 - `signal-propagation-cycle` (frequency 3)
 - `creature-flock-cycle` (frequency 4)
@@ -17,6 +18,8 @@ Generated 2026-05-11T04:20:06.947Z.
 - `npc-routine-cycle` (frequency 5)
 - `environment-sensor` (frequency 5)
 - `environment-sense` (frequency 5)
+- `underwater-threat-cycle` (frequency 6)
+- `npc-vs-npc-combat` (frequency 8)
 - `npc-perception-snapshot` (frequency 8)
 - `npc-economy-cycle` (frequency 8)
 - `npc-conversation-initiator` (frequency 8)
@@ -26,6 +29,7 @@ Generated 2026-05-11T04:20:06.947Z.
 - `kingdom-decree-cycle` (frequency 16)
 - `metrics-decay` (frequency 20)
 - `presence-stale-sweep` (frequency 20)
+- `mount-behavior-cycle` (frequency 20)
 - `repair-cycle` (frequency 20)
 - `brain-outcome-resolver` (frequency 20)
 - `fauna-spawner` (frequency 30)
@@ -34,10 +38,13 @@ Generated 2026-05-11T04:20:06.947Z.
 - `mount-care-cycle` (frequency 60)
 - `lattice-drift-scan` (frequency 60)
 - `personal-beat-scheduler` (frequency 60)
+- `npc-travel-cycle` (frequency 60)
 - `brain-daily-refresh` (frequency 60)
 - `qualia-persist` (frequency 60)
+- `cross-world-scheme-cycle` (frequency 60)
 - `embodied-dream-cycle` (frequency 80)
 - `npc-skill-evolve-cycle` (frequency 80)
+- `npc-ambition-cycle` (frequency 80)
 - `forward-sim-cycle` (frequency 100)
 - `lattice-federation-poll` (frequency 120)
 - `culture-drift-pass` (frequency 120)
@@ -46,16 +53,22 @@ Generated 2026-05-11T04:20:06.947Z.
 - `lattice-breakthrough-pass` (frequency 240)
 - `npc-marketplace-cycle` (frequency 240)
 - `procgen-settlement-cycle` (frequency 240)
+- `ecology-quest-cycle` (frequency 240)
 - `land-claims-cycle` (frequency 240)
 - `player-signs-cleanup` (frequency 240)
+- `foundry-preview-cleanup` (frequency 240)
+- `cross-world-economy-cycle` (frequency 240)
 - `reflex-architectural-drift` (frequency 360)
 - `procedural-npc-spawner` (frequency 360)
 - `forgetting-health-check` (frequency 480)
 - `reflex-scaling-pressure` (frequency 480)
 - `season-cycle` (frequency 480)
+- `aging-cycle` (frequency 480)
+- `council-session-cycle` (frequency 480)
 - `reflex-unsafe-expansion` (frequency 720)
 - `reflex-dependency-entropy` (frequency 1440)
 - `code-substrate-refresh` (frequency 1440)
+- `ration-floor-cycle` (frequency 1440)
 - `detectors-sweep` (frequency 2880)
 
 ## Macro domains with macro counts
@@ -203,6 +216,7 @@ Generated 2026-05-11T04:20:06.947Z.
 - `heartbeat` — 1 macros
 - `auth` — 1 macros
 - `org` — 1 macros
+- `observability` — 1 macros
 - `audit` — 1 macros
 - `verify` — 1 macros
 - `skill` — 1 macros
@@ -225,12 +239,12 @@ Generated 2026-05-11T04:20:06.947Z.
 
 ## Frontend lens count
 
-- 228 directories under `concord-frontend/app/lenses/`
+- 232 directories under `concord-frontend/app/lenses/`
 
 ## Orphan / Dormant inventory
 
 - Orphan modules: 0
 - Dormant modules: 0
 - Dead tables: 22
-- Headless backends: 24
-- Orphan lenses: 2
+- Headless backends: 25
+- Orphan lenses: 3

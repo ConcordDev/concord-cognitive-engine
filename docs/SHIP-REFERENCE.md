@@ -13,42 +13,44 @@ No hyperbole. Honest about what's polished vs. what's raw.
 
 | Surface | LOC |
 |---|---|
-| Backend (`server/*.js`) | **670,658** |
-| Frontend (`concord-frontend/**/*.ts*`) | **427,359** |
-| Mobile (`concord-mobile/**/*.ts*`) | **41,055** |
-| Content (`content/**/*.json`) | **3,360** |
-| **Total source** | **~1.14M** |
+| Mobile (`concord-mobile/**/*.ts*`) | **~42,162** |
+| **Total source** | **~1.36M** across ~3,533 code files |
 
-`server/server.js` alone: **63,346 lines**. Intentionally monolithic per
+`server/server.js` alone: **70,238 lines**. Intentionally monolithic per
 the project's documented IP-protection stance — every route, middleware,
-and tick block lives in this one file.
+and tick block lives in this one file. (The generated knowledge-substrate
+file `server/dtus.js` is a further 145,612 lines.)
 
 ## Counts
 
 | Thing | Count |
 |---|---|
-| SQLite migrations | 83 |
-| Test files | 366 |
-| Individual test cases (`it()` / `test()`) | 12,116 |
-| Domain macro handlers (`server/domains/`) | 176 |
-| Frontend lens pages (`app/lenses/`) | 182 |
-| Emergent system modules (`server/emergent/`) | 136 |
-| Server library modules (`server/lib/`) | 214 |
+| SQLite migrations | 192 (latest `192_foundry_phase7.js`) |
+| Domain macro handlers (`server/domains/`) | 249 |
+| Frontend lens pages (`app/lenses/`) | 232 |
+| Emergent system modules (`server/emergent/`) | 178 |
+| Server library modules (`server/lib/`) | 341 top-level / 561 recursive |
+| HTTP routes | 2,400 (1,087 in `server.js` + 1,313 in `routes/*.js`) |
+| Route files (`server/routes/`) | 131 |
+| Heartbeats registered | 64 |
+| Macros (unique `(domain, macro)` pairs) | ~797 across ~160 domains |
+| Database tables | 459 |
+| Socket events | 255 |
 | K8s manifests | 13 |
 | Ops scripts (`scripts/*.sh`) | 22 |
 | Runbooks (`docs/operations/runbooks/`) | 12 |
 
 ## What's actually shipping (architectural)
 
-- **Four-brain LLM stack.** Conscious 14B + Subconscious 7B + Utility 3B + Repair 1.5B running on local Ollama. Each on its own port (11434–11437). Auto-pulled at boot. Conscious gets chat / deep reasoning; Utility handles ~65% of lens actions; Repair vets dialogue + DTU pre-marketplace; Subconscious runs dream cycles + autogen.
+- **Five-brain LLM stack.** Conscious (`concord-conscious:latest`, a custom model built on qwen2.5) + Subconscious (`qwen2.5:7b-instruct-q4_K_M`) + Utility (`qwen2.5:3b`) + Repair (`qwen2.5:0.5b`) + Vision (`llava:13b-v1.6-vicuna-q4_K_M`) running on local Ollama. Each on its own port (11434–11438). Auto-pulled at boot. Models are env-overridable. Conscious gets chat / deep reasoning; Utility handles ~65% of lens actions; Repair vets dialogue + DTU pre-marketplace; Subconscious runs dream cycles + autogen; Vision handles image understanding. `ctx.llm.chat()` falls back to subconscious; per-user bring-your-own external API keys route per-brain-slot through the BYO key router.
 
-- **DTU substrate** with 33:1 compression. Regular → MEGA (5–20 originals) → HYPER (50–200) every 30 ticks. ~170k DTU in-heap ceiling. Compression pipeline runs on heartbeat — confirmed live, not architectural ambition.
+- **DTU substrate** with 33:1 compression. Regular → MEGA (5–20 originals) → HYPER (50–200) every 30 ticks. No hard DTU ceiling — memory pressure is governed against `MAX_OLD_SPACE_SIZE` (~1.5M DTU capacity at the 32GB-heap default). Compression pipeline runs on heartbeat — confirmed live, not architectural ambition.
 
-- **Heartbeat tick loop.** 15s cadence. Drives 29 wired emergent modules at varying frequencies. Now structurally enforced via `runHeartbeatModule(name, fn)` helper + Prometheus counter `concord_heartbeat_ticks_total` + alert if rate hits 0 for 3 minutes. The simulation never throws.
+- **Heartbeat tick loop.** 15s cadence. Drives 64 registered heartbeats plus per-entity inline ticks at varying frequencies. Now structurally enforced via `registerHeartbeat(name, ...)` + Prometheus counter `concord_heartbeat_ticks_total` + alert if rate hits 0. The simulation never throws.
 
 - **Three-gate permission model.** Every API hit passes `publicReadPaths` (path prefix allowlist) → `publicReadDomains` (domain+macro allowlist) → `_safeReadPaths` (Chicken2 layer). Three independent checks, each independently rejectable.
 
-- **Macro registry.** All 175 lenses route through `POST /api/lens/run { domain, name, input }` — no per-feature endpoints. New lens = new directory + new domain handler. Adding a feature is filesystem work, not framework work.
+- **Macro registry.** All 232 lenses route through `POST /api/lens/run { domain, name, input }` — no per-feature endpoints. New lens = new directory + new domain handler. Adding a feature is filesystem work, not framework work.
 
 - **Real-time presence.** Delta-compressed (~38 bytes/avatar/update at 50Hz), spatial chunking, server-authoritative position with anti-cheat speed clamps, vehicle-aware (walk=16, car=40, plane=150 m/s). Tested against 100+ visible avatars per chunk.
 
@@ -70,7 +72,7 @@ and tick block lives in this one file.
 
 ## Operations + production readiness
 
-- Docker Compose stack (backend + frontend + 4 Ollama instances).
+- Docker Compose stack — 13 services (backend, frontend, nginx, certbot, prometheus, grafana, redis, qdrant + 5 Ollama instances).
 - Full Kubernetes manifest set: namespace, deployment, service, ingress, HPA, network-policies, PVC, configmap, secrets, cronjob-backup, ci-cd.
 - Nginx reverse proxy config.
 - Grafana + Prometheus monitoring with synthetic critical-path probes (14 probes covering core APIs + the new Phase F2 endpoints).
@@ -79,7 +81,6 @@ and tick block lives in this one file.
 - 12 runbooks for common incidents (server-down, brain-offline, no-heartbeat, database-locked, websocket storm, disk-full, backup-restore).
 - Sentry env-driven, JWT + bcrypt + helmet + rate-limit + cors + zod.
 - Privacy policy + Terms of Service.
-- 12,116 test cases.
 
 ## What's at AAA-tier (Concordia rubric, 12 systems)
 
@@ -108,13 +109,13 @@ The honest comparison nobody asks for:
 
 | Dimension | Typical 6-mo solo SaaS | Concord |
 |---|---|---|
-| Total LOC | 30–80k | 1.14M |
-| Tests | 100–500 cases | 12,116 |
-| LLM integration | OpenAI API call, maybe 2–3 features | 4 self-hosted models, role-routed, fallback chains |
+| Total LOC | 30–80k | ~1.36M |
+| Tests | 100–500 cases | 12k+ cases across 457 test files |
+| LLM integration | OpenAI API call, maybe 2–3 features | 5 self-hosted models, role-routed, fallback chains |
 | Real-time | "we have a webhook" | 50Hz delta-compressed presence, spatial chunking, server-authoritative anti-cheat |
 | Game / world simulation | none | full 3D world + procedural creatures + physics validation + crossbreeding lineage |
 | Mesh / P2P | none | 6 transports + DTU sync + 3-strategy conflict resolver |
-| Migrations | 5–20 | 83 |
+| Migrations | 5–20 | 192 |
 | Ops surface | Vercel + a Postgres | Docker + k8s + nginx + Grafana + Prometheus + 22 scripts + 12 runbooks |
 | Mobile | none / web wrapper | native RN + Expo with BLE/WiFi-Direct/LoRa/RF/NFC mesh |
 | Content depth | minimal | authored worlds with secrets/fears/cross-world relationships |
@@ -123,13 +124,13 @@ What a typical 6-mo solo SaaS HAS that Concord either lacks or hasn't polished:
 
 - **Polished onboarding flow.** Concord has one but it's not been A/B tested.
 - **Conversion funnel analytics.** Not instrumented yet.
-- **Fully-implemented lens backends.** ~30% of 175 lenses are complete; the rest are stubs with full UI shells. SaaS would have its 1–3 features fully done.
+- **Fully-implemented lens backends.** ~30% of 232 lenses are complete; the rest are stubs with full UI shells. SaaS would have its 1–3 features fully done.
 - **Marketing site.** None visible in the repo.
 - **Customer support tooling.** Not built.
 - **Stripe integration / actual revenue path.** Sparks-only by design; explicitly no microtransactions.
 - **One specific use case it's the best at.** SaaS is narrow + deep. Concord is wide + emergent.
 
-That tradeoff is intentional. The architecture pays for itself only at scale — when 175 lenses, 4 brains, agentic NPCs, and emergent assets compound. A SaaS solving one thing is shippable in 6 months. An operating system for cognition is barely scaffolded in 6 months. Concord is the second category.
+That tradeoff is intentional. The architecture pays for itself only at scale — when 232 lenses, 5 brains, agentic NPCs, and emergent assets compound. A SaaS solving one thing is shippable in 6 months. An operating system for cognition is barely scaffolded in 6 months. Concord is the second category.
 
 ## What's NOT shipping yet
 
@@ -138,7 +139,7 @@ Honest list of what code can't make production-ready alone:
 1. **Real GLB/GLTF assets through the evo engine.** Procedural buildings + creatures are the silhouette tier. Production assets emerge from gameplay over weeks; current loader picks them up automatically when they appear.
 2. **Voice acting.** Not needed by design — NPCs are agentic with phoneme-driven lip sync. But that means voices sound synthetic until someone records distinct per-archetype voice profiles or wires a real TTS pipeline.
 3. **Playtest tuning.** Poise rates, weapon reach, intercept probabilities, bond decay rates — engineered guesses pending real player feedback.
-4. **Full lens implementation.** ~70% of 175 lenses still stub-only. Each is a few-hour implementation pass, but that's 100+ passes.
+4. **Full lens implementation.** ~70% of 232 lenses still stub-only. Each is a few-hour implementation pass, but that's 100+ passes.
 5. **Production-scale load tests.** k6 baseline exists; 1000-concurrent-player simulation hasn't been run.
 6. **SQLite single-writer ceiling.** Fine for ~50 concurrent users; PostgreSQL migration plan is documented but not executed.
 7. **Multiplayer interaction polish.** Trade + party + emote + social pings work; cooperative-build / shared inventory / cross-world raid coordination don't exist yet.
@@ -147,7 +148,7 @@ Honest list of what code can't make production-ready alone:
 
 If you're a solo founder 6 months in:
 
-- **Code volume isn't the goal.** Concord's 1.14M LOC is a lot, but it's because the surface area is huge. Most of it is plumbing for a unified architecture. Don't compare your 50k SaaS to this directly — compare your 50k of vertical product against this 50k of equivalent vertical (the 30% of lenses that are complete).
+- **Code volume isn't the goal.** Concord's ~1.36M LOC is a lot, but it's because the surface area is huge. Most of it is plumbing for a unified architecture. Don't compare your 50k SaaS to this directly — compare your 50k of vertical product against this 50k of equivalent vertical (the 30% of lenses that are complete).
 - **What's actually impressive at 6 months solo:** the architectural unification (one macro registry, one DTU substrate, one heartbeat, one three-gate permission model). The system is internally consistent at every layer. That's the multiplier.
 - **What you can match:** if you pick one of the systems documented here and replicate just that — say the DTU substrate, or the procedural creature generator, or the heartbeat-driven emergent module pattern — you can get to 80% of its sophistication in a couple weeks. The hard part is having all the systems compose without contradicting each other.
 - **What you should not try to match in 6 months:** the cumulative content depth. 4 sub-worlds with cross-world NPC relationships and authored secrets isn't an architecture problem. It's six months of writing.

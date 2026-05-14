@@ -2,7 +2,7 @@
 
 Bring [concord-os.org](https://concord-os.org)'s detector intelligence into VS Code.
 
-Concord is a cognitive operating system with a self-instrumented detector grid (22 detectors covering stale code, invariant guards, perf hotspots, secret leaks, lens health, heartbeat liveness, and more). The Concord DX extension surfaces those findings inside the editor and bills you per call against your Concord Coin balance — so the platform pays for itself in proportion to how much you use it.
+Concord is a cognitive operating system with a self-instrumented detector grid (27 detectors covering stale code, invariant guards, perf hotspots, secret leaks, lens health, heartbeat liveness, HTTP errors, UX/a11y gaps, and more). The Concord DX extension surfaces those findings inside the editor and bills you per call against your Concord Coin balance — so the platform pays for itself in proportion to how much you use it.
 
 ## What you get
 

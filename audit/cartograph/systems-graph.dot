@@ -51,6 +51,7 @@ digraph Concord {
   lens_creative_writing [label="lens/creative-writing", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_creator [label="lens/creator", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_cri [label="lens/cri", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_crisis_ops [label="lens/crisis-ops", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_crypto [label="lens/crypto", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_custom [label="lens/custom", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_daily [label="lens/daily", color=green, style=filled, fillcolor="#e0ffe0"];
@@ -60,5 +61,4 @@ digraph Concord {
   lens_debug [label="lens/debug", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_defense [label="lens/defense", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_deities [label="lens/deities", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_desert [label="lens/desert", color=green, style=filled, fillcolor="#e0ffe0"];
 }

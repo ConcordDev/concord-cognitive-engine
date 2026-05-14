@@ -81,12 +81,13 @@ Quick reference for the most common failure modes. Detailed runbooks for each sc
 
 3. **BRAIN_*_URL env vars correct?**
    ```bash
-   echo $BRAIN_CONSCIOUS_URL
-   echo $BRAIN_SUBCONSCIOUS_URL
-   echo $BRAIN_UTILITY_URL
-   echo $BRAIN_REPAIR_URL
+   echo $BRAIN_CONSCIOUS_URL     # port 11434
+   echo $BRAIN_SUBCONSCIOUS_URL  # port 11435
+   echo $BRAIN_UTILITY_URL       # port 11436
+   echo $BRAIN_REPAIR_URL        # port 11437
+   echo $BRAIN_VISION_URL        # port 11438 (LLaVA vision)
    ```
-   Each should point to a reachable Ollama instance. Unset variables fall back to `$OLLAMA_HOST`.
+   Each should point to a reachable Ollama instance. Unset variables fall back to `$OLLAMA_HOST`. Concord runs five Ollama brains (four cognitive + one vision).
 
 **Resolution:** Start/fix Ollama, pull the required model, correct env vars, and restart the server.
 

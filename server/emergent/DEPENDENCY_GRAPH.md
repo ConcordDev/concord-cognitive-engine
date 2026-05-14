@@ -1,6 +1,6 @@
 # Emergent Module Dependency Graph
 
-> Auto-documented architecture map of the 120+ emergent modules, their dependencies,
+> Auto-documented architecture map of the 178 emergent modules, their dependencies,
 > data flows, and heartbeat timing.
 
 ## Module Layers

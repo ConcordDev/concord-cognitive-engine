@@ -2,10 +2,10 @@
 
 ## Prerequisites
 
-- **Node.js 18+** (20 LTS recommended)
+- **Node.js 20+** (20 LTS recommended)
 - **Ollama** for local LLM inference (https://ollama.ai)
-- **SQLite** (bundled via better-sqlite3, no separate install needed)
-- **GPU recommended** -- RTX 4000 Ada 20GB or equivalent for full four-brain architecture
+- **SQLite** (bundled via better-sqlite3, a hard dependency — no separate install needed)
+- **GPU recommended** -- RunPod RTX PRO 4500 Blackwell (32GB GDDR7) or equivalent for the full five-brain architecture
 - **Disk**: 280GB+ for artifact storage; 50GB minimum for models + data
 - **RAM**: 16GB minimum, 64GB recommended for production
 
@@ -21,7 +21,7 @@ chmod +x setup.sh
 ```
 
 The `setup.sh` script will:
-1. Verify Node.js 18+ is installed
+1. Verify Node.js 20+ is installed
 2. Install npm dependencies for backend and frontend
 3. Create required data directories
 4. Copy `.env.example` to `.env` if not present
@@ -37,24 +37,24 @@ Concord uses a five-brain cognitive architecture (4 cognitive + 1 multimodal/vis
 
 | Brain | Default Model | Download Size | VRAM | Port |
 |---|---|---|---|---|
-| Conscious | `qwen2.5:32b-instruct-q4_K_M` | ~18GB | ~11GB | 11434 |
-| Subconscious | `qwen2.5:7b-instruct-q5_K_M` | ~5GB | ~3GB | 11435 |
-| Utility | `qwen2.5:3b-instruct-q5_K_M` | ~2GB | ~1.2GB | 11436 |
-| Repair | `qwen2.5:1.5b-instruct-q5_K_M` | ~1GB | ~0.7GB | 11437 |
+| Conscious | `concord-conscious:latest` (custom, built on qwen2.5) | ~18GB | ~11GB | 11434 |
+| Subconscious | `qwen2.5:7b-instruct-q4_K_M` | ~5GB | ~3GB | 11435 |
+| Utility | `qwen2.5:3b` | ~2GB | ~1.2GB | 11436 |
+| Repair | `qwen2.5:0.5b` | ~0.4GB | ~0.5GB | 11437 |
 | Vision | `llava:13b-v1.6-vicuna-q4_K_M` | ~9GB | ~5GB | 11438 |
 | `nomic-embed-text` (embeddings) | semantic search & DTU similarity | ~275MB | ~300MB | (CPU) |
 
-All five Ollama services should run with `OLLAMA_FLASH_ATTENTION=1` and `OLLAMA_KV_CACHE_TYPE=q8_0` to use Blackwell tensor cores and halve KV-cache memory.
+All five model slots are env-overridable (`BRAIN_*_MODEL`). All five Ollama services should run with `OLLAMA_FLASH_ATTENTION=1` and `OLLAMA_KV_CACHE_TYPE=q8_0` to use Blackwell tensor cores and halve KV-cache memory.
 
 ### Pulling Models
 
 ```bash
-ollama pull qwen2.5:32b-instruct-q4_K_M
-ollama pull qwen2.5:7b-instruct-q5_K_M
-ollama pull qwen2.5:3b-instruct-q5_K_M
-ollama pull qwen2.5:1.5b-instruct-q5_K_M
+ollama pull qwen2.5:7b-instruct-q4_K_M
+ollama pull qwen2.5:3b
+ollama pull qwen2.5:0.5b
 ollama pull llava:13b-v1.6-vicuna-q4_K_M
 ollama pull nomic-embed-text
+# concord-conscious is a custom model built from a Modelfile on top of qwen2.5
 ```
 
 Concord auto-pulls missing models on startup via `initFiveBrains()` if Ollama is reachable.
@@ -80,13 +80,13 @@ If you don't have the RTX PRO 4500's 32GB, drop Conscious one tier and shrink th
 | Utility | `qwen2.5:3b` | ~2GB |
 | Repair | `qwen2.5:0.5b` | ~0.5GB |
 
-Set the model names in your `.env` via `BRAIN_CONSCIOUS_MODEL`, `BRAIN_SUBCONSCIOUS_MODEL`, `BRAIN_UTILITY_MODEL`, `BRAIN_REPAIR_MODEL`, `BRAIN_VISION_MODEL`. The brain-router falls back from conscious to OpenAI (if `OPENAI_API_KEY` is set) — NOT to subconscious.
+Set the model names in your `.env` via `BRAIN_CONSCIOUS_MODEL`, `BRAIN_SUBCONSCIOUS_MODEL`, `BRAIN_UTILITY_MODEL`, `BRAIN_REPAIR_MODEL`, `BRAIN_VISION_MODEL`. `ctx.llm.chat()` routes to the conscious brain and falls back to the subconscious brain. (There is no OpenAI emergency-fallback path — it was removed. Per-user bring-your-own external API keys route per-brain-slot through the BYO key router.)
 
 ---
 
 ## Docker Compose Deployment
 
-The project includes a full `docker-compose.yml` with the following services:
+The project includes a full `docker-compose.yml` with 13 services:
 
 | Service | Description | Ports |
 |---|---|---|
@@ -94,13 +94,15 @@ The project includes a full `docker-compose.yml` with the following services:
 | `frontend` | Next.js frontend | 3000 (internal) |
 | `nginx` | Reverse proxy + TLS termination | 80, 443 |
 | `certbot` | Automatic SSL certificate renewal | -- |
-| `ollama-conscious` | Conscious brain (32B q4_K_M default) | 11434 (internal) |
-| `ollama-subconscious` | Subconscious brain (7B q5_K_M default) | 11435 (internal) |
-| `ollama-utility` | Utility brain (3B q5_K_M default) | 11436 (internal) |
-| `ollama-repair` | Repair brain (1.5B q5_K_M default) | 11437 (internal) |
+| `ollama-conscious` | Conscious brain (`concord-conscious:latest` default) | 11434 (internal) |
+| `ollama-subconscious` | Subconscious brain (7B q4_K_M default) | 11435 (internal) |
+| `ollama-utility` | Utility brain (3B default) | 11436 (internal) |
+| `ollama-repair` | Repair brain (0.5B default) | 11437 (internal) |
 | `ollama-vision` | Vision brain (LLaVA 13B v1.6) | 11438 (internal) |
 | `prometheus` | Metrics collection | 9090 (internal) |
 | `grafana` | Monitoring dashboards | 3001 (internal) |
+| `redis` | Pub/sub + cross-process Socket.IO adapter | 6379 (internal) |
+| `qdrant` | Vector store | 6333 (internal) |
 
 ### Steps
 
@@ -225,13 +227,15 @@ Copy `.env.example` to `.env` and configure the following:
 | Variable | Default | Description |
 |---|---|---|
 | `BRAIN_CONSCIOUS_URL` | `http://ollama-conscious:11434` | Conscious brain Ollama URL |
-| `BRAIN_CONSCIOUS_MODEL` | `qwen2.5:14b-q4_K_M` | Conscious brain model |
+| `BRAIN_CONSCIOUS_MODEL` | `concord-conscious:latest` | Conscious brain model |
 | `BRAIN_SUBCONSCIOUS_URL` | `http://ollama-subconscious:11434` | Subconscious brain URL |
-| `BRAIN_SUBCONSCIOUS_MODEL` | `qwen2.5:7b` | Subconscious model |
+| `BRAIN_SUBCONSCIOUS_MODEL` | `qwen2.5:7b-instruct-q4_K_M` | Subconscious model |
 | `BRAIN_UTILITY_URL` | `http://ollama-utility:11434` | Utility brain URL |
 | `BRAIN_UTILITY_MODEL` | `qwen2.5:3b` | Utility model |
 | `BRAIN_REPAIR_URL` | `http://ollama-repair:11434` | Repair brain URL |
-| `BRAIN_REPAIR_MODEL` | `qwen2.5:1.5b` | Repair model |
+| `BRAIN_REPAIR_MODEL` | `qwen2.5:0.5b` | Repair model |
+| `BRAIN_VISION_URL` | `http://ollama-vision:11434` | Vision brain (LLaVA) URL |
+| `BRAIN_VISION_MODEL` | `llava:13b-v1.6-vicuna-q4_K_M` | Vision model |
 
 ### Optional Features
 
@@ -288,7 +292,7 @@ curl -sf http://localhost:5050/ready || exit 1
 
 2. **Stagger model loading**: Ollama loads models on first request. Warm up each brain sequentially rather than simultaneously to avoid VRAM spikes:
    ```bash
-   curl http://localhost:11434/api/generate -d '{"model":"qwen2.5:14b-instruct-q4_K_M","prompt":"hello","stream":false}'
+   curl http://localhost:11434/api/generate -d '{"model":"concord-conscious:latest","prompt":"hello","stream":false}'
    # Wait for completion, then warm the next brain
    ```
 
@@ -300,7 +304,7 @@ curl -sf http://localhost:5050/ready || exit 1
 
 6. **Single-brain mode**: For <8GB VRAM, point all brain URLs to the same Ollama instance and use a single 7B model. Set all `BRAIN_*_URL` vars to the same host.
 
-7. **Memory ceiling**: The backend itself is limited to 8GB heap (`--max-old-space-size=8192` in Docker). The DTU heap holds ~170,000 DTUs before consolidation kicks in.
+7. **Memory ceiling**: The backend runs with a 32GB heap by default (`--max-old-space-size=32768`, with `MAX_OLD_SPACE_SIZE=32768` kept in sync — the memory-pressure watchdog reads the env var). Override both together on smaller boxes. There is no hard DTU ceiling; memory pressure is governed against the heap size.
 
 ---
 
@@ -308,7 +312,7 @@ curl -sf http://localhost:5050/ready || exit 1
 
 ### Server won't start
 
-- Check Node.js version: `node -v` (must be 18+)
+- Check Node.js version: `node -v` (must be 20+)
 - Verify `.env` has `JWT_SECRET` set (required even in dev)
 - Check port availability: `lsof -i :5050`
 - Review logs: `pm2 logs concord-backend` or `docker compose logs backend`
@@ -317,7 +321,7 @@ curl -sf http://localhost:5050/ready || exit 1
 
 - Verify Ollama is running: `curl http://localhost:11434/api/tags`
 - Check VRAM: `nvidia-smi` -- models may fail silently if VRAM is exhausted
-- Pull models manually: `ollama pull qwen2.5:14b-instruct-q4_K_M`
+- Pull models manually (e.g. `ollama pull qwen2.5:7b-instruct-q4_K_M`, `ollama pull llava:13b-v1.6-vicuna-q4_K_M`)
 - Check brain URLs in `.env` match your Ollama deployment
 
 ### "DTUs disappeared" after restart
@@ -348,6 +352,6 @@ curl -sf http://localhost:5050/ready || exit 1
 ### Docker Compose issues
 
 - Ensure all `.env` variables are set before running `docker compose up`
-- Backend depends on all four Ollama services being healthy -- check their logs
+- Backend depends on all five Ollama services being healthy -- check their logs
 - The 3-minute `start_period` means health checks won't fail during initial model loading
 - If Grafana won't start, ensure `GRAFANA_USER` and `GRAFANA_PASSWORD` are set

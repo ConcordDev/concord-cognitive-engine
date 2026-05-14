@@ -49,10 +49,11 @@ npx expo start
 | `JWT_SECRET` | **yes (production)** | — | JWT signing secret (minimum 32 characters) |
 | `ADMIN_PASSWORD` | **yes (production)** | — | Admin account password |
 | `OLLAMA_HOST` | no | `http://localhost:11434` | Ollama inference base URL |
-| `BRAIN_CONSCIOUS_URL` | no | `$OLLAMA_HOST` | Primary reasoning model endpoint |
-| `BRAIN_SUBCONSCIOUS_URL` | no | `$OLLAMA_HOST` | Background reasoning model endpoint |
-| `BRAIN_UTILITY_URL` | no | `$OLLAMA_HOST` | Utility model endpoint |
-| `BRAIN_REPAIR_URL` | no | `$OLLAMA_HOST` | Self-repair model endpoint |
+| `BRAIN_CONSCIOUS_URL` | no | `$OLLAMA_HOST` | Primary reasoning model endpoint (port 11434) |
+| `BRAIN_SUBCONSCIOUS_URL` | no | `$OLLAMA_HOST` | Background reasoning model endpoint (port 11435) |
+| `BRAIN_UTILITY_URL` | no | `$OLLAMA_HOST` | Utility model endpoint (port 11436) |
+| `BRAIN_REPAIR_URL` | no | `$OLLAMA_HOST` | Self-repair model endpoint (port 11437) |
+| `BRAIN_VISION_URL` | no | `$OLLAMA_HOST` | LLaVA vision/multimodal model endpoint (port 11438) |
 | `REDIS_URL` | no | — | Optional Redis for pub/sub; falls back to in-memory if unset |
 | `AUTH_MODE` | no | — | `public` skips auth for reads; `ci` for integration test runs |
 
@@ -83,7 +84,7 @@ docker run \
   concord-frontend
 ```
 
-A `docker-compose.yml` is provided at the repo root for running both services together.
+A `docker-compose.yml` is provided at the repo root that brings up the full 13-service stack (backend, frontend, nginx, certbot, prometheus, grafana, redis, qdrant, and the 5 Ollama brain services).
 
 ---
 
