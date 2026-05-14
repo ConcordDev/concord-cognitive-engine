@@ -708,6 +708,9 @@ import configureMiddleware from "./middleware/index.js";
 import { createLLMQueue, PRIORITY } from "./lib/llm-queue.js";
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
+// BYO key router — when a user has plugged their own provider key into a
+// brain slot, ctx.llm.chat() routes through this instead of the default.
+import { brainChat as byoBrainChat, getOverride as byoGetOverride } from "./lib/byo-router.js";
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
 import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-training/interaction-log.js";
@@ -12257,7 +12260,47 @@ function makeCtx(req=null) {
     },
     llm: {
       enabled: BRAIN.conscious && BRAIN.conscious.enabled,
-      async chat({ system, messages, temperature=0.3, maxTokens=1500, model=null, timeoutMs=30000, dtuRefs, macroRefs, grcMode }) {
+      async chat({ system, messages, temperature=0.3, maxTokens=1500, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
+        // ===== BYO KEY ROUTING =====
+        // If this request's user has plugged their own provider key
+        // into this brain slot, route inference through it. The cheap
+        // synchronous getOverride() check keeps the default (no-BYO)
+        // path untouched — we only reach brainChat() when there is a
+        // real active override. Any failure falls through to the
+        // default brain below; a BYO outage never blocks the user.
+        const _byoUserId = resolvedActor?.userId;
+        if (db && _byoUserId && _byoUserId !== "anon") {
+          let _byoOverride = null;
+          try { _byoOverride = byoGetOverride(db, _byoUserId, slot); } catch { _byoOverride = null; }
+          if (_byoOverride?.provider && _byoOverride.provider !== "concord_default" && _byoOverride.provider !== "ollama") {
+            try {
+              const byo = await byoBrainChat({
+                db, userId: _byoUserId, slot,
+                messages: [
+                  ...(system ? [{ role: "system", content: system }] : []),
+                  ...(messages || []),
+                ],
+                opts: { temperature, maxTokens, timeoutMs },
+              });
+              structuredLog("info", "llm_byo_routed", { slot, provider: byo.provider, model: byo.model, ok: byo.ok });
+              return {
+                ok: byo.ok,
+                content: byo.text || "",
+                raw: byo,
+                brain: slot,
+                source: "byo",
+                provider: byo.provider,
+                model: byo.model,
+                ...(byo.ok ? {} : { error: byo.error || "byo_provider_error" }),
+              };
+            } catch (_byoErr) {
+              structuredLog("warn", "llm_byo_exception", { slot, error: String(_byoErr?.message || _byoErr) });
+              // fall through to the default conscious brain below
+            }
+          }
+        }
+        // ===== END BYO KEY ROUTING =====
+
         // ===== OLLAMA-ONLY ROUTING =====
         // Sovereignty principle: only the local conscious brain.
         // Cloud LLM fallbacks were removed — this deployment is
