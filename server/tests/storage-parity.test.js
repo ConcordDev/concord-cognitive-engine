@@ -20,6 +20,16 @@ let API_BASE = process.env.API_BASE || '';
 let serverProcess = null;
 const STORAGE_MODE = process.env.STORAGE_MODE || 'auto'; // 'auto' | 'sqlite' | 'json'
 
+// Per-request abort budget. This is an out-of-process integration test:
+// it spawns a real server and hits real auth endpoints (password hashing
+// is CPU-heavy). Under the CI coverage run the spawned server inherits
+// c8 instrumentation via NODE_OPTIONS AND competes for CPU with the rest
+// of the parallel `node --test` suite, so an auth call that takes <1s in
+// isolation can take 10s+. A 10s budget made `register`/`login` flake the
+// "Lint & Test" gate; 60s is generous headroom against that contention
+// while still being far below a genuine hang.
+const API_TIMEOUT_MS = 60_000;
+
 // Unique test data per run
 const TS = Date.now();
 const TEST_USERS = [
@@ -94,7 +104,7 @@ async function api(method, path, body = null, headers = {}) {
   const opts = {
     method,
     headers: { 'Content-Type': 'application/json', ...headers },
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(`${API_BASE}${path}`, opts);
