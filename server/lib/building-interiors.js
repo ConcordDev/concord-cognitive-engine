@@ -186,6 +186,7 @@ export function addRoom(db, buildingId, worldId, roomSpec) {
 
 
   const row = db.prepare('SELECT * FROM building_rooms WHERE id = ?').get(id);
+  if (!row) return null;
   return { ...row, furniture: _tryParseJSON(row.furniture, []) };
 }
 
