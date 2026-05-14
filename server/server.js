@@ -2426,6 +2426,19 @@ function tokenish(s="") {
   return normalizeText(s).toLowerCase();
 }
 
+// Strip HTML tag markup from a user-controlled string at the write
+// boundary. Used for short display strings (titles, tags) that render as
+// plain labels — a `<script>…` payload here would be stored XSS. Unlike
+// entity-escaping, this leaves ordinary text untouched: `R&D`, quotes and
+// apostrophes are preserved verbatim, so the stored value stays canonical
+// for search, prompts, exports and other non-HTML sinks. Loops until
+// stable to defeat nested-tag bypasses (`<scr<script>ipt>`).
+function stripTags(s="") {
+  let out = String(s), prev;
+  do { prev = out; out = out.replace(/<\/?[a-zA-Z][^>]*>?/g, ""); } while (out !== prev);
+  return out;
+}
+
 
 function defaultStyleVector() {
   return {
@@ -19187,8 +19200,14 @@ register("dtu", "create", async (ctx, input) => {
   if (!STATE._dailyDtuCount[_dtuTodayKey]) STATE._dailyDtuCount = { [_dtuTodayKey]: {} };
   if (!STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId]) STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId] = 0;
 
-  const title = normalizeText(input.title || "Untitled DTU");
-  const tags = Array.isArray(input.tags) ? input.tags.map(t=>normalizeText(t)).filter(Boolean) : [];
+  // Strip HTML tag markup from user-controlled display strings at the
+  // write boundary. A DTU title/tag renders as a plain label, never as
+  // markup, so a `<script>` payload here would be stored XSS. Tag-
+  // stripping (not entity-escaping) keeps ordinary text canonical —
+  // `R&D`, quotes, apostrophes survive verbatim. Body content is left
+  // alone: it flows through the markdown renderer's own output-encoding.
+  const title = stripTags(normalizeText(input.title || "Untitled DTU"));
+  const tags = Array.isArray(input.tags) ? input.tags.map(t=>stripTags(normalizeText(t))).filter(Boolean) : [];
   const tier = input.tier && ["regular","mega","hyper"].includes(input.tier) ? input.tier : "regular";
   const lineage = Array.isArray(input.lineage) ? input.lineage : [];
   const source = input.source || "local";
