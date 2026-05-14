@@ -85,12 +85,19 @@ describe("catalog integrity", () => {
     }
   });
 
-  it("the 4 spec-missing systems are present and flagged stub", () => {
+  it("the 4 formerly-missing systems are present and built (Phase 7)", () => {
+    // The substrate audit flagged these as listed-in-spec but absent.
+    // Phase 7 built them; they're now status:'available'.
     for (const id of ["size-scaling", "status-window", "skill-affinity-player", "isekai-reincarnation"]) {
       const s = getSystem(id);
       assert.ok(s, `${id} missing from catalog`);
-      assert.equal(s.status, "stub", `${id} should be status:'stub' until Phase 7`);
+      assert.equal(s.status, "available", `${id} should be 'available' after Phase 7`);
     }
+  });
+
+  it("no systems remain stubbed", () => {
+    const stubs = SYSTEM_REGISTRY.filter((s) => s.status === "stub").map((s) => s.id);
+    assert.deepEqual(stubs, [], `still stubbed: ${stubs.join(", ")}`);
   });
 
   it("config schema fields all declare a valid type + default", () => {
@@ -176,10 +183,12 @@ describe("validateSystemSelection", () => {
     assert.ok(r.warnings.some((w) => w.includes("duplicate")));
   });
 
-  it("stub systems warn but do not error", () => {
-    const r = validateSystemSelection([{ id: "status-window" }]);
+  it("available systems produce no stub warning", () => {
+    // Post-Phase-7 every system is built, so a clean selection of
+    // available systems carries no "not built yet" advisory.
+    const r = validateSystemSelection([{ id: "status-window" }, { id: "combat-motor" }]);
     assert.equal(r.ok, true);
-    assert.ok(r.warnings.some((w) => w.includes("not built yet")));
+    assert.ok(!r.warnings.some((w) => w.includes("not built yet")));
   });
 
   it("size-scaled-combat needs both combat-motor and size-scaling", () => {

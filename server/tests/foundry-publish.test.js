@@ -53,15 +53,19 @@ describe("worldspec compiler", () => {
     assert.ok(!("royalty-cascade" in c.rule_modulators));
   });
 
-  it("skips stub systems but records them in provenance", () => {
+  it("activates the Phase 7 systems (no longer stubs)", () => {
+    // size-scaling + status-window were built in Phase 7 — the compiler
+    // now activates them instead of skipping. (The stub-skip code path
+    // still exists for any future status:'stub' system.)
     const spec = normalizeWorldspec({
-      systems: [{ id: "combat-motor" }, { id: "size-scaling" }, { id: "status-window" }],
+      systems: [{ id: "combat-motor" }, { id: "physics-modifiers" }, { id: "size-scaling" }, { id: "status-window" }],
     });
     const c = compileWorldspec(spec);
-    assert.deepEqual(c.skippedStubs.sort(), ["size-scaling", "status-window"]);
-    assert.deepEqual(c.activatedSystems, ["combat-motor"]);
-    assert.deepEqual(c.rule_modulators.foundry.stubs.sort(), ["size-scaling", "status-window"]);
-    assert.deepEqual(c.rule_modulators.foundry.systems, ["combat-motor"]);
+    assert.deepEqual(c.skippedStubs, []);
+    assert.deepEqual(c.activatedSystems.sort(), ["combat-motor", "physics-modifiers", "size-scaling", "status-window"]);
+    assert.equal(typeof c.rule_modulators.size_scaling, "object"); // size-scaling activated
+    assert.equal(typeof c.rule_modulators.status_window, "object"); // status-window activated
+    assert.deepEqual(c.rule_modulators.foundry.stubs, []);
   });
 
   it("writes a provenance marker", () => {
@@ -168,16 +172,15 @@ describe("foundry.publish", () => {
     assert.equal(pub.reason, "not_owner");
   });
 
-  it("a published worldspec with a stub system publishes, stub skipped", () => {
-    // status-window is a stub with no dependencies — selectable + persists
-    // in the spec, but the compiler skips it until Phase 7 flips its status.
+  it("publishes a worldspec including a Phase 7 system — it activates", () => {
+    // status-window was built in Phase 7; publishing now activates it.
     const id = h.call("foundry.create", {
       name: "Future", worldspec: { systems: [{ id: "combat-motor" }, { id: "status-window" }] },
     }).world.id;
     const pub = h.call("foundry.publish", { id });
     assert.equal(pub.ok, true);
-    assert.deepEqual(pub.skippedStubs, ["status-window"]);
-    assert.deepEqual(pub.activatedSystems, ["combat-motor"]);
+    assert.deepEqual(pub.skippedStubs, []);
+    assert.deepEqual(pub.activatedSystems.sort(), ["combat-motor", "status-window"]);
   });
 });
 
