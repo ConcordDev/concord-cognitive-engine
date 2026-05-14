@@ -6548,6 +6548,13 @@ if (rateLimit) {
       const identity = req.body?.username || req.body?.email || "";
       return `${req.ip}:${identity}`;
     },
+    // Integration/smoke/e2e CI jobs set CONCORD_RATE_LIMIT_BYPASS=1 — a
+    // single suite legitimately does many register/login calls (real-creds
+    // fixtures plus invalid-credential specs) and would otherwise trip the
+    // 5-attempt cap, 429-ing later specs (e.g. playthrough's login). Unit
+    // tests don't set the var; production never sets it. Mirrors the skip
+    // on unauthRateLimiter below.
+    skip: () => process.env.CONCORD_RATE_LIMIT_BYPASS === "1",
     skipSuccessfulRequests: true // Don't count successful logins
   });
 }
