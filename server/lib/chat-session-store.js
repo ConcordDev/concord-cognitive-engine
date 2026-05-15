@@ -20,7 +20,12 @@
 
 import logger from "../logger.js";
 
-const HYDRATE_LIMIT = 60;        // matches STATE.sessions splice cap
+// Override via CONCORD_CHAT_HYDRATE_LIMIT env var. Default 200 — large
+// enough that a power user with weeks of history rehydrates the full
+// recent context. The brain itself only sees the last 20 messages
+// (buildConsciousPrompt slice), so the cost of hydrating more is just
+// the read query, not prompt-token cost.
+const HYDRATE_LIMIT = Number(process.env.CONCORD_CHAT_HYDRATE_LIMIT) || 200;
 const TITLE_MAX_LEN = 80;
 
 function _now() { return Date.now(); }

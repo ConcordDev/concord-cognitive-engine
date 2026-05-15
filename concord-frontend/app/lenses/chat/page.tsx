@@ -493,6 +493,43 @@ export default function ChatLensPage() {
     loadConversations()
   );
 
+  // Hydrate sidebar from server-persisted sessions (authenticated users
+  // only — anon users have no backend session record). Runs once on
+  // mount + whenever auth state flips. Merges with localStorage by
+  // session id so the user sees BOTH (cross-device server-side + this
+  // device's local-only).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/chat/sessions?limit=100', { credentials: 'include' });
+        if (!res.ok) return;
+        const json = await res.json() as { ok: boolean; sessions?: Array<{ id: string; title: string | null; lens: string | null; updated_at: number; created_at: number; msg_count: number }> };
+        if (cancelled || !json.ok || !Array.isArray(json.sessions)) return;
+        setStoredConversations((prev) => {
+          const localById = new Map(prev.map((c) => [c.id, c]));
+          for (const s of json.sessions!) {
+            const existing = localById.get(s.id);
+            const remote: Conversation = {
+              id: s.id,
+              title: s.title || existing?.title || 'New conversation',
+              lastMessage: existing?.lastMessage || '',
+              updatedAt: new Date(s.updated_at).toISOString(),
+              messageCount: s.msg_count || existing?.messageCount || 0,
+            };
+            localById.set(s.id, remote);
+          }
+          return Array.from(localById.values()).sort((a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          );
+        });
+      } catch { /* anon or offline — sidebar stays localStorage-only */ }
+    })();
+    return () => { cancelled = true; };
+  // Re-fetch when auth flips (login → cross-device sessions appear).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // New state — Persona picker
   const [selectedPersona, setSelectedPersona] = useState<Persona>(PERSONAS[0]);
   const [showPersonaPicker, setShowPersonaPicker] = useState(false);
@@ -2413,14 +2450,16 @@ export default function ChatLensPage() {
                 Chat
               </h2>
               <div className="flex items-center gap-1">
-                <button
-                  className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
-                  aria-label="BYO API keys"
-                  title="Plug your own API key into a brain slot"
-                  onClick={() => setByoOpen(true)}
-                >
-                  <Key className="w-5 h-5 text-gray-400 hover:text-neon-cyan" />
-                </button>
+                {isAuthenticated && (
+                  <button
+                    className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
+                    aria-label="BYO API keys"
+                    title="Plug your own API key into a brain slot"
+                    onClick={() => setByoOpen(true)}
+                  >
+                    <Key className="w-5 h-5 text-gray-400 hover:text-neon-cyan" />
+                  </button>
+                )}
                 <button
                   className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
                   aria-label="Chat settings"

@@ -21678,24 +21678,43 @@ Rules for tool use:
       }
     : null;
 
-  // Extract DTU references from the final reply for citation chips.
-  // Matches the [dtu-…] / [DTU:…] / "DTU id …" patterns the brain uses
-  // when surgical-citing per the prompt-registry rule.
-  const _dtuRefIds = new Set();
-  try {
-    const _refRe = /\b(?:dtu[-_:]?|DTU\s*[-_:]?\s*)([A-Za-z0-9_-]{6,40})\b/g;
-    let _m;
-    while ((_m = _refRe.exec(finalReply || "")) !== null) {
-      const id = _m[1];
-      if (id && id.length >= 6 && id.length <= 40) _dtuRefIds.add(id);
-    }
-  } catch { /* never block on extraction */ }
-  const _dtuRefs = Array.from(_dtuRefIds).slice(0, 12).map(id => {
-    const r = relevant.find(d => d.id === id || d.id?.endsWith(id));
-    return r
-      ? { id: r.id, title: r.title, tier: r.tier }
-      : { id, title: null, tier: null };
-  });
+  // Strategy: strip ``` fenced code blocks + `inline code` first so we
+  // don't pick up identifiers in code samples. Then pattern-match the
+  // bracketed-citation form `[dtu-…]` / `[DTU:…]` and the prose form
+  // `DTU id …`. Finally, only accept refs whose id is in the relevant
+  // DTU set — this is the brain's *grounding* surface, so we don't
+  // emit chips for fabricated or non-grounded ids.
+  const _dtuRefs = (() => {
+    try {
+      const stripped = String(finalReply || "")
+        .replace(/```[\s\S]*?```/g, " ")
+        .replace(/`[^`\n]*`/g, " ");
+      const ids = new Set();
+      // [dtu-…] / [DTU:…] bracketed citation form
+      const _bracketRe = /\[\s*(?:dtu[-_:]?|DTU\s*[-_:]?\s*)([A-Za-z0-9_-]{6,40})\s*\]/g;
+      // "DTU id …" prose form (requires the word "id" to disambiguate)
+      const _proseRe = /\b(?:DTU|dtu)\s+(?:id\s+)?([A-Za-z0-9_-]{6,40})\b/g;
+      for (const re of [_bracketRe, _proseRe]) {
+        let _m;
+        while ((_m = re.exec(stripped)) !== null) {
+          const id = _m[1];
+          if (id && id.length >= 6 && id.length <= 40) ids.add(id);
+        }
+      }
+      // Only emit chips for ids the relevant set actually grounds —
+      // suppresses false positives + brain-fabricated refs.
+      const relevantIds = new Set(relevant.map(d => d.id));
+      return Array.from(ids)
+        .filter(id => relevantIds.has(id) || [...relevantIds].some(r => r.endsWith(id)))
+        .slice(0, 12)
+        .map(id => {
+          const r = relevant.find(d => d.id === id || d.id?.endsWith(id));
+          return r
+            ? { id: r.id, title: r.title, tier: r.tier }
+            : { id, title: null, tier: null };
+        });
+    } catch { return []; }
+  })();
 
   // Persist the turn so multi-turn continuity survives a restart.
   try {
