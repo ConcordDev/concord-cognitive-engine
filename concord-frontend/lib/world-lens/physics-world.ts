@@ -142,17 +142,18 @@ class PhysicsWorld {
     hmHeight: number,
     worldScale: { x: number; y: number; z: number },
   ): void {
-    if (!this.RAPIER || !this.world) return;
-
-    const RAPIER = this.RAPIER;
-    const desc = RAPIER.ColliderDesc.heightfield(
-      hmHeight - 1,
-      hmWidth  - 1,
-      hmData,
-      { x: worldScale.x, y: worldScale.y, z: worldScale.z },
-    );
-    desc.setTranslation(0, 0, 0);
-    this.world.createCollider(desc);
+    this._guard('createHeightfieldCollider', () => {
+      if (!this.RAPIER || !this.world) return;
+      const RAPIER = this.RAPIER;
+      const desc = RAPIER.ColliderDesc.heightfield(
+        hmHeight - 1,
+        hmWidth  - 1,
+        hmData,
+        { x: worldScale.x, y: worldScale.y, z: worldScale.z },
+      );
+      desc.setTranslation(0, 0, 0);
+      this.world.createCollider(desc);
+    }, undefined);
   }
 
   /**
@@ -164,18 +165,18 @@ class PhysicsWorld {
     halfExtents: { x: number; y: number; z: number },
     entityId?: string,
   ): string {
-    if (!this.RAPIER || !this.world) return '';
-
-    const RAPIER = this.RAPIER;
-    const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(position.x, position.y, position.z);
-    const body     = this.world.createRigidBody(bodyDesc);
-    const collDesc = RAPIER.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z);
-    const coll     = this.world.createCollider(collDesc, body);
-
-    const key = entityId ? `building:${entityId}` : `building_${Date.now()}_${Math.random()}`;
-    this.bodies.set(key, body);
-    this.colliders.set(key, coll);
-    return key;
+    return this._guard('createBuildingCollider', () => {
+      if (!this.RAPIER || !this.world) return '';
+      const RAPIER = this.RAPIER;
+      const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(position.x, position.y, position.z);
+      const body     = this.world.createRigidBody(bodyDesc);
+      const collDesc = RAPIER.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z);
+      const coll     = this.world.createCollider(collDesc, body);
+      const key = entityId ? `building:${entityId}` : `building_${Date.now()}_${Math.random()}`;
+      this.bodies.set(key, body);
+      this.colliders.set(key, coll);
+      return key;
+    }, '');
   }
 
   /**
@@ -217,11 +218,13 @@ class PhysicsWorld {
 
   /** Remove a previously-registered building collider by its key. */
   removeBuildingCollider(key: string): void {
-    if (!this.world || !key) return;
-    const body = this.bodies.get(key);
-    if (body) this.world.removeRigidBody(body);
-    this.bodies.delete(key);
-    this.colliders.delete(key);
+    this._guard('removeBuildingCollider', () => {
+      if (!this.world || !key) return;
+      const body = this.bodies.get(key);
+      if (body) this.world.removeRigidBody(body);
+      this.bodies.delete(key);
+      this.colliders.delete(key);
+    }, undefined);
   }
 
   /**
@@ -291,6 +294,10 @@ class PhysicsWorld {
    * Static-only — trimesh on a dynamic body is not supported by Rapier.
    */
   private _registerTrimeshFromObject(obj: Object3DLike, entityId: string): string | null {
+    return this._guard('_registerTrimeshFromObject', () => this._registerTrimeshFromObjectInner(obj, entityId), null);
+  }
+
+  private _registerTrimeshFromObjectInner(obj: Object3DLike, entityId: string): string | null {
     if (!this.RAPIER || !this.world || !this.THREE) return null;
     const ud = obj.userData ?? (obj as Record<string, unknown>);
     const existing = (ud as Record<string, unknown>).physicsKey as string | undefined;
@@ -377,6 +384,10 @@ class PhysicsWorld {
    * outside the kinematic-controller path.
    */
   private _registerCapsuleFromObject(obj: Object3DLike, entityId: string): string | null {
+    return this._guard('_registerCapsuleFromObject', () => this._registerCapsuleFromObjectInner(obj, entityId), null);
+  }
+
+  private _registerCapsuleFromObjectInner(obj: Object3DLike, entityId: string): string | null {
     if (!this.RAPIER || !this.world || !this.THREE) return null;
     const ud = obj.userData ?? (obj as Record<string, unknown>);
     const existing = (ud as Record<string, unknown>).physicsKey as string | undefined;
@@ -412,25 +423,27 @@ class PhysicsWorld {
    * Returns the controller; also stored internally under `id`.
    */
   createCharacterController(id: string): CharCtrl | null {
-    if (!this.RAPIER || !this.world) return null;
+    return this._guard('createCharacterController', () => {
+      if (!this.RAPIER || !this.world) return null;
 
-    const RAPIER   = this.RAPIER;
-    const offset   = 0.01;
-    const ctrl     = this.world.createCharacterController(offset);
-    ctrl.setMaxSlopeClimbAngle((45 * Math.PI) / 180);
-    ctrl.setMinSlopeSlideAngle((30 * Math.PI) / 180);
-    ctrl.enableSnapToGround(0.5);
-    ctrl.setApplyImpulsesToDynamicBodies(true);
+      const RAPIER   = this.RAPIER;
+      const offset   = 0.01;
+      const ctrl     = this.world.createCharacterController(offset);
+      ctrl.setMaxSlopeClimbAngle((45 * Math.PI) / 180);
+      ctrl.setMinSlopeSlideAngle((30 * Math.PI) / 180);
+      ctrl.enableSnapToGround(0.5);
+      ctrl.setApplyImpulsesToDynamicBodies(true);
 
-    // Each controller needs its own collider (capsule shape)
-    const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
-      .setTranslation(0, 5, 0);
-    const body = this.world.createRigidBody(bodyDesc);
-    const collDesc = RAPIER.ColliderDesc.capsule(0.7, 0.3); // half-height, radius
-    this.world.createCollider(collDesc, body);
-    this.bodies.set(id, body);
-    this.controllers.set(id, ctrl);
-    return ctrl;
+      // Each controller needs its own collider (capsule shape)
+      const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
+        .setTranslation(0, 5, 0);
+      const body = this.world.createRigidBody(bodyDesc);
+      const collDesc = RAPIER.ColliderDesc.capsule(0.7, 0.3); // half-height, radius
+      this.world.createCollider(collDesc, body);
+      this.bodies.set(id, body);
+      this.controllers.set(id, ctrl);
+      return ctrl;
+    }, null);
   }
 
   /**
@@ -732,14 +745,16 @@ class PhysicsWorld {
 
   /** Remove a character controller and its body. */
   removeCharacter(id: string): void {
-    if (!this.world) return;
-    const body = this.bodies.get(id);
-    if (body) this.world.removeRigidBody(body);
-    this.bodies.delete(id);
-    const ctrl = this.controllers.get(id);
-    if (ctrl) this.world.removeCharacterController(ctrl);
-    this.controllers.delete(id);
-    this.kinematic.delete(id);
+    this._guard('removeCharacter', () => {
+      if (!this.world) return;
+      const body = this.bodies.get(id);
+      if (body) this.world.removeRigidBody(body);
+      this.bodies.delete(id);
+      const ctrl = this.controllers.get(id);
+      if (ctrl) this.world.removeCharacterController(ctrl);
+      this.controllers.delete(id);
+      this.kinematic.delete(id);
+    }, undefined);
   }
 
   // ── Projectiles ────────────────────────────────────────────────────────────
