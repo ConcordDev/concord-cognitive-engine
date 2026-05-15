@@ -56707,16 +56707,57 @@ const server = SHOULD_LISTEN ? app.listen(PORT, () => {
 if (server) {
   server.keepAliveTimeout = 65_000;
   server.headersTimeout = 66_000;
-  // requestTimeout = 75 s caps the maximum lifetime of an in-flight
-  // request at the socket layer. Without this, a handler that hangs
-  // (heavy DB query, blocked event-loop tick) holds the socket open
-  // until Node's default 5-min ceiling — long enough for the proxy
-  // to give up and ECONNRESET-on-reuse the next time it picks that
-  // socket from its keep-alive pool. 75 s sits just above the 60 s
-  // requestTimeoutMiddleware budget so the express layer always wins
-  // the race and writes a 503; the socket-level cap is the backstop
-  // for genuinely stuck requests.
-  server.requestTimeout = 75_000;
+  // server.requestTimeout intentionally left at Node's default (5 min).
+  // A previous iteration (PR #380) set it to 75 s as a backstop for
+  // "stuck" handlers, but that turned out to manufacture the very symptom
+  // it was supposed to prevent: when a slow SQLite heartbeat blocks the
+  // event loop for ~30-90 s, every in-flight request gets queued. The
+  // 75 s socket-level cap then killed requests that were merely waiting
+  // for the loop, surfacing as ECONNRESET bursts on /api/metrics/vitals,
+  // /api/onboarding/wizard-status, /api/sub-lens/tree. With the cap
+  // removed, queued requests complete cleanly after the loop unblocks
+  // (slow but successful) rather than failing fast (broken). The real
+  // fix for the underlying loop block lives in the event-loop-lag
+  // monitor below — instrument the symptom, then chase the cause.
+}
+
+// Event-loop lag monitor. Uses Node's built-in perf_hooks histogram to
+// sample how long the loop is sitting idle between scheduled ticks; a
+// spike correlates with a synchronous workload (heavy SQLite query,
+// heartbeat tick, JSON.stringify of a large object) blocking the loop.
+//
+// When max-since-last-sample crosses the threshold, structured-log it
+// so the next failed CI run surfaces *which time window* the block
+// happened in. Cross-reference that timestamp with the heartbeat log
+// to identify the offending workload.
+//
+// Cheap: the histogram is in-process counters; ~50 ns per sample, no
+// allocations. Resolution 50 ms is plenty for human-scale problems.
+try {
+  const { monitorEventLoopDelay } = await import("node:perf_hooks");
+  const histogram = monitorEventLoopDelay({ resolution: 50 });
+  histogram.enable();
+  // Threshold = 1 s. Anything above that is a noticeable hitch from a
+  // user's POV (a 1 s pause in API response is "is the site frozen?").
+  const LAG_THRESHOLD_NS = 1_000 * 1e6;
+  // Sample every 30 s. Heartbeat tick is every 15 s, so two windows
+  // means each tick has a fresh window to be observed in.
+  setInterval(() => {
+    try {
+      const maxNs = histogram.max;
+      if (Number.isFinite(maxNs) && maxNs > LAG_THRESHOLD_NS) {
+        structuredLog("warn", "event_loop_lag_spike", {
+          maxMs: Math.round(maxNs / 1e6),
+          meanMs: Math.round(histogram.mean / 1e6),
+          p99Ms: Math.round(histogram.percentile(99) / 1e6),
+          windowSeconds: 30,
+        });
+      }
+      histogram.reset();
+    } catch { /* perf_hooks unhappy — swallow, monitor is informational */ }
+  }, 30_000).unref();
+} catch (e) {
+  structuredLog("info", "event_loop_monitor_unavailable", { error: String(e?.message || e) });
 }
 
 // Optional: enable thin realtime mirror (WebSockets) for queues/jobs/panels.
