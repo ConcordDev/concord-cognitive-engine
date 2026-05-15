@@ -56684,6 +56684,21 @@ const server = SHOULD_LISTEN ? app.listen(PORT, () => {
   }
 }) : null;
 
+// HTTP keep-alive timeouts. Node defaults (keepAliveTimeout=5s,
+// headersTimeout=60s) are too short when sitting behind a connection-
+// pooling proxy (Next.js dev/start in CI, nginx in prod): the proxy
+// reuses a socket the server has already closed → client sees the
+// "socket hang up" ECONNRESET we were getting on /api/metrics/vitals,
+// /api/onboarding/wizard-status, /api/sub-lens/tree during e2e load.
+// 65s/66s mirrors the AWS ALB recommendation and stays under the 70s
+// upstream timeout most proxies default to. headersTimeout MUST be
+// strictly greater than keepAliveTimeout (Node enforces this) — keep
+// the +1s gap.
+if (server) {
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
+}
+
 // Optional: enable thin realtime mirror (WebSockets) for queues/jobs/panels.
 try { await tryInitWebSockets(server); } catch (e) {
   structuredLog("error", "websocket_init_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
