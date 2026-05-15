@@ -59,9 +59,11 @@ export default defineConfig({
     actionTimeout: 60000,
   },
   // Per-test timeout — covers the whole spec body including setup
-  // and teardown. 90 s leaves a comfortable margin over a 60 s goto
-  // plus a 15 s assertion budget.
-  timeout: 90000,
+  // and teardown. 180 s lets cold-loading heavy Three.js worlds
+  // (concord-link-frontier etc.) finish on a slow CI runner; the
+  // happy-path browsers finish in 17–25 s, but a webkit/firefox cold
+  // boot of a heavy scene + screenshot can straddle the prior 90 s.
+  timeout: 180000,
 
   projects: [
     {

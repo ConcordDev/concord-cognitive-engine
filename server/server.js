@@ -6176,8 +6176,12 @@ function validate(schemaName, source = "body") {
 const DEFAULT_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS, 10) || 30000;
 const LLM_TIMEOUT_MS = parseInt(process.env.LLM_REQUEST_TIMEOUT_MS, 10) || 60000; // 60s is plenty on GPU
 
-// Routes that involve LLM calls get longer timeouts
-const _LLM_ROUTE_PREFIXES = ["/api/chat", "/api/forge", "/api/ask", "/api/swarm", "/api/sim", "/api/council/debate"];
+// Routes that involve LLM calls get longer timeouts. /api/lens/run and
+// /api/worlds/* dispatch to brain-backed macros (oracle dialogue, NPC
+// conversation, glyph composition) — without the longer budget, a slow
+// cold macro would 503 the request middleware here at 30 s while the
+// handler was still running, manifesting client-side as ECONNRESET.
+const _LLM_ROUTE_PREFIXES = ["/api/chat", "/api/forge", "/api/ask", "/api/swarm", "/api/sim", "/api/council/debate", "/api/lens/run", "/api/worlds/"];
 
 function requestTimeoutMiddleware(req, res, next) {
   // Skip for SSE/streaming (they manage their own lifecycle)
@@ -50321,6 +50325,18 @@ app.post("/api/brain/entity/explore", asyncHandler(async (req, res) => {
 const _brainHealthFailures = {};
 const BRAIN_HEALTH_FAILURE_THRESHOLD = 3; // Only mark offline after 3 consecutive failures
 app.get("/api/brain/health", asyncHandler(async (_req, res) => {
+  // CI / no-Ollama deployments set CONCORD_DISABLE_BRAINS=true. Skip the
+  // 5×8 s parallel Ollama probes that would otherwise return useless
+  // failure rows + leave the event loop holding 5 dead sockets during
+  // every poll — concurrent callers (frontend hero-mesh + scene boot)
+  // were filling the request-timeout window and triggering ECONNRESET.
+  if (String(process.env.CONCORD_DISABLE_BRAINS || "").toLowerCase() === "true") {
+    const health = {};
+    for (const [name, brain] of Object.entries(BRAIN)) {
+      health[name] = { online: false, healthy: false, model: brain.model, error: "brains_disabled" };
+    }
+    return res.json({ ok: true, allHealthy: false, brains_disabled: true, ...health, brains: health });
+  }
   const health = {};
   const probes = Object.entries(BRAIN).map(async ([name, brain]) => {
     try {
