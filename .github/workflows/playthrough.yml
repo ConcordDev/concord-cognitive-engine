@@ -58,6 +58,15 @@ jobs:
           DB_PATH: ./data/concord.test.db
           PORT: 5050
           JWT_SECRET: test_secret_for_e2e_playthrough_phase_z
+          # NODE_ENV=test suppresses port binding (server.js:56647) —
+          # CONCORD_FORCE_LISTEN is the escape hatch for out-of-process
+          # integration boots. Without it nothing listens on :5050 and
+          # every spec hits ECONNREFUSED (the wait loop below never
+          # noticed because it didn't fail on timeout).
+          CONCORD_FORCE_LISTEN: 'true'
+          # No Ollama in CI — skip the 5 cold brain probes (~75-150s) so
+          # the server reaches listen quickly. Same flag ci.yml sets.
+          CONCORD_DISABLE_BRAINS: 'true'
           # The spec's beforeAll registers a fresh test user every run;
           # the per-IP daily registration cap (3/day) would 429 it after
           # a few CI runs. Same flag ci.yml sets to relax rate limits.
@@ -65,10 +74,16 @@ jobs:
 
       - name: Wait for server
         run: |
-          for i in {1..30}; do
-            curl -fsS http://localhost:5050/api/health && break
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:5050/api/health > /dev/null 2>&1; then
+              echo "Server ready after ${i} attempt(s)"
+              exit 0
+            fi
             sleep 2
           done
+          echo "Server failed to start within 120s. Logs:"
+          cat server/server.log || true
+          exit 1
 
       # Build the prod artifact only — do NOT start the frontend here.
       # playwright.config.ts owns the webServer (`npm run start:ci` on
