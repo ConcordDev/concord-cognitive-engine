@@ -25,6 +25,7 @@
 // existing chat.respond contract.
 
 import { brainChat, provenanceFrom } from "./byo-router.js";
+import { TASK_PROMPTS } from "./prompt-registry.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -346,7 +347,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   }
 
   const messages = [
-    { role: "system", content: `You are Concord's Agent Mode — a tool-using assistant operating inside a 200+ lens cognitive OS. Be concise. Use tools when the task genuinely requires them.\n\n${TOOL_SCHEMA_BLOCK}${shadowContextBlock}` },
+    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock }) },
     ...history,
     { role: "user", content: message },
   ];

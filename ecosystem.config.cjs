@@ -22,8 +22,8 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
-      max_memory_restart: '8G',                                   // 62GB RAM — generous headroom
-      node_args: '--max-old-space-size=6144 --expose-gc',         // 6GB heap limit
+      max_memory_restart: '34G',                                  // matches 32G heap + ~2G headroom
+      node_args: '--max-old-space-size=32768 --expose-gc',         // 32GB heap — matches CLAUDE.md Blackwell default (server/package.json start script + docker-compose use the same)
       env: {
         // Default (Docker / docker-compose)
         NODE_ENV: 'production',
@@ -39,28 +39,34 @@ module.exports = {
         OLLAMA_HOST: 'http://ollama:11434',
       },
       env_runpod: {
-        // RunPod RTX Pro 4500 — 32GB VRAM, 62GB RAM, 28 vCPU
+        // RunPod RTX PRO 4500 Blackwell — 32GB GDDR7, 62GB RAM, 28 vCPU.
+        // Single Ollama instance hosts all 5 brain slots (vs the docker-compose
+        // split which puts each brain on its own container at 11434-11438).
         NODE_ENV: 'production',
         PORT: 5050,
         TRUST_PROXY: '1',
-        // All brains hit localhost Ollama — one instance, multiple model roles
+        // All five brain slots point at one on-pod Ollama; the model per slot
+        // is what differentiates them. (env_runpod overrides PM2's `env`
+        // block which has the docker-compose hostnames.)
         BRAIN_CONSCIOUS_URL: 'http://localhost:11434',
         BRAIN_SUBCONSCIOUS_URL: 'http://localhost:11434',
         BRAIN_UTILITY_URL: 'http://localhost:11434',
         BRAIN_REPAIR_URL: 'http://localhost:11434',
-        BRAIN_MULTIMODAL_URL: 'http://localhost:11434',
+        BRAIN_VISION_URL: 'http://localhost:11434',
         OLLAMA_HOST: 'http://localhost:11434',
-        // RTX Pro 4500 model selection (32GB VRAM):
-        //   qwen2.5:32b-instruct-q4_K_M  ≈ 20GB — best reasoning for chat
-        //   qwen2.5:14b-instruct-q4_K_M  ≈  8GB — background synthesis
-        //   qwen2.5:7b-instruct-q4_K_M   ≈  4GB — fast repair/utility
-        //   nomic-embed-text              ≈ 0.3GB — semantic cache
-        //   Total loaded (conscious+sub): ≈ 28GB — fits with 4GB headroom
-        BRAIN_CONSCIOUS_MODEL: 'qwen2.5:32b-instruct-q4_K_M',
-        BRAIN_SUBCONSCIOUS_MODEL: 'qwen2.5:14b-instruct-q4_K_M',
-        BRAIN_UTILITY_MODEL: 'qwen2.5:7b-instruct-q4_K_M',
-        BRAIN_REPAIR_MODEL: 'qwen2.5:7b-instruct-q4_K_M',
-        OLLAMA_VISION_MODEL: 'llava:13b',
+        // 5-brain model defaults — match server/lib/brain-config.js and
+        // .env.runpod. Previously this file held a legacy single-Ollama
+        // big-model config (qwen2.5:32b + 14b + 7b + 7b) that was 28GB
+        // loaded on a 32GB VRAM card with NO headroom for KV cache spikes
+        // under concurrent inference. The 5-brain set is concord-conscious
+        // (custom on qwen2.5 base) + qwen2.5:7b + qwen2.5:3b + qwen2.5:0.5b
+        // + llava:13b-v1.6-vicuna-q4_K_M; total much lighter and lets
+        // OLLAMA_MAX_LOADED_MODELS=2 actually rotate without OOMing.
+        BRAIN_CONSCIOUS_MODEL: 'concord-conscious:latest',
+        BRAIN_SUBCONSCIOUS_MODEL: 'qwen2.5:7b-instruct-q4_K_M',
+        BRAIN_UTILITY_MODEL: 'qwen2.5:3b',
+        BRAIN_REPAIR_MODEL: 'qwen2.5:0.5b',
+        BRAIN_VISION_MODEL: 'llava:13b-v1.6-vicuna-q4_K_M',
         // ALLOWED_ORIGINS and COOKIE_DOMAIN loaded from .env file
       },
       env_development: {
@@ -118,11 +124,23 @@ module.exports = {
       autorestart: true,
       env: {
         OLLAMA_HOST: '0.0.0.0:11434',
-        // RTX Pro 4500 (32GB VRAM, 28 vCPU): high parallelism, keep 2 models hot
-        // conscious (32b, ~20GB) + subconscious (14b, ~8GB) = 28GB loaded simultaneously
+        // RTX PRO 4500 Blackwell (32GB GDDR7, 28 vCPU). The 5-brain model set
+        // (concord-conscious + qwen2.5:7b + qwen2.5:3b + qwen2.5:0.5b + llava:13b)
+        // is much lighter than the old 32b+14b setup — total loaded weight stays
+        // well under 32GB even with 2 models hot, so we keep MAX_LOADED_MODELS=2
+        // for low-latency rotation between conscious and subconscious.
         OLLAMA_NUM_PARALLEL: '8',        // 8 concurrent inference streams
         OLLAMA_MAX_LOADED_MODELS: '2',   // keep conscious+subconscious in VRAM
         OLLAMA_NUM_THREAD: '14',         // half of 28 vCPU for Ollama CPU work
+        // Blackwell tensor-core / VRAM optimizations — matches docker-compose.yml.
+        // Previously these were docker-only, so the PM2 path on a real RunPod
+        // pod was running Ollama without flash-attn or q8 KV cache. That meant:
+        //  - no 5th-gen tensor-core acceleration (slower inference)
+        //  - 2× VRAM usage for KV cache (evicted hot models faster than expected)
+        // Aligning with docker-compose closes the gap.
+        OLLAMA_FLASH_ATTENTION: '1',
+        OLLAMA_KV_CACHE_TYPE: 'q8_0',
+        OLLAMA_KEEP_ALIVE: '24h',
       },
       error_file: 'logs/ollama-error.log',
       out_file: 'logs/ollama-out.log',

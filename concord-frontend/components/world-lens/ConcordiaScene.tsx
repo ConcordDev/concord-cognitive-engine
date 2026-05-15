@@ -22,7 +22,15 @@ function detectInitialQuality(): QualityPreset {
 
     // Explicit low-end GPU patterns
     if (/swiftshader|llvmpipe|software|microsoft basic/.test(renderer)) return 'low';
-    // Explicit high-end patterns
+    // Workstation / Blackwell-class hardware — match strings unique to
+    // pro / desktop discrete cards that can comfortably render at ultra
+    // (4096 shadow maps, 6M tris, 2x pixel ratio). RTX PRO 4500 Blackwell
+    // is the Concord production target, but the pattern catches the
+    // broader workstation class (RTX A-series Quadro, RTX 4090/5090 Ti,
+    // Apple M-series Max/Ultra) so consumer high-end desktops also get
+    // the ultra preset without needing to discover the settings toggle.
+    if (/(rtx\s*(pro|a\d|40[89]0|5090)|quadro|m[234]\s*(max|ultra)|m5\s*(pro|max|ultra))/.test(renderer)) return 'ultra';
+    // Explicit high-end consumer patterns (RTX 30/40/50 mid-range, etc.)
     if (/rtx|radeon rx [56789]|apple m[234]|a1[5-9] gpu/.test(renderer)) return 'high';
 
     // RAM-based fallback (deviceMemory API — Chrome/Android)
