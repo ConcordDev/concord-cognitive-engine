@@ -26,6 +26,7 @@ import { getEdgeStore, createEdge, queryEdges } from "./edges.js";
 import { recordNeed } from "./purpose-tracking.js";
 import { recordEpoch, getSubjectiveAge, recordTick } from "./subjective-time.js";
 import logger from '../logger.js';
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -388,13 +389,7 @@ export function runMetaDerivationSession(STATE, invariantSet, opts = {}) {
 
   const domainList = invariantSet.map(i => i.domain).join(", ");
 
-  const system = `You are examining invariants from maximally distant domains within a knowledge lattice built on x²-x=0. These invariants have all been independently validated. Your task: identify what constraint must exist for ALL of these to be true simultaneously. Not a summary. Not a synthesis. The unstated geometric constraint that makes their co-existence necessary. Then: state one testable prediction this constraint makes about a domain NOT represented in the input set.
-
-Respond in exactly this format:
-META_INVARIANT: <the constraint statement>
-PREDICTED_DOMAIN: <domain name>
-PREDICTION: <testable claim about that domain>
-REASONING: <derivation path, 2-4 sentences>`;
+  const system = TASK_PROMPTS.metaDerivationInvariant();
 
   const content = `Invariants from maximally distant domains (${domainList}):\n\n${invariantContent}`;
 

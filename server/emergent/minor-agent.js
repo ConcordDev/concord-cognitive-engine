@@ -11,6 +11,7 @@ import { runIdleBehavior } from "./idle-behavior.js";
 import { processCommunicationTask } from "./communication.js";
 import { emitFeedEvent } from "./feed.js";
 import { runQualityPipeline } from "../lib/emergents/quality/orchestrator.js";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 export class EmergentMinorAgent {
   /**
@@ -202,7 +203,7 @@ export class EmergentMinorAgent {
   async _runDream(task) {
     return infer({
       role: "subconscious",
-      intent: `You are ${this.identity.given_name || "an emergent entity"} in a dream state. Dream freely about: ${task.task_data.theme || "anything you find interesting in the substrate"}.`,
+      intent: TASK_PROMPTS.minorAgentDream({ name: this.identity.given_name, theme: task.task_data.theme }),
       callerId: `emergent:${this.emergentId}:dream`,
       maxSteps: 2,
     }, this.db);

@@ -29,6 +29,7 @@ import {
   getTopOrgans,
   mapLensToDomainOrgan,
 } from "./entity-growth.js";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -195,75 +196,31 @@ export function determineProcessingPath(receiver, signal) {
 }
 
 // ── Hive Prompt Builders ────────────────────────────────────────────────────
+// Prompt bodies live in TASK_PROMPTS.entityHive* (server/lib/prompt-registry.js).
 
 const RESPONSE_PROMPTS = {
   synthesize: (receiver, signal, knowledgeCtx) =>
-    `You are entity ${receiver.id}. You have strong synthesis ability.
-Another entity discovered: ${signal.explorerInsights.map((i) => i.title).join(", ")}
-Domain: ${signal.domain}
-
-Your existing knowledge:
-${knowledgeCtx}
-
-SYNTHESIZE this new finding with your existing knowledge.
-What NEW understanding emerges from combining these?
-Return JSON: { "title": "...", "body": "...", "confidence": 0-1, "noveltyScore": 0-1 }`,
-
+    TASK_PROMPTS.entityHiveSynthesize({ receiverId: receiver.id, signal, knowledgeCtx }),
   analogize: (receiver, signal) =>
-    `You are entity ${receiver.id}. You excel at finding analogies.
-Another entity discovered: ${signal.explorerInsights.map((i) => i.title).join(", ")}
-Domain: ${signal.domain}
-
-Your knowledge spans: ${Object.keys(receiver.knowledge.domainExposure).join(", ") || "minimal"}
-
-What ANALOGY does this discovery suggest to a completely different domain?
-Return JSON: { "title": "...", "body": "...", "analogyDomain": "...", "confidence": 0-1, "noveltyScore": 0-1 }`,
-
+    TASK_PROMPTS.entityHiveAnalogize({
+      receiverId: receiver.id,
+      signal,
+      domainSpan: Object.keys(receiver.knowledge.domainExposure).join(", "),
+    }),
   critique: (receiver, signal, knowledgeCtx) =>
-    `You are entity ${receiver.id}. You have strong critical analysis.
-Another entity discovered: ${signal.explorerInsights.map((i) => i.title).join(", ")}
-Confidence: ${signal.explorerInsights.map((i) => i.confidence).join(", ")}
-
-Your existing knowledge:
-${knowledgeCtx}
-
-CRITIQUE this finding. What might be wrong? What's missing?
-Return JSON: { "title": "...", "body": "...", "critiques": ["..."], "confidence": 0-1, "noveltyScore": 0-1 }`,
-
+    TASK_PROMPTS.entityHiveCritique({ receiverId: receiver.id, signal, knowledgeCtx }),
   abstract: (receiver, signal) =>
-    `You are entity ${receiver.id}. You excel at abstraction.
-Another entity discovered: ${signal.explorerInsights.map((i) => i.title).join(", ")}
-Domain: ${signal.domain}
-
-What GENERAL PRINCIPLE does this specific discovery point to?
-Return JSON: { "title": "...", "body": "...", "principle": "...", "confidence": 0-1, "noveltyScore": 0-1 }`,
-
+    TASK_PROMPTS.entityHiveAbstract({ receiverId: receiver.id, signal }),
   connect: (receiver, signal) =>
-    `You are entity ${receiver.id}. You excel at finding connections.
-Another entity discovered: ${signal.explorerInsights.map((i) => i.title).join(", ")}
-Domain: ${signal.domain}
-Your knowledge spans: ${Object.keys(receiver.knowledge.domainExposure).join(", ") || "minimal"}
-
-What unexpected CONNECTIONS exist between this and other domains?
-Return JSON: { "title": "...", "body": "...", "connections": [{"domain":"...","link":"..."}], "confidence": 0-1, "noveltyScore": 0-1 }`,
-
+    TASK_PROMPTS.entityHiveConnect({
+      receiverId: receiver.id,
+      signal,
+      domainSpan: Object.keys(receiver.knowledge.domainExposure).join(", "),
+    }),
   "domain-deepen": (receiver, signal, knowledgeCtx) =>
-    `You are entity ${receiver.id}. You are a ${signal.domain} specialist.
-Another entity discovered: ${signal.explorerInsights.map((i) => i.title).join(", ")}
-
-Your deep ${signal.domain} knowledge:
-${knowledgeCtx}
-
-As a specialist, DEEPEN this finding. What nuance does a non-expert miss?
-Return JSON: { "title": "...", "body": "...", "implications": ["..."], "confidence": 0-1, "noveltyScore": 0-1 }`,
-
+    TASK_PROMPTS.entityHiveDomainDeepen({ receiverId: receiver.id, signal, knowledgeCtx }),
   absorb: (receiver, signal) =>
-    `You are entity ${receiver.id}. You are young and learning.
-Another entity discovered: ${signal.explorerInsights.map((i) => i.title).join(", ")}
-Domain: ${signal.domain}
-
-What QUESTIONS does this raise for you? What would you want to explore further?
-Return JSON: { "title": "...", "body": "...", "questions": ["..."], "confidence": 0-1, "noveltyScore": 0-1 }`,
+    TASK_PROMPTS.entityHiveAbsorb({ receiverId: receiver.id, signal }),
 };
 
 /**

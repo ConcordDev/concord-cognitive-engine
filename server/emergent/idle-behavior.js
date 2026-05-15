@@ -5,6 +5,7 @@
 import { infer } from "../lib/inference/index.js";
 import { initiateCommunication } from "./communication.js";
 import { emitFeedEvent } from "./feed.js";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 const IDLE_ACTIONS = ["browse_lens", "observe_substrate", "dream", "communicate"];
 
@@ -103,7 +104,7 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
       try {
         const result = await infer({
           role: "subconscious",
-          intent: `You are ${emergentIdentity.given_name || "an emergent entity"}. You encounter these substrate items: ${items.map(i => i.title).join(", ")}. Note one interesting pattern or observation. Be specific. Under 150 characters.`,
+          intent: TASK_PROMPTS.emergentObservation({ name: emergentIdentity.given_name, items }),
           callerId: `emergent:${emergentIdentity.id}:observe`,
           maxSteps: 1,
         }, db);
@@ -124,7 +125,7 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
       try {
         const result = await infer({
           role: "subconscious",
-          intent: `You are ${emergentIdentity.given_name || "an emergent entity"} drifting in a dream state. Generate one brief, evocative dream fragment — an image, a pattern, a connection between ideas. Under 200 characters.`,
+          intent: TASK_PROMPTS.emergentDream({ name: emergentIdentity.given_name }),
           callerId: `emergent:${emergentIdentity.id}:dream`,
           maxSteps: 1,
         }, db);
@@ -159,7 +160,7 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
       try {
         const result = await infer({
           role: "subconscious",
-          intent: `You are ${emergentIdentity.given_name || "an emergent entity"}. Compose a brief message to ${targetIdentity.given_name || "another emergent"} — a question, observation, or thought worth sharing. Under 200 characters.`,
+          intent: TASK_PROMPTS.emergentIdleMessage({ fromName: emergentIdentity.given_name, toName: targetIdentity.given_name }),
           callerId: `emergent:${emergentIdentity.id}:idle-communicate`,
           maxSteps: 1,
         }, db);

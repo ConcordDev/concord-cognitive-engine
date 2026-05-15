@@ -3,6 +3,8 @@
 // Gathers recent DTUs, sends to subconscious brain for pattern analysis,
 // stores learned patterns as MEGA DTU candidates, emits insights via WebSocket.
 
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
+
 const LEARNING_STATE = new Map(); // domain -> { lastRunAt, patterns, insightCount }
 // Bumped 50 → 500 patterns/domain for 32GB-heap deployments. Each lens
 // learns more patterns before LRU eviction kicks in; richer cross-lens
@@ -72,7 +74,7 @@ Respond with a JSON object:
     // @agent-budget-ok: heartbeat-paced (1 call per cycle per domain ≈ 20min cadence);
     // brain-level concurrency cap (BRAIN_SUBCONSCIOUS_CONCURRENT=12) is the actual rate ceiling.
     const result = await callBrain("subconscious", prompt, {
-      system: `You are a pattern analysis engine for the ${domain} domain. Extract patterns from knowledge artifacts. Respond with valid JSON only.`,
+      system: TASK_PROMPTS.lensLearningPatternEngine({ domain }),
       temperature: 0.3,
       maxTokens: 500,
       // @env-config-ok: LLM call wrapper — matches conscious-brain timeout
