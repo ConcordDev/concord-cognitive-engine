@@ -23456,6 +23456,35 @@ registerHeartbeat("cross-world-scheme-cycle", {
   handler: runCrossWorldSchemeCycle,
 });
 
+// Open-corpus ingest — pulls free + legal slices of OpenStax, Wikipedia,
+// PubMed Central, CourtListener, deeper arXiv categories, and a sampled
+// Common Crawl CDX lookup into the DTU substrate. Each source has its
+// own per-day quota inside corpus-ingest.js so calling more often than
+// quotas allow is a free no-op. Disabled via CONCORD_CORPUS_INGEST=0.
+import { runCorpusIngestCycle, CORPUS_INGEST_FREQUENCY } from "./emergent/corpus-ingest-cycle.js";
+registerHeartbeat("corpus-ingest-cycle", {
+  frequency: CORPUS_INGEST_FREQUENCY, // ~60 min default
+  handler: async () => {
+    try {
+      // The cycle expects a bridgeEvent callback. We build the same one
+      // the realtime-feeds tick uses so corpus DTUs flow through the
+      // same quality / council / substrate pipeline.
+      const { bridgeEventToDTU } = await import("./emergent/event-to-dtu-bridge.js");
+      const bridgeEvent = (event) => bridgeEventToDTU(event, {
+        pipelineCommitDTU,
+        makeInternalCtx,
+        lookupDTU: (id) => STATE.dtus.get(id) || null,
+        updateDTU: (dtu) => { STATE.dtus.set(dtu.id, dtu); },
+        broadcastEvent: (type, data) => { try { realtimeEmit(type, data); } catch { /* swallow */ } },
+        STATE,
+      });
+      return await runCorpusIngestCycle({ db: STATE.db, bridgeEvent });
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  },
+});
+
 // Phase J4 — output-hooks macro surface (constitution + fingerprint
 // + ghost-thread pipeline). Callers opt in via output_hooks.process.
 import registerOutputHooksMacros from "./domains/output-hooks.js";

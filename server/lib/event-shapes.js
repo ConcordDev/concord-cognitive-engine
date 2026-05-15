@@ -383,6 +383,20 @@ export const LENIENT_EVENTS = new Set([
   "world:notification",
   "world:player-arrived",
   "yjs:update",
+  // Domain feed events emitted by server/emergent/realtime-feeds.js for
+  // the previously-dead-listener lenses. All carry the same RSS-articles
+  // shape: { ok, articles:[{ source, title, link, pubDate, summary }], fetchedAt }
+  "agriculture:update",
+  "aviation:update",
+  "education:update",
+  "fitness:update",
+  "government:update",
+  "insurance:update",
+  "legal:update",
+  "logistics:update",
+  "manufacturing:update",
+  "realestate:update",
+  "retail:update",
 ]);
 
 export function validateEvent(eventName, payload) {
