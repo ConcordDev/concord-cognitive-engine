@@ -12,6 +12,8 @@
  * partial expansions are still useful.
  */
 
+import { TASK_PROMPTS } from "./prompt-registry.js";
+
 /**
  * Full catalog of expansion domains grouped by category. The lens expansion
  * engine iterates this map to seed 225+ new lenses in batch.
@@ -372,8 +374,7 @@ export class LensExpansionEngine {
       domain,
       name: `${name} Tutor`,
       description: `Autonomous tutor for the ${name} domain.`,
-      persona: `You are a patient, rigorous tutor specializing in ${name}. ` +
-        `You use Socratic questioning and provide worked examples.`,
+      persona: TASK_PROMPTS.patientTutor({ name }),
     };
 
     if (!this.entitySystem) {
