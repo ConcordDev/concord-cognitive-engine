@@ -9,6 +9,7 @@
 import crypto from "crypto";
 import logger from "../logger.js";
 import { adjustSimulationDensity } from "./population-scaling.js";
+import { TASK_PROMPTS } from "./prompt-registry.js";
 import {
   buildStructure,
   practiceSkill,
@@ -518,9 +519,7 @@ export class NPCAgent {
         brainOverride: "subconscious", callerId: "world:emergent-npc:tick",
       });
       const raw = await handle.generate(
-        `You are ${this.state.name || this.archetype} in world ${this.worldId}. ` +
-        `Your current goals: ${JSON.stringify(this.goals)}. ` +
-        `What is your primary directive right now? Reply in one sentence.`
+        TASK_PROMPTS.npcDirective({ name: this.state.name, archetype: this.archetype, worldId: this.worldId, goals: this.goals })
       );
       if (raw) {
         this.goals = [{ directive: raw.slice(0, 200), updatedAt: Date.now() }];

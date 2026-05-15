@@ -28,19 +28,10 @@
 // the existing economics.
 
 import { brainChat, provenanceFrom } from "./byo-router.js";
+import { TASK_PROMPTS } from "./prompt-registry.js";
 
-const EXPERT_SYSTEM_PROMPT = `You are an expert research synthesizer in Concord's Expert Mode.
-
-Your task is to answer the user's question using ONLY the numbered sources provided below. Follow these rules without deviation:
-
-1. EVERY factual claim must end with a citation marker like [1] or [2, 3]. Bare claims are forbidden.
-2. If the sources are insufficient, say so explicitly: "The sources do not address X." Do NOT invent facts to fill gaps.
-3. Lead with the answer in 1-3 sentences. Then expand into 3-6 bulleted sub-points, each cited.
-4. Quote sparingly — paraphrase the source's substance, then cite.
-5. If sources conflict, name the conflict explicitly and cite both sides.
-6. Plain prose. No headings. No emojis. No filler.
-
-The user's question follows. The numbered sources are appended below it.`;
+// System prompt centralized in prompt-registry.js. Edit there.
+const EXPERT_SYSTEM_PROMPT = TASK_PROMPTS.expertMode();
 
 /**
  * Pull candidate DTUs from the global corpus for a given query.

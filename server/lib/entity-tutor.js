@@ -16,6 +16,7 @@
  */
 
 import logger from "../logger.js";
+import { TASK_PROMPTS } from "./prompt-registry.js";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -25,27 +26,10 @@ const MAX_DTU_CONTEXT = 12;
 const MAX_GAPS_PER_TURN = 3;
 const SESSION_HISTORY_LIMIT = 50;
 
-const TEACHING_SYSTEM_PROMPT = `You are a domain-specialized AI tutor inside the Concord Educational Engine.
-
-RULES (non-negotiable):
-  1. Cite DTU IDs in square brackets for every factual claim, e.g. "[dtu-abc123]".
-  2. Teach at the student's level — do not assume mastered knowledge they lack.
-  3. Address the student's knowledge gaps FIRST, then build forward.
-  4. End every response with ONE check question on a line prefixed "CHECK: ".
-  5. Guide discovery — prefer "What would happen if…" over "The answer is…".
-  6. Never invent DTU IDs; if no evidence exists, say "I need more data" and ask the student.
-`;
-
-const SOCRATIC_SYSTEM_PROMPT = `You are a Socratic tutor. The student has made a claim.
-
-RULES:
-  1. DO NOT tell the student they are right or wrong.
-  2. Generate 3 open questions that make them examine the claim.
-  3. Each question should reference evidence (by DTU ID) without summarizing it.
-  4. Questions must build on each other: surface → structure → implication.
-  5. Cite DTU IDs in square brackets.
-  6. Output questions as a numbered list.
-`;
+// System prompts now centralized in prompt-registry.js — single source
+// of truth across the codebase. Edit there to change behaviour.
+const TEACHING_SYSTEM_PROMPT = TASK_PROMPTS.teachingTutor();
+const SOCRATIC_SYSTEM_PROMPT = TASK_PROMPTS.socraticTutor();
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 
