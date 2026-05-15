@@ -44,13 +44,25 @@ const IGNORABLE = [
   /Connection lost/i,
 ];
 
-// LENS_LIST env var lets a partial re-run target only specific lenses.
-// Defaults to the full enumeration at /tmp/lens-routes.txt.
-const LENS_LIST_PATH = process.env.LENS_LIST || '/tmp/lens-routes.txt';
-const LENSES = fs.readFileSync(LENS_LIST_PATH, 'utf8')
-  .split('\n')
-  .map((l) => l.trim())
-  .filter(Boolean);
+// LENS_LIST env var (or /tmp/lens-routes.txt) lets a partial re-run
+// target only specific lenses. When neither exists — the default in CI,
+// where nothing generates the /tmp file — enumerate every
+// app/lenses/<name>/page.tsx directly so the spec is self-sufficient.
+function loadLensList(): string[] {
+  const explicit = process.env.LENS_LIST || '/tmp/lens-routes.txt';
+  if (fs.existsSync(explicit)) {
+    return fs.readFileSync(explicit, 'utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+  }
+  const lensesDir = path.resolve(__dirname, '../../app/lenses');
+  return fs.readdirSync(lensesDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && fs.existsSync(path.join(lensesDir, d.name, 'page.tsx')))
+    .map((d) => d.name)
+    .sort();
+}
+const LENSES = loadLensList();
 
 interface LensResult {
   lens: string;
