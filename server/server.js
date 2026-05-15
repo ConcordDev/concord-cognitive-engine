@@ -6545,6 +6545,14 @@ trackedSetInterval(() => {
 export { createBackup, restoreBackup, listBackups };
 
 // ---- Rate Limiting ----
+// Health probes (/health, /ready, /metrics, /api/health/*) must always
+// respond — orchestrators (k8s, load balancers, monitoring) hit them far
+// above any per-IP cap and would mark the pod unhealthy on a 429. CI
+// integration/smoke/e2e jobs set CONCORD_RATE_LIMIT_BYPASS=1 because the
+// whole suite hits the server from one runner IP. Both exemptions apply
+// to every limiter below.
+const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
+const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
 let rateLimiter = null;
 let authRateLimiter = null;
 if (rateLimit) {
@@ -6554,7 +6562,11 @@ if (rateLimit) {
     message: { ok: false, error: "Too many requests", retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip
+    keyGenerator: (req) => req.user?.id || req.ip,
+    // This limiter is mounted globally BEFORE authMiddleware, so it keys
+    // every request by IP. Health probes must never be 429'd, and CI
+    // suites hammer the server from one IP — exempt both.
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path),
   });
   // Stricter rate limiting for auth endpoints (5 attempts per 15 minutes)
   authRateLimiter = rateLimit({
@@ -6599,17 +6611,9 @@ if (rateLimit) {
 // Applied AFTER authMiddleware so req.user is already populated.
 let unauthRateLimiter = null;
 if (rateLimit) {
-  // Health probes (/health, /ready, /metrics, /api/health/*) must always
-  // respond — orchestrators (k8s, load balancers, monitoring) hit them at
-  // far higher than 30 rpm and would mark the pod unhealthy on 429. They
-  // also pre-authenticate from the orchestrator side (private network),
-  // not the user auth flow we're rate-limiting on.
-  const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
-  // Integration/smoke/e2e CI jobs set CONCORD_RATE_LIMIT_BYPASS=1 to
-  // relax this throttle (parallel unauth requests from the runner IP
-  // would otherwise 429 before the auth middleware can return 401).
-  // Unit tests don't set the var; production never sets the var.
-  const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
+  // _HEALTH_PROBE_RE + _RATE_LIMIT_BYPASS_ENV are module-scoped (defined
+  // above the limiter block) so every limiter shares the same exemptions:
+  // health probes always respond, and CI suites bypass via env.
   unauthRateLimiter = rateLimit({
     windowMs: 60000,
     max: 30,
