@@ -71,12 +71,14 @@ ok "Frontend built."
 # ── 7. Pull required Ollama models ───────────────────────────────────────
 # Canonical 5-brain set per server/lib/brain-config.js + CLAUDE.md, tuned
 # for the RTX PRO 4500 Blackwell (32GB GDDR7). Total weight on first
-# download ~15 GB; subsequent runs are no-ops because ollama pull is
-# idempotent.
-info "Pulling required Ollama models (this will download ~15 GB on first run)..."
+# download ~23 GB; subsequent runs are no-ops because ollama pull is
+# idempotent. The 14b base is downloaded so Modelfile can build
+# concord-conscious from it in step 7b.
+info "Pulling required Ollama models (this will download ~23 GB on first run)..."
 
 MODELS=(
-  "qwen2.5:7b-instruct-q4_K_M"        # Subconscious brain    (~4 GB) — also base for concord-conscious below
+  "qwen2.5:14b-instruct-q4_K_M"        # Base for concord-conscious (built via Modelfile below) (~8 GB)
+  "qwen2.5:7b-instruct-q4_K_M"        # Subconscious brain    (~4 GB)
   "qwen2.5:3b"                         # Utility brain         (~2 GB)
   "qwen2.5:0.5b"                       # Repair brain          (~0.3 GB)
   "llava:13b-v1.6-vicuna-q4_K_M"       # Vision / multimodal   (~8 GB)
