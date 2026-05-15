@@ -6201,6 +6201,16 @@ function requestTimeoutMiddleware(req, res, next) {
 
   const timer = setTimeout(() => {
     if (!res.headersSent) {
+      // Connection: close tells the proxy (Next.js/undici/nginx) to
+      // drop this socket after reading the 503 — don't return it to
+      // the keep-alive pool. Without this, the proxy reuses the socket
+      // for the next request, but Node may have started cleaning up
+      // its end (the original handler is still running and may write
+      // late, tripping ERR_HTTP_HEADERS_SENT internally), and the
+      // proxy sees ECONNRESET / socket hang up on the next write.
+      // Observed under E2E Core load — auth.spec.ts page loads hit
+      // these resets ~90 s into the run.
+      res.setHeader("Connection", "close");
       res.status(503).json({
         ok: false,
         error: "Request timeout",
@@ -56697,6 +56707,16 @@ const server = SHOULD_LISTEN ? app.listen(PORT, () => {
 if (server) {
   server.keepAliveTimeout = 65_000;
   server.headersTimeout = 66_000;
+  // requestTimeout = 75 s caps the maximum lifetime of an in-flight
+  // request at the socket layer. Without this, a handler that hangs
+  // (heavy DB query, blocked event-loop tick) holds the socket open
+  // until Node's default 5-min ceiling — long enough for the proxy
+  // to give up and ECONNRESET-on-reuse the next time it picks that
+  // socket from its keep-alive pool. 75 s sits just above the 60 s
+  // requestTimeoutMiddleware budget so the express layer always wins
+  // the race and writes a 503; the socket-level cap is the backstop
+  // for genuinely stuck requests.
+  server.requestTimeout = 75_000;
 }
 
 // Optional: enable thin realtime mirror (WebSockets) for queues/jobs/panels.
