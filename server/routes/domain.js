@@ -11,6 +11,7 @@
  */
 import path from "path";
 import { asyncHandler } from "../lib/async-handler.js";
+import { assertSessionAccessible } from "../lib/session-access.js";
 export default function registerDomainRoutes(app, {
   STATE,
   makeCtx,
@@ -1014,9 +1015,20 @@ export default function registerDomainRoutes(app, {
   app.get("/api/sessions/:id", (req, res) => {
     const session = STATE.sessions.get(req.params.id);
     if (!session) return res.status(404).json({ ok: false, error: "Session not found" });
+    // Owner gate — refuse cross-user reads. Anonymous (no ownerId)
+    // sessions stay permissive per the platform-wide rule.
+    if (!assertSessionAccessible(session, req.user?.id || req.actor?.userId)) {
+      return res.status(403).json({ ok: false, error: "session_forbidden" });
+    }
     return res.json({ ok: true, session });
   });
   app.delete("/api/sessions/:id", (req, res) => {
+    const session = STATE.sessions.get(req.params.id);
+    // Owner gate — refuse cross-user deletes. If the session doesn't
+    // exist, fall through to the existing no-op delete (idempotent).
+    if (session && !assertSessionAccessible(session, req.user?.id || req.actor?.userId)) {
+      return res.status(403).json({ ok: false, error: "session_forbidden" });
+    }
     STATE.sessions.delete(req.params.id);
     STATE.styleVectors.delete(req.params.id);
     saveStateDebounced();

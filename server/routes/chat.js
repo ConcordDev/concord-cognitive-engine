@@ -7,6 +7,7 @@ import logger from '../logger.js';
 import { buildWorkingContext } from '../lib/chat/working-context.js';
 import { needsWindowCompression, compressRollingWindow } from '../lib/conversation-memory.js';
 import { attachConfidence } from '../lib/confidence-attacher.js';
+import { assertSessionAccessible } from '../lib/session-access.js';
 export default function registerChatRoutes(app, {
   STATE,
   makeCtx,
@@ -295,7 +296,20 @@ export default function registerChatRoutes(app, {
       const b = req.body || {};
       const sid = String(b.sessionId || b.session || "");
       if (!sid) return uiJson(res, { ok:false, error:"sessionId required" }, req, { panel:"optin" });
-      const s = STATE.sessions.get(sid) || { createdAt: nowISO(), messages: [] };
+      const existing = STATE.sessions.get(sid);
+      // Owner gate — refuse opt-in toggles on someone else's session.
+      // If the session doesn't exist yet we'll create it below stamped
+      // with the caller as owner; if it does exist with a different
+      // owner, reject.
+      if (existing && !assertSessionAccessible(existing, req.user?.id)) {
+        return res.status(403).json({ ok: false, error: "session_forbidden" });
+      }
+      const s = existing || {
+        createdAt: nowISO(),
+        messages: [],
+        ownerId: req.user?.id || null,
+        participantIds: req.user?.id ? new Set([req.user.id]) : new Set(),
+      };
       if (typeof b.cloudOptIn === "boolean") s.cloudOptIn = b.cloudOptIn;
       if (typeof b.toolsOptIn === "boolean") s.toolsOptIn = b.toolsOptIn;
       if (typeof b.multimodalOptIn === "boolean") s.multimodalOptIn = b.multimodalOptIn;

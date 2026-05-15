@@ -8,6 +8,7 @@
 import { asyncHandler } from "../lib/async-handler.js";
 import { validateBody, llmGenerateSchema } from "../lib/validators/mutation-schemas.js";
 import logger from '../logger.js';
+import { assertSessionAccessible } from "../lib/session-access.js";
 
 export default function registerSystemRoutes(app, {
   STATE,
@@ -451,6 +452,15 @@ export default function registerSystemRoutes(app, {
     try {
       const sessionId = normalizeText(req.query.sessionId || "default");
       const sess = STATE.sessions.get(sessionId) || { createdAt: null, messages: [] };
+      // Owner gate — refuse cross-user reads of session message history.
+      // Pre-fix this leaked the last 20 messages of any session to any
+      // unauthed caller who could guess the sessionId. The "default"
+      // sessionId is treated as a public placeholder (no ownerId) and
+      // stays accessible — it's never a real user session.
+      const callerUserId = req.user?.id || req.actor?.userId || null;
+      if (sess.ownerId && !assertSessionAccessible(sess, callerUserId)) {
+        return res.status(403).json({ ok: false, error: "session_forbidden" });
+      }
       const lastMessages = (sess.messages || []).slice(-20);
       const latestDTUs = userVisibleDTUs().slice(0, 10).map(d => ({
         id: d.id,
