@@ -12687,14 +12687,10 @@ function dtusArray() { return typeof STATE.dtus?.values === "function" ? Array.f
  * those we fall back to permissive (legacy) behavior so existing chats
  * keep working. New sessions all carry ownerId.
  */
-function assertSessionAccessible(sess, userId) {
-  if (!sess) return false;
-  if (!sess.ownerId) return true; // legacy session — pre-ownership-tracking
-  if (!userId) return false;
-  if (sess.ownerId === userId) return true;
-  if (sess.participantIds?.has?.(userId)) return true;
-  return false;
-}
+// assertSessionAccessible lives in server/lib/session-access.js so
+// route files (routes/chat.js, routes/domain.js, routes/system.js)
+// can import the same gate. Re-exported here for in-monolith callers.
+import { assertSessionAccessible } from "./lib/session-access.js";
 
 /**
  * Find the user's most recent active session. Replaces the wrong-key
