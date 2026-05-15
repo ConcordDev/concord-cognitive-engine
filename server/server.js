@@ -20002,6 +20002,21 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
   const currentLens = input.lens || input.currentLens || null;
   const sess_pre = STATE.sessions.get(sessionId);
 
+  // Defense-in-depth: refuse cross-user session access. A signed-in
+  // user should never be able to read or append to another user's
+  // session, even if they guess or paste in the sessionId. Anonymous
+  // sessions (no ownerId) stay permissive — they're per-browser and
+  // localStorage-scoped, so a sessionId leaked to another anon doesn't
+  // map to anyone's account. The audit-3 finding that flagged this:
+  // assertSessionAccessible() existed but was never called on the chat
+  // path, leaving owned sessions readable by any authed caller.
+  {
+    const _callerUserId = ctx?.actor?.userId || input?.userId || null;
+    if (sess_pre.ownerId && _callerUserId && !assertSessionAccessible(sess_pre, _callerUserId)) {
+      return { ok: false, error: "session_forbidden", reason: "not_owner_or_participant" };
+    }
+  }
+
   // Track lens navigation — persistent conversation rail
   if (currentLens && currentLens !== sess_pre.currentLens) {
     if (!sess_pre.lensHistory) sess_pre.lensHistory = [];
@@ -40249,6 +40264,64 @@ app.get("/api/chat/sessions", requireAuth(), async (req, res) => {
     const { listRecentSessions } = await import("./lib/chat-session-store.js");
     const sessions = listRecentSessions(STATE.db, userId, { limit });
     res.json({ ok: true, sessions });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
+
+// Fetches the persisted message stream for a given session. Used by the
+// chat lens when the user opens a server-side conversation on a new
+// device that has nothing in localStorage. Owner-gated against the
+// chat_sessions row so a signed-in user can't pull another user's
+// thread by guessing the sessionId.
+app.get("/api/chat/messages", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const sessionId = String(req.query.sessionId || "").trim();
+    if (!sessionId) return res.status(400).json({ ok: false, error: "missing_sessionId" });
+    const limit = Math.min(500, parseInt(req.query.limit, 10) || 200);
+    const db = STATE.db;
+    if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
+
+    // Owner gate — the chat_sessions row must belong to the caller.
+    // Anonymous (NULL owner_id) sessions can't be cross-loaded; they're
+    // per-browser and localStorage-scoped by design.
+    let ownerRow;
+    try {
+      ownerRow = db.prepare(`SELECT owner_id FROM chat_sessions WHERE session_id = ?`).get(sessionId);
+    } catch {
+      return res.status(503).json({ ok: false, error: "db_query_failed" });
+    }
+    if (!ownerRow) return res.status(404).json({ ok: false, error: "session_not_found" });
+    if (!ownerRow.owner_id || ownerRow.owner_id !== userId) {
+      return res.status(403).json({ ok: false, error: "session_forbidden" });
+    }
+
+    let rows;
+    try {
+      rows = db.prepare(`
+        SELECT role, content, ts, meta_json
+        FROM chat_messages
+        WHERE session_id = ?
+        ORDER BY ts ASC
+        LIMIT ?
+      `).all(sessionId, limit);
+    } catch {
+      return res.status(503).json({ ok: false, error: "db_query_failed" });
+    }
+
+    const messages = (rows || []).map(r => {
+      let meta = null;
+      try { meta = r.meta_json ? JSON.parse(r.meta_json) : null; } catch { /* corrupt meta — drop */ }
+      return {
+        role: r.role,
+        content: r.content,
+        ts: new Date(r.ts).toISOString(),
+        meta: meta || undefined,
+      };
+    });
+    res.json({ ok: true, sessionId, messages });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }

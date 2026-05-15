@@ -746,12 +746,51 @@ export default function ChatLensPage() {
     saveSessionId(selectedConversation);
   }, [selectedConversation]);
 
-  // Load messages from localStorage when switching conversations
+  // Load messages when switching conversations. localStorage is the
+  // hot read (this device), but if it's empty AND the user is signed
+  // in, fetch from /api/chat/messages — that's the cross-device case
+  // (chatted on laptop, opened on phone). Server-side messages always
+  // override empty local state; non-empty local state wins to avoid
+  // clobbering unsynced drafts from a recent send.
   useEffect(() => {
-    if (selectedConversation) {
-      const saved = loadMessagesForSession(selectedConversation);
+    if (!selectedConversation) return;
+    const saved = loadMessagesForSession(selectedConversation);
+    if (saved.length > 0) {
       setLocalMessages(saved);
+      return;
     }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/chat/messages?sessionId=${encodeURIComponent(selectedConversation)}&limit=200`,
+          { credentials: 'include' }
+        );
+        if (!res.ok || cancelled) return;
+        const json = await res.json() as { ok: boolean; messages?: Array<{ role: string; content: string; ts: string; meta?: Record<string, unknown> }> };
+        if (cancelled || !json.ok || !Array.isArray(json.messages)) return;
+        // Hydrate into Message[] shape; meta carries computed/dtuRefs/toolCalls
+        // we previously persisted so chip + badge surfaces re-render identically.
+        const hydrated: Message[] = json.messages.map((m, i) => {
+          const meta = (m.meta || {}) as Record<string, unknown>;
+          return {
+            id: `hyd-${selectedConversation}-${i}-${m.ts}`,
+            role: (m.role === 'assistant' || m.role === 'system') ? m.role : 'user',
+            content: m.content,
+            timestamp: m.ts,
+            toolCalls: Array.isArray(meta.toolCalls) ? (meta.toolCalls as Message['toolCalls']) : undefined,
+            computed: (meta.computed && typeof meta.computed === 'object') ? (meta.computed as Message['computed']) : undefined,
+            dtuRefs: Array.isArray(meta.dtuRefs) ? (meta.dtuRefs as Message['dtuRefs']) : undefined,
+            sources: Array.isArray(meta.sources) ? (meta.sources as Message['sources']) : undefined,
+            webAugmented: !!meta.webAugmented,
+          };
+        });
+        setLocalMessages(hydrated);
+        // Backfill localStorage so the next open is hot-path again.
+        try { saveMessagesForSession(selectedConversation, hydrated); } catch { /* private mode */ }
+      } catch { /* anon, offline, or 403 — leave empty */ }
+    })();
+    return () => { cancelled = true; };
   }, [selectedConversation]);
 
   // Persist messages whenever they change (debounced via the conversation id)
