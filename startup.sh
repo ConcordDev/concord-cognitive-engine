@@ -151,6 +151,29 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
   # Install deps if needed
   [ ! -d server/node_modules ] && { log "Installing server deps..."; (cd server && npm install --production); }
 
+  # ── Ensure concord-conscious:latest is built ─────────────────────────
+  # The conscious brain uses a custom Ollama model that can't be fetched
+  # from the registry — it's built locally from the Modelfile in the
+  # repo root. server/server.js#initFiveBrains() will try /api/pull as a
+  # fallback if missing; that pull 404s for custom models, leaving the
+  # conscious brain permanently disabled. Build it here on every boot
+  # (ollama create is idempotent + cheap if already present) so the
+  # user doesn't have to remember a separate step.
+  if [ -f Modelfile ] && command -v ollama &>/dev/null; then
+    if ! ollama list 2>/dev/null | grep -q "^concord-conscious:latest"; then
+      log "Building concord-conscious:latest from Modelfile (one-time)..."
+      if ollama create concord-conscious:latest -f Modelfile 2>>"$LOG_FILE"; then
+        log "Built concord-conscious:latest"
+      else
+        log "WARNING: ollama create failed — Conscious brain will stay offline."
+        log "         Edit Modelfile, then: ollama create concord-conscious:latest -f Modelfile"
+      fi
+    fi
+  elif [ ! -f Modelfile ]; then
+    log "WARNING: No Modelfile in repo root — Conscious brain will be offline."
+    log "         Create a Modelfile and run: ollama create concord-conscious:latest -f Modelfile"
+  fi
+
   # Build frontend if needed. NEXT_PUBLIC_* are baked into the bundle at
   # build time, so a build produced for a different public URL (e.g. switched
   # from the RunPod proxy to a Cloudflare tunnel) is stale and must be rebuilt.

@@ -69,14 +69,18 @@ info "Building frontend (this may take a minute)..."
 ok "Frontend built."
 
 # ── 7. Pull required Ollama models ───────────────────────────────────────
-info "Pulling required Ollama models (this will download ~21 GB on first run)..."
+# Canonical 5-brain set per server/lib/brain-config.js + CLAUDE.md, tuned
+# for the RTX PRO 4500 Blackwell (32GB GDDR7). Total weight on first
+# download ~15 GB; subsequent runs are no-ops because ollama pull is
+# idempotent.
+info "Pulling required Ollama models (this will download ~15 GB on first run)..."
 
 MODELS=(
-  "qwen2.5:14b-instruct-q4_K_M"   # Conscious brain       (~9 GB)
-  "qwen2.5:7b-instruct-q4_K_M"    # Subconscious brain    (~5 GB)
-  "qwen2.5:3b"                     # Utility brain         (~2 GB)
-  "llava:7b"                       # Vision                (~5 GB)
-  "nomic-embed-text"               # Embeddings           (~275 MB)
+  "qwen2.5:7b-instruct-q4_K_M"        # Subconscious brain    (~4 GB) — also base for concord-conscious below
+  "qwen2.5:3b"                         # Utility brain         (~2 GB)
+  "qwen2.5:0.5b"                       # Repair brain          (~0.3 GB)
+  "llava:13b-v1.6-vicuna-q4_K_M"       # Vision / multimodal   (~8 GB)
+  "nomic-embed-text"                   # Embeddings            (~275 MB)
 )
 
 for model in "${MODELS[@]}"; do
@@ -87,6 +91,23 @@ for model in "${MODELS[@]}"; do
     warn "Failed to pull ${model} — you can retry later with: ollama pull ${model}"
   fi
 done
+
+# ── 7b. Build concord-conscious from Modelfile ────────────────────────────
+# concord-conscious:latest is NOT on the Ollama registry — it's a custom
+# model built locally from the Modelfile in the repo root. Without this
+# step the Conscious brain stays offline forever (initFiveBrains'
+# auto-pull fallback 404s because the registry doesn't have it).
+# `ollama create` is idempotent — safe to re-run on every setup.
+if [ -f "${ROOT_DIR}/Modelfile" ]; then
+  info "Building concord-conscious:latest from Modelfile..."
+  if ollama create concord-conscious:latest -f "${ROOT_DIR}/Modelfile"; then
+    ok "Built concord-conscious:latest"
+  else
+    warn "Failed to build concord-conscious — fix Modelfile then run: ollama create concord-conscious:latest -f Modelfile"
+  fi
+else
+  warn "No Modelfile at ${ROOT_DIR}/Modelfile — the Conscious brain will be offline. Create one and run: ollama create concord-conscious:latest -f Modelfile"
+fi
 
 # ── 8. Create data directory ─────────────────────────────────────────────
 DATA_DIR="${ROOT_DIR}/data"
