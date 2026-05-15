@@ -6628,10 +6628,13 @@ if (rateLimit) {
 // ---- Bot / Scraper Detection --------------------------------------------------
 // Known automated UA patterns are blocked on /api/ paths when not authenticated.
 // Authenticated bots (API keys, Bearer tokens) are exempt — they accepted ToS.
+// Health probes are always exempt — orchestrators (k8s, load balancers,
+// monitoring) and CI wait-loops legitimately hit them with curl/wget UAs.
 const _BOT_UA_RE = /\b(bot|crawler|spider|scraper|python-requests|aiohttp|httpx|go-http-client|java\/|libwww|wget|curl\/)\b/i;
 function botGuardMiddleware(req, res, next) {
   if (req.user?.id) return next(); // authenticated — pass
   if (!req.path.startsWith("/api/")) return next(); // non-API — pass
+  if (_HEALTH_PROBE_RE.test(req.path)) return next(); // health probes — pass
   const ua = req.headers["user-agent"] || "";
   if (!ua || _BOT_UA_RE.test(ua)) {
     return res.status(403).json({
