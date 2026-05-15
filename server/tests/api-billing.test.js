@@ -157,16 +157,18 @@ describe("API Billing Constants", () => {
     assert.equal(API_CONSTANTS.CASCADE_COST, 0);
   });
 
-  it("pricing: 10,000 reads = 1 coin", () => {
-    assert.equal(10000 * API_CONSTANTS.READ_COST, 1);
+  // Tiered pricing anchored to GPT-4.1-mini token rates: read $0.0002,
+  // write $0.001, compute $0.005 per call.
+  it("pricing: 10,000 reads = 2 coins", () => {
+    assert.equal(10000 * API_CONSTANTS.READ_COST, 2);
   });
 
   it("pricing: 1,000 writes = 1 coin", () => {
     assert.equal(1000 * API_CONSTANTS.WRITE_COST, 1);
   });
 
-  it("pricing: 100 computes = 1 coin", () => {
-    assert.equal(100 * API_CONSTANTS.COMPUTE_COST, 1);
+  it("pricing: 100 computes = 0.5 coin", () => {
+    assert.equal(100 * API_CONSTANTS.COMPUTE_COST, 0.5);
   });
 
   it("has 3 tier thresholds", () => {

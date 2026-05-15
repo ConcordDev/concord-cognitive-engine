@@ -2426,6 +2426,19 @@ function tokenish(s="") {
   return normalizeText(s).toLowerCase();
 }
 
+// Strip HTML tag markup from a user-controlled string at the write
+// boundary. Used for short display strings (titles, tags) that render as
+// plain labels — a `<script>…` payload here would be stored XSS. Unlike
+// entity-escaping, this leaves ordinary text untouched: `R&D`, quotes and
+// apostrophes are preserved verbatim, so the stored value stays canonical
+// for search, prompts, exports and other non-HTML sinks. Loops until
+// stable to defeat nested-tag bypasses (`<scr<script>ipt>`).
+function stripTags(s="") {
+  let out = String(s), prev;
+  do { prev = out; out = out.replace(/<\/?[a-zA-Z][^>]*>?/g, ""); } while (out !== prev);
+  return out;
+}
+
 
 function defaultStyleVector() {
   return {
@@ -6532,6 +6545,14 @@ trackedSetInterval(() => {
 export { createBackup, restoreBackup, listBackups };
 
 // ---- Rate Limiting ----
+// Health probes (/health, /ready, /metrics, /api/health/*) must always
+// respond — orchestrators (k8s, load balancers, monitoring) hit them far
+// above any per-IP cap and would mark the pod unhealthy on a 429. CI
+// integration/smoke/e2e jobs set CONCORD_RATE_LIMIT_BYPASS=1 because the
+// whole suite hits the server from one runner IP. Both exemptions apply
+// to every limiter below.
+const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
+const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
 let rateLimiter = null;
 let authRateLimiter = null;
 if (rateLimit) {
@@ -6541,7 +6562,11 @@ if (rateLimit) {
     message: { ok: false, error: "Too many requests", retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip
+    keyGenerator: (req) => req.user?.id || req.ip,
+    // This limiter is mounted globally BEFORE authMiddleware, so it keys
+    // every request by IP. Health probes must never be 429'd, and CI
+    // suites hammer the server from one IP — exempt both.
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path),
   });
   // Stricter rate limiting for auth endpoints (5 attempts per 15 minutes)
   authRateLimiter = rateLimit({
@@ -6586,17 +6611,9 @@ if (rateLimit) {
 // Applied AFTER authMiddleware so req.user is already populated.
 let unauthRateLimiter = null;
 if (rateLimit) {
-  // Health probes (/health, /ready, /metrics, /api/health/*) must always
-  // respond — orchestrators (k8s, load balancers, monitoring) hit them at
-  // far higher than 30 rpm and would mark the pod unhealthy on 429. They
-  // also pre-authenticate from the orchestrator side (private network),
-  // not the user auth flow we're rate-limiting on.
-  const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
-  // Integration/smoke/e2e CI jobs set CONCORD_RATE_LIMIT_BYPASS=1 to
-  // relax this throttle (parallel unauth requests from the runner IP
-  // would otherwise 429 before the auth middleware can return 401).
-  // Unit tests don't set the var; production never sets the var.
-  const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
+  // _HEALTH_PROBE_RE + _RATE_LIMIT_BYPASS_ENV are module-scoped (defined
+  // above the limiter block) so every limiter shares the same exemptions:
+  // health probes always respond, and CI suites bypass via env.
   unauthRateLimiter = rateLimit({
     windowMs: 60000,
     max: 30,
@@ -19187,8 +19204,14 @@ register("dtu", "create", async (ctx, input) => {
   if (!STATE._dailyDtuCount[_dtuTodayKey]) STATE._dailyDtuCount = { [_dtuTodayKey]: {} };
   if (!STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId]) STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId] = 0;
 
-  const title = normalizeText(input.title || "Untitled DTU");
-  const tags = Array.isArray(input.tags) ? input.tags.map(t=>normalizeText(t)).filter(Boolean) : [];
+  // Strip HTML tag markup from user-controlled display strings at the
+  // write boundary. A DTU title/tag renders as a plain label, never as
+  // markup, so a `<script>` payload here would be stored XSS. Tag-
+  // stripping (not entity-escaping) keeps ordinary text canonical —
+  // `R&D`, quotes, apostrophes survive verbatim. Body content is left
+  // alone: it flows through the markdown renderer's own output-encoding.
+  const title = stripTags(normalizeText(input.title || "Untitled DTU"));
+  const tags = Array.isArray(input.tags) ? input.tags.map(t=>stripTags(normalizeText(t))).filter(Boolean) : [];
   const tier = input.tier && ["regular","mega","hyper"].includes(input.tier) ? input.tier : "regular";
   const lineage = Array.isArray(input.lineage) ? input.lineage : [];
   const source = input.source || "local";
