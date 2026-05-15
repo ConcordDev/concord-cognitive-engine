@@ -6173,7 +6173,13 @@ function validate(schemaName, source = "body") {
 // ---- Request Timeout Middleware ----
 // Prevents hung requests from consuming connections indefinitely.
 // Configurable per-route via X-Timeout-Ms header or defaults below.
-const DEFAULT_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS, 10) || 30000;
+// Bumped 30s → 60s: under sustained CI load (parallel playwright tests
+// hammering ~5 endpoints per page) the backend event loop intermittently
+// stalls on heartbeat/embed/SQLite work, and 30s was tripping on light
+// endpoints (e.g. /api/metrics/vitals, /api/onboarding/wizard-status)
+// that ought to be near-instant. 60s gives those calls room to recover
+// after a brief stall.
+const DEFAULT_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS, 10) || 60000;
 const LLM_TIMEOUT_MS = parseInt(process.env.LLM_REQUEST_TIMEOUT_MS, 10) || 60000; // 60s is plenty on GPU
 
 // Routes that involve LLM calls get longer timeouts. /api/lens/run and
