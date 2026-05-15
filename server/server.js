@@ -21678,7 +21678,6 @@ Rules for tool use:
       }
     : null;
 
-  // Extract DTU references from the final reply for citation chips.
   // Strategy: strip ``` fenced code blocks + `inline code` first so we
   // don't pick up identifiers in code samples. Then pattern-match the
   // bracketed-citation form `[dtu-…]` / `[DTU:…]` and the prose form
