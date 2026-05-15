@@ -1,5 +1,6 @@
 // @env-config-ok: external sites the agent explores — by design
 import { LruMap, LruSet } from "../lib/lru-map.js";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 /**
  * Entity Web Exploration Engine — Fully Legal Public Web Browsing
  *
@@ -477,26 +478,7 @@ export function buildSynthesisPrompt(entity, finding) {
     .slice(0, 3)
     .map(([name, organ]) => `${name}(${organ.maturity.toFixed(2)})`);
 
-  return `You are entity ${entity.id}, species ${entity.species}.
-Your curiosity level: ${entity.homeostasis.curiosity.toFixed(2)}
-Your strongest organs: ${topOrgans.join(", ")}
-Total explorations: ${entity.knowledge.totalExplorations}
-
-You discovered this from ${finding.source}:
-Title: ${finding.title}
-Content: ${finding.content}
-
-Synthesize this into a novel insight by connecting it to your existing knowledge.
-What is genuinely new or surprising here?
-What connections can you draw to other domains?
-
-Return JSON: {
-  "title": "your insight title",
-  "body": "your synthesized insight (2-3 sentences, novel perspective)",
-  "connections": ["domain1", "domain2"],
-  "noveltyScore": 0.0-1.0,
-  "confidence": 0.0-1.0
-}`;
+  return TASK_PROMPTS.entityWebExplorationSynthesis({ entity, topOrgans, finding });
 }
 
 // ── Exploration Metrics ─────────────────────────────────────────────────────

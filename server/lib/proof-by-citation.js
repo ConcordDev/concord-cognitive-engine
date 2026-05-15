@@ -23,6 +23,8 @@
 /**
  * Weights for the final grade calculation. Must sum to 1.0.
  */
+import { TASK_PROMPTS } from "./prompt-registry.js";
+
 const GRADE_WEIGHTS = Object.freeze({
   citationIntegrity: 0.25,
   logicalCoherence: 0.30,
@@ -343,11 +345,7 @@ export class ProofByCitation {
             return `- [${d?.id || '?'}] ${title}\n  ${core}`;
           })
           .join('\n');
-        const prompt =
-          `You are grading a student's claim for logical coherence with cited evidence.\n` +
-          `Return strict JSON: {"score": <0..1>, "note": "<one-sentence reason>"}.\n\n` +
-          `CLAIM:\n${claim}\n\n` +
-          `CITED DTUs:\n${summaries}\n`;
+        const prompt = TASK_PROMPTS.proofByCitationGrader({ claim, summaries });
         const resp = await brain.query('conscious', {
           prompt,
           taskType: 'evaluation',

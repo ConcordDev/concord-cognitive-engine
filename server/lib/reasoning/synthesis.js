@@ -6,6 +6,7 @@
  */
 
 import logger from '../../logger.js';
+import { TASK_PROMPTS } from '../prompt-registry.js';
 
 const SINGLE_MESSAGE_TOKEN_ESTIMATE = 2000; // ~1500 words
 
@@ -79,19 +80,7 @@ ${summary}
 ${insights.length ? '\nKey insights:\n' + insights.map(k => `• ${k}`).join('\n') : ''}`;
   }).join('\n\n');
 
-  return `You are synthesizing a final response across ${shadows.length} crystallized reasoning shadow(s).
-
-Original question: ${originalIntent}
-
-${shadowBlock}
-
-${currentReasoningText ? `=== Current reasoning state ===\n${currentReasoningText.slice(0, 2000)}` : ''}
-
-Now produce the final, complete answer.
-- Synthesize across all shadows — do not reproduce their content, but draw conclusions from them
-- Answer the original question directly and completely
-- Be clear and well-structured
-- Do not mention shadows, crystallization, or internal reasoning mechanics to the user`;
+  return TASK_PROMPTS.reasoningSynthesis({ shadows, originalIntent, shadowBlock, currentReasoningText });
 }
 
 /**

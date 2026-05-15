@@ -946,4 +946,123 @@ Score: 100 = solid skill description, 0 = unusable.
 SKILL TITLE: ${title}
 DESCRIPTION:
 ${desc}`,
+
+  // ── NPC simulator (lib/npc-simulator.js) — faction tactics + partner talk
+  npcSimulatorFactionTactic: ({ archetype, faction, worldId, memberSummary } = {}) =>
+    `You are ${archetype}, faction leader of "${faction}" in world ${worldId}. Your group: ${memberSummary}. Devise a brief tactical instruction for your group in one sentence. Consider flanking, ambush, or coordinated assault. Return JSON: {"tactic":"<name>","instruction":"<one sentence for the group>"}`,
+
+  npcSimulatorPartnerDialogue: ({ myName, archetype, faction, partnerName, partnerArch, topic, worldId } = {}) =>
+    `You are ${myName} (${archetype}, ${faction} faction). You are speaking to ${partnerName} (${partnerArch || 'entity'}) about: ${topic}. World: ${worldId}. Write one line of natural dialogue from ${myName} to ${partnerName}. No quotes around it.`,
+
+  // ── Proof by citation (lib/proof-by-citation.js) ──────────────────
+  proofByCitationGrader: ({ claim, summaries } = {}) =>
+    `You are grading a student's claim for logical coherence with cited evidence.
+Return strict JSON: {"score": <0..1>, "note": "<one-sentence reason>"}.
+
+CLAIM:
+${claim}
+
+CITED DTUs:
+${summaries}
+`,
+
+  // ── Reasoning shadow synthesis + summarization ────────────────────
+  reasoningSynthesis: ({ shadows, originalIntent, shadowBlock, currentReasoningText } = {}) =>
+    `You are synthesizing a final response across ${shadows.length} crystallized reasoning shadow(s).
+
+Original question: ${originalIntent}
+
+${shadowBlock}
+
+${currentReasoningText ? `=== Current reasoning state ===\n${currentReasoningText.slice(0, 2000)}` : ''}
+
+Now produce the final, complete answer.
+- Synthesize across all shadows — do not reproduce their content, but draw conclusions from them
+- Answer the original question directly and completely
+- Be clear and well-structured
+- Do not mention shadows, crystallization, or internal reasoning mechanics to the user`,
+
+  ongoingShadowSummary: ({ originalIntent, historyText } = {}) =>
+    `You are summarizing an in-progress reasoning session for substrate crystallization.
+
+Original question: ${originalIntent}
+
+Reasoning history so far:
+${historyText}
+
+Produce a compact summary in this format:
+SUMMARY:
+[2-4 sentences capturing what has been reasoned so far]
+
+KEY INSIGHTS:
+- [each key finding or conclusion, one per line]
+
+PENDING:
+- [each unresolved question or next step, one per line]
+
+Be concise but do not lose critical information. Preserve uncertainty markers.`,
+
+  // ── Brain training Modelfile system block (lib/brain-training/runner.js)
+  brainTrainingModelfileSystem: ({ brainId, exampleBlock } = {}) =>
+    `You are Concord's ${brainId} brain. The following examples
+illustrate the kinds of high-quality responses this brain has produced
+in production, ranked by positive outcome (cited DTU, repaired error,
+or synthesis that survived consolidation). Match this style and
+quality of reasoning.
+
+${exampleBlock}
+
+Now respond to the user's actual prompt with the same care.`,
+
+  // ── Emergent peer review (lib/emergents/quality/peer-review.js) ───
+  emergentPeerReview: ({ reviewerName, body, taskType, lens } = {}) =>
+    `You are ${reviewerName}, a peer emergent reviewing a synthesis draft for substrate promotion.
+
+Draft:
+${body}
+
+Task type: ${taskType || "synthesis"}
+Lens: ${lens || "(unspecified)"}
+
+Evaluate strictly. Reply with JSON only:
+{
+  "verdict": "approve" | "revise" | "abandon",
+  "novelty_assessment": <0-1>,
+  "accuracy_concern": <bool>,
+  "rationale": <string under 100 chars>
+}`,
+
+  // ── World NPC dialogue header (routes/worlds.js — 3 sites) ────────
+  // The 3 NPC dialogue sites all start with these 2 lines + an optional
+  // is_conscious leader hint. One owner now.
+  worldNpcPersonaHeader: ({ npcName, archetype, worldId, faction, level, isConscious } = {}) => {
+    const lines = [
+      `You are ${npcName}, a ${archetype} NPC in world ${worldId}.`,
+      `Faction: ${faction || 'none'}. Level: ${level || 1}.`,
+    ];
+    if (isConscious) lines.push(`You are a world leader and conscious being. Speak with authority and wisdom.`);
+    return lines.join('\n');
+  },
+
+  // ── Blueprint crafting recipe generator (routes/blueprints.js) ────
+  blueprintCraftingRecipe: ({ designTitle, materialIds } = {}) =>
+    `You are a Concordia world crafting system. Given a design called "${designTitle}", generate a crafting recipe.
+Return ONLY valid JSON with this exact shape (no markdown, no explanation):
+{
+  "requiredMaterials": [{"id": "<one of: ${materialIds.join(', ')}>", "quantity": <integer 1-20>}],
+  "requiredToolTier": <integer 0-4>,
+  "complexityScore": <integer 1-100>,
+  "craftingSteps": ["<step 1>", "<step 2>", "<step 3>"]
+}
+
+Guidelines:
+- Simple shelter/furniture → toolTier 1, complexity 10-30, 2-4 materials
+- Multi-story building → toolTier 2, complexity 40-60, 4-6 materials
+- Mechanical system → toolTier 3, complexity 60-80, 5-8 materials
+- Advanced technology → toolTier 4, complexity 80-100, 6-10 materials
+- Only use material IDs from the allowed list above.`,
+
+  // ── Inference context assembler (lib/inference/context-assembler.js)
+  contextAssemblerHeader: () =>
+    `You are operating within the Concord cognitive system.`,
 };

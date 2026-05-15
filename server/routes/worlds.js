@@ -892,9 +892,10 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const { handle } = await selectBrain("subconscious", { callerId: "world:npc:interact" });
       const context = [
-        `You are ${npcName}, a ${npc.archetype} NPC in world ${worldId}.`,
-        `Faction: ${npc.faction}. Level: ${npc.level}.`,
-        npc.is_conscious ? TASK_PROMPTS.worldNpcConsciousLeaderHint() : '',
+        TASK_PROMPTS.worldNpcPersonaHeader({
+          npcName, archetype: npc.archetype, worldId,
+          faction: npc.faction, level: npc.level, isConscious: npc.is_conscious,
+        }),
         `Your current goals: ${JSON.stringify(state.goals || []).slice(0, 200)}`,
         `A player says: "${message || 'Hello'}"`,
         `Reply in character in 1-2 sentences. Stay true to your archetype.`,
@@ -1008,9 +1009,10 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { handle } = await selectBrain("subconscious", { callerId: "world:npc:dialogue" });
 
       const promptLines = [
-        `You are ${npcName}, a ${npc.archetype} NPC in world ${worldId}.`,
-        `Faction: ${npc.faction || 'none'}. Level: ${npc.level || 1}.`,
-        npc.is_conscious ? TASK_PROMPTS.worldNpcConsciousLeaderHint() : '',
+        TASK_PROMPTS.worldNpcPersonaHeader({
+          npcName, archetype: npc.archetype, worldId,
+          faction: npc.faction, level: npc.level, isConscious: npc.is_conscious,
+        }),
         `Job: ${npc.job_type || 'none'}. Current task: ${npc.current_task || 'idle'}.`,
         `Schedule phase: ${npc.schedule_phase || 'day'}. Grief level: ${npc.grief_level ?? 0}.`,
         `Criminal reputation: ${npc.criminal_rep || 0}. Wanted: ${npc.is_wanted ? 'yes' : 'no'}.`,
@@ -1117,9 +1119,10 @@ export default function createWorldsRouter({ requireAuth, db }) {
         : '';
 
       const promptLines = [
-        `You are ${npcName}, a ${npc.archetype} NPC in world ${worldId}.`,
-        `Faction: ${npc.faction || 'none'}. Level: ${npc.level || 1}.`,
-        npc.is_conscious ? TASK_PROMPTS.worldNpcConsciousLeaderHint() : '',
+        TASK_PROMPTS.worldNpcPersonaHeader({
+          npcName, archetype: npc.archetype, worldId,
+          faction: npc.faction, level: npc.level, isConscious: npc.is_conscious,
+        }),
         `Job: ${npc.job_type || 'none'}. Current task: ${npc.current_task || 'idle'}.`,
         questContext,
         ``,
