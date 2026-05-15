@@ -16,7 +16,6 @@
     "billing",
     "cognitive-engine"
   ],
-  "icon": "icons/concord-dx.png",
   "galleryBanner": {
     "color": "#0c0c0c",
     "theme": "dark"
