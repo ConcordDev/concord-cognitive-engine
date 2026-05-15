@@ -109,13 +109,18 @@ jobs:
             server/package-lock.json
             concord-frontend/package-lock.json
 
+      # --ignore-scripts: SCA scanners (npm audit, retire.js, license,
+      # SBOM) read package metadata — they don't need postinstall scripts
+      # to run. Skipping them avoids transient external-CDN failures
+      # (e.g. ffmpeg-static fetching a release asset from GitHub) that
+      # have no bearing on the security scan output.
       - name: Install server deps (primes cache)
         working-directory: ./server
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --ignore-scripts
 
       - name: Install frontend deps (primes cache)
         working-directory: ./concord-frontend
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --ignore-scripts
 
   # ════════════════════════════════════════════════════════════════════
   # Matrix-batched SCA + Supply Chain gates (Sprint 35 v2)
@@ -156,10 +161,13 @@ jobs:
       # primed setup-node's cache, so this is fast (~5-15s) instead of
       # the cold ~30-60s. Each matrix entry needs node_modules locally
       # because GitHub Actions doesn't share filesystems across jobs.
+      # --ignore-scripts for the same reason as npm-deps-setup above:
+      # SCA scanners read metadata, not built artifacts. Skipping
+      # postinstall avoids transient external-CDN failures.
       - name: Install deps (cache-hit fast path)
         run: |
-          cd server && npm ci --prefer-offline
-          cd ../concord-frontend && npm ci --prefer-offline
+          cd server && npm ci --prefer-offline --ignore-scripts
+          cd ../concord-frontend && npm ci --prefer-offline --ignore-scripts
 
       # ── Per-scan dispatcher ──────────────────────────────────────────
       - name: Run ${{ matrix.scan.id }}
