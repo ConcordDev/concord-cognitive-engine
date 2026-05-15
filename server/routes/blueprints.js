@@ -4,6 +4,7 @@
 
 import { Router } from "express";
 import crypto from "crypto";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 const MATERIAL_IDS = [
   "stone", "clay", "wood", "sand", "iron_ore", "coal", "glass",
@@ -36,21 +37,7 @@ export default function createBlueprintsRouter({ requireAuth, db }) {
       const { selectBrain } = await import("../lib/inference/router.js");
       const brain = selectBrain("subconscious", { callerId: "concordia:blueprint-gen" });
 
-      const prompt = `You are a Concordia world crafting system. Given a design called "${designTitle}", generate a crafting recipe.
-Return ONLY valid JSON with this exact shape (no markdown, no explanation):
-{
-  "requiredMaterials": [{"id": "<one of: ${MATERIAL_IDS.join(', ')}>", "quantity": <integer 1-20>}],
-  "requiredToolTier": <integer 0-4>,
-  "complexityScore": <integer 1-100>,
-  "craftingSteps": ["<step 1>", "<step 2>", "<step 3>"]
-}
-
-Guidelines:
-- Simple shelter/furniture → toolTier 1, complexity 10-30, 2-4 materials
-- Multi-story building → toolTier 2, complexity 40-60, 4-6 materials
-- Mechanical system → toolTier 3, complexity 60-80, 5-8 materials
-- Advanced technology → toolTier 4, complexity 80-100, 6-10 materials
-- Only use material IDs from the allowed list above.`;
+      const prompt = TASK_PROMPTS.blueprintCraftingRecipe({ designTitle, materialIds: MATERIAL_IDS });
 
       const aiRes = await brain.complete([{ role: "user", content: prompt }]);
       const raw = aiRes?.content?.[0]?.text ?? "";

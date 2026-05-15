@@ -13,6 +13,7 @@
 
 import crypto from 'node:crypto';
 import logger from '../../logger.js';
+import { TASK_PROMPTS } from '../prompt-registry.js';
 
 const MAX_GENERATIONS = 20;
 const QUALITY_INSIGHT_THRESHOLD = 0.80; // minimum preservation ratio
@@ -168,24 +169,7 @@ export function createCrystallizer({
       .join('\n')
       .slice(0, 8000);
 
-    const summaryPrompt = `You are summarizing an in-progress reasoning session for substrate crystallization.
-
-Original question: ${originalIntent}
-
-Reasoning history so far:
-${historyText}
-
-Produce a compact summary in this format:
-SUMMARY:
-[2-4 sentences capturing what has been reasoned so far]
-
-KEY INSIGHTS:
-- [each key finding or conclusion, one per line]
-
-PENDING:
-- [each unresolved question or next step, one per line]
-
-Be concise but do not lose critical information. Preserve uncertainty markers.`;
+    const summaryPrompt = TASK_PROMPTS.ongoingShadowSummary({ originalIntent, historyText });
 
     let summaryResult;
     try {

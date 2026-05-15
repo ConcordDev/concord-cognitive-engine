@@ -5,6 +5,7 @@
 import { fetchPersonalSubstrate } from "../chat-context-pipeline.js";
 import { MEMORY_LAYERS } from "../agentic/memory-bank.js";
 import freshnessEngine from "../freshness-engine.js";
+import { TASK_PROMPTS } from "../prompt-registry.js";
 const { applyFreshnessToRelevance } = freshnessEngine;
 
 const MAX_HISTORY_MESSAGES = 40;
@@ -17,7 +18,7 @@ const MAX_DTU_CHARS = 4000;
 function buildLensSystemPrompt(lensContext) {
   if (!lensContext) return null;
   const { lens, mode, focus, operation } = lensContext;
-  const parts = ["You are operating within the Concord cognitive system."];
+  const parts = [TASK_PROMPTS.contextAssemblerHeader()];
   if (lens) parts.push(`Active lens: ${lens}.`);
   if (mode) parts.push(`Mode: ${mode}.`);
   if (focus) parts.push(`Focus area: ${focus}.`);

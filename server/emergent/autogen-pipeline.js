@@ -27,6 +27,7 @@ import crypto from "node:crypto";
 import { runEmpiricalGates } from "./empirical-gates.js";
 import { formatAndValidate as formatGRC } from "../grc/index.js";
 import { runCouncilVoices } from "./council-voices.js";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 // ── Intent Types ─────────────────────────────────────────────────────────────
 
@@ -599,7 +600,7 @@ export function buildOllamaPrompt(candidate, coreExcerpts) {
   }));
 
   return {
-    system: `You are a formatter. Do not invent facts. Only reorganize and rewrite provided content into the required schema. Every claim must include support IDs from the allowedSources or be labeled type:"hypothesis". Do not add claims, citations, or facts that are not present in the draft or sources.`,
+    system: TASK_PROMPTS.autogenStructureFormatter(),
     user: JSON.stringify({
       task: "structure_dtu",
       draftDTU: {

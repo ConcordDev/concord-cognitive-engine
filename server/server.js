@@ -14409,6 +14409,7 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // Voice for conscious lives in the Modelfile; BRAIN_IDENTITY.conscious in
 // the registry is intentionally light (functional directives only).
 import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
+import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 
 const BRAIN = {
   conscious: {
@@ -21239,6 +21240,18 @@ Rules for tool use:
     const _pipelineMeta = (_qualityPipelineResult && _fusedContext)
       ? `\n[Pipeline: ${_fusedContext.meta.patternsApplied.join("+")} | intent=${_qualityPipelineResult.queryIntent}]`
       : "";
+    // Compute pre-flight: route math/probability/physics/etc. through the
+    // real engines BEFORE the brain sees the question. Only fires when a
+    // capability actually keyword-matches; pure-chat queries pass through
+    // untouched. See server/lib/chat-compute-preflight.js for the policy.
+    let _computeGroundTruth = null;
+    try {
+      _computeGroundTruth = await runChatComputePreflight(prompt, {
+        domainHandlers: (typeof ALL_LENS_DOMAINS !== 'undefined' ? ALL_LENS_DOMAINS : {}),
+        ctx,
+      });
+    } catch (_e) { /* never block chat on a compute failure */ }
+
     // Build the full conscious prompt with identity, personality, memory, and context
     const _consciousParams = getConsciousParams({ exchange_count: (sess.messages || []).length });
     const system = buildConsciousPrompt({
@@ -21263,7 +21276,10 @@ Rules for tool use:
     for (const msg of _recentHistory) {
       messages.push({ role: msg.role === "assistant" ? "assistant" : "user", content: String(msg.content || "").slice(0, 1500) });
     }
-    messages.push({ role: "user", content: `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}` });
+    const _userContent = _computeGroundTruth
+      ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
+      : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
+    messages.push({ role: "user", content: _userContent });
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
     const r = await ctx.llm.chat({
       system, messages, temperature: _llmTemp, maxTokens: _llmMaxTokens,

@@ -23,6 +23,7 @@
 import http from "node:http";
 
 import { buildPositiveCorpus } from "./interaction-log.js";
+import { TASK_PROMPTS } from "../prompt-registry.js";
 
 // Daily-eligible brains (small enough to refresh in <30 min).
 // Conscious + multimodal are too large for the daily window — they
@@ -142,15 +143,7 @@ function _buildModelfile(baseModel, brainId, examples) {
     .filter(Boolean)
     .join("\n\n");
 
-  const system = `You are Concord's ${brainId} brain. The following examples
-illustrate the kinds of high-quality responses this brain has produced
-in production, ranked by positive outcome (cited DTU, repaired error,
-or synthesis that survived consolidation). Match this style and
-quality of reasoning.
-
-${exampleBlock}
-
-Now respond to the user's actual prompt with the same care.`;
+  const system = TASK_PROMPTS.brainTrainingModelfileSystem({ brainId, exampleBlock });
 
   // Triple-quote SYSTEM so newlines + quotes inside don't break parsing.
   const escapedSystem = system.replace(/"""/g, '\\"\\"\\"');

@@ -37,6 +37,7 @@ import path from "path";
 import logger from '../logger.js';
 import { queues, PRIORITIES } from '../requestQueue.js';
 import { LruMap, LruSet } from "../lib/lru-map.js";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 const execAsync = promisify(execCb);
 
@@ -3935,31 +3936,8 @@ async function callRepairBrain(errorEntry) {
   const BRAIN = globalThis._concordBRAIN;
   if (!BRAIN?.repair?.enabled) return null;
 
-  const prompt = `You are a runtime repair system for a Node.js cognitive engine.
-Analyze this error and select the best fix from the AVAILABLE EXECUTORS list.
-
-ERROR: ${errorEntry.message}
-STACK: ${(errorEntry.stack || "").slice(0, 500)}
-OCCURRENCES: ${errorEntry.count}
-CONTEXT: ${errorEntry.context}
-
-AVAILABLE EXECUTORS:
-${Object.entries(EXECUTORS).map(([name, ex]) => `- ${name}: ${ex.description} [category: ${ex.category}]`).join("\n")}
-
-RESPOND IN EXACTLY THIS FORMAT (no other text):
-EXECUTOR: <executor_name>
-CONTEXT: <json_context_or_empty>
-CONFIDENCE: <0.0_to_1.0>
-REASONING: <one_line>
-
-If no executor fits, respond:
-EXECUTOR: none
-CONFIDENCE: 0.0
-REASONING: <why>
-
-For apply_code_patch, set CONTEXT to JSON like:
-{"filePath":"server/emergent/<file>.js","search":"<exact_broken_string>","replace":"<fixed_string>"}
-Only use apply_code_patch for SyntaxError, ReferenceError, or ERR_MODULE_NOT_FOUND where the fix is a single search-and-replace.`;
+  const executorsBlock = Object.entries(EXECUTORS).map(([name, ex]) => `- ${name}: ${ex.description} [category: ${ex.category}]`).join("\n");
+  const prompt = TASK_PROMPTS.repairBrainExecutorPick({ errorEntry, executorsBlock });
 
   try {
     // Yield to active chat — but don't wait more than 1s
@@ -4924,19 +4902,7 @@ Category:`;
         const brainConfig = BRAIN?.utility?.enabled !== false ? BRAIN?.utility : BRAIN?.conscious;
         if (!brainConfig?.url) return { fixed: false, reason: "no_brain_available" };
 
-        const prompt = `You are diagnosing a software error in the Concord cognitive engine.
-
-Error: ${(errorEntry.error.message || "").slice(0, 300)}
-Stack (first 5 lines): ${(errorEntry.error.stack || "").split("\\n").slice(0, 5).join("\\n")}
-Module: ${errorEntry.context.module || "unknown"}
-Function: ${errorEntry.context.function || "unknown"}
-Trigger: ${errorEntry.context.trigger || "unknown"}
-Heap: ${errorEntry.context.stateSnapshot?.heapUsed || 0} bytes
-DTUs: ${errorEntry.context.stateSnapshot?.dtuCount || 0}
-
-Eight automatic repair strategies already failed.
-Provide your response as JSON with no other text:
-{"diagnosis":"one sentence root cause","fixType":"null_guard|cache|retry|fallback|config_change|skip","fixParams":{},"confidence":0.0-1.0}`;
+        const prompt = TASK_PROMPTS.repairDeepDiagnostic({ errorEntry });
 
         const response = await fetch(`${brainConfig.url}/api/chat`, {
           method: "POST",

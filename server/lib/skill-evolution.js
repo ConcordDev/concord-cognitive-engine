@@ -25,6 +25,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { TASK_PROMPTS } from "./prompt-registry.js";
 
 // ── Tunables ────────────────────────────────────────────────────────────────
 
@@ -414,19 +415,15 @@ export async function composeLLMEvolution(recipe, levelAtRevision, description, 
 
 function buildLLMPrompt(recipe, levelAtRevision, description, history, envelope) {
   const shape = recipeShape(recipe);
-  return [
-    `You are evolving a skill recipe in a marathon-progression game.`,
-    `The skill is currently named "${shape.name}" (kind=${shape.skillKind}, element=${shape.element}).`,
-    `It has been used to level ${levelAtRevision}; this is revision #${envelope.revisionNum}.`,
-    `Author description: ${description || "(none — synthesize from lineage)"}.`,
-    `Lineage so far (${shape.revisionHistory.length} prior revisions):`,
-    shape.revisionHistory.slice(-3).map(r => `  - rev${r.revision_num}: ${r.name_after} — ${r.description?.slice(0, 80) || ""}`).join("\n"),
-    `Constraints:`,
-    `  - max_damage may grow at most to ${Math.round(envelope.maxDamageBefore * REVISION_GROWTH_BASE * REVISION_LLM_CEILING)}.`,
-    `  - element family must stay within: ${elementFamily(shape.element) || "physical"}.`,
-    `  - name must show lineage continuity (no rebrands).`,
-    `Reply with ONLY a JSON object: { "name_after": string, "max_damage_after": number, "summary": string }.`,
-  ].join("\n");
+  return TASK_PROMPTS.skillEvolutionDirective({
+    recipe,
+    shape,
+    levelAtRevision,
+    description,
+    envelope,
+    growthCeiling: Math.round(envelope.maxDamageBefore * REVISION_GROWTH_BASE * REVISION_LLM_CEILING),
+    familyConstraint: elementFamily(shape.element),
+  });
 }
 
 function parseLLMResponse(raw, envelope) {

@@ -683,38 +683,8 @@ const mlOps = {
     retryAttempts: 2,
     retryDelayMs: 1000,
   },
-  promptTemplates: {
-    'building-assist': {
-      system: [
-        'You are a building assistant for the Concord virtual world platform.',
-        'Help users design, refine, and troubleshoot structures using available',
-        'materials and physics constraints. Be concise and constructive.',
-      ].join(' '),
-      model: 'utility',
-      maxTokens: 1024,
-      temperature: 0.7,
-    },
-    'validation-explain': {
-      system: [
-        'You are a validation analyst. Explain why a DTU passed or failed',
-        'validation checks in clear, non-technical language. Reference specific',
-        'constraints and suggest corrective actions when applicable.',
-      ].join(' '),
-      model: 'conscious',
-      maxTokens: 2048,
-      temperature: 0.5,
-    },
-    'quest-generate': {
-      system: [
-        'You are a quest designer for the Concord platform. Generate creative,',
-        'balanced quests that encourage exploration, collaboration, and learning.',
-        'Include objectives, rewards, difficulty tiers, and narrative hooks.',
-      ].join(' '),
-      model: 'conscious',
-      maxTokens: 4096,
-      temperature: 0.85,
-    },
-  },
+  // Prompts (formerly promptTemplates here) live in
+  // server/lib/prompt-registry.js — single source of truth.
 };
 
 // ---------------------------------------------------------------------------

@@ -537,11 +537,12 @@ export class NPCAgent {
         brainOverride: "subconscious", callerId: "world:faction:coordinate",
       });
       const raw = await handle.generate(
-        `You are ${this.archetype}, faction leader of "${this.faction}" in world ${this.worldId}. ` +
-        `Your group: ${memberSummary}. ` +
-        `Devise a brief tactical instruction for your group in one sentence. ` +
-        `Consider flanking, ambush, or coordinated assault. Return JSON: ` +
-        `{"tactic":"<name>","instruction":"<one sentence for the group>"}`
+        TASK_PROMPTS.npcSimulatorFactionTactic({
+          archetype: this.archetype,
+          faction: this.faction,
+          worldId: this.worldId,
+          memberSummary,
+        })
       );
       const match = raw?.match(/\{[\s\S]*?\}/);
       if (match) {
@@ -565,10 +566,15 @@ export class NPCAgent {
         brainOverride: "subconscious", callerId: "world:npc:conversation",
       });
       const raw = await handle.generate(
-        `You are ${myName} (${this.archetype}, ${this.faction} faction). ` +
-        `You are speaking to ${partnerName} (${partner.archetype || 'entity'}) ` +
-        `about: ${topic}. World: ${this.worldId}. ` +
-        `Write one line of natural dialogue from ${myName} to ${partnerName}. No quotes around it.`
+        TASK_PROMPTS.npcSimulatorPartnerDialogue({
+          myName,
+          archetype: this.archetype,
+          faction: this.faction,
+          partnerName,
+          partnerArch: partner.archetype,
+          topic,
+          worldId: this.worldId,
+        })
       );
 
       if (!raw) return;

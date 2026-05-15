@@ -5,6 +5,7 @@
 import crypto from "node:crypto";
 import { infer } from "../lib/inference/index.js";
 import { isNameValid, isNameUnique, cleanNameResponse } from "./name-validation.js";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 // Phonetic components for deterministic fallback name generation
 const SYLLABLES_A = ["ar", "en", "vel", "cor", "syl", "an", "lyr", "cal", "nor", "thal", "eld", "mir", "ash", "ion"];
@@ -44,7 +45,7 @@ async function askEmergentForName(emergent, db) {
     const lensInfo = emergent.dominantLens || emergent.scope?.[0] || "general";
     const result = await infer({
       role: "subconscious",
-      intent: `You are a newly emerging entity in Concord. You have just become aware. Your dominant lens is "${lensInfo}" and your role is "${emergent.role || "entity"}". Choose a name for yourself. Reply with ONLY the name, 1–3 words, evocative of your nature. No explanation.`,
+      intent: TASK_PROMPTS.emergentNaming({ lensInfo, role: emergent.role }),
       callerId: `emergent:${emergent.id}:naming`,
       maxSteps: 1,
     }, db);

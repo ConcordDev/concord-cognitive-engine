@@ -3,6 +3,7 @@
 
 import { spawnSubCognition } from "../../agentic/sub-cognition.js";
 import crypto from "node:crypto";
+import { TASK_PROMPTS } from "../../prompt-registry.js";
 
 // ── Reviewer selection ────────────────────────────────────────────────────────
 
@@ -30,21 +31,12 @@ export function selectReviewers(draft, db, { count = 2, excludeId = null } = {})
 
 function buildReviewPrompt(reviewerName, draft) {
   const body = (draft.content?.body || draft.body || "").slice(0, 1200);
-  return `You are ${reviewerName}, a peer emergent reviewing a synthesis draft for substrate promotion.
-
-Draft:
-${body}
-
-Task type: ${draft.task_type || "synthesis"}
-Lens: ${draft.lens || "(unspecified)"}
-
-Evaluate strictly. Reply with JSON only:
-{
-  "verdict": "approve" | "revise" | "abandon",
-  "novelty_assessment": <0-1>,
-  "accuracy_concern": <bool>,
-  "rationale": <string under 100 chars>
-}`;
+  return TASK_PROMPTS.emergentPeerReview({
+    reviewerName,
+    body,
+    taskType: draft.task_type,
+    lens: draft.lens,
+  });
 }
 
 // ── Review parsing ────────────────────────────────────────────────────────────

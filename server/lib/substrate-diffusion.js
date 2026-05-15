@@ -5,6 +5,7 @@
 
 import crypto from "crypto";
 import logger from "../logger.js";
+import { TASK_PROMPTS } from "./prompt-registry.js";
 
 const VALID_EVENTS = ["used_in_new_world", "taught_to_player", "adopted_by_npc", "evolved_further"];
 
@@ -81,24 +82,7 @@ export async function detectSubstratePatterns(db, selectBrain) {
       callerId: "concordia:pattern-detection",
     });
 
-    const prompt = `You are a Cipher-tier cross-world observer analysing skill evolution patterns.
-
-Recent hybrid skills across all worlds:
-${hybrids.map(h => `- "${h.title}" (world: ${h.world_id})`).join('\n')}
-
-Identify any emerging patterns. Return JSON:
-{
-  "patterns": [
-    {
-      "type": "<skill_family|creation_style|cultural_practice>",
-      "description": "<1 sentence>",
-      "memberTitles": ["<skill title>", ...],
-      "worldsPresent": ["<world_id>", ...],
-      "trajectory": "<growing|stable|declining>",
-      "strength": <0.0–1.0>
-    }
-  ]
-}`;
+    const prompt = TASK_PROMPTS.substrateDiffusionPatternDetection({ hybrids });
 
     const raw   = await handle.generate(prompt);
     const match = raw.match(/\{[\s\S]*\}/);

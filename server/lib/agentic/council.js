@@ -4,6 +4,7 @@
 // the critic synthesis uses the best available brain (never blocks conscious chat).
 
 import { spawnSubCognition } from "./sub-cognition.js";
+import { TASK_PROMPTS } from "../prompt-registry.js";
 
 const DEFAULT_UNCERTAINTY_THRESHOLD = 0.6;
 const DEFAULT_EXPLORE_COUNT = 3;
@@ -100,7 +101,7 @@ export async function councilDecision({
     .join("\n\n");
 
   const synthesis = await spawnSubCognition({
-    task: `You are a critic synthesizing ${exploreCount} independent explorations into a final, coherent decision.\n\nOriginal question: ${question}\n\n${explorationsText}\n\nSynthesize these into the best answer, noting areas of agreement and resolving contradictions.`,
+    task: TASK_PROMPTS.councilSynthesis({ exploreCount, question, explorationsText }),
     parentInferenceId,
     brainRole: "subconscious", // synthesis uses subconscious, not conscious
     maxSteps: 5,
