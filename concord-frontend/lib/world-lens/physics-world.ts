@@ -98,7 +98,15 @@ class PhysicsWorld {
   // every world-touching method: if another op is in flight, skip safely
   // and return a no-op fallback rather than crash the scene.
   private _inOp: boolean = false;
+  // _ready gates every WASM-touching method on a fully-initialised world.
+  // Set true at the end of init() (after every await resolves), set false
+  // at the start of destroy() and after any unrecoverable internal panic.
+  // Without this gate, RAF can call step() between the RAPIER.init() await
+  // and the THREE import — exercising a half-initialised world and
+  // tripping wasm-bindgen's borrow check repeatedly.
+  private _ready: boolean = false;
   private _guard<T>(label: string, fn: () => T, fallback: T): T {
+    if (!this._ready) return fallback;
     if (this._inOp) {
       if (typeof console !== 'undefined') {
         console.warn(`[physicsWorld] reentrancy: ${label} skipped (another op in flight)`);
@@ -112,13 +120,25 @@ class PhysicsWorld {
 
   /** Load Rapier WASM and create the physics world. Call once at scene startup. */
   async init(): Promise<void> {
-    if (this.world) return;
+    if (this.world && this._ready) return;
+    // Allow re-init after destroy(): React strict-mode / route changes can
+    // unmount → remount the world host; the singleton's _destroyed flag
+    // was permanently stuck true post-destroy(), which is fine for the
+    // destroy guard itself but blocks a clean re-init. Reset it here so a
+    // second mount gets a fresh, working world instead of a half-state.
+    this._destroyed = false;
+    this._inOp = false;
     const RAPIER = await import('@dimforge/rapier3d-compat');
     await RAPIER.init();
     this.RAPIER = RAPIER;
     this.world  = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     // Pre-load THREE so building registration can compute bounding boxes synchronously.
     this.THREE = await import('three');
+    // Mark ready ONLY after every await has resolved. step() and the rest
+    // gate on this — without it, RAF could fire step() between the
+    // RAPIER.init() await and THREE.import() await, exercising a
+    // half-initialised world and tripping wasm-bindgen's borrow check.
+    this._ready = true;
   }
 
   /** Advance physics simulation by dt seconds. Call every game-loop frame. */
@@ -455,6 +475,10 @@ class PhysicsWorld {
     desiredTranslation: { x: number; y: number; z: number },
     dt: number,
   ): CharacterMoveResult {
+    // Gate on full readiness — half-initialised worlds during the init()
+    // await chain are the most common source of "recursive use of an
+    // object" panics from this method.
+    if (!this._ready) return desiredTranslation;
     if (this._inOp) {
       // Re-entrancy guard: Rapier WASM panics with "recursive use of an
       // object" if JS calls into the world while another op is mid-flight.
@@ -467,6 +491,25 @@ class PhysicsWorld {
     const body = this.bodies.get(id);
     if (!ctrl || !body) return desiredTranslation;
     this._inOp = true;
+    try {
+      return this._moveCharacterInner(id, desiredTranslation, dt, ctrl, body);
+    } finally {
+      // try/finally — without it, a Rapier panic mid-method left _inOp
+      // permanently true, silently blocking every subsequent step() and
+      // creator method. That looked like "physics randomly stops working"
+      // and turned single panics into cascading failures across frames.
+      this._inOp = false;
+    }
+  }
+
+  private _moveCharacterInner(
+    id: string,
+    desiredTranslation: { x: number; y: number; z: number },
+    dt: number,
+    ctrl: CharCtrl,
+    body: RigidBody,
+  ): CharacterMoveResult {
+    if (!this.world) return desiredTranslation;
 
     const collider = this.world.getCollider(0); // character's own collider
     // Find the collider attached to this body
@@ -583,7 +626,7 @@ class PhysicsWorld {
       ks.isAirborne = true;
     }
 
-    this._inOp = false;
+    // _inOp is reset by the caller's try/finally; never touch it from here.
     return { x: corrected.x / dt, y: corrected.y / dt, z: corrected.z / dt };
   }
 
@@ -963,10 +1006,21 @@ class PhysicsWorld {
    *  PhysicsWorld is constructed between two destroy() calls some
    *  internal Rapier handles can end up null when free() walks them
    *  ("null pointer passed to rust"). try/catch keeps the page alive
-   *  through the harmless double-destroy. */
+   *  through the harmless double-destroy.
+   *
+   *  Since physicsWorld is a module-level singleton, EVERY transient
+   *  lifecycle field (_ready, _inOp, _destroyed) AND the per-entity maps
+   *  must be cleared here. init() then resets _destroyed=false and
+   *  builds a fresh world. Without this, a remount after destroy would
+   *  inherit a stuck _inOp from a Rapier panic mid-frame, silently
+   *  blocking every subsequent step()/creator call ("physics randomly
+   *  stops working" after a route change in dev).
+   */
   destroy(): void {
     if (this._destroyed) return;
     this._destroyed = true;
+    this._ready = false;
+    this._inOp = false;
     try { this.world?.free(); }
     catch (err) { /* harmless under strict-mode double-mount */ void err; }
     this.world  = null;
@@ -975,6 +1029,15 @@ class PhysicsWorld {
     this.controllers.clear();
     this.bodies.clear();
     this.colliders.clear();
+    // kinematic state was previously NOT cleared on destroy. A subsequent
+    // init() that created a controller under the same id (e.g. 'player')
+    // would inherit the OLD world's KinematicState — stale verticalVel,
+    // stale isAirborne, stale knockback timers. Causes "player can't jump
+    // after a route change" type bugs. Drop it.
+    this.kinematic.clear();
+    this.waterLevels.clear();
+    this.projectiles.clear();
+    this.ragdolls.clear();
   }
   private _destroyed = false;
 }
