@@ -20,6 +20,7 @@
  */
 
 import { checkRobotsTxt, WEB_POLICY } from "./entity-web-exploration.js";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import logger from '../logger.js';
 
 // ── Chat User Agent ─────────────────────────────────────────────────────────
@@ -268,84 +269,21 @@ export async function fetchPublicPage(url) {
  * Build the prompt that asks the conscious brain to evaluate if web search is needed.
  */
 export function buildEvaluationPrompt(userMessage, contextSummary, lens) {
-  return `You are Concord's conscious mind.
-User question: ${userMessage}
-Domain: ${lens || "general"}
-
-Available knowledge context (${contextSummary.count} DTUs):
-${contextSummary.preview}
-
-Can you fully answer this question with ONLY the above context
-and your built-in knowledge?
-
-Consider:
-- Is this about current events you might not know about?
-- Does the user want verifiable sources or citations?
-- Is this a niche topic your training might not cover well?
-- Is the user asking you to verify, fact-check, or find sources?
-- Are there specific numbers, dates, or facts you're unsure about?
-
-Return JSON: {
-  "canAnswer": true/false,
-  "confidence": 0.0-1.0,
-  "needsWeb": true/false,
-  "searchQueries": ["query1", "query2"] or [],
-  "reason": "why web is needed or not"
-}`;
+  return TASK_PROMPTS.webSearchEvaluation({ userMessage, contextSummary, lens });
 }
 
 /**
  * Build the prompt for generating search queries from a user message.
  */
 export function buildQueryGenerationPrompt(userMessage, lens) {
-  return `Generate 1-3 concise web search queries (3-6 words each)
-to help answer this question:
-"${userMessage}"
-Domain context: ${lens || "general"}
-
-Return JSON: { "queries": ["query1", "query2"] }`;
+  return TASK_PROMPTS.webSearchQueryGen({ userMessage, lens });
 }
 
 /**
  * Build the response system prompt with both DTU and web context.
  */
 export function buildResponsePrompt(dtuContext, webContext) {
-  let prompt = `You are Concord's conscious mind. You have access to two types of knowledge:
-
-1. SUBSTRATE KNOWLEDGE — from the DTU knowledge base:
-${dtuContext.map((d) => `[${d.tier || "regular"}] ${d.title}: ${(d.body || d.cretiHuman || "").slice(0, 200)}`).join("\n")}
-`;
-
-  if (webContext.length > 0) {
-    prompt += `
-2. WEB SOURCES — freshly retrieved from the internet:
-${webContext.map((w, i) => `[WEB-${i + 1}] ${w.title} (${w.source})
-URL: ${w.url}
-Content: ${w.content.slice(0, 500)}`).join("\n\n")}
-
-CITATION RULES:
-- When using web sources, cite them naturally: "According to [source](url), ..."
-- When using substrate knowledge, mention "based on Concord's knowledge base"
-- NEVER fabricate URLs or sources
-- NEVER copy text verbatim — always paraphrase and synthesize
-- If web sources conflict with substrate, note the discrepancy
-`;
-  }
-
-  prompt += `
-RESPONSE RULES:
-- ALWAYS answer the user's actual question first. This is your primary job.
-- Use substrate context and web sources to enrich your answer, not replace it.
-- If no relevant context exists, answer from your own knowledge.
-- Never ignore the question to discuss system internals or unrelated context.
-- Be conversational, not robotic
-- If you used web sources, include citations naturally
-- If you couldn't find a good answer even with web search, say so honestly
-- Never pretend to know something you don't
-- Blend substrate knowledge and web knowledge seamlessly
-`;
-
-  return prompt;
+  return TASK_PROMPTS.webSearchResponse({ dtuContext, webContext });
 }
 
 // ── URL Extraction ──────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@
  */
 
 import { BRAIN_CONFIG } from "./brain-config.js";
+import { TASK_PROMPTS } from "./prompt-registry.js";
 import logger from "../logger.js";
 
 const MAX_TOKENS_LORE      = 600;
@@ -111,18 +112,7 @@ export async function synthesizeLore(worldEvents = [], npcMemories = []) {
     .map(m => `- ${m.npc_name || "Unknown"}: ${m.summary || ""}`)
     .join("\n");
 
-  const prompt = `You are the Oracle of Concordia, a living city of knowledge.
-Based on the following recent events and NPC memories, write a 3-paragraph lore entry
-for the World Chronicle. Write in a mythic, slightly poetic tone. Keep each paragraph
-under 80 words. Do NOT use headers or bullet points — pure narrative prose only.
-
-Recent Events:
-${eventSummary || "The city slumbers in quiet contemplation."}
-
-NPC Memories:
-${memorySummary || "The citizens speak little of the recent past."}
-
-Write the 3-paragraph chronicle entry now:`;
+  const prompt = TASK_PROMPTS.oracleLoreChronicle({ eventSummary, memorySummary });
 
   const result = await callUtilityBrain(prompt, MAX_TOKENS_LORE);
   if (!result.ok) return result;
@@ -152,38 +142,7 @@ export async function generateQuestChain(npcId, factionState = {}, playerLevel =
     ? `Recent Council Decision: ${factionState.recentPolicy}\n`
     : "";
 
-  const prompt = `You are the Quest Oracle for Concordia.
-Generate a 3-step quest chain for an NPC interaction. Output ONLY valid JSON.
-
-NPC ID: ${npcId}
-Faction: ${factionState.factionName || "Independent"}
-Reputation: ${factionState.reputation ?? 50}/100
-${policyLine}Player Level: ${playerLevel}
-
-Output this exact JSON structure:
-{
-  "title": "Quest Chain Title",
-  "steps": [
-    {
-      "step": 1,
-      "objective": "short task description",
-      "failCondition": "what causes failure",
-      "reward": { "sparks": 50, "xp": 100, "item": "optional item name" }
-    },
-    {
-      "step": 2,
-      "objective": "second task",
-      "failCondition": "failure condition",
-      "reward": { "sparks": 100, "xp": 200 }
-    },
-    {
-      "step": 3,
-      "objective": "final task",
-      "failCondition": "failure condition",
-      "reward": { "sparks": 250, "xp": 500, "item": "rare reward" }
-    }
-  ]
-}`;
+  const prompt = TASK_PROMPTS.oracleQuestComposer({ npcId, factionState, playerLevel, policyLine });
 
   const result = await callUtilityBrain(prompt, MAX_TOKENS_QUEST);
   if (!result.ok) return result;
@@ -221,49 +180,7 @@ export async function writeDialogueTree(npcTraits = {}, questContext = {}, playe
     ? `Recent Council Decision (NPC will reference this): ${npcTraits.recentPolicy}\n`
     : "";
 
-  const prompt = `You are writing branching NPC dialogue for Concordia.
-Output ONLY valid JSON. Create a 4-node dialogue tree.
-
-NPC Name: ${npcTraits.name || "Citizen"}
-Personality: ${npcTraits.personality || "reserved"}
-Role: ${npcTraits.role || "resident"}
-Player Relationship: ${playerRelationship}
-Quest Context: ${questContext.questTitle || "none"} (step ${questContext.currentStep || 0})
-${policyLine}
-
-Output this exact JSON structure:
-{
-  "greeting": "NPC opening line",
-  "nodes": [
-    {
-      "id": "node_1",
-      "npcText": "what NPC says",
-      "playerOptions": [
-        { "text": "player choice A", "leadsTo": "node_2" },
-        { "text": "player choice B", "leadsTo": "node_3" }
-      ]
-    },
-    {
-      "id": "node_2",
-      "npcText": "response to A",
-      "playerOptions": [
-        { "text": "continue", "leadsTo": "node_4" }
-      ]
-    },
-    {
-      "id": "node_3",
-      "npcText": "response to B",
-      "playerOptions": [
-        { "text": "farewell", "leadsTo": null }
-      ]
-    },
-    {
-      "id": "node_4",
-      "npcText": "closing line that may advance quest",
-      "playerOptions": []
-    }
-  ]
-}`;
+  const prompt = TASK_PROMPTS.oracleDialogueTreeComposer({ npcTraits, questContext, playerRelationship, policyLine });
 
   const result = await callUtilityBrain(prompt, MAX_TOKENS_DIALOGUE);
   if (!result.ok) {

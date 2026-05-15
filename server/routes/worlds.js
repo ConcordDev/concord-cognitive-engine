@@ -11,6 +11,7 @@ import { seedWorldContent } from "../lib/world-seeder.js";
 import { getNearbyNodes, getUndergroundNodes, gatherFromNode, updateSwimState, checkSwimState, respawnExpiredNodes } from "../lib/world-gathering.js";
 import { getWorldMarket, getResourcePrice, recordTransaction } from "../lib/world-economy.js";
 import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHistory } from "../lib/world-governance.js";
+import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
 import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
 import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
@@ -893,7 +894,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const context = [
         `You are ${npcName}, a ${npc.archetype} NPC in world ${worldId}.`,
         `Faction: ${npc.faction}. Level: ${npc.level}.`,
-        npc.is_conscious ? 'You are a world leader and conscious being. Speak with authority and wisdom.' : '',
+        npc.is_conscious ? TASK_PROMPTS.worldNpcConsciousLeaderHint() : '',
         `Your current goals: ${JSON.stringify(state.goals || []).slice(0, 200)}`,
         `A player says: "${message || 'Hello'}"`,
         `Reply in character in 1-2 sentences. Stay true to your archetype.`,
@@ -1009,7 +1010,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const promptLines = [
         `You are ${npcName}, a ${npc.archetype} NPC in world ${worldId}.`,
         `Faction: ${npc.faction || 'none'}. Level: ${npc.level || 1}.`,
-        npc.is_conscious ? 'You are a world leader and conscious being. Speak with authority and wisdom.' : '',
+        npc.is_conscious ? TASK_PROMPTS.worldNpcConsciousLeaderHint() : '',
         `Job: ${npc.job_type || 'none'}. Current task: ${npc.current_task || 'idle'}.`,
         `Schedule phase: ${npc.schedule_phase || 'day'}. Grief level: ${npc.grief_level ?? 0}.`,
         `Criminal reputation: ${npc.criminal_rep || 0}. Wanted: ${npc.is_wanted ? 'yes' : 'no'}.`,
@@ -1118,7 +1119,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const promptLines = [
         `You are ${npcName}, a ${npc.archetype} NPC in world ${worldId}.`,
         `Faction: ${npc.faction || 'none'}. Level: ${npc.level || 1}.`,
-        npc.is_conscious ? 'You are a world leader and conscious being. Speak with authority and wisdom.' : '',
+        npc.is_conscious ? TASK_PROMPTS.worldNpcConsciousLeaderHint() : '',
         `Job: ${npc.job_type || 'none'}. Current task: ${npc.current_task || 'idle'}.`,
         questContext,
         ``,

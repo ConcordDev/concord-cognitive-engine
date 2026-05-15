@@ -30,6 +30,7 @@
  */
 
 import logger from '../logger.js';
+import { TASK_PROMPTS } from './prompt-registry.js';
 
 const DEFAULT_STATS = {
   queriesResolved: 0,
@@ -46,46 +47,7 @@ const DEFAULT_STATS = {
   subLensExpansions: 0,
 };
 
-// ── Prompts (module-level constants) ────────────────────────────────────────
-
-/**
- * Classification prompt: fed to the utility brain in Phase 1. Asks for a
- * strict-JSON classification that downstream phases can consume.
- */
-const CLASSIFICATION_PROMPT = (query) => (
-  `You are a query classifier for the Concord Oracle Engine. Read the user ` +
-  `query and reply with ONLY a strict JSON object (no markdown, no prose) ` +
-  `describing the query. Shape:\n` +
-  `{\n` +
-  `  "primaryDomains":   [string],       // e.g. ["physics", "math"]\n` +
-  `  "secondaryDomains": [string],       // adjacent supporting domains\n` +
-  `  "queryType":        string,         // formal|computational|theoretical|narrative|conversational|general\n` +
-  `  "complexity":       string,         // trivial|simple|moderate|complex|research\n` +
-  `  "requiredSystems":  [string],       // e.g. ["physics_modules","simulation","validation","stsvk"]\n` +
-  `  "epistemicClass":   string          // known|probable|uncertain|unknown\n` +
-  `}\n\n` +
-  `Query: ${query}\n\n` +
-  `Reply with JSON only.`
-);
-
-/**
- * Oracle system prompt used by the conscious brain during Phase 4 synthesis.
- * The strict rules below are NON-NEGOTIABLE — they define what makes an
- * Oracle answer trustworthy inside Concord OS.
- */
-const ORACLE_SYSTEM_PROMPT =
-  `You are the Oracle Engine of Concord OS. Your answer must: ` +
-  `1) Address the user's query directly. ` +
-  `2) Cite DTU sources by ID whenever you use information from them. ` +
-  `3) Include proofs or computation traces when formal claims are made. ` +
-  `4) Note cross-domain connections when relevant. ` +
-  `5) Mark each claim as KNOWN, PROBABLE, UNCERTAIN, or UNKNOWN. ` +
-  `6) Suggest follow-up questions the user could ask next. ` +
-  `Never hallucinate. Computations provided to you are ground truth — never ` +
-  `contradict them. If you do not know, say UNKNOWN.\n\n` +
-  `RULE: Values in computationalGroundTruth were computed by real engines ` +
-  `(formal logic, symbolic math, numerical methods, physics modules). ` +
-  `These are ground truth. Never contradict them. Cite them as "computed".`;
+// Prompts live in `server/lib/prompt-registry.js` (TASK_PROMPTS.oracle*).
 
 /**
  * Create an Oracle Engine instance.
@@ -551,7 +513,7 @@ export function createOracleEngine(opts = {}) {
     let classified = null;
     try {
       const resp = await _callBrain('utility', {
-        prompt: CLASSIFICATION_PROMPT(q),
+        prompt: TASK_PROMPTS.oracleQueryClassifier({ query: q }),
         taskType: 'classification',
         temperature: 0.1,
         maxTokens: 400,
@@ -1016,11 +978,7 @@ export function createOracleEngine(opts = {}) {
       return _heuristicViolates(answer, invariant);
     }
     try {
-      const prompt =
-        `You are checking whether an answer violates a formal invariant.\n` +
-        `Invariant: ${invariant}\n` +
-        `Answer: ${answer}\n` +
-        `Reply with exactly one word: VIOLATES or OK.`;
+      const prompt = TASK_PROMPTS.oracleInvariantCheck({ answer, invariant });
       const resp = await brain.query('conscious', { prompt, taskType: 'classification' });
       const text = String(resp?.content || resp?.text || '').toUpperCase();
       return text.includes('VIOLATES');
@@ -1440,7 +1398,7 @@ export function createOracleEngine(opts = {}) {
     try {
       brainResponse = await _callBrain('conscious', {
         prompt: fullContext,
-        systemPrompt: ORACLE_SYSTEM_PROMPT,
+        systemPrompt: TASK_PROMPTS.oracleSynthesisSystem(),
         taskType: 'reasoning',
         temperature: 0.3,
         maxTokens: 2000,
