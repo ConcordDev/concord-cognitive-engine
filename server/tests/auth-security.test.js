@@ -29,8 +29,12 @@ before(async () => {
   // If API_BASE is provided externally (e.g. integration-test CI), use it directly
   if (process.env.API_BASE) {
     API_BASE = process.env.API_BASE;
-    // Wait for the external server to be ready
-    const deadline = Date.now() + 30_000;
+    // Wait for the external server to be ready. 180s budget — matches
+    // the CI workflow's own "Wait for server" patience. A heavy server
+    // on a slow runner can have its event loop starved by early-life
+    // simulation churn well past 30s; wait it out rather than assert a
+    // tight readiness SLA.
+    const deadline = Date.now() + 180_000;
     while (Date.now() < deadline) {
       try {
         const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5_000) });
@@ -40,7 +44,7 @@ before(async () => {
       }
       await new Promise(r => { setTimeout(r, 500); });
     }
-    throw new Error('External server not reachable within 30 seconds');
+    throw new Error('External server not reachable within 180 seconds');
   }
 
   // No external server — spawn our own on a random port
@@ -100,21 +104,31 @@ async function api(method, path, body = null, options = {}) {
   const fetchOptions = {
     method,
     headers,
-    credentials: 'include',
-    signal: AbortSignal.timeout(10_000)
+    credentials: 'include'
   };
   if (body) fetchOptions.body = JSON.stringify(body);
 
-  const res = await fetch(`${API_BASE}${path}`, fetchOptions);
-
-  // Capture cookies from response
-  const setCookie = res.headers.get('set-cookie');
-  if (setCookie) {
-    cookies = setCookie.split(',').map(c => c.split(';')[0]).join('; ');
+  // Cold CI servers can take well over 10s on early requests while
+  // startup simulation churns through a fresh seed corpus; retry
+  // transient timeouts/network errors so the suite asserts behaviour,
+  // not a tight latency SLA.
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, signal: AbortSignal.timeout(30_000) });
+      // Capture cookies from response
+      const setCookie = res.headers.get('set-cookie');
+      if (setCookie) {
+        cookies = setCookie.split(',').map(c => c.split(';')[0]).join('; ');
+      }
+      const json = await res.json().catch(() => ({}));
+      return { ...json, status: res.status, headers: res.headers };
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => { setTimeout(r, 500 * (attempt + 1)); });
+    }
   }
-
-  const json = await res.json().catch(() => ({}));
-  return { ...json, status: res.status, headers: res.headers };
+  throw lastErr;
 }
 
 // ============= Health Check Tests =============

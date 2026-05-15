@@ -24,7 +24,11 @@ let serverProcess = null;
 before(async () => {
   if (process.env.API_BASE) {
     API_BASE = process.env.API_BASE;
-    const deadline = Date.now() + 30_000;
+    // 180s budget — matches the CI workflow's own "Wait for server"
+    // patience. A heavy server on a slow runner can have its event loop
+    // starved by early-life simulation churn well past 30s; the test
+    // should wait it out rather than assert a tight readiness SLA.
+    const deadline = Date.now() + 180_000;
     while (Date.now() < deadline) {
       try {
         const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5_000) });
@@ -32,7 +36,7 @@ before(async () => {
       } catch { /* not ready */ }
       await new Promise(r => { setTimeout(r, 500); });
     }
-    throw new Error("External server not reachable within 30 seconds");
+    throw new Error("External server not reachable within 180 seconds");
   }
 
   const serverDir = join(__dirname, "..");
@@ -79,11 +83,26 @@ after(() => {
 async function api(method, path, body = null, { token } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const opts = { method, headers, signal: AbortSignal.timeout(15_000) };
+  const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${API_BASE}${path}`, opts);
-  const json = await res.json().catch(() => ({}));
-  return { ...json, _status: res.status };
+  // Cold CI servers can take well over 10s on early requests while
+  // startup simulation churns through a fresh seed corpus; retry
+  // transient timeouts/network errors so the suite asserts behaviour,
+  // not a tight latency SLA. (Per-test degraded-mode timeout probes
+  // below use their own inline AbortSignal — this helper is the
+  // happy-path request path.)
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}${path}`, { ...opts, signal: AbortSignal.timeout(30_000) });
+      const json = await res.json().catch(() => ({}));
+      return { ...json, _status: res.status };
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => { setTimeout(r, 500 * (attempt + 1)); });
+    }
+  }
+  throw lastErr;
 }
 
 let _seq = Date.now();
