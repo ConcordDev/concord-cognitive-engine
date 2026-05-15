@@ -108,7 +108,17 @@ jobs:
         # playwright.config.ts's webServer block starts `npm run start:ci`
         # on :3000 and waits for it before any spec runs — no manual
         # frontend boot or readiness poll needed.
-        run: npx playwright test tests/e2e/playthrough.spec.ts
+        #
+        # --project=chromium pins the run to a single browser. The spec
+        # itself declares `test.use({ browserName: 'chromium' })` at the
+        # top, signalling chromium-only intent, but the file-level
+        # `test.use` is overridden by playwright.config's `projects: [
+        # chromium, firefox, webkit, mobile-chrome ]` — so without the
+        # explicit flag the workflow expands every spec across 4 browsers,
+        # 4× the work. The 30 min job timeout was hitting that ceiling
+        # (cancelled at 31m28s on commit 5d72a39); pinning to chromium
+        # brings the run back under budget.
+        run: npx playwright test tests/e2e/playthrough.spec.ts --project=chromium
         env:
           CI: 'true'
           PLAYWRIGHT_BASE_URL: http://localhost:3000
