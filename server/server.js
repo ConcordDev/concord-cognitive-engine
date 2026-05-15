@@ -14410,6 +14410,7 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // the registry is intentionally light (functional directives only).
 import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
+import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
 
 const BRAIN = {
   conscious: {
@@ -19971,6 +19972,16 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
   // Base settings must exist before we derive localSettings/style.
   const baseSettings = (ctx?.state?.settings) ? ctx.state.settings : (STATE.settings || {});
 
+  // Try to rehydrate from SQLite first — this is what makes multi-turn
+  // continuity survive a server restart. If the persisted store doesn't
+  // know this sessionId either, the in-memory create below seeds a new
+  // one (and the persist call at the end of the macro writes it back).
+  try {
+    hydrateSession(ctx?.db || globalThis._concordSTATE?.db, STATE, sessionId, {
+      ownerId: ctx?.actor?.userId || input?.userId || null,
+    });
+  } catch (_e) { /* never block chat on a hydration failure */ }
+
   if (!STATE.sessions.has(sessionId)) {
     // ownerId enables defense-in-depth: assertSessionAccessible() refuses
     // session reads from anyone other than the owner (or a participant
@@ -20112,6 +20123,20 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
 
 sess.messages.push({ role: "user", content: prompt, ts: nowISO() });
 
+// Persist user msg + a deterministic assistant reply when the chat takes
+// any of the early-return paths (math, time, weather, identity, etc.).
+// The full LLM path persists at its own return site with richer meta.
+function _persistDeterministicTurn(replyContent, replyMeta = {}) {
+  try {
+    persistChatTurn(ctx?.db || globalThis._concordSTATE?.db, sessionId, {
+      ownerId: ctx?.actor?.userId || input?.userId || null,
+      lastLens: input.lens || input.currentLens || null,
+      userMsg: { role: 'user', content: prompt, ts: Date.now() - 1 },
+      assistantMsg: { role: 'assistant', content: replyContent, ts: Date.now(), meta: replyMeta },
+    });
+  } catch { /* never block chat on persistence failure */ }
+}
+
   // ===== DTU ENRICHMENT: Input DTU + Summary Compression =====
   // Create input DTU from user message (fire-and-forget)
   try {
@@ -20226,6 +20251,7 @@ sess.messages.push({ role: "user", content: prompt, ts: nowISO() });
   if (mathHit) {
     const finalReply = mathHit.reply;
     sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed: false, mode, deterministic: true, source: "math" } });
+    _persistDeterministicTurn(finalReply, { llmUsed: false, mode, source: "math" });
     ctx.log("chat", "Deterministic math answer", { sessionId, mode, reply: finalReply });
     saveStateDebounced();
     return { ok: true, reply: finalReply, sessionId, mode, llmUsed: false, meta: { panel: "chat", sessionId, mode, llmUsed: false, deterministic: true, source: "math" } };
@@ -20252,6 +20278,7 @@ if (_isTimeQuery(prompt)) {
   const reply = `Local time (${tz}): ${t.localTime}
 ISO: ${t.nowISO}`;
   sess.messages.push({ role:"assistant", content: reply, ts: nowISO(), meta: { llmUsed:false, source:"time" } });
+  _persistDeterministicTurn(reply, { llmUsed: false, source: "time" });
   saveStateDebounced();
   return { ok:true, reply, sessionId, mode, llmUsed:false, meta:{ panel:"chat", sessionId, mode, llmUsed:false, source:"time" } };
 }
@@ -20264,6 +20291,7 @@ if (_isWeatherQuery(prompt)) {
     if (!wx.ok) {
       const reply = `Weather lookup failed for "${loc}": ${wx.error || "unknown_error"}`;
       sess.messages.push({ role:"assistant", content: reply, ts: nowISO(), meta: { llmUsed:false, source:"weather" } });
+      _persistDeterministicTurn(reply, { llmUsed: false, source: "weather" });
       saveStateDebounced();
       return { ok:true, reply, sessionId, mode, llmUsed:false, meta:{ panel:"chat", sessionId, mode, llmUsed:false, source:"weather" } };
     }
@@ -20278,11 +20306,13 @@ if (_isWeatherQuery(prompt)) {
 ` +
       `Today: high ${todayMax ?? "?"}°C / low ${todayMin ?? "?"}°C`;
     sess.messages.push({ role:"assistant", content: reply, ts: nowISO(), meta: { llmUsed:false, source:"weather", cached: wx.cached } });
+    _persistDeterministicTurn(reply, { llmUsed: false, source: "weather", cached: wx.cached });
     saveStateDebounced();
     return { ok:true, reply, sessionId, mode, llmUsed:false, meta:{ panel:"chat", sessionId, mode, llmUsed:false, source:"weather", cached: wx.cached } };
   } catch (e) {
     const reply = `Weather lookup error: ${String(e?.message||e)}`;
     sess.messages.push({ role:"assistant", content: reply, ts: nowISO(), meta: { llmUsed:false, source:"weather" } });
+    _persistDeterministicTurn(reply, { llmUsed: false, source: "weather" });
     saveStateDebounced();
     return { ok:true, reply, sessionId, mode, llmUsed:false, meta:{ panel:"chat", sessionId, mode, llmUsed:false, source:"weather" } };
   }
@@ -20445,6 +20475,7 @@ ${more}
 
 ${ask}`;
     sess.messages.push({ role: "assistant", content: reply, ts: nowISO(), meta: { llmUsed: false, mode, identity: true } });
+    _persistDeterministicTurn(reply, { llmUsed: false, mode, source: "identity" });
     saveStateDebounced();
     return { ok:true, reply, sessionId, mode, llmUsed:false, meta: { panel: "chat", sessionId, mode, llmUsed:false, identity:true } };
   }
@@ -21637,6 +21668,58 @@ Rules for tool use:
     // Forge is supplementary — never block the chat path
   }
 
+  // Surface compute-preflight provenance so the frontend can render the
+  // "Concord computed this" badge. Only includes capability metadata, not
+  // the full result payload (already in the prompt the brain saw).
+  const _computedSurface = (typeof _computeGroundTruth !== 'undefined' && _computeGroundTruth)
+    ? {
+        capabilities: _computeGroundTruth.capabilities || [],
+        engineCount: (_computeGroundTruth.results || []).length,
+      }
+    : null;
+
+  // Extract DTU references from the final reply for citation chips.
+  // Matches the [dtu-…] / [DTU:…] / "DTU id …" patterns the brain uses
+  // when surgical-citing per the prompt-registry rule.
+  const _dtuRefIds = new Set();
+  try {
+    const _refRe = /\b(?:dtu[-_:]?|DTU\s*[-_:]?\s*)([A-Za-z0-9_-]{6,40})\b/g;
+    let _m;
+    while ((_m = _refRe.exec(finalReply || "")) !== null) {
+      const id = _m[1];
+      if (id && id.length >= 6 && id.length <= 40) _dtuRefIds.add(id);
+    }
+  } catch { /* never block on extraction */ }
+  const _dtuRefs = Array.from(_dtuRefIds).slice(0, 12).map(id => {
+    const r = relevant.find(d => d.id === id || d.id?.endsWith(id));
+    return r
+      ? { id: r.id, title: r.title, tier: r.tier }
+      : { id, title: null, tier: null };
+  });
+
+  // Persist the turn so multi-turn continuity survives a restart.
+  try {
+    const _userMsgRow = (sess.messages || []).slice(-2).find(m => m.role === 'user');
+    persistChatTurn(ctx?.db || globalThis._concordSTATE?.db, sessionId, {
+      ownerId: ctx?.actor?.userId || input?.userId || null,
+      lastLens: currentLens,
+      userMsg: _userMsgRow ? { role: 'user', content: _userMsgRow.content, ts: Date.parse(_userMsgRow.ts) || Date.now() } : null,
+      assistantMsg: {
+        role: 'assistant',
+        content: finalReply,
+        ts: Date.now(),
+        meta: {
+          llmUsed,
+          mode,
+          toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined,
+          toolCallCount: _toolCallsExecuted.length,
+          computed: _computedSurface,
+          dtuRefs: _dtuRefs.length > 0 ? _dtuRefs : undefined,
+        },
+      },
+    });
+  } catch (_e) { /* never block chat on persistence failure */ }
+
   return {
     ok: true, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
     toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({
@@ -21649,6 +21732,8 @@ Rules for tool use:
       error: t.error,
     })) : undefined,
     toolsAvailable: _toolsAvailable || undefined,
+    computed: _computedSurface,
+    dtuRefs: _dtuRefs.length > 0 ? _dtuRefs : undefined,
     relevant: relevant.map(d=>({ id:d.id, title:d.title, tier:d.tier })),
     dtuCount: _pipelineDtuCount,
     pipeline: _pipelineHarvest ? {
@@ -40130,6 +40215,25 @@ async function buildSovereignContext(query, lens, maxDTUs, sessionId, userId) {
     })),
   };
 }
+
+// ── Persisted chat sessions (sidebar payload) ──────────────────────────────
+// Lists the signed-in user's persisted chat sessions, most recent first.
+// Used by the chat lens sidebar to surface sessions that survive a
+// server restart (frontend localStorage hides the gap, but it isn't real
+// continuity unless the server side has the messages too).
+
+app.get("/api/chat/sessions", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const limit = Math.min(200, parseInt(req.query.limit, 10) || 50);
+    const { listRecentSessions } = await import("./lib/chat-session-store.js");
+    const sessions = listRecentSessions(STATE.db, userId, { limit });
+    res.json({ ok: true, sessions });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
 
 // ── Sovereignty Resolution Endpoint (chat consent flow) ─────────────────────
 

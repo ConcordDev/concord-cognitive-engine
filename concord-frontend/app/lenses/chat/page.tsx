@@ -58,6 +58,7 @@ import {
   PauseCircle,
   PlayCircle,
   GitBranch,
+  Key,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -78,6 +79,11 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import MessageRenderer from '@/components/chat/MessageRenderer';
 import OracleResponse from '@/components/chat/OracleResponse';
 import { ToolCallCard } from '@/components/chat/ToolCallCard';
+import ComputeBadge from '@/components/chat/ComputeBadge';
+import CitationChips from '@/components/chat/CitationChips';
+import AnonNudge from '@/components/chat/AnonNudge';
+import BYOKeyDrawer from '@/components/chat/BYOKeyDrawer';
+import { useAuth } from '@/hooks/useAuth';
 import { ReasoningIndicator } from '@/components/chat/ReasoningIndicator';
 import { MessageContinuationMarker } from '@/components/chat/MessageContinuationMarker';
 import { useOracleSolve, type OracleResponseData } from '@/hooks/useOracleSolve';
@@ -174,6 +180,11 @@ interface Message {
   reasoningSessionId?: string;
   wasSynthesized?: boolean;
   shadowsUsed?: number;
+  computed?: {
+    capabilities?: Array<{ key: string; score?: number; description?: string }>;
+    engineCount?: number;
+  } | null;
+  dtuRefs?: Array<{ id: string; title: string | null; tier: string | null }>;
 }
 
 interface Conversation {
@@ -729,6 +740,42 @@ export default function ChatLensPage() {
   const [streamingContent, setStreamingContent] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
 
+  // Scroll anchor — keeps the bottom of the streaming preview in view as
+  // tokens arrive. Throttled via rAF so fast token bursts don't queue up
+  // dozens of scroll calls. Only scrolls when the user is already near
+  // the bottom (auto-follow); if they've scrolled up to read history we
+  // don't yank them back.
+  const streamingAnchorRef = useRef<HTMLDivElement | null>(null);
+  const lastScrollTsRef = useRef<number>(0);
+  useEffect(() => {
+    if (!isStreaming || !streamingContent || !streamingAnchorRef.current) return;
+    const now = performance.now();
+    if (now - lastScrollTsRef.current < 80) return; // ~12 fps cap
+    lastScrollTsRef.current = now;
+    const anchor = streamingAnchorRef.current;
+    const scroller = anchor.closest('.overflow-y-auto, .overflow-auto') as HTMLElement | null;
+    if (scroller) {
+      const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+      // Only auto-follow when the user is within 200px of the bottom.
+      if (distanceFromBottom > 200) return;
+    }
+    requestAnimationFrame(() => {
+      anchor?.scrollIntoView({ behavior: 'auto', block: 'end' });
+    });
+  }, [streamingContent, isStreaming]);
+
+  // BYO key drawer + anon-nudge UI state.
+  const [byoOpen, setByoOpen] = useState(false);
+  const [anonNudgeDismissed, setAnonNudgeDismissed] = useState(() => {
+    try { return typeof window !== 'undefined' && localStorage.getItem('concord_anon_nudge_dismissed') === '1'; }
+    catch { return false; }
+  });
+  const { isAuthenticated } = useAuth();
+  const dismissAnonNudge = useCallback(() => {
+    setAnonNudgeDismissed(true);
+    try { localStorage.setItem('concord_anon_nudge_dismissed', '1'); } catch { /* private mode */ }
+  }, []);
+
   // ──────────────────────────────────────────────
   // Oracle Engine — rich response mutation
   // ──────────────────────────────────────────────
@@ -1109,6 +1156,8 @@ export default function ChatLensPage() {
             sources: (finalOut as Record<string, unknown>)?.sources,
             webAugmented: (finalOut as Record<string, unknown>)?.webAugmented,
             toolCalls: (finalOut as Record<string, unknown>)?.toolCalls,
+            computed: (finalOut as Record<string, unknown>)?.computed,
+            dtuRefs: (finalOut as Record<string, unknown>)?.dtuRefs,
             streamed: true,
           };
         }
@@ -1159,6 +1208,12 @@ export default function ChatLensPage() {
         webAugmented: !!data.webAugmented,
         toolCalls: Array.isArray(data.toolCalls)
           ? (data.toolCalls as Message['toolCalls'])
+          : undefined,
+        computed: (data.computed && typeof data.computed === 'object')
+          ? (data.computed as Message['computed'])
+          : undefined,
+        dtuRefs: Array.isArray(data.dtuRefs)
+          ? (data.dtuRefs as Message['dtuRefs'])
           : undefined,
         reasoningSessionId:
           typeof data.reasoningSessionId === 'string' ? data.reasoningSessionId : undefined,
@@ -1983,6 +2038,16 @@ export default function ChatLensPage() {
                   </div>
                 )}
 
+                {/* Compute provenance (compute-preflight ground truth) */}
+                {message.role === 'assistant' && message.computed && (
+                  <ComputeBadge computed={message.computed} />
+                )}
+
+                {/* DTU citation chips (surgical refs the brain grounded in) */}
+                {message.role === 'assistant' && message.dtuRefs && message.dtuRefs.length > 0 && (
+                  <CitationChips dtuRefs={message.dtuRefs} />
+                )}
+
                 {/* Web sources panel */}
                 {message.sources && message.sources.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-lattice-border/50">
@@ -2238,9 +2303,22 @@ export default function ChatLensPage() {
           </div>
         );
       }
-      return renderMessage(idx, item);
+      // Inject the anon-save nudge after the 3rd item so it lands once
+      // the user has demonstrated they're actually using chat. Only for
+      // unauthenticated, non-dismissed users.
+      const showNudgeHere = !isAuthenticated && !anonNudgeDismissed && idx === 3;
+      const msg = renderMessage(idx, item);
+      if (!showNudgeHere) return msg;
+      return (
+        <>
+          {msg}
+          <div className="px-4 lg:px-6">
+            <AnonNudge visible={true} onDismiss={dismissAnonNudge} />
+          </div>
+        </>
+      );
     },
-    [renderMessage, handleInitiativeDismiss, handleInitiativeRespond, handleInitiativeAction]
+    [renderMessage, handleInitiativeDismiss, handleInitiativeRespond, handleInitiativeAction, isAuthenticated, anonNudgeDismissed, dismissAnonNudge]
   );
 
   // Phase P — wrap each thread item in SafeCard so a single bad
@@ -2334,18 +2412,28 @@ export default function ChatLensPage() {
                 <Bot className="w-6 h-6 text-neon-cyan" />
                 Chat
               </h2>
-              <button
-                className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
-                aria-label="Chat settings"
-                onClick={() =>
-                  useUIStore.getState().addToast({
-                    type: 'info',
-                    message: 'Use the mode selector in the chat rail to configure chat behavior',
-                  })
-                }
-              >
-                <Settings className="w-5 h-5 text-gray-400" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
+                  aria-label="BYO API keys"
+                  title="Plug your own API key into a brain slot"
+                  onClick={() => setByoOpen(true)}
+                >
+                  <Key className="w-5 h-5 text-gray-400 hover:text-neon-cyan" />
+                </button>
+                <button
+                  className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
+                  aria-label="Chat settings"
+                  onClick={() =>
+                    useUIStore.getState().addToast({
+                      type: 'info',
+                      message: 'Use the mode selector in the chat rail to configure chat behavior',
+                    })
+                  }
+                >
+                  <Settings className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
             </div>
             <button
               onClick={() => {
@@ -2995,6 +3083,8 @@ export default function ChatLensPage() {
                     <MessageRenderer content={streamingContent} streaming />
                   </div>
                 </div>
+                {/* Scroll anchor: rAF-throttled scroll-into-view on token tick */}
+                <div ref={streamingAnchorRef} aria-hidden="true" />
               </div>
             )}
 
@@ -3767,6 +3857,9 @@ export default function ChatLensPage() {
           ]);
         }}
       />
+
+      {/* BYO API key drawer (slide-in from right) */}
+      <BYOKeyDrawer open={byoOpen} onClose={() => setByoOpen(false)} />
 
       {/* ── Global message search (⌘⇧F) ───────────────────────── */}
       <AnimatePresence>
