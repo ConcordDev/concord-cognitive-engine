@@ -32356,8 +32356,72 @@ async function ollamaEmbed(text) {
 
 register("llm", "local", async (ctx, input) => {
   const messages = Array.isArray(input.messages) ? input.messages : [{ role: "user", content: String(input.prompt || input.message || "") }];
-  const result = await ollamaChat(messages, { temperature: input.temperature, max_tokens: input.max_tokens });
-  return result;
+
+  // BYO-aware path: route through brainChat so a user's plugged-in
+  // frontier-model API key (Anthropic / OpenAI / xAI / Google) takes
+  // precedence over local Ollama. Slot defaults to "utility" since
+  // most llm.local callers (code lens AI edit / chat, autogen helpers)
+  // are utility-class workloads, not the conscious chat surface.
+  // Caller can override via input.slot.
+  const slot = String(input.slot || "utility");
+  let r;
+  try {
+    const { brainChat } = await import("./lib/byo-router.js");
+    r = await brainChat({
+      db: ctx?.db || globalThis._concordSTATE?.db,
+      userId: ctx?.actor?.userId || input?.userId || null,
+      slot,
+      messages,
+      opts: { temperature: input.temperature, maxTokens: input.max_tokens || input.maxTokens },
+    });
+  } catch (e) {
+    // Fall back to direct ollama if byo-router import fails — never
+    // block llm.local on the byo wiring being unavailable.
+    r = await ollamaChat(messages, { temperature: input.temperature, max_tokens: input.max_tokens });
+  }
+  if (!r?.ok) return r;
+
+  // Backward-compat: surface the reply at BOTH `text` (the brainChat /
+  // ollamaChat shape) AND `content` (what some legacy callers, including
+  // the code lens, were reading from). Pre-this-fix the code lens read
+  // `result.content` against an `llm.local` that only returned `.text`,
+  // so AI chat + inline edit were silently returning "(empty response)".
+  const text = r.text || "";
+
+  // Optional citation extraction — opt-in via input.extractCitations.
+  // Returns dtuRefs in the same shape chat.respond does so frontend
+  // surfaces (CitationChips) can render identically.
+  let dtuRefs = undefined;
+  if (input.extractCitations && text) {
+    try {
+      const stripped = text.replace(/```[\s\S]*?```/g, " ").replace(/`[^`\n]*`/g, " ");
+      const ids = new Set();
+      const _bracketRe = /\[\s*(?:dtu[-_:]?|DTU\s*[-_:]?\s*)([A-Za-z0-9_-]{6,40})\s*\]/g;
+      const _proseRe = /\b(?:DTU|dtu)\s+(?:id\s+)?([A-Za-z0-9_-]{6,40})\b/g;
+      for (const re of [_bracketRe, _proseRe]) {
+        let _m;
+        while ((_m = re.exec(stripped)) !== null) {
+          if (_m[1]?.length >= 6 && _m[1]?.length <= 40) ids.add(_m[1]);
+        }
+      }
+      // Optional caller-provided allowlist of grounded ids
+      const allowlist = Array.isArray(input.dtuAllowlist) ? new Set(input.dtuAllowlist) : null;
+      dtuRefs = Array.from(ids)
+        .filter(id => !allowlist || allowlist.has(id) || [...allowlist].some(a => a.endsWith(id)))
+        .slice(0, 12)
+        .map(id => ({ id, title: null, tier: null }));
+      if (dtuRefs.length === 0) dtuRefs = undefined;
+    } catch { /* ignore */ }
+  }
+
+  return {
+    ...r,
+    text,
+    content: text,                       // legacy alias for code lens callers
+    provider: r.provider || "ollama",
+    model: r.model || "ollama",
+    dtuRefs,
+  };
 });
 
 register("llm", "embed", (ctx, input) => {
@@ -40260,6 +40324,56 @@ app.get("/api/chat/sessions", requireAuth(), async (req, res) => {
     const { listRecentSessions } = await import("./lib/chat-session-store.js");
     const sessions = listRecentSessions(STATE.db, userId, { limit });
     res.json({ ok: true, sessions });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
+
+// Persist a single chat turn from any lens (used by the code lens
+// AI chat for example, where llm.local doesn't auto-persist the way
+// chat.respond does). Owner-gated by stamping ownerId on session
+// creation, then enforcing it on every subsequent persist.
+//
+// Payload: { sessionId, lens, userMsg, assistantMsg, meta }
+//   - userMsg / assistantMsg: { content: string, ts?: number, meta?: object }
+//   - either or both can be omitted (e.g. only persist the assistant
+//     reply if the user message was already persisted via a prior call)
+app.post("/api/chat/messages", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { sessionId, lens, userMsg, assistantMsg } = req.body || {};
+    const sid = String(sessionId || "").trim();
+    if (!sid) return res.status(400).json({ ok: false, error: "missing_sessionId" });
+    const db = STATE.db;
+    if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
+
+    // Ownership check on the existing row (if any). New sessions get
+    // stamped with the caller as owner.
+    try {
+      const existing = db.prepare(`SELECT owner_id FROM chat_sessions WHERE session_id = ?`).get(sid);
+      if (existing && existing.owner_id && existing.owner_id !== userId) {
+        return res.status(403).json({ ok: false, error: "session_forbidden" });
+      }
+    } catch { /* table may not exist yet — fall through, persistChatTurn will upsert */ }
+
+    const { persistChatTurn } = await import("./lib/chat-session-store.js");
+    persistChatTurn(db, sid, {
+      ownerId: userId,
+      lastLens: lens ? String(lens).slice(0, 32) : null,
+      userMsg: userMsg ? {
+        role: 'user',
+        content: String(userMsg.content || ''),
+        ts: Number(userMsg.ts) || Date.now(),
+      } : null,
+      assistantMsg: assistantMsg ? {
+        role: 'assistant',
+        content: String(assistantMsg.content || ''),
+        ts: Number(assistantMsg.ts) || Date.now(),
+        meta: assistantMsg.meta || undefined,
+      } : null,
+    });
+    res.json({ ok: true, sessionId: sid });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }

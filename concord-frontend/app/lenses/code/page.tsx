@@ -13,6 +13,9 @@ import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import BYOKeyDrawer from '@/components/chat/BYOKeyDrawer';
+import CitationChips from '@/components/chat/CitationChips';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 const MonacoWrapper = dynamic(() => import('@/components/code/MonacoWrapper'), { ssr: false });
@@ -28,7 +31,8 @@ import {
   Download, Zap, Waves, SlidersHorizontal,
   Loader2, BookOpen,
   Save, Maximize2, Minimize2, Layers,
-  XCircle, BarChart3, AlertTriangle
+  XCircle, BarChart3, AlertTriangle,
+  Key,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -465,6 +469,7 @@ function generateScriptOutput(scriptType: ScriptType, code: string): { log: stri
 
 export default function CodeLensPage() {
   useLensNav('code');
+  const { user, isAuthenticated } = useAuth();
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('code');
 
   const {
@@ -622,7 +627,7 @@ export default function CodeLensPage() {
   const aiEditInputRef = useRef<HTMLInputElement>(null);
 
   // ── AI chat side-panel (⌘L) ─────────────────────────────────────
-  type ChatMsg = { role: 'user' | 'assistant'; content: string; ts: number };
+  type ChatMsg = { role: 'user' | 'assistant'; content: string; ts: number; dtuRefs?: Array<{ id: string; title: string | null; tier: string | null }> };
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiChatHistory, setAiChatHistory] = useState<ChatMsg[]>([]);
   const [aiChatDraft, setAiChatDraft] = useState('');
@@ -630,8 +635,57 @@ export default function CodeLensPage() {
   const [aiChatElapsed, setAiChatElapsed] = useState(0);
   const [aiChatIncludeFile, setAiChatIncludeFile] = useState(true);
   const aiChatAbortRef = useRef<AbortController | null>(null);
+
+  // BYO key drawer toggle — wired to header Key icon + the existing
+  // <BYOKeyDrawer> mounted at page root. Same drawer the chat lens
+  // exposes; user keys set here flow through llm.local now that it
+  // routes via brainChat.
+  const [byoOpen, setByoOpen] = useState(false);
+
+  // Stable per-user AI chat sessionId so history persists across tab
+  // close, page refresh, and device switch (auth'd users only). Anon
+  // sessions stay component-state-only — backend persistence requires
+  // a userId. Format: `code-ai-${userId}` keeps it scoped to the user
+  // (not per-tab, so AI chat memory is global within the code lens).
+  const codeAiSessionIdRef = useRef<string>('');
+  const aiChatHistoryHydratedRef = useRef<boolean>(false);
   const aiChatScrollRef = useRef<HTMLDivElement>(null);
   const aiChatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Derive the per-user sessionId once auth resolves. Hydrate prior
+  // history from /api/chat/messages so AI Chat survives tab close +
+  // device switch. Anon users keep component-state-only history.
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    if (aiChatHistoryHydratedRef.current) return;
+    const sid = `code-ai-${user.id}`;
+    codeAiSessionIdRef.current = sid;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/chat/messages?sessionId=${encodeURIComponent(sid)}&limit=200`, {
+          credentials: 'include',
+        });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json()) as { ok: boolean; messages?: Array<{ role: string; content: string; ts: string; meta?: Record<string, unknown> }> };
+        if (cancelled || !json.ok || !Array.isArray(json.messages)) return;
+        const hydrated: ChatMsg[] = json.messages
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .map((m) => {
+            const meta = (m.meta || {}) as Record<string, unknown>;
+            return {
+              role: m.role as 'user' | 'assistant',
+              content: m.content,
+              ts: new Date(m.ts).getTime() || Date.now(),
+              dtuRefs: Array.isArray(meta.dtuRefs) ? (meta.dtuRefs as ChatMsg['dtuRefs']) : undefined,
+            };
+          });
+        if (hydrated.length > 0) setAiChatHistory(hydrated);
+        aiChatHistoryHydratedRef.current = true;
+      } catch { /* anon, offline, or 403 — leave empty */ }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated, user?.id]);
 
   // Tick elapsed time during in-flight AI requests so the UI never feels
   // frozen.  Both edit + chat share this side-effect.
@@ -956,9 +1010,12 @@ export default function CodeLensPage() {
         ...(isFullFile ? [] : [{ role: 'user', content: `For context, here is the entire file (\`${activeTab.name}\`):\n\n\`\`\`${lang}\n${fileContent}\n\`\`\`` }]),
         { role: 'user', content: `${isFullFile ? 'Rewrite this whole file' : 'Rewrite ONLY the selection below'} so that: ${instruction}\n\n\`\`\`${lang}\n${before}\n\`\`\`` },
       ];
-      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.2, max_tokens: 2048 } }, { signal: ac.signal });
+      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.2, max_tokens: 2048, slot: 'utility' } }, { signal: ac.signal });
       const result = res.data?.result;
-      const raw = result?.content || result?.message?.content || result?.output || '';
+      // Read `text` first — `llm.local` returns text via brainChat /
+      // ollamaChat, not `content`. Legacy `.content` alias kept for
+      // compat after the field-name fix.
+      const raw = result?.text || result?.content || result?.message?.content || result?.output || '';
       const after = extractCodeFromLLM(String(raw));
       if (!after) {
         setAiEditError('AI returned no code. Try rephrasing.');
@@ -1030,11 +1087,33 @@ export default function CodeLensPage() {
         ...(fileCtx ? [{ role: 'assistant', content: 'Got it — file in context.' }] : []),
         ...next.map((m) => ({ role: m.role, content: m.content })),
       ];
-      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.4, max_tokens: 1024 } }, { signal: ac.signal });
+      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.4, max_tokens: 1024, slot: 'utility', extractCitations: true } }, { signal: ac.signal });
       const result = res.data?.result;
-      const raw = result?.content || result?.message?.content || result?.output || '';
+      // llm.local now returns BOTH `text` and `content` (legacy alias).
+      // Pre-this-fix the code lens read only `result.content` against
+      // a macro that returned `.text`, so AI chat silently produced
+      // "(empty response)" forever. Read `text` first.
+      const raw = result?.text || result?.content || result?.message?.content || result?.output || '';
       const reply = String(raw).trim() || '(empty response)';
-      setAiChatHistory([...next, { role: 'assistant', content: reply, ts: Date.now() }]);
+      const dtuRefs = Array.isArray(result?.dtuRefs) ? result.dtuRefs : undefined;
+      const assistantMsg: ChatMsg = { role: 'assistant', content: reply, ts: Date.now(), dtuRefs };
+      setAiChatHistory([...next, assistantMsg]);
+      // Persist the turn (auth'd users only). The user message was
+      // pushed locally above; persist both so they replay on next open.
+      const sid = codeAiSessionIdRef.current;
+      if (sid && isAuthenticated) {
+        fetch('/api/chat/messages', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: sid,
+            lens: 'code',
+            userMsg: { content: userMsg.content, ts: userMsg.ts },
+            assistantMsg: { content: reply, ts: assistantMsg.ts, meta: dtuRefs ? { dtuRefs } : undefined },
+          }),
+        }).catch(() => { /* best effort — never block UX on persistence */ });
+      }
     } catch (e) {
       const wasAbort = (e as { name?: string })?.name === 'CanceledError' || (e as { code?: string })?.code === 'ERR_CANCELED' || ac.signal.aborted;
       setAiChatHistory([...next, { role: 'assistant', content: wasAbort ? '_(cancelled)_' : `Error: ${e instanceof Error ? e.message : 'request failed'}`, ts: Date.now() }]);
@@ -2074,6 +2153,16 @@ export default function CodeLensPage() {
               />
               include file
             </label>
+            {isAuthenticated && (
+              <button
+                onClick={() => setByoOpen(true)}
+                className="p-1 rounded hover:bg-lattice-elevated text-gray-400 hover:text-neon-cyan"
+                title="Plug your own API key into the AI Pair brain"
+                aria-label="BYO API keys"
+              >
+                <Key className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               onClick={() => setAiChatHistory([])}
               className="text-[10px] px-2 py-0.5 rounded border border-white/10 text-gray-500 hover:text-white hover:border-white/30"
@@ -2116,6 +2205,9 @@ export default function CodeLensPage() {
                       >Copy</button>
                     </div>
                   ))}
+                  {!isUser && m.dtuRefs && m.dtuRefs.length > 0 && (
+                    <CitationChips dtuRefs={m.dtuRefs} />
+                  )}
                 </div>
               );
             })}
@@ -2173,6 +2265,10 @@ export default function CodeLensPage() {
       lensId="code"
       lensPrompt="You're inside Concord's Code lens — a polyglot dev workspace with snippets, projects, pipelines, notebooks, algorithms, libraries. Prefer run_compute for math, run_lens_action for code-quality / code-engine helpers, and create_dtu to save reusable snippets."
     />
+
+    {/* BYO API key drawer (slide-in from right). Triggered from the AI
+        Pair header. Auth-only — anon users can't manage BYO keys. */}
+    <BYOKeyDrawer open={byoOpen} onClose={() => setByoOpen(false)} />
     </LensShell>
   );
 }
