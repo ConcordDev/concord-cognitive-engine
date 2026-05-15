@@ -111,7 +111,7 @@ async function bootstrap(apiKey: string, context: vscode.ExtensionContext): Prom
     void vscode.window.showErrorMessage(`Concord DX: register_codebase failed: ${reg.reason || "unknown"}`);
     return;
   }
-  const codebaseId = (reg as { codebaseId: string }).codebaseId;
+  const codebaseId = reg.codebaseId as string;
 
   const diagnostics = new DiagnosticsProvider();
   const findings = new FindingsTreeProvider();
