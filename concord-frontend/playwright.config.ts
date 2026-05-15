@@ -52,11 +52,12 @@ export default defineConfig({
     // under `next start` (which lazy-compiles each route on first
     // visit even in production mode) doesn't trip the default 30 s
     // goto. Mirrors playwright-infra.config.ts.
-    // actionTimeout bumped to 60 s — Playwright's internal action
-    // default is 30 s even when this is unset, and post-navigation
-    // hydration on cold-compiled routes can straddle it.
+    // actionTimeout bumped to 120 s — under sustained CI load the
+    // backend event loop intermittently stalls (heartbeats + embed
+    // workers + SQLite writes), and 60 s was tripping on individual
+    // page actions whose API calls were waiting on a brief stall.
     navigationTimeout: 60000,
-    actionTimeout: 60000,
+    actionTimeout: 120000,
   },
   // Per-test timeout — covers the whole spec body including setup
   // and teardown. 180 s lets cold-loading heavy Three.js worlds
