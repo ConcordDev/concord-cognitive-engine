@@ -89,6 +89,26 @@ class PhysicsWorld {
   private bodies:      Map<string, RigidBody>  = new Map();
   private colliders:   Map<string, Collider>   = new Map();
   private kinematic:   Map<string, KinematicState> = new Map();
+  // Re-entrancy guard. Rapier's WASM bindings panic ("recursive use of an
+  // object detected which would lead to unsafe aliasing in rust") if JS
+  // re-enters the world while another method is still executing on it —
+  // e.g. a synchronous event dispatched from inside step() that lands in
+  // an AvatarSystem3D handler calling knockbackKinematic. JS is single-
+  // threaded but Rapier's borrow check fires on logical recursion. Guard
+  // every world-touching method: if another op is in flight, skip safely
+  // and return a no-op fallback rather than crash the scene.
+  private _inOp: boolean = false;
+  private _guard<T>(label: string, fn: () => T, fallback: T): T {
+    if (this._inOp) {
+      if (typeof console !== 'undefined') {
+        console.warn(`[physicsWorld] reentrancy: ${label} skipped (another op in flight)`);
+      }
+      return fallback;
+    }
+    this._inOp = true;
+    try { return fn(); }
+    finally { this._inOp = false; }
+  }
 
   /** Load Rapier WASM and create the physics world. Call once at scene startup. */
   async init(): Promise<void> {
@@ -103,9 +123,11 @@ class PhysicsWorld {
 
   /** Advance physics simulation by dt seconds. Call every game-loop frame. */
   step(dt: number): void {
-    if (!this.world) return;
-    this.world.timestep = Math.min(dt, 0.05); // cap at 50ms
-    this.world.step();
+    this._guard('step', () => {
+      if (!this.world) return;
+      this.world.timestep = Math.min(dt, 0.05); // cap at 50ms
+      this.world.step();
+    }, undefined);
   }
 
   /**
@@ -420,10 +442,18 @@ class PhysicsWorld {
     desiredTranslation: { x: number; y: number; z: number },
     dt: number,
   ): CharacterMoveResult {
+    if (this._inOp) {
+      // Re-entrancy guard: Rapier WASM panics with "recursive use of an
+      // object" if JS calls into the world while another op is mid-flight.
+      // Skip this frame's move rather than crash. (Caused chromium/firefox
+      // playthrough failures on heavy 3D worlds — pre-#373.)
+      return desiredTranslation;
+    }
     if (!this.world) return desiredTranslation;
     const ctrl = this.controllers.get(id);
     const body = this.bodies.get(id);
     if (!ctrl || !body) return desiredTranslation;
+    this._inOp = true;
 
     const collider = this.world.getCollider(0); // character's own collider
     // Find the collider attached to this body
@@ -540,6 +570,7 @@ class PhysicsWorld {
       ks.isAirborne = true;
     }
 
+    this._inOp = false;
     return { x: corrected.x / dt, y: corrected.y / dt, z: corrected.z / dt };
   }
 
