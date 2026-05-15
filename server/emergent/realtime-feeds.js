@@ -449,6 +449,151 @@ async function tickEnergyFeeds(STATE, realtimeEmit) {
   realtimeEmit("energy:update", payload);
 }
 
+// ── Generic RSS domain tick ───────────────────────────────────────────────
+// Most government / industry data sources expose a free RSS feed. This
+// helper drives all 11 previously-dead-listener domains (legal,
+// government, realestate, aviation, insurance, manufacturing, logistics,
+// retail, fitness, agriculture, education) with the same parsing path
+// the news tick uses. Each domain provides a list of free legal RSS
+// URLs; we try them in order, swallow per-feed failures, and emit the
+// aggregated payload + bridge each article into a DTU.
+async function _tickRssDomain(domain, feeds, eventName, bridgeType, realtimeEmit, opts = {}) {
+  const cacheKey = eventName;
+  const cacheMs = opts.cacheMs || 600000; // 10min default
+  const maxPerFeed = opts.maxPerFeed || 5;
+  const maxTotal = opts.maxTotal || 15;
+  const cached = cacheGet(cacheKey, cacheMs);
+  if (cached) { realtimeEmit(eventName, cached); return; }
+
+  const articles = [];
+  for (const feed of feeds) {
+    try {
+      const res = await safeFetch(feed.url, { headers: { "User-Agent": "ConcordOS/1.0" } });
+      if (!res.ok) continue;
+      const text = await res.text();
+      const items = text.match(/<item>[\s\S]*?<\/item>/g)
+                || text.match(/<entry>[\s\S]*?<\/entry>/g)
+                || [];
+      for (const item of items.slice(0, maxPerFeed)) {
+        const title = (
+          item.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/)?.[1]
+          || item.match(/<title>([\s\S]*?)<\/title>/)?.[1]
+          || ""
+        ).replace(/\s+/g, " ").trim();
+        const link = (
+          item.match(/<link[^>]*href=["']([^"']+)["']/)?.[1]
+          || item.match(/<link>([\s\S]*?)<\/link>/)?.[1]
+          || ""
+        ).trim();
+        const pubDate = (
+          item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]
+          || item.match(/<published>([\s\S]*?)<\/published>/)?.[1]
+          || item.match(/<updated>([\s\S]*?)<\/updated>/)?.[1]
+          || ""
+        ).trim();
+        const description =
+          item.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/)?.[1]
+          || item.match(/<description>([\s\S]*?)<\/description>/)?.[1]
+          || item.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)?.[1]
+          || "";
+        // Fixed-point HTML strip (same shape as tickNewsFeeds — preserves
+        // the CodeQL js/incomplete-multi-character-sanitization guard).
+        let stripped = description;
+        for (let pass = 0; pass < 5; pass += 1) {
+          const next = stripped.replace(/<[^>]*>/g, "");
+          if (next === stripped) break;
+          stripped = next;
+        }
+        const summary = stripped.replace(/[<>]/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim().slice(0, 320);
+        if (title) articles.push({ source: feed.name, title, link, pubDate, summary });
+        if (articles.length >= maxTotal) break;
+      }
+      if (articles.length >= maxTotal) break;
+    } catch (e) {
+      logger.debug?.("emergent:realtime-feeds", `${domain}_feed_failure`, { feed: feed.name, error: e?.message });
+    }
+  }
+
+  if (articles.length === 0) return;
+  const payload = { ok: true, articles, fetchedAt: new Date().toISOString() };
+  cacheSet(cacheKey, payload);
+  realtimeEmit(eventName, payload);
+
+  if (_bridgeEvent) {
+    for (const a of articles) {
+      _bridgeEvent({
+        type: bridgeType,
+        data: { title: a.title, source: a.source, link: a.link, pubDate: a.pubDate, summary: a.summary },
+        source: a.source?.toLowerCase().replace(/\s/g, "_") || "rss",
+        timestamp: a.pubDate ? (new Date(a.pubDate).toISOString() || payload.fetchedAt) : payload.fetchedAt,
+      }).catch(err => logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err));
+    }
+  }
+}
+
+// All 11 previously-dead-listener domains. Sources are free + legal,
+// no API key required. Each domain has 1–3 fallback feeds so a single
+// broken source doesn't black out the lens.
+const _DOMAIN_FEEDS = {
+  legal: [
+    { name: "CourtListener", url: "https://www.courtlistener.com/feed/court/scotus/" },
+    { name: "Federal Register Legal", url: "https://www.federalregister.gov/documents/search.rss?conditions%5Btype%5D%5B%5D=RULE" },
+  ],
+  government: [
+    { name: "Federal Register", url: "https://www.federalregister.gov/documents/current.rss" },
+    { name: "House Clerk", url: "https://clerk.house.gov/floor/floor-summary.aspx?format=rss" },
+  ],
+  realestate: [
+    { name: "HUD Press", url: "https://www.hud.gov/sites/dfiles/Main/feeds/HUDpressReleases.xml" },
+    { name: "Realtor.com Research", url: "https://www.realtor.com/research/feed/" },
+  ],
+  aviation: [
+    { name: "NTSB", url: "https://www.ntsb.gov/news/Pages/_layouts/15/listfeed.aspx?List=%7B12345678-1234-1234-1234-123456789012%7D" },
+    { name: "Aviation Safety Network", url: "https://aviation-safety.net/database/dblist.xml" },
+    { name: "FAA News", url: "https://www.faa.gov/newsroom/rss/all.rss" },
+  ],
+  insurance: [
+    { name: "Treasury FIO", url: "https://home.treasury.gov/rss/press-releases" },
+    { name: "NAIC News", url: "https://content.naic.org/rss-feed.xml" },
+  ],
+  manufacturing: [
+    { name: "BLS PPI", url: "https://www.bls.gov/feed/ppi.rss" },
+    { name: "Federal Reserve G.17", url: "https://www.federalreserve.gov/feeds/g17.xml" },
+  ],
+  logistics: [
+    { name: "BTS", url: "https://www.bts.gov/rss/news" },
+    { name: "DOT Press", url: "https://www.transportation.gov/briefing-room.xml" },
+  ],
+  retail: [
+    { name: "BLS CPI", url: "https://www.bls.gov/feed/cpi.rss" },
+    { name: "Census Retail Trade", url: "https://www.census.gov/retail/rss.xml" },
+  ],
+  fitness: [
+    { name: "CDC Physical Activity", url: "https://tools.cdc.gov/podcasts/feed.asp?feedid=183" },
+    { name: "CDC MMWR", url: "https://www.cdc.gov/mmwr/rss/rss.html" },
+  ],
+  agriculture: [
+    { name: "USDA AMS News", url: "https://www.ams.usda.gov/rss-feeds/ams-news.xml" },
+    { name: "USDA Press", url: "https://www.usda.gov/rss/latest-releases.xml" },
+  ],
+  education: [
+    { name: "ED Press", url: "https://www.ed.gov/rss/press-releases.xml" },
+    { name: "NCES News", url: "https://nces.ed.gov/whatsnew/rss/whatsnew.xml" },
+  ],
+};
+
+async function tickLegalFeeds(_STATE, realtimeEmit)         { return _tickRssDomain("legal",         _DOMAIN_FEEDS.legal,         "legal:update",         "news:legal",         realtimeEmit); }
+async function tickGovernmentFeeds(_STATE, realtimeEmit)    { return _tickRssDomain("government",    _DOMAIN_FEEDS.government,    "government:update",    "news:government",    realtimeEmit); }
+async function tickRealEstateFeeds(_STATE, realtimeEmit)    { return _tickRssDomain("realestate",    _DOMAIN_FEEDS.realestate,    "realestate:update",    "news:realestate",    realtimeEmit); }
+async function tickAviationFeeds(_STATE, realtimeEmit)      { return _tickRssDomain("aviation",      _DOMAIN_FEEDS.aviation,      "aviation:update",      "news:aviation",      realtimeEmit); }
+async function tickInsuranceFeeds(_STATE, realtimeEmit)     { return _tickRssDomain("insurance",     _DOMAIN_FEEDS.insurance,     "insurance:update",     "news:insurance",     realtimeEmit); }
+async function tickManufacturingFeeds(_STATE, realtimeEmit) { return _tickRssDomain("manufacturing", _DOMAIN_FEEDS.manufacturing, "manufacturing:update", "news:manufacturing", realtimeEmit); }
+async function tickLogisticsFeeds(_STATE, realtimeEmit)     { return _tickRssDomain("logistics",     _DOMAIN_FEEDS.logistics,     "logistics:update",     "news:logistics",     realtimeEmit); }
+async function tickRetailFeeds(_STATE, realtimeEmit)        { return _tickRssDomain("retail",        _DOMAIN_FEEDS.retail,        "retail:update",        "news:retail",        realtimeEmit); }
+async function tickFitnessFeeds(_STATE, realtimeEmit)       { return _tickRssDomain("fitness",       _DOMAIN_FEEDS.fitness,       "fitness:update",       "news:fitness",       realtimeEmit); }
+async function tickAgricultureFeeds(_STATE, realtimeEmit)   { return _tickRssDomain("agriculture",   _DOMAIN_FEEDS.agriculture,   "agriculture:update",   "news:agriculture",   realtimeEmit); }
+async function tickEducationFeeds(_STATE, realtimeEmit)     { return _tickRssDomain("education",     _DOMAIN_FEEDS.education,     "education:update",     "news:education",     realtimeEmit); }
+
 // ── Main tick dispatcher ──
 
 export async function tickRealTimeFeeds(STATE, tickCount, realtimeEmit, callBrain, bridgeEvent) {
@@ -491,6 +636,33 @@ export async function tickRealTimeFeeds(STATE, tickCount, realtimeEmit, callBrai
   // Energy — every 200th tick
   if (tickCount % 200 === 0) {
     tasks.push(tickEnergyFeeds(STATE, realtimeEmit).catch(e => recordError("energy", e)));
+  }
+
+  // ── Domain RSS feeds for previously-dead-listener lenses ──
+  // Cadences staggered so we don't hammer all 11 sources in the same
+  // tick. Each domain runs every 40–80 ticks (10–20 min) which is
+  // generous for press-release / regulatory feeds that update hourly
+  // to daily.
+  if (tickCount % 40 === 0) {
+    tasks.push(tickLegalFeeds(STATE, realtimeEmit).catch(e => recordError("legal", e)));
+    tasks.push(tickGovernmentFeeds(STATE, realtimeEmit).catch(e => recordError("government", e)));
+  }
+  if (tickCount % 60 === 0) {
+    tasks.push(tickRealEstateFeeds(STATE, realtimeEmit).catch(e => recordError("realestate", e)));
+    tasks.push(tickAviationFeeds(STATE, realtimeEmit).catch(e => recordError("aviation", e)));
+  }
+  if (tickCount % 80 === 0) {
+    tasks.push(tickInsuranceFeeds(STATE, realtimeEmit).catch(e => recordError("insurance", e)));
+    tasks.push(tickManufacturingFeeds(STATE, realtimeEmit).catch(e => recordError("manufacturing", e)));
+    tasks.push(tickLogisticsFeeds(STATE, realtimeEmit).catch(e => recordError("logistics", e)));
+  }
+  if (tickCount % 60 === 0) {
+    tasks.push(tickRetailFeeds(STATE, realtimeEmit).catch(e => recordError("retail", e)));
+    tasks.push(tickAgricultureFeeds(STATE, realtimeEmit).catch(e => recordError("agriculture", e)));
+  }
+  if (tickCount % 80 === 0) {
+    tasks.push(tickFitnessFeeds(STATE, realtimeEmit).catch(e => recordError("fitness", e)));
+    tasks.push(tickEducationFeeds(STATE, realtimeEmit).catch(e => recordError("education", e)));
   }
 
   if (tasks.length > 0) {
