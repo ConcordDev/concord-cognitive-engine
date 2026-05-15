@@ -74,8 +74,10 @@ jobs:
 
       - name: Wait for server
         run: |
+          # /health (not /api/health) so the loop polls the unauthenticated
+          # health probe — matches ci.yml's Integration Test wait pattern.
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:5050/api/health > /dev/null 2>&1; then
+            if curl -fsS http://localhost:5050/health > /dev/null 2>&1; then
               echo "Server ready after ${i} attempt(s)"
               exit 0
             fi
