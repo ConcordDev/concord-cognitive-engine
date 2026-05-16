@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { PlumbingFeed } from '@/components/plumbing/PlumbingFeed';
+import { PlumbCalc } from '@/components/plumbing/PlumbCalc';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -757,6 +758,10 @@ export default function PlumbingLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PlumbingFeed />
+      </section>
+
+      <section className="mt-6">
+        <PlumbCalc />
       </section>
     </LensPageShell>
     
