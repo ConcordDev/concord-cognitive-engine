@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { TimezoneTools } from '@/components/calendar/TimezoneTools';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -2053,6 +2054,11 @@ export default function CalendarLensPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Bespoke timezone + iCal tools with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <TimezoneTools />
+      </section>
     </div>
     </LensShell>
   );
