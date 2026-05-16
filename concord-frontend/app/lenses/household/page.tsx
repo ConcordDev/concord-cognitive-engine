@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { BarcodeLookup } from '@/components/household/BarcodeLookup';
+import { HouseholdActionPanel } from '@/components/household/HouseholdActionPanel';
 import { ChoreRotation } from '@/components/household/ChoreRotation';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1851,6 +1852,11 @@ export default function HouseholdLensPage() {
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ChoreRotation />
+      </section>
+
+      {/* Tody + Sweepy-shape household workbench: grocery / chores / maintenance / summary + actions */}
+      <section className="mt-6">
+        <HouseholdActionPanel />
       </section>
     </div>
     </LensShell>
