@@ -52,6 +52,7 @@ import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero';
 import FarmWorkbench from '@/components/agriculture/FarmWorkbench';
+import { PestIdentifier } from '@/components/agriculture/PestIdentifier';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1933,8 +1934,13 @@ export default function AgricultureLensPage() {
           </div>
         )}
       </div>
+
+      {/* Bespoke pest/disease identifier (authored LIBRARY) with Save-as-DTU */}
+      <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <PestIdentifier />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#agriculture-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to agriculture content</a>
 
