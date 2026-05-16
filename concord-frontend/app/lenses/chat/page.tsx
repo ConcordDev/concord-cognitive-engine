@@ -4,6 +4,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { HackerNewsReference } from '@/components/chat/HackerNewsReference';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -4114,6 +4115,9 @@ export default function ChatLensPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <HackerNewsReference />
+      </section>
     </div>
     </LensShell>
   );
