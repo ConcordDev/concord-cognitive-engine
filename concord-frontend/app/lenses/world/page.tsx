@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { EarthEventsLive } from '@/components/world/EarthEventsLive';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -5852,8 +5853,11 @@ export default function WorldLensPage() {
 
       {/* Post-tutorial hints — rotates contextual tips after first visit */}
       {!showOnboarding && <PostTutorialHints />}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <EarthEventsLive />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
