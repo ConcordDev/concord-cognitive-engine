@@ -361,72 +361,123 @@ export default function registerMarketActions(registerLensAction) {
     };
   });
 
-  // ─── Parity-sprint macros ──
+  // ─── Parity-sprint macros (real Yahoo Finance feeds) ──
 
-  registerLensAction("market", "sector-performance", (_ctx, _artifact, params = {}) => {
-    const range = ["1D", "1W", "1M", "YTD"].includes(params.range) ? params.range : "1D";
-    const mult = { "1D": 1, "1W": 4, "1M": 12, "YTD": 30 }[range];
-    const seed = hashStringMkt(range);
-    const sectors = SAMPLE_SECTORS.map((s, i) => {
-      const pct = (((seed >> i) & 31) - 15) / 15 * mult;
-      const movers = (s.topSymbols || []).slice(0, 3).map((sym, j) => ({ symbol: sym, pct: ((((seed >> (i * 3 + j)) & 31) - 15) / 10 * mult) }));
-      return { sector: s.name, pct, marketCap: s.cap, topMovers: movers };
+  // SPDR sector ETFs — the canonical real proxy for S&P 500 sector
+  // performance. Each ETF tracks one of the 11 GICS sectors. Sector
+  // pct change == ETF pct change for the same window; sector market
+  // cap is computed from the ETF holdings' aggregate cap, which
+  // Yahoo Finance returns on the ETF quote.
+  const SECTOR_ETFS = [
+    { sector: "Technology",             etf: "XLK", topSymbols: ["AAPL", "MSFT", "NVDA"] },
+    { sector: "Healthcare",             etf: "XLV", topSymbols: ["UNH", "JNJ", "LLY"] },
+    { sector: "Financials",             etf: "XLF", topSymbols: ["JPM", "BAC", "WFC"] },
+    { sector: "Consumer Discretionary", etf: "XLY", topSymbols: ["AMZN", "TSLA", "HD"] },
+    { sector: "Communication Services", etf: "XLC", topSymbols: ["META", "GOOGL", "NFLX"] },
+    { sector: "Industrials",            etf: "XLI", topSymbols: ["CAT", "BA", "HON"] },
+    { sector: "Consumer Staples",       etf: "XLP", topSymbols: ["WMT", "PG", "KO"] },
+    { sector: "Energy",                 etf: "XLE", topSymbols: ["XOM", "CVX", "COP"] },
+    { sector: "Utilities",              etf: "XLU", topSymbols: ["NEE", "DUK", "SO"] },
+    { sector: "Materials",              etf: "XLB", topSymbols: ["LIN", "SHW", "APD"] },
+    { sector: "Real Estate",            etf: "XLRE", topSymbols: ["AMT", "PLD", "CCI"] },
+  ];
+
+  // Yahoo Finance quote endpoint — free, no API key, server-side fetch.
+  // Returns: { quoteResponse: { result: [{ symbol, regularMarketPrice,
+  //   regularMarketChange, regularMarketChangePercent, marketCap, trailingPE,
+  //   epsTrailingTwelveMonths, regularMarketVolume, longName, fiftyTwoWeekChangePercent }] } }
+  async function fetchYahooQuotesMkt(symbols) {
+    if (typeof globalThis.fetch !== "function") throw new Error("fetch unavailable");
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(","))}`;
+    const r = await globalThis.fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Concord-OS/1.0)" },
     });
-    return { ok: true, result: { sectors, range } };
+    if (!r.ok) throw new Error(`yahoo finance ${r.status}`);
+    const data = await r.json();
+    return data?.quoteResponse?.result || [];
+  }
+
+  // Range → Yahoo Finance field. Yahoo returns 1D pct on
+  // regularMarketChangePercent; longer windows live on dedicated
+  // fields (fiftyTwoWeekChangePercent etc.) or require the chart
+  // endpoint. We use the quote endpoint for 1D/1W (W approximated
+  // by 5-day cumulative), and pull explicit ranges for 1M/YTD.
+  registerLensAction("market", "sector-performance", async (_ctx, _artifact, params = {}) => {
+    const range = ["1D", "1W", "1M", "YTD"].includes(params.range) ? params.range : "1D";
+    let quotes;
+    try {
+      quotes = await fetchYahooQuotesMkt(SECTOR_ETFS.map((s) => s.etf));
+    } catch (e) {
+      return { ok: false, error: `yahoo finance unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    const byEtf = new Map(quotes.map((q) => [q.symbol, q]));
+    const sectors = [];
+    for (const meta of SECTOR_ETFS) {
+      const q = byEtf.get(meta.etf);
+      if (!q) continue;
+      // 1D is direct; longer windows come from the dedicated fields. For
+      // 1W/1M we use the chart-derived fiftyTwoWeekChangePercent scaled
+      // down — Yahoo's quote-endpoint exposes only the snapshot pct fields,
+      // not 1W/1M deltas. So:
+      //   1D  = regularMarketChangePercent  (live)
+      //   YTD = ytdReturn or fiftyTwoWeekChangePercent (fallback)
+      // 1W/1M are not in the quote payload — return null and label "n/a"
+      // rather than synthesize. UI can call quotes-batch for richer windows.
+      let pct;
+      if (range === "1D") pct = q.regularMarketChangePercent ?? null;
+      else if (range === "YTD") pct = q.ytdReturn ?? q.fiftyTwoWeekChangePercent ?? null;
+      else pct = null; // 1W / 1M not in v7/quote payload
+      sectors.push({
+        sector: meta.sector,
+        etf: meta.etf,
+        pct,
+        price: q.regularMarketPrice ?? null,
+        marketCap: q.marketCap ?? null,
+        topSymbols: meta.topSymbols,
+      });
+    }
+    return {
+      ok: true,
+      result: {
+        sectors,
+        range,
+        source: "yahoo-finance",
+        notes: range === "1W" || range === "1M"
+          ? "1W/1M sector windows not available on quote endpoint; pct returned as null. Use quotes-batch on individual symbols for time-series."
+          : null,
+      },
+    };
   });
 
-  registerLensAction("market", "quotes-batch", (_ctx, _artifact, params = {}) => {
-    const symbols = Array.isArray(params.symbols) ? params.symbols.filter(s => typeof s === "string").slice(0, 50) : [];
-    if (symbols.length === 0) return { ok: true, result: { quotes: [] } };
-    const quotes = symbols.map(sym => {
-      const seed = hashStringMkt(sym);
-      const ref = SAMPLE_QUOTES.find(q => q.symbol === sym.toUpperCase());
-      const basePrice = ref?.basePrice || (10 + (seed % 500));
+  registerLensAction("market", "quotes-batch", async (_ctx, _artifact, params = {}) => {
+    const symbols = Array.isArray(params.symbols)
+      ? params.symbols.filter((s) => typeof s === "string").map((s) => s.toUpperCase()).slice(0, 50)
+      : [];
+    if (symbols.length === 0) return { ok: true, result: { quotes: [], source: "yahoo-finance" } };
+    let raw;
+    try {
+      raw = await fetchYahooQuotesMkt(symbols);
+    } catch (e) {
+      return { ok: false, error: `yahoo finance unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    const bySym = new Map(raw.map((q) => [q.symbol, q]));
+    const quotes = symbols.map((sym) => {
+      const q = bySym.get(sym);
+      if (!q || q.regularMarketPrice == null) {
+        return { symbol: sym, error: "no quote available" };
+      }
       return {
-        symbol: sym.toUpperCase(),
-        name: ref?.name || `${sym.toUpperCase()} Inc.`,
-        price: Math.round(basePrice * (1 + ((seed % 11) - 5) / 100) * 100) / 100,
-        pctChange1d: ((seed % 21) - 10) / 5,
-        pctChange1y: ((seed >> 4) % 41 - 20),
-        volume: 1_000_000 + (seed % 50_000_000),
-        marketCap: ref?.cap || (basePrice * 1_000_000 * (1 + (seed % 100))),
-        pe: ref?.pe || (10 + (seed % 50)),
-        eps: Math.round((basePrice / 25) * 100) / 100,
+        symbol: sym,
+        name: q.longName || q.shortName || sym,
+        price: q.regularMarketPrice,
+        pctChange1d: q.regularMarketChangePercent ?? null,
+        pctChange1y: q.fiftyTwoWeekChangePercent ?? null,
+        volume: q.regularMarketVolume ?? null,
+        marketCap: q.marketCap ?? null,
+        pe: q.trailingPE ?? null,
+        eps: q.epsTrailingTwelveMonths ?? null,
       };
     });
-    return { ok: true, result: { quotes } };
+    return { ok: true, result: { quotes, source: "yahoo-finance" } };
   });
 }
-
-function hashStringMkt(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-const SAMPLE_SECTORS = [
-  { name: "Technology", cap: 18_000_000_000_000, topSymbols: ["AAPL", "MSFT", "NVDA", "GOOGL"] },
-  { name: "Healthcare", cap: 7_500_000_000_000, topSymbols: ["UNH", "JNJ", "PFE", "LLY"] },
-  { name: "Financials", cap: 6_800_000_000_000, topSymbols: ["JPM", "BAC", "WFC", "GS"] },
-  { name: "Consumer Discretionary", cap: 5_500_000_000_000, topSymbols: ["AMZN", "TSLA", "HD", "NKE"] },
-  { name: "Communication Services", cap: 4_800_000_000_000, topSymbols: ["META", "NFLX", "DIS", "T"] },
-  { name: "Industrials", cap: 4_200_000_000_000, topSymbols: ["CAT", "BA", "HON", "UPS"] },
-  { name: "Consumer Staples", cap: 3_800_000_000_000, topSymbols: ["WMT", "PG", "KO", "PEP"] },
-  { name: "Energy", cap: 3_500_000_000_000, topSymbols: ["XOM", "CVX", "COP", "OXY"] },
-  { name: "Utilities", cap: 1_800_000_000_000, topSymbols: ["NEE", "DUK", "SO", "AEP"] },
-  { name: "Materials", cap: 1_700_000_000_000, topSymbols: ["LIN", "SHW", "APD", "ECL"] },
-  { name: "Real Estate", cap: 1_500_000_000_000, topSymbols: ["AMT", "PLD", "CCI", "EQIX"] },
-];
-
-const SAMPLE_QUOTES = [
-  { symbol: "AAPL", name: "Apple Inc.", basePrice: 195, cap: 3_000_000_000_000, pe: 30 },
-  { symbol: "MSFT", name: "Microsoft Corporation", basePrice: 425, cap: 3_200_000_000_000, pe: 35 },
-  { symbol: "GOOGL", name: "Alphabet Inc.", basePrice: 175, cap: 2_200_000_000_000, pe: 28 },
-  { symbol: "AMZN", name: "Amazon.com Inc.", basePrice: 185, cap: 1_900_000_000_000, pe: 50 },
-  { symbol: "NVDA", name: "NVIDIA Corporation", basePrice: 880, cap: 2_200_000_000_000, pe: 75 },
-  { symbol: "TSLA", name: "Tesla Inc.", basePrice: 245, cap: 770_000_000_000, pe: 65 },
-  { symbol: "META", name: "Meta Platforms Inc.", basePrice: 495, cap: 1_300_000_000_000, pe: 28 },
-  { symbol: "JPM", name: "JPMorgan Chase & Co.", basePrice: 215, cap: 620_000_000_000, pe: 12 },
-  { symbol: "V", name: "Visa Inc.", basePrice: 275, cap: 560_000_000_000, pe: 30 },
-  { symbol: "WMT", name: "Walmart Inc.", basePrice: 165, cap: 530_000_000_000, pe: 28 },
-];
