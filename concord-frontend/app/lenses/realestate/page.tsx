@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { NeighborhoodStats } from '@/components/realestate/NeighborhoodStats';
 import { useState, useMemo, useCallback, useRef} from 'react';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -3348,6 +3349,11 @@ export default function RealEstateLensPage() {
         Real Estate Workbench
       </button>
       <RealEstateWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+
+      {/* Bespoke Census ACS neighborhood-stats with Save-as-DTU */}
+      <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <NeighborhoodStats />
+      </section>
     </LensShell>
   );
 }
