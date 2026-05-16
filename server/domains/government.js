@@ -242,65 +242,57 @@ export default function registerGovernmentActions(registerLensAction) {
   });
 
   /**
-   * budget-breakdown — Federal / state / local budget rollup.
+   * budget-breakdown — Federal budget rollup from USAspending.gov, the
+   * official Treasury-published outlay dataset. Free, no key required.
+   * State / local budgets are not centrally aggregated by any single
+   * free API and must be wired per-jurisdiction (state DoF open-data
+   * portals, OpenGov / Tyler Civic Marketplace for cities). Per
+   * "everything must be real" directive: no hardcoded budget tables.
    */
-  registerLensAction("government", "budget-breakdown", (_ctx, _artifact, params = {}) => {
+  registerLensAction("government", "budget-breakdown", async (_ctx, _artifact, params = {}) => {
     const scope = ["federal", "state", "local"].includes(params.scope) ? params.scope : "federal";
-    const year = Math.max(2020, Math.min(2030, Number(params.year) || 2026));
-    if (scope === "federal") {
-      const totalBillions = 6800;
-      const cats = [
-        { name: "Social Security", amountBillions: 1420, yoyChangePct: 4.2, color: "#3b82f6" },
-        { name: "Medicare", amountBillions: 870, yoyChangePct: 5.8, color: "#06b6d4" },
-        { name: "Defense", amountBillions: 920, yoyChangePct: 3.1, color: "#ef4444" },
-        { name: "Medicaid", amountBillions: 620, yoyChangePct: 6.5, color: "#a855f7" },
-        { name: "Interest on debt", amountBillions: 870, yoyChangePct: 18.3, color: "#f59e0b" },
-        { name: "Income security", amountBillions: 410, yoyChangePct: 2.1, color: "#10b981" },
-        { name: "Veterans benefits", amountBillions: 320, yoyChangePct: 4.7, color: "#14b8a6" },
-        { name: "Education", amountBillions: 260, yoyChangePct: -1.2, color: "#f97316" },
-        { name: "Transportation", amountBillions: 130, yoyChangePct: 2.8, color: "#ec4899" },
-        { name: "Everything else", amountBillions: 980, yoyChangePct: 3.5, color: "#6366f1" },
-      ];
-      const enriched = cats.map(c => ({ ...c, pctOfTotal: (c.amountBillions / totalBillions) * 100 }));
-      return { ok: true, result: { scope, year, totalBillions, categories: enriched } };
+    const year = Math.max(2020, Math.min(2030, Number(params.year) || new Date().getFullYear() - 1));
+    if (scope !== "federal") {
+      return {
+        ok: false,
+        error: `${scope} budget data is not centrally aggregated. Wire your state's open-data portal (e.g. CA: data.ca.gov / NY: data.ny.gov) or OpenGov/Tyler Civic for local. Concord does not ship hardcoded budget tables.`,
+        meta: { scope, year },
+      };
     }
-    if (scope === "state") {
-      const totalBillions = 320;
-      const cats = [
-        { name: "K-12 Education", amountBillions: 96, yoyChangePct: 3.5, color: "#f97316" },
-        { name: "Medicaid", amountBillions: 78, yoyChangePct: 6.1, color: "#a855f7" },
-        { name: "Higher Education", amountBillions: 38, yoyChangePct: 1.2, color: "#06b6d4" },
-        { name: "Transportation", amountBillions: 28, yoyChangePct: 4.8, color: "#ec4899" },
-        { name: "Corrections", amountBillions: 18, yoyChangePct: 0.4, color: "#ef4444" },
-        { name: "Public assistance", amountBillions: 22, yoyChangePct: 2.9, color: "#10b981" },
-        { name: "Everything else", amountBillions: 40, yoyChangePct: 3.0, color: "#6366f1" },
-      ];
-      const enriched = cats.map(c => ({ ...c, pctOfTotal: (c.amountBillions / totalBillions) * 100 }));
-      return { ok: true, result: { scope, year, totalBillions, categories: enriched } };
+    // USAspending.gov v2: spending by category, fiscal year.
+    // Endpoint returns budget functions (Treasury OMB Function Code).
+    const url = `https://api.usaspending.gov/api/v2/spending/`;
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "budget_function",
+          filters: { fy: String(year) },
+        }),
+      });
+      if (!r.ok) throw new Error(`usaspending ${r.status}`);
+      const data = await r.json();
+      const results = data?.results || [];
+      const totalDollars = results.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      const totalBillions = totalDollars / 1e9;
+      const categories = results.map((c) => ({
+        name: c.name,
+        amountBillions: (Number(c.amount) || 0) / 1e9,
+        pctOfTotal: totalDollars > 0 ? (Number(c.amount) / totalDollars) * 100 : 0,
+      })).sort((a, b) => b.amountBillions - a.amountBillions);
+      return {
+        ok: true,
+        result: {
+          scope: "federal", year, totalBillions, categories,
+          source: "usaspending.gov",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `usaspending unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
-    // local
-    const totalBillions = 8.5;
-    const cats = [
-      { name: "Police", amountBillions: 1.9, yoyChangePct: 2.1, color: "#ef4444" },
-      { name: "Schools", amountBillions: 2.4, yoyChangePct: 3.4, color: "#f97316" },
-      { name: "Fire & EMS", amountBillions: 0.9, yoyChangePct: 1.8, color: "#f59e0b" },
-      { name: "Sanitation", amountBillions: 0.5, yoyChangePct: 4.0, color: "#10b981" },
-      { name: "Parks & rec", amountBillions: 0.4, yoyChangePct: -1.0, color: "#22d3ee" },
-      { name: "Streets & roads", amountBillions: 0.7, yoyChangePct: 5.2, color: "#a855f7" },
-      { name: "Libraries", amountBillions: 0.15, yoyChangePct: 0.5, color: "#06b6d4" },
-      { name: "Pensions", amountBillions: 1.0, yoyChangePct: 4.6, color: "#6366f1" },
-      { name: "Everything else", amountBillions: 0.55, yoyChangePct: 2.7, color: "#9ca3af" },
-    ];
-    const enriched = cats.map(c => ({ ...c, pctOfTotal: (c.amountBillions / totalBillions) * 100 }));
-    return { ok: true, result: { scope, year, totalBillions, categories: enriched } };
   });
 };
-
-function hashStringGov(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
 
 async function fetchJsonGov(url, headers = {}) {
   if (typeof fetch !== "function") throw new Error("fetch unavailable");

@@ -149,30 +149,50 @@ describe("government.foia-list / -create", () => {
   });
 });
 
-describe("government.budget-breakdown", () => {
-  it("federal scope returns categories summing to total within 1%", () => {
-    const r = call("budget-breakdown", ctxA, { scope: "federal", year: 2026 });
+describe("government.budget-breakdown (real USAspending.gov)", () => {
+  it("federal scope fetches USAspending.gov and shapes categories", async () => {
+    globalThis.fetch = async (url, opts) => {
+      assert.match(url, /api\.usaspending\.gov\/api\/v2\/spending/);
+      const body = JSON.parse(opts.body);
+      assert.equal(body.type, "budget_function");
+      assert.equal(body.filters.fy, "2026");
+      return {
+        ok: true,
+        json: async () => ({
+          results: [
+            { name: "Social Security", amount: 1.42e12 },
+            { name: "Medicare", amount: 8.7e11 },
+            { name: "National Defense", amount: 9.2e11 },
+          ],
+        }),
+      };
+    };
+    const r = await call("budget-breakdown", ctxA, { scope: "federal", year: 2026 });
     assert.equal(r.ok, true);
+    assert.equal(r.result.source, "usaspending.gov");
     assert.ok(r.result.totalBillions > 0);
+    assert.equal(r.result.categories[0].name, "Social Security");
     const sumPct = r.result.categories.reduce((s, c) => s + c.pctOfTotal, 0);
-    assert.ok(Math.abs(sumPct - 100) < 2, `category pcts should sum near 100, got ${sumPct}`);
+    assert.ok(Math.abs(sumPct - 100) < 2);
   });
 
-  it("state scope returns different totals than federal", () => {
-    const fed = call("budget-breakdown", ctxA, { scope: "federal" });
-    const st = call("budget-breakdown", ctxA, { scope: "state" });
-    assert.ok(fed.result.totalBillions > st.result.totalBillions);
+  it("federal scope returns error when USAspending unreachable", async () => {
+    globalThis.fetch = async () => { throw new Error("network down"); };
+    const r = await call("budget-breakdown", ctxA, { scope: "federal", year: 2026 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /usaspending unreachable/);
   });
 
-  it("local scope returns valid categories", () => {
-    const r = call("budget-breakdown", ctxA, { scope: "local" });
-    assert.ok(r.result.categories.length >= 5);
-    assert.ok(r.result.categories.every(c => c.amountBillions > 0));
+  it("state scope returns error pointing to state open-data portal (no hardcoded table)", async () => {
+    const r = await call("budget-breakdown", ctxA, { scope: "state" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not centrally aggregated|open-data portal/);
   });
 
-  it("clamps year", () => {
-    const r1 = call("budget-breakdown", ctxA, { scope: "federal", year: 2050 });
-    assert.equal(r1.result.year, 2030);
+  it("local scope returns error pointing to OpenGov / Tyler Civic", async () => {
+    const r = await call("budget-breakdown", ctxA, { scope: "local" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /OpenGov|Tyler/);
   });
 });
 

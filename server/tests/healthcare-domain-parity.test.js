@@ -84,17 +84,28 @@ describe("healthcare.medications-*", () => {
   });
 });
 
-describe("healthcare.record-get", () => {
-  it("seeds demo record on first call (deterministic per user)", () => {
-    const r1 = call("record-get", ctxA, {});
-    assert.equal(r1.ok, true);
-    assert.ok(r1.result.vitals.length >= 5);
-    assert.ok(Array.isArray(r1.result.allergies));
-    assert.ok(r1.result.immunizations.length >= 1);
+describe("healthcare.record-get (real EHR/FHIR data only)", () => {
+  it("returns empty + setup hint when no record on file", () => {
+    const r = call("record-get", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.vitals, []);
+    assert.deepEqual(r.result.allergies, []);
+    assert.equal(r.result.source, "empty");
+    assert.match(r.result.notes, /FHIR|MyChart|HealthKit|record-update/);
+  });
 
-    // Same user → same record
-    const r2 = call("record-get", ctxA, {});
-    assert.deepEqual(r1.result.vitals, r2.result.vitals);
+  it("returns real stored record when populated by record-update / FHIR sync", () => {
+    const STATE = globalThis._concordSTATE;
+    STATE.healthLens = STATE.healthLens || {};
+    STATE.healthLens.records = STATE.healthLens.records || new Map();
+    STATE.healthLens.records.set("user_a", {
+      vitals: [{ channel: "heart_rate", value: 68, unit: "bpm", recordedAt: "2026-05-15T10:00:00Z" }],
+      allergies: [{ substance: "Penicillin", severity: "moderate" }],
+      immunizations: [], conditions: [],
+    });
+    const r = call("record-get", ctxA, {});
+    assert.equal(r.result.vitals.length, 1);
+    assert.equal(r.result.vitals[0].channel, "heart_rate");
   });
 });
 
@@ -136,13 +147,12 @@ describe("healthcare.providers-search + slots + book", () => {
     assert.match(r.error, /failed|network/);
   });
 
-  it("slots respect days param and skip weekends", () => {
+  it("slots returns empty + setup hint when no scheduling feed wired", () => {
     const r = call("provider-slots", ctxA, { providerId: "prov_Card_0", days: 14 });
-    assert.ok(r.result.slots.length > 0);
-    for (const s of r.result.slots) {
-      const dow = new Date(s.date).getDay();
-      assert.ok(dow !== 0 && dow !== 6, `slot ${s.date} fell on weekend`);
-    }
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.slots, []);
+    assert.equal(r.result.source, "empty");
+    assert.match(r.result.notes, /FHIR|MyChart|Cerner|athenahealth|Zocdoc/);
   });
 
   it("book persists appointment scoped per user", () => {
@@ -158,22 +168,17 @@ describe("healthcare.providers-search + slots + book", () => {
   });
 });
 
-describe("healthcare.rx-price-compare", () => {
-  it("returns 7 pharmacies sorted by price ascending in caller", () => {
+describe("healthcare.rx-price-compare (real PBM/pharmacy API required)", () => {
+  it("returns error pointing to GOODRX_API_KEY / RXSAVER_API_KEY (no hash-seeded synthesizer)", () => {
     const r = call("rx-price-compare", ctxA, { drug: "Atorvastatin 20mg", zip: "94110" });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.prices.length, 7);
-    assert.ok(r.result.prices.every(p => p.cashPrice > 0));
+    assert.equal(r.ok, false);
+    assert.match(r.error, /GOODRX_API_KEY|RXSAVER_API_KEY|PBM/);
+    assert.equal(r.meta.drug, "Atorvastatin 20mg");
+    assert.equal(r.meta.zip, "94110");
   });
 
   it("rejects empty drug", () => {
     assert.equal(call("rx-price-compare", ctxA, { drug: "" }).ok, false);
-  });
-
-  it("determinism per drug+zip", () => {
-    const r1 = call("rx-price-compare", ctxA, { drug: "X", zip: "Y" });
-    const r2 = call("rx-price-compare", ctxA, { drug: "X", zip: "Y" });
-    assert.deepEqual(r1.result.prices, r2.result.prices);
   });
 });
 

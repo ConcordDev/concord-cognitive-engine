@@ -584,8 +584,3 @@ function extractJsonFin(text) {
   try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
 }
 
-function hashString(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}

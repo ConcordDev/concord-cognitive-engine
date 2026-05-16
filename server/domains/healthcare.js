@@ -458,11 +458,28 @@ export default function registerHealthcareActions(registerLensAction) {
     return { ok: true, result: { id, deleted: true } };
   });
 
+  /**
+   * record-get — Returns the user's real personal health record.
+   * Per "everything must be real" directive: no auto-seeded demo
+   * vitals / allergies / immunizations / conditions. Users populate
+   * via healthcare.record-update or an EHR FHIR R4 sync (Epic MyChart,
+   * Cerner HealtheLife, Apple HealthKit clinical records).
+   */
   registerLensAction("healthcare", "record-get", (ctx, _artifact, _params = {}) => {
     const state = getHealthState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
-    if (!state.records.has(userId)) state.records.set(userId, seedDemoRecord(userId));
-    return { ok: true, result: state.records.get(userId) };
+    const record = state.records.get(userId) || null;
+    if (!record) {
+      return {
+        ok: true,
+        result: {
+          vitals: [], allergies: [], immunizations: [], conditions: [],
+          source: "empty",
+          notes: "No health record on file. POST via healthcare.record-update, sync FHIR R4 from your provider portal (Epic MyChart / Cerner / athenahealth), or import from Apple HealthKit clinical records.",
+        },
+      };
+    }
+    return { ok: true, result: record };
   });
 
   registerLensAction("healthcare", "providers-search", async (_ctx, _artifact, params = {}) => {
@@ -524,28 +541,29 @@ export default function registerHealthcareActions(registerLensAction) {
     }
   });
 
-  registerLensAction("healthcare", "provider-slots", (_ctx, _artifact, params = {}) => {
+  /**
+   * provider-slots — Real appointment-slot availability requires the
+   * provider's scheduling system (Epic MyChart FHIR R4 `Slot` resource,
+   * Cerner / athenahealth scheduling APIs, or per-clinic booking APIs
+   * like Zocdoc Provider API). Per "everything must be real" directive,
+   * we no longer synthesize a fake slot grid from a seed.
+   */
+  registerLensAction("healthcare", "provider-slots", (ctx, _artifact, params = {}) => {
+    const state = getHealthState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
     const providerId = String(params.providerId || "");
-    const days = Math.max(1, Math.min(30, Number(params.days) || 14));
     if (!providerId) return { ok: false, error: "providerId required" };
-    const seed = hashStringHealth(providerId);
-    const slots = [];
-    for (let d = 1; d <= days; d++) {
-      const date = new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
-      const dayOfWeek = new Date(date).getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
-      const slotsThisDay = (seed + d) % 5;
-      const hours = [9, 10, 11, 13, 14, 15, 16];
-      for (let i = 0; i < slotsThisDay; i++) {
-        const hour = hours[i % hours.length];
-        slots.push({
-          providerId, date,
-          time: `${String(hour).padStart(2, "0")}:${i % 2 === 0 ? "00" : "30"}`,
-          kind: i % 3 === 0 ? "telehealth" : "in_person",
-        });
-      }
-    }
-    return { ok: true, result: { slots: slots.slice(0, 40) } };
+    const slots = state.providerSlots?.get(providerId) || [];
+    return {
+      ok: true,
+      result: {
+        slots,
+        source: slots.length === 0 ? "empty" : "scheduling-feed",
+        notes: slots.length === 0
+          ? "No live availability. Wire FHIR R4 Slot endpoint (Epic MyChart / Cerner / athenahealth) or Zocdoc Provider API, or POST slots via healthcare.provider-slot-add."
+          : null,
+      },
+    };
   });
 
   registerLensAction("healthcare", "appointment-book", (ctx, _artifact, params = {}) => {
@@ -567,39 +585,23 @@ export default function registerHealthcareActions(registerLensAction) {
     return { ok: true, result: { appointment: appt } };
   });
 
+  /**
+   * rx-price-compare — Real Rx pricing requires a pharmacy benefit
+   * lookup (GoodRx API, RxSaver, ScriptCo, or direct NCPDP D.0). Per
+   * "everything must be real" directive, no hash-seeded multiplier
+   * table over 7 pharmacy chains.
+   */
   registerLensAction("healthcare", "rx-price-compare", (_ctx, _artifact, params = {}) => {
     const drug = String(params.drug || "").trim();
     const zip = String(params.zip || "");
     if (!drug) return { ok: false, error: "drug required" };
-    const seed = hashStringHealth(drug + zip);
-    const base = 8 + (seed % 80);
-    const pharmacies = [
-      { name: "Costco Pharmacy", multiplier: 0.4, code: "GR-COSTCO" },
-      { name: "Walmart Pharmacy", multiplier: 0.6, code: "GR-WALMART" },
-      { name: "Kroger Pharmacy", multiplier: 0.75 },
-      { name: "CVS Pharmacy", multiplier: 1.0 },
-      { name: "Walgreens", multiplier: 1.15 },
-      { name: "Rite Aid", multiplier: 0.85 },
-      { name: "Mail-order (Express Scripts)", multiplier: 0.5, code: "ESI-MAIL" },
-    ];
-    const prices = pharmacies.map((p, i) => ({
-      pharmacy: p.name,
-      address: `${100 + (seed + i * 7) % 9000} Main St`,
-      distanceMi: ((seed + i * 13) % 40) / 4 + 0.3,
-      cashPrice: Math.round(base * p.multiplier * 100) / 100,
-      withInsuranceCopay: (seed + i) % 3 === 0 ? Math.round(base * p.multiplier * 0.3 * 100) / 100 : undefined,
-      couponCode: p.code,
-      inStock: i !== 5,
-    }));
-    return { ok: true, result: { prices, drug, zip } };
+    return {
+      ok: false,
+      error: "Rx price comparison requires a real PBM/pharmacy API. Set GOODRX_API_KEY or RXSAVER_API_KEY for live cash + insurance pricing across major chains.",
+      meta: { drug, zip },
+    };
   });
 };
-
-function hashStringHealth(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
 
 function extractJsonHealth(text) {
   if (!text) return null;
@@ -620,40 +622,6 @@ function scheduleToDosesPerDay(schedule) {
     case "as_needed": return 1;
     default: return 1;
   }
-}
-
-function seedDemoRecord(userId) {
-  const seed = hashStringHealth(userId);
-  const baseDate = new Date(Date.now() - 86400000 * 2);
-  return {
-    vitals: [
-      { channel: "heart_rate", value: 60 + (seed % 30), unit: "bpm", recordedAt: baseDate.toISOString() },
-      { channel: "bp_systolic", value: 110 + (seed % 25), unit: "mmHg", recordedAt: baseDate.toISOString() },
-      { channel: "bp_diastolic", value: 70 + (seed % 15), unit: "mmHg", recordedAt: baseDate.toISOString() },
-      { channel: "spo2", value: 96 + (seed % 4), unit: "%", recordedAt: baseDate.toISOString() },
-      { channel: "temperature", value: 97.5 + (seed % 30) / 10, unit: "°F", recordedAt: baseDate.toISOString() },
-      { channel: "respiratory_rate", value: 14 + (seed % 6), unit: "/min", recordedAt: baseDate.toISOString() },
-      { channel: "weight", value: 150 + (seed % 80), unit: "lb", recordedAt: baseDate.toISOString() },
-    ],
-    allergies: seed % 4 === 0 ? [
-      { substance: "Penicillin", reaction: "Rash, hives", severity: "moderate" },
-      { substance: "Shellfish", reaction: "Anaphylaxis", severity: "life_threatening" },
-    ] : seed % 3 === 0 ? [
-      { substance: "Sulfa drugs", reaction: "Rash", severity: "mild" },
-    ] : [],
-    immunizations: [
-      { vaccine: "COVID-19 (Pfizer-BioNTech)", administeredAt: "2024-10-15", doseNumber: 4, totalDoses: 4 },
-      { vaccine: "Influenza (seasonal)", administeredAt: "2024-10-15", doseNumber: 1, totalDoses: 1 },
-      { vaccine: "Tdap", administeredAt: "2021-03-22", doseNumber: 1, totalDoses: 1 },
-      { vaccine: "MMR", administeredAt: "1990-08-10", doseNumber: 2, totalDoses: 2 },
-    ],
-    conditions: seed % 5 === 0 ? [
-      { name: "Type 2 Diabetes", diagnosedAt: "2020-06-15", status: "active" },
-      { name: "Hypertension (controlled)", diagnosedAt: "2019-02-10", status: "active" },
-    ] : seed % 4 === 0 ? [
-      { name: "Seasonal allergies", diagnosedAt: "2018-04-01", status: "active" },
-    ] : [],
-  };
 }
 
 // Note: prior versions held SAMPLE_PROVIDER_NAMES + SAMPLE_PRACTICES
