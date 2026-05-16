@@ -116,3 +116,164 @@ describe("retail — orders + low stock", () => {
     assert.equal(r.result.lowStock[0].sku, "LOW");
   });
 });
+
+describe("retail — Stripe PaymentIntent POS (real card tender)", () => {
+  it("cart-create-payment-intent returns error pointing to STRIPE_SECRET_KEY when not set", async () => {
+    delete process.env.STRIPE_SECRET_KEY;
+    call("product-upsert", ctxA, { sku: "P1", name: "x", price: 10, stock: 5 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    const r = await call("cart-create-payment-intent", ctxA, { cartId: c.result.cart.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /STRIPE_SECRET_KEY|Stripe not configured/);
+  });
+
+  it("cart-create-payment-intent rejects amount below Stripe minimum ($0.50)", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
+    call("product-upsert", ctxA, { sku: "P1", name: "x", price: 0.10, stock: 5 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    const r = await call("cart-create-payment-intent", ctxA, { cartId: c.result.cart.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /below Stripe minimum/);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("cart-create-payment-intent POSTs to Stripe + returns clientSecret + stashes pending id", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_real";
+    const calls = [];
+    globalThis.fetch = async (url, opts) => {
+      calls.push({ url, body: opts?.body });
+      return { ok: true, json: async () => ({ id: "pi_test123", client_secret: "pi_test123_secret_abc", status: "requires_payment_method", amount: 1100 }) };
+    };
+    call("product-upsert", ctxA, { sku: "P1", name: "x", price: 10, stock: 5 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    const r = await call("cart-create-payment-intent", ctxA, { cartId: c.result.cart.id, taxRate: 10 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.clientSecret, "pi_test123_secret_abc");
+    assert.equal(r.result.paymentIntentId, "pi_test123");
+    assert.equal(r.result.total, 11);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /\/payment_intents/);
+    assert.match(calls[0].body, /amount=1100/);
+    assert.match(calls[0].body, /currency=usd/);
+    assert.match(calls[0].body, /metadata%5Bconcord_user_id%5D=u/);
+    // Pending intent persisted on cart
+    const cart = globalThis._concordSTATE.retailLens.carts.get("u").get(c.result.cart.id);
+    assert.equal(cart.pendingPaymentIntentId, "pi_test123");
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("cart-create-payment-intent with terminal:true requests manual capture + card_present", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_real";
+    let capturedBody = "";
+    globalThis.fetch = async (_url, opts) => {
+      capturedBody = opts?.body || "";
+      return { ok: true, json: async () => ({ id: "pi_x", client_secret: "x", status: "requires_payment_method", amount: 5000 }) };
+    };
+    call("product-upsert", ctxA, { sku: "P1", name: "x", price: 50, stock: 5 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    await call("cart-create-payment-intent", ctxA, { cartId: c.result.cart.id, terminal: true });
+    assert.match(capturedBody, /capture_method=manual/);
+    assert.match(capturedBody, /payment_method_types%5B%5D=card_present/);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("cart-confirm-paid-with-intent verifies server-side + decrements stock + writes order", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_real";
+    let getCalled = false;
+    globalThis.fetch = async (url) => {
+      if (url.includes("/payment_intents") && !getCalled) {
+        // First call: POST create
+        getCalled = true;
+        return { ok: true, json: async () => ({ id: "pi_done", client_secret: "x", status: "requires_payment_method", amount: 2000 }) };
+      }
+      // Second call: GET retrieve, returns succeeded
+      return {
+        ok: true,
+        json: async () => ({
+          id: "pi_done", status: "succeeded", amount: 2000,
+          metadata: { concord_user_id: "u", concord_cart_id: null /* will fill below */ },
+          latest_charge: "ch_test789",
+        }),
+      };
+    };
+    call("product-upsert", ctxA, { sku: "P1", name: "x", price: 20, stock: 10 });
+    const c = call("cart-open", ctxA);
+    const cartId = c.result.cart.id;
+    call("cart-add-line", ctxA, { cartId, sku: "P1", qty: 1 });
+    // Override fetch so the GET returns the right cartId in metadata
+    globalThis.fetch = async (url, opts) => {
+      if (opts?.method === "POST" || (!opts?.method && url.endsWith("/payment_intents"))) {
+        return { ok: true, json: async () => ({ id: "pi_done", client_secret: "x", status: "requires_payment_method", amount: 2000 }) };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          id: "pi_done", status: "succeeded", amount: 2000,
+          metadata: { concord_user_id: "u", concord_cart_id: cartId },
+          latest_charge: "ch_test789",
+        }),
+      };
+    };
+    await call("cart-create-payment-intent", ctxA, { cartId });
+    const r = await call("cart-confirm-paid-with-intent", ctxA, { cartId, paymentIntentId: "pi_done" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.order.paidVia, "stripe");
+    assert.equal(r.result.order.stripePaymentIntentId, "pi_done");
+    assert.equal(r.result.order.tenders[0].kind, "card");
+    // Stock decremented
+    const product = globalThis._concordSTATE.retailLens.products.get("u").get("P1");
+    assert.equal(product.stock, 9);
+    // Cart cleared
+    assert.equal(globalThis._concordSTATE.retailLens.carts.get("u").has(cartId), false);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("cart-confirm-paid-with-intent refuses when Stripe says not-succeeded", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_real";
+    globalThis.fetch = async (url, opts) => {
+      if (opts?.method === "POST" || (!opts?.method && url.endsWith("/payment_intents"))) {
+        return { ok: true, json: async () => ({ id: "pi_unpaid", client_secret: "x", status: "requires_payment_method", amount: 2000 }) };
+      }
+      return { ok: true, json: async () => ({ id: "pi_unpaid", status: "requires_action", metadata: {} }) };
+    };
+    call("product-upsert", ctxA, { sku: "P1", name: "x", price: 20, stock: 10 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    await call("cart-create-payment-intent", ctxA, { cartId: c.result.cart.id });
+    const r = await call("cart-confirm-paid-with-intent", ctxA, { cartId: c.result.cart.id, paymentIntentId: "pi_unpaid" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /payment not succeeded/);
+    // Stock NOT decremented
+    assert.equal(globalThis._concordSTATE.retailLens.products.get("u").get("P1").stock, 10);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("cart-confirm-paid-with-intent rejects metadata mismatch (anti-tamper)", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_real";
+    globalThis.fetch = async (url, opts) => {
+      if (opts?.method === "POST" || (!opts?.method && url.endsWith("/payment_intents"))) {
+        return { ok: true, json: async () => ({ id: "pi_x", client_secret: "x", status: "requires_payment_method", amount: 2000 }) };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          id: "pi_x", status: "succeeded",
+          // metadata says it belongs to a different user / cart!
+          metadata: { concord_user_id: "v", concord_cart_id: "other_cart" },
+        }),
+      };
+    };
+    call("product-upsert", ctxA, { sku: "P1", name: "x", price: 20, stock: 10 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    await call("cart-create-payment-intent", ctxA, { cartId: c.result.cart.id });
+    const r = await call("cart-confirm-paid-with-intent", ctxA, { cartId: c.result.cart.id, paymentIntentId: "pi_x" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /metadata mismatch/);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+});

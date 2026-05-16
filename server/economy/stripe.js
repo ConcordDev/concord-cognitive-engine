@@ -364,6 +364,76 @@ export async function handleWebhook(db, { rawBody, signature, requestId, ip }) {
       break;
     }
 
+    case "payment_intent.succeeded": {
+      // retail.cart-create-payment-intent → Stripe PaymentIntent
+      // captured. Auto-confirm the cart and write the order. The cart's
+      // pendingPaymentIntentId is the correlation key; metadata carries
+      // concord_user_id + concord_cart_id.
+      const pi = event.data.object;
+      const concordUserId = pi?.metadata?.concord_user_id;
+      const concordCartId = pi?.metadata?.concord_cart_id;
+      if (concordUserId && concordCartId) {
+        try {
+          const STATE = globalThis._concordSTATE;
+          const cart = STATE?.retailLens?.carts?.get(concordUserId)?.get(concordCartId);
+          if (cart && cart.pendingPaymentIntentId === pi.id && cart.lines.length > 0) {
+            const taxRate = cart.pendingPaymentIntentTaxRate ?? 0;
+            const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+            const discount = (subtotal * cart.discountPercent) / 100;
+            const subtotalAfter = subtotal - discount;
+            const tax = subtotalAfter * (taxRate / 100);
+            const total = cart.pendingPaymentIntentTotal ?? (pi.amount / 100);
+            for (const line of cart.lines) {
+              const product = STATE.retailLens.products?.get(concordUserId)?.get(line.sku);
+              if (product) product.stock = Math.max(0, product.stock - line.qty);
+            }
+            if (!STATE.retailLens.seq) STATE.retailLens.seq = new Map();
+            if (!STATE.retailLens.seq.has(concordUserId)) STATE.retailLens.seq.set(concordUserId, { order: 1 });
+            const seq = STATE.retailLens.seq.get(concordUserId);
+            const order = {
+              id: `ord_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+              number: `ORD-${String(seq.order).padStart(5, "0")}`,
+              lines: cart.lines,
+              subtotal: Math.round(subtotal * 100) / 100,
+              discount: Math.round(discount * 100) / 100,
+              tax: Math.round(tax * 100) / 100,
+              total: Math.round(total * 100) / 100,
+              tenders: [{ kind: "card", amount: total, provider: "stripe", paymentIntentId: pi.id, charge: pi.latest_charge || null }],
+              tendered: total,
+              change: 0,
+              stripePaymentIntentId: pi.id,
+              stripePaymentStatus: pi.status,
+              completedAt: nowISO(),
+              paidVia: "stripe",
+              autoConfirmedByWebhook: true,
+            };
+            seq.order++;
+            if (!STATE.retailLens.orders.has(concordUserId)) STATE.retailLens.orders.set(concordUserId, []);
+            STATE.retailLens.orders.get(concordUserId).unshift(order);
+            STATE.retailLens.carts.get(concordUserId).delete(concordCartId);
+            if (typeof globalThis._concordSaveStateDebounced === "function") {
+              try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+            }
+            economyAudit(db, {
+              action: "retail_payment_intent_succeeded",
+              userId: concordUserId,
+              amount: total,
+              details: {
+                stripePaymentIntentId: pi.id,
+                concordCartId,
+                orderId: order.id,
+              },
+              requestId,
+              ip,
+            });
+          }
+        } catch (err) {
+          console.error("[Stripe Webhook] payment_intent.succeeded handler failed:", err.message);
+        }
+      }
+      break;
+    }
+
     case "invoice.payment_succeeded": {
       // accounting.invoice-create-payment-link → Stripe Invoice paid.
       // Locate the matching local invoice in STATE.accountingLens and

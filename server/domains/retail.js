@@ -505,4 +505,175 @@ export default function registerRetailActions(registerLensAction) {
     const lowStock = Array.from(map.values()).filter((p) => p.stock <= threshold).sort((a, b) => a.stock - b.stock);
     return { ok: true, result: { lowStock, threshold } };
   });
+
+  // ── Stripe POS — real card tender via PaymentIntent ──
+  //
+  // Flow:
+  //   1. cart-create-payment-intent → server-side POST to Stripe
+  //      creates a PaymentIntent for the cart total. Returns
+  //      { clientSecret, paymentIntentId, total }. Frontend uses
+  //      Stripe Elements (or Terminal SDK for in-person readers)
+  //      to confirm with the customer's card.
+  //   2. cart-confirm-paid-with-intent → server verifies the
+  //      PaymentIntent is succeeded, then decrements stock + writes
+  //      the order. Stripe IDs persisted on the order.
+  //   3. Webhook payment_intent.succeeded (server/economy/stripe.js)
+  //      auto-confirms async out-of-band card captures.
+  //
+  // Per "everything must be real": no synthesized auth codes,
+  // no skip-the-network fast path. STRIPE_SECRET_KEY env required.
+
+  async function stripePostRetail(path, formBody) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
+    const url = `https://api.stripe.com/v1${path}`;
+    const body = new URLSearchParams(formBody).toString();
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${stripeKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Stripe-Version": "2025-09-30.acacia",
+      },
+      body,
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(`stripe ${path} ${r.status}: ${data?.error?.message || "unknown"}`);
+    return data;
+  }
+
+  async function stripeGetRetail(path) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
+    const url = `https://api.stripe.com/v1${path}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${stripeKey}` } });
+    const data = await r.json();
+    if (!r.ok) throw new Error(`stripe ${path} ${r.status}: ${data?.error?.message || "unknown"}`);
+    return data;
+  }
+
+  registerLensAction("retail", "cart-create-payment-intent", async (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (cart.lines.length === 0) return { ok: false, error: "cart is empty" };
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return { ok: false, error: "Stripe not configured. Set STRIPE_SECRET_KEY env to enable card tenders." };
+    }
+    const taxRate = Number(params.taxRate) || 0;
+    const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+    const discount = (subtotal * cart.discountPercent) / 100;
+    const subtotalAfter = subtotal - discount;
+    const tax = subtotalAfter * (taxRate / 100);
+    const total = Math.round((subtotalAfter + tax) * 100) / 100;
+    const amountCents = Math.round(total * 100);
+    if (amountCents < 50) return { ok: false, error: "amount below Stripe minimum ($0.50 USD)" };
+
+    try {
+      const formBody = {
+        amount: String(amountCents),
+        currency: "usd",
+        "automatic_payment_methods[enabled]": "true",
+        "metadata[concord_user_id]": userId,
+        "metadata[concord_cart_id]": cartId,
+      };
+      // Reader-driven Terminal: caller passes terminal=true to request
+      // a manual capture flow that the Terminal SDK can complete.
+      if (params.terminal === true) {
+        formBody.capture_method = "manual";
+        formBody["payment_method_types[]"] = "card_present";
+      }
+      const pi = await stripePostRetail("/payment_intents", formBody);
+      // Stash a pending intent on the cart so cart-confirm-paid-with-intent
+      // can correlate without trusting the caller to forward the right id.
+      cart.pendingPaymentIntentId = pi.id;
+      cart.pendingPaymentIntentTotal = total;
+      cart.pendingPaymentIntentTaxRate = taxRate;
+      saveRetailState();
+      return {
+        ok: true,
+        result: {
+          clientSecret: pi.client_secret,
+          paymentIntentId: pi.id,
+          total,
+          subtotal: Math.round(subtotalAfter * 100) / 100,
+          tax: Math.round(tax * 100) / 100,
+          status: pi.status,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `stripe payment-intent creation failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  registerLensAction("retail", "cart-confirm-paid-with-intent", async (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return { ok: false, error: "Stripe not configured." };
+    }
+    const paymentIntentId = String(params.paymentIntentId || cart.pendingPaymentIntentId || "");
+    if (!paymentIntentId) return { ok: false, error: "paymentIntentId required" };
+    if (cart.pendingPaymentIntentId && cart.pendingPaymentIntentId !== paymentIntentId) {
+      return { ok: false, error: "paymentIntentId does not match cart's pending intent" };
+    }
+
+    // Verify with Stripe — never trust the client about payment status.
+    let pi;
+    try {
+      pi = await stripeGetRetail(`/payment_intents/${paymentIntentId}`);
+    } catch (e) {
+      return { ok: false, error: `stripe payment-intent fetch failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    if (pi.status !== "succeeded") {
+      return { ok: false, error: `payment not succeeded (status=${pi.status}); cannot capture order` };
+    }
+    if (pi.metadata?.concord_user_id !== userId || pi.metadata?.concord_cart_id !== cartId) {
+      return { ok: false, error: "payment-intent metadata mismatch (user/cart)" };
+    }
+
+    const total = cart.pendingPaymentIntentTotal ?? (pi.amount / 100);
+    const taxRate = cart.pendingPaymentIntentTaxRate ?? 0;
+    const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+    const discount = (subtotal * cart.discountPercent) / 100;
+    const subtotalAfter = subtotal - discount;
+    const tax = subtotalAfter * (taxRate / 100);
+
+    // Decrement stock
+    for (const line of cart.lines) {
+      const product = s.products.get(userId)?.get(line.sku);
+      if (product) product.stock = Math.max(0, product.stock - line.qty);
+    }
+    if (!s.seq.has(userId)) s.seq.set(userId, { order: 1 });
+    const seq = s.seq.get(userId);
+    const order = {
+      id: nextRetailId("ord"),
+      number: `ORD-${String(seq.order).padStart(5, "0")}`,
+      lines: cart.lines,
+      subtotal: Math.round(subtotal * 100) / 100,
+      discount: Math.round(discount * 100) / 100,
+      tax: Math.round(tax * 100) / 100,
+      total: Math.round(total * 100) / 100,
+      tenders: [{ kind: "card", amount: total, provider: "stripe", paymentIntentId, charge: pi.latest_charge || null }],
+      tendered: total,
+      change: 0,
+      stripePaymentIntentId: paymentIntentId,
+      stripePaymentStatus: pi.status,
+      completedAt: nowIsoRet(),
+      paidVia: "stripe",
+    };
+    seq.order++;
+    if (!s.orders.has(userId)) s.orders.set(userId, []);
+    s.orders.get(userId).unshift(order);
+    s.carts.get(userId).delete(cartId);
+    saveRetailState();
+    return { ok: true, result: { order } };
+  });
 };
