@@ -369,4 +369,67 @@ export default function registerMarketsActions(registerLensAction) {
     saveMarketsState();
     return { ok: true, result: { alert: a } };
   });
+
+  // ── Historical OHLCV via Yahoo Finance chart endpoint ──
+  //
+  // Real bars for any Yahoo-listed symbol. Used by the bespoke quote-detail
+  // chart pane (lightweight-charts) and the multi-symbol comparison view.
+  //
+  // Endpoint: query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1mo&interval=1d
+  //
+  // Valid ranges:    1d 5d 1mo 3mo 6mo 1y 2y 5y 10y ytd max
+  // Valid intervals: 1m 2m 5m 15m 30m 60m 90m 1h 1d 5d 1wk 1mo 3mo
+  //
+  // (Yahoo caps intraday intervals to recent windows: 1m → 7d, 5m → 60d, etc.)
+  registerLensAction("markets", "quote-history", async (_ctx, _artifact, params = {}) => {
+    const symbol = String(params.symbol || "").toUpperCase();
+    if (!symbol) return { ok: false, error: "symbol required" };
+    const range = String(params.range || "1mo");
+    if (!/^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$/.test(range)) {
+      return { ok: false, error: "invalid range" };
+    }
+    const interval = String(params.interval || (range === "1d" || range === "5d" ? "5m" : "1d"));
+    if (!/^(1m|2m|5m|15m|30m|60m|90m|1h|1d|5d|1wk|1mo|3mo)$/.test(interval)) {
+      return { ok: false, error: "invalid interval" };
+    }
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
+      const r = await globalThis.fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Concord-OS/1.0)" },
+      });
+      if (r.status === 404) return { ok: false, error: `symbol not found: ${symbol}` };
+      if (!r.ok) throw new Error(`yahoo finance ${r.status}`);
+      const data = await r.json();
+      const result = data?.chart?.result?.[0];
+      if (!result) return { ok: false, error: `no chart data for ${symbol}` };
+      const ts = result.timestamp || [];
+      const quote = result.indicators?.quote?.[0] || {};
+      const adjclose = result.indicators?.adjclose?.[0]?.adjclose || [];
+      const bars = ts.map((t, i) => ({
+        time: t,
+        open: quote.open?.[i] ?? null,
+        high: quote.high?.[i] ?? null,
+        low:  quote.low?.[i] ?? null,
+        close: quote.close?.[i] ?? null,
+        adjClose: adjclose[i] ?? null,
+        volume: quote.volume?.[i] ?? null,
+      })).filter((b) => b.close != null);
+      const meta = result.meta || {};
+      return {
+        ok: true,
+        result: {
+          symbol, range, interval,
+          bars, count: bars.length,
+          currency: meta.currency || null,
+          exchangeName: meta.exchangeName || null,
+          instrumentType: meta.instrumentType || null,
+          previousClose: meta.chartPreviousClose ?? null,
+          regularMarketPrice: meta.regularMarketPrice ?? null,
+          source: "yahoo-finance-chart",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `yahoo finance unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
