@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { PlantFinder } from '@/components/landscaping/PlantFinder';
+import { ProLandscape } from '@/components/landscaping/ProLandscape';
 
 type ModeTab =
   | 'jobs'
@@ -713,6 +714,10 @@ export default function LandscapingLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PlantFinder />
+      </section>
+
+      <section className="mt-6">
+        <ProLandscape />
       </section>
     </LensPageShell>
     
