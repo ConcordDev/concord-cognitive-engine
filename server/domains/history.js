@@ -1,4 +1,30 @@
 // server/domains/history.js
+//
+// Pure-compute history helpers (timeline, source evaluation, period
+// comparison, cause-effect chains) plus real Wikipedia REST API +
+// "On This Day" lookups (free, no API key required — but Wikimedia
+// requires a contact User-Agent per their UA policy).
+
+const WIKI_REST = "https://en.wikipedia.org/api/rest_v1";
+const WIKI_API = "https://en.wikipedia.org/w/api.php";
+
+function wikiUserAgent() {
+  const contact = process.env.WIKIPEDIA_CONTACT || "https://concord-os.org";
+  return `Concord-OS/1.0 (${contact})`;
+}
+
+async function wikiFetch(url) {
+  const r = await fetch(url, {
+    headers: {
+      "User-Agent": wikiUserAgent(),
+      Accept: "application/json",
+      "Api-User-Agent": wikiUserAgent(),
+    },
+  });
+  if (!r.ok) throw new Error(`wikipedia ${r.status}`);
+  return r.json();
+}
+
 export default function registerHistoryActions(registerLensAction) {
   registerLensAction("history", "timelineBuild", (ctx, artifact, _params) => {
     const events = artifact.data?.events || [];
@@ -29,5 +55,128 @@ export default function registerHistoryActions(registerLensAction) {
     if (chains.length === 0) return { ok: true, result: { message: "Map cause-effect chains to analyze historical causation." } };
     const analyzed = chains.map(c => ({ cause: c.cause, effect: c.effect, type: c.type || "direct", strength: c.strength || "moderate", timelag: c.timelag || "unknown", evidence: c.evidence || [] }));
     return { ok: true, result: { chains: analyzed, totalLinks: analyzed.length, directCauses: analyzed.filter(c => c.type === "direct").length, indirectCauses: analyzed.filter(c => c.type === "indirect").length, strongLinks: analyzed.filter(c => c.strength === "strong").length, rootCauses: analyzed.filter(c => !chains.some(other => other.effect === c.cause)).map(c => c.cause) } };
+  });
+
+  /**
+   * wiki-lookup — Real article summary from Wikipedia REST API.
+   * Returns title, extract (intro), description, page URL, thumbnail.
+   * Free, no API key. Wikimedia UA policy requires contact header.
+   * params: { title: string }
+   */
+  registerLensAction("history", "wiki-lookup", async (_ctx, _artifact, params = {}) => {
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    try {
+      const data = await wikiFetch(`${WIKI_REST}/page/summary/${encodeURIComponent(title.replace(/ /g, "_"))}`);
+      if (data.type === "disambiguation") {
+        return {
+          ok: true,
+          result: {
+            title: data.title,
+            type: "disambiguation",
+            description: data.description,
+            extract: data.extract,
+            note: "Title resolves to a disambiguation page. Pass a more specific title.",
+            source: "wikipedia-rest",
+          },
+        };
+      }
+      return {
+        ok: true,
+        result: {
+          title: data.title,
+          displayTitle: data.displaytitle,
+          description: data.description,
+          extract: data.extract,
+          extractHtml: data.extract_html,
+          thumbnail: data.thumbnail?.source,
+          pageUrl: data.content_urls?.desktop?.page,
+          mobilePageUrl: data.content_urls?.mobile?.page,
+          lang: data.lang,
+          revisionTimestamp: data.timestamp,
+          type: data.type,
+          source: "wikipedia-rest",
+        },
+      };
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("404")) {
+        return { ok: false, error: `Wikipedia page not found: ${title}` };
+      }
+      return { ok: false, error: `wikipedia unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * wiki-search — Title search via the Wikipedia opensearch endpoint.
+   * Returns up to N matching page titles + extracts + URLs.
+   * params: { query: string, limit?: 1-50 }
+   */
+  registerLensAction("history", "wiki-search", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    if (query.length < 2) return { ok: false, error: "query must be ≥ 2 characters" };
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 10));
+    try {
+      const url = `${WIKI_API}?action=opensearch&format=json&search=${encodeURIComponent(query)}&limit=${limit}&namespace=0`;
+      const data = await wikiFetch(url);
+      // opensearch returns [query, titles[], descriptions[], urls[]]
+      const titles = data[1] || [];
+      const descriptions = data[2] || [];
+      const urls = data[3] || [];
+      const results = titles.map((title, i) => ({
+        title,
+        description: descriptions[i] || null,
+        url: urls[i] || null,
+      }));
+      return {
+        ok: true,
+        result: { query, results, count: results.length, source: "wikipedia-opensearch" },
+      };
+    } catch (e) {
+      return { ok: false, error: `wikipedia unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * on-this-day — Wikipedia "On This Day" feed: events, births, deaths,
+   * holidays, and selected entries that happened on a given month/day.
+   * Free, no API key (UA policy applies).
+   * params: { month: 1-12, day: 1-31, kind?: "events"|"births"|"deaths"|"holidays"|"selected"|"all" }
+   */
+  registerLensAction("history", "on-this-day", async (_ctx, _artifact, params = {}) => {
+    const month = parseInt(params.month, 10);
+    const day = parseInt(params.day, 10);
+    const kind = ["events", "births", "deaths", "holidays", "selected", "all"].includes(params.kind) ? params.kind : "events";
+    if (!Number.isFinite(month) || month < 1 || month > 12) return { ok: false, error: "month must be 1-12" };
+    if (!Number.isFinite(day) || day < 1 || day > 31) return { ok: false, error: "day must be 1-31" };
+    const mm = String(month).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    try {
+      const data = await wikiFetch(`${WIKI_REST}/feed/onthisday/${kind}/${mm}/${dd}`);
+      const shape = (arr) => (arr || []).map((entry) => ({
+        text: entry.text,
+        year: entry.year,
+        pages: (entry.pages || []).slice(0, 3).map((p) => ({
+          title: p.title,
+          extract: p.extract,
+          url: p.content_urls?.desktop?.page,
+          thumbnail: p.thumbnail?.source,
+        })),
+      }));
+      return {
+        ok: true,
+        result: {
+          month, day, kind,
+          events: shape(data.events),
+          births: shape(data.births),
+          deaths: shape(data.deaths),
+          holidays: shape(data.holidays),
+          selected: shape(data.selected),
+          source: "wikipedia-onthisday",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `wikipedia unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
