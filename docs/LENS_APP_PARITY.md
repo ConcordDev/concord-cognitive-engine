@@ -152,11 +152,11 @@ first, then leader-app-shaped UI.
 
 | Lens | Leader app | Status |
 |---|---|---|
-| `observe` | **Datadog** | ⛔ no-backend |
-| `ops` | **PagerDuty** | ⛔ no-backend |
-| `wellness` | **Whoop** | ⛔ no-backend |
-| `productivity` | **Todoist** | ⛔ no-backend |
-| `cri` | tbd | ⛔ no-backend |
+| `observe` | **Datadog** | ✅ done — domain (serviceLog / incidentTrack / alertSummary / sloCheck) + ObserveActionPanel (8 actions). Live-tested. |
+| `ops` | **PagerDuty** | ✅ done — domain (pageOnCall / runbookLookup / postmortemDraft / escalationCheck) + OpsActionPanel (8 actions). Live-tested. |
+| `wellness` | **Whoop** | ✅ done — domain (sleepScore / strainLog / recoveryReport / hrvTrend) + WellnessActionPanel (8 actions). Live-tested. |
+| `productivity` | **Todoist** | ✅ done — domain (taskCreate / projectFilter / focusBlock / dailySummary) + ProductivityActionPanel (8 actions). Live-tested. |
+| `cri` | crisis-response info | 🚧 partial — existing 3 macros + page; no bespoke action panel yet. |
 
 ## Tier 7 — Concord-native lenses (no external leader app)
 
@@ -208,8 +208,8 @@ panels (create / inspect / share or similar) if no clear leader app.
 | Tier 2 (heavyweights) | 10 | 53% | 2026-05-16 |
 | Tier 3 (reference/utility) | ~36 | ~38% | 2026-05-16 |
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
-| Tier 5 (session loops) | 5 | ~51% | 2026-05-16 |
-| Tier 6 (backend-creation) | 5 | 0% | 2026-05-16 |
+| Tier 5 (session loops) | 5 | ~80% | 2026-05-16 |
+| Tier 6 (backend-creation) | 5 | ~80% | 2026-05-16 |
 | Tier 7 (Concord-native) | ~150 | tbd | 2026-05-16 |
 
 **Close gate:** every Tier-1 to Tier-6 lens ≥ 80% (heavyweights ≥ 70%).
