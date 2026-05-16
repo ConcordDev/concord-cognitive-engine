@@ -24,29 +24,82 @@ beforeEach(() => {
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
-describe("aviation — airport lookup", () => {
-  it("returns seeded airport by ident", () => {
-    const r = call("airport-lookup", ctxA, { ident: "KSFO" });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.airport.name, "San Francisco Intl");
-    assert.ok(r.result.airport.runways.length > 0);
-  });
-
-  it("case-insensitive ident match", () => {
-    const r = call("airport-lookup", ctxA, { ident: "ksfo" });
-    assert.equal(r.ok, true);
-  });
-
-  it("rejects missing ident", () => {
-    const r = call("airport-lookup", ctxA, {});
+describe("aviation — airport lookup (aviationapi.com / FAA NASR live)", () => {
+  it("rejects missing ident", async () => {
+    const r = await call("airport-lookup", ctxA, {});
     assert.equal(r.ok, false);
     assert.match(r.error, /ident required/);
   });
 
-  it("returns not-found shape for unknown ident with available list", () => {
-    const r = call("airport-lookup", ctxA, { ident: "ZZZZ" });
+  it("returns error when network is disabled (hermetic test)", async () => {
+    // beforeEach mocks fetch to throw — verify real fetch is wired
+    const r = await call("airport-lookup", ctxA, { ident: "KSFO" });
     assert.equal(r.ok, false);
-    assert.match(r.error, /not found/);
+    assert.match(r.error, /failed|network/);
+  });
+
+  it("happy-path: parses aviationapi.com response shape", async () => {
+    let callCount = 0;
+    globalThis.fetch = async (url) => {
+      callCount++;
+      if (url.includes("frequencies")) {
+        return {
+          ok: true,
+          json: async () => ({ KSFO: [
+            { freq: "120.5", freq_use: "Tower" },
+            { freq: "121.8", freq_use: "Ground" },
+            { freq: "118.85", freq_use: "ATIS" },
+          ] }),
+        };
+      }
+      if (url.includes("runways")) {
+        return {
+          ok: true,
+          json: async () => ({ KSFO: [
+            { id: "10R/28L", length: 11870, surface_type_code: "ASPH" },
+            { id: "10L/28R", length: 11381, surface_type_code: "ASPH" },
+          ] }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ KSFO: [{
+          facility_name: "San Francisco Intl", city: "San Francisco", state_code: "CA",
+          latitude_decimal: 37.6189, longitude_decimal: -122.3750, elevation: 13,
+          fuel_types: "100LL, JetA",
+        }] }),
+      };
+    };
+    const r = await call("airport-lookup", ctxA, { ident: "KSFO" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "aviationapi.com (FAA NASR)");
+    assert.equal(r.result.airport.name, "San Francisco Intl");
+    assert.equal(r.result.airport.city, "San Francisco, CA");
+    assert.equal(r.result.airport.lat, 37.6189);
+    assert.equal(r.result.airport.runways.length, 2);
+    assert.equal(r.result.airport.frequencies.tower, "120.5");
+    assert.deepEqual(r.result.airport.fuel, ["100LL", "JetA"]);
+    assert.equal(callCount, 3); // airport + freq + runways
+  });
+
+  it("returns not-found when FAA database has no records for ident", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({}),
+    });
+    const r = await call("airport-lookup", ctxA, { ident: "ZZZZ" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not found in FAA database/);
+  });
+
+  it("case-insensitive ident match", async () => {
+    globalThis.fetch = async (url) => {
+      // Verify the ident in the URL was upper-cased
+      assert.match(url, /apt=KSFO/);
+      return { ok: true, json: async () => ({ KSFO: [{ facility_name: "San Francisco Intl" }] }) };
+    };
+    const r = await call("airport-lookup", ctxA, { ident: "ksfo" });
+    assert.equal(r.ok, true);
   });
 });
 
@@ -109,8 +162,18 @@ describe("aviation — performance calculators", () => {
 });
 
 describe("aviation — flight plans", () => {
-  it("creates a plan with auto-computed distance + ETE for seeded airports", () => {
-    const r = call("plan-create", ctxA, { from: "KSFO", to: "KLAX", altitude: 7500, tas: 110 });
+  // Mock aviationapi.com response for great-circle distance lookup
+  function mockAirports() {
+    globalThis.fetch = async (url) => {
+      if (url.includes("apt=KSFO")) return { ok: true, json: async () => ({ KSFO: [{ latitude_decimal: 37.6189, longitude_decimal: -122.375 }] }) };
+      if (url.includes("apt=KLAX")) return { ok: true, json: async () => ({ KLAX: [{ latitude_decimal: 33.9425, longitude_decimal: -118.4081 }] }) };
+      return { ok: true, json: async () => ({}) };
+    };
+  }
+
+  it("creates a plan with auto-computed distance + ETE from aviationapi.com", async () => {
+    mockAirports();
+    const r = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX", altitude: 7500, tas: 110 });
     assert.equal(r.ok, true);
     assert.ok(r.result.plan.distance_nm > 200 && r.result.plan.distance_nm < 400);
     assert.ok(r.result.plan.ete_minutes > 0);
@@ -118,34 +181,45 @@ describe("aviation — flight plans", () => {
     assert.equal(r.result.plan.to, "KLAX");
   });
 
-  it("rejects missing from/to", () => {
-    const r = call("plan-create", ctxA, { from: "", to: "KLAX" });
+  it("rejects missing from/to", async () => {
+    const r = await call("plan-create", ctxA, { from: "", to: "KLAX" });
     assert.equal(r.ok, false);
     assert.match(r.error, /from and to required/);
   });
 
-  it("rejects out-of-range altitude", () => {
-    const r = call("plan-create", ctxA, { from: "KSFO", to: "KLAX", altitude: 60000 });
+  it("rejects out-of-range altitude", async () => {
+    const r = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX", altitude: 60000 });
     assert.equal(r.ok, false);
     assert.match(r.error, /altitude/);
   });
 
-  it("INVARIANT: plans scoped per-user", () => {
-    call("plan-create", ctxA, { from: "KSFO", to: "KLAX" });
+  it("INVARIANT: plans scoped per-user", async () => {
+    mockAirports();
+    await call("plan-create", ctxA, { from: "KSFO", to: "KLAX" });
     const b = call("plan-list", ctxB);
     assert.equal(b.result.plans.length, 0);
   });
 
-  it("computes fuel burn estimate when ETE known", () => {
-    const r = call("plan-create", ctxA, { from: "KSFO", to: "KLAX", tas: 110 });
+  it("computes fuel burn estimate when ETE known", async () => {
+    mockAirports();
+    const r = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX", tas: 110 });
     assert.ok(r.result.plan.estFuelBurn_gal > 0);
   });
 
-  it("delete removes plan", () => {
-    const c = call("plan-create", ctxA, { from: "KSFO", to: "KLAX" });
+  it("delete removes plan", async () => {
+    mockAirports();
+    const c = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX" });
     call("plan-delete", ctxA, { id: c.result.plan.id });
     const l = call("plan-list", ctxA);
     assert.equal(l.result.plans.length, 0);
+  });
+
+  it("leaves distance null when airport lookup fails (graceful degrade)", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({}) });
+    const r = await call("plan-create", ctxA, { from: "KZZZ", to: "KYYY" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.plan.distance_nm, null);
+    assert.equal(r.result.plan.ete_minutes, null);
   });
 });
 

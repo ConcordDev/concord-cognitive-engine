@@ -247,9 +247,11 @@ function AirportsTab() {
         </button>
       </div>
 
+      <p className="text-[10px] text-gray-600">Live FAA NASR data via aviationapi.com — covers all ~20,000 US public-use airports.</p>
+
       {available.length > 0 && !airport && (
         <div className="text-[11px] text-gray-500">
-          Available: {available.map((i) => (
+          Suggested: {available.map((i) => (
             <button key={i} type="button" onClick={() => { setIdent(i); lookup(i); }}
               className="inline-block mr-1 mb-1 px-1.5 py-0.5 rounded border border-white/10 hover:border-sky-500/30 text-gray-300 font-mono">
               {i}
