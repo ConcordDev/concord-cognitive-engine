@@ -1479,6 +1479,113 @@ export default function AgricultureLensPage() {
         lastUpdated={weatherUpdated}
       />
 
+      {/* Today on the Farm — workable-fields badge + urgent action queue.
+          Per canonical research (Bushel Farm rainfall-first, AgriWebb
+          mob-card pattern, OneSoil all-fields-at-once): the most-clicked
+          daily action is "which fields can I work today?" Replaces the
+          stat-dashboard with the operator's actual workflow surface. */}
+      {(() => {
+        const all = items.map(i => ({ id: i.id, d: i.data as unknown as AgricultureArtifact }));
+        const fields = all.filter(i => i.d?.type === 'Field');
+        const crops = all.filter(i => i.d?.type === 'Crop');
+        const equipment = all.filter(i => i.d?.type === 'FarmEquipment');
+
+        // Workable-today derivation from Open-Meteo current + today's precip_sum
+        const todayPrecip = Number((weatherData as WeatherPayload | null)?.daily?.precipitation_sum?.[0] ?? 0);
+        const last24Precip = Number((weatherData as WeatherPayload | null)?.current?.precipitation ?? 0);
+        const workableField = (_f: { d: AgricultureArtifact }) => {
+          if (todayPrecip > 12) return false;
+          if (last24Precip > 8) return false;
+          return true;
+        };
+        const workableCount = fields.filter(workableField).length;
+        const totalFields = fields.length;
+
+        // Urgent action items
+        const noSoilTest = fields.filter(f => !f.d.lastTested).length;
+        const equipmentDue = equipment.filter(e => {
+          // crude — equipment-need flag from notes or status keyword.
+          // Status enum doesn't include 'maintenance', so notes is the
+          // only signal here without a separate equipment status field.
+          return /service|due|overdue|maintenance/i.test(e.d.notes || '') || /service|due|overdue|maintenance/i.test(String(e.d.status || ''));
+        }).length;
+        const cropsToTrack = crops.filter(c => c.d.plantDate).length;
+
+        const queueItems = [
+          noSoilTest > 0 && {
+            label: `${noSoilTest} field${noSoilTest === 1 ? '' : 's'} need soil tested`,
+            action: () => { setActiveTab('fields'); handleAction('analyze-soil'); },
+            color: 'text-amber-300',
+          },
+          equipmentDue > 0 && {
+            label: `${equipmentDue} equipment item${equipmentDue === 1 ? '' : 's'} due for service`,
+            action: () => { setActiveTab('equipment'); handleAction('equipmentDue'); },
+            color: 'text-rose-300',
+          },
+          cropsToTrack > 0 && {
+            label: `${cropsToTrack} crop cycle${cropsToTrack === 1 ? '' : 's'} mid-season — track status`,
+            action: () => { setActiveTab('crops'); handleAction('track-season'); },
+            color: 'text-emerald-300',
+          },
+        ].filter(Boolean) as Array<{ label: string; action: () => void; color: string }>;
+
+        return (
+          <section className="rounded-xl border border-white/10 bg-gradient-to-br from-emerald-900/20 via-zinc-900/40 to-amber-900/15 backdrop-blur-sm p-5">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-5">
+              {/* Workable fields badge */}
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-emerald-300/80 mb-1">Today on the farm</div>
+                <div className="flex items-baseline gap-3">
+                  <span className="text-4xl font-light text-zinc-100">{workableCount}</span>
+                  <span className="text-sm text-zinc-400">of {totalFields} field{totalFields === 1 ? '' : 's'} workable</span>
+                </div>
+                <div className="mt-2 text-xs text-zinc-400">
+                  {todayPrecip > 12
+                    ? `Heavy rain forecast (${todayPrecip.toFixed(1)}mm) — most fields too wet`
+                    : last24Precip > 8
+                      ? `${last24Precip.toFixed(1)}mm last 24h — let fields drain`
+                      : todayPrecip > 0
+                        ? `Light precip today (${todayPrecip.toFixed(1)}mm) — most fields ok`
+                        : 'Dry — fields workable'}
+                </div>
+                {totalFields === 0 && (
+                  <button
+                    onClick={() => { setActiveTab('fields'); openCreate(); }}
+                    className="mt-3 text-xs px-3 py-1.5 rounded border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
+                  >
+                    Add your first field →
+                  </button>
+                )}
+              </div>
+
+              {/* Action queue */}
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-amber-300/80 mb-1">Action queue</div>
+                {queueItems.length === 0 ? (
+                  <div className="mt-2 text-sm text-zinc-400">
+                    {totalFields > 0 ? 'Nothing urgent. Books are clean.' : 'Add fields, crops, equipment to track them.'}
+                  </div>
+                ) : (
+                  <ul className="mt-2 space-y-1.5">
+                    {queueItems.map((item, i) => (
+                      <li key={i}>
+                        <button
+                          onClick={item.action}
+                          className={cn('w-full text-left text-sm px-3 py-1.5 rounded border border-white/10 hover:border-white/30 bg-white/[0.02] hover:bg-white/[0.05] transition-colors flex items-center justify-between gap-2', item.color)}
+                        >
+                          <span>{item.label}</span>
+                          <span className="text-xs opacity-60">→</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* Ag Wire — USDA AMS + USDA Press live feed */}
       <LiveFeed
         articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
