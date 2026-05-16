@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import ContractAnalyzer from '@/components/legal/ContractAnalyzer';
 import CaseTracker from '@/components/legal/CaseTracker';
 import LegalQA from '@/components/legal/LegalQA';
+import { LegalCaseSearch } from '@/components/legal/LegalCaseSearch';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
@@ -86,7 +87,8 @@ type ModeTab =
   | 'Compliance'
   | 'Analyzer'
   | 'CaseTracker'
-  | 'LegalQA';
+  | 'LegalQA'
+  | 'CaseSearch';
 type ArtifactType =
   | 'Case'
   | 'Document'
@@ -303,6 +305,7 @@ const MODE_TABS: {
   { id: 'Analyzer', icon: FileText, defaultType: 'Document', label: 'Contract Analyzer' },
   { id: 'CaseTracker', icon: Briefcase, defaultType: 'Case', label: 'Case Tracker' },
   { id: 'LegalQA', icon: BarChart3, defaultType: 'Document', label: 'Legal Q&A' },
+  { id: 'CaseSearch', icon: Scale, defaultType: 'Case', label: 'Case Law Search' },
 ];
 
 const STATUSES_BY_TYPE: Record<ArtifactType, string[]> = {
@@ -2988,6 +2991,7 @@ export default function LegalLensPage() {
     if (activeTab === 'Analyzer') return <div className="p-4"><ContractAnalyzer /></div>;
     if (activeTab === 'CaseTracker') return <div className="p-4"><CaseTracker /></div>;
     if (activeTab === 'LegalQA') return <div className="p-4"><LegalQA /></div>;
+    if (activeTab === 'CaseSearch') return <div className="p-4"><LegalCaseSearch /></div>;
 
     return (
       <section className={ds.panel}>
