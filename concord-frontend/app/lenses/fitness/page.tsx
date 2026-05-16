@@ -2,6 +2,11 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import WorkoutLogger from '@/components/fitness/WorkoutLogger';
+import HeartRateZones from '@/components/fitness/HeartRateZones';
+import SleepRecovery from '@/components/fitness/SleepRecovery';
+import ActivityRings from '@/components/fitness/ActivityRings';
+import WorkoutPlanner from '@/components/fitness/WorkoutPlanner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -11,7 +16,7 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Dumbbell, Users, ListChecks, CalendarDays, Shield, Medal,
+  Dumbbell, Users, ListChecks, CalendarDays, Shield, Medal, Sparkles,
   Plus, Search, X, Trash2, Target, Timer, Zap, User, Calendar,
   TrendingUp, Award, Activity,
   ChevronRight, DollarSign, Calculator,
@@ -32,7 +37,7 @@ import LiveFeed from '@/components/lens/LiveFeed';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Clients' | 'Programs' | 'Workouts' | 'Classes' | 'Teams' | 'Recruiting';
+type ModeTab = 'Clients' | 'Programs' | 'Workouts' | 'Classes' | 'Teams' | 'Recruiting' | 'Log' | 'HRZones' | 'Recovery' | 'Activity' | 'AIPlan';
 type ArtifactType = 'Client' | 'Program' | 'Workout' | 'Class' | 'Team' | 'Athlete';
 type Status = 'active' | 'paused' | 'completed' | 'deferred' | 'graduated';
 
@@ -161,6 +166,12 @@ const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; 
   { id: 'Classes', icon: CalendarDays, defaultType: 'Class' },
   { id: 'Teams', icon: Shield, defaultType: 'Team' },
   { id: 'Recruiting', icon: Medal, defaultType: 'Athlete' },
+  // Parity-sprint personal-fitness surfaces (Strava / Whoop / Apple Fitness+ / Hevy)
+  { id: 'Log', icon: Dumbbell, defaultType: 'Workout' },
+  { id: 'HRZones', icon: Activity, defaultType: 'Workout' },
+  { id: 'Recovery', icon: Activity, defaultType: 'Workout' },
+  { id: 'Activity', icon: Activity, defaultType: 'Workout' },
+  { id: 'AIPlan', icon: Sparkles, defaultType: 'Program' },
 ];
 
 const ALL_STATUSES: Status[] = ['active', 'paused', 'completed', 'deferred', 'graduated'];
@@ -1015,6 +1026,13 @@ export default function FitnessLensPage() {
           </button>
         </div>
       </div>
+
+      {/* ========== Parity-sprint surfaces ========== */}
+      {activeTab === 'Log' && <div className="p-4"><WorkoutLogger /></div>}
+      {activeTab === 'HRZones' && <div className="p-4"><HeartRateZones /></div>}
+      {activeTab === 'Recovery' && <div className="p-4"><SleepRecovery /></div>}
+      {activeTab === 'Activity' && <div className="p-4"><ActivityRings /></div>}
+      {activeTab === 'AIPlan' && <div className="p-4"><WorkoutPlanner /></div>}
 
       {/* ========== Client Progress Dashboard ========== */}
       {activeTab === 'Clients' && selectedClient && (() => {
