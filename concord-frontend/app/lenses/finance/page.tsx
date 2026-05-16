@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { MarketsPulse } from '@/components/finance/MarketsPulse';
+import { FinanceActionPanel } from '@/components/finance/FinanceActionPanel';
 import NetWorthTracker from '@/components/finance/NetWorthTracker';
 import EnvelopeBudget from '@/components/finance/EnvelopeBudget';
 import InvestmentCheckup from '@/components/finance/InvestmentCheckup';
@@ -2399,6 +2400,11 @@ export default function FinanceLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MarketsPulse />
+      </section>
+
+      {/* Robinhood + YNAB-shape money workbench: net-worth / envelopes / tax / retirement-MC + actions */}
+      <section className="mt-6">
+        <FinanceActionPanel />
       </section>
     </div>
     </LensShell>
