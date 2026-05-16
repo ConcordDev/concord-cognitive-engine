@@ -19,6 +19,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { showToast } from '@/components/common/Toasts';
+import { ForkNetworkExplorer } from '@/components/fork/ForkNetworkExplorer';
 
 interface ForkData {
   parentId: string | null;
@@ -749,6 +750,9 @@ export default function ForkLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ForkNetworkExplorer />
+      </section>
     </div>
     </LensShell>
   );
