@@ -28,6 +28,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import IndicatorChart, { type IndicatorPayload } from '@/components/lens/IndicatorChart';
+import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -151,6 +152,8 @@ export default function AccountingLensPage() {
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [view, setView] = useState<'library' | 'dashboard'>('dashboard');
+  // 2026 parity — live workbench drawer (CoA + journal + ledger + balance sheet + AR aging)
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [ledgerSubType, setLedgerSubType] = useState<'Account' | 'Transaction'>('Account');
   const [showFeatures, setShowFeatures] = useState(true);
 
@@ -2673,6 +2676,16 @@ export default function AccountingLensPage() {
           <button className={view === 'dashboard' ? ds.btnPrimary : ds.btnSecondary} onClick={() => setView('dashboard')}>
             <BarChart3 className="w-4 h-4" /> Dashboard
           </button>
+          {/* 2026 parity — opens the live workbench (real CoA / journal /
+              ledger / balance sheet / AR aging) over the existing artifact UI. */}
+          <button
+            type="button"
+            onClick={() => setWorkbenchOpen(true)}
+            className={cn(ds.btnSecondary, 'border-emerald-500/30 text-emerald-200 hover:brightness-110')}
+            title="Live accounting workbench — QuickBooks/Xero/FreshBooks parity"
+          >
+            <Calculator className="w-4 h-4" /> Workbench
+          </button>
         </div>
       </header>
 
@@ -3025,6 +3038,8 @@ export default function AccountingLensPage() {
         )}
       </div>
     </div>
+    {/* 2026 parity workbench — live CoA / journal / ledger / balance sheet / AR aging */}
+    <AccountingWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
