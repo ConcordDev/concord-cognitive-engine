@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SecurityAdvisories } from '@/components/security/SecurityAdvisories';
+import { ThreatVulnPanel } from '@/components/security/ThreatVulnPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1271,6 +1272,10 @@ export default function SecurityLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <SecurityAdvisories />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ThreatVulnPanel />
       </section>
     </div>
 
