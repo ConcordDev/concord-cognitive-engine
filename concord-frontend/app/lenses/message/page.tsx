@@ -25,6 +25,7 @@ import { InboxShell, type InboxThread } from '@/components/message/InboxShell';
 import { api } from '@/lib/api/client';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { Loader2, Send } from 'lucide-react';
+import MessageWorkbench from '@/components/message/MessageWorkbench';
 
 interface Conversation {
   id: string;
@@ -49,6 +50,7 @@ export default function MessageLensPage() {
 
   const [activeLabelId, setActiveLabelId] = useState('inbox');
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingConvos, setLoadingConvos] = useState(false);
@@ -370,6 +372,17 @@ export default function MessageLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+
+      {/* 2026 parity workbench — saved, search, voice, reactions */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-sky-500 hover:bg-sky-400 text-sky-50 shadow-2xl text-sm font-medium"
+        title="Message Workbench — saved/starred, search, voice notes, reactions"
+      >
+        Message Workbench
+      </button>
+      <MessageWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
