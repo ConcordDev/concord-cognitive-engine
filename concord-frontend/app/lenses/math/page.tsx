@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { MathStackFeed } from '@/components/math/MathStackFeed';
+import { MathActionPanel } from '@/components/math/MathActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -1152,6 +1153,11 @@ export default function MathLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MathStackFeed />
+      </section>
+
+      {/* Wolfram + Desmos-shape math workbench: stats / matrix / polynomial / regression + actions */}
+      <section className="mt-6">
+        <MathActionPanel />
       </section>
     </div>
     </LensShell>

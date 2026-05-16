@@ -14,6 +14,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
+import { GalleryActionPanel } from '@/components/gallery/GalleryActionPanel';
 import { Loader2, Image as ImageIcon } from 'lucide-react';
 
 interface Sigil {
@@ -158,6 +159,11 @@ export default function GalleryPage() {
       {/* Bespoke Cleveland Museum of Art browser with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CmaBrowser />
+      </section>
+
+      {/* CMA + Smithsonian + AIC-shape gallery workbench: search / artwork / depts + actions */}
+      <section className="mt-6">
+        <GalleryActionPanel />
       </section>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
