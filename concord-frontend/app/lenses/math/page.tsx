@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { MathStackFeed } from '@/components/math/MathStackFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -1149,6 +1150,9 @@ export default function MathLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <MathStackFeed />
+      </section>
     </div>
     </LensShell>
   );
