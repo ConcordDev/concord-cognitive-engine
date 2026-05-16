@@ -98,6 +98,7 @@ import { AudioEditor } from '@/components/studio/AudioEditor';
 import { AutomationView } from '@/components/studio/AutomationView';
 import { MasteringPanel } from '@/components/studio/MasteringPanel';
 import { Soundboard } from '@/components/studio/Soundboard';
+import StudioWorkbench from '@/components/studio/StudioWorkbench';
 
 // ============================================================================
 // Constants & Defaults
@@ -357,6 +358,7 @@ export default function StudioLensPage() {
     try { localStorage.setItem('concord_studio_view', studioView); } catch { /* private mode */ }
   }, [studioView]);
   const [project, setProject] = useState<DAWProject | null>(null);
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [transportState, setTransportState] = useState<TransportState>('stopped');
   const transportStateRef = useRef<TransportState>('stopped');
   const drumPatternRef = useRef<DrumPattern | null>(null);
@@ -2645,6 +2647,17 @@ export default function StudioLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+
+      {/* 2026 parity workbench — project + track + effects persistence */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-purple-500 hover:bg-purple-400 text-purple-50 shadow-2xl text-sm font-medium"
+        title="Studio Workbench — projects, tracks, mixer (vol/pan/mute/solo), effects chain"
+      >
+        Studio Workbench
+      </button>
+      <StudioWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
