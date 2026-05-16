@@ -445,4 +445,149 @@ export default function registerPhysicsActions(registerLensAction) {
       },
     };
   });
+
+  // ─── 2026 parity — Wolfram Alpha / Symbolab / PhET / MS Math Solver ──
+  //
+  // Adds 1D + 2D kinematics, unit conversion, projectile motion, and a few
+  // canonical physics constants. Pure JS, no external deps.
+
+  // ── Kinematics solver (1D motion) ──
+
+  registerLensAction("physics", "kinematics-1d", (_ctx, _artifact, params = {}) => {
+    // Given any 3 of {v0, v, a, t, x}, solve for the missing one(s).
+    const v0 = params.v0 != null ? Number(params.v0) : null;
+    const v  = params.v  != null ? Number(params.v)  : null;
+    const a  = params.a  != null ? Number(params.a)  : null;
+    const t  = params.t  != null ? Number(params.t)  : null;
+    const x  = params.x  != null ? Number(params.x)  : null;
+    const provided = [v0, v, a, t, x].filter((n) => n != null && Number.isFinite(n)).length;
+    if (provided < 3) return { ok: false, error: "provide at least 3 of: v0, v, a, t, x" };
+    const out = { v0, v, a, t, x };
+    // Use the standard 4 equations.
+    if (out.v == null && out.v0 != null && out.a != null && out.t != null) out.v = out.v0 + out.a * out.t;
+    if (out.x == null && out.v0 != null && out.a != null && out.t != null) out.x = out.v0 * out.t + 0.5 * out.a * out.t * out.t;
+    if (out.x == null && out.v0 != null && out.v != null && out.t != null) out.x = 0.5 * (out.v0 + out.v) * out.t;
+    if (out.t == null && out.v0 != null && out.v != null && out.a != null && out.a !== 0) out.t = (out.v - out.v0) / out.a;
+    if (out.a == null && out.v0 != null && out.v != null && out.t != null && out.t !== 0) out.a = (out.v - out.v0) / out.t;
+    if (out.v == null && out.v0 != null && out.a != null && out.x != null) {
+      const vsq = out.v0 * out.v0 + 2 * out.a * out.x;
+      if (vsq >= 0) out.v = Math.sqrt(vsq);
+    }
+    if (out.v0 == null && out.v != null && out.a != null && out.t != null) out.v0 = out.v - out.a * out.t;
+    // Round
+    for (const k of Object.keys(out)) {
+      if (out[k] != null && Number.isFinite(out[k])) out[k] = Math.round(out[k] * 10000) / 10000;
+    }
+    return {
+      ok: true,
+      result: {
+        solved: out,
+        equations: ["v = v₀ + at", "x = v₀t + ½at²", "v² = v₀² + 2ax", "x = ½(v₀ + v)t"],
+        units: { v0: "m/s", v: "m/s", a: "m/s²", t: "s", x: "m" },
+      },
+    };
+  });
+
+  // ── Projectile motion ──
+
+  registerLensAction("physics", "projectile", (_ctx, _artifact, params = {}) => {
+    const v0 = Number(params.v0);
+    const angleDeg = Number(params.angleDeg);
+    const h0 = Number(params.h0) || 0;
+    const g = Number(params.g) || 9.81;
+    if (!Number.isFinite(v0) || v0 <= 0) return { ok: false, error: "v0 must be > 0" };
+    if (!Number.isFinite(angleDeg) || angleDeg < 0 || angleDeg > 90) return { ok: false, error: "angleDeg 0..90" };
+    const angle = (angleDeg * Math.PI) / 180;
+    const v0x = v0 * Math.cos(angle);
+    const v0y = v0 * Math.sin(angle);
+    // Time of flight: y(t) = h0 + v0y*t - g*t²/2 = 0
+    // t = (v0y + √(v0y² + 2g*h0)) / g
+    const t = (v0y + Math.sqrt(v0y * v0y + 2 * g * h0)) / g;
+    const range = v0x * t;
+    const tApex = v0y / g;
+    const maxHeight = h0 + (v0y * v0y) / (2 * g);
+    const vImpact = Math.sqrt(v0x * v0x + (v0y - g * t) ** 2);
+    return {
+      ok: true,
+      result: {
+        timeOfFlight_s: Math.round(t * 1000) / 1000,
+        range_m: Math.round(range * 100) / 100,
+        maxHeight_m: Math.round(maxHeight * 100) / 100,
+        timeToApex_s: Math.round(tApex * 1000) / 1000,
+        impactSpeed_mps: Math.round(vImpact * 100) / 100,
+        v0x_mps: Math.round(v0x * 100) / 100,
+        v0y_mps: Math.round(v0y * 100) / 100,
+        inputs: { v0, angleDeg, h0, g },
+      },
+    };
+  });
+
+  // ── Unit conversion ──
+
+  const UNITS = {
+    length:      { m: 1, km: 1000, cm: 0.01, mm: 0.001, mi: 1609.344, yd: 0.9144, ft: 0.3048, in: 0.0254 },
+    mass:        { kg: 1, g: 0.001, mg: 0.000001, lb: 0.453592, oz: 0.0283495, ton: 1000 },
+    time:        { s: 1, ms: 0.001, min: 60, h: 3600, day: 86400 },
+    velocity:    { mps: 1, kmh: 0.277778, mph: 0.44704, fps: 0.3048, knot: 0.514444 },
+    energy:      { J: 1, kJ: 1000, cal: 4.184, kcal: 4184, eV: 1.602176634e-19, kWh: 3_600_000, BTU: 1055.06 },
+    force:       { N: 1, kN: 1000, lbf: 4.44822, dyne: 1e-5 },
+    pressure:    { Pa: 1, kPa: 1000, atm: 101325, bar: 100000, psi: 6894.76, mmHg: 133.322 },
+    temperature: { K: 1, C: 1, F: 1 }, // special handling
+  };
+
+  registerLensAction("physics", "convert-units", (_ctx, _artifact, params = {}) => {
+    const value = Number(params.value);
+    if (!Number.isFinite(value)) return { ok: false, error: "value required" };
+    const from = String(params.from || "");
+    const to = String(params.to || "");
+    const kind = String(params.kind || "");
+    if (!UNITS[kind]) return { ok: false, error: `kind must be one of: ${Object.keys(UNITS).join(", ")}` };
+    if (!UNITS[kind][from] && kind !== "temperature") return { ok: false, error: `unknown from unit: ${from}` };
+    if (!UNITS[kind][to] && kind !== "temperature") return { ok: false, error: `unknown to unit: ${to}` };
+    let result;
+    if (kind === "temperature") {
+      // C ↔ F ↔ K conversions
+      let asK;
+      if (from === "K") asK = value;
+      else if (from === "C") asK = value + 273.15;
+      else if (from === "F") asK = (value - 32) * 5 / 9 + 273.15;
+      else return { ok: false, error: `unknown from unit: ${from}` };
+      if (to === "K") result = asK;
+      else if (to === "C") result = asK - 273.15;
+      else if (to === "F") result = (asK - 273.15) * 9 / 5 + 32;
+      else return { ok: false, error: `unknown to unit: ${to}` };
+    } else {
+      const fromSI = UNITS[kind][from];
+      const toSI = UNITS[kind][to];
+      result = (value * fromSI) / toSI;
+    }
+    return { ok: true, result: { value, from, to, kind, result: Math.round(result * 1_000_000) / 1_000_000 } };
+  });
+
+  // ── Physical constants ──
+
+  registerLensAction("physics", "constants", (_ctx, _artifact, _params = {}) => {
+    return {
+      ok: true,
+      result: {
+        constants: {
+          c:         { value: 299_792_458,        units: "m/s",       name: "speed of light in vacuum" },
+          G:         { value: 6.67430e-11,         units: "m³/kg/s²",  name: "gravitational constant" },
+          g_earth:   { value: 9.80665,             units: "m/s²",      name: "standard gravity (Earth)" },
+          h:         { value: 6.62607015e-34,      units: "J·s",       name: "Planck's constant" },
+          hbar:      { value: 1.054571817e-34,     units: "J·s",       name: "reduced Planck's constant" },
+          e:         { value: 1.602176634e-19,     units: "C",         name: "elementary charge" },
+          k_B:       { value: 1.380649e-23,        units: "J/K",       name: "Boltzmann constant" },
+          N_A:       { value: 6.02214076e23,       units: "1/mol",     name: "Avogadro constant" },
+          R:         { value: 8.314462618,         units: "J/mol/K",   name: "ideal gas constant" },
+          m_e:       { value: 9.1093837015e-31,    units: "kg",        name: "electron mass" },
+          m_p:       { value: 1.67262192369e-27,   units: "kg",        name: "proton mass" },
+          eps_0:     { value: 8.8541878128e-12,    units: "F/m",       name: "vacuum permittivity" },
+          mu_0:      { value: 1.25663706212e-6,    units: "N/A²",      name: "vacuum permeability" },
+          sigma:     { value: 5.670374419e-8,      units: "W/m²/K⁴",   name: "Stefan-Boltzmann constant" },
+          R_inf:     { value: 1.097373156e7,       units: "1/m",       name: "Rydberg constant" },
+        },
+      },
+    };
+  });
 }
