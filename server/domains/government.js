@@ -79,35 +79,104 @@ export default function registerGovernmentActions(registerLensAction) {
    * local reps. Seeded demo data (real impl would call Google Civic API
    * or OpenStates).
    */
-  registerLensAction("government", "representatives-find", (_ctx, _artifact, params = {}) => {
-    const address = String(params.address || "").trim();
-    if (!address) return { ok: false, error: "address required" };
-    const seed = hashStringGov(address);
-    const partyA = seed % 2 === 0 ? "D" : "R";
-    const partyB = seed % 3 === 0 ? "R" : "D";
-    const representatives = [
-      { name: `Sen. ${SAMPLE_NAMES[seed % SAMPLE_NAMES.length]}`, party: partyA, office: "U.S. Senate", level: "federal", phone: "(202) 224-0000", website: "https://senate.gov", termEnd: "2030-01-03" },
-      { name: `Sen. ${SAMPLE_NAMES[(seed >> 2) % SAMPLE_NAMES.length]}`, party: partyB, office: "U.S. Senate", level: "federal", phone: "(202) 224-0001", website: "https://senate.gov", termEnd: "2028-01-03" },
-      { name: `Rep. ${SAMPLE_NAMES[(seed >> 4) % SAMPLE_NAMES.length]}`, party: partyA, office: "U.S. House", level: "federal", district: String((seed % 50) + 1), phone: "(202) 225-0000", website: "https://house.gov", termEnd: "2027-01-03" },
-      { name: `${SAMPLE_NAMES[(seed >> 6) % SAMPLE_NAMES.length]}`, party: partyB, office: "State Senate", level: "state", district: String((seed % 40) + 1), phone: "(916) 651-4000" },
-      { name: `${SAMPLE_NAMES[(seed >> 8) % SAMPLE_NAMES.length]}`, party: partyA, office: "State Assembly", level: "state", district: String((seed % 80) + 1), phone: "(916) 319-2000" },
-      { name: `${SAMPLE_NAMES[(seed >> 10) % SAMPLE_NAMES.length]}`, party: "I", office: "Mayor", level: "local", website: "https://cityhall.example" },
-      { name: `${SAMPLE_NAMES[(seed >> 12) % SAMPLE_NAMES.length]}`, party: partyB, office: "City Council", level: "local", district: String((seed % 11) + 1) },
-    ];
-    return { ok: true, result: { representatives, address, source: "synthetic-demo" } };
+  registerLensAction("government", "representatives-find", async (_ctx, _artifact, params = {}) => {
+    // Federal members of Congress via api.congress.gov — official source,
+    // free with API key. The current member-by-address lookup isn't in
+    // the Congress.gov API directly (Google Civic was the standard, now
+    // sunset), so we accept state + optional district and return all
+    // current Congress members for that state.
+    const apiKey = process.env.CONGRESS_GOV_API_KEY;
+    if (!apiKey) {
+      return { ok: false, error: "CONGRESS_GOV_API_KEY env var required (free signup at https://api.congress.gov/sign-up/)" };
+    }
+    const state = String(params.state || "").trim().toUpperCase();
+    if (!state || state.length !== 2) {
+      return { ok: false, error: "state required as 2-letter code (e.g. CA, NY, TX)" };
+    }
+    try {
+      const url = `https://api.congress.gov/v3/member?currentMember=true&stateCode=${state}&limit=50&format=json&api_key=${encodeURIComponent(apiKey)}`;
+      const r = await globalThis.fetch(url);
+      if (!r.ok) return { ok: false, error: `congress.gov ${r.status}` };
+      const data = await r.json();
+      const members = Array.isArray(data?.members) ? data.members : [];
+      const representatives = members.map((m) => {
+        const term = (m.terms?.item || [])[0] || {};
+        return {
+          bioguideId: m.bioguideId,
+          name: m.name || `${m.firstName || ""} ${m.lastName || ""}`.trim(),
+          party: m.partyName === "Democratic" ? "D" : m.partyName === "Republican" ? "R" : (m.partyName || "I").charAt(0),
+          partyName: m.partyName,
+          state: m.state,
+          district: m.district != null ? String(m.district) : null,
+          office: term.chamber === "Senate" ? "U.S. Senate" : term.chamber === "House of Representatives" ? "U.S. House" : term.chamber || "Congress",
+          level: "federal",
+          termStart: term.startYear ? String(term.startYear) : null,
+          termEnd: term.endYear ? String(term.endYear) : null,
+          imageUrl: m.depiction?.imageUrl || null,
+          url: m.url || null,
+        };
+      });
+      return {
+        ok: true,
+        result: {
+          representatives,
+          state,
+          total: data?.pagination?.count ?? representatives.length,
+          source: "api.congress.gov (current Congress)",
+          notes: "Returns all current US House + Senate members for the given state. State + local representatives require OpenStates API (separate integration).",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `representatives lookup failed: ${e?.message || "network"}` };
+    }
   });
 
   /**
-   * bills-list — recent congressional bills filtered by topic.
+   * bills-list — recent congressional bills, optionally filtered by topic.
+   * Live from api.congress.gov (free with API key).
    */
-  registerLensAction("government", "bills-list", (_ctx, _artifact, params = {}) => {
-    const topic = String(params.topic || "").toLowerCase();
-    const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
-    let bills = SAMPLE_BILLS;
-    if (topic) {
-      bills = bills.filter(b => b.title.toLowerCase().includes(topic) || (b.subjects || []).some(s => s.toLowerCase().includes(topic)));
+  registerLensAction("government", "bills-list", async (_ctx, _artifact, params = {}) => {
+    const apiKey = process.env.CONGRESS_GOV_API_KEY;
+    if (!apiKey) {
+      return { ok: false, error: "CONGRESS_GOV_API_KEY env var required (free signup at https://api.congress.gov/sign-up/)" };
     }
-    return { ok: true, result: { bills: bills.slice(0, limit), topic, total: bills.length } };
+    const topic = String(params.topic || "").trim();
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
+    const congress = Number(params.congress) || 119; // current Congress
+    try {
+      const url = `https://api.congress.gov/v3/bill/${congress}?limit=${limit}&sort=updateDate+desc&format=json&api_key=${encodeURIComponent(apiKey)}`;
+      const r = await globalThis.fetch(url);
+      if (!r.ok) return { ok: false, error: `congress.gov ${r.status}` };
+      const data = await r.json();
+      let bills = (data?.bills || []).map((b) => ({
+        billId: `${b.type}${b.number}-${b.congress}`,
+        congress: b.congress,
+        type: b.type,
+        number: b.number,
+        title: b.title || `${b.type}${b.number}`,
+        introducedDate: b.introducedDate || null,
+        latestAction: b.latestAction?.text || null,
+        latestActionDate: b.latestAction?.actionDate || null,
+        originChamber: b.originChamber || null,
+        url: b.url || null,
+      }));
+      if (topic) {
+        const needle = topic.toLowerCase();
+        bills = bills.filter((b) => b.title.toLowerCase().includes(needle));
+      }
+      return {
+        ok: true,
+        result: {
+          bills: bills.slice(0, limit),
+          topic: topic || null,
+          congress,
+          total: data?.pagination?.count ?? bills.length,
+          source: `api.congress.gov (${congress}th Congress)`,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `bills lookup failed: ${e?.message || "network"}` };
+    }
   });
 
   /**
@@ -246,20 +315,7 @@ async function fetchJsonGov(url, headers = {}) {
   }
 }
 
-const SAMPLE_NAMES = [
-  "Patricia Johnson", "Michael Chen", "Sarah Rodriguez", "David Kim", "Maria Garcia",
-  "James Wilson", "Linda Thompson", "Robert Lee", "Jennifer Martinez", "William Brown",
-  "Emily Davis", "Christopher Miller", "Jessica Anderson", "Daniel Taylor", "Ashley Moore",
-  "Matthew White", "Amanda Harris", "Andrew Martin", "Stephanie Jackson", "Joseph Wright",
-];
-
-const SAMPLE_BILLS = [
-  { id: "hr1234-119", number: "H.R. 1234", congress: 119, title: "American Climate Resilience Act of 2026", summary: "Establishes federal grants for state-level climate adaptation infrastructure including sea-level rise barriers, wildfire mitigation, and drought-resistant water systems.", introducedDate: "2026-02-14", latestActionDate: "2026-04-22", latestActionText: "Reported by Committee on Energy and Commerce", status: "committee", sponsor: { name: "Rep. Sarah Chen", party: "D", state: "CA" }, cosponsors: 47, subjects: ["climate", "infrastructure", "environment"], url: "https://congress.gov/bill/119th-congress/house-bill/1234" },
-  { id: "s567-119", number: "S. 567", congress: 119, title: "AI Accountability and Transparency Act", summary: "Requires federal agencies using generative AI to publish model cards, training-data summaries, and bias-audit results before deployment.", introducedDate: "2026-01-30", latestActionDate: "2026-05-01", latestActionText: "Passed Senate by voice vote", status: "passed_chamber", sponsor: { name: "Sen. Mark Patel", party: "I", state: "VT" }, cosponsors: 22, subjects: ["AI", "technology", "transparency"], url: "https://congress.gov/bill/119th-congress/senate-bill/567" },
-  { id: "hr2890-119", number: "H.R. 2890", congress: 119, title: "Universal Childcare Benefit Act", summary: "Establishes a refundable monthly tax credit of up to $1,500 per child under 5 for working families earning <$200K.", introducedDate: "2026-03-08", latestActionDate: "2026-04-15", latestActionText: "Referred to Subcommittee on Health", status: "committee", sponsor: { name: "Rep. Linda Martinez", party: "D", state: "TX" }, cosponsors: 89, subjects: ["healthcare", "family", "tax", "education"] },
-  { id: "hr3001-119", number: "H.R. 3001", congress: 119, title: "Right to Repair Consumer Electronics Act", summary: "Requires manufacturers of consumer electronics to provide parts, tools, and repair documentation to independent shops at non-discriminatory pricing.", introducedDate: "2026-04-02", latestActionDate: "2026-04-02", latestActionText: "Introduced", status: "introduced", sponsor: { name: "Rep. James Wilson", party: "D", state: "OR" }, cosponsors: 31, subjects: ["technology", "consumer protection"] },
-  { id: "s892-119", number: "S. 892", congress: 119, title: "Healthcare Price Transparency Enforcement Act", summary: "Imposes civil penalties up to $50K per facility per day for hospitals failing to publish machine-readable pricing files for top 300 shoppable services.", introducedDate: "2026-02-25", latestActionDate: "2026-05-10", latestActionText: "Signed by President", status: "signed", sponsor: { name: "Sen. Patricia Johnson", party: "R", state: "FL" }, cosponsors: 18, subjects: ["healthcare", "transparency"] },
-  { id: "hr4567-119", number: "H.R. 4567", congress: 119, title: "Voting Rights Restoration Act of 2026", summary: "Requires states to provide online voter registration, automatic registration on DMV interactions, and mandatory mail-ballot postage prepay.", introducedDate: "2026-04-20", latestActionDate: "2026-05-08", latestActionText: "Hearing held by Subcommittee on Elections", status: "committee", sponsor: { name: "Rep. Robert Lee", party: "D", state: "NY" }, cosponsors: 56, subjects: ["voting", "elections", "civil rights"] },
-  { id: "s1234-119", number: "S. 1234", congress: 119, title: "Federal Workforce Telework Modernization Act", summary: "Codifies a 60% telework floor for federal positions deemed telework-eligible by agency CIOs.", introducedDate: "2026-03-15", latestActionDate: "2026-04-30", latestActionText: "Failed cloture vote 47-53", status: "failed", sponsor: { name: "Sen. Maria Garcia", party: "D", state: "NM" }, cosponsors: 12, subjects: ["federal workforce", "labor"] },
-  { id: "hr5012-119", number: "H.R. 5012", congress: 119, title: "Crypto Tax Simplification Act", summary: "Excludes crypto transactions under $200 from reporting requirements; allows long-term capital gains treatment after 12 months held.", introducedDate: "2026-05-01", latestActionDate: "2026-05-01", latestActionText: "Introduced", status: "introduced", sponsor: { name: "Rep. Andrew Martin", party: "R", state: "WY" }, cosponsors: 8, subjects: ["crypto", "tax", "technology"] },
-];
+// Note: prior versions held SAMPLE_NAMES + SAMPLE_BILLS arrays used to
+// synthesize fake representatives + bills. Per the "everything must be
+// real" directive, those have been removed — both macros now hit
+// api.congress.gov directly with CONGRESS_GOV_API_KEY.

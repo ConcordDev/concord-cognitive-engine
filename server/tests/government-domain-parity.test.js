@@ -20,45 +20,103 @@ beforeEach(() => {
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
-describe("government.representatives-find", () => {
-  it("rejects empty address", () => {
-    assert.equal(call("representatives-find", ctxA, { address: "" }).ok, false);
+describe("government.representatives-find (api.congress.gov live)", () => {
+  it("requires CONGRESS_GOV_API_KEY env var", async () => {
+    delete process.env.CONGRESS_GOV_API_KEY;
+    const r = await call("representatives-find", ctxA, { state: "CA" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /CONGRESS_GOV_API_KEY/);
   });
 
-  it("returns federal + state + local reps for an address (deterministic)", () => {
-    const r1 = call("representatives-find", ctxA, { address: "94110" });
-    assert.equal(r1.ok, true);
-    assert.ok(r1.result.representatives.some(x => x.level === "federal"));
-    assert.ok(r1.result.representatives.some(x => x.level === "state"));
-    assert.ok(r1.result.representatives.some(x => x.level === "local"));
-    const r2 = call("representatives-find", ctxA, { address: "94110" });
-    assert.deepEqual(r1.result.representatives, r2.result.representatives);
+  it("requires 2-letter state code", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    const r = await call("representatives-find", ctxA, { state: "" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /state required as 2-letter code/);
   });
 
-  it("different addresses produce different reps", () => {
-    const r1 = call("representatives-find", ctxA, { address: "94110" });
-    const r2 = call("representatives-find", ctxA, { address: "10001" });
-    assert.notDeepEqual(r1.result.representatives[0], r2.result.representatives[0]);
+  it("parses Congress.gov response shape", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    globalThis.fetch = async (url) => {
+      assert.match(url, /api\.congress\.gov/);
+      assert.match(url, /stateCode=CA/);
+      assert.match(url, /api_key=test-key/);
+      return {
+        ok: true,
+        json: async () => ({
+          members: [
+            {
+              bioguideId: "P000197", name: "Pelosi, Nancy", firstName: "Nancy", lastName: "Pelosi",
+              partyName: "Democratic", state: "CA", district: 11,
+              terms: { item: [{ chamber: "House of Representatives", startYear: 2023, endYear: 2025 }] },
+              depiction: { imageUrl: "https://example.com/p.jpg" },
+              url: "https://api.congress.gov/v3/member/P000197",
+            },
+          ],
+          pagination: { count: 1 },
+        }),
+      };
+    };
+    const r = await call("representatives-find", ctxA, { state: "CA" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "api.congress.gov (current Congress)");
+    assert.equal(r.result.representatives.length, 1);
+    assert.equal(r.result.representatives[0].party, "D");
+    assert.equal(r.result.representatives[0].office, "U.S. House");
+    assert.equal(r.result.representatives[0].district, "11");
   });
 });
 
-describe("government.bills-list", () => {
-  it("returns sample bills with all statuses represented", () => {
-    const r = call("bills-list", ctxA, { limit: 20 });
+describe("government.bills-list (api.congress.gov live)", () => {
+  it("requires CONGRESS_GOV_API_KEY env var", async () => {
+    delete process.env.CONGRESS_GOV_API_KEY;
+    const r = await call("bills-list", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /CONGRESS_GOV_API_KEY/);
+  });
+
+  it("parses Congress.gov bill response", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    globalThis.fetch = async (url) => {
+      assert.match(url, /v3\/bill\/119/);
+      return {
+        ok: true,
+        json: async () => ({
+          bills: [
+            {
+              type: "HR", number: 1234, congress: 119,
+              title: "American Climate Resilience Act of 2026",
+              introducedDate: "2026-02-14",
+              latestAction: { text: "Reported by Committee on Energy and Commerce", actionDate: "2026-04-22" },
+              originChamber: "House",
+              url: "https://api.congress.gov/v3/bill/119/hr/1234",
+            },
+          ],
+          pagination: { count: 1 },
+        }),
+      };
+    };
+    const r = await call("bills-list", ctxA, { limit: 10 });
     assert.equal(r.ok, true);
-    assert.ok(r.result.bills.length >= 5);
-    const statuses = new Set(r.result.bills.map(b => b.status));
-    assert.ok(statuses.size >= 3, "expected diversity of bill statuses");
+    assert.equal(r.result.bills.length, 1);
+    assert.equal(r.result.bills[0].billId, "HR1234-119");
+    assert.match(r.result.bills[0].title, /Climate Resilience/);
   });
 
-  it("filters by topic", () => {
-    const r = call("bills-list", ctxA, { topic: "climate" });
-    assert.ok(r.result.bills.every(b => b.title.toLowerCase().includes("climate") || (b.subjects || []).some(s => s.toLowerCase().includes("climate"))));
-  });
-
-  it("respects limit", () => {
-    const r = call("bills-list", ctxA, { limit: 2 });
-    assert.equal(r.result.bills.length, 2);
+  it("topic filter applied after fetch (substring match on title)", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        bills: [
+          { type: "HR", number: 1, congress: 119, title: "Climate Act" },
+          { type: "S",  number: 2, congress: 119, title: "AI Accountability" },
+        ],
+      }),
+    });
+    const r = await call("bills-list", ctxA, { topic: "climate" });
+    assert.equal(r.result.bills.length, 1);
+    assert.match(r.result.bills[0].title, /Climate/);
   });
 });
 
