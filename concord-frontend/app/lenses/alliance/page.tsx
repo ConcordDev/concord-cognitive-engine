@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, MessageSquare, Target, Zap, Layers, ChevronDown, HeartHandshake as Handshake, Crown, Loader2, XCircle, Shield, Network, BarChart3, AlertTriangle, CheckCircle } from 'lucide-react';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { FactionWarIntel } from '@/components/alliance/FactionWarIntel';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -678,6 +679,9 @@ export default function AllianceLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <FactionWarIntel />
+      </section>
     </div>
     </LensShell>
   );
