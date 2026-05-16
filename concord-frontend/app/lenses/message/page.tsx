@@ -18,6 +18,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { MessagingRepos } from '@/components/message/MessagingRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -383,6 +384,9 @@ export default function MessageLensPage() {
         Message Workbench
       </button>
       <MessageWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <MessagingRepos />
+      </section>
     </LensShell>
   );
 }
