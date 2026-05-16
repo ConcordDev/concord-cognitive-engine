@@ -19,6 +19,7 @@ import {
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { EconomyDashboard } from '@/components/billing/EconomyDashboard';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -1004,6 +1005,9 @@ export default function BillingPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <EconomyDashboard />
+      </section>
     </div>
     </LensShell>
   );
