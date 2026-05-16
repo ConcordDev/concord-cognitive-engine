@@ -18,6 +18,7 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { WikipediaExplorer } from '@/components/history/WikipediaExplorer';
+import { TimelineSourceTools } from '@/components/history/TimelineSourceTools';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
@@ -630,6 +631,10 @@ export default function HistoryLensPage() {
           <WikipediaExplorer />
         </div>
       )}
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <TimelineSourceTools />
+      </section>
     </div>
     </LensShell>
   );
