@@ -48,18 +48,12 @@ describe("finance.envelopes-* + monthly-income", () => {
   });
 });
 
-describe("finance.net-worth-history", () => {
-  it("seeds synthetic snapshots when none exist", () => {
+describe("finance.net-worth-history (real user snapshots only)", () => {
+  it("returns empty array + setup hint when no snapshots logged", () => {
     const r = call("net-worth-history", ctxA, { range: "1Y" });
     assert.equal(r.ok, true);
-    assert.ok(r.result.snapshots.length > 0);
-    for (const s of r.result.snapshots) {
-      assert.ok(typeof s.cash === "number");
-      assert.ok(typeof s.total === "number");
-      // Total may differ by ±1 due to per-component rounding in the synthetic seeder.
-      const expected = s.cash + s.investments + s.realEstate + s.crypto - s.liabilities;
-      assert.ok(Math.abs(s.total - expected) <= 2, `total ${s.total} vs sum ${expected}`);
-    }
+    assert.equal(r.result.snapshots.length, 0);
+    assert.match(r.result.notes, /No snapshots logged/);
   });
 
   it("manual snapshot persists and feeds history", () => {
@@ -72,18 +66,11 @@ describe("finance.net-worth-history", () => {
   });
 });
 
-describe("finance.investment-checkup", () => {
-  it("returns allocation drift + concentration + fees + score for sample portfolio", () => {
+describe("finance.investment-checkup (real holdings required)", () => {
+  it("returns error when user has no holdings (no SAMPLE_PORTFOLIO fallback)", () => {
     const r = call("investment-checkup", ctxA, {});
-    assert.equal(r.ok, true);
-    assert.ok(Array.isArray(r.result.allocation));
-    assert.equal(r.result.allocation.length, 5);
-    for (const a of r.result.allocation) {
-      assert.ok(typeof a.current === "number");
-      assert.ok(["buy", "sell", "hold"].includes(a.rebalanceAction));
-    }
-    assert.ok(r.result.score >= 0 && r.result.score <= 100);
-    assert.ok(r.result.totalAnnualFeeUsd >= 0);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no holdings/);
   });
 });
 

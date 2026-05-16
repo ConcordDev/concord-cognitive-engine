@@ -53,14 +53,12 @@ describe("logistics.route-optimize", () => {
 });
 
 describe("logistics.inventory-list", () => {
-  it("returns deterministic SKU set with low/out flags computable", () => {
+  it("returns empty + setup hint when no real inventory feed is wired (no SAMPLE_SKUS fallback)", () => {
     const r = call("inventory-list", ctxA, {});
     assert.equal(r.ok, true);
-    assert.ok(r.result.items.length >= 10);
-    for (const i of r.result.items) {
-      assert.ok(i.sku && i.name);
-      assert.ok(typeof i.quantity === "number");
-    }
+    assert.deepEqual(r.result.items, []);
+    assert.equal(r.result.source, "empty");
+    assert.match(r.result.notes, /warehouse feed|WMS|Shopify/);
   });
 });
 

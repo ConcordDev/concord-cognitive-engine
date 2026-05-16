@@ -32,15 +32,37 @@ const ctxA = { actor: { userId: userA }, userId: userA };
 const ctxB = { actor: { userId: userB }, userId: userB };
 
 describe("eco.weather-forecast", () => {
-  it("returns the deterministic fallback forecast when Open-Meteo unreachable", async () => {
+  it("returns error shape when Open-Meteo unreachable (no synthetic fallback)", async () => {
+    const r = await call("weather-forecast", ctxA, { lat: 37.7, lng: -122.4 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /open-meteo unreachable/);
+  });
+
+  it("parses Open-Meteo response when fetch succeeds", async () => {
+    globalThis.fetch = async (url) => {
+      assert.match(url, /api\.open-meteo\.com\/v1\/forecast/);
+      assert.match(url, /latitude=37\.7/);
+      return {
+        ok: true,
+        json: async () => ({
+          current: { temperature_2m: 18, relative_humidity_2m: 60, apparent_temperature: 17, is_day: 1, precipitation: 0, weather_code: 1, wind_speed_10m: 5, wind_direction_10m: 180 },
+          hourly: { time: [], temperature_2m: [], precipitation: [], relative_humidity_2m: [] },
+          daily: {
+            time: ["2026-05-16","2026-05-17","2026-05-18","2026-05-19","2026-05-20","2026-05-21","2026-05-22"],
+            weather_code: [1,1,2,3,1,2,1],
+            temperature_2m_max: [22,23,21,20,22,24,23],
+            temperature_2m_min: [12,13,11,10,12,14,13],
+            precipitation_sum: [0,0,1,2,0,0,0],
+            precipitation_probability_max: [10,5,30,60,5,10,5],
+            wind_speed_10m_max: [12,10,8,15,9,11,10],
+            uv_index_max: [6,7,5,4,7,8,7],
+          },
+        }),
+      };
+    };
     const r = await call("weather-forecast", ctxA, { lat: 37.7, lng: -122.4 });
     assert.equal(r.ok, true);
-    assert.ok(r.result.daily.length === 7);
-    for (const d of r.result.daily) {
-      assert.ok(typeof d.high === "number");
-      assert.ok(typeof d.low === "number");
-      assert.ok(d.high >= d.low);
-    }
+    assert.equal(r.result.daily.length, 7);
     assert.equal(r.result.location.lat, 37.7);
   });
 

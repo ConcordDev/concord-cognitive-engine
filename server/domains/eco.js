@@ -543,10 +543,9 @@ export default function registerEcoActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return {
-        ok: true,
-        result: synthesizeWeatherFallback(lat, lng, e),
-      };
+      // Per "everything must be real" directive: no synthetic week fallback.
+      // Open-Meteo is the real source; surface the network error.
+      return { ok: false, error: `open-meteo unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
 
@@ -825,39 +824,6 @@ function extractJson(text) {
   const last = body.lastIndexOf("}");
   if (first < 0 || last <= first) return null;
   try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
-}
-
-function synthesizeWeatherFallback(lat, lng, err) {
-  // Deterministic-ish synthetic week so the UI stays useful when Open-Meteo unreachable
-  const seasonAmp = 10;
-  const base = 18 - Math.abs(lat) * 0.3;
-  const daily = Array.from({ length: 7 }, (_, i) => ({
-    date: new Date(Date.now() + i * 86400000).toISOString().slice(0, 10),
-    high: base + 8 + Math.sin(i / 2) * seasonAmp / 2,
-    low: base - 2 + Math.sin(i / 2) * seasonAmp / 2,
-    precipitationMm: i % 3 === 0 ? 2.5 : 0,
-    precipitationProbability: i % 3 === 0 ? 60 : 10,
-    windSpeedMax: 18 + i,
-    weatherCode: i % 3 === 0 ? 61 : i % 2 === 0 ? 2 : 0,
-    uvIndex: 5,
-  }));
-  return {
-    current: {
-      temperature: base + 5, feelsLike: base + 4, humidity: 60,
-      windSpeed: 12, windDirection: 270, precipitationMm: 0,
-      weatherCode: 1, isDay: true,
-    },
-    daily,
-    hourly: Array.from({ length: 24 }, (_, i) => ({
-      time: new Date(Date.now() + i * 3600000).toISOString(),
-      temperature: base + 3 + Math.sin(i / 4) * 3,
-      precipitationMm: 0,
-      humidity: 60,
-    })),
-    location: { lat, lng, label: "fallback" },
-    alerts: [],
-    error: err instanceof Error ? err.message : String(err),
-  };
 }
 
 const CLIMATE_ACTIONS_LIBRARY = [
