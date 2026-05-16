@@ -73,6 +73,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import RetailWorkbench from '@/components/retail/RetailWorkbench';
+import { LivePosTerminal } from '@/components/retail/LivePosTerminal';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -2015,6 +2016,9 @@ export default function RetailLensPage() {
         Retail Workbench
       </button>
       <RetailWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LivePosTerminal />
+      </section>
     </LensShell>
   );
 }
