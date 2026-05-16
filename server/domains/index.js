@@ -71,6 +71,7 @@ import meta from './meta.js';
 import metacognition from './metacognition.js';
 import metalearning from './metalearning.js';
 import news from './news.js';
+import meditation from './meditation.js';
 import reflection from './reflection.js';
 import repos from './repos.js';
 import resonance from './resonance.js';
@@ -258,6 +259,7 @@ export default [
   metacognition,
   metalearning,
   news,
+  meditation,
   reflection,
   repos,
   resonance,

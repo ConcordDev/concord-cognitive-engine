@@ -20,6 +20,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { BrainPoolStatus } from '@/components/expert-mode/BrainPoolStatus';
+import { AnswerActionPanel } from '@/components/expert-mode/AnswerActionPanel';
 import { Loader2 } from 'lucide-react';
 
 interface Source {
@@ -239,6 +240,14 @@ export default function ExpertModeLens() {
                 </ul>
               </div>
             )}
+
+            <AnswerActionPanel
+              query={query}
+              answer={result.answer ?? ''}
+              sources={result.sources ?? []}
+              provider={result.provider}
+              model={result.model}
+            />
           </article>
         )}
 
