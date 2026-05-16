@@ -30,6 +30,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { PlaceFinder } from '@/components/atlas/PlaceFinder';
+import { DistanceMatrixPanel } from '@/components/atlas/DistanceMatrixPanel';
 
 // Leaflet requires dynamic import (no SSR)
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -483,6 +484,10 @@ export default function AtlasLensPage() {
       {/* Bespoke OSM place finder (Nominatim + Overpass) with SVG map + Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PlaceFinder />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <DistanceMatrixPanel />
       </section>
     </div>
 
