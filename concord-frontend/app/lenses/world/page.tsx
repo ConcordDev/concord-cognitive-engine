@@ -31,6 +31,10 @@ import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
 import { themeForWorldId, CONCORDIA_THEMES } from '@/lib/world-lens/concordia-theme';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
+import FactionOverlay from '@/components/world/FactionOverlay';
+import WorldShareButton from '@/components/world/WorldShareButton';
+import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
+import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import {
   DeformationStore,
   replayDeformations,
@@ -799,8 +803,11 @@ import {
   Gamepad2,
   Trophy,
   Briefcase,
+  Store,
+  ScrollText,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 // Wave 1 deferral 5: reads the player's stored quality preset (set via /lenses/settings)
@@ -1526,6 +1533,13 @@ export default function WorldLensPage() {
   const [creationMode, setCreationMode] = useState<CreationMode | null>(null);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState<0 | 1 | 2 | 3>(0);
+
+  // 2026 parity polish — slide-overs surfacing existing simulation.
+  // Mirrors the systemsPanel pattern from the chat lens.
+  const [factionOverlayOpen, setFactionOverlayOpen] = useState(false);
+  const [questLogOpen, setQuestLogOpen] = useState(false);
+  const [marketplacePanelOpen, setMarketplacePanelOpen] = useState(false);
+  const [currentWorldId] = useState<string>('concordia-hub');
 
   // District tools state
   const [activeTool, setActiveTool] = useState<DistrictTool>(null);
@@ -5605,8 +5619,64 @@ export default function WorldLensPage() {
         </div>
       )}
 
+      {/* 2026 parity polish — affordance bar surfacing existing simulation:
+          faction overlay (state machine), quest log (with pin-to-HUD),
+          marketplace (in-world commerce), share-this-spot (UEFN-style link). */}
+      <div className="px-3 py-1.5 border-t border-white/10 flex items-center gap-2 flex-wrap bg-black/30">
+        <button
+          type="button"
+          onClick={() => setFactionOverlayOpen((v) => !v)}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition-colors',
+            factionOverlayOpen
+              ? 'border-violet-500/50 bg-violet-500/10 text-violet-200'
+              : 'border-white/10 text-gray-400 hover:border-violet-500/30 hover:text-violet-300',
+          )}
+          title="Faction overlay — stance, momentum, relations"
+        >
+          <MapIcon className="w-3 h-3" />
+          Factions
+        </button>
+        <button
+          type="button"
+          onClick={() => setQuestLogOpen(true)}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 text-xs text-gray-400 hover:border-amber-500/30 hover:text-amber-300 transition-colors"
+          title="Quest log — collapsible chains + pin to HUD"
+        >
+          <ScrollText className="w-3 h-3" />
+          Quests
+        </button>
+        <button
+          type="button"
+          onClick={() => setMarketplacePanelOpen(true)}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 text-xs text-gray-400 hover:border-cyan-500/30 hover:text-cyan-300 transition-colors"
+          title="Marketplace — spells, blueprints, recipes, DTUs"
+        >
+          <Store className="w-3 h-3" />
+          Marketplace
+        </button>
+        <WorldShareButton worldId={currentWorldId} />
+      </div>
+
       {/* Bottom Status Bar */}
       <StatusBar district={viewMode === 'district' ? activeDistrict : null} />
+
+      {/* 2026 parity slide-overs — mounted at the lens shell root */}
+      <FactionOverlay
+        worldId={currentWorldId}
+        open={factionOverlayOpen}
+        onClose={() => setFactionOverlayOpen(false)}
+      />
+      <WorldQuestLogPanel
+        worldId={currentWorldId}
+        open={questLogOpen}
+        onClose={() => setQuestLogOpen(false)}
+      />
+      <WorldMarketplacePanel
+        worldId={currentWorldId}
+        open={marketplacePanelOpen}
+        onClose={() => setMarketplacePanelOpen(false)}
+      />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">
