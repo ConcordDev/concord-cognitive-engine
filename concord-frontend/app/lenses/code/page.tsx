@@ -47,6 +47,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import { GithubTrending } from '@/components/code/GithubTrending';
 
 interface FileNode {
   id: string;
@@ -2547,6 +2548,9 @@ export default function CodeLensPage() {
       onApply={applyMultiFileAgent}
       onRegenerate={() => openMultiFileAgent(agentPrompt)}
     />
+    <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <GithubTrending />
+    </section>
     </LensShell>
   );
 }
