@@ -59,6 +59,8 @@ import {
   PlayCircle,
   GitBranch,
   Key,
+  FolderOpen,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -89,6 +91,10 @@ import { MessageContinuationMarker } from '@/components/chat/MessageContinuation
 import { useOracleSolve, type OracleResponseData } from '@/hooks/useOracleSolve';
 import AtlasOverlay from '@/components/chat/AtlasOverlay';
 import AtlasViewer from '@/components/chat/AtlasViewer';
+import ProjectsPanel, { type ChatProject } from '@/components/chat/ProjectsPanel';
+import PromptsLibrary from '@/components/chat/PromptsLibrary';
+import ThreadSearchOverlay from '@/components/chat/ThreadSearchOverlay';
+import ScheduledTasksPanel from '@/components/chat/ScheduledTasksPanel';
 import {
   WelcomePanel,
   ModeSelector,
@@ -576,6 +582,15 @@ export default function ChatLensPage() {
   const [toolPaletteOpen, setToolPaletteOpen] = useState(false);
   // Sprint 11 — Agent Mode panel (slide-over, isolated session).
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+
+  // 2026 parity — Projects / Prompts / Search / Scheduled slide-overs.
+  // Parity vs Claude Projects + ChatGPT Projects + Perplexity Spaces +
+  // ChatGPT scheduled-tasks. State management mirrors systemsPanelOpen.
+  const [projectsPanelOpen, setProjectsPanelOpen] = useState(false);
+  const [promptsPanelOpen, setPromptsPanelOpen] = useState(false);
+  const [scheduledPanelOpen, setScheduledPanelOpen] = useState(false);
+  const [threadSearchOpen, setThreadSearchOpen] = useState(false);
+  const [activeProject, setActiveProject] = useState<ChatProject | null>(null);
 
   // Tool execution traces — when Concord (or the user via the palette)
   // runs a tool, the result appears inline in the thread as a trace
@@ -1629,6 +1644,8 @@ export default function ChatLensPage() {
       { id: 'tool-palette', keys: 'mod+.', description: 'Open tool palette', category: 'actions', action: () => setToolPaletteOpen(true), global: true },
       { id: 'toggle-pause', keys: 'mod+shift+p', description: 'Pause / resume Concord initiatives', category: 'actions', action: toggleInitiativesPaused, global: true },
       { id: 'global-search', keys: 'mod+shift+f', description: 'Search across all conversations', category: 'navigation', action: openGlobalSearch, global: true },
+      { id: 'thread-search', keys: 'mod+k', description: 'Open thread search overlay', category: 'navigation', action: () => setThreadSearchOpen(true), global: true },
+      { id: 'projects-panel', keys: 'mod+shift+o', description: 'Open Projects panel', category: 'navigation', action: () => setProjectsPanelOpen(true), global: true },
     ],
     { lensId: 'chat' }
   );
@@ -2870,6 +2887,50 @@ export default function ChatLensPage() {
                 <Activity className="w-3 h-3" />
                 <span>Systems</span>
               </button>
+              {/* 2026 parity — Projects, Prompts, Scheduled, Search.
+                  Parity with Claude Projects / ChatGPT Projects-Tasks /
+                  Perplexity Spaces. */}
+              <button
+                type="button"
+                onClick={() => setProjectsPanelOpen(true)}
+                className={cn(
+                  'hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border rounded-full text-xs transition-colors',
+                  activeProject
+                    ? 'border-cyan-500/50 text-cyan-300'
+                    : 'border-lattice-border text-gray-400 hover:text-cyan-300 hover:border-cyan-500/30',
+                )}
+                title="Projects (Claude / ChatGPT / Perplexity Spaces parity)"
+              >
+                <FolderOpen className="w-3 h-3" />
+                <span>{activeProject ? activeProject.name.slice(0, 14) : 'Projects'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPromptsPanelOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border border-lattice-border rounded-full text-xs text-gray-400 hover:text-emerald-300 hover:border-emerald-500/30 transition-colors"
+                title="Saved prompt library"
+              >
+                <BookOpen className="w-3 h-3" />
+                <span>Prompts</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduledPanelOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border border-lattice-border rounded-full text-xs text-gray-400 hover:text-amber-300 hover:border-amber-500/30 transition-colors"
+                title="Scheduled tasks (recurring prompts)"
+              >
+                <Clock className="w-3 h-3" />
+                <span>Schedule</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setThreadSearchOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border border-lattice-border rounded-full text-xs text-gray-400 hover:text-neon-cyan hover:border-neon-cyan/30 transition-colors"
+                title="Search across all conversations (⌘K)"
+              >
+                <Search className="w-3 h-3" />
+                <span>Search</span>
+              </button>
             </div>
 
             {/* Cognitive Status Bar */}
@@ -3912,6 +3973,34 @@ export default function ChatLensPage() {
         Agent Mode
       </button>
       <AgentModePanel open={agentPanelOpen} onClose={() => setAgentPanelOpen(false)} />
+      <ProjectsPanel
+        open={projectsPanelOpen}
+        onClose={() => setProjectsPanelOpen(false)}
+        onSelectProject={(p) => setActiveProject(p)}
+        activeProjectId={activeProject?.id || null}
+      />
+      <PromptsLibrary
+        open={promptsPanelOpen}
+        onClose={() => setPromptsPanelOpen(false)}
+        onInsert={(content) => {
+          setInput((prev) => (prev ? `${prev}\n\n${content}` : content));
+          inputRef.current?.focus();
+        }}
+      />
+      <ScheduledTasksPanel
+        open={scheduledPanelOpen}
+        onClose={() => setScheduledPanelOpen(false)}
+        activeProjectId={activeProject?.id || null}
+      />
+      <ThreadSearchOverlay
+        open={threadSearchOpen}
+        onClose={() => setThreadSearchOpen(false)}
+        onSelect={(threadId) => {
+          setSelectedConversation(threadId);
+          setThreadSearchOpen(false);
+        }}
+        projectId={activeProject?.id || null}
+      />
       <div className="fixed top-4 right-20 z-30">
         <InitiativeBell />
       </div>
