@@ -398,11 +398,18 @@ export default function registerCryptoActions(registerLensAction) {
   });
 
   /**
-   * swap-quote — Uniswap-style quote calculator. Deterministic math:
-   * uses live prices (when available) and a flat 0.3% LP fee + slippage
-   * tolerance. We don't talk to actual DEX routers; this is the lens'
-   * view of "what would this swap cost on a typical AMM".
-   * params: { fromId, toId, amountIn, slippagePercent = 0.5 }
+   * swap-quote — Indicative spot quote from CoinGecko prices.
+   *
+   * Per "everything must be real" directive: priceImpactPercent and
+   * gasEstimateUsd are NOT computable from spot prices alone — they
+   * require an aggregator with live pool depth + the current gas
+   * oracle. This macro returns those fields as `null` with a clear
+   * `kind:'indicative'` flag so callers don't mistake the indicative
+   * quote for an executable one.
+   *
+   * For an executable quote (with real depth + real gas + the actual
+   * DEX route the trade will hit), use crypto.swap-route (which hits
+   * the 0x aggregator API; requires ZEROX_API_KEY env).
    */
   registerLensAction("crypto", "swap-quote", async (_ctx, _artifact, params = {}) => {
     const fromId = String(params.fromId || "");
@@ -424,15 +431,11 @@ export default function registerCryptoActions(registerLensAction) {
       return { ok: false, error: `coingecko unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
     if (fromPrice <= 0 || toPrice <= 0) {
-      // Per "everything must be real" directive: no hash-seeded
-      // synthetic price fallback. If CoinGecko doesn't know the token,
-      // refuse the quote rather than make one up.
       return {
         ok: false,
         error: `coingecko has no usd price for ${fromPrice <= 0 ? fromId : toId} — refusing to synthesize a swap quote`,
       };
     }
-    const source = "coingecko";
 
     const rate = fromPrice / toPrice;
     const amountOutGross = amountIn * rate;
@@ -440,23 +443,131 @@ export default function registerCryptoActions(registerLensAction) {
     const feeOut = amountOutGross * feeFraction;
     const amountOut = amountOutGross - feeOut;
     const minimumReceived = amountOut * (1 - slippagePercent / 100);
-    const priceImpactPercent = Math.min(95, Math.max(0.01, amountIn / 1000000 * 100));
-    const gasEstimateUsd = 1.2;
 
     return {
       ok: true,
       result: {
         amountOut: round(amountOut, 8),
         rate: round(rate, 8),
-        priceImpactPercent: round(priceImpactPercent, 4),
+        // Indicative quote — these fields require an aggregator + gas oracle.
+        // Use crypto.swap-route for real executable values.
+        priceImpactPercent: null,
+        gasEstimateUsd: null,
         minimumReceived: round(minimumReceived, 8),
-        gasEstimateUsd,
         feeUsd: round(feeOut * toPrice, 6),
         route: [fromId.toUpperCase(), toId.toUpperCase()],
-        source,
+        source: "coingecko",
+        kind: "indicative",
         slippagePercent,
+        notes: "Indicative spot quote — assumes 0.3% LP fee. For executable quote with real depth + gas, call crypto.swap-route (0x aggregator, requires ZEROX_API_KEY).",
       },
     };
+  });
+
+  /**
+   * swap-route — Real executable swap quote from the 0x aggregator.
+   * Returns the actual DEX route the trade will hit (Uniswap V3,
+   * SushiSwap, Curve, Balancer, etc.), real on-chain gas estimate,
+   * real price impact computed against current pool depth, and the
+   * raw transaction data the user's wallet can sign + broadcast.
+   *
+   * Per "everything must be real" directive: no simulated routing,
+   * no synthesized gas. Requires ZEROX_API_KEY (free dev tier:
+   * https://dashboard.0x.org/).
+   *
+   * params: {
+   *   sellToken: ERC-20 address or symbol (ETH/WETH/USDC/...)
+   *   buyToken:  ERC-20 address or symbol
+   *   sellAmount: amount in base units (wei for ETH, 6dp for USDC, etc.)
+   *   chainId: 1 (Ethereum mainnet, default), 137 (Polygon), 8453 (Base),
+   *            42161 (Arbitrum), 10 (Optimism)
+   *   taker: optional wallet address (required for /quote, omit for /price)
+   *   slippageBps: optional, default 50 (= 0.5%)
+   * }
+   *
+   * Returns:
+   *   { buyAmount, sellAmount, price, guaranteedPrice, estimatedPriceImpact,
+   *     gas, gasPrice, sources: [...DEXes routed through...], to, data, value, kind:'executable' }
+   */
+  registerLensAction("crypto", "swap-route", async (_ctx, _artifact, params = {}) => {
+    const sellToken = String(params.sellToken || "");
+    const buyToken = String(params.buyToken || "");
+    const sellAmount = String(params.sellAmount || "");
+    const chainId = Number(params.chainId) || 1;
+    const slippageBps = Math.max(1, Math.min(5000, Number(params.slippageBps) || 50));
+    const taker = params.taker ? String(params.taker) : null;
+    if (!sellToken || !buyToken || !sellAmount) {
+      return { ok: false, error: "sellToken, buyToken, sellAmount required" };
+    }
+    if (sellToken === buyToken) return { ok: false, error: "sellToken and buyToken must differ" };
+    if (!/^\d+$/.test(sellAmount)) return { ok: false, error: "sellAmount must be base-unit integer string (wei / 6dp / etc.)" };
+
+    if (!process.env.ZEROX_API_KEY) {
+      return {
+        ok: false,
+        error: "0x aggregator not configured. Set ZEROX_API_KEY env (free dev tier at https://dashboard.0x.org/). Concord does not synthesize swap routes.",
+      };
+    }
+
+    // 0x v2 base URLs per chain
+    const chainHost = {
+      1:     "api.0x.org",            // Ethereum
+      137:   "polygon.api.0x.org",    // Polygon (deprecated by 0x; v2 routes via api.0x.org with chainId)
+      8453:  "base.api.0x.org",
+      42161: "arbitrum.api.0x.org",
+      10:    "optimism.api.0x.org",
+    }[chainId];
+    if (!chainHost) return { ok: false, error: `unsupported chainId ${chainId}` };
+
+    // Use v2 permit2 endpoint when taker is supplied (full signable
+    // tx); else /price for an indicative aggregator quote.
+    const path = taker ? "/swap/permit2/quote" : "/swap/permit2/price";
+    const qs = new URLSearchParams({
+      sellToken, buyToken, sellAmount,
+      chainId: String(chainId),
+      slippageBps: String(slippageBps),
+    });
+    if (taker) qs.set("taker", taker);
+    const url = `https://${chainHost}${path}?${qs.toString()}`;
+
+    try {
+      const r = await fetch(url, {
+        headers: {
+          "0x-api-key": process.env.ZEROX_API_KEY,
+          "0x-version": "v2",
+        },
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        return { ok: false, error: `0x ${path} ${r.status}: ${data?.reason || data?.message || "unknown"}` };
+      }
+      // 0x v2 response shape varies between /price and /quote; surface
+      // both shapes uniformly. Fields not returned by /price (gas,
+      // transaction.{to,data,value}) come back null when taker omitted.
+      return {
+        ok: true,
+        result: {
+          buyToken, sellToken, sellAmount, chainId,
+          buyAmount: data.buyAmount ?? null,
+          minBuyAmount: data.minBuyAmount ?? null,
+          price: data.price ?? null,
+          guaranteedPrice: data.guaranteedPrice ?? null,
+          estimatedPriceImpact: data.estimatedPriceImpact ?? null,
+          gas: data.gas ?? data.transaction?.gas ?? null,
+          gasPrice: data.gasPrice ?? data.transaction?.gasPrice ?? null,
+          sources: data.route?.fills?.map((f) => ({ source: f.source, proportionBps: f.proportionBps })) ?? data.sources ?? [],
+          to: data.transaction?.to ?? null,
+          data: data.transaction?.data ?? null,
+          value: data.transaction?.value ?? null,
+          allowanceTarget: data.issues?.allowance?.spender ?? data.allowanceTarget ?? null,
+          source: "0x-aggregator",
+          kind: taker ? "executable" : "indicative-aggregator",
+          slippageBps,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `0x unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 
   /**
