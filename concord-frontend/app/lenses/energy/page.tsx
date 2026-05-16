@@ -3,6 +3,7 @@
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { EiaPanel } from '@/components/energy/EiaPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback } from 'react';
@@ -563,8 +564,13 @@ export default function EnergyLensPage() {
       <div className="px-4 mb-2">
         <LensFeedPanel lensId="energy" />
       </div>
+
+      {/* Bespoke EIA electricity rates + generation mix with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <EiaPanel />
+      </section>
     </LensPageShell>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
