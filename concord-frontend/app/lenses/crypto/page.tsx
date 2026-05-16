@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { SwapRoutePanel } from '@/components/crypto-explorer/SwapRoutePanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1613,6 +1614,11 @@ export default function CryptoLensPage() {
           </div>
         )}
       </div>
+
+      {/* Bespoke 0x aggregator swap-route preview with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <SwapRoutePanel />
+      </section>
     </div>
     </LensShell>
   );
