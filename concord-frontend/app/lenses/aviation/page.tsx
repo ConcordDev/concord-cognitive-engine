@@ -26,6 +26,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed from '@/components/lens/LiveFeed';
+import AviationWorkbench from '@/components/aviation/AviationWorkbench';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -285,6 +286,7 @@ export default function AviationLensPage() {
 
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeMode, setActiveMode] = useState<ModeTab>('dashboard');
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -2081,6 +2083,17 @@ export default function AviationLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#aviation-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to aviation content</a>
+
+      {/* 2026 parity workbench — METAR/TAF, airports, perf calcs, flight plans */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-sky-500 hover:bg-sky-400 text-sky-50 shadow-2xl text-sm font-medium"
+        title="Aviation Workbench — METAR/TAF, airports, performance calcs, flight plans"
+      >
+        Aviation Workbench
+      </button>
+      <AviationWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
