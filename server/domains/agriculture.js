@@ -662,4 +662,198 @@ export default function registerAgricultureActions(registerLensAction) {
       },
     };
   });
+
+  // ─── 2026 parity — John Deere Operations / Climate FieldView / AgriWebb ──
+  //
+  // Adds real persistent field substrate + scouting log + weather/soil panel
+  // alongside the existing analysis macros. Per-user scoped.
+
+  function getAgriState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.agricultureLens) {
+      STATE.agricultureLens = {
+        fields: new Map(),    // userId -> Map<fieldId, field>
+        scouts: new Map(),    // userId -> Array<scoutingPin>
+        rotations: new Map(), // userId -> Map<fieldId, Array<seasonYear>>
+      };
+    }
+    return STATE.agricultureLens;
+  }
+  function saveAgriState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function agriActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function nextAgriId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function nowIsoAgri() { return new Date().toISOString(); }
+
+  // ── Fields (the canonical farm record) ──
+
+  registerLensAction("agriculture", "field-list", (ctx, _artifact, _params = {}) => {
+    const s = getAgriState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const map = s.fields.get(userId);
+    if (!map) return { ok: true, result: { fields: [] } };
+    const fields = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return { ok: true, result: { fields } };
+  });
+
+  registerLensAction("agriculture", "field-create", (ctx, _artifact, params = {}) => {
+    const s = getAgriState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (name.length > 60) return { ok: false, error: "name too long (max 60)" };
+    const acreage = Number(params.acreage);
+    if (!Number.isFinite(acreage) || acreage <= 0) return { ok: false, error: "acreage must be > 0" };
+    if (acreage > 100_000) return { ok: false, error: "acreage too large (max 100000)" };
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) return { ok: false, error: "lat must be -90..90" };
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) return { ok: false, error: "lng must be -180..180" };
+    const soilType = String(params.soilType || "loam").slice(0, 24);
+    const currentCrop = String(params.currentCrop || "").slice(0, 40);
+    const field = {
+      id: nextAgriId("field"),
+      name, acreage, lat, lng, soilType, currentCrop,
+      createdAt: nowIsoAgri(),
+      updatedAt: nowIsoAgri(),
+    };
+    if (!s.fields.has(userId)) s.fields.set(userId, new Map());
+    s.fields.get(userId).set(field.id, field);
+    saveAgriState();
+    return { ok: true, result: { field } };
+  });
+
+  registerLensAction("agriculture", "field-update", (ctx, _artifact, params = {}) => {
+    const s = getAgriState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.fields.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    const f = map.get(id);
+    if (typeof params.name === "string") {
+      const n = params.name.trim(); if (!n) return { ok: false, error: "name cannot be empty" };
+      f.name = n.slice(0, 60);
+    }
+    if (Number.isFinite(Number(params.acreage))) f.acreage = Number(params.acreage);
+    if (typeof params.soilType === "string") f.soilType = params.soilType.slice(0, 24);
+    if (typeof params.currentCrop === "string") f.currentCrop = params.currentCrop.slice(0, 40);
+    f.updatedAt = nowIsoAgri();
+    saveAgriState();
+    return { ok: true, result: { field: f } };
+  });
+
+  registerLensAction("agriculture", "field-delete", (ctx, _artifact, params = {}) => {
+    const s = getAgriState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.fields.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveAgriState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── Weather / soil for field (Open-Meteo — free, no key) ──
+
+  registerLensAction("agriculture", "weather-for-field", async (ctx, _artifact, params = {}) => {
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return { ok: false, error: "lat/lng required" };
+    }
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,precipitation,relative_humidity_2m,soil_moisture_0_to_1cm,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration&forecast_days=7&timezone=auto`;
+      const r = await globalThis.fetch(url);
+      if (!r.ok) return { ok: false, error: `weather api ${r.status}` };
+      const data = await r.json();
+      return {
+        ok: true,
+        result: {
+          lat, lng,
+          today: {
+            tempMax: data.daily?.temperature_2m_max?.[0],
+            tempMin: data.daily?.temperature_2m_min?.[0],
+            precipSum: data.daily?.precipitation_sum?.[0],
+            et0: data.daily?.et0_fao_evapotranspiration?.[0],
+          },
+          forecast7: data.daily?.time?.map((d, i) => ({
+            date: d,
+            tempMax: data.daily.temperature_2m_max?.[i],
+            tempMin: data.daily.temperature_2m_min?.[i],
+            precip: data.daily.precipitation_sum?.[i],
+            et0: data.daily.et0_fao_evapotranspiration?.[i],
+          })) || [],
+          currentSoilMoisture: data.hourly?.soil_moisture_0_to_1cm?.[0],
+          currentSoilTemp: data.hourly?.soil_temperature_0cm?.[0],
+          source: "open-meteo",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || "weather fetch failed" };
+    }
+  });
+
+  // ── Scouting log (geo-tagged notes per field) ──
+
+  registerLensAction("agriculture", "scout-list", (ctx, _artifact, params = {}) => {
+    const s = getAgriState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const arr = s.scouts.get(userId) || [];
+    const filtered = fieldId ? arr.filter((p) => p.fieldId === fieldId) : arr;
+    const pins = filtered.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return { ok: true, result: { pins } };
+  });
+
+  registerLensAction("agriculture", "scout-add", (ctx, _artifact, params = {}) => {
+    const s = getAgriState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    if (!fieldId) return { ok: false, error: "fieldId required" };
+    const note = String(params.note || "").trim();
+    if (!note) return { ok: false, error: "note required" };
+    if (note.length > 1000) return { ok: false, error: "note too long (max 1000)" };
+    const category = ["pest", "disease", "weed", "irrigation", "growth", "soil", "other"].includes(params.category)
+      ? params.category : "other";
+    const severity = ["low", "medium", "high"].includes(params.severity) ? params.severity : "low";
+    const pin = {
+      id: nextAgriId("scout"),
+      fieldId, note, category, severity,
+      lat: Number.isFinite(Number(params.lat)) ? Number(params.lat) : null,
+      lng: Number.isFinite(Number(params.lng)) ? Number(params.lng) : null,
+      createdAt: nowIsoAgri(),
+    };
+    if (!s.scouts.has(userId)) s.scouts.set(userId, []);
+    const arr = s.scouts.get(userId);
+    arr.unshift(pin);
+    if (arr.length > 500) arr.length = 500;
+    saveAgriState();
+    return { ok: true, result: { pin } };
+  });
+
+  registerLensAction("agriculture", "scout-delete", (ctx, _artifact, params = {}) => {
+    const s = getAgriState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const arr = s.scouts.get(userId) || [];
+    const idx = arr.findIndex((p) => p.id === id);
+    if (idx < 0) return { ok: false, error: "not found" };
+    arr.splice(idx, 1);
+    saveAgriState();
+    return { ok: true, result: { deleted: id } };
+  });
 };
