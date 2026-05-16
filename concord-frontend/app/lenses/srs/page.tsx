@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { SrsRepos } from '@/components/srs/SrsRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -1274,6 +1275,9 @@ export default function SRSLensPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <SrsRepos />
+      </section>
     </div>
     </LensShell>
   );
