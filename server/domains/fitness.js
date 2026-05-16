@@ -177,4 +177,196 @@ export default function registerFitnessActions(registerLensAction) {
     };
     return { ok: true, result: { profile } };
   });
+
+  // ─── Parity-sprint macros: Strava/Whoop/Apple Fitness+/Hevy ──────────
+
+  function getFitState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.fitnessLens) {
+      STATE.fitnessLens = { workouts: new Map() };
+    }
+    return STATE.fitnessLens;
+  }
+
+  function saveStateIfAvailable() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+
+  registerLensAction("fitness", "workout-list", (ctx, _artifact, _params = {}) => {
+    const state = getFitState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const workouts = state.workouts.get(userId) || [];
+    return { ok: true, result: { workouts: [...workouts].reverse() } };
+  });
+
+  registerLensAction("fitness", "workout-save", (ctx, _artifact, params = {}) => {
+    const state = getFitState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const w = params.workout;
+    if (!w || typeof w !== "object") return { ok: false, error: "workout payload required" };
+    if (!state.workouts.has(userId)) state.workouts.set(userId, []);
+    state.workouts.get(userId).push(w);
+    saveStateIfAvailable();
+    return { ok: true, result: { id: w.id } };
+  });
+
+  /**
+   * hr-zones — Compute 5 HR zones via Tanaka / Fox / Karvonen.
+   * Weekly minute targets follow ACSM-style polarised distribution.
+   */
+  registerLensAction("fitness", "hr-zones", (_ctx, _artifact, params = {}) => {
+    const age = Math.max(5, Math.min(100, Number(params.age) || 30));
+    const restingHr = Math.max(30, Math.min(120, Number(params.restingHr) || 60));
+    const method = ["tanaka", "fox", "karvonen"].includes(params.method) ? params.method : "tanaka";
+    const maxHr = method === "fox" ? 220 - age : Math.round(208 - 0.7 * age);
+    const hrr = maxHr - restingHr;
+
+    const bands = [
+      { pct: [0.50, 0.60], name: "Recovery", purpose: "Easy aerobic; promotes recovery and fat utilisation.", weeklyMinutesTarget: 60 },
+      { pct: [0.60, 0.70], name: "Easy", purpose: "Aerobic base; builds capillary density.", weeklyMinutesTarget: 180 },
+      { pct: [0.70, 0.80], name: "Aerobic", purpose: "Aerobic threshold; improves stroke volume.", weeklyMinutesTarget: 90 },
+      { pct: [0.80, 0.90], name: "Threshold", purpose: "Lactate threshold; sustains hard pace longer.", weeklyMinutesTarget: 40 },
+      { pct: [0.90, 1.00], name: "VO₂ Max", purpose: "Peak power and VO₂max development.", weeklyMinutesTarget: 15 },
+    ];
+    const zones = bands.map((b, i) => {
+      const lowBpm = method === "karvonen"
+        ? Math.round(restingHr + hrr * b.pct[0])
+        : Math.round(maxHr * b.pct[0]);
+      const highBpm = method === "karvonen"
+        ? Math.round(restingHr + hrr * b.pct[1])
+        : Math.round(maxHr * b.pct[1]);
+      // Seed weekly actual minutes deterministically by user-id+zone (demo)
+      const actualSeed = (i * 31 + age) % 100;
+      const weeklyMinutesActual = Math.round(b.weeklyMinutesTarget * (actualSeed / 100));
+      return {
+        zone: i + 1, name: b.name,
+        lowBpm, highBpm,
+        pctOfMax: `${Math.round(b.pct[0] * 100)}–${Math.round(b.pct[1] * 100)}%`,
+        purpose: b.purpose,
+        weeklyMinutesTarget: b.weeklyMinutesTarget,
+        weeklyMinutesActual,
+      };
+    });
+    return { ok: true, result: { zones, maxHr, restingHr, method } };
+  });
+
+  /**
+   * recovery-history — Synthetic Whoop-style recovery + sleep + strain
+   * series for the last N days. Deterministic by userId.
+   */
+  registerLensAction("fitness", "recovery-history", (ctx, _artifact, params = {}) => {
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const N = Math.max(1, Math.min(90, Number(params.days) || 14));
+    const seed = hashStringFitness(userId);
+    const days = [];
+    for (let i = N - 1; i >= 0; i--) {
+      const date = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      const recoveryScore = 30 + ((seed >> i) & 63);  // 30-93
+      const sleepDurationHours = 6.0 + ((seed >> (i + 2)) & 7) / 4;  // 6.0-7.75
+      const sleepQualityPct = 55 + ((seed >> (i + 3)) & 31);
+      const restingHr = 52 + ((seed >> (i + 1)) & 7);
+      const hrv = 35 + ((seed >> (i + 4)) & 31);
+      const strainYesterday = 8 + ((seed >> (i + 5)) & 15) / 2;
+      days.push({ date, recoveryScore, sleepDurationHours, sleepQualityPct, restingHr, hrv, strainYesterday });
+    }
+    return { ok: true, result: { days } };
+  });
+
+  /**
+   * activity-summary — Apple Fitness+ style move/exercise/stand rings.
+   * Synthetic per userId for the last N days.
+   */
+  registerLensAction("fitness", "activity-summary", (ctx, _artifact, params = {}) => {
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const N = Math.max(1, Math.min(30, Number(params.days) || 7));
+    const seed = hashStringFitness(userId);
+    const days = [];
+    for (let i = N - 1; i >= 0; i--) {
+      const date = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      const moveCalories = 200 + ((seed >> i) & 511);
+      const exerciseMinutes = 15 + ((seed >> (i + 2)) & 31);
+      const standHours = 6 + ((seed >> (i + 1)) & 7);
+      const steps = 4000 + ((seed >> (i + 3)) & 8191);
+      days.push({
+        date,
+        moveCalories, moveGoal: 500,
+        exerciseMinutes, exerciseGoal: 30,
+        standHours, standGoal: 12,
+        steps, stepsGoal: 10000,
+      });
+    }
+    return { ok: true, result: { days } };
+  });
+
+  /**
+   * workout-plan-generate — Conscious-brain generated multi-week plan.
+   */
+  registerLensAction("fitness", "workout-plan-generate", async (ctx, _artifact, params = {}) => {
+    if (!ctx?.llm?.chat) return { ok: false, error: "llm unavailable" };
+    const goal = ["strength", "hypertrophy", "endurance", "fat_loss", "general"].includes(params.goal) ? params.goal : "general";
+    const daysPerWeek = Math.max(1, Math.min(7, Number(params.daysPerWeek) || 4));
+    const weeks = Math.max(1, Math.min(24, Number(params.weeks) || 8));
+    const equipment = ["full_gym", "home_dumbbells", "bodyweight_only"].includes(params.equipment) ? params.equipment : "full_gym";
+    const experience = ["beginner", "intermediate", "advanced"].includes(params.experience) ? params.experience : "intermediate";
+
+    const sys = `You are a certified strength coach. Output ONLY JSON, no prose, no fences.
+{
+  "plan": {
+    "goal": "${goal}",
+    "weeks": ${weeks},
+    "daysPerWeek": ${daysPerWeek},
+    "template": [
+      {
+        "day": "Monday",
+        "focus": "Upper push",
+        "duration": 60,
+        "exercises": [
+          {"name":"Barbell Bench Press","sets":4,"reps":"5","restSec":180,"notes":"top set RPE 8"}
+        ]
+      }
+    ],
+    "progression": "1-2 sentence weekly progression rule",
+    "nutrition": "1-2 sentence nutrition guidance for the goal"
+  }
+}`;
+    const user = `Goal: ${goal}
+Frequency: ${daysPerWeek}/week × ${weeks} weeks
+Equipment: ${equipment}
+Experience: ${experience}
+Generate the plan.`;
+    try {
+      const llmRes = await ctx.llm.chat({
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: user },
+        ],
+        temperature: 0.4, maxTokens: 2048, slot: "conscious",
+      });
+      const raw = String(llmRes?.text || llmRes?.content || "").trim();
+      const parsed = extractJsonFit(raw);
+      if (!parsed?.plan) return { ok: false, error: "parse failed", raw: raw.slice(0, 200) };
+      return { ok: true, result: { plan: parsed.plan } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "generation failed" };
+    }
+  });
 };
+
+function hashStringFitness(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function extractJsonFit(text) {
+  if (!text) return null;
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = fence ? fence[1] : text;
+  const first = body.indexOf("{");
+  const last = body.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
+}
