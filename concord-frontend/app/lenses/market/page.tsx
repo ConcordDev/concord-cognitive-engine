@@ -23,6 +23,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import SectorHeatmap, { type SectorHeatmapQuote } from '@/components/lens/SectorHeatmap';
 
 interface MarketListingItem {
   id: string;
@@ -226,6 +227,13 @@ export default function MarketLensPage() {
           </button>
         </div>
       </header>
+
+      {/* Yahoo Finance Markets-style heatmap — colored tile per index */}
+      <SectorHeatmap
+        quotes={(realtimeData as { quotes?: SectorHeatmapQuote[] } | null)?.quotes}
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+      />
 
       <RealtimeDataPanel domain="market" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <UniversalActions domain="market" artifactId={null} compact />
