@@ -85,7 +85,7 @@ Lenses with clear leader apps where 3–5 mounted panels = parity.
 | `classroom` | **Open Library + Anna's Archive** | Book search, ISBN lookup, subject browse, work detail, course shelf | 4 of 5 | 80% | 🚧 partial |
 | `crypto` | **CoinMarketCap + TradingView** | Price chart, watchlist, depth chart, news, holdings tracker | 2 of 5 | 40% | 🚧 partial |
 | `daily` | **Day One** | Journal entry, on-this-day, mood log, streak ring, search | 1 of 5 | 20% | 🚧 partial |
-| `debate` | **Kialo + IBIS** | Argument tree, fallacy check, steelman, evaluate, score | 0 of 5 | 0% | ⬜ empty |
+| `debate` | **Kialo + IBIS** | Argument tree, fallacy check, steelman, evaluate, score, branch-via-DTU, publish review | 4 of 7 | 57% | 🚧 partial — DebateActionPanel surfaces all 4 debate macros (fallacy, steelman, score, evaluate) + branch + snapshot + publish. Standalone Kialo-tree visualizer remains. |
 | `docs` | **Notion** | Page tree, slash menu, database view, table-block, embed | 1 of 5 | 20% | 🚧 partial (BlockEditor mounted) |
 | `forecast` | **NWS Aviation + Apple Weather** | Map overlay, 7-day strip, hourly chart, alerts, radar | ❓ | — | ❓ tbd |
 | `forestry` | **InciWeb + USDA Forest Service** | Active-fire map, carbon sequester calc, harvest planner, fire risk | 1 of 5 | 20% | 🚧 partial |
@@ -100,19 +100,19 @@ Lenses with clear leader apps where 3–5 mounted panels = parity.
 | `mining` | **MSHA + USGS Mineral Resources** | Mine lookup, violations, blast design, ore-grade calc, deposit map | 2 of 5 | 40% | 🚧 partial |
 | `nonprofit` | **Candid + GiveWell** | Org lookup by EIN, grant reporting, campaign progress, donor retention | 2 of 5 | 40% | 🚧 partial |
 | `notes` | **Apple Notes / Bear** | Folder tree, markdown editor, tag browse, attachment, search | ❓ | — | ❓ tbd (no `/lenses/notes` dir; routing TBD) |
-| `parenting` | **Wonder Weeks + Cozi** | Milestone tracker, growth percentile, immunization, routine optimizer, school calendar | 0 of 5 | 0% | ⬜ empty |
-| `philosophy` | **Are.na + IEP** | Channel browse, citation network, argument map, glossary, reading list | 0 of 5 | 0% | ⬜ empty |
+| `parenting` | **Wonder Weeks + Cozi** | Milestone tracker, growth percentile, immunization, routine optimizer, school calendar, journey publish, agent brief | 4 of 7 | 57% | 🚧 partial — ChildBriefPanel surfaces milestoneCheck + routineOptimizer + mint + DM + publish (anonymized) + agent. Immunization tracker + school calendar remain. |
+| `philosophy` | **Are.na + IEP** | Channel browse, citation network, argument map, glossary, reading list, dialectic synthesis, ethics 6-pack | 4 of 7 | 57% | 🚧 partial — DilemmaPanel surfaces all 4 philosophy macros (argumentMap, thoughtExperiment, dialecticSynthesis, ethicalFramework) + mint + DM + publish + agent. Reading list browser remains. |
 | `physics` | **PhET + Wolfram** | Simulation gallery, constant lookup, equation solver, unit converter, visualizer | ❓ | — | ❓ tbd |
 | `pomodoro` | n/a (in Concord: `productivity`?) | — | — | — | — |
 | `productivity` | **Todoist + Things** | Task list, project view, today, deadlines, focus mode | 0 of 5 | 0% | ⛔ no-backend |
-| `reasoning` | **Wolfram + step-by-step calc** | Structured step, computable cell, chain verifier, premise log, derivation | 0 of 5 | 0% | ⬜ empty |
-| `reflection` | **Day One reading view** | Past entries, on-this-day, prompt picker, streak | 0 of 4 | 0% | ⬜ empty |
+| `reasoning` | **Wolfram + step-by-step calc** | Structured step, computable cell, chain verifier, premise log, derivation, validate, cross-check | 5 of 7 | 71% | 🚧 partial — ArgumentWorkbench surfaces all 4 reasoning macros (logicValidate, argumentMap, fallacyDetect, premiseExtract) + mint + DM + publish + agent cross-check. Step-by-step interactive cell remains. |
+| `reflection` | **Day One reading view** | Past entries, on-this-day, prompt picker, streak, insights extract, growth metrics, habit tracking | 5 of 7 | 71% | 🚧 partial — JournalActionPanel composer + 3 reflection macros + agent prompt picker + mint + DM + publish. Past-entry browser via existing ReflectionFeed; on-this-day remains. |
 | `research` | **Roam Research + Zotero** | Saved query, paper list, abstract reader, backlinks, citation graph | 1 of 5 | 20% | 🚧 partial |
-| `science` | **Quartzy + Benchling** | Calibration, chain of custody, data export, dataset CRUD, instrument log | 0 of 5 | 0% | ⬜ empty |
+| `science` | **Quartzy + Benchling** | Calibration, chain of custody, data export, dataset CRUD, instrument log, protocol validate, replication agent | 5 of 7 | 71% | 🚧 partial — ExperimentActionPanel surfaces 4 science macros (calibration, validate, dataQuality, custody) + mint + DM + publish + replication agent. Instrument log + dataset CRUD remain. |
 | `space` | **Launch Library + Heavens-Above** | Upcoming launches, orbit calc, delta-v budget, satellite tracker, launch window | 1 of 5 | 20% | 🚧 partial |
 | `space-weather`/`weather` (if present) | **SpaceWeatherLive + NWS** | — | — | — | ❓ tbd |
 | `srs` | **Anki** | Deck list, card review, ease/interval, deck stats, schedule heatmap | 1 of 5 | 20% | 🚧 partial |
-| `thread` | **X/Twitter** | Timeline column, compose, reply tree, bookmark, search | 0 of 5 | 0% | ⬜ empty |
+| `thread` | **X/Twitter** | Timeline column, compose, reply tree, bookmark, search, node pin/branch, agent synthesize | 3 of 7 | 43% | 🚧 partial — ThreadNodeActions surfaces 5 per-node actions (pin / branch / DM / publish / agent synthesize). Timeline column + dedicated compose flow + reply-tree visual remain. |
 | `travel` | **TripIt + Google Travel** | Trip itinerary, country info, currency convert, packing list, jetlag calc | 1 of 5 | 20% | 🚧 partial |
 | `urban-planning` | **EJScreen + ArcGIS** | Census data, density calc, traffic impact, HUD income, zoning map | 1 of 5 | 20% | 🚧 partial |
 | `voice` | **Whisper UI + Otter.ai** | Recording, transcript, speaker diarization, edit, export | 1 of 5 | 20% | 🚧 partial |
@@ -206,7 +206,7 @@ panels (create / inspect / share or similar) if no clear leader app.
 |---|---:|---:|---|
 | Tier 1 (active) | 11 | 72% | 2026-05-16 |
 | Tier 2 (heavyweights) | 10 | 53% | 2026-05-16 |
-| Tier 3 (reference/utility) | ~36 | ~28% | 2026-05-16 |
+| Tier 3 (reference/utility) | ~36 | ~38% | 2026-05-16 |
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
 | Tier 5 (session loops) | 5 | 0% | 2026-05-16 |
 | Tier 6 (backend-creation) | 5 | 0% | 2026-05-16 |
@@ -284,6 +284,16 @@ reference target.
   - energy       57 →  63% (EnergyActionStack 5 over live EIA rates)
   Tier 1 avg 65 → 72%. Pattern is now established and reusable for
   every other lens with an existing leader-app data fetch.
+- **Tier-3 zero-coverage cohort cleared 2026-05-16** (4 commits):
+  all 7 lenses that previously had 0% rubric coverage (debate,
+  parenting, philosophy, reasoning, reflection, science, thread) now
+  ship bespoke leader-app workbenches. When no existing leader-app
+  UI is present, the action panel IS the leader-app shell - it
+  surfaces the previously-orphaned per-lens macros AND exposes the
+  mint/DM/publish/agent quartet on top.
+  Per-lens components: DebateActionPanel · ChildBriefPanel ·
+  DilemmaPanel · ArgumentWorkbench · JournalActionPanel ·
+  ExperimentActionPanel · ThreadNodeActions. Tier 3 avg 28 → 38%.
 - This rubric authored 2026-05-16 as Phase 1 deliverable per the v3
   plan. Replaces `docs/LENS_COVERAGE_AUDIT.md` from PR #723 (which
   used the buggy detector that under-counted wiring).
