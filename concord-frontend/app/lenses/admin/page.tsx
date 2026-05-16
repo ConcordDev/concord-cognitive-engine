@@ -45,6 +45,7 @@ import { BackupHealth } from '@/components/admin/BackupHealth';
 import { CDNStatus } from '@/components/admin/CDNStatus';
 import { CodeEngineStatus } from '@/components/admin/CodeEngineStatus';
 import { RepairDashboard } from '@/components/admin/RepairDashboard';
+import { LiveSystemHealth } from '@/components/admin/LiveSystemHealth';
 import {
   Download,
   Globe,
@@ -1494,6 +1495,9 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LiveSystemHealth />
+      </section>
     </div>
     </LensShell>
   );
