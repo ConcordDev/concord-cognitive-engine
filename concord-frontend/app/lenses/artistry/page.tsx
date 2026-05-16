@@ -33,6 +33,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { WikimediaArt } from '@/components/artistry/WikimediaArt';
 
 type ArtistryTab = 'feed' | 'assets' | 'marketplace' | 'studio' | 'stats';
 type FeedMode = 'chronological' | 'discovery';
@@ -453,6 +454,9 @@ export default function ArtistryLensPage() {
           )}
         </AnimatePresence>
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <WikimediaArt />
+      </section>
     </div>
     </LensShell>
   );
