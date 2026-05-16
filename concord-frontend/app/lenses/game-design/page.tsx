@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { GameDevRepos } from '@/components/game-design/GameDevRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -733,6 +734,9 @@ export default function GameDesignPage() {
           )}
         </AnimatePresence>
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <GameDevRepos />
+      </section>
     </div>
     </LensShell>
   );
