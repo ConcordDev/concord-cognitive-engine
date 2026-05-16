@@ -19,6 +19,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { SaelStall } from '@/components/black-market/SaelStall';
 interface Listing {
   id: string;
   message_id: string;
@@ -286,8 +287,11 @@ export default function BlackMarketPage() {
           All prices in sparks. No real-money codepaths.
         </footer>
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <SaelStall />
+      </section>
     </main>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
