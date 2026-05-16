@@ -203,7 +203,7 @@ function FuturesTab() {
 
   return (
     <div className="p-3">
-      <p className="text-[10px] text-gray-600 mb-2">CME continuous front-month (simulated last/change). Real data requires CME licensing.</p>
+      <p className="text-[10px] text-gray-600 mb-2">CME continuous front-month via Yahoo Finance (live, server-side fetch, no key). 15-minute delay during market hours per Yahoo&apos;s ToS.</p>
       <div className="border border-white/10 rounded overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="bg-black/40 text-gray-500 uppercase text-[10px]">
@@ -303,7 +303,7 @@ function DepthTab() {
         <button type="button" onClick={load}
           className="px-3 py-1 rounded-md border border-cyan-500/40 bg-cyan-500/15 text-xs text-cyan-100">Load</button>
       </div>
-      <p className="text-[10px] text-amber-300"><AlertTriangle className="w-3 h-3 inline mr-1" />Simulated L2 (synthesized from heuristic) — not real depth data.</p>
+      <p className="text-[10px] text-amber-300"><AlertTriangle className="w-3 h-3 inline mr-1" />Real inside quote only (Yahoo Finance — single level). Full L2 depth requires a licensed feed (IEX TOPS, NASDAQ TotalView, or Polygon L2).</p>
 
       {book && (
         <div className="grid grid-cols-2 gap-2">

@@ -80,11 +80,10 @@ const FX_MAJORS = [
   { pair: "NZDUSD", pip: 0.0001, name: "New Zealand Dollar / US Dollar" },
 ];
 
-// Sample mid-price seed (in a real deployment these would be live).
-const FX_SAMPLE_MID = {
-  EURUSD: 1.0875, GBPUSD: 1.2640, USDJPY: 149.85, USDCHF: 0.8825,
-  USDCAD: 1.3580, AUDUSD: 0.6620, NZDUSD: 0.6105,
-};
+// Note: prior versions of this file held a `FX_SAMPLE_MID` table with
+// hardcoded mid-prices. Per the "everything must be real" directive, that
+// table has been removed — `forex-quotes` now pulls live mid+bid+ask from
+// Yahoo Finance (free, server-side fetch, no key required).
 
 // ──────────────────────────────────────────────────────────────
 // Registration
@@ -171,103 +170,153 @@ export default function registerMarketsActions(registerLensAction) {
     return codes[3];
   }
 
-  registerLensAction("markets", "futures-board", (_ctx, _artifact, params = {}) => {
+  // ── Yahoo Finance quote helper (free, no key, server-side) ──
+  //
+  // Endpoint: query1.finance.yahoo.com/v7/finance/quote?symbols=ES%3DF,GC%3DF
+  // Returns array of quotes with regularMarketPrice, regularMarketChange,
+  // bid, ask, marketState. Real data, refreshed in real time during market hours.
+
+  async function fetchYahooQuotes(symbols) {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(","))}`;
+    const r = await globalThis.fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Concord-OS/1.0)" },
+    });
+    if (!r.ok) throw new Error(`yahoo finance ${r.status}`);
+    const data = await r.json();
+    return data?.quoteResponse?.result || [];
+  }
+
+  // Map CME continuous symbols to Yahoo Finance tickers (e.g. ES → ES=F)
+  const CME_TO_YAHOO = {
+    ES: "ES=F", NQ: "NQ=F", YM: "YM=F", RTY: "RTY=F",
+    CL: "CL=F", GC: "GC=F", SI: "SI=F", ZN: "ZN=F", ZB: "ZB=F",
+  };
+
+  registerLensAction("markets", "futures-board", async (_ctx, _artifact, params = {}) => {
     const filterSymbol = params.symbol ? String(params.symbol).toUpperCase() : null;
     const yearCode = String(new Date().getFullYear() % 10);
     const monthCode = frontMonth();
-    const contracts = Object.entries(CME_CONTRACTS)
-      .filter(([sym]) => !filterSymbol || sym === filterSymbol)
-      .map(([sym, spec]) => {
-        // Synthesize a plausible last + change from sym hash
-        const seed = Array.from(sym).reduce((a, c) => a + c.charCodeAt(0), 0);
-        const lastPrice = sym === "CL" ? 75 + (seed % 20)
-          : sym === "GC" ? 2300 + (seed % 50)
-          : sym === "SI" ? 28 + (seed % 5)
-          : sym === "ES" ? 5800 + (seed % 100)
-          : sym === "NQ" ? 20_500 + (seed % 200)
-          : sym === "YM" ? 43_200 + (seed % 300)
-          : sym === "RTY" ? 2350 + (seed % 25)
-          : sym === "ZN" ? 110 + (seed % 5)
-          : 120 + (seed % 10);
-        const change = ((seed % 20) - 10) * spec.tickSize * 2;
-        return {
-          symbol: sym,
-          frontContract: `${sym}${monthCode}${yearCode}`,
-          name: spec.name,
-          last: round(lastPrice, 2),
-          change: round(change, 2),
-          changePercent: round((change / lastPrice) * 100, 2),
-          tickSize: spec.tickSize,
-          tickValue: spec.tickValue,
-          multiplier: spec.multiplier,
-          initialMargin: spec.initialMargin,
-          cycle: spec.cycle,
-        };
-      });
-    return { ok: true, result: { contracts, count: contracts.length, source: "simulated" } };
+    const cmeSymbols = Object.keys(CME_CONTRACTS).filter((sym) => !filterSymbol || sym === filterSymbol);
+    const yahooSymbols = cmeSymbols.map((sym) => CME_TO_YAHOO[sym]).filter(Boolean);
+    let quotes;
+    try {
+      quotes = await fetchYahooQuotes(yahooSymbols);
+    } catch (e) {
+      return { ok: false, error: `futures quote fetch failed: ${e?.message || "network"}` };
+    }
+    const byYahoo = new Map(quotes.map((q) => [q.symbol, q]));
+    const contracts = cmeSymbols.map((sym) => {
+      const spec = CME_CONTRACTS[sym];
+      const ySym = CME_TO_YAHOO[sym];
+      const q = byYahoo.get(ySym);
+      if (!q || q.regularMarketPrice == null) return null;
+      const last = q.regularMarketPrice;
+      const change = q.regularMarketChange ?? 0;
+      return {
+        symbol: sym,
+        frontContract: `${sym}${monthCode}${yearCode}`,
+        name: spec.name,
+        last: round(last, 4),
+        change: round(change, 4),
+        changePercent: round((q.regularMarketChangePercent ?? 0), 2),
+        bid: q.bid != null ? round(q.bid, 4) : null,
+        ask: q.ask != null ? round(q.ask, 4) : null,
+        volume: q.regularMarketVolume ?? null,
+        marketState: q.marketState ?? null,
+        tickSize: spec.tickSize,
+        tickValue: spec.tickValue,
+        multiplier: spec.multiplier,
+        initialMargin: spec.initialMargin,
+        cycle: spec.cycle,
+      };
+    }).filter(Boolean);
+    return { ok: true, result: { contracts, count: contracts.length, source: "yahoo-finance" } };
   });
 
-  // ── Forex pairs grid ──
+  // ── Forex pairs grid (Yahoo Finance, real bid/ask) ──
 
-  registerLensAction("markets", "forex-quotes", (_ctx, _artifact, params = {}) => {
+  registerLensAction("markets", "forex-quotes", async (_ctx, _artifact, params = {}) => {
     const pairs = Array.isArray(params.pairs) && params.pairs.length > 0
       ? params.pairs.map((p) => String(p).toUpperCase())
       : FX_MAJORS.map((m) => m.pair);
-    const result = pairs
-      .map((p) => {
-        const meta = FX_MAJORS.find((m) => m.pair === p);
-        if (!meta) return null;
-        const mid = FX_SAMPLE_MID[p];
-        if (!mid) return null;
-        const spread = meta.pip * 0.5;
-        const bid = mid - spread / 2;
-        const ask = mid + spread / 2;
-        // Pip value per standard lot (100,000 units)
-        const pipValue = p.endsWith("USD") ? meta.pip * 100_000 : Math.round(meta.pip * 100_000 / mid * 100) / 100;
-        return {
-          pair: p,
-          name: meta.name,
-          bid: round(bid, p.includes("JPY") ? 3 : 5),
-          ask: round(ask, p.includes("JPY") ? 3 : 5),
-          spread: round(spread, p.includes("JPY") ? 3 : 5),
-          spreadPips: 0.5,
-          pipValue,
-        };
-      })
-      .filter(Boolean);
-    return { ok: true, result: { quotes: result, count: result.length, source: "sample" } };
+    // Yahoo uses e.g. EURUSD=X
+    const yahooSymbols = pairs.map((p) => `${p}=X`);
+    let quotes;
+    try {
+      quotes = await fetchYahooQuotes(yahooSymbols);
+    } catch (e) {
+      return { ok: false, error: `forex quote fetch failed: ${e?.message || "network"}` };
+    }
+    const byYahoo = new Map(quotes.map((q) => [q.symbol, q]));
+    const result = pairs.map((p) => {
+      const meta = FX_MAJORS.find((m) => m.pair === p);
+      if (!meta) return null;
+      const q = byYahoo.get(`${p}=X`);
+      if (!q || q.regularMarketPrice == null) return null;
+      const mid = q.regularMarketPrice;
+      // Yahoo gives bid/ask when available, otherwise fall back to mid+/- typical spread
+      const hasRealBidAsk = q.bid != null && q.ask != null && q.ask > q.bid;
+      const bid = hasRealBidAsk ? q.bid : mid - meta.pip * 0.5;
+      const ask = hasRealBidAsk ? q.ask : mid + meta.pip * 0.5;
+      const spread = ask - bid;
+      const spreadPips = spread / meta.pip;
+      const pipValue = p.endsWith("USD")
+        ? meta.pip * 100_000
+        : Math.round(meta.pip * 100_000 / mid * 100) / 100;
+      return {
+        pair: p,
+        name: meta.name,
+        mid: round(mid, p.includes("JPY") ? 3 : 5),
+        bid: round(bid, p.includes("JPY") ? 3 : 5),
+        ask: round(ask, p.includes("JPY") ? 3 : 5),
+        spread: round(spread, p.includes("JPY") ? 3 : 5),
+        spreadPips: round(spreadPips, 2),
+        pipValue,
+        change: round(q.regularMarketChange ?? 0, p.includes("JPY") ? 3 : 5),
+        changePercent: round(q.regularMarketChangePercent ?? 0, 3),
+        bidAskSource: hasRealBidAsk ? "yahoo-real" : "mid-derived",
+      };
+    }).filter(Boolean);
+    return { ok: true, result: { quotes: result, count: result.length, source: "yahoo-finance" } };
   });
 
-  // ── Depth of book (simulated L2 from heuristic) ──
+  // ── Depth of book (real best bid/ask from Yahoo — single level) ──
+  //
+  // Yahoo Finance returns only the inside quote (bid/ask + sizes), not
+  // full L2 depth. Full L2 requires a paid feed (IEX TOPS, NASDAQ TotalView,
+  // Polygon L2). This macro returns the real inside quote + documents the
+  // gap honestly rather than synthesizing fake depth levels.
 
-  registerLensAction("markets", "depth-of-book", (_ctx, _artifact, params = {}) => {
+  registerLensAction("markets", "depth-of-book", async (_ctx, _artifact, params = {}) => {
     const symbol = String(params.symbol || "SPY").toUpperCase();
-    const last = Number(params.last) || 450;
-    const tickSize = Number(params.tickSize) || 0.01;
-    const levels = Math.max(5, Math.min(20, Number(params.levels) || 10));
-    if (last <= 0) return { ok: false, error: "last must be > 0" };
-    const seed = Array.from(symbol).reduce((a, c) => a + c.charCodeAt(0), 0);
-    function vol(level) {
-      // Gaussian-decay volume around the inside quote
-      const base = 100 + (seed % 50);
-      return Math.round(base * Math.exp(-level * level * 0.15) * (0.7 + ((seed >> level) & 0xff) / 0xff * 0.6));
+    if (!symbol) return { ok: false, error: "symbol required" };
+    let quotes;
+    try {
+      quotes = await fetchYahooQuotes([symbol]);
+    } catch (e) {
+      return { ok: false, error: `depth quote fetch failed: ${e?.message || "network"}` };
     }
-    const bids = [];
-    const asks = [];
-    for (let i = 1; i <= levels; i++) {
-      bids.push({ price: round(last - tickSize * i, 4), size: vol(i) });
-      asks.push({ price: round(last + tickSize * i, 4), size: vol(i) });
+    const q = quotes[0];
+    if (!q || q.regularMarketPrice == null) {
+      return { ok: false, error: `no quote for ${symbol}` };
     }
     return {
       ok: true,
       result: {
         symbol,
-        last,
-        bids,
-        asks,
-        spread: round(asks[0].price - bids[0].price, 4),
-        kind: "simulated",
-        notes: "Synthesized from public OHLCV-style heuristic; NOT real Level 2 data.",
+        last: q.regularMarketPrice,
+        // Real inside quote (single level — Yahoo doesn't expose L2)
+        bids: q.bid != null
+          ? [{ price: q.bid, size: q.bidSize ?? null, level: 1 }]
+          : [],
+        asks: q.ask != null
+          ? [{ price: q.ask, size: q.askSize ?? null, level: 1 }]
+          : [],
+        spread: (q.bid != null && q.ask != null) ? round(q.ask - q.bid, 4) : null,
+        marketState: q.marketState ?? null,
+        kind: "inside-quote",
+        source: "yahoo-finance",
+        notes: "Real inside quote only. Full L2 depth requires a licensed feed (IEX TOPS, NASDAQ TotalView, Polygon L2).",
       },
     };
   });

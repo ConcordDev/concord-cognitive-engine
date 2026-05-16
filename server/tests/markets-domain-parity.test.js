@@ -54,50 +54,100 @@ describe("markets — options chain", () => {
   });
 });
 
-describe("markets — futures board", () => {
-  it("returns CME contracts", () => {
-    const r = call("futures-board", ctxA);
-    assert.equal(r.ok, true);
-    assert.ok(r.result.contracts.length >= 7);
-    assert.ok(r.result.contracts.some((c) => c.symbol === "ES"));
+describe("markets — futures board (Yahoo Finance live)", () => {
+  it("returns error when network is disabled (hermetic test)", async () => {
+    const r = await call("futures-board", ctxA);
+    // Tests mock fetch to throw — this verifies real fetch is wired.
+    // In production with network, this returns ok with live data.
+    assert.equal(r.ok, false);
+    assert.match(r.error, /fetch failed|network/);
   });
 
-  it("filters by symbol", () => {
-    const r = call("futures-board", ctxA, { symbol: "ES" });
+  it("happy-path: builds correct shape from mocked Yahoo response", async () => {
+    globalThis.fetch = async (url) => {
+      assert.match(url, /finance\.yahoo\.com/);
+      return {
+        ok: true,
+        json: async () => ({
+          quoteResponse: {
+            result: [
+              { symbol: "ES=F", regularMarketPrice: 5850.25, regularMarketChange: 12.5, regularMarketChangePercent: 0.21, bid: 5850, ask: 5850.5, regularMarketVolume: 1_200_000, marketState: "REGULAR" },
+            ],
+          },
+        }),
+      };
+    };
+    const r = await call("futures-board", ctxA, { symbol: "ES" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "yahoo-finance");
     assert.equal(r.result.contracts.length, 1);
-    assert.equal(r.result.contracts[0].symbol, "ES");
+    assert.equal(r.result.contracts[0].last, 5850.25);
+    assert.equal(r.result.contracts[0].change, 12.5);
+    assert.equal(r.result.contracts[0].bid, 5850);
   });
 });
 
-describe("markets — forex quotes", () => {
-  it("returns 7 majors by default", () => {
-    const r = call("forex-quotes", ctxA);
+describe("markets — forex quotes (Yahoo Finance live)", () => {
+  it("builds correct shape from mocked Yahoo response", async () => {
+    globalThis.fetch = async (url) => {
+      assert.match(url, /EURUSD%3DX/);
+      return {
+        ok: true,
+        json: async () => ({
+          quoteResponse: {
+            result: [
+              { symbol: "EURUSD=X", regularMarketPrice: 1.0875, bid: 1.0874, ask: 1.0876, regularMarketChange: 0.0003, regularMarketChangePercent: 0.028 },
+            ],
+          },
+        }),
+      };
+    };
+    const r = await call("forex-quotes", ctxA, { pairs: ["EURUSD"] });
     assert.equal(r.ok, true);
-    assert.equal(r.result.quotes.length, 7);
+    assert.equal(r.result.source, "yahoo-finance");
+    assert.equal(r.result.quotes[0].mid, 1.0875);
+    assert.equal(r.result.quotes[0].bidAskSource, "yahoo-real");
   });
 
-  it("USDJPY pip is 0.01 not 0.0001", () => {
-    const r = call("forex-quotes", ctxA, { pairs: ["USDJPY"] });
-    const jpy = r.result.quotes[0];
-    assert.ok(jpy.bid > 1); // Yen rates are in tens/hundreds, not below 1
+  it("USDJPY pip is 0.01 not 0.0001 (rates in tens/hundreds)", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        quoteResponse: { result: [{ symbol: "USDJPY=X", regularMarketPrice: 149.85, bid: 149.83, ask: 149.87 }] },
+      }),
+    });
+    const r = await call("forex-quotes", ctxA, { pairs: ["USDJPY"] });
+    assert.ok(r.result.quotes[0].bid > 1);
   });
 });
 
-describe("markets — depth of book", () => {
-  it("returns simulated L2 with N levels each side", () => {
-    const r = call("depth-of-book", ctxA, { symbol: "SPY", last: 450, levels: 10 });
+describe("markets — depth of book (real inside quote)", () => {
+  it("returns single-level inside quote from Yahoo, NOT synthesized L2", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        quoteResponse: { result: [{ symbol: "SPY", regularMarketPrice: 450, bid: 449.99, ask: 450.01, bidSize: 100, askSize: 200, marketState: "REGULAR" }] },
+      }),
+    });
+    const r = await call("depth-of-book", ctxA, { symbol: "SPY" });
     assert.equal(r.ok, true);
-    assert.equal(r.result.bids.length, 10);
-    assert.equal(r.result.asks.length, 10);
-    assert.equal(r.result.kind, "simulated");
+    assert.equal(r.result.kind, "inside-quote");
+    assert.equal(r.result.source, "yahoo-finance");
+    assert.equal(r.result.bids.length, 1);
+    assert.equal(r.result.asks.length, 1);
+    assert.equal(r.result.bids[0].price, 449.99);
+    assert.equal(r.result.asks[0].price, 450.01);
+    assert.match(r.result.notes, /Full L2.*licensed feed/);
   });
 
-  it("bids descend, asks ascend in price", () => {
-    const r = call("depth-of-book", ctxA, { symbol: "SPY", last: 450 });
-    const bidPrices = r.result.bids.map((b) => b.price);
-    const askPrices = r.result.asks.map((a) => a.price);
-    for (let i = 1; i < bidPrices.length; i++) assert.ok(bidPrices[i] < bidPrices[i - 1]);
-    for (let i = 1; i < askPrices.length; i++) assert.ok(askPrices[i] > askPrices[i - 1]);
+  it("rejects unknown symbol gracefully", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ quoteResponse: { result: [] } }),
+    });
+    const r = await call("depth-of-book", ctxA, { symbol: "NOTREAL" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no quote/);
   });
 });
 
