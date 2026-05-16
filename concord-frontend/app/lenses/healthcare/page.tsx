@@ -2,6 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import SymptomChecker from '@/components/healthcare/SymptomChecker';
+import MedicationTracker from '@/components/healthcare/MedicationTracker';
+import PatientChart from '@/components/healthcare/PatientChart';
+import AppointmentScheduler from '@/components/healthcare/AppointmentScheduler';
+import RxPriceCompare from '@/components/healthcare/RxPriceCompare';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -34,7 +39,7 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  Thermometer,
+  Thermometer, HeartPulse, DollarSign,
   Droplets,
   Wind,
   Weight,
@@ -84,7 +89,12 @@ type ModeTab =
   | 'Pharmacy'
   | 'Lab'
   | 'Therapy'
-  | 'Symptoms';
+  | 'Symptoms'
+  | 'MyChart'
+  | 'SymptomAI'
+  | 'Meds'
+  | 'Appointments'
+  | 'RxPrice';
 type ArtifactType =
   | 'Patient'
   | 'Encounter'
@@ -172,6 +182,11 @@ const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; 
   { id: 'Lab', icon: FlaskConical, defaultType: 'LabResult' },
   { id: 'Therapy', icon: Brain, defaultType: 'Treatment' },
   { id: 'Symptoms', icon: Thermometer, defaultType: 'Symptom' },
+  { id: 'MyChart', icon: HeartPulse, defaultType: 'Patient' },
+  { id: 'SymptomAI', icon: Stethoscope, defaultType: 'Symptom' },
+  { id: 'Meds', icon: Pill, defaultType: 'Patient' },
+  { id: 'Appointments', icon: Calendar, defaultType: 'Encounter' },
+  { id: 'RxPrice', icon: DollarSign, defaultType: 'Patient' },
 ];
 
 const ALL_STATUSES: Status[] = ['scheduled', 'active', 'completed', 'cancelled', 'archived'];
@@ -1963,6 +1978,11 @@ export default function HealthcareLensPage() {
           <div className={cn(ds.sectionHeader, 'mb-4')}>
             <div className="flex items-center gap-3">
               <h2 className={ds.heading2}>{activeTab}</h2>
+              {activeTab === 'MyChart' && <div className="w-full mt-4"><PatientChart /></div>}
+              {activeTab === 'SymptomAI' && <div className="w-full mt-4"><SymptomChecker /></div>}
+              {activeTab === 'Meds' && <div className="w-full mt-4"><MedicationTracker /></div>}
+              {activeTab === 'Appointments' && <div className="w-full mt-4"><AppointmentScheduler /></div>}
+              {activeTab === 'RxPrice' && <div className="w-full mt-4"><RxPriceCompare /></div>}
               {/* View mode toggle for Patients tab */}
               {activeTab === 'Patients' && (
                 <div className="flex items-center border border-lattice-border rounded-lg overflow-hidden">
