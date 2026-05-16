@@ -47,6 +47,7 @@ import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
 import { FeedBanner } from '@/components/lens/FeedBanner';
+import ResearchWorkbench from '@/components/research/ResearchWorkbench';
 
 interface DTUResult {
   id: string;
@@ -86,6 +87,7 @@ export default function ResearchLensPage() {
 
   const [query, setQuery] = useState('');
   const [domainFilter, setDomainFilter] = useState('');
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [tierFilter, setTierFilter] = useState('');
   const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'tier'>('date');
   const [selectedDtu, setSelectedDtu] = useState<DTUResult | null>(null);
@@ -884,6 +886,16 @@ export default function ResearchLensPage() {
         )}
       </div>
     </div>
+    {/* 2026 parity workbench — notes, daily journal, search, templates */}
+    <button
+      type="button"
+      onClick={() => setWorkbenchOpen(true)}
+      className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-fuchsia-500 hover:bg-fuchsia-400 text-fuchsia-50 shadow-2xl text-sm font-medium"
+      title="Research Workbench — notes, daily journal, search, templates, backlinks"
+    >
+      Research Workbench
+    </button>
+    <ResearchWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }

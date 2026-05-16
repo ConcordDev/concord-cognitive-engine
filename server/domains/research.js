@@ -323,4 +323,214 @@ export default function registerResearchActions(registerLensAction) {
       },
     };
   });
+
+  // ─── 2026 parity — Notion/Roam/Obsidian/Logseq second-brain ──
+
+  function getResearchState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.researchLens) {
+      STATE.researchLens = {
+        notes: new Map(),         // userId -> Map<noteId, note>
+        dailyByDate: new Map(),   // userId -> Map<YYYY-MM-DD, noteId>
+      };
+    }
+    return STATE.researchLens;
+  }
+  function saveResearchState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function researchActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function nextResId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function nowIsoRes() { return new Date().toISOString(); }
+  function todayIso() { return nowIsoRes().slice(0, 10); }
+
+  const TEMPLATES = {
+    meeting:       { title: "Meeting notes",       body: "## Date\n\n## Attendees\n\n## Agenda\n\n## Decisions\n\n## Action items\n- [ ] " },
+    weekly_review: { title: "Weekly review",       body: "## What I shipped\n\n## What I learned\n\n## What's stuck\n\n## Next week priorities\n- [ ] " },
+    book_note:     { title: "Book note",           body: "## Title\n## Author\n## Why I read it\n\n## Key ideas\n\n## Quotes\n\n## My take" },
+    paper_note:    { title: "Paper note",          body: "## Citation\n## TL;DR\n\n## Methods\n\n## Findings\n\n## Critique\n\n## Cited references" },
+    project_brief: { title: "Project brief",       body: "## Goal\n\n## Success criteria\n\n## Out of scope\n\n## Open questions\n\n## Plan" },
+    decision_log:  { title: "Decision log",        body: "## Decision\n\n## Context\n\n## Options considered\n\n## Chosen path\n\n## Tradeoffs" },
+  };
+
+  // ── Notes CRUD ──
+
+  registerLensAction("research", "note-create", (ctx, _artifact, params = {}) => {
+    const s = getResearchState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    if (title.length > 200) return { ok: false, error: "title too long (max 200)" };
+    const body = String(params.body || "");
+    if (body.length > 100_000) return { ok: false, error: "body too long (max 100000)" };
+    const tags = Array.isArray(params.tags) ? params.tags.slice(0, 20).map(String) : [];
+    const note = {
+      id: nextResId("note"),
+      title, body, tags,
+      createdAt: nowIsoRes(),
+      updatedAt: nowIsoRes(),
+    };
+    if (!s.notes.has(userId)) s.notes.set(userId, new Map());
+    s.notes.get(userId).set(note.id, note);
+    saveResearchState();
+    return { ok: true, result: { note } };
+  });
+
+  registerLensAction("research", "note-update", (ctx, _artifact, params = {}) => {
+    const s = getResearchState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.notes.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    const n = map.get(id);
+    if (typeof params.title === "string") n.title = params.title.trim().slice(0, 200);
+    if (typeof params.body === "string") n.body = params.body.slice(0, 100_000);
+    if (Array.isArray(params.tags)) n.tags = params.tags.slice(0, 20).map(String);
+    n.updatedAt = nowIsoRes();
+    saveResearchState();
+    return { ok: true, result: { note: n } };
+  });
+
+  registerLensAction("research", "note-delete", (ctx, _artifact, params = {}) => {
+    const s = getResearchState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.notes.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveResearchState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("research", "notes-list", (ctx, _artifact, _params = {}) => {
+    const s = getResearchState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const map = s.notes.get(userId);
+    if (!map) return { ok: true, result: { notes: [] } };
+    const notes = Array.from(map.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .map(({ body, ...rest }) => ({ ...rest, preview: body.slice(0, 200) }));
+    return { ok: true, result: { notes } };
+  });
+
+  registerLensAction("research", "note-get", (ctx, _artifact, params = {}) => {
+    const s = getResearchState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.notes.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    return { ok: true, result: { note: map.get(id) } };
+  });
+
+  // ── Daily journal ──
+
+  registerLensAction("research", "daily-note", (ctx, _artifact, params = {}) => {
+    const s = getResearchState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const date = String(params.date || todayIso());
+    if (!s.dailyByDate.has(userId)) s.dailyByDate.set(userId, new Map());
+    const dailyMap = s.dailyByDate.get(userId);
+    let noteId = dailyMap.get(date);
+    if (!noteId) {
+      // Create new daily note
+      if (!s.notes.has(userId)) s.notes.set(userId, new Map());
+      const note = {
+        id: nextResId("daily"),
+        title: `Daily — ${date}`,
+        body: `# ${date}\n\n## What I'm working on today\n\n## Notes\n\n## Tomorrow`,
+        tags: ["daily"],
+        createdAt: nowIsoRes(),
+        updatedAt: nowIsoRes(),
+      };
+      s.notes.get(userId).set(note.id, note);
+      dailyMap.set(date, note.id);
+      saveResearchState();
+      return { ok: true, result: { note, created: true } };
+    }
+    const note = s.notes.get(userId).get(noteId);
+    return { ok: true, result: { note, created: false } };
+  });
+
+  // ── Templates ──
+
+  registerLensAction("research", "templates-list", (_ctx, _artifact, _params = {}) => {
+    return { ok: true, result: { templates: Object.entries(TEMPLATES).map(([id, t]) => ({ id, ...t })) } };
+  });
+
+  registerLensAction("research", "template-apply", (_ctx, _artifact, params = {}) => {
+    const id = String(params.id || "");
+    const t = TEMPLATES[id];
+    if (!t) return { ok: false, error: `unknown template: ${id}` };
+    return { ok: true, result: { template: { id, ...t } } };
+  });
+
+  // ── Backlinks (mentions of [[note title]]) ──
+
+  registerLensAction("research", "backlinks-for", (ctx, _artifact, params = {}) => {
+    const s = getResearchState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    const wikiRef = `[[${title}]]`;
+    const map = s.notes.get(userId);
+    if (!map) return { ok: true, result: { backlinks: [] } };
+    const hits = [];
+    for (const n of map.values()) {
+      if (n.title === title) continue;
+      if (n.body.includes(wikiRef)) {
+        // Find context around the mention
+        const idx = n.body.indexOf(wikiRef);
+        const start = Math.max(0, idx - 80);
+        const end = Math.min(n.body.length, idx + wikiRef.length + 80);
+        hits.push({
+          noteId: n.id,
+          noteTitle: n.title,
+          context: n.body.slice(start, end),
+        });
+      }
+    }
+    return { ok: true, result: { backlinks: hits, count: hits.length } };
+  });
+
+  // ── Note search (full-text) ──
+
+  registerLensAction("research", "notes-search", (ctx, _artifact, params = {}) => {
+    const s = getResearchState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const query = String(params.query || "").trim().toLowerCase();
+    if (!query) return { ok: false, error: "query required" };
+    if (query.length < 2) return { ok: false, error: "query too short" };
+    const map = s.notes.get(userId);
+    if (!map) return { ok: true, result: { hits: [] } };
+    const terms = query.split(/\s+/).filter(Boolean);
+    const hits = [];
+    for (const n of map.values()) {
+      const titleLower = n.title.toLowerCase();
+      const bodyLower = n.body.toLowerCase();
+      let score = 0;
+      for (const t of terms) {
+        if (titleLower.includes(t)) score += 5;
+        if (bodyLower.includes(t)) score += 1;
+      }
+      if (score > 0) {
+        hits.push({ id: n.id, title: n.title, score, preview: n.body.slice(0, 200), updatedAt: n.updatedAt });
+      }
+    }
+    hits.sort((a, b) => b.score - a.score);
+    return { ok: true, result: { hits: hits.slice(0, 50), count: hits.length } };
+  });
 }
