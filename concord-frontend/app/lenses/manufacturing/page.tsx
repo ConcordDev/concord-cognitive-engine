@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
 import OEEDashboard from '@/components/manufacturing/OEEDashboard';
 import WorkOrderBoard from '@/components/manufacturing/WorkOrderBoard';
 import QualitySPC from '@/components/manufacturing/QualitySPC';
@@ -2695,6 +2696,9 @@ export default function ManufacturingLensPage() {
           </div>
         </>
       )}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ManufacturingFeed />
+      </section>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
