@@ -29,6 +29,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { PlaceFinder } from '@/components/atlas/PlaceFinder';
 
 // Leaflet requires dynamic import (no SSR)
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -478,8 +479,13 @@ export default function AtlasLensPage() {
           </div>
         )}
       </div>
+
+      {/* Bespoke OSM place finder (Nominatim + Overpass) with SVG map + Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <PlaceFinder />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#atlas-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to atlas content</a>
