@@ -24,6 +24,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { DebateActionPanel } from '@/components/debate/DebateActionPanel';
 
 interface DebateData {
   topic: string;
@@ -970,6 +971,26 @@ export default function DebateLensPage() {
                   </div>
                 )}
               </div>
+
+              {/* Kialo / CMV action panel — fallacy / steelman / score / branch / snapshot / publish */}
+              {selectedDebate && (
+                <DebateActionPanel
+                  debate={{
+                    id: selectedDebate,
+                    title: selectedDebateData.topic ?? 'Debate',
+                    data: {
+                      topic: selectedDebateData.topic,
+                      description: selectedDebateData.description,
+                      status: selectedDebateData.status,
+                      format: selectedDebateData.format,
+                      proArguments: selectedDebateData.proArguments,
+                      conArguments: selectedDebateData.conArguments,
+                      proVotes: selectedDebateData.proVotes,
+                      conVotes: selectedDebateData.conVotes,
+                    },
+                  }}
+                />
+              )}
             </>
           ) : (
             <div className="panel p-4 h-full flex items-center justify-center">
