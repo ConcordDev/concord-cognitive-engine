@@ -7,6 +7,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { api } from '@/lib/api/client';
+import { ReleaseCadence } from '@/components/code-quality/ReleaseCadence';
 
 type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
@@ -334,8 +335,11 @@ export default function CodeQualityLensPage() {
             </div>
           )}
         </section>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <ReleaseCadence />
+        </section>
       </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
