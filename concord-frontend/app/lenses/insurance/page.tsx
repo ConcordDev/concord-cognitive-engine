@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { InsurancePolicyTalk } from '@/components/insurance/InsurancePolicyTalk';
+import { InsuranceActionPanel } from '@/components/insurance/InsuranceActionPanel';
 import PolicyVault from '@/components/insurance/PolicyVault';
 import ClaimTracker from '@/components/insurance/ClaimTracker';
 import QuoteCompare from '@/components/insurance/QuoteCompare';
@@ -1319,6 +1320,10 @@ export default function InsuranceLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <InsurancePolicyTalk />
+      </section>
+
+      <section className="mt-6">
+        <InsuranceActionPanel />
       </section>
     </div>
 

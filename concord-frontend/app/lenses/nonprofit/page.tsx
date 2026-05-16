@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { PropublicaSearch } from '@/components/nonprofit/PropublicaSearch';
+import { NonprofitActionPanel } from '@/components/nonprofit/NonprofitActionPanel';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1957,6 +1958,10 @@ export default function NonprofitLensPage() {
       {/* Bespoke ProPublica Nonprofit Explorer with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PropublicaSearch />
+      </section>
+
+      <section className="mt-6">
+        <NonprofitActionPanel />
       </section>
     </div>
     </LensShell>
