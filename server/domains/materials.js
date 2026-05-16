@@ -1,6 +1,11 @@
 // server/domains/materials.js
-// Domain actions for materials science: property comparison, material selection,
-// composite analysis, corrosion prediction, thermal analysis.
+// Domain actions for materials science: property comparison, material
+// selection, composite analysis, corrosion prediction, thermal
+// analysis, plus real Materials Project API for ~150,000 inorganic
+// crystalline materials. Free with API key from materialsproject.org
+// (set MATERIALS_PROJECT_API_KEY env).
+
+const MP_BASE = "https://api.materialsproject.org";
 
 export default function registerMaterialsActions(registerLensAction) {
   /**
@@ -313,5 +318,106 @@ export default function registerMaterialsActions(registerLensAction) {
         warnings,
       },
     };
+  });
+
+  /**
+   * mp-search — Materials Project search by chemical formula or
+   * elements. Returns material_id, formula, crystal system, density,
+   * band gap, formation energy, magnetism, stability.
+   * Requires MATERIALS_PROJECT_API_KEY env (free at materialsproject.org).
+   *
+   * params: { formula?: "SiO2", elements?: ["Si","O"], limit?: 1-100 }
+   */
+  registerLensAction("materials", "mp-search", async (_ctx, _artifact, params = {}) => {
+    const apiKey = process.env.MATERIALS_PROJECT_API_KEY;
+    if (!apiKey) return { ok: false, error: "MATERIALS_PROJECT_API_KEY env required (free at materialsproject.org)" };
+    const formula = params.formula ? String(params.formula).trim() : null;
+    const elements = Array.isArray(params.elements) ? params.elements : null;
+    if (!formula && !elements) return { ok: false, error: "formula or elements required" };
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 20));
+    const qs = new URLSearchParams({
+      _per_page: String(limit),
+      _fields: "material_id,formula_pretty,nelements,symmetry,density,band_gap,formation_energy_per_atom,energy_above_hull,is_stable,is_magnetic,total_magnetization",
+    });
+    if (formula) qs.set("formula", formula);
+    if (elements) qs.set("elements", elements.join(","));
+    try {
+      const r = await fetch(`${MP_BASE}/materials/summary/?${qs.toString()}`, {
+        headers: { "X-API-KEY": apiKey, Accept: "application/json" },
+      });
+      if (r.status === 401) return { ok: false, error: "MATERIALS_PROJECT_API_KEY invalid" };
+      if (!r.ok) throw new Error(`materials project ${r.status}`);
+      const data = await r.json();
+      const materials = (data.data || []).map((m) => ({
+        materialId: m.material_id,
+        formula: m.formula_pretty,
+        elementCount: m.nelements,
+        crystalSystem: m.symmetry?.crystal_system,
+        spaceGroup: m.symmetry?.symbol,
+        density: m.density,
+        bandGapEv: m.band_gap,
+        formationEnergyPerAtomEv: m.formation_energy_per_atom,
+        energyAboveHullEv: m.energy_above_hull,
+        isStable: m.is_stable,
+        isMagnetic: m.is_magnetic,
+        totalMagnetization: m.total_magnetization,
+      }));
+      return {
+        ok: true,
+        result: {
+          query: { formula, elements },
+          materials, count: materials.length,
+          totalAvailable: data.meta?.total_doc,
+          source: "materials-project",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `materials project unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * mp-material — Full record by Materials Project material_id (e.g.
+   * "mp-149" for silicon).
+   */
+  registerLensAction("materials", "mp-material", async (_ctx, _artifact, params = {}) => {
+    const apiKey = process.env.MATERIALS_PROJECT_API_KEY;
+    if (!apiKey) return { ok: false, error: "MATERIALS_PROJECT_API_KEY env required" };
+    const materialId = String(params.materialId || "").trim();
+    if (!materialId) return { ok: false, error: "materialId required (e.g. 'mp-149')" };
+    if (!/^mp-\d+$/.test(materialId)) return { ok: false, error: "materialId format must be 'mp-<digits>'" };
+    try {
+      const r = await fetch(`${MP_BASE}/materials/summary/?material_ids=${encodeURIComponent(materialId)}`, {
+        headers: { "X-API-KEY": apiKey, Accept: "application/json" },
+      });
+      if (r.status === 401) return { ok: false, error: "MATERIALS_PROJECT_API_KEY invalid" };
+      if (!r.ok) throw new Error(`materials project ${r.status}`);
+      const data = await r.json();
+      const m = data?.data?.[0];
+      if (!m) return { ok: false, error: `material not found: ${materialId}` };
+      return {
+        ok: true,
+        result: {
+          materialId: m.material_id,
+          formula: m.formula_pretty,
+          elementCount: m.nelements,
+          crystalSystem: m.symmetry?.crystal_system,
+          spaceGroup: m.symmetry?.symbol,
+          density: m.density,
+          volume: m.volume,
+          bandGapEv: m.band_gap,
+          formationEnergyPerAtomEv: m.formation_energy_per_atom,
+          energyAboveHullEv: m.energy_above_hull,
+          isStable: m.is_stable,
+          isMagnetic: m.is_magnetic,
+          totalMagnetization: m.total_magnetization,
+          ordering: m.ordering,
+          numSites: m.nsites,
+          source: "materials-project",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `materials project unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
