@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { CmvFeed } from '@/components/debate/CmvFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -990,6 +991,9 @@ export default function DebateLensPage() {
         </button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="debate" /></div>}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <CmvFeed />
+      </section>
     </div>
     </LensShell>
   );
