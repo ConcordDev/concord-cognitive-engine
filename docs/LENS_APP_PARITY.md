@@ -140,10 +140,10 @@ own visual identity, charts, and reference tables.
 | Lens | Leader app | Core workflows | Mounted | % | Status |
 |---|---|---|---:|---:|---|
 | `meditation` | **Calm / Headspace** | Track picker, minimal player, streak ring, ambient color, journal | ❓ | — | ❓ tbd (no clear lens) |
-| `grounding` | **Insight Timer** | Practice picker, audio player, timer, session log | 0 of 4 | 0% | ⬜ empty |
+| `grounding` | **fact-check workbench** (rubric mis-typed as Insight Timer; actual lens is epistemic grounding) | Fact check, source credibility, decompose, mint, DM, publish, counter-evidence agent | 6 of 7 | 86% | ✅ done — ClaimVerificationPanel surfaces all 3 grounding macros plus the mint/DM/publish/agent quartet. |
 | `expert-mode` | **MasterClass** | Video player, chapter list, workbook tab, notes panel | 0 of 4 | 0% | ⬜ empty |
-| `fitness` | **Hevy / Strong** | Workout log, exercise picker, set-by-set table with last-session compare, RIR slider, body-weight chart | 0 of 5 | 0% | ⬜ empty |
-| `sports` | **ESPN Fantasy + Strava** | Activity log, league standings, training plan, gear tracker | 0 of 4 | 0% | ⬜ empty |
+| `fitness` | **Hevy / Strong** | Workout log, exercise picker, set-by-set table with last-session compare, RIR slider, body-weight chart, progression calc, PR publish | 6 of 7 | 86% | ✅ done — WorkoutLogger + ActivityRings + HeartRateZones + SleepRecovery + WorkoutPlanner + WorkoutFinishPanel (7-action surface with progression / save / mint / DM / PR publish / next-workout agent). |
+| `sports` | **ESPN Fantasy + Strava** | Activity log, league standings, training plan, gear tracker, injury risk, race report publish | 5 of 6 | 83% | ✅ done — ActivityActionPanel surfaces 4 sports macros (performanceStats, trainingPlan, injuryRisk, teamAnalysis) + mint + DM + publish + race-plan agent. |
 
 ## Tier 6 — Backend-creation lenses (Phase 4)
 
@@ -208,7 +208,7 @@ panels (create / inspect / share or similar) if no clear leader app.
 | Tier 2 (heavyweights) | 10 | 53% | 2026-05-16 |
 | Tier 3 (reference/utility) | ~36 | ~38% | 2026-05-16 |
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
-| Tier 5 (session loops) | 5 | 0% | 2026-05-16 |
+| Tier 5 (session loops) | 5 | ~51% | 2026-05-16 |
 | Tier 6 (backend-creation) | 5 | 0% | 2026-05-16 |
 | Tier 7 (Concord-native) | ~150 | tbd | 2026-05-16 |
 
@@ -294,6 +294,14 @@ reference target.
   Per-lens components: DebateActionPanel · ChildBriefPanel ·
   DilemmaPanel · ArgumentWorkbench · JournalActionPanel ·
   ExperimentActionPanel · ThreadNodeActions. Tier 3 avg 28 → 38%.
+- **Tier-5 session-loops kicked off 2026-05-16**: fitness +
+  sports + grounding all shipped action panels (fitness Hevy/Strong
+  WorkoutFinishPanel · sports ESPN/Strava ActivityActionPanel ·
+  grounding ClaimVerificationPanel — note: rubric mis-typed grounding
+  as Insight Timer; the Concord lens is actually a fact-check
+  workbench, re-classified accordingly). 3 of 5 Tier-5 done.
+  Remaining: meditation (no domain/page yet — needs scaffolding),
+  expert-mode (MasterClass shadow has domain + page).
 - This rubric authored 2026-05-16 as Phase 1 deliverable per the v3
   plan. Replaces `docs/LENS_COVERAGE_AUDIT.md` from PR #723 (which
   used the buggy detector that under-counted wiring).
