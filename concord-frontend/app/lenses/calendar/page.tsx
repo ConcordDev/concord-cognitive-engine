@@ -90,8 +90,6 @@ const COLORS = [
   { name: 'Yellow', value: '#eab308' },
 ];
 
-const INITIAL_CATEGORIES: CalendarCategory[] = [];
-
 const PLATFORMS = ['Web', 'Mobile', 'Desktop', 'API', 'Social', 'Email', 'Print'];
 
 const INITIAL_PROJECTS: string[] = [];
@@ -148,7 +146,7 @@ export default function CalendarLensPage() {
     seed: [],
   });
   const { isError: isError2, error: error2, refetch: refetch2, items: catItems } = useLensData<CalendarCategory>('calendar', 'category', {
-    seed: INITIAL_CATEGORIES.map(c => ({ title: c.name, data: c as unknown as Record<string, unknown> })),
+    seed: [],
   });
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);

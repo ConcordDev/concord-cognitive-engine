@@ -77,9 +77,6 @@ function _sm2(item: SRSItem, quality: number): { interval: number; easiness: num
 }
 
 // --- Initial state — populated from backend ---
-const INITIAL_DECKS: Deck[] = [];
-
-const INITIAL_CARDS: SRSItem[] = [];
 
 // --- Stat helpers ---
 function getRetentionRate(cards: SRSItem[]): number {
@@ -125,10 +122,10 @@ export default function SRSLensPage() {
 
   const queryClient = useQueryClient();
   const { isError: isError, error: error, refetch: refetch, items: cardItems, create: createCard, remove: removeCard } = useLensData<SRSItem>('srs', 'card', {
-    seed: INITIAL_CARDS.map(c => ({ title: c.front, data: c as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const { isError: isError3, error: error3, refetch: refetch3, items: deckItems } = useLensData<Deck>('srs', 'deck', {
-    seed: INITIAL_DECKS.map(d => ({ title: d.name, data: d as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const persistedCards: SRSItem[] = cardItems.map(i => ({ ...(i.data as unknown as SRSItem), id: i.id }));
   const persistedDecks: Deck[] = deckItems.map(i => ({ ...(i.data as unknown as Deck), id: i.id }));

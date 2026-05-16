@@ -165,16 +165,6 @@ function useAnimatedNumber(target: number, duration = 1000): number {
   return display;
 }
 
-const INITIAL_ASSETS: Asset[] = [];
-
-const INITIAL_TRANSACTIONS: Transaction[] = [];
-
-const INITIAL_ORDERS: Order[] = [];
-
-const INITIAL_ALERTS: PriceAlert[] = [];
-
-const INITIAL_NEWS: NewsItem[] = [];
-
 export default function FinanceLensPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
@@ -192,10 +182,7 @@ export default function FinanceLensPage() {
     isLoading: isLoadingAssets,
     items: assetItems,
   } = useLensData<Asset>('finance', 'asset', {
-    seed: INITIAL_ASSETS.map((a) => ({
-      title: a.name,
-      data: a as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     isError: isError2,
@@ -204,10 +191,7 @@ export default function FinanceLensPage() {
     isLoading: isLoadingTx,
     items: txItems,
   } = useLensData<Transaction>('finance', 'transaction', {
-    seed: INITIAL_TRANSACTIONS.map((t) => ({
-      title: t.type,
-      data: t as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     isError: isError3,
@@ -216,10 +200,7 @@ export default function FinanceLensPage() {
     isLoading: isLoadingOrders,
     items: orderItems,
   } = useLensData<Order>('finance', 'order', {
-    seed: INITIAL_ORDERS.map((o) => ({
-      title: `${o.side} ${o.symbol}`,
-      data: o as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     isError: isError4,
@@ -228,10 +209,7 @@ export default function FinanceLensPage() {
     isLoading: isLoadingAlerts,
     items: alertItems,
   } = useLensData<PriceAlert>('finance', 'alert', {
-    seed: INITIAL_ALERTS.map((a) => ({
-      title: `${a.symbol} ${a.condition} ${a.price}`,
-      data: a as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     isError: isError5,
@@ -240,10 +218,7 @@ export default function FinanceLensPage() {
     isLoading: isLoadingNews,
     items: newsItems,
   } = useLensData<NewsItem>('finance', 'news', {
-    seed: INITIAL_NEWS.map((n) => ({
-      title: n.title,
-      data: n as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const { create: createOrderMut } = useLensData<Order>('finance', 'order', { noSeed: true });
 

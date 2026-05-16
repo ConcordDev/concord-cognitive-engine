@@ -185,7 +185,6 @@ const generateWaveform = (len = 32): number[] =>
 // ── Data (all from backend — no mock data) ───────────────────────────────────
 
 const _INITIAL_AUTHORS: PostAuthor[] = [];
-const INITIAL_POSTS: FeedPost[] = [];
 const TRENDING_TOPICS: TrendingTopic[] = [];
 
 const NEW_RELEASES: MiniRelease[] = [];
@@ -525,10 +524,7 @@ export default function FeedLensPage() {
     items: postLensItems,
     create: createLensPost,
   } = useLensData<Record<string, unknown>>('feed', 'post', {
-    seed: INITIAL_POSTS.map((p) => ({
-      title: p.content?.slice(0, 80) || p.id,
-      data: p as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
 
   // Fetch feed from social API with infinite scrolling + DTU fallback

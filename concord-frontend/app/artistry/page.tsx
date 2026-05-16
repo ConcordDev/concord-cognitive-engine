@@ -13,8 +13,6 @@ import type {
 // Seed Data — empty; all posts come from the backend API
 // ============================================================================
 
-const SEED_POSTS: ArtistryPost[] = [];
-
 // ============================================================================
 // Artistry Page
 // ============================================================================
@@ -28,7 +26,7 @@ export default function ArtistryPage() {
     timeRange: 'all',
   });
   const { items: postItems } = useLensData<ArtistryPost>('artistry', 'post', {
-    seed: SEED_POSTS.map(p => ({ title: p.title, data: p as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const posts: ArtistryPost[] = postItems.map(i => ({ ...(i.data as unknown as ArtistryPost), id: i.id }));
 

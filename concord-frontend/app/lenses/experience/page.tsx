@@ -88,11 +88,7 @@ const PROFILE = {
   socials: [] as { label: string; url: string }[],
 };
 
-const INITIAL_PORTFOLIO: PortfolioItem[] = [];
-
 const SKILLS_FALLBACK: SkillData[] = [];
-
-const INITIAL_HISTORY: HistoryItem[] = [];
 
 // InsightData is now computed reactively — see computedInsights in the component
 
@@ -266,13 +262,13 @@ export default function ExperienceLensPage() {
   };
 
   const { isLoading, isError: isError, error: error, refetch: refetch, items: portfolioItems } = useLensData('experience', 'portfolio', {
-    seed: INITIAL_PORTFOLIO.map(p => ({ title: p.title, data: p as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const { isError: isError2, error: error2, refetch: refetch2, items: skillItems } = useLensData('experience', 'skill', {
     seed: SKILLS_FALLBACK.map(s => ({ title: s.name, data: s as unknown as Record<string, unknown> })),
   });
   const { isError: isError3, error: error3, refetch: refetch3, items: historyItems } = useLensData('experience', 'history', {
-    seed: INITIAL_HISTORY.map(h => ({ title: h.title, data: h as unknown as Record<string, unknown> })),
+    seed: [],
   });
 
   // Derive live data from backend items

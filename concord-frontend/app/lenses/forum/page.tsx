@@ -156,8 +156,6 @@ const DEFAULT_AUTHOR: UserProfile = {
 // Initial state — populated from backend
 // ---------------------------------------------------------------------------
 
-const INITIAL_COMMUNITIES: Community[] = [];
-
 function _mkComment(id: string, _author: string, content: string, score: number, replies: Comment[] = []): Comment {
   // Use a deterministic offset based on the id hash instead of Math.random()
   let hash = 0;
@@ -165,8 +163,6 @@ function _mkComment(id: string, _author: string, content: string, score: number,
   const hrs = (Math.abs(hash) % 48) + 1;
   return { id, author: DEFAULT_AUTHOR, content, score, userVote: 0, createdAt: new Date(Date.now() - hrs * 3600000).toISOString(), awards: score > 80 ? ['\uD83D\uDD25'] : [], replies, collapsed: false };
 }
-
-const INITIAL_POSTS: Post[] = [];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -241,10 +237,10 @@ export default function ForumLensPage() {
   const [postReplyContent, setPostReplyContent] = useState('');
 
   const { isLoading, isError: isError, error: error, refetch: refetch, items: postItems, create: createForumPost, update: updateForumPost, remove: removeForumPost } = useLensData('forum', 'post', {
-    seed: INITIAL_POSTS.map(p => ({ title: p.title, data: p as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const { isError: isError2, error: error2, refetch: refetch2, items: communityItems, create: createForumCommunity } = useLensData('forum', 'community', {
-    seed: INITIAL_COMMUNITIES.map(c => ({ title: c.name, data: c as unknown as Record<string, unknown> })),
+    seed: [],
   });
 
   // Backend action wiring

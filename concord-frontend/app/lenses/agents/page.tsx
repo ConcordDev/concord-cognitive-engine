@@ -55,7 +55,6 @@ interface Agent {
 type AgentFilter = 'all' | 'active' | 'dormant' | 'error';
 
 // --- Seed Data (persisted via backend on first use) ---
-const INITIAL_AGENTS: Agent[] = [];
 
 const AGENT_TYPES = [
   { id: 'general', label: 'General', icon: Bot, color: 'text-gray-400', description: 'Multi-purpose agent' },
@@ -127,7 +126,7 @@ export default function AgentsLensPage() {
 
   // Persist agents via lens data (auto-seeds on first use)
   const { items: lensAgentItems, isLoading, isError, error, isSeeding: _isSeeding, refetch, create: createLensAgent, update: updateLensAgent, remove: removeLensAgent } = useLensData<Record<string, unknown>>('agents', 'agent', {
-    seed: INITIAL_AGENTS.map(a => ({ title: a.name, data: a as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const isError2 = isError; const error2 = error; const refetch2 = refetch;
 

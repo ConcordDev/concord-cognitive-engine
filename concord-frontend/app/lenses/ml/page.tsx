@@ -119,29 +119,22 @@ type Tab = 'models' | 'experiments' | 'datasets' | 'deployments' | 'playground';
 type ViewMode = 'grid' | 'list';
 
 // Seed data — empty; all data comes from the backend API
-const INITIAL_MODELS: Model[] = [];
-
-const INITIAL_EXPERIMENTS: Experiment[] = [];
-
-const INITIAL_DATASETS: Dataset[] = [];
-
-const INITIAL_DEPLOYMENTS: Deployment[] = [];
 
 export default function MLLensPage() {
   useLensNav('ml');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('ml');
   const queryClient = useQueryClient();
   const { isError, error, refetch, isLoading: isLoadingModels, items: modelItems } = useLensData<Model>('ml', 'model', {
-    seed: INITIAL_MODELS.map(m => ({ title: m.name, data: m as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const { isError: isError2, error: error2, refetch: refetch2, isLoading: isLoadingExperiments, items: expItems } = useLensData<Experiment>('ml', 'experiment', {
-    seed: INITIAL_EXPERIMENTS.map(e => ({ title: e.name, data: e as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const { isError: isError3, error: error3, refetch: refetch3, isLoading: isLoadingDatasets, items: datasetItems } = useLensData<Dataset>('ml', 'dataset', {
-    seed: INITIAL_DATASETS.map(d => ({ title: d.name, data: d as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const { isError: isError4, error: error4, refetch: refetch4, isLoading: isLoadingDeployments, items: deploymentItems } = useLensData<Deployment>('ml', 'deployment', {
-    seed: INITIAL_DEPLOYMENTS.map(d => ({ title: d.modelName, data: d as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const isLoading = isLoadingModels || isLoadingExperiments || isLoadingDatasets || isLoadingDeployments;
   const models: Model[] = modelItems.map(i => ({ ...(i.data as unknown as Model), id: i.id }));
