@@ -45,6 +45,7 @@ import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useAuth } from '@/hooks/useAuth';
 import { DTULibraryPanel } from '@/components/dtu/DTULibraryPanel';
 import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
+import SessionWorkspace from '@/components/studio/SessionWorkspace';
 
 // DAW engine
 import {
@@ -342,7 +343,19 @@ export default function StudioLensPage() {
   const queryClient = useQueryClient();
 
   // ---- State ----
-  const [studioView, setStudioView] = useState<StudioViewType>('arrange');
+  // Default to Ableton-style Session view per canonical DAW research
+  // (Ableton Session View / GarageBand Live Loops are the iconic
+  // distinctive surface). Other views are still reachable via the
+  // toolbar — they're the per-clip / per-track editors. localStorage-
+  // sticky so power users who pin a different default keep it.
+  const [studioView, setStudioView] = useState<StudioViewType>(() => {
+    if (typeof window === 'undefined') return 'session';
+    return (localStorage.getItem('concord_studio_view') as StudioViewType) || 'session';
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try { localStorage.setItem('concord_studio_view', studioView); } catch { /* private mode */ }
+  }, [studioView]);
   const [project, setProject] = useState<DAWProject | null>(null);
   const [transportState, setTransportState] = useState<TransportState>('stopped');
   const transportStateRef = useRef<TransportState>('stopped');
@@ -1740,6 +1753,22 @@ export default function StudioLensPage() {
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Primary view */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {studioView === 'session' && (
+            // Ableton-style hero — clip grid + browser left + inspector
+            // right + mixer peek strip below. Composed in
+            // components/studio/SessionWorkspace.tsx per the canonical
+            // DAW research blueprint.
+            <SessionWorkspace
+              project={project}
+              bpm={project.bpm}
+              selectedTrackId={selectedTrackId}
+              onSelectTrack={setSelectedTrackId}
+              onUpdateTrack={(id, patch) => handleUpdateTrack(id, patch)}
+              onTempoChange={(newBpm) => updateProject((p) => ({ ...p, bpm: newBpm }))}
+              onStopAll={handleStop}
+            />
+          )}
+
           {studioView === 'arrange' && (
             <ArrangementView
               tracks={project.tracks}
