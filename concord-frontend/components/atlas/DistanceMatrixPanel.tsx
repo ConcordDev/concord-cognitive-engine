@@ -33,15 +33,11 @@ async function callAtlas<T>(action: string, input: Record<string, unknown>): Pro
   } catch { return null; }
 }
 
-const DEFAULT_WAYPOINTS: Waypoint[] = [
-  { name: 'NYC', lat: '40.7128', lon: '-74.0060' },
-  { name: 'Boston', lat: '42.3601', lon: '-71.0589' },
-  { name: 'Philadelphia', lat: '39.9526', lon: '-75.1652' },
-  { name: 'DC', lat: '38.9072', lon: '-77.0369' },
-];
-
 export function DistanceMatrixPanel() {
-  const [waypoints, setWaypoints] = useState<Waypoint[]>(DEFAULT_WAYPOINTS);
+  const [waypoints, setWaypoints] = useState<Waypoint[]>([
+    { name: '', lat: '', lon: '' },
+    { name: '', lat: '', lon: '' },
+  ]);
   const [matrix, setMatrix] = useState<MatrixResult | null>(null);
   const [route, setRoute] = useState<RouteResult | null>(null);
 
