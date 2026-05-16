@@ -131,6 +131,11 @@ describe("crypto.swap-quote (real CoinGecko, no synthetic fallback)", () => {
     assert.equal(r.result.source, "coingecko");
     assert.equal(r.result.slippagePercent, 0.5);
     assert.deepEqual(r.result.route, ["BITCOIN", "ETHEREUM"]);
+    // priceImpact + gas are NOT computable from spot prices → null with note
+    assert.equal(r.result.priceImpactPercent, null);
+    assert.equal(r.result.gasEstimateUsd, null);
+    assert.equal(r.result.kind, "indicative");
+    assert.match(r.result.notes, /swap-route|aggregator|ZEROX_API_KEY/);
   });
 
   it("refuses when CoinGecko has no USD price for one of the tokens", async () => {
@@ -300,5 +305,121 @@ describe("regression: pre-existing analytical macros still work", () => {
     assert.equal(r.ok, true);
     assert.ok(r.result.patterns.some(p => p.type === "wash_trading_suspect"));
     assert.ok(r.result.patterns.some(p => p.type === "whale_movement"));
+  });
+});
+
+describe("crypto.swap-route (real 0x aggregator, no simulated routing)", () => {
+  it("rejects when ZEROX_API_KEY env not set", async () => {
+    delete process.env.ZEROX_API_KEY;
+    const r = await call("swap-route", ctxA, { sellToken: "ETH", buyToken: "USDC", sellAmount: "1000000000000000000" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /ZEROX_API_KEY|0x aggregator/);
+  });
+
+  it("rejects missing params", async () => {
+    process.env.ZEROX_API_KEY = "key_dummy";
+    assert.equal((await call("swap-route", ctxA, {})).ok, false);
+    assert.equal((await call("swap-route", ctxA, { sellToken: "ETH", buyToken: "ETH", sellAmount: "1" })).ok, false);
+    assert.equal((await call("swap-route", ctxA, { sellToken: "ETH", buyToken: "USDC", sellAmount: "1.5" })).ok, false);
+    delete process.env.ZEROX_API_KEY;
+  });
+
+  it("rejects unsupported chainId", async () => {
+    process.env.ZEROX_API_KEY = "key_dummy";
+    const r = await call("swap-route", ctxA, {
+      sellToken: "ETH", buyToken: "USDC", sellAmount: "1000000000000000000", chainId: 9999,
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /unsupported chainId/);
+    delete process.env.ZEROX_API_KEY;
+  });
+
+  it("hits /price endpoint when taker omitted (indicative aggregator quote)", async () => {
+    process.env.ZEROX_API_KEY = "key_real";
+    let captured;
+    globalThis.fetch = async (url, opts) => {
+      captured = { url, headers: opts?.headers };
+      return {
+        ok: true,
+        json: async () => ({
+          buyAmount: "3250000000", sellAmount: "1000000000000000000",
+          price: "3250.0", estimatedPriceImpact: "0.05",
+          route: { fills: [{ source: "Uniswap_V3", proportionBps: 7000 }, { source: "Curve", proportionBps: 3000 }] },
+        }),
+      };
+    };
+    const r = await call("swap-route", ctxA, {
+      sellToken: "ETH", buyToken: "USDC", sellAmount: "1000000000000000000", chainId: 1,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.kind, "indicative-aggregator");
+    assert.match(captured.url, /api\.0x\.org\/swap\/permit2\/price/);
+    assert.equal(captured.headers["0x-api-key"], "key_real");
+    assert.equal(captured.headers["0x-version"], "v2");
+    assert.equal(r.result.buyAmount, "3250000000");
+    assert.equal(r.result.sources.length, 2);
+    assert.equal(r.result.sources[0].source, "Uniswap_V3");
+    delete process.env.ZEROX_API_KEY;
+  });
+
+  it("hits /quote endpoint when taker supplied (executable, returns signable tx)", async () => {
+    process.env.ZEROX_API_KEY = "key_real";
+    let captured;
+    globalThis.fetch = async (url) => {
+      captured = url;
+      return {
+        ok: true,
+        json: async () => ({
+          buyAmount: "3250000000", minBuyAmount: "3233750000",
+          price: "3250.0", estimatedPriceImpact: "0.05",
+          transaction: { to: "0xdef1c0ded9bec7f1a1670819833240f027b25eff", data: "0x12345...", value: "1000000000000000000", gas: "180000", gasPrice: "30000000000" },
+          issues: { allowance: { spender: "0xdef1c0ded9bec7f1a1670819833240f027b25eff" } },
+          route: { fills: [{ source: "Uniswap_V3", proportionBps: 10000 }] },
+        }),
+      };
+    };
+    const r = await call("swap-route", ctxA, {
+      sellToken: "ETH", buyToken: "USDC", sellAmount: "1000000000000000000",
+      chainId: 1, taker: "0xabc1234567890abc1234567890abc1234567890a",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.kind, "executable");
+    assert.match(captured, /\/swap\/permit2\/quote/);
+    assert.match(captured, /taker=0xabc/);
+    assert.equal(r.result.to, "0xdef1c0ded9bec7f1a1670819833240f027b25eff");
+    assert.equal(r.result.gas, "180000");
+    assert.equal(r.result.allowanceTarget, "0xdef1c0ded9bec7f1a1670819833240f027b25eff");
+    delete process.env.ZEROX_API_KEY;
+  });
+
+  it("surfaces 0x error responses verbatim", async () => {
+    process.env.ZEROX_API_KEY = "key_bad";
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({ reason: "INSUFFICIENT_LIQUIDITY" }),
+    });
+    const r = await call("swap-route", ctxA, {
+      sellToken: "ETH", buyToken: "USDC", sellAmount: "1000000000000000000",
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /INSUFFICIENT_LIQUIDITY/);
+    delete process.env.ZEROX_API_KEY;
+  });
+
+  it("supports Base / Arbitrum / Optimism via chain-scoped hosts", async () => {
+    process.env.ZEROX_API_KEY = "key_real";
+    const hosts = [];
+    globalThis.fetch = async (url) => {
+      hosts.push(new URL(url).host);
+      return { ok: true, json: async () => ({ buyAmount: "1" }) };
+    };
+    await call("swap-route", ctxA, { sellToken: "ETH", buyToken: "USDC", sellAmount: "1000000000000000000", chainId: 8453 });
+    await call("swap-route", ctxA, { sellToken: "ETH", buyToken: "USDC", sellAmount: "1000000000000000000", chainId: 42161 });
+    await call("swap-route", ctxA, { sellToken: "ETH", buyToken: "USDC", sellAmount: "1000000000000000000", chainId: 10 });
+    assert.equal(hosts[0], "base.api.0x.org");
+    assert.equal(hosts[1], "arbitrum.api.0x.org");
+    assert.equal(hosts[2], "optimism.api.0x.org");
+    delete process.env.ZEROX_API_KEY;
   });
 });
