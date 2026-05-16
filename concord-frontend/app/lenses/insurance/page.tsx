@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { InsurancePolicyTalk } from '@/components/insurance/InsurancePolicyTalk';
 import PolicyVault from '@/components/insurance/PolicyVault';
 import ClaimTracker from '@/components/insurance/ClaimTracker';
 import QuoteCompare from '@/components/insurance/QuoteCompare';
@@ -1316,8 +1317,11 @@ export default function InsuranceLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <InsurancePolicyTalk />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#insurance-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to insurance content</a>
     </LensShell>
