@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
+import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealthActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -672,6 +673,10 @@ export default function MentalHealthLensPage() {
       {/* Bespoke 988 + national crisis hotline reference with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CrisisPanel />
+      </section>
+
+      <section className="mt-6">
+        <MentalHealthActionPanel />
       </section>
     </div>
     </LensShell>

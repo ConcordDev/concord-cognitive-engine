@@ -17,6 +17,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { FdaDrugReference } from '@/components/pharmacy/FdaDrugReference';
+import { PharmacyActionPanel } from '@/components/pharmacy/PharmacyActionPanel';
 
 interface Medication {
   name: string;
@@ -618,6 +619,10 @@ export default function PharmacyLensPage() {
           <FdaDrugReference />
         </div>
       )}
+
+      <section className="mt-6">
+        <PharmacyActionPanel />
+      </section>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">
