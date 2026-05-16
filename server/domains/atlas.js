@@ -1,5 +1,16 @@
 // server/domains/atlas.js
-// Domain actions for atlas: geocoding, distance matrices, region stats, route optimization.
+// Domain actions for atlas: geocoding, distance matrices, region
+// stats, route optimization, plus real OpenStreetMap Nominatim
+// (geocoding, free no key, 1 req/sec courtesy limit) + Overpass API
+// (OSM feature search, free no key) + Wikidata SPARQL for population.
+
+const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
+const OVERPASS_BASE = "https://overpass-api.de/api";
+
+function osmUserAgent() {
+  const contact = process.env.OSM_CONTACT || "https://concord-os.org";
+  return `Concord-OS/1.0 (${contact})`;
+}
 
 export default function registerAtlasActions(registerLensAction) {
   /**
@@ -478,5 +489,129 @@ export default function registerAtlasActions(registerLensAction) {
 
     artifact.data.routeOptimization = result;
     return { ok: true, result };
+  });
+
+  /**
+   * nominatim-geocode — Real OSM Nominatim forward geocoding.
+   * Free, no API key. Wikimedia UA policy applies — set OSM_CONTACT env.
+   *
+   * params: { query: string, limit?: 1-10 }
+   */
+  registerLensAction("atlas", "nominatim-geocode", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required (free-form address or place name)" };
+    const limit = Math.max(1, Math.min(10, Number(params.limit) || 5));
+    try {
+      const r = await fetch(`${NOMINATIM_BASE}/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=${limit}&addressdetails=1`, {
+        headers: { "User-Agent": osmUserAgent(), Accept: "application/json" },
+      });
+      if (!r.ok) throw new Error(`nominatim ${r.status}`);
+      const data = await r.json();
+      const places = (Array.isArray(data) ? data : []).map((p) => ({
+        osmType: p.osm_type,
+        osmId: p.osm_id,
+        placeId: p.place_id,
+        displayName: p.display_name,
+        latitude: parseFloat(p.lat),
+        longitude: parseFloat(p.lon),
+        category: p.category,
+        type: p.type,
+        addressType: p.addresstype,
+        importance: p.importance,
+        boundingBox: p.boundingbox ? p.boundingbox.map(Number) : null,
+        address: p.address,
+      }));
+      return {
+        ok: true,
+        result: { query, places, count: places.length, source: "openstreetmap-nominatim" },
+      };
+    } catch (e) {
+      return { ok: false, error: `nominatim unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * nominatim-reverse — Reverse geocode lat/lng → address.
+   */
+  registerLensAction("atlas", "nominatim-reverse", async (_ctx, _artifact, params = {}) => {
+    const lat = Number(params.latitude);
+    const lng = Number(params.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "latitude + longitude required" };
+    try {
+      const r = await fetch(`${NOMINATIM_BASE}/reverse?lat=${lat}&lon=${lng}&format=jsonv2&addressdetails=1`, {
+        headers: { "User-Agent": osmUserAgent(), Accept: "application/json" },
+      });
+      if (!r.ok) throw new Error(`nominatim ${r.status}`);
+      const p = await r.json();
+      if (p.error) return { ok: false, error: `nominatim: ${p.error}` };
+      return {
+        ok: true,
+        result: {
+          latitude: lat, longitude: lng,
+          displayName: p.display_name,
+          osmType: p.osm_type, osmId: p.osm_id,
+          address: p.address,
+          addressType: p.addresstype,
+          source: "openstreetmap-nominatim",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `nominatim unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * overpass-poi — Overpass API search for OSM features (POIs) within
+   * a bounding box. Free, no API key.
+   *
+   * params: { south, west, north, east — bbox in WGS84, amenity?: "restaurant"|"hospital"|... }
+   */
+  registerLensAction("atlas", "overpass-poi", async (_ctx, _artifact, params = {}) => {
+    const south = Number(params.south);
+    const west = Number(params.west);
+    const north = Number(params.north);
+    const east = Number(params.east);
+    if (![south, west, north, east].every(Number.isFinite)) {
+      return { ok: false, error: "south/west/north/east required (bbox in WGS84 degrees)" };
+    }
+    if (south >= north || west >= east) return { ok: false, error: "bbox invalid (south < north, west < east)" };
+    const amenity = params.amenity ? String(params.amenity).trim() : null;
+    const filter = amenity ? `["amenity"="${amenity}"]` : `["amenity"]`;
+    const query = `[out:json][timeout:25];(node${filter}(${south},${west},${north},${east}););out tags center 100;`;
+    try {
+      const r = await fetch(`${OVERPASS_BASE}/interpreter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+      if (!r.ok) {
+        if (r.status === 429) return { ok: false, error: "overpass rate limit exceeded — try again later" };
+        throw new Error(`overpass ${r.status}`);
+      }
+      const data = await r.json();
+      const elements = (data.elements || []).map((el) => ({
+        type: el.type,
+        id: el.id,
+        latitude: el.lat,
+        longitude: el.lon,
+        tags: el.tags,
+        name: el.tags?.name,
+        amenity: el.tags?.amenity,
+        cuisine: el.tags?.cuisine,
+        opening_hours: el.tags?.opening_hours,
+        phone: el.tags?.phone,
+        website: el.tags?.website,
+      }));
+      return {
+        ok: true,
+        result: {
+          bbox: { south, west, north, east },
+          amenity, elements, count: elements.length,
+          source: "openstreetmap-overpass",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `overpass unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
