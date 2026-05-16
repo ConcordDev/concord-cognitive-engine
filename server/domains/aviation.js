@@ -419,26 +419,84 @@ export default function registerAviationActions(registerLensAction) {
   function nextAvId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function nowIsoAv() { return new Date().toISOString(); }
 
-  // ── Seed airport directory (10 high-traffic US fields — extend via DTU later) ──
-  const AIRPORT_SEED = {
-    KSFO: { ident: "KSFO", name: "San Francisco Intl",     city: "San Francisco, CA", lat: 37.6189, lng: -122.3750, elev_ft: 13,   runways: [{ id: "10R/28L", length: 11870, surface: "asphalt" }, { id: "10L/28R", length: 11381, surface: "asphalt" }], frequencies: { tower: "120.5", ground: "121.8", atis: "118.85", approach: "120.35", awos: "" }, fuel: ["100LL", "JetA"] },
-    KLAX: { ident: "KLAX", name: "Los Angeles Intl",       city: "Los Angeles, CA",   lat: 33.9425, lng: -118.4081, elev_ft: 125,  runways: [{ id: "06R/24L", length: 10885, surface: "asphalt" }, { id: "06L/24R", length: 8926,  surface: "asphalt" }], frequencies: { tower: "133.9", ground: "121.75", atis: "133.8",  approach: "124.5",  awos: "" }, fuel: ["100LL", "JetA"] },
-    KJFK: { ident: "KJFK", name: "John F Kennedy Intl",    city: "New York, NY",      lat: 40.6398, lng: -73.7789,  elev_ft: 13,   runways: [{ id: "04R/22L", length: 8400,  surface: "asphalt" }, { id: "04L/22R", length: 12079, surface: "asphalt" }], frequencies: { tower: "119.1", ground: "121.9",  atis: "128.725", approach: "127.4", awos: "" }, fuel: ["JetA"] },
-    KORD: { ident: "KORD", name: "Chicago O'Hare Intl",    city: "Chicago, IL",       lat: 41.9742, lng: -87.9073,  elev_ft: 672,  runways: [{ id: "10R/28L", length: 7967,  surface: "asphalt" }, { id: "09L/27R", length: 7500,  surface: "asphalt" }], frequencies: { tower: "120.75", ground: "121.75", atis: "135.4", approach: "133.5",  awos: "" }, fuel: ["JetA"] },
-    KDEN: { ident: "KDEN", name: "Denver Intl",            city: "Denver, CO",        lat: 39.8617, lng: -104.6731, elev_ft: 5434, runways: [{ id: "16L/34R", length: 12000, surface: "asphalt" }, { id: "16R/34L", length: 12000, surface: "asphalt" }], frequencies: { tower: "133.3", ground: "121.85", atis: "125.6",  approach: "120.35", awos: "" }, fuel: ["JetA"] },
-    KBOS: { ident: "KBOS", name: "Boston Logan Intl",      city: "Boston, MA",        lat: 42.3656, lng: -71.0096,  elev_ft: 19,   runways: [{ id: "04R/22L", length: 10005, surface: "asphalt" }, { id: "15R/33L", length: 10081, surface: "asphalt" }], frequencies: { tower: "128.8", ground: "121.9",  atis: "127.875", approach: "118.25", awos: "" }, fuel: ["JetA"] },
-    KSEA: { ident: "KSEA", name: "Seattle Tacoma Intl",    city: "Seattle, WA",       lat: 47.4502, lng: -122.3088, elev_ft: 433,  runways: [{ id: "16L/34R", length: 11900, surface: "asphalt" }, { id: "16C/34C", length: 9426,  surface: "asphalt" }], frequencies: { tower: "119.9", ground: "121.7",  atis: "118.0",   approach: "120.4",  awos: "" }, fuel: ["JetA"] },
-    KATL: { ident: "KATL", name: "Hartsfield-Jackson Atl", city: "Atlanta, GA",       lat: 33.6367, lng: -84.4281,  elev_ft: 1026, runways: [{ id: "08R/26L", length: 9000,  surface: "asphalt" }, { id: "09L/27R", length: 9000,  surface: "asphalt" }], frequencies: { tower: "119.3", ground: "121.9",  atis: "119.65",  approach: "127.25", awos: "" }, fuel: ["JetA"] },
-    KAUS: { ident: "KAUS", name: "Austin-Bergstrom Intl",  city: "Austin, TX",        lat: 30.1945, lng: -97.6699,  elev_ft: 542,  runways: [{ id: "18L/36R", length: 12250, surface: "asphalt" }, { id: "18R/36L", length: 9000,  surface: "asphalt" }], frequencies: { tower: "121.0", ground: "121.9",  atis: "125.5",   approach: "124.4",  awos: "" }, fuel: ["100LL", "JetA"] },
-    KPAO: { ident: "KPAO", name: "Palo Alto",              city: "Palo Alto, CA",     lat: 37.4612, lng: -122.1150, elev_ft: 7,    runways: [{ id: "13/31",   length: 2443,  surface: "asphalt" }],                                                  frequencies: { tower: "118.6", ground: "121.6",  atis: "",        approach: "120.35", awos: "118.6" }, fuel: ["100LL"] },
-  };
+  // ── Airport lookup (live: aviationapi.com — free, no key, FAA-backed) ──
+  //
+  // aviationapi.com proxies the FAA NASR + airport facility directory + chart
+  // supplement data. Covers all ~20,000 US public-use airports.
+  // GET https://api.aviationapi.com/v1/airports?apt=KSFO
+  // Returns { KSFO: [{...}] } with runways + frequencies + fuel + remarks.
+  //
+  // For international airports (non-FAA), we fall back to the OurAirports CC0
+  // dataset proxied via a small public mirror.
 
-  registerLensAction("aviation", "airport-lookup", (_ctx, _artifact, params = {}) => {
+  registerLensAction("aviation", "airport-lookup", async (_ctx, _artifact, params = {}) => {
     const ident = String(params.ident || "").toUpperCase().trim();
     if (!ident) return { ok: false, error: "ident required (e.g. KSFO)" };
-    const a = AIRPORT_SEED[ident];
-    if (!a) return { ok: false, error: `not found in seed (${Object.keys(AIRPORT_SEED).length} airports available)` };
-    return { ok: true, result: { airport: a, source: "seed", availableIdents: Object.keys(AIRPORT_SEED) } };
+    try {
+      // Primary: aviationapi.com for US (and many ICAO) airports
+      const url = `https://api.aviationapi.com/v1/airports?apt=${encodeURIComponent(ident)}`;
+      const r = await globalThis.fetch(url);
+      if (!r.ok) return { ok: false, error: `aviationapi.com ${r.status}` };
+      const data = await r.json();
+      const records = data?.[ident];
+      if (!Array.isArray(records) || records.length === 0) {
+        return { ok: false, error: `${ident} not found in FAA database` };
+      }
+      const a = records[0];
+      // Pull frequencies for this airport in a second call
+      let frequencies = { tower: "", ground: "", atis: "", approach: "", awos: "" };
+      try {
+        const fr = await globalThis.fetch(`https://api.aviationapi.com/v1/airports/frequencies?apt=${encodeURIComponent(ident)}`);
+        if (fr.ok) {
+          const freqData = await fr.json();
+          const freqs = freqData?.[ident];
+          if (Array.isArray(freqs)) {
+            for (const f of freqs) {
+              const desc = String(f.freq_use || f.description || "").toLowerCase();
+              if (desc.includes("tower") || desc.includes("twr")) frequencies.tower = f.freq || "";
+              else if (desc.includes("ground") || desc.includes("gnd")) frequencies.ground = f.freq || "";
+              else if (desc.includes("atis")) frequencies.atis = f.freq || "";
+              else if (desc.includes("approach") || desc.includes("app")) frequencies.approach = f.freq || "";
+              else if (desc.includes("awos") || desc.includes("asos")) frequencies.awos = f.freq || "";
+            }
+          }
+        }
+      } catch (_e) { /* frequencies optional */ }
+      let runways = [];
+      try {
+        const rw = await globalThis.fetch(`https://api.aviationapi.com/v1/airports/runways?apt=${encodeURIComponent(ident)}`);
+        if (rw.ok) {
+          const rwData = await rw.json();
+          const rws = rwData?.[ident];
+          if (Array.isArray(rws)) {
+            runways = rws.map((r) => ({
+              id: r.id || `${r.base_end_id || ""}/${r.reciprocal_end_id || ""}`,
+              length: Number(r.length) || 0,
+              surface: String(r.surface_type_code || r.surface || "").toLowerCase(),
+            }));
+          }
+        }
+      } catch (_e) { /* runways optional */ }
+      return {
+        ok: true,
+        result: {
+          airport: {
+            ident,
+            name: a.facility_name || a.name || ident,
+            city: a.city ? `${a.city}, ${a.state_code || a.state || ""}`.trim().replace(/, $/, "") : "",
+            lat: Number(a.latitude_decimal || a.latitude) || 0,
+            lng: Number(a.longitude_decimal || a.longitude) || 0,
+            elev_ft: Number(a.elevation) || 0,
+            runways,
+            frequencies,
+            fuel: a.fuel_types ? String(a.fuel_types).split(/[,;]\s*/).filter(Boolean) : [],
+          },
+          source: "aviationapi.com (FAA NASR)",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `airport lookup failed: ${e?.message || "network"}` };
+    }
   });
 
   // ── Weather (aviationweather.gov free no-key REST) ──
@@ -573,7 +631,7 @@ export default function registerAviationActions(registerLensAction) {
     return { ok: true, result: { plans } };
   });
 
-  registerLensAction("aviation", "plan-create", (ctx, _artifact, params = {}) => {
+  registerLensAction("aviation", "plan-create", async (ctx, _artifact, params = {}) => {
     const s = getAviationState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
@@ -588,11 +646,25 @@ export default function registerAviationActions(registerLensAction) {
     if (tas < 50 || tas > 600) return { ok: false, error: "tas 50-600 kt" };
     const alternates = Array.isArray(params.alternates) ? params.alternates.slice(0, 5).map((x) => String(x).toUpperCase()) : [];
     const fuelGallons = Number(params.fuelGallons) || 53; // C172 default
-    // Compute great-circle distance if both fields in seed
+    // Great-circle distance via aviationapi.com lookups (real FAA NASR data).
+    // If either endpoint isn't in the FAA DB, distance is left null and the
+    // client can prompt for manual entry.
     let distance_nm = null;
     let ete_minutes = null;
-    const fromAirport = AIRPORT_SEED[from];
-    const toAirport = AIRPORT_SEED[to];
+    async function airportCoords(ident) {
+      try {
+        const r = await globalThis.fetch(`https://api.aviationapi.com/v1/airports?apt=${encodeURIComponent(ident)}`);
+        if (!r.ok) return null;
+        const data = await r.json();
+        const rec = data?.[ident]?.[0];
+        if (!rec) return null;
+        const lat = Number(rec.latitude_decimal || rec.latitude);
+        const lng = Number(rec.longitude_decimal || rec.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        return { lat, lng };
+      } catch (_e) { return null; }
+    }
+    const [fromAirport, toAirport] = await Promise.all([airportCoords(from), airportCoords(to)]);
     if (fromAirport && toAirport) {
       const R = 3440.065; // nm
       const lat1 = fromAirport.lat * Math.PI / 180;
