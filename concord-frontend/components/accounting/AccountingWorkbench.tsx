@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  X, Loader2, BookOpen, TrendingUp, Landmark, Calculator, Receipt, Plus, Save, Trash2, Check, AlertTriangle, FileText,
+  X, Loader2, BookOpen, TrendingUp, Landmark, Calculator, Receipt, Plus, Save, Trash2, Check, AlertTriangle, FileText, Link as LinkIcon,
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -729,6 +729,28 @@ function AgingTab() {
     } catch (e) { console.error(e); }
   };
 
+  const [linkPrompt, setLinkPrompt] = useState<string | null>(null);
+  const [linkEmail, setLinkEmail] = useState('');
+  const [linkResult, setLinkResult] = useState<{ url: string; pdf: string } | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const sendPaymentLink = async () => {
+    if (!linkPrompt) return;
+    setLinkError(null); setLinkResult(null);
+    try {
+      const res = await api.post('/api/lens/run', {
+        domain: 'accounting', action: 'invoice-create-payment-link',
+        input: { id: linkPrompt, customerEmail: linkEmail.trim() },
+      });
+      const data = res.data as { ok?: boolean; error?: string; result?: { hostedUrl?: string; pdfUrl?: string } };
+      if (data.ok && data.result?.hostedUrl) {
+        setLinkResult({ url: data.result.hostedUrl, pdf: data.result.pdfUrl || '' });
+      } else {
+        setLinkError(data.error || 'Failed to create payment link');
+      }
+    } catch (e) { setLinkError((e as Error).message); }
+  };
+
   const fmt = (n: number) => n.toFixed(2);
 
   return (
@@ -813,6 +835,14 @@ function AgingTab() {
                     <span className="font-mono text-gray-200">${fmt(inv.total)}</span>
                     <button
                       type="button"
+                      onClick={() => { setLinkPrompt(inv.id); setLinkEmail(''); setLinkResult(null); setLinkError(null); }}
+                      className="px-2 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10 text-[10px] text-cyan-200 opacity-0 group-hover:opacity-100 inline-flex items-center gap-1"
+                      title="Send Stripe payment link"
+                    >
+                      <LinkIcon className="w-3 h-3" /> Pay link
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => markPaid(inv.id)}
                       className="px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-200 opacity-0 group-hover:opacity-100"
                     >
@@ -824,6 +854,52 @@ function AgingTab() {
             )}
           </div>
         ))
+      )}
+
+      {linkPrompt && (
+        <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-cyan-200">Send Stripe payment link</span>
+            <button type="button" onClick={() => setLinkPrompt(null)} className="text-zinc-500 hover:text-zinc-300">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          {!linkResult ? (
+            <>
+              <input
+                type="email" autoFocus placeholder="Customer email"
+                value={linkEmail}
+                onChange={(e) => setLinkEmail(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100"
+              />
+              <button
+                type="button" onClick={sendPaymentLink}
+                disabled={!linkEmail.includes('@')}
+                className="w-full px-3 py-1.5 rounded border border-cyan-500/40 bg-cyan-500/15 text-xs text-cyan-100 disabled:opacity-40"
+              >Create hosted invoice link</button>
+              {linkError && <p className="text-xs text-rose-300">{linkError}</p>}
+            </>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-emerald-300">✓ Hosted invoice created</p>
+              <a href={linkResult.url} target="_blank" rel="noopener noreferrer"
+                className="block text-xs text-cyan-200 underline break-all">{linkResult.url}</a>
+              <div className="flex gap-2">
+                <button type="button"
+                  onClick={() => { void navigator.clipboard?.writeText(linkResult.url); }}
+                  className="flex-1 px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 text-xs text-cyan-200">
+                  Copy link
+                </button>
+                {linkResult.pdf && (
+                  <a href={linkResult.pdf} target="_blank" rel="noopener noreferrer"
+                    className="flex-1 px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-xs text-zinc-200 text-center">
+                    Open PDF
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

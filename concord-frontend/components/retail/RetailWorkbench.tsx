@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, ShoppingCart, Package, Receipt, AlertTriangle, Plus, Trash2, Save, DollarSign } from 'lucide-react';
+import { X, Loader2, ShoppingCart, Package, Receipt, AlertTriangle, Plus, Trash2, Save, DollarSign, CreditCard } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 
 export interface Product {
   sku: string;
@@ -80,6 +81,7 @@ function POSTab() {
   const [totals, setTotals] = useState<{ subtotal: number; tax: number; total: number; itemCount: number } | null>(null);
   const [tenderAmount, setTenderAmount] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [cardIntent, setCardIntent] = useState<{ clientSecret: string; paymentIntentId: string; total: number } | null>(null);
 
   const refreshProducts = useCallback(async () => {
     try {
@@ -139,6 +141,40 @@ function POSTab() {
     } catch (e) { setMessage((e as Error).message); }
   };
 
+  const tenderWithCard = async () => {
+    if (!cartId) return;
+    try {
+      const r = await api.post('/api/lens/run', {
+        domain: 'retail', action: 'cart-create-payment-intent',
+        input: { cartId, taxRate: 8 },
+      });
+      const data = r.data as { ok?: boolean; error?: string; result?: { clientSecret: string; paymentIntentId: string; total: number } };
+      if (data.ok && data.result) {
+        setCardIntent({ clientSecret: data.result.clientSecret, paymentIntentId: data.result.paymentIntentId, total: data.result.total });
+      } else {
+        setMessage(data.error || 'Card payment unavailable');
+      }
+    } catch (e) { setMessage((e as Error).message); }
+  };
+
+  const onCardSuccess = async ({ paymentIntentId }: { paymentIntentId: string }) => {
+    if (!cartId) return;
+    try {
+      const r = await api.post('/api/lens/run', {
+        domain: 'retail', action: 'cart-confirm-paid-with-intent',
+        input: { cartId, paymentIntentId },
+      });
+      const data = r.data as { ok?: boolean; error?: string; result?: { order?: { number: string } } };
+      if (data.ok) {
+        setMessage(`✓ Card payment captured · ${data.result?.order?.number}`);
+        await openCart();
+        setCardIntent(null);
+      } else {
+        setMessage(data.error || 'Capture failed (payment may need manual reconcile)');
+      }
+    } catch (e) { setMessage((e as Error).message); }
+  };
+
   return (
     <div className="grid grid-cols-2 gap-2 p-3 h-full">
       <div className="space-y-1 overflow-y-auto">
@@ -181,10 +217,25 @@ function POSTab() {
             placeholder="Tender" className="flex-1 px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
           <button type="button" onClick={tender} disabled={!tenderAmount}
             className="px-3 py-1 rounded-md border border-rose-500/40 bg-rose-500/15 text-xs text-rose-100 disabled:opacity-40">
-            <DollarSign className="w-3 h-3 inline" /> Tender
+            <DollarSign className="w-3 h-3 inline" /> Cash
+          </button>
+          <button type="button" onClick={tenderWithCard} disabled={!totals || totals.total <= 0}
+            className="px-3 py-1 rounded-md border border-cyan-500/40 bg-cyan-500/15 text-xs text-cyan-100 disabled:opacity-40">
+            <CreditCard className="w-3 h-3 inline" /> Card
           </button>
         </div>
         {message && <p className="text-[11px] text-emerald-300 mt-2">{message}</p>}
+        {cardIntent && (
+          <div className="mt-3 border-t border-white/10 pt-3">
+            <StripePaymentForm
+              clientSecret={cardIntent.clientSecret}
+              amountUsd={cardIntent.total}
+              description="Cart checkout"
+              onSuccess={onCardSuccess}
+              onCancel={() => setCardIntent(null)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
