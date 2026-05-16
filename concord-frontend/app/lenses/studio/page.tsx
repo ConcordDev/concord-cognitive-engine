@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { StudioRepos } from '@/components/studio/StudioRepos';
+import { StudioActionPanel } from '@/components/studio/StudioActionPanel';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -2661,6 +2662,11 @@ export default function StudioLensPage() {
       <StudioWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
       <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <StudioRepos />
+      </section>
+
+      {/* Ableton Live-shape session workbench: project / track / effect / render + actions */}
+      <section className="mt-6 mx-auto max-w-7xl">
+        <StudioActionPanel />
       </section>
     </LensShell>
   );
