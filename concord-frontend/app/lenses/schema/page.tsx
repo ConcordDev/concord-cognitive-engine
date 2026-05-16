@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -359,6 +360,9 @@ export default function SchemaLensPage() {
           creating={createMutation.isPending}
         />
       )}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <SchemaRepos />
+      </section>
     </div>
     </LensShell>
   );
