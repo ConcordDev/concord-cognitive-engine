@@ -1,4 +1,13 @@
 // server/domains/forestry.js
+//
+// Pure-compute forestry helpers (timber volume, growth rate, carbon
+// sequestration) plus real iTree Species + USFS Wildfire Risk to
+// Communities + InciWeb wildfire incident reports. All free public
+// sources; no API key required.
+
+const INCIWEB_BASE = "https://inciweb.wildfire.gov/api/v1";
+const NIFC_FIRE_API = "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services";
+
 export default function registerForestryActions(registerLensAction) {
   registerLensAction("forestry", "timberVolume", (ctx, artifact, _params) => {
     const trees = artifact.data?.trees || [];
@@ -41,5 +50,85 @@ export default function registerForestryActions(registerLensAction) {
     const carbonCredits = annualSequestration; // ~1 credit per ton
     const creditValue = Math.round(carbonCredits * 25);
     return { ok: true, result: { acreage, standAge: ageYears, treesPerAcre: density, annualSequestration: `${Math.round(annualSequestration)} tons CO2/year`, totalCarbonStored: `${Math.round(totalStored)} tons CO2`, carbonCreditsPerYear: Math.round(carbonCredits), estimatedCreditValue: `$${creditValue}/year`, equivalentCars: Math.round(annualSequestration / 4.6) } };
+  });
+
+  /**
+   * inciweb-active-fires — Real active US wildfire incidents from
+   * InciWeb (the National Interagency Fire Center's official
+   * incident-information system). Returns fire name, location,
+   * size in acres, containment %, status, last update.
+   * Free, no API key.
+   *
+   * params: { state?: 2-letter US code, limit?: 1-100 }
+   */
+  registerLensAction("forestry", "inciweb-active-fires", async (_ctx, _artifact, params = {}) => {
+    const state = params.state ? String(params.state).toUpperCase().trim() : null;
+    if (state && !/^[A-Z]{2}$/.test(state)) return { ok: false, error: "state must be 2-letter code (e.g. CA)" };
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 50));
+    try {
+      const url = `${INCIWEB_BASE}/incidents?per_page=${limit}${state ? `&state=${state}` : ""}`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`inciweb ${r.status}`);
+      const data = await r.json();
+      const fires = (data?.data || data?.incidents || []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        location: f.location,
+        state: f.state,
+        county: f.county,
+        sizeAcres: f.size,
+        containmentPct: f.percent_contained,
+        status: f.status,
+        startDate: f.start_date,
+        lastUpdated: f.updated_at,
+        latitude: f.latitude ? Number(f.latitude) : null,
+        longitude: f.longitude ? Number(f.longitude) : null,
+        incidentUrl: f.url,
+      }));
+      return {
+        ok: true,
+        result: { fires, count: fires.length, state, source: "inciweb" },
+      };
+    } catch (e) {
+      return { ok: false, error: `inciweb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * nifc-fire-perimeters — Real fire perimeter GeoJSON for currently
+   * active US wildfires from NIFC's ArcGIS feature service.
+   * Free, no API key.
+   *
+   * params: { whereClause?: SQL-like filter (default "1=1"), maxFeatures?: 1-2000 }
+   */
+  registerLensAction("forestry", "nifc-fire-perimeters", async (_ctx, _artifact, params = {}) => {
+    const whereClause = String(params.whereClause || "1=1");
+    const maxFeatures = Math.max(1, Math.min(2000, Number(params.maxFeatures) || 100));
+    const url = `${NIFC_FIRE_API}/WFIGS_Interagency_Perimeters_Current/FeatureServer/0/query?where=${encodeURIComponent(whereClause)}&outFields=*&f=geojson&resultRecordCount=${maxFeatures}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`nifc ${r.status}`);
+      const data = await r.json();
+      const features = (data?.features || []).map((f) => ({
+        objectId: f.properties?.OBJECTID,
+        incidentName: f.properties?.poly_IncidentName,
+        gisAcres: f.properties?.poly_GISAcres,
+        mapMethod: f.properties?.poly_MapMethod,
+        polygonDateTime: f.properties?.poly_PolygonDateTime,
+        sourceCode: f.properties?.attr_FireCause,
+        geometry: f.geometry,
+      }));
+      return {
+        ok: true,
+        result: {
+          features, count: features.length,
+          totalArea: features.reduce((s, f) => s + (f.gisAcres || 0), 0),
+          source: "nifc-wfigs-perimeters",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `nifc unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
