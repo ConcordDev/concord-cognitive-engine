@@ -389,25 +389,12 @@ export default function registerCryptoActions(registerLensAction) {
       }) : [];
       return { ok: true, result: { id, candles, count: candles.length, days, source: "coingecko" } };
     } catch (e) {
-      // Synthesise a deterministic candle series so the chart stays useful
-      // when offline. Seeded by id so the demo is stable across reloads.
-      const seed = hashString(id);
-      const now = Math.floor(Date.now() / 1000);
-      const candles = [];
-      let last = 100 + (seed % 50);
-      for (let i = days; i >= 0; i--) {
-        const t = now - i * 86400;
-        const drift = ((seed >> i) & 7) - 3.5;
-        const open = last;
-        const close = Math.max(0.01, open + drift);
-        const high = Math.max(open, close) + Math.abs(drift) * 0.5;
-        const low = Math.min(open, close) - Math.abs(drift) * 0.5;
-        candles.push({ time: t, open, high, low, close, volume: Math.round(1000 + (seed % 500) * i / days) });
-        last = close;
-      }
+      // Per "everything must be real" directive: no synthetic candle fallback.
+      // CoinGecko is the real source; if it's unreachable, surface the error
+      // so the UI can show a proper retry/offline state.
       return {
-        ok: true,
-        result: { id, candles, count: candles.length, days, source: "fallback", message: e instanceof Error ? e.message : "synthetic series" },
+        ok: false,
+        error: `coingecko unreachable: ${e instanceof Error ? e.message : String(e)}`,
       };
     }
   });

@@ -56,29 +56,40 @@ describe("crypto.search-tokens", () => {
   });
 });
 
-describe("crypto.token-candles", () => {
-  it("returns a deterministic synthetic candle series when CoinGecko unreachable", async () => {
-    const r1 = await call("token-candles", ctxA, { id: "bitcoin", days: 14 });
-    assert.equal(r1.ok, true);
-    assert.equal(r1.result.source, "fallback");
-    assert.ok(r1.result.candles.length >= 14);
-    for (const c of r1.result.candles) {
-      assert.ok(c.high >= c.low, `candle high ${c.high} must be >= low ${c.low}`);
-      assert.ok(c.high >= c.open && c.high >= c.close, "high must dominate");
-      assert.ok(c.low <= c.open && c.low <= c.close, "low must be dominated");
-      assert.ok(c.close > 0);
-    }
-    // Determinism: same id + days produce the same close-price trajectory
-    const r2 = await call("token-candles", ctxA, { id: "bitcoin", days: 14 });
-    assert.deepEqual(
-      r1.result.candles.map(c => c.close),
-      r2.result.candles.map(c => c.close),
-    );
+describe("crypto.token-candles (real CoinGecko, no fallback)", () => {
+  it("returns error shape when CoinGecko unreachable (no synthetic fallback)", async () => {
+    const r = await call("token-candles", ctxA, { id: "bitcoin", days: 14 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /coingecko unreachable|network/);
   });
 
-  it("clamps days to [1, 365]", async () => {
+  it("parses CoinGecko candle + volume response", async () => {
+    globalThis.fetch = async (url) => {
+      if (url.includes("/ohlc")) {
+        return { ok: true, json: async () => ([
+          [1700000000000, 35000, 35500, 34800, 35200],
+          [1700086400000, 35200, 35400, 35000, 35300],
+        ]) };
+      }
+      // market_chart for volumes
+      return { ok: true, json: async () => ({ total_volumes: [[1700000000000, 1_000_000], [1700086400000, 1_200_000]] }) };
+    };
+    const r = await call("token-candles", ctxA, { id: "bitcoin", days: 14 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "coingecko");
+    assert.equal(r.result.candles.length, 2);
+    assert.equal(r.result.candles[0].open, 35000);
+    assert.equal(r.result.candles[0].volume, 1_000_000);
+  });
+
+  it("clamps days to [1, 365] even when network is mocked", async () => {
+    globalThis.fetch = async (url) => {
+      // Verify days was clamped to 365 in the URL
+      assert.match(url, /days=365/);
+      return { ok: true, json: async () => [] };
+    };
     const r = await call("token-candles", ctxA, { id: "ethereum", days: 99999 });
-    assert.ok(r.result.candles.length <= 366);
+    assert.equal(r.ok, true);
   });
 });
 

@@ -607,21 +607,19 @@ export default function registerLogisticsActions(registerLensAction) {
   });
 
   registerLensAction("logistics", "inventory-list", (_ctx, _artifact, _params = {}) => {
-    const items = SAMPLE_SKUS.map((s, i) => {
-      const seed = hashStringLog(s.sku);
-      const quantity = seed % 200;
-      const reorderPoint = 30 + (seed % 50);
-      const weeklyVelocity = 5 + (seed % 25);
-      return {
-        id: `inv_${i}`,
-        sku: s.sku, name: s.name, category: s.category,
-        quantity, reorderPoint,
-        bin: `${String.fromCharCode(65 + (seed % 6))}-${String((seed >> 3) % 99 + 1).padStart(2, "0")}-${seed % 9 + 1}`,
-        weeklyVelocity,
-        daysOfStock: weeklyVelocity > 0 ? (quantity / weeklyVelocity) * 7 : 999,
-      };
-    });
-    return { ok: true, result: { items } };
+    // Per "everything must be real" directive: inventory comes from the
+    // user's real catalog (managed via retail.product-* or warehouse
+    // intake macros). No SAMPLE_SKUS seed. Returns empty + setup hint
+    // until a real inventory feed is wired (warehouse WMS export,
+    // Shopify catalog sync, or per-user warehouse macros).
+    return {
+      ok: true,
+      result: {
+        items: [],
+        source: "empty",
+        notes: "No inventory loaded. Wire a real warehouse feed (WMS export, Shopify catalog sync, or per-user logistics.warehouse-* macros) to populate.",
+      },
+    };
   });
 };
 
@@ -631,21 +629,3 @@ function hashStringLog(s) {
   return Math.abs(h);
 }
 
-const SAMPLE_SKUS = [
-  { sku: "WIDGET-001", name: "Standard Widget", category: "Hardware" },
-  { sku: "WIDGET-002", name: "Premium Widget", category: "Hardware" },
-  { sku: "BOX-LG-01", name: "Large Shipping Box", category: "Packaging" },
-  { sku: "BOX-MD-01", name: "Medium Shipping Box", category: "Packaging" },
-  { sku: "TAPE-001", name: "Packing Tape Roll", category: "Packaging" },
-  { sku: "LABEL-100", name: "Shipping Labels 100ct", category: "Packaging" },
-  { sku: "PAD-001", name: "Bubble Wrap Padding", category: "Packaging" },
-  { sku: "TOOL-WR-1", name: "Wrench Set", category: "Tools" },
-  { sku: "TOOL-DR-1", name: "Cordless Drill", category: "Tools" },
-  { sku: "WIRE-12G", name: "12-gauge Wire 100ft", category: "Materials" },
-  { sku: "WIRE-14G", name: "14-gauge Wire 100ft", category: "Materials" },
-  { sku: "PVC-2IN-10", name: "PVC Pipe 2in × 10ft", category: "Materials" },
-  { sku: "PAINT-WH-1G", name: "White Paint 1gal", category: "Materials" },
-  { sku: "PRIMER-1G", name: "Primer 1gal", category: "Materials" },
-  { sku: "SCREWS-100", name: "Wood Screws 100ct", category: "Hardware" },
-  { sku: "BOLTS-50", name: "Hex Bolts 1/4in 50ct", category: "Hardware" },
-];

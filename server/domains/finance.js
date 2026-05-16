@@ -165,31 +165,39 @@ export default function registerFinanceActions(registerLensAction) {
   });
 
   /**
-   * net-worth-history — Snapshot trajectory; seeds 12 months of synthetic
-   * snapshots if the user has none, so the chart is never empty for demo.
+   * net-worth-history — User's real net-worth snapshot trajectory.
+   * Returns empty array if the user hasn't logged any snapshots yet
+   * (per "everything must be real" directive — no synthetic seeding).
    */
   registerLensAction("finance", "net-worth-history", (ctx, _artifact, params = {}) => {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
-    if (!state.snapshots.has(userId) || state.snapshots.get(userId).length === 0) {
-      state.snapshots.set(userId, synthSnapshots(userId));
-    }
     const all = state.snapshots.get(userId) || [];
     const range = String(params.range || "1Y");
     const filtered = filterByRange(all, range);
-    return { ok: true, result: { snapshots: filtered, range, total: all.length } };
+    return {
+      ok: true,
+      result: {
+        snapshots: filtered, range, total: all.length,
+        notes: all.length === 0 ? "No snapshots logged yet. Add a snapshot via finance.snapshot-record to start tracking net worth over time." : undefined,
+      },
+    };
   });
 
   /**
    * investment-checkup — Empower-style allocation drift + concentration +
-   * fee benchmarking + Health Score.
+   * fee benchmarking + Health Score. Returns error if user has no holdings
+   * (per "everything must be real" directive — no SAMPLE_PORTFOLIO).
    */
   registerLensAction("finance", "investment-checkup", (ctx, _artifact, _params = {}) => {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
-    let holdings = state.holdings.get(userId);
+    const holdings = state.holdings.get(userId);
     if (!holdings || holdings.length === 0) {
-      holdings = SAMPLE_PORTFOLIO;
+      return {
+        ok: false,
+        error: "no holdings — add positions via finance.holdings-add first (real portfolio data only, no sample)",
+      };
     }
     const totalValue = holdings.reduce((s, h) => s + h.value, 0);
 
@@ -528,47 +536,12 @@ Generate the summary.`;
 
 // ─── helpers ──────────────────────────────────────────────────────────
 
-function synthSnapshots(userId) {
-  const seed = hashString(userId);
-  const snapshots = [];
-  const start = new Date();
-  start.setMonth(start.getMonth() - 36);
-  let cash = 8000 + (seed % 5000);
-  let invest = 50000 + (seed % 30000);
-  let real = 0;
-  let crypto = 2000 + (seed % 1500);
-  let liab = 18000 - (seed % 8000);
-  for (let i = 0; i < 36; i++) {
-    const d = new Date(start); d.setMonth(d.getMonth() + i);
-    cash += 200 + ((seed >> i) & 7) * 30;
-    invest = invest * (1 + (((seed >> i) & 31) - 14) / 200);
-    crypto = crypto * (1 + (((seed >> i) & 31) - 12) / 100);
-    liab = Math.max(0, liab - 250);
-    snapshots.push({
-      date: d.toISOString().slice(0, 10),
-      cash: Math.round(cash), investments: Math.round(invest),
-      realEstate: real, crypto: Math.round(crypto),
-      liabilities: Math.round(liab),
-      total: Math.round(cash + invest + real + crypto - liab),
-    });
-  }
-  return snapshots;
-}
-
 function filterByRange(snapshots, range) {
   const now = Date.now();
   const days = range === "1M" ? 30 : range === "6M" ? 180 : range === "1Y" ? 365 : range === "5Y" ? 365 * 5 : Infinity;
   return snapshots.filter(s => (now - new Date(s.date).getTime()) / 86400000 <= days);
 }
 
-const SAMPLE_PORTFOLIO = [
-  { symbol: "VTI", value: 28000, assetClass: "equity_us", sector: "Diversified", expenseRatio: 0.0003, feeCategory: "total_market" },
-  { symbol: "VXUS", value: 11000, assetClass: "equity_intl", sector: "International", expenseRatio: 0.0008, feeCategory: "total_intl" },
-  { symbol: "BND", value: 13000, assetClass: "bonds", sector: "Bonds", expenseRatio: 0.0005, feeCategory: "total_bond" },
-  { symbol: "VNQ", value: 4000, assetClass: "reits", sector: "Real Estate", expenseRatio: 0.0007, feeCategory: "reit" },
-  { symbol: "AAPL", value: 9000, assetClass: "equity_us", sector: "Technology", expenseRatio: 0, feeCategory: "stock" },
-  { symbol: "Cash", value: 3000, assetClass: "cash", sector: "Cash" },
-];
 
 function seedSubscriptions() {
   const now = Date.now();
