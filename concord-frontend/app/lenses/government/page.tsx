@@ -2,6 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import RepresentativeFinder from '@/components/government/RepresentativeFinder';
+import BillTracker from '@/components/government/BillTracker';
+import CivicAlerts from '@/components/government/CivicAlerts';
+import FOIATracker from '@/components/government/FOIATracker';
+import BudgetVisualizer from '@/components/government/BudgetVisualizer';
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -35,6 +40,8 @@ import {
   DollarSign,
   Users,
   Calendar,
+  Bell,
+  PieChart,
   CheckCircle2,
   Timer,
   Gauge,
@@ -69,7 +76,7 @@ import LiveFeed from '@/components/lens/LiveFeed';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Permits' | 'Public Works' | 'Code Enforcement' | 'Emergency' | 'Records' | 'Court';
+type ModeTab = 'Permits' | 'Public Works' | 'Code Enforcement' | 'Emergency' | 'Records' | 'Court' | 'MyReps' | 'Bills' | 'CivicAlerts' | 'FOIA' | 'Budget';
 type ViewMode = 'library' | 'dashboard' | 'detail';
 type ArtifactType = 'Permit' | 'Project' | 'Violation' | 'EmergencyPlan' | 'Record' | 'CourtCase';
 
@@ -186,6 +193,11 @@ const MODE_TABS: {
   { id: 'Emergency', icon: Siren, artifactType: 'EmergencyPlan', label: 'Emergency Mgmt' },
   { id: 'Records', icon: Archive, artifactType: 'Record', label: 'Public Records' },
   { id: 'Court', icon: Gavel, artifactType: 'CourtCase', label: 'Court Admin' },
+  { id: 'MyReps', icon: Users, artifactType: 'CourtCase', label: 'My Reps' },
+  { id: 'Bills', icon: FileText, artifactType: 'CourtCase', label: 'Bills' },
+  { id: 'CivicAlerts', icon: Bell, artifactType: 'CourtCase', label: 'Alerts' },
+  { id: 'FOIA', icon: FileText, artifactType: 'CourtCase', label: 'FOIA' },
+  { id: 'Budget', icon: PieChart, artifactType: 'CourtCase', label: 'Budget' },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -3308,8 +3320,15 @@ export default function GovernmentLensPage() {
         })}
       </nav>
 
+      {/* Parity-sprint surfaces (USA.gov / ProPublica / Resistbot / NWS) */}
+      {mode === 'MyReps' && <div className="p-4"><RepresentativeFinder /></div>}
+      {mode === 'Bills' && <div className="p-4"><BillTracker /></div>}
+      {mode === 'CivicAlerts' && <div className="p-4"><CivicAlerts /></div>}
+      {mode === 'FOIA' && <div className="p-4"><FOIATracker /></div>}
+      {mode === 'Budget' && <div className="p-4"><BudgetVisualizer /></div>}
+
       {/* Content */}
-      {view === 'dashboard' && renderDashboard()}
+      {view === 'dashboard' && !['MyReps','Bills','CivicAlerts','FOIA','Budget'].includes(mode) && renderDashboard()}
 
       {view === 'detail' && renderDetailView()}
 
