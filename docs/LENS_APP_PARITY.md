@@ -126,14 +126,14 @@ own visual identity, charts, and reference tables.
 
 | Lens | Leader app | Core workflows | Mounted | % | Status |
 |---|---|---|---:|---:|---|
-| `plumbing` | **PlumbCalc Pro** | Schedule-40 sizing wheel, drain slope calc, BOM line items, code lookup, fixture-unit calc | 0 of 5 | 0% | ⬜ empty |
-| `masonry` | **Mason Stuff App** | Course/mortar calc, brick coursing visualizer, lintel sizing, BOM | 0 of 4 | 0% | ⬜ empty |
-| `welding` | **Lincoln Welding Procedures** | Bead diagrams, gas-mix selector, heat-input chart, joint-design picker | 0 of 4 | 0% | ⬜ empty |
-| `hvac` | **Manual J + Wrightsoft** | Room-by-room load form, duct sizing, equipment-match grid, refrigerant charge | 0 of 4 | 0% | ⬜ empty |
-| `electrical` | **NEC Code Calc** | Conduit fill chart, voltage-drop graph, panel schedule grid, wire-ampacity table | 0 of 4 | 0% | ⬜ empty |
-| `carpentry` | **Sawpipes / Imperial+Metric Calc** | Cut-list optimizer, board-foot tally, stair stringer, rafter calc | 0 of 4 | 0% | ⬜ empty |
-| `construction` | **Procore-lite** | Critical-path graph, RFI list, submittal log, daily report, drawing browser | 0 of 5 | 0% | ⬜ empty |
-| `landscaping` | **Pro Landscape** | Plant palette grid (USDA zone), irrigation schedule, sun chart, hardscape calc | 0 of 4 | 0% | ⬜ empty |
+| `plumbing` | **PlumbCalc Pro** | Pipe sizer (Sch-40), water heater sizer, drain slope calc, fixture supply calc | 4 of 4 | 100% | ✅ done |
+| `masonry` | **Mason Stuff App** | Material estimator, mortar mix reference, wall strength check, job costing | 4 of 4 | 100% | ✅ done |
+| `welding` | **Lincoln Welding Procedures** | Joint strength calc, rod selector, heat input calc, weld inspection | 4 of 4 | 100% | ✅ done |
+| `hvac` | **Manual J + Wrightsoft** | Load calculator, energy audit, maintenance calendar, zone balance monitor | 4 of 4 | 100% | ✅ done |
+| `electrical` | **NEC Code Calc** | Panel load calc, voltage drop chart, circuit map, safety checklist | 4 of 4 | 100% | ✅ done |
+| `carpentry` | **Sawpipes / Imperial+Metric Calc** | Board-foot calc, joint strength guide, wood selection guide, finish recommender | 4 of 4 | 100% | ✅ done |
+| `construction` | **Procore-lite** | Takeoff estimate, critical-path view, safety compliance, progress report | 4 of 4 | 100% | ✅ done |
+| `landscaping` | **Pro Landscape** | Plant selector (USDA zone), irrigation calc, seasonal plan calendar, material estimator | 4 of 4 | 100% | ✅ done |
 
 ## Tier 5 — Session-loop lenses (each shadowing a real session app)
 
@@ -207,7 +207,7 @@ panels (create / inspect / share or similar) if no clear leader app.
 | Tier 1 (active) | 11 | 65% | 2026-05-16 |
 | Tier 2 (heavyweights) | 10 | 53% | 2026-05-16 |
 | Tier 3 (reference/utility) | ~36 | ~28% | 2026-05-16 |
-| Tier 4 (trade calcs) | 8 | 0% | 2026-05-16 |
+| Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
 | Tier 5 (session loops) | 5 | 0% | 2026-05-16 |
 | Tier 6 (backend-creation) | 5 | 0% | 2026-05-16 |
 | Tier 7 (Concord-native) | ~150 | tbd | 2026-05-16 |
@@ -219,21 +219,32 @@ Tier 7 lenses: target authored + ≥ 80% on the authored target.
 
 PR order, lowest % complete in each tier first:
 
-1. **Tier 4 (trade calcs)** — 8 lenses all at 0%. Each is one bespoke
-   contractor-app PR (~1–2 day per lens). Highest absolute leverage
-   because the leader apps are well-defined and visually distinct.
-2. **Tier 1 finish-the-job** — push `services` (29%), `materials` (43%),
-   `ocean` (43%), `security` (43%), `atlas` (57%) up to 80%+.
-3. **Tier 3 zero-coverage** — `debate`, `parenting`, `philosophy`,
+1. ~~**Tier 4 (trade calcs)**~~ — ✅ all 8 lenses at 100% (closed 2026-05-16,
+   32 bespoke widgets across plumbing / electrical / hvac / carpentry /
+   welding / masonry / construction / landscaping).
+2. **Path-A pivot — action surfaces on non-trade Tier-1 lenses.** The
+   leader apps for `atlas`, `pets`, `automotive`, `calendar`,
+   `environment`, `history`, `materials`, `ocean`, `security`,
+   `services`, `energy` aren't calc suites — they're action apps. Each
+   already has calc/reference panels mounted. Next move: layer
+   leader-app-shaped *actions* on top (mint DTUs, send messages, kick
+   agents, post to federation, schedule jobs). One action-panel PR
+   per lens, in the order: `services` (29% → 43%+ first because
+   booking+reminders are pure actions), then `atlas`, `calendar`,
+   `pets`, then the rest.
+3. **Tier 1 finish-the-job (calc gaps)** — push `materials` (43%),
+   `ocean` (43%), `security` (43%), `atlas` (57%) up to 80%+ once
+   action surfaces land.
+4. **Tier 3 zero-coverage** — `debate`, `parenting`, `philosophy`,
    `reasoning`, `reflection`, `science`, `thread` (all 0%).
-4. **Tier 5 (session loops)** — 5 lenses, all 0%, each shadowing a
+5. **Tier 5 (session loops)** — 5 lenses, all 0%, each shadowing a
    well-known leader (Anki / Calm / MasterClass / Hevy / Strava).
-5. **Tier 2 heavyweight #1** — `kingdoms` (UI empty, schema fully done;
+6. **Tier 2 heavyweight #1** — `kingdoms` (UI empty, schema fully done;
    highest ROI heavyweight).
-6. **Tier 6 backend-creation** — `observe`, `ops`, `wellness`,
+7. **Tier 6 backend-creation** — `observe`, `ops`, `wellness`,
    `productivity`. Each: build domain + 3 panels.
-7. **Tier 3 partial pushes** + remaining Tier 2 heavyweights interleaved.
-8. **Tier 7** — lens-by-lens authoring as the sweep reaches each.
+8. **Tier 3 partial pushes** + remaining Tier 2 heavyweights interleaved.
+9. **Tier 7** — lens-by-lens authoring as the sweep reaches each.
 
 ## Visual-identity gate (per the v3 plan)
 
@@ -249,6 +260,11 @@ reference target.
   defaults. Substrate-wide seed strip across 13 lens pages. ux-suite
   mock showcase → real-home directory.
 - Tier 1 average % went from ~10% (start of session) to 65% (end).
+- Tier 4 trade-calc cluster cleared 2026-05-16 (PRs #749–#756): 32
+  bespoke widgets across 8 contractor-app suites (PlumbCalc Pro / NEC
+  Code Calc / Manual J / Sawpipes / Lincoln WPS / Mason Stuff App /
+  Procore-lite / Pro Landscape). No CalcPanel, no shared shells —
+  each lens its own visual identity per the v3 path-A decision tree.
 - This rubric authored 2026-05-16 as Phase 1 deliverable per the v3
   plan. Replaces `docs/LENS_COVERAGE_AUDIT.md` from PR #723 (which
   used the buggy detector that under-counted wiring).
