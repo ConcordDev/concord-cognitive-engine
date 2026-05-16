@@ -238,6 +238,10 @@ data, all server macros via `apiHelpers.lens.runDomain`.
 | defense | DefenseActionPanel | threatAssessment · readinessScore · incidentResponse · usaspending-dod-contracts | ✅ shipped |
 | emergency-services | EmergencyServicesActionPanel | triageAssess (START) · dispatchOptimize · incidentLog · resourceReadiness | ✅ shipped |
 | law-enforcement | LawEnforcementActionPanel | caseAnalysis · patrolOptimize · incidentReport · crimeStats | ✅ shipped |
+| construction | ConstructionActionPanel | takeoffEstimate · criticalPath · safetyCompliance · progressReport | ✅ shipped |
+| engineering | EngineeringActionPanel | toleranceAnalysis · stressAnalysis · bom · unitConvert | ✅ shipped |
+| audit | AuditActionPanel | complianceCheck · trailAnalysis · riskScore · samplingPlan | ✅ shipped |
+| marketing | MarketingActionPanel | campaignROI · abTestAnalysis · funnelOptimize · audienceSegment | ✅ shipped |
 | (plus the Tier-1/Tier-3/Tier-5/Tier-6 panels shipped earlier in the session — see git log on `claude/ship-trade-ui-widgets-hLpjG` for the full chain.) | | | |
 
 ## Progress tracking
@@ -250,7 +254,7 @@ data, all server macros via `apiHelpers.lens.runDomain`.
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
 | Tier 5 (session loops) | 5 | ~80% | 2026-05-16 |
 | Tier 6 (backend-creation) | 5 | ~80% | 2026-05-16 |
-| Tier 7 (Concord-native) | ~150 | ~24% authored (≥80% each) | 2026-05-16 |
+| Tier 7 (Concord-native) | ~150 | ~30% authored (≥80% each) | 2026-05-16 |
 
 **Close gate:** every Tier-1 to Tier-6 lens ≥ 80% (heavyweights ≥ 70%).
 Tier 7 lenses: target authored + ≥ 80% on the authored target.
