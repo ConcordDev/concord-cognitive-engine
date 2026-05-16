@@ -90,6 +90,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import LiveFeed from '@/components/lens/LiveFeed';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1316,6 +1317,15 @@ export default function EducationLensPage() {
           </button>
         </div>
       </header>
+
+      {/* Education Wire — Department of Education + NCES live feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="education"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
 
       <RealtimeDataPanel domain="education" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 

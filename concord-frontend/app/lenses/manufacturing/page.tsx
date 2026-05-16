@@ -10,6 +10,9 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import LiveFeed from '@/components/lens/LiveFeed';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import {
   ClipboardList,
   Layers,
@@ -423,6 +426,8 @@ function ScheduleTimeline({ schedule }: { schedule: LensItem }) {
 // ---------------------------------------------------------------------------
 export default function ManufacturingLensPage() {
   const [mode, setMode] = useState<ModeTab>('dashboard');
+  // Live BLS PPI + Federal Reserve G.17 industrial production feed.
+  const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('manufacturing');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -2308,6 +2313,7 @@ export default function ManufacturingLensPage() {
       onRetry={refetch}
       actions={
         <>
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
           {mode !== 'dashboard' && (
             <button onClick={openCreate} className={ds.btnPrimary}>
               <Plus className="w-4 h-4" /> New {currentType}
@@ -2319,6 +2325,15 @@ export default function ManufacturingLensPage() {
         </>
       }
     >
+      {/* Industry Wire — BLS PPI + Federal Reserve G.17 live feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="manufacturing"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+        className="mb-4"
+      />
       {/* AI Actions */}
       <UniversalActions domain="manufacturing" artifactId={dashWOs[0]?.id} compact />
       {/* Mode Tabs */}

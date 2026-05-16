@@ -32,6 +32,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -2665,6 +2666,14 @@ export default function FoodLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="food" artifactId={allRecipes[0]?.id} compact />
+      {/* Live WHO + food safety alerts */}
+      <LiveFeed
+        articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+        domain="legal"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={8}
+      />
       <RealtimeDataPanel domain="food" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <DTUExportButton domain="food" data={{}} compact />
       <VisionAnalyzeButton

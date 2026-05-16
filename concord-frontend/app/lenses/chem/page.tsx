@@ -18,6 +18,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
+import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 
 interface Compound {
   id: string;
@@ -138,6 +139,14 @@ export default function ChemLensPage() {
       </header>
 
 
+      {/* Live arXiv papers — physics.chem-ph + cond-mat categories */}
+      <LiveFeed
+        articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+        domain="research"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={8}
+      />
       <RealtimeDataPanel domain="chem" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <DTUExportButton domain="chem" data={{}} compact />
 

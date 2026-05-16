@@ -55,6 +55,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import LiveFeed from '@/components/lens/LiveFeed';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -980,6 +981,14 @@ export default function InsuranceLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="insurance" artifactId={policies[0]?.id} compact />
+      {/* Insurance Wire — Treasury FIO + NAIC live feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="insurance"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
       <RealtimeDataPanel domain="insurance" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <DTUExportButton domain="insurance" data={{}} compact />
       <VisionAnalyzeButton

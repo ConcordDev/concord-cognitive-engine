@@ -25,6 +25,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import LiveFeed from '@/components/lens/LiveFeed';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1695,6 +1696,14 @@ export default function AviationLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="aviation" artifactId={items[0]?.id} compact />
+      {/* Aviation Safety Wire — NTSB + FAA + ASN live feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="aviation"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
       <RealtimeDataPanel domain="aviation" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <DTUExportButton domain="aviation" data={{}} compact />
       {/* Mode Tabs */}

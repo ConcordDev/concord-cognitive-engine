@@ -27,6 +27,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -973,6 +974,14 @@ export default function PaperLensPage() {
         </>
       )}
 
+      {/* Live arXiv papers — all categories */}
+      <LiveFeed
+        articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+        domain="research"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
       <RealtimeDataPanel data={realtimeInsights} />
       <UniversalActions domain="paper" artifactId={null} compact />
 

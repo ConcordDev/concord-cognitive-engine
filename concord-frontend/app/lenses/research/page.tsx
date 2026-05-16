@@ -43,6 +43,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
 import { FeedBanner } from '@/components/lens/FeedBanner';
@@ -714,6 +715,14 @@ export default function ResearchLensPage() {
         {realtimeData && (
           <>
             <UniversalActions domain="research" artifactId={null} compact />
+            {/* Live arXiv papers — cs.AI / cs.CL / cs.LG categories */}
+            <LiveFeed
+              articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+              domain="research"
+              isLive={isLive}
+              lastUpdated={lastUpdated}
+              limit={8}
+            />
             <RealtimeDataPanel
               domain="research"
               data={realtimeData}

@@ -66,6 +66,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import LiveFeed from '@/components/lens/LiveFeed';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -3103,6 +3104,14 @@ export default function LegalLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="legal" artifactId={items[0]?.id} compact />
+      {/* Court Wire — live CourtListener + Federal Register opinions feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="legal"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
       <RealtimeDataPanel
         domain="legal"
         data={realtimeData}

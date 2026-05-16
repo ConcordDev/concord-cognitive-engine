@@ -173,7 +173,7 @@ export default function NewsLensPage() {
   ];
 
   const articles: NewsArticle[] = useMemo(() => {
-    return (newsItems || []).map((item) => {
+    const fromDtus = (newsItems || []).map((item) => {
       const data = (item.data || {}) as Record<string, unknown>;
       return {
         id: String(item.id || ''),
@@ -191,7 +191,32 @@ export default function NewsLensPage() {
         importance: (data.importance as 'low' | 'medium' | 'high' | 'critical') || undefined,
       };
     });
-  }, [newsItems]);
+    // Fold the live realtime feed (Reuters / BBC / NPR RSS) into the
+    // same article list so the existing news-grid UI naturally renders
+    // them. Realtime articles take priority (newest-first); dedup by
+    // URL / title to avoid showing the same headline twice once the
+    // event-to-DTU bridge has persisted it.
+    const rtArticles = ((realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles) || [];
+    const fromRealtime: NewsArticle[] = rtArticles.map((rt) => ({
+      id: `rt-${String(rt.link || rt.title || Math.random())}`,
+      title: String(rt.title || ''),
+      summary: String(rt.summary || ''),
+      source: String(rt.source || ''),
+      category: 'breaking',
+      timestamp: String(rt.pubDate || new Date().toISOString()),
+      imageUrl: (rt.imageUrl as string) || undefined,
+      trending: true,
+      bookmarked: false,
+      url: (rt.link as string) || undefined,
+    }));
+    const seen = new Set<string>();
+    return [...fromRealtime, ...fromDtus].filter((a) => {
+      const key = (a.url || a.title || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [newsItems, realtimeData]);
 
   // Extract unique sources for filtering
   const sources = useMemo(() => {

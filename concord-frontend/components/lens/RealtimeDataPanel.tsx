@@ -148,6 +148,24 @@ function renderCompactData(domain: string, data: Record<string, unknown>) {
     }
   }
 
+  // RSS-article compact form for the 11 new domains.
+  const COMPACT_RSS = new Set([
+    'legal', 'government', 'realestate', 'aviation', 'insurance',
+    'manufacturing', 'logistics', 'retail', 'fitness', 'agriculture',
+    'education',
+  ]);
+  if (COMPACT_RSS.has(domain)) {
+    const articles = data.articles as Array<{ title: string; source?: string }> | undefined;
+    if (articles && articles.length > 0) {
+      return (
+        <div className="text-zinc-400">
+          <div className="truncate">{articles[0]?.title}</div>
+          <div className="text-zinc-600 text-[10px] truncate">{articles[0]?.source}</div>
+        </div>
+      );
+    }
+  }
+
   if (domain === 'weather' || domain === 'environment' || domain === 'eco') {
     const current = data.current as Record<string, unknown> | undefined;
     if (current) {
@@ -266,6 +284,41 @@ function renderDetailedData(domain: string, data: Record<string, unknown>) {
     }
   }
 
+  // RSS-article domains share the same shape — one renderer covers
+  // legal / government / realestate / aviation / insurance /
+  // manufacturing / logistics / retail / fitness / agriculture /
+  // education. Pre-this-fix these hit the generic JSON-dump fallback
+  // and looked half-built. Now they render as a tight 4-line article
+  // list with clickable source links.
+  const RSS_DOMAINS = new Set([
+    'legal', 'government', 'realestate', 'aviation', 'insurance',
+    'manufacturing', 'logistics', 'retail', 'fitness', 'agriculture',
+    'education',
+  ]);
+  if (RSS_DOMAINS.has(domain)) {
+    const articles = data.articles as Array<{ source: string; title: string; link?: string; pubDate?: string; summary?: string }> | undefined;
+    if (articles && articles.length > 0) {
+      return (
+        <div className="space-y-2">
+          {articles.slice(0, 4).map((a, i) => (
+            <div key={i}>
+              {a.link ? (
+                <a href={a.link} target="_blank" rel="noopener noreferrer" className="text-zinc-300 text-[11px] hover:text-neon-cyan hover:underline">
+                  {a.title}
+                </a>
+              ) : (
+                <div className="text-zinc-300 text-[11px]">{a.title}</div>
+              )}
+              <div className="text-[10px] text-zinc-500">
+                {a.source}{a.pubDate ? ` · ${formatRelativeDate(a.pubDate)}` : ''}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  }
+
   // Generic fallback
   return (
     <div className="text-zinc-400">
@@ -274,4 +327,16 @@ function renderDetailedData(domain: string, data: Record<string, unknown>) {
       </pre>
     </div>
   );
+}
+
+function formatRelativeDate(input: string): string {
+  if (!input) return '';
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) return input.slice(0, 24);
+  const ms = Date.now() - d.getTime();
+  if (ms < 60_000)      return 'just now';
+  if (ms < 3_600_000)   return `${Math.floor(ms / 60_000)}m ago`;
+  if (ms < 86_400_000)  return `${Math.floor(ms / 3_600_000)}h ago`;
+  if (ms < 604_800_000) return `${Math.floor(ms / 86_400_000)}d ago`;
+  return d.toLocaleDateString();
 }
