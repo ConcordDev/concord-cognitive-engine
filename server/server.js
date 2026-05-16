@@ -38562,6 +38562,11 @@ registerUniversalLensActions();
     ["chem", "react", "balanceReaction"],
     ["chem", "analyze", "molecularAnalysis"],
     ["chem", "thermodynamics", "enthalpyCalc"],
+    // Manifest action aliases — frontend UniversalActions calls these
+    // via the lens-features catalog. Pre-this-fix both were dead clicks
+    // because no macro handler matched the hyphen-style names.
+    ["chem", "profile-molecule", "molecularAnalysis"],
+    ["chem", "balance-reaction", "balanceReaction"],
 
     // Quantum lens: additional aliases
     ["quantum", "simulate", "simulateCircuit"],

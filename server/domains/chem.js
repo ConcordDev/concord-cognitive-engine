@@ -441,4 +441,159 @@ export default function registerChemActions(registerLensAction) {
         return { ok: false, error: `Unknown operation "${op}". Use: pH, dilute, titrate, buffer.` };
     }
   });
+
+  /**
+   * generate-safety
+   * Build a GHS-style safety profile for a compound. Heuristic lookup
+   * against a small hazard table. Real production should hit PubChem
+   * GHS section. Returns hazard classes, GHS pictograms, handling,
+   * storage, first aid, disposal. Pre-this macro the manifest
+   * "generate-safety" UniversalAction button was a dead click.
+   */
+  registerLensAction("chem", "generate-safety", (ctx, artifact, params) => {
+    const d = artifact.data || {};
+    const name = String(d.name || d.compound || d.formula || params?.name || artifact.title || "(unknown)").trim();
+    const lname = name.toLowerCase();
+
+    const HAZARD_KEYWORDS = [
+      { match: /sulfuric|hcl|hydrochloric|nitric|phosphoric|acid/, classes: ['corrosive','acute-toxicity'], pictograms: ['GHS05','GHS06'], handling: 'Always add acid to water (AAA), never reverse. Use fume hood. Acid-resistant gloves + face shield.' },
+      { match: /sodium hydroxide|naoh|koh|caustic|lye|base/,        classes: ['corrosive','skin-burn'],   pictograms: ['GHS05'],        handling: 'Heat on dissolution — add base to water slowly. PPE: nitrile gloves + face shield.' },
+      { match: /methanol|ethanol|isopropanol|alcohol/,              classes: ['flammable','intoxicant'],  pictograms: ['GHS02','GHS07'], handling: 'Keep away from ignition. Ventilation. Bond/ground when transferring large volumes.' },
+      { match: /benzene|toluene|xylene/,                            classes: ['flammable','carcinogenic','aspiration-hazard'], pictograms: ['GHS02','GHS08','GHS07'], handling: 'Fume hood required. PPE: nitrile gloves, lab coat, eye protection. Avoid skin contact.' },
+      { match: /chloroform|dichloromethane|carbon tetra/,            classes: ['carcinogenic','toxic'],    pictograms: ['GHS08','GHS06'], handling: 'Fume hood. Double-glove. Bottle on tray to contain spills.' },
+      { match: /mercury|lead|cadmium|arsenic/,                      classes: ['heavy-metal','toxic','environmental'], pictograms: ['GHS06','GHS09'], handling: 'Strict spill containment. Designated workspace. Hazardous waste stream.' },
+      { match: /oxygen|hydrogen|methane|propane|acetylene/,          classes: ['flammable','asphyxiant'],  pictograms: ['GHS02','GHS04'], handling: 'Compressed gas — secure cylinder vertically. Proper regulator. Soap-leak-check.' },
+      { match: /cyanide|hcn/,                                       classes: ['acute-toxicity-fatal','rapid'], pictograms: ['GHS06'], handling: 'EXTREME hazard. Designated operator only. Buddy system. Antidote kit on-site.' },
+      { match: /ether|peroxide/,                                    classes: ['flammable','peroxide-former'], pictograms: ['GHS02','GHS03'], handling: 'Test for peroxides before use; never distill to dryness. Date containers on opening.' },
+    ];
+    const matched = HAZARD_KEYWORDS.find(p => p.match.test(lname));
+    const profile = matched ? matched : {
+      classes: ['unspecified'], pictograms: [],
+      handling: 'No specific hazard signature matched. Consult PubChem GHS section, manufacturer SDS, and your CHP. Default: PPE (gloves, eye protection), fume hood for unknowns.',
+    };
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      compound: name,
+      formula: d.formula || null,
+      hazardClasses: profile.classes,
+      ghsPictograms: profile.pictograms,
+      handling: profile.handling,
+      storage: matched && /flammable/.test(profile.classes.join(','))
+        ? 'Flammable cabinet, away from oxidizers. Cool, ventilated.'
+        : matched && /corrosive/.test(profile.classes.join(','))
+          ? 'Corrosive cabinet, segregated from incompatibles.'
+          : 'Closed container, room temperature, away from incompatibles.',
+      firstAid: {
+        skin: 'Remove contaminated clothing. Flush 15 min with water. Medical attention if irritation persists.',
+        eye: 'Eyewash 15 min. Hold eyelids open. Medical attention.',
+        inhalation: 'Move to fresh air. Oxygen if breathing difficult. Medical attention.',
+        ingestion: 'Do not induce vomiting. Rinse mouth. Immediate medical attention with SDS.',
+      },
+      disposal: 'Hazardous waste stream — do not pour down drain. Label per local regulations.',
+      summary: matched ? `${name}: ${profile.classes.join(', ')}.` : `${name}: no preset hazard profile. Consult manufacturer SDS.`,
+      sources: [
+        { name: 'PubChem GHS', url: `https://pubchem.ncbi.nlm.nih.gov/#query=${encodeURIComponent(name)}` },
+        { name: 'ICSC',        url: `https://www.ilo.org/dyn/icsc/showcard.home?p_lang=en` },
+      ],
+    };
+    if (artifact.data) artifact.data.lastSafetyProfile = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * check-interactions
+   * Cross-reference a set of compounds for known incompatibilities.
+   * Pairwise rule lookup against a real (small) chem hazard table.
+   */
+  registerLensAction("chem", "check-interactions", (ctx, artifact, params) => {
+    const raw = artifact.data?.compounds || params?.compounds || [];
+    const compounds = raw.map(c => typeof c === 'string' ? { name: c } : c).filter(c => c.name);
+    if (compounds.length < 2) {
+      return { ok: false, error: "need_two", message: "Provide at least two compounds." };
+    }
+
+    const INCOMPATIBILITIES = [
+      { a: /acid/i,                      b: /base|hydroxide|cyanide/i,    severity: 'high', issue: 'Violent neutralization, heat release. Cyanide+acid releases lethal HCN gas.' },
+      { a: /oxidizer|perchlorate|nitrate|chlorate|peroxide/i, b: /organic|alcohol|hydrocarbon|ether/i, severity: 'high', issue: 'Risk of fire or explosion, especially with friction or heat.' },
+      { a: /sodium|potassium|lithium/i,  b: /water|alcohol/i,             severity: 'high', issue: 'Reacts violently with water releasing H2; potential fire/explosion.' },
+      { a: /chlorine|hypochlorite|bleach/i, b: /ammonia|amine/i,          severity: 'high', issue: 'Releases toxic chloramine gas. Ventilate immediately.' },
+      { a: /chlorine|hypochlorite|bleach/i, b: /acid/i,                   severity: 'high', issue: 'Releases toxic chlorine gas.' },
+      { a: /silver|mercury/i,            b: /azide|ammonia/i,             severity: 'high', issue: 'Forms shock-sensitive explosive azides.' },
+      { a: /sulfuric/i,                  b: /permanganate|chlorate/i,     severity: 'high', issue: 'Explosive Mn2O7 / chloric acid byproducts.' },
+      { a: /flammable/i,                 b: /oxidizer/i,                  severity: 'high', issue: 'Fire / explosion risk; segregate in storage.' },
+      { a: /reducing|hydride|borohydride/i, b: /oxidizer|peroxide/i,      severity: 'high', issue: 'Redox runaway risk.' },
+    ];
+
+    const interactions = [];
+    for (let i = 0; i < compounds.length; i++) {
+      for (let j = i + 1; j < compounds.length; j++) {
+        const ni = compounds[i].name;
+        const nj = compounds[j].name;
+        for (const rule of INCOMPATIBILITIES) {
+          if ((rule.a.test(ni) && rule.b.test(nj)) || (rule.a.test(nj) && rule.b.test(ni))) {
+            interactions.push({ between: [ni, nj], severity: rule.severity, issue: rule.issue });
+            break;
+          }
+        }
+      }
+    }
+
+    const result = {
+      checkedAt: new Date().toISOString(),
+      compounds: compounds.map(c => c.name),
+      interactions,
+      severity: interactions.some(i => i.severity === 'high') ? 'high' : interactions.length > 0 ? 'medium' : 'ok',
+      summary: interactions.length === 0
+        ? `No known incompatibilities among ${compounds.length} compound(s). Library is small — for production consult OSHA / Bretherick's.`
+        : `${interactions.length} incompatibility(ies). ${interactions.filter(i => i.severity === 'high').length} HIGH severity — segregate immediately.`,
+    };
+    if (artifact.data) artifact.data.lastInteractionCheck = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * explore-element
+   * Element profile: properties, uses, history, key compounds.
+   * Small bundled library; for full coverage point at PubChem element pages.
+   */
+  registerLensAction("chem", "explore-element", (ctx, artifact, params) => {
+    const sym = String(artifact.data?.symbol || params?.symbol || artifact.data?.element || params?.element || artifact.title || "").trim();
+    const lookup = sym.toLowerCase();
+
+    const ELEMENTS = {
+      h:   { name: 'Hydrogen',   symbol: 'H',   z: 1,  group: 1,  period: 1, category: 'nonmetal',         atomicMass: 1.008,   uses: ['fuel','ammonia synthesis','reducing agent'],            history: 'Identified by Cavendish 1766; named by Lavoisier.' },
+      he:  { name: 'Helium',     symbol: 'He',  z: 2,  group: 18, period: 1, category: 'noble',            atomicMass: 4.0026,  uses: ['cryogenics','balloons','MRI'],                          history: 'Detected in solar spectrum 1868; isolated on Earth 1895.' },
+      c:   { name: 'Carbon',     symbol: 'C',   z: 6,  group: 14, period: 2, category: 'nonmetal',         atomicMass: 12.011,  uses: ['steel','plastics','life chemistry'],                    history: 'Known since antiquity (charcoal); named by Lavoisier.' },
+      n:   { name: 'Nitrogen',   symbol: 'N',   z: 7,  group: 15, period: 2, category: 'nonmetal',         atomicMass: 14.007,  uses: ['ammonia','fertilizer','cryogenics'],                    history: 'Isolated by Rutherford 1772.' },
+      o:   { name: 'Oxygen',     symbol: 'O',   z: 8,  group: 16, period: 2, category: 'nonmetal',         atomicMass: 15.999,  uses: ['respiration','combustion','steel-making'],              history: 'Discovered by Scheele 1771 and Priestley 1774 independently.' },
+      na:  { name: 'Sodium',     symbol: 'Na',  z: 11, group: 1,  period: 3, category: 'alkali',           atomicMass: 22.990,  uses: ['salt','soap','sodium lamps'],                           history: 'Isolated by Davy 1807 via electrolysis.' },
+      cl:  { name: 'Chlorine',   symbol: 'Cl',  z: 17, group: 17, period: 3, category: 'halogen',          atomicMass: 35.45,   uses: ['water treatment','PVC','disinfectants'],                history: 'Discovered by Scheele 1774; named by Davy 1810.' },
+      fe:  { name: 'Iron',       symbol: 'Fe',  z: 26, group: 8,  period: 4, category: 'transition',       atomicMass: 55.845,  uses: ['steel','hemoglobin','catalysts'],                       history: 'Used ~3000 BCE; Iron Age ~1200 BCE.' },
+      au:  { name: 'Gold',       symbol: 'Au',  z: 79, group: 11, period: 6, category: 'transition',       atomicMass: 196.97,  uses: ['jewelry','electronics','reserve'],                      history: 'Known since antiquity; symbol from Latin "aurum".' },
+      pb:  { name: 'Lead',       symbol: 'Pb',  z: 82, group: 14, period: 6, category: 'post-transition',  atomicMass: 207.2,   uses: ['batteries','radiation shielding'],                      history: 'Romans used widely; now restricted due to toxicity.' },
+      u:   { name: 'Uranium',    symbol: 'U',   z: 92, group: -1, period: 7, category: 'actinide',         atomicMass: 238.03,  uses: ['nuclear fuel','weapons'],                                history: 'Discovered by Klaproth 1789; named after planet Uranus.' },
+    };
+    const entry = ELEMENTS[lookup] || ELEMENTS[lookup.slice(0,2)] || ELEMENTS[lookup.slice(0,1)];
+    if (!entry) {
+      return {
+        ok: true,
+        result: {
+          requested: sym,
+          message: `Element "${sym}" not in bundled library. Use PubChem element index for full coverage.`,
+          link: 'https://pubchem.ncbi.nlm.nih.gov/periodic-table/',
+        },
+      };
+    }
+    const result = {
+      generatedAt: new Date().toISOString(),
+      ...entry,
+      summary: `${entry.name} (${entry.symbol}, Z=${entry.z}): ${entry.category}, group ${entry.group}, period ${entry.period}. Uses: ${entry.uses.join(', ')}. ${entry.history}`,
+      sources: [
+        { name: 'PubChem element', url: `https://pubchem.ncbi.nlm.nih.gov/element/${entry.z}` },
+      ],
+    };
+    if (artifact.data) artifact.data.lastElementProfile = result;
+    return { ok: true, result };
+  });
 }
