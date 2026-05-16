@@ -23,6 +23,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { TripPlannerPanel } from '@/components/travel/TripPlannerPanel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -575,6 +576,9 @@ export default function TravelLensPage() {
         </button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="travel" /></div>}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <TripPlannerPanel />
+      </section>
     </div>
     </LensShell>
   );
