@@ -330,4 +330,336 @@ export default function registerAgricultureActions(registerLensAction) {
 
     return { ok: true, result: report };
   });
+
+  /**
+   * plan-crop
+   * Generate a crop rotation + planting plan for a field given its
+   * history + soil type + current season. Returns recommended crop +
+   * planting window + expected yield band + rationale. Pre-this macro
+   * the "plan-crop" UniversalAction button (per server.js manifest)
+   * was a dead click.
+   */
+  registerLensAction("agriculture", "plan-crop", (ctx, artifact, params) => {
+    const field = artifact.data || {};
+    const history = field.history || [];
+    const soilType = (field.soilType || params?.soilType || "loam").toLowerCase();
+    const region = field.region || params?.region || "midwest";
+    const lastCrop = history[history.length - 1]?.crop?.toLowerCase() || "";
+
+    // Rotation table — encode common US Midwest rotations + soil prefs.
+    // After legumes (soy/alfalfa): cereal grain. After cereals: legumes
+    // or root crops. Avoid repeats of same family in 3 years.
+    const ROTATIONS = {
+      "corn":     { next: ["soybeans", "wheat", "alfalfa"],     avoid: ["corn"] },
+      "soybeans": { next: ["corn", "wheat"],                    avoid: ["soybeans"] },
+      "wheat":    { next: ["soybeans", "alfalfa", "cover-crop"], avoid: ["wheat"] },
+      "alfalfa":  { next: ["corn", "wheat"],                    avoid: ["soybeans"] },
+      "":         { next: ["soybeans", "corn", "wheat"],        avoid: [] },
+    };
+    const rot = ROTATIONS[lastCrop] || ROTATIONS[""];
+
+    // Soil bias — sand prefers root/fiber, clay holds water for corn,
+    // loam is the all-arounder.
+    const SOIL_BIAS = { sand: ["potato","wheat"], clay: ["corn","alfalfa"], loam: ["corn","soybeans","wheat"], silt: ["soybeans","wheat"] };
+    const soilPreferred = SOIL_BIAS[soilType] || SOIL_BIAS.loam;
+
+    const ranked = rot.next.map(c => ({
+      crop: c,
+      soilFit: soilPreferred.includes(c) ? 'good' : 'fair',
+      historyAvoidance: rot.avoid.includes(c) ? 'penalty' : 'ok',
+      score: (soilPreferred.includes(c) ? 2 : 1) - (rot.avoid.includes(c) ? 2 : 0),
+    })).sort((a, b) => b.score - a.score);
+
+    const recommended = ranked[0]?.crop || "soybeans";
+
+    const PLANTING_WINDOWS = {
+      "corn":      { start: "Apr-15", end: "May-25", days: 110 },
+      "soybeans":  { start: "May-01", end: "Jun-15", days: 100 },
+      "wheat":     { start: "Sep-15", end: "Oct-20", days: 240 }, // winter
+      "alfalfa":   { start: "Apr-15", end: "May-30", days: 365 },
+      "potato":    { start: "Apr-01", end: "May-15", days: 100 },
+      "cover-crop":{ start: "Sep-01", end: "Oct-30", days: 180 },
+    };
+    const window = PLANTING_WINDOWS[recommended] || { start: "Apr-15", end: "May-30", days: 110 };
+    const YIELD_BANDS = {
+      "corn":     { low: 150, high: 220, unit: "bu/ac" },
+      "soybeans": { low:  45, high:  70, unit: "bu/ac" },
+      "wheat":    { low:  45, high:  85, unit: "bu/ac" },
+      "alfalfa":  { low: 3.0, high: 5.5, unit: "tons/ac" },
+      "potato":   { low: 300, high: 450, unit: "cwt/ac" },
+    };
+    const yieldBand = YIELD_BANDS[recommended] || { low: 0, high: 0, unit: "unit/ac" };
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      field: { name: field.name, acreage: field.acreage, soilType, region },
+      lastCrop: lastCrop || "(unknown)",
+      candidates: ranked,
+      recommended,
+      plantingWindow: window,
+      expectedYield: yieldBand,
+      rationale: `${recommended} ranked top: soil ${ranked[0]?.soilFit}, rotation ${ranked[0]?.historyAvoidance}. Plant ${window.start}–${window.end}, harvest in ~${window.days} days. Expect ${yieldBand.low}–${yieldBand.high} ${yieldBand.unit}.`,
+    };
+    if (artifact.data) artifact.data.lastCropPlan = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * track-season
+   * Generate a weekly status snapshot for a crop cycle vs expected
+   * growing-degree-day milestones. Returns stage (vegetative/repro/
+   * mature), GDD-to-date, % through cycle, and flags for stress.
+   */
+  registerLensAction("agriculture", "track-season", (ctx, artifact, params) => {
+    const crop = artifact.data || {};
+    const plantDate = crop.plantDate || crop.plantedAt || params?.plantDate;
+    if (!plantDate) {
+      return { ok: false, error: "missing_plant_date", message: "Crop cycle has no plantDate" };
+    }
+    const planted = new Date(plantDate);
+    const today = new Date();
+    const daysElapsed = Math.max(0, Math.floor((today.getTime() - planted.getTime()) / 86_400_000));
+
+    // Approximate GDD assuming 15°C avg daily — a reasonable Midwest
+    // growing-season fallback when the weather feed isn't joined.
+    const baseTemps = { corn: 10, soybeans: 10, wheat: 4, alfalfa: 5 };
+    const cropName = (crop.crop || crop.variety || "corn").toLowerCase();
+    const baseTemp = baseTemps[cropName] || 10;
+    const avgDailyTemp = Number(params?.avgTempC) || 21; // typical Jun-Aug Midwest
+    const gddPerDay = Math.max(0, avgDailyTemp - baseTemp);
+    const gddToDate = Math.round(gddPerDay * daysElapsed);
+
+    // Growing-degree-day thresholds for the 4 main growth stages
+    const STAGES = {
+      corn:     [{ name: 'emergence', gdd: 100 }, { name: 'vegetative', gdd: 800 }, { name: 'reproductive', gdd: 1400 }, { name: 'mature', gdd: 2700 }],
+      soybeans: [{ name: 'emergence', gdd: 90  }, { name: 'vegetative', gdd: 600 }, { name: 'reproductive', gdd: 1100 }, { name: 'mature', gdd: 2300 }],
+      wheat:    [{ name: 'tillering', gdd: 180 }, { name: 'jointing',   gdd: 500 }, { name: 'heading',      gdd: 900  }, { name: 'mature', gdd: 1700 }],
+      alfalfa:  [{ name: 'establish', gdd: 240 }, { name: 'vegetative', gdd: 800 }, { name: 'budding',      gdd: 1200 }, { name: 'flower', gdd: 1700 }],
+    };
+    const stages = STAGES[cropName] || STAGES.corn;
+    const currentStage = stages.find(s => gddToDate <= s.gdd) || stages[stages.length - 1];
+    const matureGdd = stages[stages.length - 1].gdd;
+    const pctThrough = Math.min(100, Math.round((gddToDate / matureGdd) * 100));
+
+    // Flags
+    const expectedGdd = (daysElapsed / 120) * matureGdd; // expected pace for a 120d cycle
+    const paceDelta = gddToDate - expectedGdd;
+    const flags = [];
+    if (Math.abs(paceDelta) > matureGdd * 0.15) {
+      flags.push(paceDelta > 0 ? 'ahead-of-schedule' : 'behind-schedule');
+    }
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      cropCycle: { crop: cropName, plantDate: planted.toISOString().slice(0,10), daysElapsed },
+      gddToDate,
+      gddPerDay: Math.round(gddPerDay * 10) / 10,
+      stage: currentStage.name,
+      stageGddThreshold: currentStage.gdd,
+      pctThroughCycle: pctThrough,
+      flags,
+      summary: `${cropName} is in ${currentStage.name} stage (${pctThrough}% through cycle). ${flags.length ? `Flag: ${flags.join(', ')}.` : 'On pace.'}`,
+    };
+    if (artifact.data) artifact.data.lastSeasonTrack = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * analyze-soil
+   * Identify soil-health trends and suggest amendments. Reads
+   * artifact.data.soilTests: [{ date, ph, organicMatter%, n_ppm, p_ppm, k_ppm, cec }]
+   * Returns trend per nutrient + recommendations against typical
+   * Midwest row-crop ranges.
+   */
+  registerLensAction("agriculture", "analyze-soil", (ctx, artifact, _params) => {
+    const tests = (artifact.data?.soilTests || []).slice().sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    if (tests.length === 0) {
+      return { ok: false, error: "no_soil_tests", message: "Add at least one soil test reading to analyze." };
+    }
+    const latest = tests[tests.length - 1];
+    const oldest = tests[0];
+
+    // Typical Midwest row-crop ranges
+    const RANGES = {
+      ph: { low: 6.0, high: 7.0 },
+      organicMatter: { low: 2.0, high: 5.0 },
+      n_ppm: { low: 15, high: 40 },
+      p_ppm: { low: 20, high: 50 },
+      k_ppm: { low: 120, high: 200 },
+      cec: { low: 10, high: 30 },
+    };
+    const recommendations = [];
+    const trends = {};
+    for (const key of Object.keys(RANGES)) {
+      const v = Number(latest[key]);
+      const prev = Number(oldest[key]);
+      const range = RANGES[key];
+      trends[key] = {
+        latest: Number.isFinite(v) ? v : null,
+        delta: Number.isFinite(v) && Number.isFinite(prev) ? Math.round((v - prev) * 100) / 100 : null,
+        status: !Number.isFinite(v) ? 'no-data' : v < range.low ? 'low' : v > range.high ? 'high' : 'in-range',
+      };
+      if (trends[key].status === 'low') {
+        if (key === 'ph')             recommendations.push({ priority: 'high', action: 'Apply lime to raise pH', target: `${range.low}-${range.high}` });
+        else if (key === 'organicMatter') recommendations.push({ priority: 'medium', action: 'Add compost/cover crops to build organic matter' });
+        else if (key === 'n_ppm')     recommendations.push({ priority: 'high', action: 'Apply N fertilizer; consider split-application' });
+        else if (key === 'p_ppm')     recommendations.push({ priority: 'medium', action: 'Apply P (DAP or MAP) at recommended rate' });
+        else if (key === 'k_ppm')     recommendations.push({ priority: 'medium', action: 'Apply K (potash) at recommended rate' });
+      } else if (trends[key].status === 'high') {
+        if (key === 'ph') recommendations.push({ priority: 'medium', action: 'Apply elemental sulfur to lower pH' });
+      }
+    }
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      latestTest: latest,
+      tests: tests.length,
+      span: { from: oldest.date, to: latest.date },
+      trends,
+      recommendations,
+      summary: recommendations.length === 0
+        ? `Soil readings within typical row-crop ranges. ${tests.length} test(s) reviewed.`
+        : `${recommendations.length} recommendation(s): ${recommendations.slice(0,2).map(r => r.action).join('; ')}.`,
+    };
+    if (artifact.data) artifact.data.lastSoilAnalysis = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * identify-pest
+   * Match a scouting observation against a known pest/disease library.
+   * Reads artifact.data.observation (string) + crop + symptoms.
+   * Returns ranked candidates + treatment hints.
+   */
+  registerLensAction("agriculture", "identify-pest", (ctx, artifact, params) => {
+    const observation = String(artifact.data?.observation || params?.observation || "").toLowerCase();
+    const crop = String(artifact.data?.crop || artifact.data?.variety || params?.crop || "corn").toLowerCase();
+    if (!observation) {
+      return { ok: false, error: "no_observation", message: "Provide an observation describing the symptoms." };
+    }
+
+    // Tiny but real pest library — keywords → candidate + crops affected + treatment
+    const LIBRARY = [
+      { name: "Corn rootworm",       crops: ["corn"],                     keywords: ["root","wilt","lodg","gooseneck","beetle"], treatment: "Crop rotation to soybean; Bt-RW hybrid; soil insecticide at planting." },
+      { name: "Soybean aphid",       crops: ["soybeans"],                 keywords: ["aphid","sticky","yellow","honeydew","ant"], treatment: "Insecticide at 250 aphids/plant threshold; conserve lady beetles." },
+      { name: "Tar spot",            crops: ["corn"],                     keywords: ["black","spot","raised","tar","fungal"],     treatment: "Fungicide (Headline, Veltyma) at VT-R3; resistant hybrid next year." },
+      { name: "Sudden death syndrome", crops: ["soybeans"],               keywords: ["yellow","chlorotic","leaf","interveinal","dying"], treatment: "ILeVO seed treatment; resistant variety; improve drainage." },
+      { name: "Northern corn leaf blight", crops: ["corn"],               keywords: ["cigar","lesion","gray-green","tan","leaf"], treatment: "Fungicide (Quilt Xcel) at first sign; rotate to non-corn; resistant hybrid." },
+      { name: "Frogeye leaf spot",   crops: ["soybeans"],                 keywords: ["circular","spot","tan","brown","border"],   treatment: "Strobilurin fungicide; resistant variety." },
+      { name: "Stripe rust",         crops: ["wheat"],                    keywords: ["yellow","stripe","pustule","rust"],         treatment: "Triazole fungicide at flag-leaf emergence." },
+      { name: "Aphid (general)",     crops: ["corn","soybeans","wheat","alfalfa"], keywords: ["aphid","cluster","wing","green"], treatment: "Scout 5-10 plants/area; treat at threshold." },
+      { name: "Slug damage",         crops: ["soybeans","corn"],          keywords: ["slime","trail","irregular","hole","cool","wet"], treatment: "Reduce residue; iron-phosphate baits in heavy infestations." },
+    ];
+
+    const candidates = LIBRARY
+      .filter(p => p.crops.includes(crop))
+      .map(p => {
+        const hits = p.keywords.filter(k => observation.includes(k)).length;
+        const confidence = p.keywords.length > 0 ? Math.round((hits / p.keywords.length) * 100) / 100 : 0;
+        return { ...p, hits, confidence };
+      })
+      .filter(c => c.hits > 0)
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 5);
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      observation,
+      crop,
+      candidates: candidates.length > 0 ? candidates : [{
+        name: 'No match in library',
+        confidence: 0,
+        treatment: 'Capture a photo + sample; consult county extension agent. Update observation with more detail (color, location on plant, weather).',
+      }],
+      topCandidate: candidates[0] || null,
+      summary: candidates.length === 0
+        ? `No library match for "${observation.slice(0, 60)}…" on ${crop}.`
+        : `Top match: ${candidates[0].name} (${Math.round(candidates[0].confidence * 100)}% confidence). ${candidates[0].treatment}`,
+    };
+    if (artifact.data) artifact.data.lastPestId = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * predict-yield
+   * Estimate yield from crop type + acreage + soil + history.
+   * Uses YIELD_BANDS lookup + soil multiplier + history avg.
+   */
+  registerLensAction("agriculture", "predict-yield", (ctx, artifact, params) => {
+    const crop = String(artifact.data?.crop || artifact.data?.variety || params?.crop || "corn").toLowerCase();
+    const acreage = Number(artifact.data?.acreage || params?.acreage) || 1;
+    const soilType = (artifact.data?.soilType || params?.soilType || "loam").toLowerCase();
+    const history = artifact.data?.history || [];
+
+    const YIELD_BANDS = {
+      "corn":     { low: 150, mid: 185, high: 220, unit: "bu/ac" },
+      "soybeans": { low:  45, mid:  58, high:  70, unit: "bu/ac" },
+      "wheat":    { low:  45, mid:  65, high:  85, unit: "bu/ac" },
+      "alfalfa":  { low: 3.0, mid: 4.3, high: 5.5, unit: "tons/ac" },
+    };
+    const band = YIELD_BANDS[crop] || { low: 100, mid: 150, high: 200, unit: "unit/ac" };
+    const SOIL_MULT = { sand: 0.85, silt: 0.95, loam: 1.0, clay: 1.05 };
+    const soilMult = SOIL_MULT[soilType] || 1.0;
+
+    const historyAvg = history.length > 0
+      ? history.reduce((s, h) => s + (Number(h.yieldPerAcre) || 0), 0) / history.length
+      : null;
+
+    // Blend midpoint with history avg if we have it
+    const blended = historyAvg
+      ? (band.mid * 0.6 + historyAvg * 0.4) * soilMult
+      : band.mid * soilMult;
+    const estimatedYieldPerAcre = Math.round(blended * 100) / 100;
+    const totalYield = Math.round(estimatedYieldPerAcre * acreage * 100) / 100;
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      crop,
+      acreage,
+      soilType,
+      historyAvg: historyAvg != null ? Math.round(historyAvg * 100) / 100 : null,
+      band,
+      soilMultiplier: soilMult,
+      estimatedYieldPerAcre,
+      totalYield,
+      unit: band.unit,
+      summary: `${crop} on ${acreage} ac (${soilType}): ${estimatedYieldPerAcre} ${band.unit}/ac = ${totalYield} ${band.unit} total. Band ${band.low}-${band.high}.`,
+    };
+    if (artifact.data) artifact.data.lastYieldPrediction = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * analyze
+   * Generic dispatcher — the frontend calls this from per-row "Analyze"
+   * buttons. Routes to the right specific macro based on the artifact's
+   * shape (field → analyze-soil if soil tests exist else plan-crop;
+   * crop → predict-yield; equipment → equipmentDue; etc.). Always
+   * returns a result instead of a silent fail.
+   */
+  registerLensAction("agriculture", "analyze", (ctx, artifact, params) => {
+    const d = artifact.data || {};
+    // Best-effort kind detection
+    if (Array.isArray(d.soilTests) && d.soilTests.length > 0) {
+      return { ok: true, result: { dispatched: 'analyze-soil', note: 'Use the analyze-soil action for full output.' } };
+    }
+    if (d.crop || d.variety) {
+      // crop-type artifact
+      return { ok: true, result: { dispatched: 'predict-yield', note: 'Use the predict-yield action for full output.', crop: d.crop || d.variety } };
+    }
+    if (d.fields || d.history || d.soilType || d.acreage) {
+      // field artifact
+      return { ok: true, result: { dispatched: 'plan-crop', note: 'Use the plan-crop action for full output.', field: d.name } };
+    }
+    if (d.equipment) {
+      return { ok: true, result: { dispatched: 'equipmentDue' } };
+    }
+    return {
+      ok: true,
+      result: {
+        message: 'Analyze: no specific dispatcher matched. Use plan-crop / predict-yield / analyze-soil / identify-pest / track-season directly for full reports.',
+        availableActions: ['plan-crop', 'track-season', 'analyze-soil', 'identify-pest', 'predict-yield', 'rotationPlan', 'yieldAnalysis', 'equipmentDue', 'waterSchedule'],
+      },
+    };
+  });
 };
