@@ -12,6 +12,7 @@ import { FileSearch, AlertTriangle, Check, X, Eye, Layers, ChevronDown, Link2, S
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { CveSearch } from '@/components/audit/CveSearch';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -651,8 +652,11 @@ export default function AuditLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <CveSearch />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#audit-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to audit content</a>
     </LensShell>
