@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { BaseCampAlmanac } from '@/components/expedition-journal/BaseCampAlmanac';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { gameModeOrchestrator } from '@/lib/concordia/game-mode-orchestrator';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -95,6 +96,9 @@ export default function ExpeditionJournalPage() {
             );
           })}
         </div>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <BaseCampAlmanac />
+        </section>
       </div>
     </LensShell>
   );
