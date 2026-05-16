@@ -43,6 +43,7 @@ import {
   Music2,
 } from 'lucide-react';
 import { SessionView } from '@/components/music/SessionView';
+import { MusicArtistExplorer } from '@/components/music/MusicArtistExplorer';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -2073,6 +2074,11 @@ export default function MusicLensPage() {
             )}
           </motion.div>
         </AnimatePresence>
+
+        {/* Bespoke MusicBrainz artist + discography explorer with Save-as-DTU */}
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <MusicArtistExplorer />
+        </section>
       </main>
 
       {/* Floating Mini Player Bar */}
