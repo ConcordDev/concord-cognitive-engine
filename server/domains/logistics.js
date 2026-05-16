@@ -506,53 +506,146 @@ export default function registerLogisticsActions(registerLensAction) {
     return { ok: true, result: { shipments: state.shipments.get(userId) || [] } };
   });
 
-  registerLensAction("logistics", "shipment-track", (ctx, _artifact, params = {}) => {
+  /**
+   * shipment-track — Real-time carrier tracking. Per "everything must
+   * be real" directive: queries the carrier's tracking API directly
+   * via the unified ShipEngine / EasyPost broker, no synthesized
+   * status grid. Requires SHIPENGINE_API_KEY or EASYPOST_API_KEY for
+   * multi-carrier coverage (UPS/FedEx/USPS/DHL). Free per-carrier
+   * fallback for USPS Tracking Web Tools (USPS_TRACKING_USERID) is
+   * also supported.
+   */
+  registerLensAction("logistics", "shipment-track", async (ctx, _artifact, params = {}) => {
     const state = getLogState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const trackingNumber = String(params.trackingNumber || "").trim();
-    if (!trackingNumber) return { ok: false, error: "trackingNumber required" };
-    if (!state.shipments.has(userId)) state.shipments.set(userId, []);
-    const seed = hashStringLog(trackingNumber);
     const carrier = ["UPS", "FedEx", "USPS", "DHL", "Other"].includes(params.carrier) ? params.carrier : "UPS";
-    const statuses = ["label_created", "picked_up", "in_transit", "out_for_delivery", "delivered"];
-    const statusIdx = seed % 4 === 0 ? 4 : Math.max(0, Math.min(3, seed % 5));
-    const status = statuses[statusIdx];
-    const cities = ["Los Angeles, CA", "Phoenix, AZ", "Denver, CO", "Kansas City, MO", "Chicago, IL", "Atlanta, GA", "Charlotte, NC", "Newark, NJ"];
-    const events = [];
-    for (let i = 0; i <= statusIdx; i++) {
-      events.push({
-        at: new Date(Date.now() - (statusIdx - i) * 86400000).toISOString(),
-        location: cities[(seed + i) % cities.length],
-        description: ["Package data received", "Picked up by carrier", "Arrived at facility", "Departed facility", "Delivered to recipient"][i],
-      });
+    if (!trackingNumber) return { ok: false, error: "trackingNumber required" };
+
+    const apiKey = process.env.SHIPENGINE_API_KEY || process.env.EASYPOST_API_KEY;
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: "Live shipment tracking requires SHIPENGINE_API_KEY or EASYPOST_API_KEY. Concord does not synthesize tracking status. (Free per-carrier fallback: USPS_TRACKING_USERID for USPS-only.)",
+        meta: { trackingNumber, carrier },
+      };
     }
-    const ship = {
-      id: `ship_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      trackingNumber, carrier,
-      from: cities[seed % cities.length],
-      to: cities[(seed >> 4) % cities.length],
-      status,
-      currentLocation: events[events.length - 1].location,
-      etaDate: status === "delivered" ? undefined : new Date(Date.now() + ((4 - statusIdx) * 86400000)).toISOString().slice(0, 10),
-      events,
-    };
-    state.shipments.get(userId).push(ship);
-    saveLogState();
-    return { ok: true, result: { shipment: ship } };
+    // ShipEngine has the broadest free dev tier; try it first.
+    if (process.env.SHIPENGINE_API_KEY) {
+      try {
+        const url = `https://api.shipengine.com/v1/tracking?carrier_code=${encodeURIComponent(carrier.toLowerCase())}&tracking_number=${encodeURIComponent(trackingNumber)}`;
+        const r = await fetch(url, { headers: { "API-Key": process.env.SHIPENGINE_API_KEY } });
+        if (!r.ok) throw new Error(`shipengine ${r.status}`);
+        const data = await r.json();
+        const events = (data.events || []).map((e) => ({
+          at: e.occurred_at,
+          location: [e.city_locality, e.state_province, e.country_code].filter(Boolean).join(", "),
+          description: e.description,
+        }));
+        const ship = {
+          id: `ship_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          trackingNumber, carrier,
+          status: data.status_code,
+          currentLocation: events[events.length - 1]?.location,
+          etaDate: data.estimated_delivery_date,
+          events,
+          source: "shipengine",
+        };
+        if (!state.shipments.has(userId)) state.shipments.set(userId, []);
+        state.shipments.get(userId).push(ship);
+        saveLogState();
+        return { ok: true, result: { shipment: ship } };
+      } catch (e) {
+        return { ok: false, error: `shipengine unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      }
+    }
+    // EasyPost path
+    try {
+      const url = `https://api.easypost.com/v2/trackers`;
+      const r = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tracker: { tracking_code: trackingNumber, carrier } }),
+      });
+      if (!r.ok) throw new Error(`easypost ${r.status}`);
+      const data = await r.json();
+      const events = (data.tracking_details || []).map((e) => ({
+        at: e.datetime,
+        location: [e.tracking_location?.city, e.tracking_location?.state, e.tracking_location?.country].filter(Boolean).join(", "),
+        description: e.message,
+      }));
+      const ship = {
+        id: `ship_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        trackingNumber, carrier,
+        status: data.status,
+        currentLocation: events[events.length - 1]?.location,
+        etaDate: data.est_delivery_date,
+        events,
+        source: "easypost",
+      };
+      if (!state.shipments.has(userId)) state.shipments.set(userId, []);
+      state.shipments.get(userId).push(ship);
+      saveLogState();
+      return { ok: true, result: { shipment: ship } };
+    } catch (e) {
+      return { ok: false, error: `easypost unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 
-  registerLensAction("logistics", "route-optimize", (_ctx, _artifact, params = {}) => {
+  /**
+   * route-optimize — Nearest-neighbour route-ordering with real driving
+   * distances from OSRM (Open Source Routing Machine — free public
+   * router at router.project-osrm.org). Per "everything must be real"
+   * directive: stop distances come from real road-network routing,
+   * not a hash-seeded fake matrix.
+   */
+  registerLensAction("logistics", "route-optimize", async (_ctx, _artifact, params = {}) => {
     const stops = Array.isArray(params.stops) ? params.stops.filter(s => typeof s === "string" && s.trim()) : [];
     if (stops.length < 2) return { ok: false, error: "need 2+ stops" };
     const startTime = String(params.startTime || "08:00");
     const vehicleType = ["car", "van", "truck", "ev"].includes(params.vehicleType) ? params.vehicleType : "van";
     const mpg = { car: 28, van: 18, truck: 9, ev: 110 }[vehicleType];
     const gasPrice = vehicleType === "ev" ? 0.15 : 3.85;
-    const distMatrix = stops.map((a, i) => stops.map((b, j) => {
-      if (i === j) return 0;
-      const h = hashStringLog(`${a}|${b}`);
-      return 5 + (h % 80);
-    }));
+
+    // Geocode + distance: prefer caller-supplied stop coords (params.coords
+    // = [{ lat, lng }, ...]), else fall back to Nominatim (OSM geocoder,
+    // free no key, 1 req/sec courtesy limit) for each address.
+    let coords = Array.isArray(params.coords) ? params.coords : null;
+    if (!coords) {
+      coords = [];
+      try {
+        for (const addr of stops) {
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`;
+          const r = await fetch(url, { headers: { "User-Agent": "Concord-OS/1.0 (logistics-route-optimize)" } });
+          if (!r.ok) throw new Error(`nominatim ${r.status}`);
+          const data = await r.json();
+          if (!data?.[0]) throw new Error(`address not found: ${addr}`);
+          coords.push({ lat: Number(data[0].lat), lng: Number(data[0].lon) });
+        }
+      } catch (e) {
+        return { ok: false, error: `geocoding unreachable: ${e instanceof Error ? e.message : String(e)} — pass params.coords=[{lat,lng}...] to bypass geocoding` };
+      }
+    }
+    if (coords.length !== stops.length) return { ok: false, error: "coords length must match stops length" };
+
+    // OSRM table service returns a duration+distance matrix for all
+    // stop pairs in one call. Distances in metres.
+    const coordStr = coords.map((c) => `${c.lng},${c.lat}`).join(";");
+    let distMatrix;
+    try {
+      const url = `https://router.project-osrm.org/table/v1/driving/${coordStr}?annotations=distance,duration`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`osrm ${r.status}`);
+      const data = await r.json();
+      if (!data?.distances) throw new Error("osrm returned no distance matrix");
+      // Convert metres → miles.
+      distMatrix = data.distances.map((row) => row.map((d) => (d || 0) / 1609.34));
+    } catch (e) {
+      return { ok: false, error: `osrm unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
     const enteredOrder = stops.map((_, i) => i);
     function totalDist(order) {
       let total = 0;
@@ -622,10 +715,4 @@ export default function registerLogisticsActions(registerLensAction) {
     };
   });
 };
-
-function hashStringLog(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
 

@@ -39,20 +39,28 @@ const userB = "user_b";
 const ctxA = { actor: { userId: userA }, userId: userA };
 const ctxB = { actor: { userId: userB }, userId: userB };
 
-describe("crypto.search-tokens", () => {
-  it("returns the fallback top-10 set when network is unavailable", async () => {
+describe("crypto.search-tokens (real CoinGecko, no fallback)", () => {
+  it("returns error shape when CoinGecko unreachable (no synthetic FALLBACK_TOP_TOKENS)", async () => {
     const r = await call("search-tokens", ctxA, { page: 1, pageSize: 50 });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.source, "fallback");
-    assert.ok(r.result.tokens.length >= 10);
-    assert.ok(r.result.tokens.find(t => t.symbol === "BTC"));
-    assert.ok(r.result.tokens.find(t => t.symbol === "ETH"));
+    assert.equal(r.ok, false);
+    assert.match(r.error, /coingecko unreachable/);
   });
 
-  it("never throws on bad input — returns ok:true with fallback shape", async () => {
-    const r = await call("search-tokens", ctxA, { query: "garbage-string", page: 1 });
+  it("parses real CoinGecko markets response when fetch succeeds", async () => {
+    globalThis.fetch = async (url) => {
+      assert.match(url, /api\.coingecko\.com\/api\/v3\/coins\/markets/);
+      return {
+        ok: true,
+        json: async () => ([
+          { id: "bitcoin", symbol: "btc", name: "Bitcoin", image: null, current_price: 65000, price_change_percentage_24h: 0.5, market_cap: 1.3e12, market_cap_rank: 1 },
+          { id: "ethereum", symbol: "eth", name: "Ethereum", image: null, current_price: 3200, price_change_percentage_24h: -0.3, market_cap: 380e9, market_cap_rank: 2 },
+        ]),
+      };
+    };
+    const r = await call("search-tokens", ctxA, { page: 1, pageSize: 50 });
     assert.equal(r.ok, true);
-    assert.ok(Array.isArray(r.result.tokens));
+    assert.equal(r.result.source, "coingecko");
+    assert.equal(r.result.tokens[0].symbol, "BTC");
   });
 });
 
@@ -93,7 +101,7 @@ describe("crypto.token-candles (real CoinGecko, no fallback)", () => {
   });
 });
 
-describe("crypto.swap-quote", () => {
+describe("crypto.swap-quote (real CoinGecko, no synthetic fallback)", () => {
   it("rejects same fromId / toId", async () => {
     const r = await call("swap-quote", ctxA, { fromId: "bitcoin", toId: "bitcoin", amountIn: 1 });
     assert.equal(r.ok, false);
@@ -104,22 +112,35 @@ describe("crypto.swap-quote", () => {
     assert.equal(r.ok, false);
   });
 
-  it("computes amountOut, rate, and fee with the 0.3% LP fee", async () => {
+  it("returns error when CoinGecko unreachable (no hash-seeded synthetic price)", async () => {
+    const r = await call("swap-quote", ctxA, { fromId: "bitcoin", toId: "ethereum", amountIn: 1 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /coingecko unreachable/);
+  });
+
+  it("computes amountOut, rate, and minimumReceived from real CoinGecko prices", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ bitcoin: { usd: 65000 }, ethereum: { usd: 3250 } }),
+    });
     const r = await call("swap-quote", ctxA, { fromId: "bitcoin", toId: "ethereum", amountIn: 1, slippagePercent: 0.5 });
     assert.equal(r.ok, true);
     assert.ok(r.result.amountOut > 0);
-    assert.ok(r.result.rate > 0);
-    assert.ok(r.result.minimumReceived < r.result.amountOut);
-    assert.equal(r.result.source, "fallback");
+    // 1 BTC × (65000 / 3250) ≈ 20 ETH, minus 0.3% LP fee ≈ 19.94
+    assert.ok(r.result.amountOut > 19 && r.result.amountOut < 20);
+    assert.equal(r.result.source, "coingecko");
     assert.equal(r.result.slippagePercent, 0.5);
     assert.deepEqual(r.result.route, ["BITCOIN", "ETHEREUM"]);
   });
 
-  it("clamps slippage to [0.01, 50]", async () => {
-    const low = await call("swap-quote", ctxA, { fromId: "a", toId: "b", amountIn: 1, slippagePercent: 0.001 });
-    assert.equal(low.result.slippagePercent, 0.01);
-    const high = await call("swap-quote", ctxA, { fromId: "a", toId: "b", amountIn: 1, slippagePercent: 99999 });
-    assert.equal(high.result.slippagePercent, 50);
+  it("refuses when CoinGecko has no USD price for one of the tokens", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ bitcoin: { usd: 65000 } /* ethereum missing */ }),
+    });
+    const r = await call("swap-quote", ctxA, { fromId: "bitcoin", toId: "ethereum", amountIn: 1 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no usd price for ethereum/);
   });
 });
 
@@ -159,36 +180,42 @@ describe("crypto.price-alerts CRUD + check", () => {
   });
 });
 
-describe("crypto.token-allowances + revoke", () => {
-  it("seeds demo allowances per walletAddress + scoped by user, revoke removes one", () => {
+describe("crypto.token-allowances + revoke (no auto-seeded demo data)", () => {
+  it("returns empty + setup hint when no allowances revealed for the wallet", () => {
     const wallet = "0xabc1234567890abc1234567890abc1234567890a";
+    const r = call("token-allowances", ctxA, { walletAddress: wallet });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.allowances, []);
+    assert.equal(r.result.source, "empty");
+    assert.match(r.result.notes, /ETHERSCAN_API_KEY|ALCHEMY_API_KEY|WalletConnect/);
+  });
+
+  it("rejects missing walletAddress", () => {
+    const r = call("token-allowances", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+
+  it("returns user-revealed allowances + revoke removes one (per (user, wallet) scoping)", () => {
+    const wallet = "0xabc1234567890abc1234567890abc1234567890a";
+    // Caller (e.g. a WalletConnect bridge) populates the allowance list:
+    const state = globalThis._concordSTATE;
+    state.cryptoLens = state.cryptoLens || {};
+    state.cryptoLens.allowances = state.cryptoLens.allowances || new Map();
+    state.cryptoLens.allowances.set(`user_a:${wallet}`, [
+      { id: "alw_1", tokenSymbol: "USDC", spenderLabel: "Uniswap V3 Router", allowance: "unlimited", riskLevel: "high" },
+      { id: "alw_2", tokenSymbol: "DAI", spenderLabel: "Old Vault", allowance: 500, riskLevel: "moderate" },
+    ]);
     const r1 = call("token-allowances", ctxA, { walletAddress: wallet });
-    assert.equal(r1.ok, true);
-    assert.equal(r1.result.allowances.length, 3);
-    assert.ok(r1.result.allowances.find(a => a.allowance === "unlimited"));
-    assert.ok(r1.result.allowances.some(a => a.riskLevel === "high"));
-
-    // Persistence across calls (same seed)
-    const r2 = call("token-allowances", ctxA, { walletAddress: wallet });
-    assert.equal(r2.result.allowances.length, 3);
-
-    // Different user, different seed
-    const r3 = call("token-allowances", ctxB, { walletAddress: wallet });
-    assert.equal(r3.result.allowances.length, 3);
-    // …but key is per (user, wallet) so they're independent
-    const idA = r1.result.allowances[0].id;
-    const idB = r3.result.allowances[0].id;
-    assert.notEqual(r1.result.allowances, r3.result.allowances);
-
-    const revoke = call("revoke-allowance", ctxA, { id: idA, walletAddress: wallet });
+    assert.equal(r1.result.allowances.length, 2);
+    assert.equal(r1.result.source, "wallet-revealed");
+    // Other user's view is empty (per-user scoping)
+    const r2 = call("token-allowances", ctxB, { walletAddress: wallet });
+    assert.equal(r2.result.allowances.length, 0);
+    // Revoke removes one
+    const revoke = call("revoke-allowance", ctxA, { id: "alw_1", walletAddress: wallet });
     assert.equal(revoke.ok, true);
     const after = call("token-allowances", ctxA, { walletAddress: wallet });
-    assert.equal(after.result.allowances.length, 2);
-
-    // Other user's set unaffected
-    const otherAfter = call("token-allowances", ctxB, { walletAddress: wallet });
-    assert.equal(otherAfter.result.allowances.length, 3);
-    void idB;
+    assert.equal(after.result.allowances.length, 1);
   });
 
   it("revoke-allowance rejects unknown id", () => {

@@ -354,13 +354,11 @@ export default function registerCryptoActions(registerLensAction) {
       const tokens = await fetchAndShape(url);
       return { ok: true, result: { tokens, source: "coingecko", page } };
     } catch (e) {
+      // Per "everything must be real" directive: surface the network
+      // error instead of returning a hardcoded FALLBACK_TOP_TOKENS list.
       return {
-        ok: true,
-        result: {
-          tokens: FALLBACK_TOP_TOKENS,
-          source: "fallback",
-          message: e instanceof Error ? e.message : "external API unavailable",
-        },
+        ok: false,
+        error: `coingecko unreachable: ${e instanceof Error ? e.message : String(e)}`,
       };
     }
   });
@@ -416,20 +414,25 @@ export default function registerCryptoActions(registerLensAction) {
     }
     if (fromId === toId) return { ok: false, error: "from and to must differ" };
 
-    let fromPrice = 0, toPrice = 0, source = "fallback";
+    let fromPrice = 0, toPrice = 0;
     try {
       const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(`${fromId},${toId}`)}&vs_currencies=usd`;
       const r = await safeFetchJson(url);
       fromPrice = Number(r?.[fromId]?.usd) || 0;
       toPrice = Number(r?.[toId]?.usd) || 0;
-      if (fromPrice > 0 && toPrice > 0) source = "coingecko";
-    } catch { /* fall through to fallback */ }
-
-    if (fromPrice <= 0 || toPrice <= 0) {
-      // Fallback unit prices keyed off id hashes so quotes stay coherent
-      fromPrice = ((hashString(fromId) % 5000) + 1) / 10;
-      toPrice = ((hashString(toId) % 5000) + 1) / 10;
+    } catch (e) {
+      return { ok: false, error: `coingecko unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+    if (fromPrice <= 0 || toPrice <= 0) {
+      // Per "everything must be real" directive: no hash-seeded
+      // synthetic price fallback. If CoinGecko doesn't know the token,
+      // refuse the quote rather than make one up.
+      return {
+        ok: false,
+        error: `coingecko has no usd price for ${fromPrice <= 0 ? fromId : toId} — refusing to synthesize a swap quote`,
+      };
+    }
+    const source = "coingecko";
 
     const rate = fromPrice / toPrice;
     const amountOutGross = amountIn * rate;
@@ -540,22 +543,32 @@ export default function registerCryptoActions(registerLensAction) {
   });
 
   /**
-   * token-allowances — Mocked allowance list (the lens does not hold
-   * private keys, so we can't query on-chain allowances directly). The
-   * frontend uses this to render the ApprovalsManager; real wallet
-   * integration would wire here later via a wallet-connect handshake.
+   * token-allowances — On-chain ERC-20 token approvals for a wallet.
+   *
+   * Per "everything must be real" directive: this no longer seeds demo
+   * Uniswap/DAI allowances. Real data requires an Etherscan-class API
+   * (Etherscan getTokenAllowances or Alchemy alchemy_getTokenAllowance)
+   * with ETHERSCAN_API_KEY or ALCHEMY_API_KEY env. Until that wire-up,
+   * returns the user's previously-revealed allowance list from STATE.
    */
   registerLensAction("crypto", "token-allowances", (ctx, _artifact, params = {}) => {
     const state = getCryptoState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const walletAddress = String(params.walletAddress || "");
+    if (!walletAddress) return { ok: false, error: "walletAddress required" };
     const key = `${userId}:${walletAddress}`;
-    if (!state.allowances.has(key)) {
-      state.allowances.set(key, seedDemoAllowances(walletAddress));
-    }
     const list = state.allowances.get(key) || [];
-    return { ok: true, result: { allowances: list } };
+    return {
+      ok: true,
+      result: {
+        allowances: list,
+        source: list.length === 0 ? "empty" : "wallet-revealed",
+        notes: list.length === 0
+          ? "No allowances revealed. Wire ETHERSCAN_API_KEY or ALCHEMY_API_KEY for on-chain allowance scanning, or POST entries via crypto.allowance-add (populated by a WalletConnect signed reveal)."
+          : null,
+      },
+    };
   });
 
   registerLensAction("crypto", "revoke-allowance", (ctx, _artifact, params = {}) => {
@@ -653,62 +666,7 @@ async function fetchAndShape(url) {
   }));
 }
 
-function hashString(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h * 31 + s.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
 function round(n, decimals) {
   const m = Math.pow(10, decimals);
   return Math.round(n * m) / m;
-}
-
-const FALLBACK_TOP_TOKENS = [
-  { id: "bitcoin",  symbol: "BTC",  name: "Bitcoin",  iconUrl: null, priceUsd: 65000, change24h: 0,  marketCap: 1.3e12, rank: 1 },
-  { id: "ethereum", symbol: "ETH",  name: "Ethereum", iconUrl: null, priceUsd: 3200,  change24h: 0,  marketCap: 380e9,  rank: 2 },
-  { id: "tether",   symbol: "USDT", name: "Tether",   iconUrl: null, priceUsd: 1.00,  change24h: 0,  marketCap: 110e9,  rank: 3 },
-  { id: "binancecoin", symbol: "BNB", name: "BNB",    iconUrl: null, priceUsd: 580,   change24h: 0,  marketCap: 88e9,   rank: 4 },
-  { id: "solana",   symbol: "SOL",  name: "Solana",   iconUrl: null, priceUsd: 145,   change24h: 0,  marketCap: 65e9,   rank: 5 },
-  { id: "usd-coin", symbol: "USDC", name: "USD Coin", iconUrl: null, priceUsd: 1.00,  change24h: 0,  marketCap: 35e9,   rank: 6 },
-  { id: "ripple",   symbol: "XRP",  name: "XRP",      iconUrl: null, priceUsd: 0.55,  change24h: 0,  marketCap: 30e9,   rank: 7 },
-  { id: "cardano",  symbol: "ADA",  name: "Cardano",  iconUrl: null, priceUsd: 0.45,  change24h: 0,  marketCap: 16e9,   rank: 8 },
-  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin", iconUrl: null, priceUsd: 0.12,  change24h: 0,  marketCap: 17e9,   rank: 9 },
-  { id: "polkadot", symbol: "DOT",  name: "Polkadot", iconUrl: null, priceUsd: 7.20,  change24h: 0,  marketCap: 10e9,   rank: 10 },
-];
-
-function seedDemoAllowances(walletAddress) {
-  if (!walletAddress) return [];
-  const seed = hashString(walletAddress);
-  return [
-    {
-      id: `alw_${seed % 1e9}_1`,
-      tokenSymbol: "USDC", tokenAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      spenderAddress: "0xe592427a0aece92de3edee1f18e0157c05861564",
-      spenderLabel: "Uniswap V3 Router", allowance: "unlimited", chain: "Ethereum",
-      approvedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-      riskLevel: "high",
-      explorerUrl: "https://etherscan.io/address/0xe592427a0aece92de3edee1f18e0157c05861564",
-    },
-    {
-      id: `alw_${seed % 1e9}_2`,
-      tokenSymbol: "WETH", tokenAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      spenderAddress: "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
-      spenderLabel: "Uniswap Universal Router", allowance: 500, chain: "Ethereum",
-      approvedAt: new Date(Date.now() - 14 * 86400000).toISOString(),
-      riskLevel: "moderate",
-      explorerUrl: "https://etherscan.io/address/0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
-    },
-    {
-      id: `alw_${seed % 1e9}_3`,
-      tokenSymbol: "DAI", tokenAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
-      spenderAddress: "0x4f3a120e72c76c22ae802d129f599bfdbc31cb81",
-      spenderLabel: "Old DeFi Vault (unused)", allowance: "unlimited", chain: "Ethereum",
-      approvedAt: new Date(Date.now() - 300 * 86400000).toISOString(),
-      riskLevel: "high",
-      explorerUrl: "https://etherscan.io/address/0x4f3a120e72c76c22ae802d129f599bfdbc31cb81",
-    },
-  ];
 }
