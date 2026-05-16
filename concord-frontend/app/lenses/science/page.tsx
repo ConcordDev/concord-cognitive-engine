@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ScienceArxiv } from '@/components/science/ScienceArxiv';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -2189,6 +2190,9 @@ export default function ScienceLensPage() {
         Science Workbench
       </button>
       <ScienceWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+      <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ScienceArxiv />
+      </section>
     </LensShell>
   );
 }
