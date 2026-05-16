@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { GameFeed } from '@/components/game/GameFeed';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -1857,6 +1858,9 @@ export default function GameLensPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <GameFeed />
+      </section>
     </div>
     </LensShell>
   );
