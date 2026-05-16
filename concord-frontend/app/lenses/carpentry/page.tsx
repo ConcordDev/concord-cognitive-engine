@@ -34,6 +34,7 @@ import {
 import { showToast } from '@/components/common/Toasts';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { WoodSpeciesReference } from '@/components/carpentry/WoodSpeciesReference';
+import { CarpentryShop } from '@/components/carpentry/CarpentryShop';
 
 type ModeTab =
   | 'jobs'
@@ -765,6 +766,10 @@ export default function CarpentryLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <WoodSpeciesReference />
+      </section>
+
+      <section className="mt-6">
+        <CarpentryShop />
       </section>
     </LensPageShell>
 
