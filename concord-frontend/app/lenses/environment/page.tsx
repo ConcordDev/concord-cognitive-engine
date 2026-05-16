@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { EnviroPanel } from '@/components/environment/EnviroPanel';
+import { ComplianceDiversionPanel } from '@/components/environment/ComplianceDiversionPanel';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { LensPageShell } from '@/components/lens/LensPageShell';
@@ -3697,6 +3698,10 @@ export default function EnvironmentLensPage() {
       {/* Bespoke EPA AirNow + Superfund + USGS Water with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <EnviroPanel />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
+        <ComplianceDiversionPanel />
       </section>
     </LensPageShell>
     </LensShell>
