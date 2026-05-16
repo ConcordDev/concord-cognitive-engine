@@ -3,6 +3,9 @@
 import { motion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import ShipmentTracker from '@/components/logistics/ShipmentTracker';
+import RouteOptimizer from '@/components/logistics/RouteOptimizer';
+import WarehouseInventory from '@/components/logistics/WarehouseInventory';
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { LensPageShell } from '@/components/lens/LensPageShell';
@@ -71,7 +74,7 @@ const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: fals
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-type ModeTab = 'fleet' | 'drivers' | 'shipments' | 'warehouse' | 'routes' | 'compliance' | 'map';
+type ModeTab = 'fleet' | 'drivers' | 'shipments' | 'warehouse' | 'routes' | 'compliance' | 'map' | 'tracker' | 'optimizer' | 'inventory';
 
 type ArtifactType = 'Vehicle' | 'Driver' | 'Shipment' | 'WarehouseItem' | 'Route' | 'ComplianceLog';
 
@@ -130,6 +133,9 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof Truck; type: Artifac
   { id: 'routes', label: 'Routes', icon: Route, type: 'Route' },
   { id: 'compliance', label: 'Compliance', icon: ShieldCheck, type: 'ComplianceLog' },
   { id: 'map', label: 'Map', icon: Map, type: 'Shipment' },
+  { id: 'tracker', label: 'Tracker', icon: Package, type: 'Shipment' },
+  { id: 'optimizer', label: 'Route AI', icon: Route, type: 'Shipment' },
+  { id: 'inventory', label: 'Inventory', icon: Warehouse, type: 'Shipment' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -551,6 +557,9 @@ export default function LogisticsLensPage() {
     routes: ['Origin', 'Destination', 'Distance (mi)', 'Est. Time', 'Fuel Cost', 'Toll Cost'],
     compliance: ['Type', 'Inspector', 'Findings', 'Result', 'Next Due', 'Category'],
     map: [],
+    tracker: [],
+    optimizer: [],
+    inventory: [],
   };
 
   // ---------------------------------------------------------------------------
@@ -2707,6 +2716,10 @@ export default function LogisticsLensPage() {
       </section>
 
       {/* ==================== MAP TAB ==================== */}
+      {mode === 'tracker' && <div className="p-4"><ShipmentTracker /></div>}
+      {mode === 'optimizer' && <div className="p-4"><RouteOptimizer /></div>}
+      {mode === 'inventory' && <div className="p-4"><WarehouseInventory /></div>}
+
       {mode === 'map' && (
         <div className={ds.panel}>
           <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">

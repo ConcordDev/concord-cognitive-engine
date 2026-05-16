@@ -486,4 +486,166 @@ export default function registerLogisticsActions(registerLensAction) {
 
     return { ok: true, result: report };
   });
+
+  // ─── Parity-sprint macros ──
+  function getLogState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.logLens) STATE.logLens = { shipments: new Map() };
+    return STATE.logLens;
+  }
+  function saveLogState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+
+  registerLensAction("logistics", "shipments-list", (ctx, _artifact, _params = {}) => {
+    const state = getLogState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    return { ok: true, result: { shipments: state.shipments.get(userId) || [] } };
+  });
+
+  registerLensAction("logistics", "shipment-track", (ctx, _artifact, params = {}) => {
+    const state = getLogState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const trackingNumber = String(params.trackingNumber || "").trim();
+    if (!trackingNumber) return { ok: false, error: "trackingNumber required" };
+    if (!state.shipments.has(userId)) state.shipments.set(userId, []);
+    const seed = hashStringLog(trackingNumber);
+    const carrier = ["UPS", "FedEx", "USPS", "DHL", "Other"].includes(params.carrier) ? params.carrier : "UPS";
+    const statuses = ["label_created", "picked_up", "in_transit", "out_for_delivery", "delivered"];
+    const statusIdx = seed % 4 === 0 ? 4 : Math.max(0, Math.min(3, seed % 5));
+    const status = statuses[statusIdx];
+    const cities = ["Los Angeles, CA", "Phoenix, AZ", "Denver, CO", "Kansas City, MO", "Chicago, IL", "Atlanta, GA", "Charlotte, NC", "Newark, NJ"];
+    const events = [];
+    for (let i = 0; i <= statusIdx; i++) {
+      events.push({
+        at: new Date(Date.now() - (statusIdx - i) * 86400000).toISOString(),
+        location: cities[(seed + i) % cities.length],
+        description: ["Package data received", "Picked up by carrier", "Arrived at facility", "Departed facility", "Delivered to recipient"][i],
+      });
+    }
+    const ship = {
+      id: `ship_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      trackingNumber, carrier,
+      from: cities[seed % cities.length],
+      to: cities[(seed >> 4) % cities.length],
+      status,
+      currentLocation: events[events.length - 1].location,
+      etaDate: status === "delivered" ? undefined : new Date(Date.now() + ((4 - statusIdx) * 86400000)).toISOString().slice(0, 10),
+      events,
+    };
+    state.shipments.get(userId).push(ship);
+    saveLogState();
+    return { ok: true, result: { shipment: ship } };
+  });
+
+  registerLensAction("logistics", "route-optimize", (_ctx, _artifact, params = {}) => {
+    const stops = Array.isArray(params.stops) ? params.stops.filter(s => typeof s === "string" && s.trim()) : [];
+    if (stops.length < 2) return { ok: false, error: "need 2+ stops" };
+    const startTime = String(params.startTime || "08:00");
+    const vehicleType = ["car", "van", "truck", "ev"].includes(params.vehicleType) ? params.vehicleType : "van";
+    const mpg = { car: 28, van: 18, truck: 9, ev: 110 }[vehicleType];
+    const gasPrice = vehicleType === "ev" ? 0.15 : 3.85;
+    const distMatrix = stops.map((a, i) => stops.map((b, j) => {
+      if (i === j) return 0;
+      const h = hashStringLog(`${a}|${b}`);
+      return 5 + (h % 80);
+    }));
+    const enteredOrder = stops.map((_, i) => i);
+    function totalDist(order) {
+      let total = 0;
+      for (let i = 0; i < order.length - 1; i++) total += distMatrix[order[i]][order[i + 1]];
+      return total;
+    }
+    const enteredDist = totalDist(enteredOrder);
+    const visited = new Set([0]);
+    const order = [0];
+    while (visited.size < stops.length) {
+      const last = order[order.length - 1];
+      let best = -1, bestD = Infinity;
+      for (let j = 0; j < stops.length; j++) {
+        if (visited.has(j)) continue;
+        const d = distMatrix[last][j];
+        if (d < bestD) { bestD = d; best = j; }
+      }
+      visited.add(best);
+      order.push(best);
+    }
+    const optimizedDist = totalDist(order);
+
+    let totalDuration = 0;
+    const [hh, mm] = startTime.split(":").map(Number);
+    let nowMin = hh * 60 + (mm || 0);
+    const optimizedStops = order.map((stopIdx, i) => {
+      const dist = i === 0 ? 0 : distMatrix[order[i - 1]][stopIdx];
+      const drive = dist / 35 * 60;
+      const dwell = i === 0 ? 0 : 10;
+      nowMin += drive + dwell;
+      totalDuration += drive + dwell;
+      return {
+        order: i + 1,
+        address: stops[stopIdx],
+        arrivalTime: `${String(Math.floor(nowMin / 60) % 24).padStart(2, "0")}:${String(Math.round(nowMin % 60)).padStart(2, "0")}`,
+        durationMin: drive + dwell,
+        distanceMi: dist,
+      };
+    });
+    const fuelCostUsd = optimizedDist / mpg * gasPrice;
+    return {
+      ok: true,
+      result: {
+        totalDistanceMi: optimizedDist,
+        totalDurationMin: totalDuration,
+        totalDistanceSavedMi: Math.max(0, enteredDist - optimizedDist),
+        totalDurationSavedMin: Math.max(0, (enteredDist - optimizedDist) / 35 * 60),
+        fuelCostUsd,
+        stops: optimizedStops,
+      },
+    };
+  });
+
+  registerLensAction("logistics", "inventory-list", (_ctx, _artifact, _params = {}) => {
+    const items = SAMPLE_SKUS.map((s, i) => {
+      const seed = hashStringLog(s.sku);
+      const quantity = seed % 200;
+      const reorderPoint = 30 + (seed % 50);
+      const weeklyVelocity = 5 + (seed % 25);
+      return {
+        id: `inv_${i}`,
+        sku: s.sku, name: s.name, category: s.category,
+        quantity, reorderPoint,
+        bin: `${String.fromCharCode(65 + (seed % 6))}-${String((seed >> 3) % 99 + 1).padStart(2, "0")}-${seed % 9 + 1}`,
+        weeklyVelocity,
+        daysOfStock: weeklyVelocity > 0 ? (quantity / weeklyVelocity) * 7 : 999,
+      };
+    });
+    return { ok: true, result: { items } };
+  });
 };
+
+function hashStringLog(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+const SAMPLE_SKUS = [
+  { sku: "WIDGET-001", name: "Standard Widget", category: "Hardware" },
+  { sku: "WIDGET-002", name: "Premium Widget", category: "Hardware" },
+  { sku: "BOX-LG-01", name: "Large Shipping Box", category: "Packaging" },
+  { sku: "BOX-MD-01", name: "Medium Shipping Box", category: "Packaging" },
+  { sku: "TAPE-001", name: "Packing Tape Roll", category: "Packaging" },
+  { sku: "LABEL-100", name: "Shipping Labels 100ct", category: "Packaging" },
+  { sku: "PAD-001", name: "Bubble Wrap Padding", category: "Packaging" },
+  { sku: "TOOL-WR-1", name: "Wrench Set", category: "Tools" },
+  { sku: "TOOL-DR-1", name: "Cordless Drill", category: "Tools" },
+  { sku: "WIRE-12G", name: "12-gauge Wire 100ft", category: "Materials" },
+  { sku: "WIRE-14G", name: "14-gauge Wire 100ft", category: "Materials" },
+  { sku: "PVC-2IN-10", name: "PVC Pipe 2in × 10ft", category: "Materials" },
+  { sku: "PAINT-WH-1G", name: "White Paint 1gal", category: "Materials" },
+  { sku: "PRIMER-1G", name: "Primer 1gal", category: "Materials" },
+  { sku: "SCREWS-100", name: "Wood Screws 100ct", category: "Hardware" },
+  { sku: "BOLTS-50", name: "Hex Bolts 1/4in 50ct", category: "Hardware" },
+];
