@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { PhysicsArxiv } from '@/components/physics/PhysicsArxiv';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -1728,6 +1729,9 @@ export default function PhysicsLensPage() {
       Physics Workbench
     </button>
     <PhysicsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <PhysicsArxiv />
+    </section>
     </LensShell>
   );
 
