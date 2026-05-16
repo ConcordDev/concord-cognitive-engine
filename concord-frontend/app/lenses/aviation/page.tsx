@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { AirportBrief } from '@/components/aviation/AirportBrief';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -2094,6 +2095,11 @@ export default function AviationLensPage() {
         Aviation Workbench
       </button>
       <AviationWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+
+      {/* Bespoke FAA airport brief + METAR/TAF with Save-as-DTU */}
+      <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <AirportBrief />
+      </section>
     </LensShell>
   );
 }
