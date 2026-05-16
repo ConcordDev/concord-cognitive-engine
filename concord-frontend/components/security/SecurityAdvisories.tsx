@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ShieldAlert, Loader2, ExternalLink, AlertOctagon } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import { ShieldAlert, Loader2, ExternalLink, AlertOctagon, Zap } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { AdvisoryActionMenu } from '@/components/security/AdvisoryActionMenu';
 
 interface Advisory {
   ghsa_id: string;
@@ -20,6 +22,7 @@ const COLOR: Record<string, string> = { critical: 'border-rose-500/40 bg-rose-50
 
 export function SecurityAdvisories() {
   const [sev, setSev] = useState<typeof SEVERITY[number]>('high');
+  const [actAdvisory, setActAdvisory] = useState<Advisory | null>(null);
 
   const advs = useQuery({
     queryKey: ['gh-advisories', sev],
@@ -52,9 +55,9 @@ export function SecurityAdvisories() {
       </div>
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((a) => (
-          <a key={a.ghsa_id} href={a.html_url} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-rose-500/15 bg-zinc-950/60 p-2.5 hover:border-rose-500/40">
+          <div key={a.ghsa_id} className="rounded-lg border border-rose-500/15 bg-zinc-950/60 p-2.5 hover:border-rose-500/40 transition-colors">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
+              <a href={a.html_url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 block">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs text-white">{a.ghsa_id}</span>
                   {a.cve_id && <span className="font-mono text-[10px] text-zinc-400">{a.cve_id}</span>}
@@ -62,14 +65,32 @@ export function SecurityAdvisories() {
                 </div>
                 <p className="mt-1 line-clamp-2 text-[12px] text-zinc-200">{a.summary}</p>
                 <div className="mt-1 text-[10px] text-zinc-500">published {a.published_at?.slice(0, 10)}</div>
+              </a>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActAdvisory(a); }}
+                  className="inline-flex items-center gap-1 rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/20 transition-colors"
+                  title="Incident / escalate / patch / post-mortem / agent"
+                >
+                  <Zap className="h-3 w-3" /> Actions
+                </button>
+                <a href={a.html_url} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-zinc-800 text-zinc-500" aria-label="Open advisory">
+                  <ExternalLink className="h-3 w-3" />
+                </a>
               </div>
-              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
             </div>
-          </a>
+          </div>
         ))}
         {list.length === 0 && !advs.isPending && !advs.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No advisories.</div>}
       </div>
       {advs.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+
+      <AnimatePresence>
+        {actAdvisory && (
+          <AdvisoryActionMenu advisory={actAdvisory} onClose={() => setActAdvisory(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
