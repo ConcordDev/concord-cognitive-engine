@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { ConceptExplorer } from '@/components/commonsense/ConceptExplorer';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -993,8 +994,13 @@ export default function CommonsenseLensPage() {
           </div>
         )}
       </div>
+
+      {/* Bespoke ConceptNet concept graph explorer with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ConceptExplorer />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#commonsense-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to commonsense content</a>
     </LensShell>
