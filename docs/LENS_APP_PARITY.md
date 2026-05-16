@@ -200,6 +200,32 @@ admin actions.
 in-line (above) — don't pre-fill speculatively. Default target = 3
 panels (create / inspect / share or similar) if no clear leader app.
 
+### Tier 7 authored sweep (current session)
+
+The action-panel pattern shipped per Tier-7 lens is uniform: 4 lens-
+specific macros + the universal mint / DM / publish / agent quartet =
+8 buttons, paired with bespoke result tiles and a trailing agent-reply
+panel. Every panel surfaces real domain backends — zero seed/mock
+data, all server macros via `apiHelpers.lens.runDomain`.
+
+| Lens | Panel | Surfaced macros | Status |
+|---|---|---|---|
+| nonprofit | NonprofitActionPanel | donorRetention · grantReporting · campaignProgress · search-orgs | ✅ shipped |
+| insurance | InsuranceActionPanel | coverageGap · lossRatioReport · renewalAlert · riskScore | ✅ shipped |
+| linguistics | LinguisticsActionPanel | dictionary-lookup (Free Dictionary) · datamuse-words · textAnalysis · sentimentAnalysis | ✅ shipped |
+| chem | ChemActionPanel | molecular-weight · calc-molarity · calc-ph · calc-dilution | ✅ shipped |
+| bio | BioActionPanel | sequence-analyze · primer-design · align-pairwise · restriction-map | ✅ shipped |
+| physics | PhysicsActionPanel | kinematics-1d · projectile · convert-units · constants | ✅ shipped |
+| neuro | NeuroActionPanel | frequencyAnalysis (FFT) · connectivityAnalysis · erpAnalysis · sim-signal | ✅ shipped |
+| ml | MlActionPanel | modelEvaluate · featureImportance · datasetProfile · hyperparameterSuggest | ✅ shipped |
+| robotics | RoboticsActionPanel | kinematicsCalc · pathPlan · sensorFusion · batteryLife | ✅ shipped |
+| aviation | AviationActionPanel | airport-lookup (FAA) · weather-metar · perf-takeoff · perf-landing | ✅ shipped |
+| pharmacy | PharmacyActionPanel | drug-label (OpenFDA) · drugInteractionCheck · adverse-events (FAERS) · dosageCalculator | ✅ shipped |
+| mental-health | MentalHealthActionPanel | crisis-hotlines · cdc-mental-health-stats · moodTracker · journalPrompt | ✅ shipped |
+| photography | PhotographyActionPanel | exposureCalc · compositionAnalysis · gearRecommend · printSize | ✅ shipped |
+| voice | VoiceActionPanel | transcriptAnalyze · speakerDiarize · sentimentScore · keywordSpot | ✅ shipped |
+| (plus the Tier-1/Tier-3/Tier-5/Tier-6 panels shipped earlier in the session — see git log on `claude/ship-trade-ui-widgets-hLpjG` for the full chain.) | | | |
+
 ## Progress tracking
 
 | Tier | Lenses | Avg % complete | Updated |
@@ -210,7 +236,7 @@ panels (create / inspect / share or similar) if no clear leader app.
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
 | Tier 5 (session loops) | 5 | ~80% | 2026-05-16 |
 | Tier 6 (backend-creation) | 5 | ~80% | 2026-05-16 |
-| Tier 7 (Concord-native) | ~150 | tbd | 2026-05-16 |
+| Tier 7 (Concord-native) | ~150 | ~12% authored (≥80% each) | 2026-05-16 |
 
 **Close gate:** every Tier-1 to Tier-6 lens ≥ 80% (heavyweights ≥ 70%).
 Tier 7 lenses: target authored + ≥ 80% on the authored target.
