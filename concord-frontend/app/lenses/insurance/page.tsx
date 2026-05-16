@@ -2,6 +2,10 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import PolicyVault from '@/components/insurance/PolicyVault';
+import ClaimTracker from '@/components/insurance/ClaimTracker';
+import QuoteCompare from '@/components/insurance/QuoteCompare';
+import CoverageAnalyzer from '@/components/insurance/CoverageAnalyzer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -61,7 +65,7 @@ import LiveFeed from '@/components/lens/LiveFeed';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Dashboard' | 'Policies' | 'Claims' | 'Calculator' | 'Clients' | 'Commissions' | 'Compliance' | 'Compare' | 'Documents';
+type ModeTab = 'Dashboard' | 'Policies' | 'Claims' | 'Calculator' | 'Clients' | 'Commissions' | 'Compliance' | 'Compare' | 'Documents' | 'Vault' | 'ClaimTracker' | 'QuoteCompare' | 'GapAnalysis';
 type ArtifactType = 'Policy' | 'Claim' | 'Quote' | 'InsuredClient' | 'Commission' | 'ComplianceItem' | 'Document';
 
 type PolicyType = 'auto' | 'home' | 'life' | 'commercial' | 'health' | 'umbrella';
@@ -184,6 +188,10 @@ const MODE_TABS: { id: ModeTab; icon: typeof Shield; artifactType?: ArtifactType
   { id: 'Commissions', icon: DollarSign, artifactType: 'Commission' },
   { id: 'Compliance', icon: GraduationCap, artifactType: 'ComplianceItem' },
   { id: 'Documents', icon: FolderOpen, artifactType: 'Document' },
+  { id: 'Vault', icon: Shield, artifactType: 'Policy' },
+  { id: 'ClaimTracker', icon: FileText, artifactType: 'Claim' },
+  { id: 'QuoteCompare', icon: DollarSign, artifactType: 'Quote' },
+  { id: 'GapAnalysis', icon: AlertTriangle, artifactType: 'Policy' },
 ];
 
 const POLICY_TYPES: PolicyType[] = ['auto', 'home', 'life', 'commercial', 'health', 'umbrella'];
@@ -1130,8 +1138,14 @@ export default function InsuranceLensPage() {
         </div>
       )}
 
+      {/* Parity-sprint surfaces */}
+      {mode === 'Vault' && <div className="p-4"><PolicyVault /></div>}
+      {mode === 'ClaimTracker' && <div className="p-4"><ClaimTracker /></div>}
+      {mode === 'QuoteCompare' && <div className="p-4"><QuoteCompare /></div>}
+      {mode === 'GapAnalysis' && <div className="p-4"><CoverageAnalyzer /></div>}
+
       {/* Content */}
-      {mode === 'Dashboard' ? renderDashboard() : (
+      {!['Vault','ClaimTracker','QuoteCompare','GapAnalysis'].includes(mode) && mode === 'Dashboard' ? renderDashboard() : !['Vault','ClaimTracker','QuoteCompare','GapAnalysis','Dashboard'].includes(mode) && (
         <>
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
