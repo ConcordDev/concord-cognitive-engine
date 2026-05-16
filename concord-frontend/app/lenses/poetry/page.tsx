@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -659,6 +660,11 @@ export default function PoetryPage() {
           </div>
         )}
       </div>
+
+      {/* Bespoke PoetryDB search with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <PoetryDbSearch />
+      </section>
     </div>
     </LensShell>
   );
