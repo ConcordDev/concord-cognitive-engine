@@ -184,7 +184,14 @@ export default function registerFitnessActions(registerLensAction) {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
     if (!STATE.fitnessLens) {
-      STATE.fitnessLens = { workouts: new Map() };
+      STATE.fitnessLens = {
+        workouts: new Map(),
+        recoveryEntries: new Map(),
+        activityEntries: new Map(),
+      };
+    } else {
+      if (!STATE.fitnessLens.recoveryEntries) STATE.fitnessLens.recoveryEntries = new Map();
+      if (!STATE.fitnessLens.activityEntries) STATE.fitnessLens.activityEntries = new Map();
     }
     return STATE.fitnessLens;
   }
@@ -254,51 +261,59 @@ export default function registerFitnessActions(registerLensAction) {
   });
 
   /**
-   * recovery-history — Synthetic Whoop-style recovery + sleep + strain
-   * series for the last N days. Deterministic by userId.
+   * recovery-history — Reads from STATE.fitnessLens.recoveryEntries,
+   * which is populated by real device integrations (Whoop OAuth, Apple
+   * HealthKit bridge, Garmin Connect IQ, Fitbit Web API). Per the
+   * "everything must be real" directive, no synthetic Whoop-style data
+   * is fabricated.
    */
   registerLensAction("fitness", "recovery-history", (ctx, _artifact, params = {}) => {
+    const state = getFitState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const N = Math.max(1, Math.min(90, Number(params.days) || 14));
-    const seed = hashStringFitness(userId);
-    const days = [];
-    for (let i = N - 1; i >= 0; i--) {
-      const date = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      const recoveryScore = 30 + ((seed >> i) & 63);  // 30-93
-      const sleepDurationHours = 6.0 + ((seed >> (i + 2)) & 7) / 4;  // 6.0-7.75
-      const sleepQualityPct = 55 + ((seed >> (i + 3)) & 31);
-      const restingHr = 52 + ((seed >> (i + 1)) & 7);
-      const hrv = 35 + ((seed >> (i + 4)) & 31);
-      const strainYesterday = 8 + ((seed >> (i + 5)) & 15) / 2;
-      days.push({ date, recoveryScore, sleepDurationHours, sleepQualityPct, restingHr, hrv, strainYesterday });
-    }
-    return { ok: true, result: { days } };
+    const all = state.recoveryEntries?.get(userId) || [];
+    const cutoff = Date.now() - N * 86400000;
+    const days = all
+      .filter((d) => new Date(d.date).getTime() >= cutoff)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return {
+      ok: true,
+      result: {
+        days,
+        source: days.length === 0 ? "empty" : "device",
+        notes: days.length === 0
+          ? "No recovery data logged. Connect a wearable (Whoop, Apple Watch, Garmin, Fitbit) or POST entries to fitness.recovery-log to populate."
+          : null,
+      },
+    };
   });
 
   /**
-   * activity-summary — Apple Fitness+ style move/exercise/stand rings.
-   * Synthetic per userId for the last N days.
+   * activity-summary — Reads from STATE.fitnessLens.activityEntries,
+   * populated by real device integrations or fitness.activity-log macro.
+   * No synthesized Apple Fitness-style rings.
    */
   registerLensAction("fitness", "activity-summary", (ctx, _artifact, params = {}) => {
+    const state = getFitState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const N = Math.max(1, Math.min(30, Number(params.days) || 7));
-    const seed = hashStringFitness(userId);
-    const days = [];
-    for (let i = N - 1; i >= 0; i--) {
-      const date = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      const moveCalories = 200 + ((seed >> i) & 511);
-      const exerciseMinutes = 15 + ((seed >> (i + 2)) & 31);
-      const standHours = 6 + ((seed >> (i + 1)) & 7);
-      const steps = 4000 + ((seed >> (i + 3)) & 8191);
-      days.push({
-        date,
-        moveCalories, moveGoal: 500,
-        exerciseMinutes, exerciseGoal: 30,
-        standHours, standGoal: 12,
-        steps, stepsGoal: 10000,
-      });
-    }
-    return { ok: true, result: { days } };
+    const all = state.activityEntries?.get(userId) || [];
+    const cutoff = Date.now() - N * 86400000;
+    const days = all
+      .filter((d) => new Date(d.date).getTime() >= cutoff)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return {
+      ok: true,
+      result: {
+        days,
+        source: days.length === 0 ? "empty" : "device",
+        notes: days.length === 0
+          ? "No activity data logged. Connect a wearable (Apple Watch, Fitbit, Garmin) or POST entries to fitness.activity-log to populate."
+          : null,
+      },
+    };
   });
 
   /**
@@ -354,12 +369,6 @@ Generate the plan.`;
     }
   });
 };
-
-function hashStringFitness(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
 
 function extractJsonFit(text) {
   if (!text) return null;

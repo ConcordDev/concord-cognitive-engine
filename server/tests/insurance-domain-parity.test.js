@@ -45,22 +45,14 @@ describe("insurance.claim-* CRUD", () => {
   });
 });
 
-describe("insurance.quotes-compare", () => {
-  it("returns 8 carriers sorted with USAA cheapest", () => {
+describe("insurance.quotes-compare (no synthetic carrier table)", () => {
+  it("returns error pointing to broker API since no live integration is wired", () => {
     const r = call("quotes-compare", ctxA, { kind: "auto", zip: "94110", coverage: "standard" });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.quotes.length, 8);
-    assert.ok(r.result.quotes.every(q => q.annualPremium > 0));
-  });
-  it("determinism per (zip, kind, coverage)", () => {
-    const r1 = call("quotes-compare", ctxA, { kind: "auto", zip: "94110", coverage: "standard" });
-    const r2 = call("quotes-compare", ctxA, { kind: "auto", zip: "94110", coverage: "standard" });
-    assert.deepEqual(r1.result.quotes, r2.result.quotes);
-  });
-  it("premium coverage costs more than minimum", () => {
-    const min = call("quotes-compare", ctxA, { kind: "auto", zip: "94110", coverage: "minimum" });
-    const prem = call("quotes-compare", ctxA, { kind: "auto", zip: "94110", coverage: "premium" });
-    assert.ok(prem.result.quotes[0].annualPremium > min.result.quotes[0].annualPremium);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /broker API|INSURIFY_API_KEY|ZEBRA_API_KEY/);
+    assert.equal(r.meta.kind, "auto");
+    assert.equal(r.meta.zip, "94110");
+    assert.equal(r.meta.coverage, "standard");
   });
 });
 

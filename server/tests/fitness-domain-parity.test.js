@@ -56,43 +56,36 @@ describe("fitness.hr-zones", () => {
   });
 });
 
-describe("fitness.recovery-history", () => {
-  it("returns N days of deterministic data per user", () => {
-    const r1 = call("recovery-history", ctxA, { days: 14 });
-    assert.equal(r1.ok, true);
-    assert.equal(r1.result.days.length, 14);
-    for (const d of r1.result.days) {
-      assert.ok(d.recoveryScore >= 0 && d.recoveryScore <= 100);
-      assert.ok(d.sleepDurationHours > 0);
-      assert.ok(d.strainYesterday >= 0 && d.strainYesterday <= 21);
-    }
-    const r2 = call("recovery-history", ctxA, { days: 14 });
-    assert.deepEqual(r1.result.days[0], r2.result.days[0]);
+describe("fitness.recovery-history (real device data only)", () => {
+  it("returns empty + setup hint when no wearable connected", () => {
+    const r = call("recovery-history", ctxA, { days: 14 });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.days, []);
+    assert.equal(r.result.source, "empty");
+    assert.match(r.result.notes, /wearable|Whoop|Apple Watch|Garmin|Fitbit/);
+  });
 
-    // Different user → some day differs in the series (full-series
-    // determinism per user, not strict inequality at index 0)
-    const rB = call("recovery-history", ctxB, { days: 14 });
-    const someDiffer = rB.result.days.some((d, i) =>
-      d.recoveryScore !== r1.result.days[i].recoveryScore ||
-      d.hrv !== r1.result.days[i].hrv ||
-      d.restingHr !== r1.result.days[i].restingHr
-    );
-    assert.ok(someDiffer, "two different users should produce some differing days");
+  it("returns logged entries within the requested window when populated", () => {
+    const state = globalThis._concordSTATE;
+    state.fitnessLens = state.fitnessLens || {};
+    state.fitnessLens.recoveryEntries = new Map();
+    state.fitnessLens.recoveryEntries.set("user_a", [
+      { date: new Date(Date.now() - 1 * 86400000).toISOString().slice(0, 10), recoveryScore: 72, hrv: 50, restingHr: 55 },
+      { date: new Date(Date.now() - 20 * 86400000).toISOString().slice(0, 10), recoveryScore: 60, hrv: 42, restingHr: 60 }, // outside 14-day window
+    ]);
+    const r = call("recovery-history", ctxA, { days: 14 });
+    assert.equal(r.result.days.length, 1);
+    assert.equal(r.result.source, "device");
   });
 });
 
-describe("fitness.activity-summary", () => {
-  it("returns N days of ring data with goals", () => {
+describe("fitness.activity-summary (real device data only)", () => {
+  it("returns empty + setup hint when no wearable connected", () => {
     const r = call("activity-summary", ctxA, { days: 7 });
     assert.equal(r.ok, true);
-    assert.equal(r.result.days.length, 7);
-    for (const d of r.result.days) {
-      assert.equal(d.moveGoal, 500);
-      assert.equal(d.exerciseGoal, 30);
-      assert.equal(d.standGoal, 12);
-      assert.equal(d.stepsGoal, 10000);
-      assert.ok(d.moveCalories > 0);
-    }
+    assert.deepEqual(r.result.days, []);
+    assert.equal(r.result.source, "empty");
+    assert.match(r.result.notes, /wearable|Apple Watch|Fitbit|Garmin/);
   });
 });
 

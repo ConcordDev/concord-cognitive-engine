@@ -531,13 +531,11 @@ export default function registerFoodActions(registerLensAction) {
   function getFoodState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.foodLens) {
-      STATE.foodLens = {
-        pantry: new Map(),
-        mealPlans: new Map(),
-        nutritionLog: new Map(),
-      };
-    }
+    if (!STATE.foodLens) STATE.foodLens = {};
+    if (!STATE.foodLens.pantry) STATE.foodLens.pantry = new Map();
+    if (!STATE.foodLens.mealPlans) STATE.foodLens.mealPlans = new Map();
+    if (!STATE.foodLens.nutritionLog) STATE.foodLens.nutritionLog = new Map();
+    if (!STATE.foodLens.recipes) STATE.foodLens.recipes = new Map();
     return STATE.foodLens;
   }
 
@@ -693,47 +691,70 @@ export default function registerFoodActions(registerLensAction) {
     return { ok: true, result: { meals, startDate, days } };
   });
 
-  registerLensAction("food", "meal-plan-generate", (ctx, _artifact, params = {}) => {
+  registerLensAction("food", "meal-plan-generate", async (ctx, _artifact, params = {}) => {
     const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const startDate = String(params.startDate || new Date().toISOString().slice(0, 10));
     const days = Math.max(1, Math.min(14, Number(params.days) || 7));
     const mealsPerDay = Math.max(1, Math.min(4, Number(params.mealsPerDay) || 3));
     const slots = ["Breakfast", "Lunch", "Dinner", "Snack"].slice(0, mealsPerDay);
-    const TEMPLATES = {
-      Breakfast: [
-        { title: "Greek yogurt parfait", calories: 320, protein: 24, carbs: 36, fat: 8 },
-        { title: "Veggie scramble", calories: 380, protein: 22, carbs: 12, fat: 26 },
-        { title: "Overnight oats", calories: 410, protein: 18, carbs: 58, fat: 12 },
-        { title: "Avocado toast w/ eggs", calories: 440, protein: 19, carbs: 32, fat: 26 },
-      ],
-      Lunch: [
-        { title: "Chicken Caesar wrap", calories: 520, protein: 35, carbs: 42, fat: 22 },
-        { title: "Quinoa Buddha bowl", calories: 480, protein: 18, carbs: 62, fat: 18 },
-        { title: "Turkey + hummus pita", calories: 460, protein: 32, carbs: 48, fat: 14 },
-        { title: "Tomato basil soup + grilled cheese", calories: 540, protein: 18, carbs: 56, fat: 26 },
-      ],
-      Dinner: [
-        { title: "Sheet-pan salmon + asparagus", calories: 580, protein: 42, carbs: 18, fat: 34 },
-        { title: "Veggie stir-fry + brown rice", calories: 520, protein: 16, carbs: 78, fat: 14 },
-        { title: "Pesto pasta w/ shrimp", calories: 620, protein: 32, carbs: 64, fat: 24 },
-        { title: "Steak tacos + slaw", calories: 670, protein: 38, carbs: 48, fat: 32 },
-      ],
-      Snack: [
-        { title: "Apple + almond butter", calories: 230, protein: 6, carbs: 32, fat: 12 },
-        { title: "Protein shake", calories: 180, protein: 24, carbs: 12, fat: 4 },
-        { title: "Trail mix", calories: 260, protein: 8, carbs: 24, fat: 16 },
-      ],
-    };
-    const meals = [];
-    for (let d = 0; d < days; d++) {
-      const date = new Date(new Date(startDate).getTime() + d * 86400000).toISOString().slice(0, 10);
-      for (const slot of slots) {
-        const choices = TEMPLATES[slot] || [];
-        const idx = hashStringFood(`${userId}_${date}_${slot}`) % choices.length;
-        const c = choices[idx];
-        meals.push({ date, slot, title: c.title, servings: 1, calories: c.calories, protein: c.protein, carbs: c.carbs, fat: c.fat });
+    // Per "everything must be real" directive: meal plans come from the
+    // user's real recipe library (state.recipes) when available, falling
+    // back to the Spoonacular Meal Planner API (free dev tier, requires
+    // SPOONACULAR_API_KEY). No hardcoded TEMPLATES table.
+    const userRecipes = state.recipes?.get(userId) || [];
+    const recipesBySlot = { Breakfast: [], Lunch: [], Dinner: [], Snack: [] };
+    for (const r of userRecipes) {
+      const slot = r.slot && recipesBySlot[r.slot] ? r.slot : null;
+      if (slot) recipesBySlot[slot].push(r);
+    }
+    const allSlotsHaveRecipes = slots.every((s) => (recipesBySlot[s] || []).length > 0);
+    let meals = [];
+    if (allSlotsHaveRecipes) {
+      for (let d = 0; d < days; d++) {
+        const date = new Date(new Date(startDate).getTime() + d * 86400000).toISOString().slice(0, 10);
+        for (const slot of slots) {
+          const choices = recipesBySlot[slot];
+          const idx = hashStringFood(`${userId}_${date}_${slot}`) % choices.length;
+          const c = choices[idx];
+          meals.push({ date, slot, title: c.title, servings: 1, calories: c.calories, protein: c.protein, carbs: c.carbs, fat: c.fat, recipeId: c.id });
+        }
       }
+    } else if (process.env.SPOONACULAR_API_KEY) {
+      const targetCalories = Number(params.targetCalories) || 2000;
+      const diet = params.diet || "";
+      const url = `https://api.spoonacular.com/mealplanner/generate?apiKey=${encodeURIComponent(process.env.SPOONACULAR_API_KEY)}&timeFrame=week&targetCalories=${targetCalories}${diet ? `&diet=${encodeURIComponent(diet)}` : ""}`;
+      try {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`spoonacular ${r.status}`);
+        const data = await r.json();
+        const weekDays = data?.week ? Object.entries(data.week) : [];
+        for (let d = 0; d < Math.min(days, weekDays.length); d++) {
+          const date = new Date(new Date(startDate).getTime() + d * 86400000).toISOString().slice(0, 10);
+          const [, dayData] = weekDays[d];
+          const apiSlots = ["Breakfast", "Lunch", "Dinner"];
+          for (let s = 0; s < Math.min(slots.length, apiSlots.length); s++) {
+            const meal = dayData.meals?.[s];
+            if (!meal) continue;
+            meals.push({
+              date, slot: apiSlots[s], title: meal.title, servings: meal.servings || 1,
+              calories: dayData.nutrients?.calories / apiSlots.length,
+              protein: dayData.nutrients?.protein / apiSlots.length,
+              carbs: dayData.nutrients?.carbohydrates / apiSlots.length,
+              fat: dayData.nutrients?.fat / apiSlots.length,
+              recipeId: meal.id,
+              source: "spoonacular",
+            });
+          }
+        }
+      } catch (e) {
+        return { ok: false, error: `spoonacular unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      }
+    } else {
+      return {
+        ok: false,
+        error: "No recipe library configured. Add recipes via food.recipe-add (with slot: Breakfast|Lunch|Dinner|Snack) or set SPOONACULAR_API_KEY for live meal-plan generation. Concord does not ship hardcoded meal templates.",
+      };
     }
     if (!state.mealPlans.has(userId)) state.mealPlans.set(userId, []);
     const existing = state.mealPlans.get(userId);

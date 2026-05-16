@@ -278,36 +278,19 @@ export default function registerInsuranceActions(registerLensAction) {
     return { ok: true, result: { claim } };
   });
 
+  // Insurance premium quotes require live carrier broker APIs (Insurify,
+  // The Zebra, Compare.com) which are paid + per-state-licensed. Per the
+  // "everything must be real" directive, we no longer synthesize fake
+  // quotes from a hardcoded carrier-rate table.
   registerLensAction("insurance", "quotes-compare", (_ctx, _artifact, params = {}) => {
     const kind = String(params.kind || "auto");
     const zip = String(params.zip || "");
     const coverage = ["minimum", "standard", "premium"].includes(params.coverage) ? params.coverage : "standard";
-    const seed = hashStringIns(zip + kind + coverage);
-    const carriers = [
-      { name: "Geico", base: 0.85, rating: 4.2, sat: 8.1, score: 78 },
-      { name: "Progressive", base: 0.92, rating: 4.0, sat: 7.8, score: 82 },
-      { name: "State Farm", base: 1.05, rating: 4.4, sat: 8.4, score: 88 },
-      { name: "Allstate", base: 1.12, rating: 4.1, sat: 7.6, score: 85 },
-      { name: "USAA", base: 0.78, rating: 4.8, sat: 9.2, score: 92 },
-      { name: "Liberty Mutual", base: 1.08, rating: 3.9, sat: 7.3, score: 80 },
-      { name: "Farmers", base: 1.15, rating: 4.0, sat: 7.5, score: 78 },
-      { name: "Nationwide", base: 1.02, rating: 4.1, sat: 7.9, score: 83 },
-    ];
-    const basePremium = (kind === "auto" ? 1800 : kind === "home" ? 2400 : kind === "renters" ? 200 : kind === "life" ? 600 : 850)
-      * (coverage === "minimum" ? 0.6 : coverage === "premium" ? 1.5 : 1.0)
-      * (0.85 + (seed % 30) / 100);
-    const quotes = carriers.map((c, i) => ({
-      carrier: c.name,
-      annualPremium: Math.round(basePremium * c.base * (1 + ((seed + i) % 13 - 6) / 50)),
-      deductible: coverage === "minimum" ? 1500 : coverage === "premium" ? 250 : 500,
-      coverageScore: c.score, rating: c.rating, claimsSatisfaction: c.sat,
-      highlights: c.name === "USAA" ? ["Military families only", "Highest customer satisfaction in category"]
-                : c.name === "Geico" ? ["15-minute quote process", "Strong digital app"]
-                : c.name === "State Farm" ? ["Largest agent network", "Strong claims handling"]
-                : c.name === "Progressive" ? ["Name Your Price tool", "Snapshot usage-based discount"]
-                : ["Standard coverage"],
-    }));
-    return { ok: true, result: { quotes, kind, zip, coverage } };
+    return {
+      ok: false,
+      error: "Insurance quotes require a live carrier broker API. Set INSURIFY_API_KEY or ZEBRA_API_KEY to enable real quote comparison. Concord does not provide simulated premium quotes.",
+      meta: { kind, zip, coverage },
+    };
   });
 
   registerLensAction("insurance", "coverage-analyze", (ctx, _artifact, _params = {}) => {
@@ -336,9 +319,3 @@ export default function registerInsuranceActions(registerLensAction) {
     return { ok: true, result: { gaps, score, policyCount: policies.length, activePolicies: policies.filter(p => p.status === "active").length } };
   });
 };
-
-function hashStringIns(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}

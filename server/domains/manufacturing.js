@@ -53,82 +53,97 @@ export default function registerManufacturingActions(registerLensAction) {
     return { ok: true, result: { incidentRate: Math.round(rate * 100) / 100, recordableIncidents: recordable, totalIncidents: incidents.length, hoursWorked, benchmark: rate <= 3 ? 'below_average' : rate <= 5 ? 'average' : 'above_average' } };
   });
 
-  // ─── Parity-sprint macros ──
+  // ─── Parity-sprint macros (real MES/SCADA feeds) ──
+  //
+  // Manufacturing telemetry (OEE, work orders, SPC) comes from a wired
+  // shop-floor feed: OPC-UA endpoint (IEC 62541), MQTT broker
+  // (Sparkplug B), MTConnect agent, or a per-shop ERP webhook
+  // (Tulip, Plex, NetSuite Manufacturing). Per the "everything must
+  // be real" directive, no hardcoded machine list / work-order stream
+  // / SPC sample series is synthesized.
 
-  registerLensAction("manufacturing", "oee-status", (_ctx, _artifact, _params = {}) => {
-    const machines = [];
-    const names = ["CNC-01 (Mazak)", "CNC-02 (Haas)", "Lathe-03", "Press-04 (200T)", "Mill-05", "Welder-06", "Bender-07", "Assembly-08", "Paint-09", "QA-Cell-10"];
-    for (let i = 0; i < names.length; i++) {
-      const seed = hashStringMfg(names[i]);
-      const status = seed % 5 === 0 ? "down" : seed % 7 === 0 ? "maintenance" : seed % 11 === 0 ? "idle" : "running";
-      const availability = status === "running" ? 75 + (seed % 22) : status === "idle" ? 40 + (seed % 20) : status === "down" ? 0 : 5;
-      const performance = status === "running" ? 70 + (seed % 25) : 0;
-      const quality = status === "running" ? 90 + (seed % 9) : status === "idle" ? 0 : 0;
-      const oee = Math.round(availability * performance * quality / 10000);
-      machines.push({
-        id: `mac_${i}`, name: names[i], status,
-        availability, performance, quality, oee,
-        lastDowntimeReason: status === "down" ? ["Tool change", "Sensor fault", "Hydraulic leak"][seed % 3] : undefined,
-      });
+  function getMfgState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.manufacturingLens) {
+      STATE.manufacturingLens = {
+        machines: new Map(),    // userId -> Array<{ id, name, status, availability, performance, quality, oee, lastDowntimeReason }>
+        workOrders: new Map(),  // userId -> Array<{ id, number, product, quantity, ... }>
+        spcSamples: new Map(),  // `${userId}::${product}` -> Array<{ at, value, outOfSpec, outOfControl }>
+      };
     }
-    return { ok: true, result: { machines } };
+    return STATE.manufacturingLens;
+  }
+
+  registerLensAction("manufacturing", "oee-status", (ctx, _artifact, _params = {}) => {
+    const state = getMfgState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const machines = state.machines.get(userId) || [];
+    return {
+      ok: true,
+      result: {
+        machines,
+        source: machines.length === 0 ? "empty" : "wired-feed",
+        notes: machines.length === 0
+          ? "No machines registered. Wire an MES/SCADA feed (OPC-UA, MQTT Sparkplug B, MTConnect agent) or POST machines via manufacturing.machine-register to populate."
+          : null,
+      },
+    };
   });
 
-  registerLensAction("manufacturing", "work-orders", (_ctx, _artifact, _params = {}) => {
-    const products = ["Widget Pro v2", "Mounting Bracket", "Drive Shaft 18in", "Housing Assembly", "Control Panel", "Sensor Module", "Output Coupling", "Steel Plate 12x18"];
-    const orders = [];
-    for (let i = 0; i < 18; i++) {
-      const seed = hashStringMfg(`wo${i}`);
-      const status = seed % 4 === 0 ? "complete" : seed % 5 === 0 ? "on_hold" : seed % 3 === 0 ? "in_progress" : "queued";
-      const quantity = 50 + (seed % 450);
-      const quantityProduced = status === "complete" ? quantity : status === "in_progress" ? Math.floor(quantity * ((seed % 80) / 100)) : 0;
-      orders.push({
-        id: `wo_${i}`,
-        number: `WO-${String(2026000 + i)}`,
-        product: products[i % products.length],
-        quantity, quantityProduced,
-        priority: ["low", "medium", "high", "urgent"][seed % 4],
-        status,
-        dueDate: new Date(Date.now() + ((seed % 21) - 5) * 86400000).toISOString().slice(0, 10),
-        assignedTo: ["Maria S.", "Dan T.", "Hugo K.", "Amara P."][seed % 4],
-        machine: ["CNC-01", "Press-04", "Mill-05", "Assembly-08"][seed % 4],
-      });
-    }
-    return { ok: true, result: { orders } };
+  registerLensAction("manufacturing", "work-orders", (ctx, _artifact, _params = {}) => {
+    const state = getMfgState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const orders = state.workOrders.get(userId) || [];
+    return {
+      ok: true,
+      result: {
+        orders,
+        source: orders.length === 0 ? "empty" : "wired-feed",
+        notes: orders.length === 0
+          ? "No work orders. Wire an ERP webhook (Tulip/Plex/NetSuite) or POST via manufacturing.work-order-create to populate."
+          : null,
+      },
+    };
   });
 
-  registerLensAction("manufacturing", "spc-chart", (_ctx, _artifact, params = {}) => {
-    const product = String(params.product || "Widget-001");
-    const seed = hashStringMfg(product);
-    const target = 25.0 + (seed % 30) / 10;
-    const tolerance = 0.05 + (seed % 8) / 100;
-    const sigma = tolerance / 4.5;
-    const samples = [];
-    for (let i = 0; i < 50; i++) {
-      const noise = (((seed >> i) & 31) - 15) / 30 * sigma * 2;
-      const v = target + noise;
-      samples.push({
-        at: new Date(Date.now() - (50 - i) * 60000).toISOString(),
-        value: Math.round(v * 1000) / 1000,
-        outOfSpec: v > target + tolerance || v < target - tolerance,
-        outOfControl: Math.abs(v - target) > 3 * sigma,
-      });
+  registerLensAction("manufacturing", "spc-chart", (ctx, _artifact, params = {}) => {
+    const state = getMfgState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const product = String(params.product || "");
+    if (!product) return { ok: false, error: "product required" };
+    const samples = state.spcSamples.get(`${userId}::${product}`) || [];
+    if (samples.length === 0) {
+      return {
+        ok: true,
+        result: {
+          product,
+          samples: [],
+          source: "empty",
+          notes: "No SPC samples logged for this product. Wire a QA gauge feed (gauge bridge or POST via manufacturing.spc-sample-log) to populate.",
+        },
+      };
     }
-    const values = samples.map(s => s.value);
+    // Real-data path: compute statistics over the actual samples.
+    const values = samples.map((s) => s.value);
     const mean = values.reduce((s, v) => s + v, 0) / values.length;
     const std = Math.sqrt(values.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / values.length);
-    const cpk = Math.min((target + tolerance - mean) / (3 * std), (mean - (target - tolerance)) / (3 * std));
-    const outOfSpec = samples.filter(s => s.outOfSpec).length;
+    // upperSpec / lowerSpec come from the sample envelope if provided;
+    // otherwise we infer ±3σ control limits from the data.
+    const upperSpec = samples[0]?.upperSpec ?? mean + 3 * std;
+    const lowerSpec = samples[0]?.lowerSpec ?? mean - 3 * std;
+    const cpk = std > 0 ? Math.min((upperSpec - mean) / (3 * std), (mean - lowerSpec) / (3 * std)) : 0;
+    const outOfSpec = samples.filter((s) => s.value > upperSpec || s.value < lowerSpec).length;
     const ppm = (outOfSpec / samples.length) * 1_000_000;
-    const inControl = !samples.some(s => s.outOfControl);
+    const inControl = !samples.some((s) => Math.abs(s.value - mean) > 3 * std);
     return {
       ok: true,
       result: {
         product,
-        measurement: "Outer diameter",
-        unit: "mm",
-        upperSpec: target + tolerance,
-        lowerSpec: target - tolerance,
+        upperSpec, lowerSpec,
         upperControl: mean + 3 * std,
         lowerControl: mean - 3 * std,
         centerLine: mean,
@@ -136,13 +151,8 @@ export default function registerManufacturingActions(registerLensAction) {
         cpk: Math.round(cpk * 100) / 100,
         ppm: Math.round(ppm),
         inControl,
+        source: "wired-feed",
       },
     };
   });
 };
-
-function hashStringMfg(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
