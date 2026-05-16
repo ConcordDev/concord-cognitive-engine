@@ -363,6 +363,46 @@ export async function handleWebhook(db, { rawBody, signature, requestId, ip }) {
       });
       break;
     }
+
+    case "invoice.payment_succeeded": {
+      // accounting.invoice-create-payment-link → Stripe Invoice paid.
+      // Locate the matching local invoice in STATE.accountingLens and
+      // mark it paid. metadata.concord_user_id + concord_invoice_id are
+      // attached at creation time, so correlation is direct.
+      const stripeInvoice = event.data.object;
+      const concordUserId = stripeInvoice?.metadata?.concord_user_id;
+      const concordInvoiceId = stripeInvoice?.metadata?.concord_invoice_id;
+      if (concordUserId && concordInvoiceId) {
+        try {
+          const STATE = globalThis._concordSTATE;
+          const list = STATE?.accountingLens?.invoices?.get(concordUserId) || [];
+          const inv = list.find((i) => i.id === concordInvoiceId || i.stripeInvoiceId === stripeInvoice.id);
+          if (inv) {
+            inv.status = "paid";
+            inv.paidAt = nowISO().slice(0, 10);
+            inv.paidVia = "stripe";
+            if (typeof globalThis._concordSaveStateDebounced === "function") {
+              try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+            }
+          }
+          economyAudit(db, {
+            action: "stripe_invoice_paid",
+            userId: concordUserId,
+            amount: stripeInvoice.amount_paid ? stripeInvoice.amount_paid / 100 : 0,
+            details: {
+              stripeInvoiceId: stripeInvoice.id,
+              concordInvoiceId,
+              matchFound: !!inv,
+            },
+            requestId,
+            ip,
+          });
+        } catch (err) {
+          console.error("[Stripe Webhook] invoice.payment_succeeded handler failed:", err.message);
+        }
+      }
+      break;
+    }
     }
 
     // Mark event processed (idempotency)

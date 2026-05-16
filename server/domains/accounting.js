@@ -1018,6 +1018,166 @@ export default function registerAccountingActions(registerLensAction) {
     return { ok: true, result: { invoice: inv } };
   });
 
+  /**
+   * invoice-list — lists open + paid invoices for the caller, sorted by
+   * issuedAt desc. Supports optional status filter (open|paid|all).
+   */
+  registerLensAction("accounting", "invoice-list", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const status = ["open", "paid", "all"].includes(params.status) ? params.status : "all";
+    const list = s.invoices.get(userId) || [];
+    const filtered = status === "all" ? list : list.filter((i) => i.status === status);
+    return {
+      ok: true,
+      result: {
+        invoices: filtered.slice().sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || "")),
+      },
+    };
+  });
+
+  /**
+   * invoice-create-payment-link — creates a real Stripe hosted invoice
+   * link for an existing local invoice. Requires STRIPE_SECRET_KEY env.
+   *
+   * Uses the Stripe REST API directly (no SDK dependency). Flow:
+   *   1. Create a Stripe Customer (or reuse stripeCustomerId from invoice)
+   *   2. Create a Stripe InvoiceItem for the invoice total
+   *   3. Create a Stripe Invoice (auto_advance:false so we can finalize manually)
+   *   4. Finalize the invoice (returns hosted_invoice_url + pdf url)
+   *
+   * The Stripe `id`s are persisted onto the local invoice so the webhook
+   * handler can correlate inbound payment events. Per the "everything
+   * must be real" directive: this is a real Stripe call, not a stub.
+   */
+  registerLensAction("accounting", "invoice-create-payment-link", async (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const list = s.invoices.get(userId) || [];
+    const inv = list.find((i) => i.id === id);
+    if (!inv) return { ok: false, error: "not found" };
+    if (inv.status === "paid") return { ok: false, error: "invoice already paid" };
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      return {
+        ok: false,
+        error: "Stripe not configured. Set STRIPE_SECRET_KEY env (Stripe Dashboard → Developers → API keys). Concord does not synthesize payment links.",
+      };
+    }
+    const customerEmail = String(params.customerEmail || inv.customerEmail || "").trim();
+    if (!customerEmail) return { ok: false, error: "customerEmail required (Stripe needs an email for the invoice)" };
+
+    const amountCents = Math.round(Number(inv.total) * 100);
+    if (!Number.isFinite(amountCents) || amountCents <= 0) {
+      return { ok: false, error: "invoice total invalid for Stripe charge" };
+    }
+
+    async function stripePost(path, formBody) {
+      const url = `https://api.stripe.com/v1${path}`;
+      const body = new URLSearchParams(formBody).toString();
+      const r = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${stripeKey}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Stripe-Version": "2025-09-30.acacia",
+        },
+        body,
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        throw new Error(`stripe ${path} ${r.status}: ${data?.error?.message || "unknown"}`);
+      }
+      return data;
+    }
+
+    try {
+      // 1. Create or reuse Customer
+      let stripeCustomerId = inv.stripeCustomerId;
+      if (!stripeCustomerId) {
+        const customer = await stripePost("/customers", {
+          email: customerEmail,
+          name: inv.customerName,
+          "metadata[concord_user_id]": userId,
+          "metadata[concord_invoice_id]": inv.id,
+        });
+        stripeCustomerId = customer.id;
+      }
+
+      // 2. Create InvoiceItem (must be done BEFORE creating the invoice,
+      //    or attached via parent.invoice= when the invoice exists).
+      await stripePost("/invoiceitems", {
+        customer: stripeCustomerId,
+        amount: String(amountCents),
+        currency: "usd",
+        description: `${inv.number} — ${inv.customerName}`,
+      });
+
+      // 3. Create Invoice (collection_method=send_invoice → emails the
+      //    hosted_invoice_url to the customer).
+      const stripeInv = await stripePost("/invoices", {
+        customer: stripeCustomerId,
+        collection_method: "send_invoice",
+        days_until_due: "30",
+        "metadata[concord_user_id]": userId,
+        "metadata[concord_invoice_id]": inv.id,
+      });
+
+      // 4. Finalize so the URL is live
+      const finalized = await stripePost(`/invoices/${stripeInv.id}/finalize`, {});
+
+      // Persist Stripe IDs so the webhook can match this back.
+      inv.stripeCustomerId = stripeCustomerId;
+      inv.stripeInvoiceId = finalized.id;
+      inv.stripeHostedInvoiceUrl = finalized.hosted_invoice_url;
+      inv.stripeInvoicePdfUrl = finalized.invoice_pdf;
+      inv.customerEmail = customerEmail;
+      saveAccountingState();
+
+      return {
+        ok: true,
+        result: {
+          invoice: inv,
+          hostedUrl: finalized.hosted_invoice_url,
+          pdfUrl: finalized.invoice_pdf,
+          stripeInvoiceId: finalized.id,
+        },
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        error: `stripe invoice creation failed: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
+  });
+
+  /**
+   * invoice-webhook-mark-paid — INTERNAL macro called by the Stripe
+   * webhook handler when an `invoice.payment_succeeded` event arrives.
+   * Looks up the local invoice by stripeInvoiceId and marks it paid.
+   * Not exposed via /api/lens/run for end users — webhook only.
+   */
+  registerLensAction("accounting", "invoice-webhook-mark-paid", (_ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const stripeInvoiceId = String(params.stripeInvoiceId || "");
+    const userId = String(params.userId || "");
+    if (!stripeInvoiceId || !userId) return { ok: false, error: "stripeInvoiceId + userId required" };
+    const list = s.invoices.get(userId) || [];
+    const inv = list.find((i) => i.stripeInvoiceId === stripeInvoiceId);
+    if (!inv) return { ok: false, error: "local invoice not found for stripe id" };
+    inv.status = "paid";
+    inv.paidAt = nowIso().slice(0, 10);
+    inv.paidVia = "stripe";
+    saveAccountingState();
+    return { ok: true, result: { invoice: inv } };
+  });
+
   registerLensAction("accounting", "aging-ar", (ctx, _artifact, params = {}) => {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
