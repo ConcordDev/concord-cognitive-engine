@@ -38,6 +38,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import PhysicsWorkbench from '@/components/physics/PhysicsWorkbench';
+import { PhysicsActionPanel } from '@/components/physics/PhysicsActionPanel';
 
 // Physics body types
 interface Vector2D {
@@ -1731,6 +1732,10 @@ export default function PhysicsLensPage() {
     <PhysicsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
       <PhysicsArxiv />
+    </section>
+
+    <section className="mt-6 mx-auto max-w-7xl">
+      <PhysicsActionPanel />
     </section>
     </LensShell>
   );
