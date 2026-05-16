@@ -79,6 +79,19 @@ interface MonacoWrapperProps {
   className?: string;
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
   onSelectionChange?: (selection: { text: string; startLine: number; endLine: number }) => void;
+  /**
+   * Optional editor overrides. When provided, merged on top of the
+   * Concord defaults — so the lens settings (fontSize, wordWrap, etc.)
+   * can be reflected per-keystroke without re-mounting the editor.
+   */
+  options?: Partial<editor.IStandaloneEditorConstructionOptions>;
+  /**
+   * Optional inline completion provider (Cursor Tab-style ghost text).
+   * When set, registers an InlineCompletionsProvider against the resolved
+   * language. Returning an empty array effectively disables the provider
+   * for that call.
+   */
+  inlineCompletion?: (ctx: { textBeforeCursor: string; textAfterCursor: string; language: string }) => Promise<string>;
 }
 
 export default function MonacoWrapper({
@@ -89,6 +102,8 @@ export default function MonacoWrapper({
   className,
   onEditorReady,
   onSelectionChange,
+  options,
+  inlineCompletion,
 }: MonacoWrapperProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
@@ -107,7 +122,47 @@ export default function MonacoWrapper({
         onSelectionChange({ text, startLine: sel.startLineNumber, endLine: sel.endLineNumber });
       });
     }
-  }, [onEditorReady, onSelectionChange]);
+    if (inlineCompletion) {
+      const lang = resolveLanguage(language);
+      type MonacoModel = ReturnType<editor.IStandaloneCodeEditor['getModel']>;
+      type MonacoPosition = { lineNumber: number; column: number };
+      monaco.languages.registerInlineCompletionsProvider(lang, {
+        async provideInlineCompletions(model: NonNullable<MonacoModel>, position: MonacoPosition) {
+          const lineCount = model.getLineCount();
+          const textBeforeCursor = model.getValueInRange({
+            startLineNumber: Math.max(1, position.lineNumber - 40),
+            startColumn: 1,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column,
+          });
+          const textAfterCursor = model.getValueInRange({
+            startLineNumber: position.lineNumber,
+            startColumn: position.column,
+            endLineNumber: Math.min(lineCount, position.lineNumber + 20),
+            endColumn: model.getLineMaxColumn(Math.min(lineCount, position.lineNumber + 20)),
+          });
+          try {
+            const completion = await inlineCompletion({ textBeforeCursor, textAfterCursor, language: lang });
+            if (!completion) return { items: [] };
+            return {
+              items: [{
+                insertText: completion,
+                range: {
+                  startLineNumber: position.lineNumber,
+                  startColumn: position.column,
+                  endLineNumber: position.lineNumber,
+                  endColumn: position.column,
+                },
+              }],
+            };
+          } catch {
+            return { items: [] };
+          }
+        },
+        freeInlineCompletions() { /* noop */ },
+      });
+    }
+  }, [onEditorReady, onSelectionChange, inlineCompletion, language]);
 
   const handleChange: OnChange = useCallback(
     (val) => {
@@ -143,7 +198,9 @@ export default function MonacoWrapper({
           smoothScrolling: true,
           cursorBlinking: 'smooth',
           cursorSmoothCaretAnimation: 'on',
+          inlineSuggest: { enabled: true },
           readOnly,
+          ...(options || {}),
         }}
         loading={
           <div className="flex items-center justify-center h-full text-gray-500 text-sm">

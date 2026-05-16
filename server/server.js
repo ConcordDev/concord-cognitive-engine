@@ -4323,7 +4323,8 @@ const STATE = {
   infrastructureConfig,
 };
 
-// Expose STATE for modules that use globalThis (e.g. repair-cortex.js)
+// Expose STATE for modules that use globalThis (e.g. repair-cortex.js,
+// server/domains/code.js snippet/snapshot writers).
 globalThis._concordSTATE = STATE;
 
 // ============================================================================
@@ -8607,6 +8608,12 @@ function loadStateFromDisk() {
 }
 
 function saveStateDebounced() {
+  // Expose to modules that can't reach this lexical scope (domain files
+  // loaded from server/domains/*.js write directly to STATE.dtus for
+  // snippets / snapshots; they need a save trigger).
+  if (typeof globalThis._concordSaveStateDebounced !== "function") {
+    globalThis._concordSaveStateDebounced = saveStateDebounced;
+  }
   try {
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(() => {
@@ -8641,6 +8648,9 @@ function saveStateDebounced() {
     structuredLog("error", "save_state_debounce_failed", { error: String(e?.message || e) });
   }
 }
+// Eagerly expose so domain files loaded before saveStateDebounced first
+// runs can still trigger persistence (snippets, snapshots, etc.).
+globalThis._concordSaveStateDebounced = saveStateDebounced;
 
 /**
  * Synchronous state save — bypasses debounce entirely.

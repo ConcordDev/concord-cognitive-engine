@@ -19,6 +19,13 @@ import CitationChips from '@/components/chat/CitationChips';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 const MonacoWrapper = dynamic(() => import('@/components/code/MonacoWrapper'), { ssr: false });
+const MonacoDiffViewer = dynamic(() => import('@/components/code/MonacoDiffViewer'), { ssr: false });
+const TerminalPanel = dynamic(() => import('@/components/code/TerminalPanel').then(m => m.TerminalPanel), { ssr: false });
+import SettingsPanel, { loadSettings as loadCodeSettings, DEFAULT_SETTINGS as DEFAULT_CODE_SETTINGS, type CodeLensSettings } from '@/components/code/SettingsPanel';
+import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
+import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
+import { SourceControlPanel } from '@/components/code/SourceControlPanel';
+import MultiFileAgentReview, { type MultiFileEdit } from '@/components/code/MultiFileAgentReview';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
@@ -539,6 +546,19 @@ export default function CodeLensPage() {
   });
 
   const [savingOutputDTU, setSavingOutputDTU] = useState(false);
+
+  // ── Parity sprint panels: activity bar / settings / terminal / agent ──
+  const [activity, setActivity] = useState<Activity>('files');
+  const [settings, setSettings] = useState<CodeLensSettings>(DEFAULT_CODE_SETTINGS);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
+  const [agentEdits, setAgentEdits] = useState<MultiFileEdit[]>([]);
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [agentPrompt, setAgentPrompt] = useState('');
+
+  // Load persisted settings on mount (deferred to avoid SSR hydration issues).
+  useEffect(() => { setSettings(loadCodeSettings()); }, []);
 
   // ── Command palette (⌘P / ⌘Shift+P) ────────────────────────────
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -1142,6 +1162,93 @@ export default function CodeLensPage() {
     ed.executeEdits('ai-chat-insert', [{ range: sel, text: codeBlock, forceMoveMarkers: true }]);
   }, [activeTab.content, updateTabContent]);
 
+  // ── Multi-file agent flow (Cursor 3.0 Agents Window parity) ───────────
+  const openMultiFileAgent = useCallback(async (prompt: string) => {
+    const cleanedPrompt = prompt.trim();
+    if (!cleanedPrompt) return;
+    setAgentPrompt(cleanedPrompt);
+    setAgentEdits([]);
+    setAgentOpen(true);
+    setAgentLoading(true);
+    // Compose file context: open tabs + savedScripts, dedup by id.
+    const seen = new Set<string>();
+    type AgentFile = { id: string; name: string; language: string; content: string };
+    const files: AgentFile[] = [];
+    for (const t of tabs) {
+      if (seen.has(t.id)) continue;
+      seen.add(t.id);
+      files.push({ id: t.id, name: t.name, language: t.language, content: t.content });
+      if (files.length >= 12) break;
+    }
+    if (files.length < 12) {
+      for (const s of savedScripts) {
+        if (seen.has(s.id)) continue;
+        const data = (s as { data?: { content?: string; language?: string }; title?: string }).data;
+        if (!data?.content) continue;
+        seen.add(s.id);
+        files.push({
+          id: s.id,
+          name: (s as { title?: string }).title || 'untitled',
+          language: data.language || 'javascript',
+          content: data.content,
+        });
+        if (files.length >= 12) break;
+      }
+    }
+    try {
+      const res = await api.post('/api/lens/run', {
+        domain: 'code',
+        action: 'multi-file-plan',
+        input: { prompt: cleanedPrompt, files, maxEdits: 6 },
+      });
+      const result = res.data?.result;
+      if (res.data?.ok && Array.isArray(result?.edits)) {
+        setAgentEdits(result.edits as MultiFileEdit[]);
+      } else {
+        setAgentEdits([]);
+      }
+    } catch (e) {
+      console.error('[CodeLens] multi-file plan failed', e);
+      setAgentEdits([]);
+    } finally {
+      setAgentLoading(false);
+    }
+  }, [tabs, savedScripts]);
+
+  const applyMultiFileAgent = useCallback(async (accepted: MultiFileEdit[]) => {
+    if (accepted.length === 0) return;
+    try {
+      await api.post('/api/lens/run', {
+        domain: 'code',
+        action: 'multi-file-apply',
+        input: { edits: accepted.map(e => ({ scriptId: e.scriptId, filename: e.filename, language: e.language, after: e.after, reason: e.reason })) },
+      });
+      // Reflect the edits in any open tabs immediately
+      setTabs(prev => prev.map(t => {
+        const edit = accepted.find(e => e.scriptId === t.id);
+        return edit ? { ...t, content: edit.after, isDirty: false } : t;
+      }));
+      await refetchDTUs();
+    } catch (e) {
+      console.error('[CodeLens] multi-file apply failed', e);
+    }
+  }, [refetchDTUs]);
+
+  const commitWorkingTree = useCallback(async (message: string) => {
+    const files = tabs.map(t => ({ name: t.name, language: t.language, content: t.content, scriptId: t.id }));
+    if (files.length === 0) return;
+    try {
+      await api.post('/api/lens/run', {
+        domain: 'code',
+        action: 'commit-snapshot',
+        input: { message, files },
+      });
+      setTabs(prev => prev.map(t => ({ ...t, isDirty: false })));
+    } catch (e) {
+      console.error('[CodeLens] commit-snapshot failed', e);
+    }
+  }, [tabs]);
+
   useLensCommand(
     [
       { id: 'palette',          keys: 'mod+p',       description: 'Command palette (Quick open)', category: 'navigation', action: () => setPaletteOpen(true), global: true },
@@ -1149,10 +1256,15 @@ export default function CodeLensPage() {
       { id: 'run',              keys: 'mod+enter',   description: 'Run script',                    category: 'actions',    action: () => runScriptMutation.mutate(), global: true },
       { id: 'toggle-tree',      keys: 'mod+b',       description: 'Toggle file tree',              category: 'navigation', action: () => setShowFileTree((v) => !v), global: true },
       { id: 'toggle-output',    keys: 'mod+j',       description: 'Toggle output panel',           category: 'navigation', action: () => setShowOutput((v) => !v),   global: true },
+      { id: 'toggle-terminal',  keys: 'ctrl+`',      description: 'Toggle terminal',               category: 'navigation', action: () => setTerminalOpen((v) => !v), global: true },
+      { id: 'open-settings',    keys: 'mod+,',       description: 'Open settings',                 category: 'navigation', action: () => setSettingsOpen(true), global: true },
       { id: 'fullscreen',       keys: 'f11',         description: 'Toggle fullscreen',             category: 'actions',    action: () => setIsFullscreen((v) => !v), global: true },
       { id: 'ai-edit',          keys: 'mod+k',       description: 'AI inline edit',                category: 'actions',    action: openAiEdit, global: true },
       { id: 'ai-chat',          keys: 'mod+l',       description: 'AI chat side-panel',            category: 'actions',    action: () => setAiChatOpen((v) => !v), global: true },
+      { id: 'multi-file-agent', keys: 'mod+shift+l', description: 'Multi-file AI agent',           category: 'actions',    action: () => { const p = window.prompt('Describe the change across files…'); if (p) openMultiFileAgent(p); }, global: true },
       { id: 'find-in-files',    keys: 'mod+shift+f', description: 'Find in files',                 category: 'navigation', action: openFindInFiles, global: true },
+      { id: 'snippets',         keys: 'mod+shift+s', description: 'Open snippets library',         category: 'navigation', action: () => { setActivity('snippets'); setShowFileTree(true); }, global: true },
+      { id: 'source-control',   keys: 'ctrl+shift+g', description: 'Open source control',          category: 'navigation', action: () => { setActivity('sourceControl'); setShowFileTree(true); }, global: true },
     ],
     { lensId: 'code' }
   );
@@ -1519,53 +1631,143 @@ export default function CodeLensPage() {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* File Tree Sidebar */}
+        {/* VSCode-style activity bar — selects which sidebar panel renders */}
+        <ActivityBar
+          active={activity}
+          onChange={(a) => {
+            if (a === 'settings') {
+              setSettingsOpen(true);
+              return;
+            }
+            if (a === 'terminal') {
+              setTerminalOpen(v => !v);
+              return;
+            }
+            setActivity(a);
+            setShowFileTree(true);
+          }}
+          badges={{
+            sourceControl: tabs.filter(t => t.isDirty).length,
+          }}
+        />
+        {/* Sidebar — content switches with activity */}
         <AnimatePresence>
           {showFileTree && (
             <motion.aside
               initial={{ width: 0 }}
-              animate={{ width: 240 }}
+              animate={{ width: 280 }}
               exit={{ width: 0 }}
               className="border-r border-green-900/30 bg-[#0d1117] overflow-hidden"
             >
-              <div className="w-60 h-full flex flex-col">
-                <div className="p-2 border-b border-green-900/30 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-green-500 uppercase font-mono tracking-wider">Explorer</span>
-                  <div className="flex items-center gap-1">
-                    <button onClick={handleNewTab} className="p-1 rounded hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors" title="New script">
-                      <Plus className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setShowFileTree(!showFileTree)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors" title="Toggle file tree">
-                      <FolderTree className="w-4 h-4" />
+              <div className="w-[280px] h-full flex flex-col">
+                {activity === 'files' && (
+                  <>
+                    <div className="p-2 border-b border-green-900/30 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-green-500 uppercase font-mono tracking-wider">Explorer</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={handleNewTab} className="p-1 rounded hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors" title="New script">
+                          <Plus className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setShowFileTree(!showFileTree)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors" title="Toggle file tree">
+                          <FolderTree className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto py-2">
+                      {files.length === 0 ? (
+                        <div className="px-3 py-4 text-center">
+                          <p className="text-xs text-gray-500 mb-2">No files yet</p>
+                          <button
+                            onClick={() => setFiles(TEMPLATE_FILES)}
+                            className="text-xs text-green-400 hover:text-green-300 underline"
+                          >
+                            Load starter templates
+                          </button>
+                        </div>
+                      ) : files.map((file) => renderFileNode(file))}
+                    </div>
+                    {/* DTU Context */}
+                    <div className="p-3 border-t border-white/10 space-y-3">
+                      <LensContextPanel
+                        hyperDTUs={hyperDTUs}
+                        megaDTUs={megaDTUs}
+                        regularDTUs={regularDTUs}
+                        tierDistribution={tierDistribution}
+                        onPublish={(dtu) => publishToMarketplace({ dtuId: dtu.id })}
+                        title="Code DTUs"
+                        className="!bg-transparent !border-0 !p-0"
+                      />
+                      <FeedbackWidget targetType="lens" targetId="code" />
+                    </div>
+                  </>
+                )}
+                {activity === 'snippets' && (
+                  <SnippetsLibrary
+                    currentLanguage={activeTab?.language || 'javascript'}
+                    currentSelection={selection?.text || ''}
+                    onInsert={(code) => insertChatCodeIntoEditor(code)}
+                  />
+                )}
+                {activity === 'sourceControl' && (
+                  <SourceControlPanel
+                    tabs={tabs}
+                    savedScripts={savedScripts.map(s => ({
+                      id: s.id,
+                      title: (s as { title?: string }).title,
+                      data: (s as { data?: { content?: string; language?: string } }).data,
+                    }))}
+                    onJumpToTab={(tid) => setActiveTabId(tid)}
+                    onCommitAll={commitWorkingTree}
+                    onRefresh={refetchDTUs}
+                  />
+                )}
+                {activity === 'search' && (
+                  <div className="p-4 text-xs text-gray-400 space-y-2">
+                    <p>Use ⌘⇧F to open project search modal.</p>
+                    <button
+                      onClick={openFindInFiles}
+                      className="w-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400"
+                    >
+                      Open Find in Files
                     </button>
                   </div>
-                </div>
-                <div className="flex-1 overflow-y-auto py-2">
-                  {files.length === 0 ? (
-                    <div className="px-3 py-4 text-center">
-                      <p className="text-xs text-gray-500 mb-2">No files yet</p>
-                      <button
-                        onClick={() => setFiles(TEMPLATE_FILES)}
-                        className="text-xs text-green-400 hover:text-green-300 underline"
-                      >
-                        Load starter templates
-                      </button>
-                    </div>
-                  ) : files.map((file) => renderFileNode(file))}
-                </div>
-                {/* DTU Context */}
-                <div className="p-3 border-t border-white/10 space-y-3">
-                  <LensContextPanel
-                    hyperDTUs={hyperDTUs}
-                    megaDTUs={megaDTUs}
-                    regularDTUs={regularDTUs}
-                    tierDistribution={tierDistribution}
-                    onPublish={(dtu) => publishToMarketplace({ dtuId: dtu.id })}
-                    title="Code DTUs"
-                    className="!bg-transparent !border-0 !p-0"
-                  />
-                  <FeedbackWidget targetType="lens" targetId="code" />
-                </div>
+                )}
+                {activity === 'agent' && (
+                  <div className="p-4 space-y-3 text-xs text-gray-300">
+                    <h3 className="text-sm font-bold text-purple-300">AI Agent</h3>
+                    <p className="text-gray-400">
+                      Describe a change spanning multiple files. The agent plans edits across your open workspace and you review per-file before applying.
+                    </p>
+                    <textarea
+                      placeholder='e.g. "Add input validation to all exposed handlers and emit a structured log on each error"'
+                      rows={5}
+                      className="w-full px-2 py-2 bg-lattice-deep border border-lattice-border rounded text-xs text-white resize-y"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                          e.preventDefault();
+                          const val = (e.target as HTMLTextAreaElement).value;
+                          if (val.trim()) openMultiFileAgent(val);
+                        }
+                      }}
+                      id="multi-file-agent-input"
+                    />
+                    <button
+                      className="w-full px-3 py-1.5 text-xs rounded bg-purple-500 text-white font-bold hover:bg-purple-400"
+                      onClick={() => {
+                        const el = document.getElementById('multi-file-agent-input') as HTMLTextAreaElement | null;
+                        if (el?.value?.trim()) openMultiFileAgent(el.value);
+                      }}
+                    >
+                      Plan multi-file edit (⌘⏎)
+                    </button>
+                    <p className="text-[10px] text-gray-500">Reads from {tabs.length} open tab{tabs.length === 1 ? '' : 's'} + {savedScripts.length} saved scripts (max 12).</p>
+                  </div>
+                )}
+                {(activity === 'debug' || activity === 'extensions') && (
+                  <div className="p-4 text-xs text-gray-400">
+                    <p className="text-gray-500 italic">Coming next sprint.</p>
+                  </div>
+                )}
               </div>
             </motion.aside>
           )}
@@ -1664,6 +1866,36 @@ export default function CodeLensPage() {
                     language={activeTab.language || 'javascript'}
                     onEditorReady={(ed) => { editorInstanceRef.current = ed; }}
                     onSelectionChange={(s) => setSelection(s.text ? s : null)}
+                    options={{
+                      fontSize: settings.editor.fontSize,
+                      fontFamily: settings.editor.fontFamily,
+                      tabSize: settings.editor.tabSize,
+                      wordWrap: settings.editor.wordWrap,
+                      minimap: { enabled: settings.editor.minimap },
+                      lineNumbers: settings.editor.lineNumbers,
+                      bracketPairColorization: { enabled: settings.editor.bracketPairColorization },
+                      formatOnPaste: settings.editor.formatOnPaste,
+                      formatOnType: settings.editor.formatOnType,
+                      cursorBlinking: settings.editor.cursorBlinking,
+                      smoothScrolling: settings.editor.smoothScrolling,
+                    }}
+                    inlineCompletion={async ({ textBeforeCursor, textAfterCursor, language: lang }) => {
+                      try {
+                        const res = await api.post('/api/lens/run', {
+                          domain: 'code',
+                          action: 'tab-completion',
+                          input: {
+                            prefix: textBeforeCursor,
+                            suffix: textAfterCursor,
+                            language: lang,
+                            maxTokens: Math.min(96, settings.ai.maxTokens),
+                          },
+                        });
+                        return String(res.data?.result?.completion || '');
+                      } catch {
+                        return '';
+                      }
+                    }}
                   />
                 </SafeCard>
                 {selection?.text && !aiEditOpen && (
@@ -1829,18 +2061,47 @@ export default function CodeLensPage() {
             </AnimatePresence>
           </div>
 
+          {/* Integrated Terminal Panel — Cmd+` toggle, xterm.js-backed */}
+          <TerminalPanel
+            open={terminalOpen}
+            onClose={() => setTerminalOpen(false)}
+            activeCode={activeTab.content}
+            activeLanguage={activeTab.language || 'javascript'}
+            activeName={activeTab.name}
+            fontSize={settings.terminal.fontSize}
+            cursorStyle={settings.terminal.cursorStyle}
+          />
+
           {/* Status Bar */}
           <div className="flex items-center justify-between px-3 py-1 bg-lattice-deep border-t border-lattice-border text-xs text-gray-500">
             <div className="flex items-center gap-4">
               <span>Ln 1, Col 1</span>
-              <span>Spaces: 2</span>
+              <span>Spaces: {settings.editor.tabSize}</span>
               <span>UTF-8</span>
+              {tabs.some(t => t.isDirty) && (
+                <span className="text-yellow-400">{tabs.filter(t => t.isDirty).length} modified</span>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Zap className="w-3 h-3 text-neon-yellow" />
                 Code Engine Ready
               </span>
+              <button
+                onClick={() => setTerminalOpen(v => !v)}
+                title="Toggle terminal (⌃`)"
+                className="hover:text-white transition-colors inline-flex items-center gap-1"
+              >
+                <Terminal className="w-3 h-3" />
+                Terminal
+              </button>
+              <button
+                onClick={() => setSettingsOpen(true)}
+                title="Settings (⌘,)"
+                className="hover:text-white transition-colors"
+              >
+                ⚙
+              </button>
               <span className={SCRIPT_TYPES.find((s) => s.id === activeScriptType)?.color}>
                 {SCRIPT_TYPES.find((s) => s.id === activeScriptType)?.name}
               </span>
@@ -2073,16 +2334,13 @@ export default function CodeLensPage() {
               )}
               {aiEditResult && (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2 max-h-72 overflow-auto rounded border border-lattice-border">
-                    <div className="bg-red-500/5 p-3 border-r border-lattice-border">
-                      <div className="text-[10px] uppercase tracking-wider text-red-400 mb-1">– before</div>
-                      <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words">{aiEditResult.before}</pre>
-                    </div>
-                    <div className="bg-green-500/5 p-3">
-                      <div className="text-[10px] uppercase tracking-wider text-green-400 mb-1">+ after</div>
-                      <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words">{aiEditResult.after}</pre>
-                    </div>
-                  </div>
+                  <MonacoDiffViewer
+                    original={aiEditResult.before}
+                    modified={aiEditResult.after}
+                    language={activeTab.language || 'javascript'}
+                    height={Math.max(220, Math.min(440, (aiEditResult.before.split('\n').length + aiEditResult.after.split('\n').length) * 16))}
+                    renderSideBySide
+                  />
                 </div>
               )}
               <div className="flex items-center justify-between gap-2 pt-1">
@@ -2269,6 +2527,26 @@ export default function CodeLensPage() {
     {/* BYO API key drawer (slide-in from right). Triggered from the AI
         Pair header. Auth-only — anon users can't manage BYO keys. */}
     <BYOKeyDrawer open={byoOpen} onClose={() => setByoOpen(false)} />
+
+    {/* Settings modal — ⌘, opens, persisted to localStorage */}
+    <SettingsPanel
+      open={settingsOpen}
+      onClose={() => setSettingsOpen(false)}
+      onChange={setSettings}
+      initial={settings}
+    />
+
+    {/* Multi-file agent review modal — Cursor 3.0 Agents Window parity.
+        Shows per-file diff with accept/reject per hunk and apply-all. */}
+    <MultiFileAgentReview
+      open={agentOpen}
+      onClose={() => setAgentOpen(false)}
+      prompt={agentPrompt}
+      edits={agentEdits}
+      loading={agentLoading}
+      onApply={applyMultiFileAgent}
+      onRegenerate={() => openMultiFileAgent(agentPrompt)}
+    />
     </LensShell>
   );
 }
