@@ -219,4 +219,104 @@ export default function registerLegalActions(registerLensAction) {
     const score = Math.round((compliant / items.length) * 100);
     return { ok: true, result: { score, compliant, overdue, total: items.length, rating: score >= 90 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'fair' : 'poor' } };
   });
+
+  // ─── Parity-sprint macros ──
+
+  function getLegalState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.legalLens) STATE.legalLens = { cases: new Map() };
+    return STATE.legalLens;
+  }
+  function saveLegalState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+
+  registerLensAction("legal", "contract-analyze", async (ctx, _artifact, params = {}) => {
+    if (!ctx?.llm?.chat) return { ok: false, error: "llm unavailable" };
+    const contract = String(params.contract || "").trim();
+    const perspective = ["sign", "send", "review"].includes(params.perspective) ? params.perspective : "sign";
+    if (contract.length < 200) return { ok: false, error: "contract too short (min 200 chars)" };
+    const sys = `You analyze contracts. Output ONLY JSON, no prose, no fences:
+{"documentType":"e.g. NDA","partyCount":2,"effectiveDate":"YYYY-MM-DD or null","termLength":"e.g. 12 months or null","riskFlags":[{"severity":"high|moderate|low|info","category":"...","clause":"...","excerpt":"...","whatItMeans":"...","recommendation":"..."}],"obligationsForYou":["..."],"obligationsForCounterparty":["..."],"terminationConditions":["..."],"governing":{"law":"...","venue":"..."},"summary":"..."}
+Reading perspective: ${perspective}. Decision-support, NOT legal advice.`;
+    try {
+      const llmRes = await ctx.llm.chat({
+        messages: [{ role: "system", content: sys }, { role: "user", content: `Contract:\n${contract.slice(0, 12000)}\n\nAnalyze.` }],
+        temperature: 0.1, maxTokens: 3000, slot: "conscious",
+      });
+      const raw = String(llmRes?.text || llmRes?.content || "").trim();
+      const parsed = extractJsonLegal(raw);
+      if (!parsed?.documentType) return { ok: false, error: "could not parse analysis", raw: raw.slice(0, 200) };
+      return { ok: true, result: parsed };
+    } catch (e) {
+      return { ok: false, error: e?.message || "analysis failed" };
+    }
+  });
+
+  registerLensAction("legal", "case-list", (ctx, _artifact, _params = {}) => {
+    const state = getLegalState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    return { ok: true, result: { cases: state.cases.get(userId) || [] } };
+  });
+
+  registerLensAction("legal", "case-add", (ctx, _artifact, params = {}) => {
+    const state = getLegalState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const caption = String(params.caption || "").trim();
+    const caseNumber = String(params.caseNumber || "").trim();
+    if (!caption || !caseNumber) return { ok: false, error: "caption and caseNumber required" };
+    if (!state.cases.has(userId)) state.cases.set(userId, []);
+    const c = {
+      id: `case_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      caption, caseNumber,
+      court: String(params.court || ""),
+      jurisdiction: String(params.jurisdiction || ""),
+      filedAt: params.filedAt || new Date().toISOString().slice(0, 10),
+      status: "active",
+      matterType: ["civil", "criminal", "family", "probate", "corporate", "admin"].includes(params.matterType) ? params.matterType : "civil",
+      events: [{ date: new Date().toISOString().slice(0, 10), kind: "filed", description: "Case opened" }],
+    };
+    state.cases.get(userId).push(c);
+    saveLegalState();
+    return { ok: true, result: { case: c } };
+  });
+
+  registerLensAction("legal", "legal-question", async (ctx, _artifact, params = {}) => {
+    const question = String(params.question || "").trim();
+    const jurisdiction = String(params.jurisdiction || "US-Federal");
+    if (!question) return { ok: false, error: "question required" };
+    if (!ctx?.llm?.chat) return { ok: true, result: { answer: "AI unavailable. Consult a licensed attorney.", jurisdiction, citations: [], caveats: ["This response indicates AI is offline."] } };
+    const sys = `You are a legal research assistant. NEVER provide legal advice. Output ONLY JSON:
+{"answer":"plain-language explanation","jurisdiction":"${jurisdiction}","citations":[{"title":"e.g. California Civil Code § 1542","url":"optional","section":"optional"}],"caveats":["..."]}
+Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if outside jurisdiction, say so; for criminal, recommend criminal defense attorney.`;
+    try {
+      const llmRes = await ctx.llm.chat({
+        messages: [{ role: "system", content: sys }, { role: "user", content: `Question: ${question}\n\nAnswer for jurisdiction ${jurisdiction}.` }],
+        temperature: 0.2, maxTokens: 1500, slot: "conscious",
+      });
+      const raw = String(llmRes?.text || llmRes?.content || "").trim();
+      const parsed = extractJsonLegal(raw);
+      if (!parsed?.answer) return { ok: true, result: { answer: "Could not generate a confident answer. Consult an attorney.", jurisdiction, citations: [], caveats: ["AI parse failure."] } };
+      const caveats = Array.isArray(parsed.caveats) ? parsed.caveats : [];
+      if (!caveats.some(c => /not legal advice|consult.*attorney/i.test(String(c)))) {
+        caveats.unshift("This is not legal advice. Consult a licensed attorney in your jurisdiction for a binding answer.");
+      }
+      return { ok: true, result: { answer: String(parsed.answer), jurisdiction, citations: Array.isArray(parsed.citations) ? parsed.citations.slice(0, 8) : [], caveats } };
+    } catch (e) {
+      return { ok: true, result: { answer: `Error: ${e?.message || "unknown"}. Consult an attorney.`, jurisdiction, citations: [], caveats: ["AI request failed."] } };
+    }
+  });
 };
+
+function extractJsonLegal(text) {
+  if (!text) return null;
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = fence ? fence[1] : text;
+  const first = body.indexOf("{");
+  const last = body.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
+}

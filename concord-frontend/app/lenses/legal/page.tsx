@@ -2,6 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import ContractAnalyzer from '@/components/legal/ContractAnalyzer';
+import CaseTracker from '@/components/legal/CaseTracker';
+import LegalQA from '@/components/legal/LegalQA';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
@@ -80,7 +83,10 @@ type ModeTab =
   | 'Calendar'
   | 'Contacts'
   | 'Contracts'
-  | 'Compliance';
+  | 'Compliance'
+  | 'Analyzer'
+  | 'CaseTracker'
+  | 'LegalQA';
 type ArtifactType =
   | 'Case'
   | 'Document'
@@ -294,6 +300,9 @@ const MODE_TABS: {
   { id: 'Contacts', icon: Users, defaultType: 'Contact', label: 'Contacts' },
   { id: 'Contracts', icon: ScrollText, defaultType: 'Contract', label: 'Contracts' },
   { id: 'Compliance', icon: ShieldCheck, defaultType: 'ComplianceItem', label: 'Compliance' },
+  { id: 'Analyzer', icon: FileText, defaultType: 'Document', label: 'Contract Analyzer' },
+  { id: 'CaseTracker', icon: Briefcase, defaultType: 'Case', label: 'Case Tracker' },
+  { id: 'LegalQA', icon: BarChart3, defaultType: 'Document', label: 'Legal Q&A' },
 ];
 
 const STATUSES_BY_TYPE: Record<ArtifactType, string[]> = {
@@ -2976,6 +2985,9 @@ export default function LegalLensPage() {
 
   const renderTabContent = () => {
     if (activeTab === 'Dashboard') return renderDashboard();
+    if (activeTab === 'Analyzer') return <div className="p-4"><ContractAnalyzer /></div>;
+    if (activeTab === 'CaseTracker') return <div className="p-4"><CaseTracker /></div>;
+    if (activeTab === 'LegalQA') return <div className="p-4"><LegalQA /></div>;
 
     return (
       <section className={ds.panel}>
