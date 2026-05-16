@@ -691,4 +691,360 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.auditTrail = result;
     return { ok: true, result };
   });
+
+  // ─── 2026 parity — real Chart of Accounts + Journal + Ledger substrate ──
+  //
+  // The existing macros (trialBalance/profitLoss/invoiceAging/etc.) compute
+  // over artifact.data shapes. The new macros maintain a per-user persistent
+  // CoA + journal so the workbench UI has real CRUD.
+  //
+  // Parity targets: QuickBooks Online / Xero / FreshBooks / Wave.
+
+  function getAccountingState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.accountingLens) {
+      STATE.accountingLens = {
+        coa: new Map(),      // userId -> Map<accountId, account>
+        journal: new Map(),  // userId -> Array<{ id, date, memo, lines: [{ accountId, debit, credit }] }>
+        invoices: new Map(), // userId -> Array<{ id, customerId, customerName, total, status, issuedAt, dueAt, paidAt? }>
+        seq: new Map(),      // userId -> { je: 1, inv: 1 }
+      };
+    }
+    return STATE.accountingLens;
+  }
+  function saveAccountingState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function actId(ctx) {
+    return ctx?.actor?.userId || ctx?.userId || "anon";
+  }
+  function nextId(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function nowIso() { return new Date().toISOString(); }
+
+  // GAAP-aligned categories with normal-balance side.
+  const COA_CATEGORIES = {
+    asset:     { label: "Assets",       normal: "debit"  },
+    liability: { label: "Liabilities",  normal: "credit" },
+    equity:    { label: "Equity",       normal: "credit" },
+    revenue:   { label: "Revenue",      normal: "credit" },
+    expense:   { label: "Expenses",     normal: "debit"  },
+    cogs:      { label: "COGS",         normal: "debit"  },
+  };
+
+  function seedDefaultCoA(userId, s) {
+    if (s.coa.has(userId)) return;
+    const map = new Map();
+    const seed = [
+      { code: "1000", name: "Cash",                  category: "asset",     parent: null },
+      { code: "1100", name: "Accounts Receivable",   category: "asset",     parent: null },
+      { code: "1200", name: "Inventory",             category: "asset",     parent: null },
+      { code: "1500", name: "Equipment",             category: "asset",     parent: null },
+      { code: "2000", name: "Accounts Payable",      category: "liability", parent: null },
+      { code: "2100", name: "Sales Tax Payable",     category: "liability", parent: null },
+      { code: "3000", name: "Owner's Equity",        category: "equity",    parent: null },
+      { code: "3100", name: "Retained Earnings",     category: "equity",    parent: null },
+      { code: "4000", name: "Sales Revenue",         category: "revenue",   parent: null },
+      { code: "5000", name: "Cost of Goods Sold",    category: "cogs",      parent: null },
+      { code: "6000", name: "Office Expense",        category: "expense",   parent: null },
+      { code: "6100", name: "Rent Expense",          category: "expense",   parent: null },
+      { code: "6200", name: "Utilities",             category: "expense",   parent: null },
+      { code: "6300", name: "Payroll",               category: "expense",   parent: null },
+    ];
+    for (const a of seed) {
+      const id = `acct_${a.code}`;
+      map.set(id, {
+        id, code: a.code, name: a.name, category: a.category, parent: a.parent,
+        archived: false, createdAt: nowIso(), updatedAt: nowIso(),
+      });
+    }
+    s.coa.set(userId, map);
+  }
+
+  // ── Chart of Accounts ──
+
+  registerLensAction("accounting", "coa-list", (ctx, _artifact, _params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const accounts = Array.from(s.coa.get(userId).values())
+      .sort((a, b) => a.code.localeCompare(b.code));
+    return { ok: true, result: { accounts, categories: COA_CATEGORIES } };
+  });
+
+  registerLensAction("accounting", "coa-create", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const code = String(params.code || "").trim();
+    if (!code) return { ok: false, error: "code required" };
+    if (code.length > 12) return { ok: false, error: "code too long (max 12)" };
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (name.length > 80) return { ok: false, error: "name too long (max 80)" };
+    const category = String(params.category || "");
+    if (!COA_CATEGORIES[category]) return { ok: false, error: "category invalid" };
+    const map = s.coa.get(userId);
+    const dup = Array.from(map.values()).find((a) => a.code === code);
+    if (dup) return { ok: false, error: "code already exists" };
+    const id = `acct_${code}`;
+    const account = {
+      id, code, name, category,
+      parent: params.parent ? String(params.parent) : null,
+      archived: false,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    map.set(id, account);
+    saveAccountingState();
+    return { ok: true, result: { account } };
+  });
+
+  registerLensAction("accounting", "coa-update", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.coa.get(userId);
+    if (!map.has(id)) return { ok: false, error: "not found" };
+    const a = map.get(id);
+    if (typeof params.name === "string") {
+      const n = params.name.trim();
+      if (!n) return { ok: false, error: "name cannot be empty" };
+      a.name = n.slice(0, 80);
+    }
+    if (typeof params.parent === "string" || params.parent === null) a.parent = params.parent || null;
+    a.updatedAt = nowIso();
+    saveAccountingState();
+    return { ok: true, result: { account: a } };
+  });
+
+  registerLensAction("accounting", "coa-archive", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.coa.get(userId);
+    if (!map.has(id)) return { ok: false, error: "not found" };
+    const a = map.get(id);
+    a.archived = !a.archived;
+    a.updatedAt = nowIso();
+    saveAccountingState();
+    return { ok: true, result: { account: a } };
+  });
+
+  // ── Journal Entry (double-entry posting) ──
+
+  registerLensAction("accounting", "je-post", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const lines = Array.isArray(params.lines) ? params.lines : [];
+    if (lines.length < 2) return { ok: false, error: "journal entry needs at least 2 lines" };
+    const date = String(params.date || nowIso().slice(0, 10));
+    const memo = String(params.memo || "").slice(0, 200);
+    const coa = s.coa.get(userId);
+    let totalDebit = 0;
+    let totalCredit = 0;
+    const normalized = [];
+    for (const l of lines) {
+      const accountId = String(l.accountId || "");
+      if (!coa.has(accountId)) return { ok: false, error: `unknown account: ${accountId}` };
+      const debit = Number(l.debit) || 0;
+      const credit = Number(l.credit) || 0;
+      if (debit < 0 || credit < 0) return { ok: false, error: "debit/credit must be >= 0" };
+      if (debit > 0 && credit > 0) return { ok: false, error: "line cannot have both debit and credit" };
+      if (debit === 0 && credit === 0) return { ok: false, error: "line must have non-zero debit or credit" };
+      totalDebit += debit;
+      totalCredit += credit;
+      normalized.push({ accountId, debit, credit, memo: String(l.memo || "").slice(0, 120) });
+    }
+    // Balance guard — debits must equal credits (within 0.01 tolerance for floats).
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      return { ok: false, error: `unbalanced: debits ${totalDebit.toFixed(2)} != credits ${totalCredit.toFixed(2)}` };
+    }
+    if (!s.journal.has(userId)) s.journal.set(userId, []);
+    if (!s.seq.has(userId)) s.seq.set(userId, { je: 1, inv: 1 });
+    const seq = s.seq.get(userId);
+    const entry = {
+      id: nextId("je"),
+      number: `JE-${String(seq.je).padStart(5, "0")}`,
+      date, memo,
+      lines: normalized,
+      totalDebit, totalCredit,
+      postedAt: nowIso(),
+    };
+    seq.je++;
+    s.journal.get(userId).push(entry);
+    saveAccountingState();
+    return { ok: true, result: { entry } };
+  });
+
+  // ── Ledger (paginated transaction list with filtering) ──
+
+  registerLensAction("accounting", "ledger-list", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const accountId = params.accountId ? String(params.accountId) : null;
+    const dateFrom = params.dateFrom ? String(params.dateFrom) : null;
+    const dateTo = params.dateTo ? String(params.dateTo) : null;
+    const limit = Math.max(1, Math.min(200, Number(params.limit) || 50));
+    const offset = Math.max(0, Number(params.offset) || 0);
+    const entries = s.journal.get(userId) || [];
+    const rows = [];
+    for (const e of entries) {
+      if (dateFrom && e.date < dateFrom) continue;
+      if (dateTo && e.date > dateTo) continue;
+      for (const l of e.lines) {
+        if (accountId && l.accountId !== accountId) continue;
+        rows.push({
+          entryId: e.id,
+          number: e.number,
+          date: e.date,
+          memo: e.memo,
+          accountId: l.accountId,
+          debit: l.debit,
+          credit: l.credit,
+          lineMemo: l.memo,
+        });
+      }
+    }
+    rows.sort((a, b) => (b.date.localeCompare(a.date)) || b.number.localeCompare(a.number));
+    const total = rows.length;
+    return { ok: true, result: { rows: rows.slice(offset, offset + limit), total, offset, limit } };
+  });
+
+  // ── Balance Sheet (computed from journal) ──
+
+  registerLensAction("accounting", "balance-sheet-compute", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const asOf = params.asOf ? String(params.asOf) : nowIso().slice(0, 10);
+    const coa = s.coa.get(userId);
+    const entries = s.journal.get(userId) || [];
+    const balances = new Map();
+    for (const e of entries) {
+      if (e.date > asOf) continue;
+      for (const l of e.lines) {
+        balances.set(l.accountId, (balances.get(l.accountId) || 0) + (l.debit - l.credit));
+      }
+    }
+    const out = { assets: [], liabilities: [], equity: [], totals: { assets: 0, liabilities: 0, equity: 0 }, asOf };
+    let totalRevenue = 0;
+    let totalExpense = 0;
+    for (const [accId, balance] of balances) {
+      const acct = coa.get(accId);
+      if (!acct || acct.archived) continue;
+      const cat = acct.category;
+      // Display normalized — assets +debit, liab/equity/rev +credit, etc.
+      if (cat === "asset") {
+        const v = balance; out.assets.push({ id: accId, code: acct.code, name: acct.name, balance: v }); out.totals.assets += v;
+      } else if (cat === "liability") {
+        const v = -balance; out.liabilities.push({ id: accId, code: acct.code, name: acct.name, balance: v }); out.totals.liabilities += v;
+      } else if (cat === "equity") {
+        const v = -balance; out.equity.push({ id: accId, code: acct.code, name: acct.name, balance: v }); out.totals.equity += v;
+      } else if (cat === "revenue") {
+        totalRevenue += -balance;
+      } else if (cat === "expense" || cat === "cogs") {
+        totalExpense += balance;
+      }
+    }
+    // Net income flows into retained earnings on the balance sheet.
+    const netIncome = totalRevenue - totalExpense;
+    out.equity.push({ id: "computed_re", code: "RE", name: "Net Income (period)", balance: netIncome });
+    out.totals.equity += netIncome;
+    out.balanced = Math.abs(out.totals.assets - (out.totals.liabilities + out.totals.equity)) < 0.01;
+    out.imbalance = out.totals.assets - (out.totals.liabilities + out.totals.equity);
+    return { ok: true, result: out };
+  });
+
+  // ── AR Aging Report (buckets from invoices) ──
+
+  registerLensAction("accounting", "invoice-create", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const customerName = String(params.customerName || "").trim();
+    if (!customerName) return { ok: false, error: "customerName required" };
+    const total = Number(params.total);
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0" };
+    const issuedAt = String(params.issuedAt || nowIso().slice(0, 10));
+    const dueAt = String(params.dueAt || issuedAt);
+    if (!s.invoices.has(userId)) s.invoices.set(userId, []);
+    if (!s.seq.has(userId)) s.seq.set(userId, { je: 1, inv: 1 });
+    const seq = s.seq.get(userId);
+    const invoice = {
+      id: nextId("inv"),
+      number: `INV-${String(seq.inv).padStart(5, "0")}`,
+      customerId: params.customerId ? String(params.customerId) : null,
+      customerName,
+      total,
+      status: "open",
+      issuedAt, dueAt,
+      paidAt: null,
+    };
+    seq.inv++;
+    s.invoices.get(userId).push(invoice);
+    saveAccountingState();
+    return { ok: true, result: { invoice } };
+  });
+
+  registerLensAction("accounting", "invoice-mark-paid", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const list = s.invoices.get(userId) || [];
+    const inv = list.find((i) => i.id === id);
+    if (!inv) return { ok: false, error: "not found" };
+    inv.status = "paid";
+    inv.paidAt = String(params.paidAt || nowIso().slice(0, 10));
+    saveAccountingState();
+    return { ok: true, result: { invoice: inv } };
+  });
+
+  registerLensAction("accounting", "aging-ar", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const asOf = params.asOf ? String(params.asOf) : nowIso().slice(0, 10);
+    const asOfMs = new Date(asOf).getTime();
+    const buckets = {
+      current:  { label: "Current (0–30)",   total: 0, invoices: [] },
+      d30:      { label: "31–60 days",       total: 0, invoices: [] },
+      d60:      { label: "61–90 days",       total: 0, invoices: [] },
+      d90plus:  { label: "90+ days",         total: 0, invoices: [] },
+    };
+    let totalOpen = 0;
+    const list = s.invoices.get(userId) || [];
+    for (const inv of list) {
+      if (inv.status !== "open") continue;
+      const dueMs = new Date(inv.dueAt).getTime();
+      const daysPastDue = Math.floor((asOfMs - dueMs) / 86_400_000);
+      let bucket;
+      if (daysPastDue <= 30) bucket = "current";
+      else if (daysPastDue <= 60) bucket = "d30";
+      else if (daysPastDue <= 90) bucket = "d60";
+      else bucket = "d90plus";
+      buckets[bucket].total += inv.total;
+      buckets[bucket].invoices.push({ ...inv, daysPastDue });
+      totalOpen += inv.total;
+    }
+    return { ok: true, result: { asOf, buckets: Object.values(buckets).map((b, i) => ({ ...b, key: Object.keys(buckets)[i] })), totalOpen } };
+  });
 };
