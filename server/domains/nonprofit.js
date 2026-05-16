@@ -1,3 +1,16 @@
+// server/domains/nonprofit.js
+//
+// Nonprofit lens — pure-compute donor/grant/volunteer/campaign macros
+// plus real 990-form lookup via ProPublica's Nonprofit Explorer
+// (free, no API key — uses IRS Form 990 filings sourced from the
+// IRS BMF + e-File via the publicly funded ProPublica dataset).
+//
+// Per the "everything must be real" directive: no fake EIN database;
+// real ProPublica Nonprofit Explorer integration for org details +
+// search.
+
+const PROPUBLICA_BASE = "https://projects.propublica.org/nonprofits/api/v2";
+
 export default function registerNonprofitActions(registerLensAction) {
   registerLensAction("nonprofit", "donorRetention", (ctx, artifact, params) => {
     const givingHistory = artifact.data?.givingHistory || [];
@@ -55,5 +68,100 @@ export default function registerNonprofitActions(registerLensAction) {
     const dailyRate = elapsedDays > 0 ? raised / elapsedDays : 0;
     const projected = Math.round(dailyRate * totalDays);
     return { ok: true, result: { campaign: artifact.title, goal, raised, percentComplete, donorCount, dailyRate: Math.round(dailyRate), projected, onTrack: projected >= goal } };
+  });
+
+  /**
+   * lookup-org-by-ein — Pulls authoritative IRS 990 data for a given
+   * EIN (Employer Identification Number, 9 digits) via ProPublica's
+   * Nonprofit Explorer. Returns the org's NTEE classification,
+   * ruling date, recent filings, total revenue/expenses/assets.
+   * Free, no API key.
+   */
+  registerLensAction("nonprofit", "lookup-org-by-ein", async (_ctx, _artifact, params = {}) => {
+    const ein = String(params.ein || "").replace(/\D/g, "");
+    if (!ein) return { ok: false, error: "ein required (9-digit IRS EIN)" };
+    if (ein.length !== 9) return { ok: false, error: `ein must be 9 digits (got ${ein.length})` };
+    try {
+      const r = await fetch(`${PROPUBLICA_BASE}/organizations/${ein}.json`);
+      if (r.status === 404) return { ok: false, error: `EIN not found in ProPublica Nonprofit Explorer: ${ein}` };
+      if (!r.ok) throw new Error(`propublica ${r.status}`);
+      const data = await r.json();
+      const org = data.organization || {};
+      const filings = (data.filings_with_data || []).map((f) => ({
+        taxPeriod: f.tax_prd,
+        year: f.tax_prd_yr,
+        totalRevenue: f.totrevenue,
+        totalExpenses: f.totfuncexpns,
+        totalAssets: f.totassetsend,
+        netIncome: f.totrevenue - f.totfuncexpns,
+        pdfUrl: f.pdf_url,
+      }));
+      return {
+        ok: true,
+        result: {
+          ein: org.ein,
+          name: org.name,
+          dbaName: org.sub_name || null,
+          address: {
+            line1: org.address,
+            city: org.city,
+            state: org.state,
+            zip: org.zipcode,
+          },
+          nteeCode: org.ntee_code,
+          nteeClassification: org.ntee_classification,
+          rulingYear: org.ruling_date ? new Date(org.ruling_date).getFullYear() : null,
+          taxExemptStatus: org.subsection_code === 3 ? "501(c)(3)" : `501(c)(${org.subsection_code})`,
+          deductible: org.deductibility === 1,
+          assetAmount: org.asset_amount,
+          incomeAmount: org.income_amount,
+          revenueAmount: org.revenue_amount,
+          filings,
+          source: "propublica-nonprofit-explorer",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `propublica unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * search-orgs — Fuzzy name search via ProPublica.
+   * params: { query, state?, ntee?, page? }
+   */
+  registerLensAction("nonprofit", "search-orgs", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    if (query.length < 3) return { ok: false, error: "query must be ≥ 3 characters" };
+    const state = params.state ? `&state%5Bid%5D=${encodeURIComponent(String(params.state).toUpperCase())}` : "";
+    const ntee = params.ntee ? `&ntee%5Bid%5D=${encodeURIComponent(String(params.ntee))}` : "";
+    const page = Number.isFinite(Number(params.page)) ? Number(params.page) : 0;
+    try {
+      const r = await fetch(`${PROPUBLICA_BASE}/search.json?q=${encodeURIComponent(query)}&page=${page}${state}${ntee}`);
+      if (!r.ok) throw new Error(`propublica ${r.status}`);
+      const data = await r.json();
+      const orgs = (data.organizations || []).map((o) => ({
+        ein: o.ein,
+        name: o.name,
+        city: o.city,
+        state: o.state,
+        nteeCode: o.ntee_code,
+        score: o.score,
+        rulingYear: o.ruling_date ? new Date(o.ruling_date).getFullYear() : null,
+      }));
+      return {
+        ok: true,
+        result: {
+          orgs,
+          totalResults: data.total_results,
+          numPages: data.num_pages,
+          curPage: data.cur_page,
+          query, state: params.state || null, ntee: params.ntee || null,
+          source: "propublica-nonprofit-explorer",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `propublica unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 };
