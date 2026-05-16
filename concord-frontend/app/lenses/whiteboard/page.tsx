@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { WhiteboardRepos } from '@/components/whiteboard/WhiteboardRepos';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1674,6 +1675,9 @@ export default function WhiteboardLensPage() {
       Whiteboard Workbench
     </button>
     <WhiteboardWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <WhiteboardRepos />
+    </section>
     </LensShell>
   );
 }
