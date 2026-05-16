@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { WordLookup } from '@/components/linguistics/WordLookup';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -664,6 +665,11 @@ export default function LinguisticsLensPage() {
           </div>
         )}
       </div>
+
+      {/* Bespoke dictionary + Datamuse word lookup with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <WordLookup />
+      </section>
     </div>
     </LensShell>
   );
