@@ -27,6 +27,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { AgentRoster } from '@/components/agents/AgentRoster';
 
 // --- Types ---
 interface Agent {
@@ -1163,6 +1164,9 @@ export default function AgentsLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <AgentRoster />
+      </section>
     </div>
     </LensShell>
   );
