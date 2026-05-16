@@ -2,6 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import NetWorthTracker from '@/components/finance/NetWorthTracker';
+import EnvelopeBudget from '@/components/finance/EnvelopeBudget';
+import InvestmentCheckup from '@/components/finance/InvestmentCheckup';
+import TaxEstimator from '@/components/finance/TaxEstimator';
+import RetirementSimulator from '@/components/finance/RetirementSimulator';
+import SubscriptionDetector from '@/components/finance/SubscriptionDetector';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -40,6 +46,11 @@ import {
   DollarSign,
   BarChart3,
   CreditCard,
+  Wallet,
+  Target,
+  Calculator,
+  PiggyBank,
+  Repeat,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -118,7 +129,7 @@ interface NewsItem {
 }
 
 type TimeRange = '1H' | '24H' | '7D' | '30D' | '90D' | '1Y' | 'ALL';
-type ViewMode = 'overview' | 'trade' | 'orders' | 'alerts' | 'news';
+type ViewMode = 'overview' | 'trade' | 'orders' | 'alerts' | 'news' | 'networth' | 'budget' | 'checkup' | 'taxes' | 'retirement' | 'subscriptions';
 type ChartType = 'line' | 'candle' | 'area';
 
 /** Hook: animates a number from 0 to `target` over `duration` ms on mount / when target changes. */
@@ -2187,7 +2198,7 @@ export default function FinanceLensPage() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex items-center gap-1 border-b border-emerald-900/20 pb-4">
+      <nav className="flex items-center gap-1 border-b border-emerald-900/20 pb-4 overflow-x-auto">
         {(
           [
             { id: 'overview', label: 'Overview', icon: PieChart },
@@ -2195,6 +2206,12 @@ export default function FinanceLensPage() {
             { id: 'orders', label: 'Orders', icon: Layers },
             { id: 'alerts', label: 'Alerts', icon: Bell },
             { id: 'news', label: 'News', icon: Newspaper },
+            { id: 'networth', label: 'Net worth', icon: TrendingUp },
+            { id: 'budget', label: 'Budget', icon: Wallet },
+            { id: 'checkup', label: 'Checkup', icon: Target },
+            { id: 'taxes', label: 'Taxes', icon: Calculator },
+            { id: 'retirement', label: 'Retirement', icon: PiggyBank },
+            { id: 'subscriptions', label: 'Subscriptions', icon: Repeat },
           ] as const
         ).map((item) => (
           <button
@@ -2218,6 +2235,12 @@ export default function FinanceLensPage() {
       {viewMode === 'trade' && renderTrade()}
       {viewMode === 'orders' && renderOrders()}
       {viewMode === 'alerts' && renderAlerts()}
+      {viewMode === 'networth' && <div className="space-y-4"><NetWorthTracker /></div>}
+      {viewMode === 'budget' && <div className="space-y-4"><EnvelopeBudget /></div>}
+      {viewMode === 'checkup' && <div className="space-y-4"><InvestmentCheckup /></div>}
+      {viewMode === 'taxes' && <div className="space-y-4"><TaxEstimator /></div>}
+      {viewMode === 'retirement' && <div className="space-y-4"><RetirementSimulator /></div>}
+      {viewMode === 'subscriptions' && <div className="space-y-4"><SubscriptionDetector /></div>}
       {viewMode === 'news' && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold">Market News & Analysis</h2>
