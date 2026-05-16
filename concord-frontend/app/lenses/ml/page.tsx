@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { MlRepos } from '@/components/ml/MlRepos';
+import { MlActionPanel } from '@/components/ml/MlActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1022,6 +1023,10 @@ export default function MLLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MlRepos />
+      </section>
+
+      <section className="mt-6">
+        <MlActionPanel />
       </section>
     </div>
     </LensShell>
