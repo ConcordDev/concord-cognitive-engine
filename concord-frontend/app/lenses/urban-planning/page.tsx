@@ -28,6 +28,7 @@ import {
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 import { LensPageShell } from '@/components/lens/LensPageShell';
+import { CountyDataPanel } from '@/components/urban-planning/CountyDataPanel';
 
 type ModeTab =
   | 'Dashboard'
@@ -434,6 +435,9 @@ export default function UrbanPlanningLensPage() {
       )}
 
       <UniversalActions domain="urban-planning" artifactId={items[0]?.id} />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <CountyDataPanel />
+      </section>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
