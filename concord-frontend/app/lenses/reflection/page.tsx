@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ReflectionFeed } from '@/components/reflection/ReflectionFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -575,8 +576,11 @@ export default function ReflectionLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ReflectionFeed />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#reflection-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to reflection content</a>
     </LensShell>
