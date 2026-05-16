@@ -17,6 +17,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
+import { NpmPackageSearch } from '@/components/app-maker/NpmPackageSearch';
 
 interface AppEntry {
   id: string;
@@ -606,8 +607,11 @@ export default function AppMakerLens() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <NpmPackageSearch />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
