@@ -36,6 +36,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import { LiveScoreboard } from '@/components/sports/LiveScoreboard';
 
 type Tab = 'games' | 'stats' | 'training';
 
@@ -1014,6 +1015,9 @@ export default function SportsLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LiveScoreboard />
+      </section>
     </div>
     </LensShell>
   );
