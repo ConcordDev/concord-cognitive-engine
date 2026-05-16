@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RoboticsRepos } from '@/components/robotics/RoboticsRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -586,6 +587,9 @@ export default function RoboticsLensPage() {
         </button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="robotics" /></div>}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <RoboticsRepos />
+      </section>
     </div>
     </LensShell>
   );
