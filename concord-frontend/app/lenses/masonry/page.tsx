@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { MasonryFeed } from '@/components/masonry/MasonryFeed';
+import { MasonStuff } from '@/components/masonry/MasonStuff';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -709,6 +710,10 @@ export default function MasonryLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MasonryFeed />
+      </section>
+
+      <section className="mt-6">
+        <MasonStuff />
       </section>
     </LensPageShell>
     
