@@ -53,6 +53,19 @@ export interface SessionViewProps {
   onLaunchScene?: (scene: SessionScene) => void;
   onStopAll?: () => void;
   onTempoChange?: (bpm: number) => void;
+  /** Double-click a populated clip → open the detail editor drawer
+   *  (drum cell → DrumMachine, melodic → PianoRoll, audio → AudioEditor). */
+  onDoubleClickClip?: (clip: SessionClip) => void;
+  /** Drag from the Browser rail and drop onto a cell. payload is the
+   *  parsed `application/x-concord-asset` JSON: { assetId, kind, title }. */
+  onDropAsset?: (trackId: string, sceneId: string, payload: { assetId: string; kind?: string; title?: string }) => void;
+  /** Click an empty cell (no content yet). Used by some UX paths to
+   *  open the asset picker. Distinct from drop. */
+  onClickEmptyCell?: (trackId: string, sceneId: string) => void;
+  /** Cursor presence — other users' grid hover positions for live collab. */
+  ghostCursors?: Array<{ userId: string; userName?: string; trackId: string; sceneId: string; color?: string }>;
+  /** Local mouse move on the grid, throttled — for outgoing presence emit. */
+  onCellHover?: (trackId: string | null, sceneId: string | null) => void;
   /** Optional id of the clip currently sounding, for the active glow. */
   playingClipKey?: string;
   /** Clips queued at the next bar — visualised differently from playing. */
@@ -83,6 +96,11 @@ export function SessionView({
   onLaunchScene,
   onStopAll,
   onTempoChange,
+  onDoubleClickClip,
+  onDropAsset,
+  onClickEmptyCell,
+  ghostCursors,
+  onCellHover,
   playingClipKey,
   queuedClipKeys,
 }: SessionViewProps) {
@@ -234,14 +252,39 @@ export function SessionView({
                 const clip = clips[key];
                 const isPlaying = playingClipKey === key;
                 const isQueued = queuedClipKeys?.has(key);
+                // Other-user cursors hovering this cell
+                const cursorsHere = (ghostCursors || []).filter(g => g.trackId === track.id && g.sceneId === scene.id);
+                // Common drag/drop handlers — accept the Concord asset
+                // payload from the Browser rail; show a highlight ring
+                // when an asset is dragged over.
+                const handleDragOver = (e: React.DragEvent) => {
+                  if (e.dataTransfer.types.includes('application/x-concord-asset')) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                  }
+                };
+                const handleDrop = (e: React.DragEvent) => {
+                  const raw = e.dataTransfer.getData('application/x-concord-asset');
+                  if (!raw) return;
+                  e.preventDefault();
+                  try {
+                    const payload = JSON.parse(raw);
+                    onDropAsset?.(track.id, scene.id, payload);
+                  } catch { /* malformed payload — silently ignore */ }
+                };
                 return (
                   <div
                     key={track.id}
-                    className="w-40 shrink-0 p-1.5 border-r border-white/5"
+                    className="w-40 shrink-0 p-1.5 border-r border-white/5 relative"
+                    onMouseEnter={() => onCellHover?.(track.id, scene.id)}
+                    onMouseLeave={() => onCellHover?.(null, null)}
                   >
                     {clip?.hasContent ? (
                       <button
                         onClick={() => onLaunchClip?.(clip)}
+                        onDoubleClick={() => onDoubleClickClip?.(clip)}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
                         className={cn(
                           'w-full h-12 rounded-md border text-left px-2 flex items-center gap-2 transition',
                           isPlaying
@@ -250,7 +293,7 @@ export function SessionView({
                               ? 'border-amber-400 bg-amber-500/20 text-amber-100'
                               : `${trackColors[ti]} text-white hover:brightness-125`
                         )}
-                        title={`Launch ${clip.label || 'clip'}`}
+                        title={`Launch · double-click to edit · drop asset to bind`}
                       >
                         <Play className="w-3 h-3 flex-shrink-0 fill-current" />
                         <span className="text-[11px] truncate">{clip.label ?? clip.assetId ?? 'clip'}</span>
@@ -259,7 +302,27 @@ export function SessionView({
                         )}
                       </button>
                     ) : (
-                      <div className="w-full h-12 rounded-md border border-dashed border-white/10 hover:border-white/20" />
+                      <button
+                        type="button"
+                        onClick={() => onClickEmptyCell?.(track.id, scene.id)}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                        aria-label={`Empty slot ${track.name} scene ${scene.name}`}
+                        className="w-full h-12 rounded-md border border-dashed border-white/10 hover:border-white/30 hover:bg-white/[0.02] transition-colors"
+                      />
+                    )}
+                    {/* Ghost cursors — other users hovering this cell */}
+                    {cursorsHere.length > 0 && (
+                      <div className="absolute -top-1 -right-1 flex -space-x-1 pointer-events-none">
+                        {cursorsHere.slice(0, 3).map(g => (
+                          <span
+                            key={g.userId}
+                            className="block w-2 h-2 rounded-full ring-1 ring-black"
+                            style={{ background: g.color || '#22d3ee' }}
+                            title={g.userName || g.userId}
+                          />
+                        ))}
+                      </div>
                     )}
                   </div>
                 );

@@ -657,9 +657,41 @@ export class EffectsChainEngine {
 // Mixer Engine
 // ============================================================================
 
+/**
+ * Per-channel meter node. A small AnalyserNode tapped off the post-
+ * effects output so MixerPeekStrip can read real-time RMS without
+ * fighting for the master analyser. fftSize 256 → 128 freq bins;
+ * cheap to read every animation frame even with 32+ tracks.
+ */
+class ChannelMeter {
+  private analyser: AnalyserNode;
+  private bufferLength: number;
+  constructor(ctx: AudioContext, source: AudioNode) {
+    this.analyser = ctx.createAnalyser();
+    this.analyser.fftSize = 256;
+    this.bufferLength = this.analyser.frequencyBinCount;
+    source.connect(this.analyser);
+    // NOTE: analyser is a passive tap — don't connect downstream.
+  }
+  /** RMS amplitude 0..1 from the current time-domain buffer. */
+  getLevel(): number {
+    const data = new Uint8Array(this.bufferLength);
+    this.analyser.getByteTimeDomainData(data);
+    let sumSq = 0;
+    for (let i = 0; i < data.length; i++) {
+      const v = (data[i] - 128) / 128; // -1..1
+      sumSq += v * v;
+    }
+    return Math.sqrt(sumSq / data.length);
+  }
+  dispose(): void {
+    try { this.analyser.disconnect(); } catch { /* already gone */ }
+  }
+}
+
 export class MixerEngine {
   private ctx: AudioContext;
-  private channelNodes: Map<string, { gain: GainNode; panner: StereoPannerNode; effectsChain: EffectsChainEngine }> = new Map();
+  private channelNodes: Map<string, { gain: GainNode; panner: StereoPannerNode; effectsChain: EffectsChainEngine; meter: ChannelMeter }> = new Map();
   private masterGain: GainNode;
   private masterEffects: EffectsChainEngine;
   private analyser: AnalyserNode;
@@ -682,9 +714,26 @@ export class MixerEngine {
 
     gain.connect(panner).connect(effectsChain.input);
     effectsChain.output.connect(this.masterGain);
+    // Passive per-track meter tap (post-effects, pre-master).
+    const meter = new ChannelMeter(this.ctx, effectsChain.output);
 
-    this.channelNodes.set(trackId, { gain, panner, effectsChain });
+    this.channelNodes.set(trackId, { gain, panner, effectsChain, meter });
     return { input: gain };
+  }
+
+  /** RMS level 0..1 for a track's output. Returns 0 when the channel
+   *  isn't initialized. Cheap (single fft snapshot). */
+  getTrackLevel(trackId: string): number {
+    const ch = this.channelNodes.get(trackId);
+    if (!ch) return 0;
+    return ch.meter.getLevel();
+  }
+
+  /** All track levels in one shot. Used by MixerPeekStrip's RAF loop. */
+  getAllTrackLevels(): Record<string, number> {
+    const out: Record<string, number> = {};
+    this.channelNodes.forEach((ch, id) => { out[id] = ch.meter.getLevel(); });
+    return out;
   }
 
   removeChannel(trackId: string): void {
@@ -692,6 +741,7 @@ export class MixerEngine {
     if (channel) {
       channel.gain.disconnect();
       channel.effectsChain.dispose();
+      channel.meter.dispose();
       this.channelNodes.delete(trackId);
     }
   }
@@ -752,6 +802,7 @@ export class MixerEngine {
     this.channelNodes.forEach(ch => {
       ch.gain.disconnect();
       ch.effectsChain.dispose();
+      ch.meter.dispose();
     });
     this.channelNodes.clear();
     this.masterGain.disconnect();
