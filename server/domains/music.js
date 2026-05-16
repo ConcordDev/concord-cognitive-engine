@@ -1,4 +1,29 @@
 // server/domains/music.js
+//
+// Pure-compute music-theory helpers (BPM, key detect via
+// Krumhansl-Schmuckler, chord progression match, setlist planner)
+// plus real MusicBrainz metadata (artists, releases, recordings).
+//
+// MusicBrainz is the authoritative open-source music metadata DB.
+// Free, no API key — but ToS REQUIRES a contact User-Agent header.
+// Set MUSICBRAINZ_CONTACT to a contact email/URL for production
+// usage; we use a fallback identifying Concord OS for dev.
+
+const MB_BASE = "https://musicbrainz.org/ws/2";
+
+function mbUserAgent() {
+  const contact = process.env.MUSICBRAINZ_CONTACT || "https://concord-os.org";
+  return `Concord-OS/1.0 ( ${contact} )`;
+}
+
+async function mbFetch(path) {
+  const url = `${MB_BASE}${path}${path.includes("?") ? "&" : "?"}fmt=json`;
+  const r = await fetch(url, { headers: { "User-Agent": mbUserAgent(), Accept: "application/json" } });
+  if (r.status === 503) throw new Error("musicbrainz rate limited (1 req/sec) — back off and retry");
+  if (!r.ok) throw new Error(`musicbrainz ${r.status}`);
+  return r.json();
+}
+
 export default function registerMusicActions(registerLensAction) {
   registerLensAction("music", "bpmAnalyze", (ctx, artifact, _params) => {
     const beats = artifact.data?.beats || artifact.data?.timestamps || [];
@@ -89,5 +114,105 @@ export default function registerMusicActions(registerLensAction) {
     const totalDuration = processed.reduce((s, t) => s + t.duration, 0);
     const avgBpm = Math.round(processed.reduce((s, t) => s + t.bpm, 0) / n);
     return { ok: true, result: { suggestedOrder: setlist.map(t => t.title), totalDuration: Math.round(totalDuration), totalMinutes: Math.round(totalDuration / 60), trackCount: n, avgBpm, energyCurve: setlist.map(t => ({ title: t.title, energy: t.energy, bpm: t.bpm })), peakMoment: peak.title, opener: opener.title, closer: closer.title } };
+  });
+
+  // ── MusicBrainz (real metadata) ──
+
+  /**
+   * mb-search-artist — Fuzzy artist search via MusicBrainz.
+   * params: { query: string, limit?: 1-100 }
+   */
+  registerLensAction("music", "mb-search-artist", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    if (query.length < 2) return { ok: false, error: "query must be ≥ 2 characters" };
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 10));
+    try {
+      const data = await mbFetch(`/artist?query=${encodeURIComponent(query)}&limit=${limit}`);
+      const artists = (data.artists || []).map((a) => ({
+        mbid: a.id,
+        name: a.name,
+        sortName: a["sort-name"],
+        type: a.type,
+        country: a.country,
+        beginArea: a["begin-area"]?.name,
+        lifeSpan: a["life-span"] ? { begin: a["life-span"].begin, end: a["life-span"].end, ended: a["life-span"].ended } : null,
+        disambiguation: a.disambiguation,
+        score: a.score,
+        tags: (a.tags || []).map((t) => t.name),
+      }));
+      return {
+        ok: true,
+        result: { artists, count: artists.length, totalCount: data.count, source: "musicbrainz" },
+      };
+    } catch (e) {
+      return { ok: false, error: `musicbrainz unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * mb-artist-releases — Lookup an artist's releases (albums/EPs/singles)
+   * by their MBID. Returns releases with type, date, country, formats.
+   */
+  registerLensAction("music", "mb-artist-releases", async (_ctx, _artifact, params = {}) => {
+    const mbid = String(params.mbid || "").trim();
+    if (!mbid) return { ok: false, error: "mbid required (MusicBrainz artist UUID from mb-search-artist)" };
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mbid)) {
+      return { ok: false, error: "mbid must be a MusicBrainz UUID" };
+    }
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
+    try {
+      const data = await mbFetch(`/release?artist=${mbid}&limit=${limit}&inc=release-groups`);
+      const releases = (data.releases || []).map((r) => ({
+        mbid: r.id,
+        title: r.title,
+        date: r.date,
+        country: r.country,
+        status: r.status,
+        primaryType: r["release-group"]?.["primary-type"],
+        secondaryTypes: r["release-group"]?.["secondary-types"] || [],
+        disambiguation: r.disambiguation,
+        barcode: r.barcode,
+        packaging: r.packaging,
+      }));
+      // Newest first
+      releases.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      return {
+        ok: true,
+        result: { releases, count: releases.length, totalCount: data["release-count"], source: "musicbrainz" },
+      };
+    } catch (e) {
+      return { ok: false, error: `musicbrainz unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * mb-lookup-by-isrc — Lookup recordings by International Standard
+   * Recording Code (ISRC). Useful for radio station integrations,
+   * royalty tracking, and disambiguating cover versions.
+   */
+  registerLensAction("music", "mb-lookup-by-isrc", async (_ctx, _artifact, params = {}) => {
+    const isrc = String(params.isrc || "").toUpperCase().replace(/[-\s]/g, "").trim();
+    if (!isrc) return { ok: false, error: "isrc required" };
+    if (!/^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(isrc)) {
+      return { ok: false, error: "isrc must be 12 chars: 2 country + 3 registrant + 2 year + 5 designation (e.g. USRC17607839)" };
+    }
+    try {
+      const data = await mbFetch(`/isrc/${encodeURIComponent(isrc)}?inc=artist-credits+releases`);
+      const recordings = (data.recordings || []).map((rec) => ({
+        mbid: rec.id,
+        title: rec.title,
+        lengthMs: rec.length,
+        artistCredit: (rec["artist-credit"] || []).map((ac) => ac.name).join(""),
+        releases: (rec.releases || []).map((rel) => ({ mbid: rel.id, title: rel.title, date: rel.date })),
+        disambiguation: rec.disambiguation,
+      }));
+      return {
+        ok: true,
+        result: { isrc, recordings, count: recordings.length, source: "musicbrainz" },
+      };
+    } catch (e) {
+      return { ok: false, error: `musicbrainz unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
