@@ -575,14 +575,105 @@ export default function registerHealthcareActions(registerLensAction) {
     const kind = ["telehealth", "in_person"].includes(params.kind) ? params.kind : "in_person";
     if (!providerId || !date || !time) return { ok: false, error: "providerId, date, time required" };
     if (!state.appointments.has(userId)) state.appointments.set(userId, []);
+    const copayUsd = Number(params.copayUsd);
     const appt = {
       id: `appt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       providerId, date, time, kind,
+      copayUsd: Number.isFinite(copayUsd) && copayUsd > 0 ? Math.round(copayUsd * 100) / 100 : 0,
+      copayStatus: "unpaid",
       status: "booked", bookedAt: new Date().toISOString(),
     };
     state.appointments.get(userId).push(appt);
     saveStateIfAvailable();
     return { ok: true, result: { appointment: appt } };
+  });
+
+  /**
+   * appointment-charge-copay — Stripe PaymentIntent for the appointment
+   * co-pay. Returns { clientSecret, paymentIntentId } so the patient-
+   * portal frontend can confirm via Stripe Elements. The webhook
+   * (server/economy/stripe.js payment_intent.succeeded) marks the
+   * appointment copayStatus:'paid' on capture.
+   *
+   * Per "everything must be real" directive: real Stripe API call,
+   * env-gated by STRIPE_SECRET_KEY, no synthetic copay processor.
+   */
+  registerLensAction("healthcare", "appointment-charge-copay", async (ctx, _artifact, params = {}) => {
+    const state = getHealthState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const apptId = String(params.appointmentId || params.id || "");
+    if (!apptId) return { ok: false, error: "appointmentId required" };
+    const list = state.appointments.get(userId) || [];
+    const appt = list.find((a) => a.id === apptId);
+    if (!appt) return { ok: false, error: "appointment not found" };
+    if (appt.copayStatus === "paid") return { ok: false, error: "copay already paid" };
+    if (!appt.copayUsd || appt.copayUsd <= 0) return { ok: false, error: "appointment has no copay amount" };
+
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return {
+        ok: false,
+        error: "Stripe not configured. Set STRIPE_SECRET_KEY env to enable co-pay charges.",
+      };
+    }
+    const amountCents = Math.round(appt.copayUsd * 100);
+    if (amountCents < 50) return { ok: false, error: "copay below Stripe minimum ($0.50 USD)" };
+
+    try {
+      const url = `https://api.stripe.com/v1/payment_intents`;
+      const body = new URLSearchParams({
+        amount: String(amountCents),
+        currency: "usd",
+        "automatic_payment_methods[enabled]": "true",
+        description: `Co-pay for appointment ${appt.id} (${appt.date} ${appt.time})`,
+        "metadata[concord_user_id]": userId,
+        "metadata[concord_appointment_id]": appt.id,
+        "metadata[concord_purpose]": "healthcare_copay",
+      }).toString();
+      const r = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Stripe-Version": "2025-09-30.acacia",
+        },
+        body,
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(`${r.status}: ${data?.error?.message || "unknown"}`);
+      appt.copayStatus = "pending";
+      appt.stripePaymentIntentId = data.id;
+      saveStateIfAvailable();
+      return {
+        ok: true,
+        result: {
+          clientSecret: data.client_secret,
+          paymentIntentId: data.id,
+          copayUsd: appt.copayUsd,
+          status: data.status,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `stripe copay intent failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * appointment-list — lists appointments for the caller, sorted by date
+   * desc. Supports optional status filter (booked|completed|cancelled|all)
+   * and copay filter (unpaid|pending|paid|all).
+   */
+  registerLensAction("healthcare", "appointment-list", (ctx, _artifact, params = {}) => {
+    const state = getHealthState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const status = ["booked", "completed", "cancelled", "all"].includes(params.status) ? params.status : "all";
+    const copayStatus = ["unpaid", "pending", "paid", "all"].includes(params.copayStatus) ? params.copayStatus : "all";
+    const list = state.appointments.get(userId) || [];
+    const filtered = list.filter((a) => {
+      if (status !== "all" && a.status !== status) return false;
+      if (copayStatus !== "all" && (a.copayStatus || "unpaid") !== copayStatus) return false;
+      return true;
+    }).slice().sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+    return { ok: true, result: { appointments: filtered } };
   });
 
   /**

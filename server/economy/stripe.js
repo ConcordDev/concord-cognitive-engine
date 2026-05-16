@@ -365,13 +365,49 @@ export async function handleWebhook(db, { rawBody, signature, requestId, ip }) {
     }
 
     case "payment_intent.succeeded": {
-      // retail.cart-create-payment-intent → Stripe PaymentIntent
-      // captured. Auto-confirm the cart and write the order. The cart's
-      // pendingPaymentIntentId is the correlation key; metadata carries
-      // concord_user_id + concord_cart_id.
+      // Two purposes route through PaymentIntent succeeded today:
+      //   1. retail.cart-create-payment-intent → cart capture
+      //   2. healthcare.appointment-charge-copay → copay paid
+      // Disambiguated by metadata.concord_purpose ("healthcare_copay")
+      // or by presence of concord_cart_id vs concord_appointment_id.
       const pi = event.data.object;
       const concordUserId = pi?.metadata?.concord_user_id;
       const concordCartId = pi?.metadata?.concord_cart_id;
+      const concordAppointmentId = pi?.metadata?.concord_appointment_id;
+      const concordPurpose = pi?.metadata?.concord_purpose;
+
+      if (concordUserId && (concordAppointmentId || concordPurpose === "healthcare_copay")) {
+        try {
+          const STATE = globalThis._concordSTATE;
+          const list = STATE?.healthLens?.appointments?.get(concordUserId) || [];
+          const appt = list.find((a) => a.id === concordAppointmentId || a.stripePaymentIntentId === pi.id);
+          if (appt) {
+            appt.copayStatus = "paid";
+            appt.copayPaidAt = nowISO();
+            appt.stripePaymentIntentId = pi.id;
+            appt.stripeChargeId = pi.latest_charge || null;
+            if (typeof globalThis._concordSaveStateDebounced === "function") {
+              try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+            }
+          }
+          economyAudit(db, {
+            action: "healthcare_copay_paid",
+            userId: concordUserId,
+            amount: pi.amount ? pi.amount / 100 : 0,
+            details: {
+              stripePaymentIntentId: pi.id,
+              concordAppointmentId,
+              matchFound: !!appt,
+            },
+            requestId,
+            ip,
+          });
+        } catch (err) {
+          console.error("[Stripe Webhook] healthcare copay handler failed:", err.message);
+        }
+        break;
+      }
+
       if (concordUserId && concordCartId) {
         try {
           const STATE = globalThis._concordSTATE;
