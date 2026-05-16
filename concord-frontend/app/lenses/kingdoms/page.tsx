@@ -12,6 +12,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
 
@@ -123,9 +124,12 @@ export default function KingdomsPage() {
         {view === 'list' && <KingdomList kingdoms={kingdoms} onPick={(id) => { setActiveId(id); setView('detail'); }} />}
         {view === 'detail' && detail && <KingdomDetail detail={detail} decreeKinds={decreeKinds} onRefresh={() => activeId && fetchDetail(activeId)} />}
         {view === 'create' && <KingdomCreate onCreated={(id) => { setActiveId(id); setView('detail'); fetchList(); }} />}
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <HistoryExplorer />
+        </section>
       </div>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
