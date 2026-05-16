@@ -36,6 +36,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
+import PhysicsWorkbench from '@/components/physics/PhysicsWorkbench';
 
 // Physics body types
 interface Vector2D {
@@ -252,6 +253,7 @@ export default function PhysicsLensPage() {
   const runAction = useRunArtifact('physics');
   const [physicsActionResult, setPhysicsActionResult] = useState<Record<string, unknown> | null>(null);
   const [physicsIsRunning, setPhysicsIsRunning] = useState<string | null>(null);
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const handlePhysicsAction = async (action: string) => {
     const targetId = savedSims[0]?.id;
     if (!targetId) { setPhysicsActionResult({ message: 'Save a simulation first to run physics analysis.' }); return; }
@@ -1716,6 +1718,16 @@ export default function PhysicsLensPage() {
         )}
       </div>
     </div>
+    {/* 2026 parity workbench — kinematics, projectile, units, constants */}
+    <button
+      type="button"
+      onClick={() => setWorkbenchOpen(true)}
+      className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-indigo-500 hover:bg-indigo-400 text-indigo-50 shadow-2xl text-sm font-medium"
+      title="Physics Workbench — kinematics, projectile motion, unit conversion, constants"
+    >
+      Physics Workbench
+    </button>
+    <PhysicsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 
