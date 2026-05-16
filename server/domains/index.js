@@ -191,6 +191,9 @@ import settings from './settings.js';
 import creator from './creator.js';
 import federation from './federation.js';
 import blackMarket from './black-market.js';
+import society from './society.js';
+import gallery from './gallery.js';
+import classroom from './classroom.js';
 
 export default [
   healthcare,
@@ -375,4 +378,7 @@ export default [
   creator,
   federation,
   blackMarket,
+  society,
+  gallery,
+  classroom,
 ];
