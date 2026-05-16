@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
+import { PodcastActionPanel } from '@/components/podcast/PodcastActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -910,6 +911,11 @@ export default function PodcastLensPage() {
       {/* Bespoke iTunes podcast search with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <ItunesSearch />
+      </section>
+
+      {/* Apple Podcasts + Buzzsprout-shape workbench: analytics / guest / production / monetization + actions */}
+      <section className="mt-6 mx-4">
+        <PodcastActionPanel />
       </section>
     </div>
 

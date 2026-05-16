@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
+import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -664,6 +665,11 @@ export default function PoetryPage() {
       {/* Bespoke PoetryDB search with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PoetryDbSearch />
+      </section>
+
+      {/* Poetry Foundation + Poets.org-shape workbench: meter / rhyme / form / frequency + actions */}
+      <section className="mt-6">
+        <PoetryActionPanel />
       </section>
     </div>
     </LensShell>
