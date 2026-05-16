@@ -1,6 +1,10 @@
 // server/domains/commonsense.js
 // Domain actions for common-sense reasoning: plausibility checking,
-// analogy mapping, and default reasoning with exceptions.
+// analogy mapping, default reasoning with exceptions, plus real
+// ConceptNet knowledge-graph lookups (free, no API key — ~34M
+// edges across 304 languages).
+
+const CONCEPTNET_BASE = "https://api.conceptnet.io";
 
 export default function registerCommonsenseActions(registerLensAction) {
   /**
@@ -536,5 +540,79 @@ export default function registerCommonsenseActions(registerLensAction) {
         ],
       },
     };
+  });
+
+  /**
+   * conceptnet-edges — Real ConceptNet edges for a concept. Returns
+   * related concepts with relation type (IsA / PartOf / UsedFor /
+   * HasProperty / CapableOf / Causes / etc.) + weight.
+   * Free, no API key.
+   *
+   * params: { concept: string, lang?: ISO-2 (default "en"), rel?: relation type filter, limit?: 1-100 }
+   */
+  registerLensAction("commonsense", "conceptnet-edges", async (_ctx, _artifact, params = {}) => {
+    const concept = String(params.concept || "").trim();
+    if (!concept) return { ok: false, error: "concept required" };
+    const lang = String(params.lang || "en").toLowerCase();
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
+    const normalized = concept.toLowerCase().replace(/\s+/g, "_");
+    const relFilter = params.rel ? `&rel=/r/${encodeURIComponent(String(params.rel))}` : "";
+    try {
+      const r = await fetch(`${CONCEPTNET_BASE}/c/${lang}/${encodeURIComponent(normalized)}?limit=${limit}${relFilter}`);
+      if (!r.ok) throw new Error(`conceptnet ${r.status}`);
+      const data = await r.json();
+      const edges = (data.edges || []).map((e) => ({
+        relation: e.rel?.label,
+        relationId: e.rel?.["@id"],
+        start: e.start?.label,
+        startConcept: e.start?.["@id"],
+        startLang: e.start?.language,
+        end: e.end?.label,
+        endConcept: e.end?.["@id"],
+        endLang: e.end?.language,
+        weight: e.weight,
+        sources: (e.sources || []).map((s) => s.contributor),
+        surfaceText: e.surfaceText,
+      }));
+      return {
+        ok: true,
+        result: {
+          concept, lang, edges, count: edges.length,
+          conceptId: data["@id"],
+          source: "conceptnet-5",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `conceptnet unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * conceptnet-relatedness — Numeric similarity between two concepts
+   * via ConceptNet's embedding-based relatedness score.
+   * params: { concept1, concept2, lang?: default "en" }
+   */
+  registerLensAction("commonsense", "conceptnet-relatedness", async (_ctx, _artifact, params = {}) => {
+    const a = String(params.concept1 || "").trim();
+    const b = String(params.concept2 || "").trim();
+    if (!a || !b) return { ok: false, error: "concept1 + concept2 required" };
+    const lang = String(params.lang || "en").toLowerCase();
+    const norm = (s) => s.toLowerCase().replace(/\s+/g, "_");
+    try {
+      const r = await fetch(`${CONCEPTNET_BASE}/relatedness?node1=/c/${lang}/${encodeURIComponent(norm(a))}&node2=/c/${lang}/${encodeURIComponent(norm(b))}`);
+      if (!r.ok) throw new Error(`conceptnet ${r.status}`);
+      const data = await r.json();
+      return {
+        ok: true,
+        result: {
+          concept1: a, concept2: b, lang,
+          relatedness: data.value,
+          interpretation: data.value > 0.7 ? "very-related" : data.value > 0.4 ? "related" : data.value > 0.2 ? "weakly-related" : "unrelated",
+          source: "conceptnet-5",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `conceptnet unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }

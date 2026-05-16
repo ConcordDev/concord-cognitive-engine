@@ -1,6 +1,12 @@
 // server/domains/fork.js
-// Domain actions for forking/branching: divergence analysis with Levenshtein
-// edit distance, merge complexity estimation, and fork health scoring.
+// Domain actions for forking/branching: divergence analysis with
+// Levenshtein edit distance, merge complexity estimation, fork health
+// scoring, plus real GitHub API lookups (forks of a repo, repo
+// metadata). GitHub public-API endpoints are free without
+// authentication at 60 req/hr; set GITHUB_TOKEN env to raise to
+// 5000/hr.
+
+const GITHUB_API = "https://api.github.com";
 
 export default function registerForkActions(registerLensAction) {
   /**
@@ -438,5 +444,107 @@ export default function registerForkActions(registerLensAction) {
         recommendations,
       },
     };
+  });
+
+  /**
+   * github-forks — List forks of a GitHub repo (real, live data).
+   * Free, no token (60 req/hr); GITHUB_TOKEN env raises to 5000/hr.
+   *
+   * params: { owner: string, repo: string, sort?: "newest"|"oldest"|"stargazers", limit?: 1-100 }
+   */
+  registerLensAction("fork", "github-forks", async (_ctx, _artifact, params = {}) => {
+    const owner = String(params.owner || "").trim();
+    const repo = String(params.repo || "").trim();
+    if (!owner || !repo) return { ok: false, error: "owner + repo required" };
+    const sort = ["newest", "oldest", "stargazers"].includes(params.sort) ? params.sort : "newest";
+    const perPage = Math.max(1, Math.min(100, Number(params.limit) || 30));
+    const token = process.env.GITHUB_TOKEN;
+    const headers = token ? { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } : { Accept: "application/vnd.github+json" };
+    try {
+      const r = await fetch(`${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/forks?sort=${sort}&per_page=${perPage}`, { headers });
+      if (r.status === 404) return { ok: false, error: `repo not found: ${owner}/${repo}` };
+      if (r.status === 403) return { ok: false, error: "github rate limit exceeded — set GITHUB_TOKEN env" };
+      if (!r.ok) throw new Error(`github ${r.status}`);
+      const data = await r.json();
+      const forks = (Array.isArray(data) ? data : []).map((f) => ({
+        id: f.id,
+        fullName: f.full_name,
+        owner: f.owner?.login,
+        ownerType: f.owner?.type,
+        htmlUrl: f.html_url,
+        description: f.description,
+        stargazers: f.stargazers_count,
+        watchers: f.watchers_count,
+        forks: f.forks_count,
+        openIssues: f.open_issues_count,
+        defaultBranch: f.default_branch,
+        language: f.language,
+        license: f.license?.spdx_id,
+        archived: f.archived,
+        disabled: f.disabled,
+        pushedAt: f.pushed_at,
+        createdAt: f.created_at,
+        updatedAt: f.updated_at,
+      }));
+      return {
+        ok: true,
+        result: {
+          owner, repo, sort,
+          forks, count: forks.length,
+          authenticated: !!token,
+          source: "github-api",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * github-repo — Full metadata for a GitHub repo (stars, forks,
+   * issues, language, default branch, license, push freshness).
+   */
+  registerLensAction("fork", "github-repo", async (_ctx, _artifact, params = {}) => {
+    const owner = String(params.owner || "").trim();
+    const repo = String(params.repo || "").trim();
+    if (!owner || !repo) return { ok: false, error: "owner + repo required" };
+    const token = process.env.GITHUB_TOKEN;
+    const headers = token ? { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } : { Accept: "application/vnd.github+json" };
+    try {
+      const r = await fetch(`${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, { headers });
+      if (r.status === 404) return { ok: false, error: `repo not found: ${owner}/${repo}` };
+      if (r.status === 403) return { ok: false, error: "github rate limit exceeded — set GITHUB_TOKEN env" };
+      if (!r.ok) throw new Error(`github ${r.status}`);
+      const r2 = await r.json();
+      return {
+        ok: true,
+        result: {
+          fullName: r2.full_name,
+          owner: r2.owner?.login,
+          description: r2.description,
+          htmlUrl: r2.html_url,
+          stargazers: r2.stargazers_count,
+          watchers: r2.watchers_count,
+          forks: r2.forks_count,
+          openIssues: r2.open_issues_count,
+          size: r2.size,
+          defaultBranch: r2.default_branch,
+          language: r2.language,
+          topics: r2.topics,
+          license: r2.license?.spdx_id,
+          licenseUrl: r2.license?.url,
+          archived: r2.archived,
+          disabled: r2.disabled,
+          isFork: r2.fork,
+          parent: r2.parent ? r2.parent.full_name : null,
+          pushedAt: r2.pushed_at,
+          createdAt: r2.created_at,
+          updatedAt: r2.updated_at,
+          source: "github-api",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
