@@ -99,11 +99,41 @@ describe("healthcare.record-get", () => {
 });
 
 describe("healthcare.providers-search + slots + book", () => {
-  it("search returns providers with specialty + zip-keyed practice", () => {
-    const r = call("providers-search", ctxA, { specialty: "Cardiology", zipCode: "94110" });
+  it("search returns NPI registry providers shaped for the workbench", async () => {
+    globalThis.fetch = async (url) => {
+      assert.match(url, /npiregistry\.cms\.hhs\.gov/);
+      assert.match(url, /postal_code=94110/);
+      return {
+        ok: true,
+        json: async () => ({
+          result_count: 1,
+          results: [{
+            number: "1234567890",
+            basic: { first_name: "JANE", last_name: "DOE", credential: "MD", gender: "F", enumeration_date: "2010-01-15" },
+            addresses: [{
+              address_purpose: "LOCATION",
+              address_1: "123 Mission St", city: "San Francisco", state: "CA",
+              postal_code: "94110", telephone_number: "415-555-1234",
+            }],
+            taxonomies: [{ primary: true, desc: "Cardiovascular Disease" }],
+          }],
+        }),
+      };
+    };
+    const r = await call("providers-search", ctxA, { specialty: "Cardiology", zipCode: "94110" });
     assert.equal(r.ok, true);
-    assert.ok(r.result.providers.length >= 5);
-    assert.ok(r.result.providers.every(p => p.specialty === "Cardiology"));
+    assert.equal(r.result.source, "NPI registry (CMS NPPES)");
+    assert.equal(r.result.providers.length, 1);
+    assert.equal(r.result.providers[0].npi, "1234567890");
+    assert.equal(r.result.providers[0].name, "MD JANE DOE");
+    assert.equal(r.result.providers[0].specialty, "Cardiovascular Disease");
+    assert.equal(r.result.providers[0].city, "San Francisco");
+  });
+
+  it("search handles network failure gracefully", async () => {
+    const r = await call("providers-search", ctxA, { specialty: "Cardiology" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /failed|network/);
   });
 
   it("slots respect days param and skip weekends", () => {

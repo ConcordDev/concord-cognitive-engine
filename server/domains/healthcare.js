@@ -465,21 +465,63 @@ export default function registerHealthcareActions(registerLensAction) {
     return { ok: true, result: state.records.get(userId) };
   });
 
-  registerLensAction("healthcare", "providers-search", (_ctx, _artifact, params = {}) => {
-    const specialty = String(params.specialty || "Primary care");
-    const zip = String(params.zipCode || "");
-    const seed = hashStringHealth(zip || "default");
-    const providers = SAMPLE_PROVIDER_NAMES.slice(0, 6).map((n, i) => ({
-      id: `prov_${specialty.slice(0, 5)}_${i}`,
-      name: n, specialty,
-      practice: SAMPLE_PRACTICES[(seed + i) % SAMPLE_PRACTICES.length],
-      inNetwork: i < 4,
-      nextSlot: ["today", "tomorrow", "in 2 days", "in 3 days", "next week", "in 2 weeks"][i],
-      acceptsTelehealth: i % 2 === 0,
-      rating: 3.8 + ((seed + i * 7) % 13) / 10,
-      distanceMi: ((seed + i * 11) % 50) / 5 + 0.5,
-    }));
-    return { ok: true, result: { providers, specialty, zip } };
+  registerLensAction("healthcare", "providers-search", async (_ctx, _artifact, params = {}) => {
+    // Real provider search via the CMS National Plan and Provider Enumeration
+    // System (NPPES / NPI registry). Free, no key required, official
+    // government source. ~8M+ providers in the US.
+    // Docs: https://npiregistry.cms.hhs.gov/registry/help-api
+    const taxonomy = String(params.specialty || params.taxonomy || "").trim();
+    const zip = String(params.zipCode || params.postalCode || "").trim();
+    const state = String(params.state || "").trim().toUpperCase();
+    const city = String(params.city || "").trim();
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 20));
+    const qs = new URLSearchParams({ version: "2.1", limit: String(limit) });
+    if (taxonomy) qs.set("taxonomy_description", taxonomy);
+    if (zip) qs.set("postal_code", zip);
+    if (state) qs.set("state", state);
+    if (city) qs.set("city", city);
+    try {
+      const url = `https://npiregistry.cms.hhs.gov/api/?${qs.toString()}`;
+      const r = await globalThis.fetch(url);
+      if (!r.ok) return { ok: false, error: `NPI registry ${r.status}` };
+      const data = await r.json();
+      const results = Array.isArray(data?.results) ? data.results : [];
+      const providers = results.map((rec) => {
+        const basic = rec.basic || {};
+        const addr = (rec.addresses || []).find((a) => a.address_purpose === "LOCATION") || (rec.addresses || [])[0] || {};
+        const tax = (rec.taxonomies || []).find((t) => t.primary) || (rec.taxonomies || [])[0] || {};
+        const name = basic.organization_name
+          ? basic.organization_name
+          : [basic.credential, basic.first_name, basic.last_name].filter(Boolean).join(" ").trim();
+        return {
+          id: `npi_${rec.number}`,
+          npi: rec.number,
+          name: name || `NPI ${rec.number}`,
+          specialty: tax.desc || taxonomy || "Not specified",
+          credential: basic.credential || null,
+          practice: addr.address_1 ? `${addr.address_1}${addr.address_2 ? `, ${addr.address_2}` : ""}` : null,
+          city: addr.city || null,
+          state: addr.state || null,
+          zip: addr.postal_code || null,
+          phone: addr.telephone_number || null,
+          fax: addr.fax_number || null,
+          gender: basic.gender || null,
+          enumeratedAt: basic.enumeration_date || null,
+        };
+      });
+      return {
+        ok: true,
+        result: {
+          providers,
+          count: providers.length,
+          totalMatching: data?.result_count ?? providers.length,
+          source: "NPI registry (CMS NPPES)",
+          query: { taxonomy, zip, state, city, limit },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `NPI search failed: ${e?.message || "network"}` };
+    }
   });
 
   registerLensAction("healthcare", "provider-slots", (_ctx, _artifact, params = {}) => {
@@ -614,11 +656,7 @@ function seedDemoRecord(userId) {
   };
 }
 
-const SAMPLE_PROVIDER_NAMES = [
-  "Dr. Aisha Patel, MD", "Dr. Marcus Chen, DO", "Dr. Sofia Martinez, MD", "Dr. James O'Brien, MD",
-  "Dr. Priya Sharma, NP", "Dr. Robert Kim, MD", "Dr. Emily Walker, PA-C", "Dr. David Nguyen, MD",
-];
-const SAMPLE_PRACTICES = [
-  "Bay Area Medical Group", "Westside Family Health", "Mission Wellness", "Pacific Heights Internal",
-  "Sunset Family Practice", "Mid-City Clinic", "Civic Center Medical", "Marina District Health",
-];
+// Note: prior versions held SAMPLE_PROVIDER_NAMES + SAMPLE_PRACTICES
+// constants used to synthesize fake provider search results. Per the
+// "everything must be real" directive, those have been removed —
+// `providers-search` now hits the CMS NPI registry directly.
