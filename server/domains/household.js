@@ -1,5 +1,10 @@
 // server/domains/household.js
-// Domain actions for household management: grocery lists, maintenance, chore rotation.
+// Domain actions for household management: grocery lists, maintenance,
+// chore rotation, plus real Open Food Facts product lookup
+// (2,000,000+ food products, ingredients, allergens, nutrition,
+// Nutri-Score grade). Free, no API key.
+
+const OPEN_FOOD_FACTS = "https://world.openfoodfacts.org/api/v2";
 
 export default function registerHouseholdActions(registerLensAction) {
   /**
@@ -423,5 +428,100 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.lastRotation = result;
 
     return { ok: true, result };
+  });
+
+  /**
+   * off-product-lookup — Real Open Food Facts product lookup by UPC/EAN
+   * barcode. Returns name, brand, ingredients, allergens, Nutri-Score
+   * grade (A-E), Eco-Score, nutrition facts, image URL.
+   * Free, no API key.
+   *
+   * params: { barcode: 8-14 digit UPC/EAN }
+   */
+  registerLensAction("household", "off-product-lookup", async (_ctx, _artifact, params = {}) => {
+    const barcode = String(params.barcode || "").replace(/\D/g, "");
+    if (!barcode) return { ok: false, error: "barcode required (UPC/EAN, 8-14 digits)" };
+    if (barcode.length < 8 || barcode.length > 14) return { ok: false, error: `barcode must be 8-14 digits (got ${barcode.length})` };
+    try {
+      const r = await fetch(`${OPEN_FOOD_FACTS}/product/${barcode}.json`);
+      if (!r.ok) throw new Error(`openfoodfacts ${r.status}`);
+      const data = await r.json();
+      if (data.status !== 1 || !data.product) {
+        return { ok: false, error: `product not found: ${barcode}` };
+      }
+      const p = data.product;
+      return {
+        ok: true,
+        result: {
+          barcode,
+          name: p.product_name,
+          brand: p.brands,
+          quantity: p.quantity,
+          categories: p.categories,
+          ingredients: p.ingredients_text,
+          allergens: p.allergens_tags,
+          additives: p.additives_tags,
+          nutriScore: p.nutriscore_grade,  // a/b/c/d/e
+          ecoScore: p.ecoscore_grade,
+          novaGroup: p.nova_group,  // 1=unprocessed, 4=ultra-processed
+          nutrition: {
+            energyKcal100g: p.nutriments?.["energy-kcal_100g"],
+            fat100g: p.nutriments?.fat_100g,
+            saturatedFat100g: p.nutriments?.["saturated-fat_100g"],
+            sugars100g: p.nutriments?.sugars_100g,
+            salt100g: p.nutriments?.salt_100g,
+            sodium100g: p.nutriments?.sodium_100g,
+            proteins100g: p.nutriments?.proteins_100g,
+            fiber100g: p.nutriments?.fiber_100g,
+            carbohydrates100g: p.nutriments?.carbohydrates_100g,
+          },
+          servingSize: p.serving_size,
+          imageUrl: p.image_url,
+          imageNutritionUrl: p.image_nutrition_url,
+          imageIngredientsUrl: p.image_ingredients_url,
+          countries: p.countries_tags,
+          source: "open-food-facts",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `open food facts unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * off-product-search — Search Open Food Facts by name/brand.
+   * params: { query: string, page?: 1+, pageSize?: 1-100 }
+   */
+  registerLensAction("household", "off-product-search", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    if (query.length < 2) return { ok: false, error: "query must be ≥ 2 characters" };
+    const page = Math.max(1, Number(params.page) || 1);
+    const pageSize = Math.max(1, Math.min(100, Number(params.pageSize) || 20));
+    try {
+      const url = `${OPEN_FOOD_FACTS}/search?search_terms=${encodeURIComponent(query)}&page=${page}&page_size=${pageSize}&fields=code,product_name,brands,nutriscore_grade,image_url,quantity`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`openfoodfacts ${r.status}`);
+      const data = await r.json();
+      const products = (data.products || []).map((p) => ({
+        barcode: p.code,
+        name: p.product_name,
+        brand: p.brands,
+        nutriScore: p.nutriscore_grade,
+        imageUrl: p.image_url,
+        quantity: p.quantity,
+      }));
+      return {
+        ok: true,
+        result: {
+          query, products, count: products.length,
+          totalResults: data.count,
+          page,
+          source: "open-food-facts",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `open food facts unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 };
