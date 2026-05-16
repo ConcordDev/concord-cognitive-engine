@@ -51,6 +51,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero';
+import FarmWorkbench from '@/components/agriculture/FarmWorkbench';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -236,6 +237,7 @@ export default function AgricultureLensPage() {
   } = useRealtimeLens('eco');
 
   const [activeTab, setActiveTab] = useState<ModeTab>('fields');
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -1935,6 +1937,17 @@ export default function AgricultureLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#agriculture-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to agriculture content</a>
+
+      {/* 2026 parity workbench — fields / weather+soil / scouting */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-emerald-50 shadow-2xl text-sm font-medium"
+        title="Farm Workbench — fields, weather + soil (Open-Meteo), scouting log"
+      >
+        <Wheat className="w-4 h-4" /> Farm Workbench
+      </button>
+      <FarmWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
