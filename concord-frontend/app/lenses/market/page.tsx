@@ -1,6 +1,8 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import MarketHeatmap from '@/components/market/MarketHeatmap';
+import Watchlist from '@/components/market/Watchlist';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -631,6 +633,12 @@ export default function MarketLensPage() {
           </div>
         </div>
       )}
+
+      {/* ── Parity-sprint surfaces ── */}
+      <div className="space-y-4 mt-6">
+        <MarketHeatmap />
+        <Watchlist />
+      </div>
     </div>
     </LensShell>
   );
