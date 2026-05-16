@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { NutritionExplorer } from '@/components/cooking/NutritionExplorer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -649,6 +650,11 @@ export default function CookingLensPage() {
       </div>
 
       <RealtimeDataPanel domain="cooking" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+
+      {/* Bespoke USDA FDC nutrition explorer with 3-tier collapsible card + Save-as-DTU */}
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <NutritionExplorer />
+      </section>
 
       <div className="border-t border-white/10">
         <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
