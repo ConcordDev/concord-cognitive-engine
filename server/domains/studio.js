@@ -83,4 +83,206 @@ export default function registerStudioActions(registerLensAction) {
     const v2Size = v2Assets.reduce((s, a) => s + (parseFloat(a.size) || 0), 0);
     return { ok: true, result: { v1: { name: v1.name || "v1", assetCount: v1Assets.length, totalSize: v1Size }, v2: { name: v2.name || "v2", assetCount: v2Assets.length, totalSize: v2Size }, diff: { added: added.length, removed: removed.length, modified: modified.length, unchanged: v2Assets.length - added.length - modified.length, sizeDelta: v2Size - v1Size }, addedAssets: added.map(a => a.name || a.id).slice(0, 20), removedAssets: removed.map(a => a.name || a.id).slice(0, 20), modifiedAssets: modified.map(a => a.name || a.id).slice(0, 20) } };
   });
+
+  // ─── 2026 parity — Ableton/FL/Logic/Bitwig project state substrate ──
+  //
+  // Web Audio engine itself lives in the frontend; backend persists projects,
+  // tracks, clips, transport, and effects-chain config. Per-user.
+
+  function getStudioState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.studioLens) {
+      STATE.studioLens = {
+        projects: new Map(), // userId -> Map<id, project>
+      };
+    }
+    return STATE.studioLens;
+  }
+  function saveStudioState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function studioActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function nextStudioId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function nowIsoStudio() { return new Date().toISOString(); }
+
+  // ── Projects CRUD ──
+
+  registerLensAction("studio", "project-list", (ctx, _artifact, _params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = studioActor(ctx);
+    const map = s.projects.get(userId);
+    if (!map) return { ok: true, result: { projects: [] } };
+    const projects = Array.from(map.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .map(({ tracks, ...meta }) => ({ ...meta, trackCount: tracks.length }));
+    return { ok: true, result: { projects } };
+  });
+
+  registerLensAction("studio", "project-create", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = studioActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (name.length > 80) return { ok: false, error: "name too long" };
+    const bpm = Number(params.bpm) || 120;
+    if (bpm < 30 || bpm > 300) return { ok: false, error: "bpm 30-300" };
+    const project = {
+      id: nextStudioId("proj"),
+      name,
+      bpm,
+      timeSignature: String(params.timeSignature || "4/4"),
+      masterVolume: 0.8,
+      tracks: [],
+      createdAt: nowIsoStudio(),
+      updatedAt: nowIsoStudio(),
+    };
+    if (!s.projects.has(userId)) s.projects.set(userId, new Map());
+    s.projects.get(userId).set(project.id, project);
+    saveStudioState();
+    return { ok: true, result: { project } };
+  });
+
+  registerLensAction("studio", "project-get", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = studioActor(ctx);
+    const id = String(params.id || "");
+    const map = s.projects.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    return { ok: true, result: { project: map.get(id) } };
+  });
+
+  registerLensAction("studio", "project-delete", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = studioActor(ctx);
+    const id = String(params.id || "");
+    const map = s.projects.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveStudioState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── Tracks ──
+
+  registerLensAction("studio", "track-add", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = studioActor(ctx);
+    const projectId = String(params.projectId || "");
+    const project = s.projects.get(userId)?.get(projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const kind = ["audio", "midi", "drum", "synth", "sample"].includes(params.kind) ? params.kind : "audio";
+    const name = String(params.name || `Track ${project.tracks.length + 1}`).slice(0, 60);
+    const track = {
+      id: nextStudioId("trk"),
+      name, kind,
+      volume: 0.8,
+      pan: 0,
+      muted: false,
+      solo: false,
+      sends: [],
+      effects: [],
+      clips: [],
+    };
+    project.tracks.push(track);
+    project.updatedAt = nowIsoStudio();
+    saveStudioState();
+    return { ok: true, result: { track } };
+  });
+
+  registerLensAction("studio", "track-update", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = studioActor(ctx);
+    const projectId = String(params.projectId || "");
+    const trackId = String(params.trackId || "");
+    const project = s.projects.get(userId)?.get(projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const track = project.tracks.find((t) => t.id === trackId);
+    if (!track) return { ok: false, error: "track not found" };
+    if (typeof params.volume === "number") {
+      if (params.volume < 0 || params.volume > 1) return { ok: false, error: "volume 0..1" };
+      track.volume = params.volume;
+    }
+    if (typeof params.pan === "number") {
+      if (params.pan < -1 || params.pan > 1) return { ok: false, error: "pan -1..1" };
+      track.pan = params.pan;
+    }
+    if (typeof params.muted === "boolean") track.muted = params.muted;
+    if (typeof params.solo === "boolean") track.solo = params.solo;
+    if (typeof params.name === "string") track.name = params.name.slice(0, 60);
+    project.updatedAt = nowIsoStudio();
+    saveStudioState();
+    return { ok: true, result: { track } };
+  });
+
+  registerLensAction("studio", "track-delete", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = studioActor(ctx);
+    const projectId = String(params.projectId || "");
+    const trackId = String(params.trackId || "");
+    const project = s.projects.get(userId)?.get(projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const idx = project.tracks.findIndex((t) => t.id === trackId);
+    if (idx < 0) return { ok: false, error: "track not found" };
+    project.tracks.splice(idx, 1);
+    project.updatedAt = nowIsoStudio();
+    saveStudioState();
+    return { ok: true, result: { deleted: trackId } };
+  });
+
+  // ── Effects (per-track insert chain) ──
+
+  registerLensAction("studio", "effect-add", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = studioActor(ctx);
+    const project = s.projects.get(userId)?.get(String(params.projectId || ""));
+    if (!project) return { ok: false, error: "project not found" };
+    const track = project.tracks.find((t) => t.id === String(params.trackId || ""));
+    if (!track) return { ok: false, error: "track not found" };
+    const kind = ["delay", "reverb", "eq3", "compressor", "distortion"].includes(params.kind) ? params.kind : null;
+    if (!kind) return { ok: false, error: "kind must be delay | reverb | eq3 | compressor | distortion" };
+    const DEFAULTS = {
+      delay: { timeMs: 250, feedback: 0.4, mix: 0.3 },
+      reverb: { roomSize: 0.5, decay: 1.5, mix: 0.3 },
+      eq3: { lowGainDb: 0, midGainDb: 0, highGainDb: 0 },
+      compressor: { thresholdDb: -24, ratio: 4, attack: 0.003, release: 0.25 },
+      distortion: { amount: 0.4, mix: 0.5 },
+    };
+    const effect = {
+      id: nextStudioId("fx"),
+      kind,
+      params: { ...DEFAULTS[kind], ...(params.params || {}) },
+      bypassed: false,
+    };
+    track.effects.push(effect);
+    project.updatedAt = nowIsoStudio();
+    saveStudioState();
+    return { ok: true, result: { effect } };
+  });
+
+  registerLensAction("studio", "effect-remove", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = studioActor(ctx);
+    const project = s.projects.get(userId)?.get(String(params.projectId || ""));
+    if (!project) return { ok: false, error: "project not found" };
+    const track = project.tracks.find((t) => t.id === String(params.trackId || ""));
+    if (!track) return { ok: false, error: "track not found" };
+    const idx = track.effects.findIndex((e) => e.id === String(params.effectId || ""));
+    if (idx < 0) return { ok: false, error: "effect not found" };
+    track.effects.splice(idx, 1);
+    project.updatedAt = nowIsoStudio();
+    saveStudioState();
+    return { ok: true, result: { deleted: params.effectId } };
+  });
 }
