@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { CoinGeckoTicker } from '@/components/crypto/CoinGeckoTicker';
+import { CryptoActionPanel } from '@/components/crypto/CryptoActionPanel';
 import { SwapRoutePanel } from '@/components/crypto-explorer/SwapRoutePanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -1622,6 +1623,11 @@ export default function CryptoLensPage() {
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CoinGeckoTicker />
+      </section>
+
+      {/* CoinGecko + Uniswap + Etherscan-shape workbench: portfolio / tokens / swap / gas + actions */}
+      <section className="mt-6">
+        <CryptoActionPanel />
       </section>
     </div>
     </LensShell>
