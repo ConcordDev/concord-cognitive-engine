@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { MarketsPulse } from '@/components/finance/MarketsPulse';
 import NetWorthTracker from '@/components/finance/NetWorthTracker';
 import EnvelopeBudget from '@/components/finance/EnvelopeBudget';
 import InvestmentCheckup from '@/components/finance/InvestmentCheckup';
@@ -2421,6 +2422,9 @@ export default function FinanceLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <MarketsPulse />
+      </section>
     </div>
     </LensShell>
   );
