@@ -15,6 +15,7 @@
 
 import dynamic from 'next/dynamic';
 import { LensShell } from '@/components/lens/LensShell';
+import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Boxes, Loader2 } from 'lucide-react';
 
@@ -55,6 +56,9 @@ export default function FoundryLensPage() {
 
         <section className="mx-auto max-w-screen-2xl">
           <FoundryCanvas />
+        </section>
+        <section className="mx-auto mt-6 max-w-screen-2xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <WorldBuilderRepos />
         </section>
       </main>
     </LensShell>
