@@ -25,6 +25,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { JournalActionPanel } from '@/components/reflection/JournalActionPanel';
 
 // Mirror icon alias
 const Mirror = Eye;
@@ -576,6 +577,11 @@ export default function ReflectionLensPage() {
           </div>
         )}
       </div>
+      {/* Day One-shape journal action panel: insights / growth / habits + actions */}
+      <section className="mt-6">
+        <JournalActionPanel />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ReflectionFeed />
       </section>
