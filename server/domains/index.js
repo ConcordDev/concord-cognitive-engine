@@ -74,7 +74,9 @@ import news from './news.js';
 import meditation from './meditation.js';
 import observe from './observe.js';
 import ops from './ops.js';
+import productivity from './productivity.js';
 import reflection from './reflection.js';
+import wellness from './wellness.js';
 import repos from './repos.js';
 import resonance from './resonance.js';
 import admin from './admin.js';
@@ -264,7 +266,9 @@ export default [
   meditation,
   observe,
   ops,
+  productivity,
   reflection,
+  wellness,
   repos,
   resonance,
   admin,

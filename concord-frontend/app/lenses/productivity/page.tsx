@@ -16,6 +16,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { ProductivityRepos } from '@/components/productivity/ProductivityRepos';
+import { ProductivityActionPanel } from '@/components/productivity/ProductivityActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState } from 'react';
@@ -241,6 +242,11 @@ export default function ProductivityLensPage() {
       </main>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ProductivityRepos />
+      </section>
+
+      {/* Todoist + Things-shape task workbench: create / filter / focus / summary + actions */}
+      <section className="mt-6 mx-4">
+        <ProductivityActionPanel />
       </section>
     </div>
 
