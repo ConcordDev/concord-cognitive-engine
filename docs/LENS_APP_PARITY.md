@@ -224,6 +224,20 @@ data, all server macros via `apiHelpers.lens.runDomain`.
 | mental-health | MentalHealthActionPanel | crisis-hotlines · cdc-mental-health-stats · moodTracker · journalPrompt | ✅ shipped |
 | photography | PhotographyActionPanel | exposureCalc · compositionAnalysis · gearRecommend · printSize | ✅ shipped |
 | voice | VoiceActionPanel | transcriptAnalyze · speakerDiarize · sentimentScore · keywordSpot | ✅ shipped |
+| supplychain | SupplyChainActionPanel | leadTimeAnalysis · inventoryOptimize · supplierScore · demandForecast | ✅ shipped |
+| manufacturing | ManufacturingActionPanel | oeeCalculate · bomCost · safetyRate · scheduleOptimize | ✅ shipped |
+| telecommunications | TelecommunicationsActionPanel | networkCapacity · signalQuality · coverageMap · costPerLine | ✅ shipped |
+| retail | RetailActionPanel | reorderCheck · pipelineValue · customerLTV · slaStatus | ✅ shipped |
+| healthcare | HealthcareActionPanel | symptom-triage · providers-search (CMS NPI) · medications-list · rx-price-compare | ✅ shipped |
+| agriculture | AgricultureActionPanel | weather-for-field (open-meteo) · rotationPlan · waterSchedule · predict-yield | ✅ shipped |
+| astronomy | AstronomyActionPanel | apod · iss-current-location · near-earth-objects · celestialPosition | ✅ shipped |
+| automotive | AutomotiveActionPanel | vin-decode (NHTSA vPIC) · recall-lookup (NHTSA) · maintenanceSchedule · diagnosticLookup | ✅ shipped |
+| calendar | CalendarActionPanel | detectConflicts · findAvailability · scheduleOptimize · ical-export | ✅ shipped |
+| analytics | AnalyticsActionPanel | funnelAnalysis · cohortAnalysis · detectAnomalies · trendForecast | ✅ shipped |
+| classroom | ClassroomActionPanel | ol-search · ol-subject · ol-work · ol-isbn (Open Library) | ✅ shipped |
+| defense | DefenseActionPanel | threatAssessment · readinessScore · incidentResponse · usaspending-dod-contracts | ✅ shipped |
+| emergency-services | EmergencyServicesActionPanel | triageAssess (START) · dispatchOptimize · incidentLog · resourceReadiness | ✅ shipped |
+| law-enforcement | LawEnforcementActionPanel | caseAnalysis · patrolOptimize · incidentReport · crimeStats | ✅ shipped |
 | (plus the Tier-1/Tier-3/Tier-5/Tier-6 panels shipped earlier in the session — see git log on `claude/ship-trade-ui-widgets-hLpjG` for the full chain.) | | | |
 
 ## Progress tracking
@@ -236,7 +250,7 @@ data, all server macros via `apiHelpers.lens.runDomain`.
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
 | Tier 5 (session loops) | 5 | ~80% | 2026-05-16 |
 | Tier 6 (backend-creation) | 5 | ~80% | 2026-05-16 |
-| Tier 7 (Concord-native) | ~150 | ~12% authored (≥80% each) | 2026-05-16 |
+| Tier 7 (Concord-native) | ~150 | ~24% authored (≥80% each) | 2026-05-16 |
 
 **Close gate:** every Tier-1 to Tier-6 lens ≥ 80% (heavyweights ≥ 70%).
 Tier 7 lenses: target authored + ≥ 80% on the authored target.
