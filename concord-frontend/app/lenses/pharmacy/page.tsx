@@ -8,7 +8,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useRef} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pill, AlertTriangle, Plus, Trash2, Clock, ShieldCheck, Layers, ChevronDown, AlertCircle, Package, Search, Loader2, Activity, CheckCircle2 } from 'lucide-react';
+import { Pill, AlertTriangle, Plus, Trash2, Clock, ShieldCheck, Layers, ChevronDown, AlertCircle, Package, Search, Loader2, Activity, CheckCircle2, BookOpen } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -16,6 +16,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { FdaDrugReference } from '@/components/pharmacy/FdaDrugReference';
 
 interface Medication {
   name: string;
@@ -38,7 +39,7 @@ interface InteractionCheck {
 export default function PharmacyLensPage() {
   useLensNav('pharmacy');
 
-  const [activeTab, setActiveTab] = useState<'medications' | 'interactions' | 'refills'>('medications');
+  const [activeTab, setActiveTab] = useState<'medications' | 'interactions' | 'refills' | 'fda'>('medications');
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -52,7 +53,9 @@ export default function PharmacyLensPage() {
 
       { id: 'tab-interactions', keys: 'i', description: 'Interactions', category: 'navigation', action: () => setActiveTab('interactions') },
 
-      { id: 'tab-refills', keys: 'r', description: 'Refills', category: 'navigation', action: () => setActiveTab('refills') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+      { id: 'tab-refills', keys: 'r', description: 'Refills', category: 'navigation', action: () => setActiveTab('refills') },
+
+      { id: 'tab-fda', keys: 'f', description: 'FDA Reference', category: 'navigation', action: () => setActiveTab('fda') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
 
 
     ],
@@ -479,15 +482,21 @@ export default function PharmacyLensPage() {
 
       {/* Tab Navigation */}
       <div className="flex gap-2 border-b border-white/10 pb-2">
-        {(['medications', 'interactions', 'refills'] as const).map(tab => (
+        {([
+          { id: 'medications', label: 'Medications' },
+          { id: 'interactions', label: 'Interactions' },
+          { id: 'refills', label: 'Refills' },
+          { id: 'fda', label: 'FDA Reference', icon: BookOpen },
+        ] as const).map(tab => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-              activeTab === tab ? 'bg-neon-green/20 text-neon-green border-b-2 border-neon-green' : 'text-gray-400 hover:text-white'
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+              activeTab === tab.id ? 'bg-neon-green/20 text-neon-green border-b-2 border-neon-green' : 'text-gray-400 hover:text-white'
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {'icon' in tab && tab.icon && <tab.icon className="w-3.5 h-3.5" />}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -600,6 +609,13 @@ export default function PharmacyLensPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* FDA Reference Tab — real OpenFDA-backed drug reference */}
+      {activeTab === 'fda' && (
+        <div className="panel p-4">
+          <FdaDrugReference />
         </div>
       )}
 
