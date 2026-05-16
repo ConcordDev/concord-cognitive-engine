@@ -97,6 +97,10 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'message:unsaved',
   'message:reacted',
   'message:voice-registered',
+  // World spatial voice chat
+  'voice:peer-joined',
+  'voice:peer-left',
+  'voice:signal',
   // Resonance
   'resonance:update',
   // Platform presence

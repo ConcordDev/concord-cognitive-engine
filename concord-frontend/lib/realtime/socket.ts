@@ -173,6 +173,10 @@ export type SocketEvent =
   | 'message:unsaved'
   | 'message:reacted'
   | 'message:voice-registered'
+  // World spatial voice chat (server/domains/world.js, rooms voice:${worldId}:${cellKey} + user:${userId})
+  | 'voice:peer-joined'
+  | 'voice:peer-left'
+  | 'voice:signal'
   // Creative Registry & Royalties
   | 'creative_registry:update'
   | 'marketplace:purchase'

@@ -223,3 +223,184 @@ describe("world — STATE unavailable path", () => {
     assert.match(r.error, /STATE unavailable/);
   });
 });
+
+describe("world — spatial voice chat (WebRTC + 50m cells)", () => {
+  function captureRealtimeEmits() {
+    const events = [];
+    globalThis._concordREALTIME = {
+      io: { to: (room) => ({ emit: (name, payload) => events.push({ room, name, payload }) }) },
+    };
+    return events;
+  }
+
+  it("voice-join-cell rejects missing worldId or position", () => {
+    assert.equal(call("voice-join-cell", ctxA, {}).ok, false);
+    assert.equal(call("voice-join-cell", ctxA, { worldId: "w1" }).ok, false);
+    assert.equal(call("voice-join-cell", ctxA, { worldId: "w1", x: "nope" }).ok, false);
+  });
+
+  it("voice-join-cell returns existing peers + emits peer-joined to cell room", () => {
+    const events = captureRealtimeEmits();
+    // userB joins first
+    const r1 = call("voice-join-cell", ctxB, { worldId: "w1", x: 10, y: 0, z: 20 });
+    assert.equal(r1.ok, true);
+    assert.equal(r1.result.peerCount, 0);
+    const cellKey = r1.result.cellKey;
+    // userA joins same cell — should see userB in peer list
+    const r2 = call("voice-join-cell", ctxA, { worldId: "w1", x: 12, y: 0, z: 22 });
+    assert.equal(r2.result.cellKey, cellKey);
+    assert.deepEqual(r2.result.peers, ["user_b"]);
+    assert.equal(r2.result.peerCount, 1);
+    // userB received a peer-joined emit for userA
+    const joined = events.filter((e) => e.name === "voice:peer-joined");
+    assert.equal(joined.length, 2);  // self (userB join) + userA join
+    assert.equal(joined[1].payload.userId, "user_a");
+    assert.equal(joined[1].room, `voice:w1:${cellKey}`);
+  });
+
+  it("voice-update-position triggers room rotation when cell changes", () => {
+    const events = captureRealtimeEmits();
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    // Move 100m → crosses 50m cell boundary
+    const r = call("voice-update-position", ctxA, { x: 100, y: 0, z: 0 });
+    assert.equal(r.result.cellChanged, true);
+    const leftEvents = events.filter((e) => e.name === "voice:peer-left");
+    const joinedEvents = events.filter((e) => e.name === "voice:peer-joined");
+    // 1 join on original cell + 1 leave + 1 join on new cell
+    assert.equal(leftEvents.length, 1);
+    assert.equal(joinedEvents.length, 2);
+  });
+
+  it("voice-update-position is a no-op when staying in same cell", () => {
+    const events = captureRealtimeEmits();
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    events.length = 0;  // clear after join
+    const r = call("voice-update-position", ctxA, { x: 25, y: 0, z: 49 });
+    assert.equal(r.result.cellChanged, false);
+    // No peer-joined / peer-left fired
+    assert.equal(events.filter((e) => e.name.startsWith("voice:peer")).length, 0);
+  });
+
+  it("voice-update-position rejects when not joined", () => {
+    const r = call("voice-update-position", ctxA, { x: 0, y: 0, z: 0 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /voice-join-cell first/);
+  });
+
+  it("voice-leave-cell emits peer-left + removes from voicePeers", () => {
+    const events = captureRealtimeEmits();
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    events.length = 0;
+    const r = call("voice-leave-cell", ctxA, {});
+    assert.equal(r.ok, true);
+    const left = events.find((e) => e.name === "voice:peer-left");
+    assert.ok(left);
+    assert.equal(left.payload.userId, "user_a");
+    // Peers query now empty
+    const q = call("voice-peers-in-cell", ctxA, {});
+    assert.equal(q.result.cellKey, null);
+  });
+
+  it("voice-peers-in-cell lists co-cell peers excluding self", () => {
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 10, y: 0, z: 20 });
+    call("voice-join-cell", ctxB, { worldId: "w1", x: 12, y: 0, z: 22 });
+    const qA = call("voice-peers-in-cell", ctxA, {});
+    assert.deepEqual(qA.result.peers, ["user_b"]);
+    const qB = call("voice-peers-in-cell", ctxB, {});
+    assert.deepEqual(qB.result.peers, ["user_a"]);
+  });
+
+  it("voice-signal relays payload to target's user:room", () => {
+    const events = captureRealtimeEmits();
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    call("voice-join-cell", ctxB, { worldId: "w1", x: 5, y: 0, z: 5 });
+    events.length = 0;
+    const r = call("voice-signal", ctxA, {
+      target: "user_b", kind: "offer",
+      payload: { type: "offer", sdp: "v=0..." },
+    });
+    assert.equal(r.ok, true);
+    const sig = events.find((e) => e.name === "voice:signal");
+    assert.ok(sig);
+    assert.equal(sig.room, "user:user_b");
+    assert.equal(sig.payload.from, "user_a");
+    assert.equal(sig.payload.to, "user_b");
+    assert.equal(sig.payload.kind, "offer");
+    assert.equal(sig.payload.payload.sdp, "v=0...");
+  });
+
+  it("voice-signal rejects unknown kinds", () => {
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    call("voice-join-cell", ctxB, { worldId: "w1", x: 5, y: 0, z: 5 });
+    const r = call("voice-signal", ctxA, { target: "user_b", kind: "trojan", payload: {} });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /kind must be one of/);
+  });
+
+  it("voice-signal refuses when peer is not in same cell (anti-abuse)", () => {
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    call("voice-join-cell", ctxB, { worldId: "w1", x: 500, y: 0, z: 500 });  // far cell
+    const r = call("voice-signal", ctxA, {
+      target: "user_b", kind: "offer", payload: { type: "offer", sdp: "x" },
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not in the same voice cell/);
+  });
+
+  it("voice-signal refuses when target hasn't joined", () => {
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    const r = call("voice-signal", ctxA, {
+      target: "ghost", kind: "offer", payload: {},
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /both peers must be in/);
+  });
+
+  it("voice-signal does NOT inspect payload (audio privacy invariant)", () => {
+    const events = captureRealtimeEmits();
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    call("voice-join-cell", ctxB, { worldId: "w1", x: 5, y: 0, z: 5 });
+    events.length = 0;
+    const opaquePayload = { sdp: "v=0...", weird: "anything goes", binary: [1, 2, 3] };
+    const r = call("voice-signal", ctxA, {
+      target: "user_b", kind: "answer", payload: opaquePayload,
+    });
+    assert.equal(r.ok, true);
+    const sig = events.find((e) => e.name === "voice:signal");
+    // Payload comes through verbatim — no inspection or filtering
+    assert.deepEqual(sig.payload.payload, opaquePayload);
+  });
+
+  it("voice-sweep-stale drops peers older than VOICE_PEER_STALE_MS", () => {
+    call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    call("voice-join-cell", ctxB, { worldId: "w1", x: 5, y: 0, z: 5 });
+    // Backdate userA's lastSeen
+    const s = globalThis._concordSTATE.worldLens;
+    const aInfo = s.voicePeers.get("user_a");
+    aInfo.lastSeenMs = Date.now() - 120_000;
+    const r = call("voice-sweep-stale", ctxA, {});
+    assert.equal(r.result.swept, 1);
+    // userA is gone, userB still here
+    assert.equal(s.voicePeers.has("user_a"), false);
+    assert.equal(s.voicePeers.has("user_b"), true);
+  });
+
+  it("INVARIANT: cells are 50m on each axis (env override CONCORD_VOICE_CELL_M is read once at module init)", () => {
+    // Two players 49m apart — same cell
+    const r1 = call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    const r2 = call("voice-join-cell", ctxB, { worldId: "w1", x: 49, y: 0, z: 0 });
+    assert.equal(r1.result.cellKey, r2.result.cellKey);
+    // 50m+ apart — different cell
+    call("voice-leave-cell", ctxB, {});
+    const r3 = call("voice-join-cell", ctxB, { worldId: "w1", x: 51, y: 0, z: 0 });
+    assert.notEqual(r1.result.cellKey, r3.result.cellKey);
+  });
+
+  it("INVARIANT: realtime emit failure does not throw (audio path is best-effort)", () => {
+    globalThis._concordREALTIME = {
+      io: { to: () => ({ emit: () => { throw new Error("socket dead"); } }) },
+    };
+    const r = call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
+    assert.equal(r.ok, true);  // didn't throw
+  });
+});
