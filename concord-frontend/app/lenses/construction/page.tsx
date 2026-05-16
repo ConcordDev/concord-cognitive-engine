@@ -32,6 +32,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
+import { OshaIncidentSearch } from '@/components/construction/OshaIncidentSearch';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -780,6 +781,9 @@ export default function ConstructionLensPage() {
         renderLibrary()
       )}
       {renderEditor()}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <OshaIncidentSearch />
+      </section>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
