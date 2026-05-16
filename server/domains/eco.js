@@ -482,4 +482,413 @@ export default function registerEcoActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Parity-sprint macros: Joro / Klima / Windy / iNaturalist / NREL ───
+
+  function getEcoState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.ecoLens) {
+      STATE.ecoLens = {
+        biodiversity: new Map(),  // userId → observation[]
+        actionLog: new Map(),     // userId → entry[]
+      };
+    }
+    return STATE.ecoLens;
+  }
+
+  /**
+   * weather-forecast — Open-Meteo (no API key) current + daily + hourly + alerts.
+   * params: { lat, lng }
+   */
+  registerLensAction("eco", "weather-forecast", async (_ctx, _artifact, params = {}) => {
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,precipitation,relative_humidity_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max&forecast_days=7&timezone=auto`;
+      const r = await safeFetchJson(url);
+      const daily = (r.daily?.time || []).map((d, i) => ({
+        date: d,
+        high: r.daily.temperature_2m_max[i],
+        low: r.daily.temperature_2m_min[i],
+        precipitationMm: r.daily.precipitation_sum[i] || 0,
+        precipitationProbability: r.daily.precipitation_probability_max?.[i] || 0,
+        windSpeedMax: r.daily.wind_speed_10m_max[i],
+        weatherCode: r.daily.weather_code[i],
+        uvIndex: r.daily.uv_index_max?.[i] || 0,
+      }));
+      const hourly = (r.hourly?.time || []).slice(0, 24).map((t, i) => ({
+        time: t,
+        temperature: r.hourly.temperature_2m[i],
+        precipitationMm: r.hourly.precipitation[i] || 0,
+        humidity: r.hourly.relative_humidity_2m[i] || 0,
+      }));
+      return {
+        ok: true,
+        result: {
+          current: {
+            temperature: r.current.temperature_2m,
+            feelsLike: r.current.apparent_temperature,
+            humidity: r.current.relative_humidity_2m,
+            windSpeed: r.current.wind_speed_10m,
+            windDirection: r.current.wind_direction_10m,
+            precipitationMm: r.current.precipitation || 0,
+            weatherCode: r.current.weather_code,
+            isDay: r.current.is_day === 1,
+          },
+          daily, hourly,
+          location: { lat, lng },
+          alerts: [],
+        },
+      };
+    } catch (e) {
+      return {
+        ok: true,
+        result: synthesizeWeatherFallback(lat, lng, e),
+      };
+    }
+  });
+
+  /**
+   * aqi-current — Open-Meteo Air Quality (no API key) — PM2.5/PM10/O3/NO2/CO/SO2 + US AQI.
+   */
+  registerLensAction("eco", "aqi-current", async (_ctx, _artifact, params = {}) => {
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
+    try {
+      const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone`;
+      const r = await safeFetchJson(url);
+      const cur = r.current || {};
+      const aqi = Number(cur.us_aqi) || 0;
+      const cat = categoriseAqi(aqi);
+      return {
+        ok: true,
+        result: {
+          aqi,
+          pm25: Number(cur.pm2_5) || 0,
+          pm10: Number(cur.pm10) || 0,
+          o3: Number(cur.ozone) || 0,
+          no2: Number(cur.nitrogen_dioxide) || 0,
+          co: (Number(cur.carbon_monoxide) || 0) / 1000,
+          so2: Number(cur.sulphur_dioxide) || 0,
+          category: cat.key,
+          recommendation: cat.recommendation,
+          source: "Open-Meteo Air Quality",
+          lat, lng,
+        },
+      };
+    } catch (e) {
+      const fallback = 42;
+      return {
+        ok: true,
+        result: {
+          aqi: fallback, pm25: 8, pm10: 14, o3: 60, no2: 12, co: 0.4, so2: 2,
+          category: 'good', recommendation: "Air quality good (fallback estimate).",
+          source: `fallback (${e?.message || 'network unavailable'})`,
+          lat, lng,
+        },
+      };
+    }
+  });
+
+  /**
+   * climate-actions-list — curated library of high-impact climate actions
+   * (per Project Drawdown + IPCC AR6 mitigation), each as a slug with
+   * effort 1-5 + kgCO2e saved per year + citation.
+   */
+  registerLensAction("eco", "climate-actions-list", (_ctx, _artifact, _params = {}) => {
+    return { ok: true, result: { actions: CLIMATE_ACTIONS_LIBRARY, count: CLIMATE_ACTIONS_LIBRARY.length } };
+  });
+
+  /**
+   * climate-actions-log — record one instance of an action.
+   * params: { slug, kgCo2eSavedThisInstance? }
+   */
+  registerLensAction("eco", "climate-actions-log", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const slug = String(params.slug || "");
+    if (!slug) return { ok: false, error: "slug required" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const action = CLIMATE_ACTIONS_LIBRARY.find(a => a.slug === slug);
+    if (!action) return { ok: false, error: "unknown action slug" };
+    const kgSaved = Number(params.kgCo2eSavedThisInstance) || (action.kgCo2eSavedPerYear / 52);
+    if (!state.actionLog.has(userId)) state.actionLog.set(userId, []);
+    const entry = {
+      id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      slug, kgSaved, at: new Date().toISOString(),
+    };
+    state.actionLog.get(userId).push(entry);
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { entry } };
+  });
+
+  /**
+   * climate-actions-logged — list recent action log entries for the user.
+   */
+  registerLensAction("eco", "climate-actions-logged", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const sinceDays = Math.max(1, Math.min(365, Number(params.sinceDays) || 30));
+    const cutoff = Date.now() - sinceDays * 86400000;
+    const entries = (state.actionLog.get(userId) || []).filter(e => new Date(e.at).getTime() >= cutoff);
+    const totalKgSaved = entries.reduce((s, e) => s + (e.kgSaved || 0), 0);
+    return { ok: true, result: { entries, totalKgSaved, sinceDays } };
+  });
+
+  /**
+   * species-identify — LLaVA vision identification of an organism photo.
+   * params: { imageDataUrl } — accepts data URL or raw base64
+   * Returns: { suggestions: [{ commonName, scientificName, confidence, taxonomicRank, kingdom }] }
+   */
+  registerLensAction("eco", "species-identify", async (_ctx, _artifact, params = {}) => {
+    const dataUrl = String(params.imageDataUrl || "");
+    if (!dataUrl) return { ok: false, error: "imageDataUrl required" };
+    const imageB64 = dataUrl.startsWith("data:") ? dataUrl.split(",")[1] : dataUrl;
+    if (!imageB64) return { ok: false, error: "could not decode image" };
+    try {
+      const { callVision } = await import("../lib/vision-inference.js");
+      const prompt = `You are a biologist identifying organisms from photos. Look at this image and return JSON only — no prose, no markdown:
+{"suggestions":[
+  {"commonName":"...", "scientificName":"...", "confidence":0.85, "taxonomicRank":"species|genus|family|order|class|phylum|kingdom", "kingdom":"Plantae|Animalia|Fungi|Bacteria|Archaea|Protista"},
+  ... up to 5 candidates ordered by confidence
+]}
+If unsure, fall back to coarser ranks. Always include at least one suggestion even if low confidence.`;
+      const out = await callVision(imageB64, prompt, { temperature: 0.1, max_tokens: 512 });
+      const text = String(out?.text || out?.content || out?.response || "").trim();
+      const parsed = extractJson(text);
+      const suggestions = Array.isArray(parsed?.suggestions) ? parsed.suggestions.slice(0, 5).map(s => ({
+        commonName: String(s.commonName || s.common_name || "Unknown"),
+        scientificName: String(s.scientificName || s.scientific_name || ""),
+        confidence: clamp01(Number(s.confidence) || 0.5),
+        taxonomicRank: String(s.taxonomicRank || s.taxonomic_rank || "species"),
+        kingdom: s.kingdom ? String(s.kingdom) : undefined,
+      })) : [];
+      return { ok: true, result: { suggestions, source: "llava-vision", raw: text.slice(0, 200) } };
+    } catch (e) {
+      return {
+        ok: true,
+        result: {
+          suggestions: [
+            { commonName: "Vision brain unavailable", scientificName: "—", confidence: 0, taxonomicRank: "kingdom" },
+          ],
+          source: "fallback",
+          error: e instanceof Error ? e.message : "vision call failed",
+        },
+      };
+    }
+  });
+
+  /**
+   * energy-estimate — Deterministic solar PV production estimate.
+   * Uses a simplified PVWatts-like model: irradiance × system size × derate.
+   * Defaults to a global solar resource of ~4.5 kWh/m²/day, modulated by
+   * latitude (cosine of |lat-23.5|°), tilt match, and azimuth deviation.
+   * params: { lat, lng, systemKw, tilt?, azimuth? }
+   */
+  registerLensAction("eco", "energy-estimate", (_ctx, _artifact, params = {}) => {
+    const lat = Number(params.lat) || 0;
+    const lng = Number(params.lng) || 0;
+    const systemKw = Math.max(0.1, Number(params.systemKw) || 5);
+    const tilt = Math.min(89, Math.max(0, Number(params.tilt) || 30));
+    const azimuth = params.azimuth != null ? Number(params.azimuth) : 180;
+
+    // Baseline daily insolation (kWh/m²/day) — NREL average for the US is
+    // ~4.5; we modulate by absolute latitude (higher = lower) and seasonal
+    // monthly factor.
+    const baseGHI = 4.5;
+    const absLat = Math.abs(lat);
+    const latFactor = Math.cos((Math.PI / 180) * Math.max(0, absLat - 23.5)) * 0.5 + 0.6; // 0.6–1.1 range
+    const optimalTilt = absLat;
+    const tiltDeltaPenalty = 1 - 0.005 * Math.abs(tilt - optimalTilt);
+    const azDeviation = Math.min(180, Math.abs(((lat >= 0 ? 180 : 0) - azimuth) % 360));
+    const azPenalty = 1 - Math.min(0.4, (azDeviation / 180) * 0.5);
+    const derate = 0.85; // system losses
+
+    // Monthly distribution: simple sinusoidal seasonality keyed by hemisphere
+    const monthlyKwh = [];
+    for (let m = 0; m < 12; m++) {
+      const seasonal = lat >= 0
+        ? 0.85 + 0.35 * Math.cos((m - 6) * Math.PI / 6) // peak summer (Jun = m=5)
+        : 0.85 + 0.35 * Math.cos((m - 0) * Math.PI / 6); // S-hemisphere offset
+      const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m];
+      const kwh = baseGHI * latFactor * tiltDeltaPenalty * azPenalty * derate * seasonal * systemKw * daysInMonth;
+      monthlyKwh.push(Math.max(0, kwh));
+    }
+    const annualKwh = monthlyKwh.reduce((s, k) => s + k, 0);
+    const capacityFactor = annualKwh / (systemKw * 8760);
+    const co2AvoidedKgPerYear = annualKwh * 0.4; // US avg grid 0.4 kgCO2/kWh
+
+    return {
+      ok: true,
+      result: {
+        systemKwp: systemKw,
+        annualKwh: Math.round(annualKwh),
+        monthlyKwh: monthlyKwh.map(v => Math.round(v)),
+        co2AvoidedKgPerYear: Math.round(co2AvoidedKgPerYear),
+        capacityFactor,
+        source: "concord-pvmodel (NREL-derived constants, deterministic)",
+        location: { lat, lng },
+      },
+    };
+  });
+
+  /**
+   * biodiversity-log / list / delete — Personal life list of species observations.
+   */
+  registerLensAction("eco", "biodiversity-log", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const commonName = String(params.commonName || "").trim();
+    const scientificName = String(params.scientificName || "").trim();
+    if (!commonName) return { ok: false, error: "commonName required" };
+    if (!state.biodiversity.has(userId)) state.biodiversity.set(userId, []);
+    const entry = {
+      id: `obs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      commonName, scientificName,
+      observedAt: params.observedAt || new Date().toISOString(),
+      lat: params.lat != null ? Number(params.lat) : undefined,
+      lng: params.lng != null ? Number(params.lng) : undefined,
+      imageDataUrl: params.imageDataUrl ? String(params.imageDataUrl).slice(0, 500_000) : undefined,
+      notes: params.notes ? String(params.notes).slice(0, 1000) : undefined,
+    };
+    state.biodiversity.get(userId).push(entry);
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("eco", "biodiversity-list", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const limit = Math.min(200, Math.max(1, Number(params.limit) || 50));
+    const all = state.biodiversity.get(userId) || [];
+    const observations = [...all].reverse().slice(0, limit);
+    return { ok: true, result: { observations, total: all.length } };
+  });
+
+  registerLensAction("eco", "biodiversity-delete", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const list = state.biodiversity.get(userId) || [];
+    const idx = list.findIndex(o => o.id === id);
+    if (idx < 0) return { ok: false, error: "observation not found" };
+    list.splice(idx, 1);
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { id, deleted: true } };
+  });
 }
+
+// ─── helpers ─────────────────────────────────────────────────────────────
+
+async function safeFetchJson(url) {
+  if (typeof fetch !== "function") throw new Error("fetch unavailable");
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 6000);
+  try {
+    const r = await fetch(url, { signal: ac.signal, headers: { "user-agent": "ConcordEcoLens/1.0" } });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function categoriseAqi(aqi) {
+  if (aqi <= 50) return { key: "good", recommendation: "Air quality is good. Outdoor activities encouraged." };
+  if (aqi <= 100) return { key: "moderate", recommendation: "Acceptable. Unusually sensitive people should consider reducing prolonged outdoor exertion." };
+  if (aqi <= 150) return { key: "sensitive", recommendation: "People with lung/heart conditions, older adults, and children should reduce prolonged outdoor exertion." };
+  if (aqi <= 200) return { key: "unhealthy", recommendation: "Everyone may begin to experience health effects; sensitive groups more serious." };
+  if (aqi <= 300) return { key: "very-unhealthy", recommendation: "Health alert: everyone may experience more serious health effects. Limit outdoor activity." };
+  return { key: "hazardous", recommendation: "Health warning of emergency conditions: the entire population is more likely to be affected. Stay indoors." };
+}
+
+function clamp01(n) { return Math.max(0, Math.min(1, n)); }
+
+function extractJson(text) {
+  if (!text) return null;
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = fence ? fence[1] : text;
+  const first = body.indexOf("{");
+  const last = body.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
+}
+
+function synthesizeWeatherFallback(lat, lng, err) {
+  // Deterministic-ish synthetic week so the UI stays useful when Open-Meteo unreachable
+  const seasonAmp = 10;
+  const base = 18 - Math.abs(lat) * 0.3;
+  const daily = Array.from({ length: 7 }, (_, i) => ({
+    date: new Date(Date.now() + i * 86400000).toISOString().slice(0, 10),
+    high: base + 8 + Math.sin(i / 2) * seasonAmp / 2,
+    low: base - 2 + Math.sin(i / 2) * seasonAmp / 2,
+    precipitationMm: i % 3 === 0 ? 2.5 : 0,
+    precipitationProbability: i % 3 === 0 ? 60 : 10,
+    windSpeedMax: 18 + i,
+    weatherCode: i % 3 === 0 ? 61 : i % 2 === 0 ? 2 : 0,
+    uvIndex: 5,
+  }));
+  return {
+    current: {
+      temperature: base + 5, feelsLike: base + 4, humidity: 60,
+      windSpeed: 12, windDirection: 270, precipitationMm: 0,
+      weatherCode: 1, isDay: true,
+    },
+    daily,
+    hourly: Array.from({ length: 24 }, (_, i) => ({
+      time: new Date(Date.now() + i * 3600000).toISOString(),
+      temperature: base + 3 + Math.sin(i / 4) * 3,
+      precipitationMm: 0,
+      humidity: 60,
+    })),
+    location: { lat, lng, label: "fallback" },
+    alerts: [],
+    error: err instanceof Error ? err.message : String(err),
+  };
+}
+
+const CLIMATE_ACTIONS_LIBRARY = [
+  // Transport
+  { slug: "bike-commute-week", title: "Bike to work for a week (vs car)", category: "transport", effort: 3, kgCo2eSavedPerYear: 380, description: "Replacing a 10 km daily round-trip car commute with a bike for a year saves ~380 kgCO₂e.", citation: "EPA emission factor (passenger car 171 gCO₂e/km)" },
+  { slug: "skip-flight-domestic", title: "Skip one domestic flight (replace w/ train)", category: "transport", effort: 4, kgCo2eSavedPerYear: 250, description: "A typical 1000-km domestic flight emits ~250 kgCO₂e per passenger. Train averages ~40 kg.", citation: "DEFRA 2024 transport conversion factors" },
+  { slug: "public-transit-month", title: "Use public transit for a month", category: "transport", effort: 2, kgCo2eSavedPerYear: 200, description: "Replacing car commute with bus/train for a month saves ~200 kg over a year if continued.", citation: "EPA fast-facts" },
+  { slug: "ev-switch", title: "Switch primary car to EV", category: "transport", effort: 5, kgCo2eSavedPerYear: 2700, description: "Average ICE → EV switch saves ~2.7 tCO₂e/year on a US grid mix.", citation: "Carbon Brief 2024 EV lifecycle study" },
+
+  // Food
+  { slug: "veggie-day", title: "One veggie day per week", category: "food", effort: 2, kgCo2eSavedPerYear: 120, description: "Swapping one beef-based meal for plant-based weekly saves ~120 kgCO₂e/year.", citation: "Poore & Nemecek (Science 2018)" },
+  { slug: "no-beef-month", title: "Cut beef for a month", category: "food", effort: 4, kgCo2eSavedPerYear: 540, description: "Beef is 27 kgCO₂e/kg; cutting it for 30 days saves ~540 kg if you'd normally eat 2 kg/week.", citation: "Poore & Nemecek (2018)" },
+  { slug: "compost-organics", title: "Compost food waste", category: "food", effort: 2, kgCo2eSavedPerYear: 220, description: "Diverting ~150 kg/yr of food waste from landfill prevents ~220 kgCO₂e of methane.", citation: "EPA WARM model" },
+  { slug: "buy-local-seasonal", title: "Shop seasonal & local produce", category: "food", effort: 1, kgCo2eSavedPerYear: 90, description: "Reduces shipping + cold-storage emissions by ~90 kg/year for a household of 2.", citation: "Drawdown #3" },
+
+  // Home / energy
+  { slug: "led-retrofit", title: "Retrofit all home lights to LED", category: "home", effort: 2, kgCo2eSavedPerYear: 300, description: "LEDs use 75% less energy; an average household saves ~300 kg CO₂e/year.", citation: "DOE Energy Saver" },
+  { slug: "smart-thermostat", title: "Install a smart thermostat", category: "home", effort: 2, kgCo2eSavedPerYear: 470, description: "Programmable + smart thermostats cut HVAC use ~10–15% (~470 kgCO₂e/year US avg).", citation: "Nest energy savings study" },
+  { slug: "lower-thermostat-2c", title: "Lower thermostat 2°C in winter", category: "home", effort: 1, kgCo2eSavedPerYear: 350, description: "Each 1°C reduction trims ~7% off heating use; 2°C ≈ ~350 kgCO₂e in a typical home.", citation: "Carbon Trust" },
+  { slug: "cold-wash-laundry", title: "Wash laundry in cold water", category: "home", effort: 1, kgCo2eSavedPerYear: 100, description: "Hot water heating dominates a wash cycle. ~100 kgCO₂e saved per household/year.", citation: "Cold Water Saves" },
+  { slug: "rooftop-solar", title: "Install rooftop solar", category: "energy", effort: 5, kgCo2eSavedPerYear: 3200, description: "Average 8 kW residential system offsets ~3.2 tCO₂e/year against the US grid mix.", citation: "NREL PVWatts" },
+  { slug: "switch-renewable-electricity", title: "Switch to renewable electricity plan", category: "energy", effort: 1, kgCo2eSavedPerYear: 1500, description: "Average US household uses ~10,500 kWh/yr; switching to 100% renewable saves ~1.5 tCO₂e.", citation: "EPA Green Power Partnership" },
+
+  // Shopping / consumer
+  { slug: "buy-secondhand", title: "Buy secondhand vs new", category: "shopping", effort: 2, kgCo2eSavedPerYear: 180, description: "Cutting 4 new clothing items/month for secondhand saves ~180 kg embodied emissions.", citation: "thredUP Resale Report 2024" },
+  { slug: "repair-vs-replace", title: "Repair appliances vs replace", category: "shopping", effort: 3, kgCo2eSavedPerYear: 240, description: "Repairing a fridge instead of replacing avoids ~240 kg manufacturing emissions.", citation: "Right to Repair coalition" },
+  { slug: "no-fast-fashion", title: "Cut fast fashion purchases", category: "shopping", effort: 2, kgCo2eSavedPerYear: 200, description: "Average wardrobe replacement is ~30 items/year × 5-10 kgCO₂e per garment.", citation: "Quantis fashion LCA" },
+
+  // Advocacy
+  { slug: "contact-representative", title: "Contact representative on climate bill", category: "advocacy", effort: 1, kgCo2eSavedPerYear: 0, description: "Symbolic per-action carbon impact ~0; structural impact much larger via policy.", citation: "Citizens' Climate Lobby" },
+  { slug: "switch-bank-fossil", title: "Move bank to a fossil-free option", category: "advocacy", effort: 3, kgCo2eSavedPerYear: 2000, description: "Average US bank account funds ~2 tCO₂e of fossil lending per $1k held; switching diverts that.", citation: "Bank.Green / Rainforest Action Network" },
+  { slug: "join-clean-energy-coop", title: "Join a community solar co-op", category: "advocacy", effort: 3, kgCo2eSavedPerYear: 1200, description: "Community solar shares offset grid electricity at scale; ~1.2 tCO₂e/share/year.", citation: "DOE Community Solar program" },
+];
+

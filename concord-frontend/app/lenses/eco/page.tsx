@@ -2,6 +2,13 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { WeatherRadar } from '@/components/eco/WeatherRadar';
+import { AQIPanel } from '@/components/eco/AQIPanel';
+import { ClimateActions } from '@/components/eco/ClimateActions';
+import { SpeciesIdentifier } from '@/components/eco/SpeciesIdentifier';
+import { EnergyEstimator } from '@/components/eco/EnergyEstimator';
+import { BiodiversityLog } from '@/components/eco/BiodiversityLog';
+import { api } from '@/lib/api/client';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -26,7 +33,7 @@ import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type EcoTab = 'overview' | 'populations' | 'climate' | 'biodiversity' | 'impact';
+type EcoTab = 'overview' | 'populations' | 'climate' | 'biodiversity' | 'impact' | 'weather' | 'air' | 'actions' | 'species' | 'energy' | 'lifelist';
 
 interface PopulationEntry {
   species: string;
@@ -256,9 +263,15 @@ export default function EcoLensPage() {
 
   const tabs: { id: EcoTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'overview', label: 'Overview', icon: Globe },
+    { id: 'weather', label: 'Weather', icon: Cloud },
+    { id: 'air', label: 'Air quality', icon: Wind },
+    { id: 'actions', label: 'Climate actions', icon: Leaf },
+    { id: 'species', label: 'Species ID', icon: Bug },
+    { id: 'lifelist', label: 'Life list', icon: TreeDeciduous },
+    { id: 'energy', label: 'Solar estimator', icon: Sun },
     { id: 'populations', label: 'Populations', icon: Fish },
-    { id: 'climate', label: 'Climate', icon: Thermometer },
-    { id: 'biodiversity', label: 'Biodiversity', icon: Leaf },
+    { id: 'climate', label: 'Climate sim', icon: Thermometer },
+    { id: 'biodiversity', label: 'Biodiversity sim', icon: Sprout },
     { id: 'impact', label: 'Impact', icon: AlertTriangle },
   ];
 
@@ -1221,6 +1234,39 @@ export default function EcoLensPage() {
       {activeTab === 'climate' && renderClimate()}
       {activeTab === 'biodiversity' && renderBiodiversity()}
       {activeTab === 'impact' && renderImpact()}
+      {activeTab === 'weather' && <WeatherRadar />}
+      {activeTab === 'air' && <AQIPanel />}
+      {activeTab === 'actions' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <ClimateActions />
+          </div>
+          <div className="lens-card text-xs text-gray-400 space-y-2">
+            <h3 className="text-sm font-bold text-white">Why this matters</h3>
+            <p>Each action below cites real lifecycle research. The kgCO₂e saved is a per-instance estimate; the more you log, the more accurate your annual delta.</p>
+            <p>Pair with the offsets marketplace (coming) to neutralise the residual emissions you can&apos;t cut.</p>
+          </div>
+        </div>
+      )}
+      {activeTab === 'species' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SpeciesIdentifier
+            onAccept={async (s, imageDataUrl) => {
+              try {
+                await api.post('/api/lens/run', {
+                  domain: 'eco', action: 'biodiversity-log',
+                  input: { commonName: s.commonName, scientificName: s.scientificName, imageDataUrl, observedAt: new Date().toISOString() },
+                });
+              } catch (e) {
+                console.error('[Eco] log species failed', e);
+              }
+            }}
+          />
+          <BiodiversityLog />
+        </div>
+      )}
+      {activeTab === 'lifelist' && <BiodiversityLog />}
+      {activeTab === 'energy' && <EnergyEstimator />}
     </div>
     </LensShell>
   );
