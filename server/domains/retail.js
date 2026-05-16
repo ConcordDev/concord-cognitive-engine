@@ -299,4 +299,210 @@ export default function registerRetailActions(registerLensAction) {
 
     return { ok: true, result: report };
   });
+
+  // ─── 2026 parity — Shopify/Square/Stripe POS / Lightspeed parity ──
+
+  function getRetailState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.retailLens) {
+      STATE.retailLens = {
+        products: new Map(),  // userId -> Map<sku, product>
+        orders:   new Map(),  // userId -> Array<order>
+        carts:    new Map(),  // userId -> Map<cartId, cart>
+        seq:      new Map(),  // userId -> { order: 1 }
+      };
+    }
+    return STATE.retailLens;
+  }
+  function saveRetailState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function retailActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function nextRetailId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function nowIsoRet() { return new Date().toISOString(); }
+
+  // ── Product catalog ──
+
+  registerLensAction("retail", "product-list", (ctx, _artifact, _params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const map = s.products.get(userId);
+    if (!map) return { ok: true, result: { products: [] } };
+    const products = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return { ok: true, result: { products } };
+  });
+
+  registerLensAction("retail", "product-upsert", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = String(params.sku || "").trim();
+    if (!sku) return { ok: false, error: "sku required" };
+    if (sku.length > 32) return { ok: false, error: "sku too long" };
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const price = Number(params.price);
+    if (!Number.isFinite(price) || price < 0) return { ok: false, error: "price must be >= 0" };
+    const stock = Number(params.stock);
+    if (!Number.isFinite(stock) || stock < 0) return { ok: false, error: "stock must be >= 0" };
+    if (!s.products.has(userId)) s.products.set(userId, new Map());
+    const existing = s.products.get(userId).get(sku);
+    const product = {
+      sku, name, price,
+      stock,
+      category: String(params.category || "").slice(0, 40),
+      barcode: String(params.barcode || "").slice(0, 32),
+      updatedAt: nowIsoRet(),
+      createdAt: existing?.createdAt || nowIsoRet(),
+    };
+    s.products.get(userId).set(sku, product);
+    saveRetailState();
+    return { ok: true, result: { product } };
+  });
+
+  registerLensAction("retail", "product-delete", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = String(params.sku || "");
+    if (!sku) return { ok: false, error: "sku required" };
+    const map = s.products.get(userId);
+    if (!map || !map.has(sku)) return { ok: false, error: "not found" };
+    map.delete(sku);
+    saveRetailState();
+    return { ok: true, result: { deleted: sku } };
+  });
+
+  // ── Cart + checkout ──
+
+  registerLensAction("retail", "cart-open", (ctx, _artifact, _params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cart = { id: nextRetailId("cart"), lines: [], discountPercent: 0, openedAt: nowIsoRet() };
+    if (!s.carts.has(userId)) s.carts.set(userId, new Map());
+    s.carts.get(userId).set(cart.id, cart);
+    saveRetailState();
+    return { ok: true, result: { cart } };
+  });
+
+  registerLensAction("retail", "cart-add-line", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const sku = String(params.sku || "");
+    const qty = Number(params.qty) || 1;
+    if (!cartId || !sku) return { ok: false, error: "cartId and sku required" };
+    if (qty <= 0) return { ok: false, error: "qty must be > 0" };
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    const product = s.products.get(userId)?.get(sku);
+    if (!product) return { ok: false, error: `product not found: ${sku}` };
+    const existing = cart.lines.find((l) => l.sku === sku);
+    if (existing) existing.qty += qty;
+    else cart.lines.push({ sku, name: product.name, unitPrice: product.price, qty });
+    saveRetailState();
+    return { ok: true, result: { cart } };
+  });
+
+  registerLensAction("retail", "cart-total", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    const taxRate = Number(params.taxRate) || 0;
+    const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+    const discount = (subtotal * cart.discountPercent) / 100;
+    const subtotalAfterDiscount = subtotal - discount;
+    const tax = subtotalAfterDiscount * (taxRate / 100);
+    const total = subtotalAfterDiscount + tax;
+    return {
+      ok: true,
+      result: {
+        subtotal: Math.round(subtotal * 100) / 100,
+        discount: Math.round(discount * 100) / 100,
+        subtotalAfterDiscount: Math.round(subtotalAfterDiscount * 100) / 100,
+        tax: Math.round(tax * 100) / 100,
+        total: Math.round(total * 100) / 100,
+        lineCount: cart.lines.length,
+        itemCount: cart.lines.reduce((s, l) => s + l.qty, 0),
+      },
+    };
+  });
+
+  registerLensAction("retail", "cart-tender", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (cart.lines.length === 0) return { ok: false, error: "cart is empty" };
+    const taxRate = Number(params.taxRate) || 0;
+    const tenders = Array.isArray(params.tenders) ? params.tenders : [];
+    if (tenders.length === 0) return { ok: false, error: "tenders required (e.g. [{kind:'cash', amount:100}])" };
+    // Compute total
+    const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+    const discount = (subtotal * cart.discountPercent) / 100;
+    const subtotalAfter = subtotal - discount;
+    const tax = subtotalAfter * (taxRate / 100);
+    const total = Math.round((subtotalAfter + tax) * 100) / 100;
+    const tendered = tenders.reduce((s, t) => s + Number(t.amount || 0), 0);
+    if (tendered < total - 0.01) return { ok: false, error: `insufficient tender: ${tendered.toFixed(2)} < ${total.toFixed(2)}` };
+    const change = Math.round((tendered - total) * 100) / 100;
+    // Decrement stock
+    for (const line of cart.lines) {
+      const product = s.products.get(userId)?.get(line.sku);
+      if (product) product.stock = Math.max(0, product.stock - line.qty);
+    }
+    if (!s.seq.has(userId)) s.seq.set(userId, { order: 1 });
+    const seq = s.seq.get(userId);
+    const order = {
+      id: nextRetailId("ord"),
+      number: `ORD-${String(seq.order).padStart(5, "0")}`,
+      lines: cart.lines,
+      subtotal: Math.round(subtotal * 100) / 100,
+      discount: Math.round(discount * 100) / 100,
+      tax: Math.round(tax * 100) / 100,
+      total,
+      tenders,
+      tendered: Math.round(tendered * 100) / 100,
+      change,
+      completedAt: nowIsoRet(),
+    };
+    seq.order++;
+    if (!s.orders.has(userId)) s.orders.set(userId, []);
+    s.orders.get(userId).unshift(order);
+    s.carts.get(userId).delete(cartId);
+    saveRetailState();
+    return { ok: true, result: { order } };
+  });
+
+  registerLensAction("retail", "orders-list", (ctx, _artifact, _params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const orders = s.orders.get(userId) || [];
+    return { ok: true, result: { orders: orders.slice(0, 100) } };
+  });
+
+  // ── Inventory low-stock report ──
+
+  registerLensAction("retail", "low-stock", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const threshold = Number(params.threshold) || 5;
+    const map = s.products.get(userId);
+    if (!map) return { ok: true, result: { lowStock: [] } };
+    const lowStock = Array.from(map.values()).filter((p) => p.stock <= threshold).sort((a, b) => a.stock - b.stock);
+    return { ok: true, result: { lowStock, threshold } };
+  });
 };

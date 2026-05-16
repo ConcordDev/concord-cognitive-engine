@@ -72,6 +72,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed from '@/components/lens/LiveFeed';
+import RetailWorkbench from '@/components/retail/RetailWorkbench';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -246,6 +247,7 @@ export default function RetailLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('retail');
 
   const [mode, setMode] = useState<ModeTab>('Products');
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -2002,6 +2004,17 @@ export default function RetailLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#retail-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to retail content</a>
+
+      {/* 2026 parity workbench — POS register / catalog / orders / low stock */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-rose-500 hover:bg-rose-400 text-rose-50 shadow-2xl text-sm font-medium"
+        title="Retail Workbench — POS register, catalog, orders, low stock"
+      >
+        Retail Workbench
+      </button>
+      <RetailWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
