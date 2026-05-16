@@ -426,4 +426,332 @@ export default function registerEducationActions(registerLensAction) {
 
     return { ok: true, result };
   });
+
+  // ─── Parity-sprint macros: Anki SM-2 / Khanmigo Socratic / Quizlet Magic Notes ───
+
+  function getEduState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.educationLens) {
+      STATE.educationLens = {
+        decks: new Map(),   // userId → deck[]
+        cards: new Map(),   // userId → card[]
+      };
+    }
+    return STATE.educationLens;
+  }
+
+  /**
+   * flashcards-decks — list user's decks with per-deck count + due-today count.
+   */
+  registerLensAction("education", "flashcards-decks", (ctx, _artifact, _params = {}) => {
+    const state = getEduState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const decks = state.decks.get(userId) || [];
+    const cards = state.cards.get(userId) || [];
+    const now = Date.now();
+    const enriched = decks.map(d => {
+      const dCards = cards.filter(c => c.deckId === d.id);
+      return {
+        id: d.id, title: d.title, createdAt: d.createdAt,
+        count: dCards.length,
+        due: dCards.filter(c => new Date(c.dueAt).getTime() <= now).length,
+      };
+    });
+    return { ok: true, result: { decks: enriched } };
+  });
+
+  registerLensAction("education", "flashcards-deck-create", (ctx, _artifact, params = {}) => {
+    const state = getEduState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    if (!state.decks.has(userId)) state.decks.set(userId, []);
+    const deck = {
+      id: `deck_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      title, createdAt: new Date().toISOString(),
+    };
+    state.decks.get(userId).push(deck);
+    saveStateIfAvailable();
+    return { ok: true, result: { deck } };
+  });
+
+  registerLensAction("education", "flashcards-card-create", (ctx, _artifact, params = {}) => {
+    const state = getEduState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const deckId = String(params.deckId || "");
+    const front = String(params.front || "").trim();
+    const back = String(params.back || "").trim();
+    if (!deckId || !front || !back) return { ok: false, error: "deckId, front, back required" };
+    if (!state.cards.has(userId)) state.cards.set(userId, []);
+    const card = {
+      id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      deckId, front, back,
+      ease: 2.5, interval: 0, repetitions: 0,
+      dueAt: new Date().toISOString(),
+      scheduler: "sm2",
+      createdAt: new Date().toISOString(),
+    };
+    state.cards.get(userId).push(card);
+    saveStateIfAvailable();
+    return { ok: true, result: { card } };
+  });
+
+  /**
+   * flashcards-due — return cards due now, sorted by due time, capped at limit.
+   */
+  registerLensAction("education", "flashcards-due", (ctx, _artifact, params = {}) => {
+    const state = getEduState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const deckId = params.deckId ? String(params.deckId) : null;
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const now = Date.now();
+    const all = state.cards.get(userId) || [];
+    const due = all
+      .filter(c => (!deckId || c.deckId === deckId) && new Date(c.dueAt).getTime() <= now)
+      .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
+      .slice(0, limit);
+    return { ok: true, result: { cards: due, total: all.length } };
+  });
+
+  /**
+   * flashcards-review — SM-2 algorithm. Quality 0-5 maps to Again/Hard/Good/Easy.
+   *   EF' = EF + (0.1 − (5−q)·(0.08 + (5−q)·0.02))
+   *   Interval: n=1 → 1d, n=2 → 6d, n>2 → prev × EF
+   *   Quality < 3 → reset (repetitions=0, interval=0).
+   */
+  registerLensAction("education", "flashcards-review", (ctx, _artifact, params = {}) => {
+    const state = getEduState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const cardId = String(params.cardId || "");
+    const quality = Math.max(0, Math.min(5, Number(params.quality)));
+    if (!cardId || !isFinite(quality)) return { ok: false, error: "cardId + numeric quality required" };
+    const all = state.cards.get(userId) || [];
+    const card = all.find(c => c.id === cardId);
+    if (!card) return { ok: false, error: "card not found" };
+
+    // SM-2
+    if (quality < 3) {
+      card.repetitions = 0;
+      card.interval = 0;
+    } else {
+      card.repetitions += 1;
+      if (card.repetitions === 1) card.interval = 1;
+      else if (card.repetitions === 2) card.interval = 6;
+      else card.interval = Math.round(card.interval * card.ease);
+    }
+    const eaNew = card.ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+    card.ease = Math.max(1.3, Math.round(eaNew * 100) / 100);
+    card.dueAt = new Date(Date.now() + Math.max(1, card.interval) * (quality < 3 ? 60_000 : 86_400_000)).toISOString();
+    card.lastReviewedAt = new Date().toISOString();
+    card.lastQuality = quality;
+    saveStateIfAvailable();
+    return { ok: true, result: { card } };
+  });
+
+  /**
+   * tutor-ask — Khanmigo-style Socratic. LLM constrained NEVER to give
+   * the answer; outputs scaffolded questions, prerequisite checks,
+   * 3-tier hint escalation, and identifies misconceptions.
+   */
+  registerLensAction("education", "tutor-ask", async (ctx, _artifact, params = {}) => {
+    if (!ctx?.llm?.chat) return { ok: true, result: { text: "(tutor unavailable — LLM not configured)" } };
+    const subject = String(params.subject || "general");
+    const level = String(params.level || "high school");
+    const context = String(params.context || "");
+    const hintLevel = Math.max(1, Math.min(3, Number(params.hintLevel) || 1));
+    const history = Array.isArray(params.history) ? params.history.slice(-12) : [];
+
+    const hintPolicy = hintLevel === 1
+      ? "Ask ONE Socratic question that nudges them to discover the next step. Do not reveal anything."
+      : hintLevel === 2
+      ? "Offer a small concrete nudge — name the rule or concept that applies, but do NOT solve."
+      : "Walk them through the next single step explicitly. Stop after that step; ask them to take the next one.";
+
+    const sys = `You are a Socratic tutor for ${subject} (${level}). NEVER give the final answer directly. ${hintPolicy}
+Identify prerequisite gaps when relevant. If the student shows a misconception, name it gently and ask a question that surfaces it.
+Be encouraging, short, and concrete. 3 sentences max.${context ? `\n\nLesson context:\n${context}` : ""}`;
+
+    try {
+      const llmRes = await ctx.llm.chat({
+        messages: [
+          { role: "system", content: sys },
+          ...history.map(h => ({ role: h.role === "student" ? "user" : "assistant", content: String(h.content || "") })),
+        ],
+        temperature: 0.4,
+        maxTokens: 256,
+        slot: "conscious",
+      });
+      const text = String(llmRes?.text || llmRes?.content || llmRes?.message?.content || "").trim();
+      return { ok: true, result: { text, hintLevel, model: "conscious" } };
+    } catch (e) {
+      return { ok: true, result: { text: `(tutor error: ${e?.message || "unknown"})`, hintLevel, error: true } };
+    }
+  });
+
+  /**
+   * quiz-from-text — Quizlet Magic Notes parity. LLM generates N study
+   * cards from source text. Routes to utility brain (fast, cheap).
+   */
+  registerLensAction("education", "quiz-from-text", async (ctx, _artifact, params = {}) => {
+    if (!ctx?.llm?.chat) return { ok: false, error: "llm unavailable" };
+    const source = String(params.source || "").trim();
+    const sourceDtuId = params.sourceDtuId ? String(params.sourceDtuId) : null;
+    const count = Math.max(1, Math.min(30, Number(params.count) || 10));
+    const difficulty = ["easy", "medium", "hard", "mixed"].includes(params.difficulty) ? params.difficulty : "mixed";
+
+    let body = source;
+    if (!body && sourceDtuId) {
+      const STATE = globalThis._concordSTATE;
+      const dtu = STATE?.dtus?.get?.(sourceDtuId);
+      if (dtu) body = [dtu.title, dtu.human?.summary, ...(dtu.core?.definitions || []), ...(dtu.core?.claims || [])].filter(Boolean).join("\n\n");
+    }
+    if (!body || body.trim().length < 10) return { ok: false, error: "source text too short" };
+
+    const sys = `You are a quiz card generator. Output ONLY a JSON object — no prose, no fences.
+{
+  "cards": [
+    { "front": "question text", "back": "answer text", "difficulty": "easy|medium|hard" }
+  ]
+}
+Constraints:
+- Exactly ${count} cards
+- Difficulty: ${difficulty === "mixed" ? "mix easy/medium/hard" : difficulty}
+- Front is a question; back is the concise answer
+- Pull facts ONLY from the source — do not invent`;
+
+    try {
+      const llmRes = await ctx.llm.chat({
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: `Source:\n${body.slice(0, 6000)}\n\nGenerate ${count} cards.` },
+        ],
+        temperature: 0.2,
+        maxTokens: 2048,
+        slot: "utility",
+      });
+      const raw = String(llmRes?.text || llmRes?.content || "").trim();
+      const parsed = extractJsonForQuiz(raw);
+      if (!parsed || !Array.isArray(parsed.cards)) return { ok: false, error: "parse failed", raw: raw.slice(0, 200) };
+      const cards = parsed.cards.slice(0, count).map(c => ({
+        front: String(c.front || c.question || "").trim(),
+        back: String(c.back || c.answer || "").trim(),
+        difficulty: ["easy", "medium", "hard"].includes(c.difficulty) ? c.difficulty : "medium",
+      })).filter(c => c.front && c.back);
+      return { ok: true, result: { cards, count: cards.length, source: sourceDtuId ? `dtu:${sourceDtuId}` : "user-text" } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "generation failed" };
+    }
+  });
+
+  /**
+   * quiz-mint-deck — Persist accepted quiz cards as a flashcard deck.
+   */
+  registerLensAction("education", "quiz-mint-deck", (ctx, _artifact, params = {}) => {
+    const state = getEduState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const title = String(params.title || "Generated quiz").trim();
+    const cardsIn = Array.isArray(params.cards) ? params.cards : [];
+    if (cardsIn.length === 0) return { ok: false, error: "no cards" };
+    if (!state.decks.has(userId)) state.decks.set(userId, []);
+    if (!state.cards.has(userId)) state.cards.set(userId, []);
+    const deck = {
+      id: `deck_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      title, createdAt: new Date().toISOString(),
+    };
+    state.decks.get(userId).push(deck);
+    for (const c of cardsIn) {
+      const front = String(c.front || "").trim();
+      const back = String(c.back || "").trim();
+      if (!front || !back) continue;
+      state.cards.get(userId).push({
+        id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        deckId: deck.id, front, back,
+        ease: 2.5, interval: 0, repetitions: 0,
+        dueAt: new Date().toISOString(),
+        scheduler: "sm2",
+        createdAt: new Date().toISOString(),
+      });
+    }
+    saveStateIfAvailable();
+    return { ok: true, result: { deck, added: cardsIn.length } };
+  });
+
+  /**
+   * lesson-plan-generate — Khan/Chalkie-style lesson plan via conscious brain.
+   * Returns a structured plan: objectives, materials, warm-up, main, practice,
+   * closure, differentiation (struggling/grade/advanced), assessment.
+   */
+  registerLensAction("education", "lesson-plan-generate", async (ctx, _artifact, params = {}) => {
+    if (!ctx?.llm?.chat) return { ok: false, error: "llm unavailable" };
+    const subject = String(params.subject || "general");
+    const grade = String(params.grade || "high school");
+    const duration = String(params.duration || "45 min");
+    const topic = String(params.topic || "").trim();
+    const standard = params.standard ? String(params.standard) : null;
+    if (!topic) return { ok: false, error: "topic required" };
+
+    const sys = `You are an experienced teacher building lesson plans. Output ONLY JSON, no prose, no fences.
+{
+  "plan": {
+    "title": "string",
+    "subject": "${subject}",
+    "grade": "${grade}",
+    "duration": "${duration}",
+    "standards": ["${standard || ""}"],
+    "objectives": ["3-5 measurable student learning objectives"],
+    "materials": ["list of materials and tools"],
+    "warmUp": "5-min activity to activate prior knowledge",
+    "mainActivity": "guided instruction block (be specific)",
+    "practice": "guided + independent practice",
+    "closure": "exit ticket / summary",
+    "differentiation": {
+      "struggling": "scaffolding for struggling learners",
+      "grade_level": "core experience for on-grade learners",
+      "advanced": "extension for advanced learners"
+    },
+    "assessment": "how learning will be assessed"
+  }
+}`;
+
+    try {
+      const llmRes = await ctx.llm.chat({
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: `Topic: ${topic}\nDuration: ${duration}\nGrade: ${grade}\nSubject: ${subject}${standard ? `\nStandard: ${standard}` : ""}\n\nGenerate the lesson plan.` },
+        ],
+        temperature: 0.4,
+        maxTokens: 2048,
+        slot: "conscious",
+      });
+      const raw = String(llmRes?.text || llmRes?.content || "").trim();
+      const parsed = extractJsonForQuiz(raw);
+      if (!parsed?.plan) return { ok: false, error: "parse failed", raw: raw.slice(0, 200) };
+      return { ok: true, result: { plan: parsed.plan } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "generation failed" };
+    }
+  });
 };
+
+function saveStateIfAvailable() {
+  if (typeof globalThis._concordSaveStateDebounced === "function") {
+    try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+  }
+}
+
+function extractJsonForQuiz(text) {
+  if (!text) return null;
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = fence ? fence[1] : text;
+  const first = body.indexOf("{");
+  const last = body.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
+}

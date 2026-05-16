@@ -82,6 +82,10 @@ import {
 import { api } from '@/lib/api/client';
 import { GenomeGraph, type GenomeNode, type GenomeEdge } from '@/components/education/GenomeGraph';
 import { PathStepCard, type PathStep } from '@/components/education/PathStepCard';
+import { FlashcardDeck } from '@/components/education/FlashcardDeck';
+import { SocraticTutor } from '@/components/education/SocraticTutor';
+import { QuizGenerator } from '@/components/education/QuizGenerator';
+import { LessonPlanBuilder } from '@/components/education/LessonPlanBuilder';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -114,7 +118,11 @@ type ModeTab =
   | 'Cohort'
   | 'Assessment'
   | 'Credentials'
-  | 'Earnings';
+  | 'Earnings'
+  | 'Flashcards'
+  | 'Socratic'
+  | 'QuizGen'
+  | 'LessonPlan';
 type ArtifactType = 'Student' | 'Course' | 'Assignment' | 'Grade' | 'LessonPlan' | 'Certification' | 'Resource' | 'Quiz';
 type Status = 'enrolled' | 'active' | 'completed' | 'withdrawn' | 'graduated';
 type AttendanceStatus = 'present' | 'absent' | 'tardy' | 'excused';
@@ -231,6 +239,11 @@ const MODE_TABS: { id: ModeTab; icon: LucideIcon; defaultType: ArtifactType }[] 
   { id: 'Quizzes', icon: HelpCircle, defaultType: 'Quiz' },
   { id: 'Certifications', icon: Award, defaultType: 'Certification' },
   { id: 'Study', icon: BookMarked, defaultType: 'Student' },
+  // Parity-sprint surfaces (Anki / Khanmigo / Quizlet / Chalkie)
+  { id: 'Flashcards', icon: BookMarked, defaultType: 'Student' },
+  { id: 'Socratic', icon: GraduationCap, defaultType: 'Student' },
+  { id: 'QuizGen', icon: HelpCircle, defaultType: 'Quiz' },
+  { id: 'LessonPlan', icon: FileText, defaultType: 'LessonPlan' },
 ];
 
 const ALL_STATUSES: Status[] = ['enrolled', 'active', 'completed', 'withdrawn', 'graduated'];
@@ -2694,6 +2707,26 @@ export default function EducationLensPage() {
       {/* ============================================================ */}
       {/*  TAB: Quizzes (Quiz Builder)                                  */}
       {/* ============================================================ */}
+      {activeTab === 'Flashcards' && (
+        <div className="p-6">
+          <FlashcardDeck />
+        </div>
+      )}
+      {activeTab === 'Socratic' && (
+        <div className="p-6">
+          <SocraticTutor subject="general" level="all levels" className="h-[640px]" />
+        </div>
+      )}
+      {activeTab === 'QuizGen' && (
+        <div className="p-6">
+          <QuizGenerator />
+        </div>
+      )}
+      {activeTab === 'LessonPlan' && (
+        <div className="p-6">
+          <LessonPlanBuilder />
+        </div>
+      )}
       {activeTab === 'Quizzes' && (
         <section className={ds.panel}>
           <div className={cn(ds.sectionHeader, 'mb-4')}>
