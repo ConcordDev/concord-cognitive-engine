@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { KPIStrip } from '@/components/accounting/KPIStrip';
@@ -131,6 +133,19 @@ export default function AccountingLensPage() {
 
   /* ---- top-level state ---- */
   const [mode, setMode] = useState<ModeTab>('Ledger');
+  /* Wallet balance — fed by /api/economy/balance. This is the hero
+     number per canonical accounting UI research; previously the
+     lens led with IndicatorChart (chart wall = aggregator pattern,
+     not an accounting-app pattern). */
+  const walletQuery = useQuery({
+    queryKey: ['accounting-wallet'],
+    queryFn: async () => {
+      const res = await api.get<{ ok: boolean; balance: number; tier?: string }>('/api/economy/balance').catch(() => null);
+      return res?.data || null;
+    },
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
@@ -2662,12 +2677,119 @@ export default function AccountingLensPage() {
       </header>
 
 
-      {/* Live World Bank economic indicators — FRED-style chart */}
-      <IndicatorChart
-        data={realtimeData as IndicatorPayload | null}
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-      />
+      {/* HERO: Wallet position + Action Queue. Per canonical accounting
+          UI research (QuickBooks, Xero, Bench, Wave, FreshBooks): the
+          lens entry-point is "your money + what's waiting on you",
+          NOT a chart wall. Charts are macro context below. */}
+      {(() => {
+        const accounts = accountData.items.map(i => i.data as unknown as Account);
+        const transactions = transactionData.items.map(i => ({ ...i, d: i.data as unknown as Transaction }));
+        const invoices = invoiceData.items.map(i => ({ ...i, d: i.data as unknown as Invoice }));
+        const balance = walletQuery.data?.balance ?? null;
+        const tier = walletQuery.data?.tier;
+
+        const totalAssetsAccts = accounts.filter(a => a.type === 'Asset').reduce((s, a) => s + (a.balance || 0), 0);
+        const totalLiabsAccts  = accounts.filter(a => a.type === 'Liability').reduce((s, a) => s + (a.balance || 0), 0);
+        const netWorth = totalAssetsAccts - totalLiabsAccts;
+
+        // Action Queue — what's waiting on you (Bench/Xero pattern)
+        const uncategorized = transactions.filter(t => !t.d?.category || t.d.category === 'uncategorized' || t.d.category === '').length;
+        const overdueInvoices = invoices.filter(i => {
+          const dd = i.d?.dueDate ? new Date(i.d.dueDate) : null;
+          return dd && dd < new Date() && i.d?.amount && (i.d.paidAmount || 0) < i.d.amount;
+        }).length;
+        const draftInvoices = invoices.filter(i => i.d && (i.d.amount || 0) > 0 && !i.d.paidAmount).length;
+        const unreconciled = transactions.filter(t => {
+          const ref = (t.d?.reference || '').toLowerCase();
+          return !ref.includes('reconciled') && !ref.includes('matched');
+        }).length;
+
+        const queueItems = [
+          uncategorized > 0 && { label: `${uncategorized} uncategorized transaction${uncategorized === 1 ? '' : 's'}`, action: () => { setMode('Ledger'); setLedgerSubType('Transaction'); }, color: 'text-amber-300' },
+          overdueInvoices > 0 && { label: `${overdueInvoices} overdue invoice${overdueInvoices === 1 ? '' : 's'}`, action: () => setMode('Invoicing'), color: 'text-rose-300' },
+          unreconciled > 0 && { label: `${unreconciled} unreconciled entry${unreconciled === 1 ? '' : 'ies'}`, action: () => handleAction('reconcile'), color: 'text-cyan-300' },
+        ].filter(Boolean) as Array<{ label: string; action: () => void; color: string }>;
+
+        return (
+          <section className="rounded-xl border border-white/10 bg-gradient-to-br from-emerald-900/20 via-zinc-900/40 to-cyan-900/20 backdrop-blur-sm p-5">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-5">
+              {/* Wallet position */}
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-emerald-300/80 mb-1">Wallet position</div>
+                <div className="flex items-baseline gap-3">
+                  <span className="text-4xl font-light text-zinc-100">
+                    {walletQuery.isLoading ? '…' : balance == null ? '—' : `${Math.round(balance).toLocaleString()}`}
+                  </span>
+                  <span className="text-sm text-zinc-400">CC</span>
+                  {tier && (
+                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/10 text-zinc-400">{tier}</span>
+                  )}
+                </div>
+                {accounts.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <div className="text-[10px] text-zinc-500 uppercase">Assets</div>
+                      <div className="text-zinc-200 font-medium">${totalAssetsAccts.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-zinc-500 uppercase">Liabilities</div>
+                      <div className="text-zinc-200 font-medium">${totalLiabsAccts.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-zinc-500 uppercase">Net worth</div>
+                      <div className={cn('font-medium', netWorth >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
+                        ${netWorth.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Queue — what's waiting on you */}
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-amber-300/80 mb-1">Action queue</div>
+                {queueItems.length === 0 ? (
+                  <div className="mt-2 text-sm text-zinc-400">
+                    {draftInvoices > 0
+                      ? `${draftInvoices} invoice${draftInvoices === 1 ? '' : 's'} in flight. Nothing urgent.`
+                      : 'Nothing waiting. Your books are clean.'}
+                  </div>
+                ) : (
+                  <ul className="mt-2 space-y-1.5">
+                    {queueItems.map((item, i) => (
+                      <li key={i}>
+                        <button
+                          onClick={item.action}
+                          className={cn('w-full text-left text-sm px-3 py-1.5 rounded border border-white/10 hover:border-white/30 bg-white/[0.02] hover:bg-white/[0.05] transition-colors flex items-center justify-between gap-2', item.color)}
+                        >
+                          <span>{item.label}</span>
+                          <span className="text-xs opacity-60">→</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* Macro context — World Bank economic indicators. Demoted from
+          hero (per research) to context strip below the action queue. */}
+      <details className="rounded-xl border border-white/10 bg-zinc-900/30 backdrop-blur-sm overflow-hidden">
+        <summary className="px-4 py-2 text-[10px] uppercase tracking-wider text-zinc-500 cursor-pointer hover:bg-white/[0.02] flex items-center justify-between">
+          <span>Macro context — World Bank indicators</span>
+          <span className="text-zinc-600">expand</span>
+        </summary>
+        <div className="p-2 border-t border-white/10">
+          <IndicatorChart
+            data={realtimeData as IndicatorPayload | null}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+          />
+        </div>
+      </details>
 
       {/* AI Actions */}
       <UniversalActions domain="accounting" artifactId={items[0]?.id} compact />
