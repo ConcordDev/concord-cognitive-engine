@@ -50,6 +50,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SharedSessionChat } from '@/components/social/SharedSessionChat';
 import { SharedSessionInvite } from '@/components/social/SharedSessionInvite';
+import { WorkspaceRoster } from '@/components/collab/WorkspaceRoster';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1033,6 +1034,9 @@ export default function CollabLensPage() {
             <LensFeaturePanel lensId="collab" />
           </div>
         )}
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <WorkspaceRoster />
+        </section>
       </div>
     </div>
     </LensShell>
