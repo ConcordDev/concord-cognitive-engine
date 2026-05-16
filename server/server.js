@@ -38511,7 +38511,14 @@ registerUniversalLensActions();
     ["food", "scale_recipe", "scaleRecipe"],
 
     // Aviation lens: frontend uses snake_case, backend uses camelCase
+    // Per strict per-lens audit pass — every aviation snake_case button
+    // pre-this-fix was a dead click (only currency_check was aliased
+    // and even that target was missing the macro). Full set now:
     ["aviation", "currency_check", "currencyCheck"],
+    ["aviation", "maintenance_alert", "maintenanceAlert"],
+    ["aviation", "flight_summary", "flightSummary"],
+    ["aviation", "duty_time_check", "dutyTimeCheck"],
+    ["aviation", "weather_check", "weatherCheck"],
 
     // Security lens: frontend calls accessAudit, backend registered as audit-access
     ["security", "accessAudit", "audit-access"],
