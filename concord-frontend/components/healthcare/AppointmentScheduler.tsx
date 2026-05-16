@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Search, Loader2, Video, MapPin } from 'lucide-react';
+import { Calendar, Search, Loader2, Video, MapPin, CreditCard } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 
 export interface Provider {
   id: string;
@@ -33,7 +34,10 @@ export function AppointmentScheduler() {
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [slots, setSlots] = useState<AppointmentSlot[]>([]);
   const [bookingId, setBookingId] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<{ providerId: string; slot: AppointmentSlot } | null>(null);
+  const [confirmed, setConfirmed] = useState<{ providerId: string; slot: AppointmentSlot; appointmentId?: string; copayUsd?: number } | null>(null);
+  const [copayUsd, setCopayUsd] = useState<string>('');
+  const [copayIntent, setCopayIntent] = useState<{ clientSecret: string; copayUsd: number } | null>(null);
+  const [copayMessage, setCopayMessage] = useState<string | null>(null);
 
   useEffect(() => { search(); }, []);
 
@@ -63,13 +67,40 @@ export function AppointmentScheduler() {
     if (!selectedProvider) return;
     setBookingId(slot.date + slot.time);
     try {
-      await api.post('/api/lens/run', {
+      const copayNum = Number(copayUsd);
+      const res = await api.post('/api/lens/run', {
         domain: 'healthcare', action: 'appointment-book',
-        input: { providerId: selectedProvider.id, date: slot.date, time: slot.time, kind: slot.kind },
+        input: {
+          providerId: selectedProvider.id, date: slot.date, time: slot.time, kind: slot.kind,
+          copayUsd: Number.isFinite(copayNum) && copayNum > 0 ? copayNum : undefined,
+        },
       });
-      setConfirmed({ providerId: selectedProvider.id, slot });
+      const appt = (res.data as { result?: { appointment?: { id: string; copayUsd?: number } } }).result?.appointment;
+      setConfirmed({ providerId: selectedProvider.id, slot, appointmentId: appt?.id, copayUsd: appt?.copayUsd });
     } catch (e) { console.error('[Book] failed', e); }
     finally { setBookingId(null); }
+  }
+
+  async function chargeCopay() {
+    if (!confirmed?.appointmentId) return;
+    setCopayMessage(null);
+    try {
+      const res = await api.post('/api/lens/run', {
+        domain: 'healthcare', action: 'appointment-charge-copay',
+        input: { appointmentId: confirmed.appointmentId },
+      });
+      const data = res.data as { ok?: boolean; error?: string; result?: { clientSecret: string; copayUsd: number } };
+      if (data.ok && data.result) {
+        setCopayIntent({ clientSecret: data.result.clientSecret, copayUsd: data.result.copayUsd });
+      } else {
+        setCopayMessage(data.error || 'Co-pay charge unavailable');
+      }
+    } catch (e) { setCopayMessage((e as Error).message); }
+  }
+
+  function onCopaySuccess() {
+    setCopayMessage('✓ Co-pay paid');
+    setCopayIntent(null);
   }
 
   // Group slots by date
@@ -130,16 +161,46 @@ export function AppointmentScheduler() {
           {!selectedProvider ? (
             <div className="text-xs text-gray-500 italic text-center py-10">Select a provider to see availability.</div>
           ) : confirmed ? (
-            <div className="bg-green-500/10 border border-green-500/40 rounded p-4 text-center">
-              <Calendar className="w-8 h-8 text-green-400 mx-auto mb-2" />
-              <h3 className="text-sm font-bold text-green-300 mb-1">Appointment booked!</h3>
-              <p className="text-xs text-gray-300">{selectedProvider.name} · {confirmed.slot.date} at {confirmed.slot.time}</p>
-              <p className="text-[10px] text-gray-500 mt-1">{confirmed.slot.kind === 'telehealth' ? 'Video call link will be sent before visit' : 'In-person'}</p>
+            <div className="space-y-3">
+              <div className="bg-green-500/10 border border-green-500/40 rounded p-4 text-center">
+                <Calendar className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                <h3 className="text-sm font-bold text-green-300 mb-1">Appointment booked!</h3>
+                <p className="text-xs text-gray-300">{selectedProvider.name} · {confirmed.slot.date} at {confirmed.slot.time}</p>
+                <p className="text-[10px] text-gray-500 mt-1">{confirmed.slot.kind === 'telehealth' ? 'Video call link will be sent before visit' : 'In-person'}</p>
+              </div>
+              {confirmed.copayUsd && confirmed.copayUsd > 0 && !copayIntent && (
+                <button
+                  type="button"
+                  onClick={chargeCopay}
+                  className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded border border-cyan-500/40 bg-cyan-500/15 text-sm text-cyan-100"
+                >
+                  <CreditCard className="w-4 h-4" /> Pay ${confirmed.copayUsd.toFixed(2)} co-pay
+                </button>
+              )}
+              {copayIntent && (
+                <StripePaymentForm
+                  clientSecret={copayIntent.clientSecret}
+                  amountUsd={copayIntent.copayUsd}
+                  description="Visit co-pay"
+                  onSuccess={onCopaySuccess}
+                  onCancel={() => setCopayIntent(null)}
+                />
+              )}
+              {copayMessage && <p className="text-[11px] text-emerald-300 text-center">{copayMessage}</p>}
             </div>
           ) : (
             <div className="space-y-3">
               <div className="text-sm font-medium text-white">{selectedProvider.name}</div>
               <div className="text-xs text-gray-400">{selectedProvider.specialty} · {selectedProvider.practice}</div>
+              <div className="rounded border border-zinc-700 bg-zinc-900/60 p-2">
+                <label className="text-[10px] uppercase tracking-wider text-zinc-500">Co-pay (USD, optional)</label>
+                <input
+                  type="number" min={0} step="0.01" placeholder="0.00"
+                  value={copayUsd}
+                  onChange={(e) => setCopayUsd(e.target.value)}
+                  className="mt-1 w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 font-mono"
+                />
+              </div>
               {Object.entries(slotsByDate).slice(0, 10).map(([date, daySlots]) => (
                 <div key={date}>
                   <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">
