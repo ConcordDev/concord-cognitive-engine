@@ -112,12 +112,11 @@ export default function registerWhiteboardActions(registerLensAction) {
   function getWhiteboardState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.whiteboardLens) {
-      STATE.whiteboardLens = {
-        boards: new Map(),       // userId -> Map<id, board>
-        votes:  new Map(),       // userId -> Map<boardId, Map<elementId, Map<voterId, true>>>
-      };
-    }
+    if (!STATE.whiteboardLens) STATE.whiteboardLens = {};
+    if (!STATE.whiteboardLens.boards)        STATE.whiteboardLens.boards        = new Map(); // userId -> Map<id, board>
+    if (!STATE.whiteboardLens.votes)         STATE.whiteboardLens.votes         = new Map(); // userId -> Map<boardId, Map<elementId, Set<voterId>>>
+    if (!STATE.whiteboardLens.sharedBoards)  STATE.whiteboardLens.sharedBoards  = new Map(); // boardId -> { id, title, scene, ownerId, participants: Set<userId>, createdAt, updatedAt }
+    if (!STATE.whiteboardLens.sharedVotes)   STATE.whiteboardLens.sharedVotes   = new Map(); // boardId -> Map<elementId, Set<voterId>>
     return STATE.whiteboardLens;
   }
   function saveWhiteboardState() {
@@ -277,6 +276,185 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
     const boardVotes = s.votes.get(userId)?.get(boardId);
+    if (!boardVotes) return { ok: true, result: { tally: [], total: 0 } };
+    const tally = Array.from(boardVotes.entries())
+      .map(([elementId, voters]) => ({ elementId, count: voters.size }))
+      .sort((a, b) => b.count - a.count);
+    const total = tally.reduce((s2, t) => s2 + t.count, 0);
+    return { ok: true, result: { tally, total } };
+  });
+
+  // ── Shared boards (real-time multiplayer collab) ──
+  //
+  // Per-user boards above (board-save/load/list/delete) remain the
+  // private workspace. A shared board lives in STATE.whiteboardLens
+  // .sharedBoards and is identified by its `id` — any participant
+  // can read/write its scene, with last-write-wins semantics and
+  // realtime broadcast via socket.io to room `whiteboard:${id}`.
+  // Votes on shared boards are aggregated across all participants
+  // (not per-user as on private boards).
+
+  function sharedBoardSummary(b) {
+    return {
+      id: b.id, title: b.title, ownerId: b.ownerId,
+      participants: Array.from(b.participants || []),
+      participantCount: (b.participants && b.participants.size) || 0,
+      elementCount: Array.isArray(b.scene?.elements) ? b.scene.elements.length : 0,
+      createdAt: b.createdAt, updatedAt: b.updatedAt,
+    };
+  }
+
+  registerLensAction("whiteboard", "share-board", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    // Either promote an existing private board, or create a new
+    // shared board outright (params.scene + params.title).
+    let scene, title, sourcePrivateId;
+    if (params.id) {
+      sourcePrivateId = String(params.id);
+      const ownerMap = s.boards.get(userId);
+      const priv = ownerMap?.get(sourcePrivateId);
+      if (!priv) return { ok: false, error: "private board not found" };
+      scene = priv.scene; title = priv.title;
+    } else {
+      scene = params.scene && typeof params.scene === "object" ? params.scene : { elements: [], appState: {} };
+      title = String(params.title || "Untitled shared board").slice(0, 80);
+    }
+    const sharedId = String(params.sharedId || `shared_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
+    const board = {
+      id: sharedId, title, scene, ownerId: userId,
+      participants: new Set([userId]),
+      createdAt: nowIsoWb(), updatedAt: nowIsoWb(),
+      sourcePrivateId,
+    };
+    s.sharedBoards.set(sharedId, board);
+    saveWhiteboardState();
+    return { ok: true, result: { board: sharedBoardSummary(board) } };
+  });
+
+  registerLensAction("whiteboard", "shared-list", (ctx, _artifact, _params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boards = [];
+    for (const b of s.sharedBoards.values()) {
+      if (b.participants?.has(userId)) boards.push(sharedBoardSummary(b));
+    }
+    boards.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return { ok: true, result: { boards } };
+  });
+
+  registerLensAction("whiteboard", "join-shared", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const b = s.sharedBoards.get(id);
+    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b.participants) b.participants = new Set();
+    b.participants.add(userId);
+    saveWhiteboardState();
+    return { ok: true, result: { board: { ...sharedBoardSummary(b), scene: b.scene } } };
+  });
+
+  registerLensAction("whiteboard", "leave-shared", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const b = s.sharedBoards.get(id);
+    if (!b) return { ok: false, error: "shared board not found" };
+    b.participants?.delete(userId);
+    saveWhiteboardState();
+    return { ok: true, result: { id, remainingParticipants: b.participants?.size || 0 } };
+  });
+
+  // broadcast-scene — persist + realtime fan-out via the io that
+  // server.js stashes on globalThis._concordREALTIME (best-effort;
+  // no realtime in tests means the macro still updates STATE).
+  registerLensAction("whiteboard", "broadcast-scene", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const b = s.sharedBoards.get(id);
+    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b.participants?.has(userId)) return { ok: false, error: "not a participant" };
+    if (!params.scene || typeof params.scene !== "object") return { ok: false, error: "scene required" };
+    b.scene = params.scene;
+    b.updatedAt = nowIsoWb();
+    saveWhiteboardState();
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`whiteboard:${id}`).emit("whiteboard:scene-update", {
+        boardId: id, userId, elementCount: Array.isArray(params.scene.elements) ? params.scene.elements.length : 0,
+        ts: Date.now(),
+      });
+    } catch (_e) { /* realtime is best-effort */ }
+    return { ok: true, result: { id, updatedAt: b.updatedAt } };
+  });
+
+  // broadcast-cursor — ephemeral, not persisted; pure realtime ping
+  // so other participants see a live cursor. Position is { x, y } in
+  // board coordinates.
+  registerLensAction("whiteboard", "broadcast-cursor", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const b = s.sharedBoards.get(id);
+    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b.participants?.has(userId)) return { ok: false, error: "not a participant" };
+    const x = Number(params.x);
+    const y = Number(params.y);
+    if (!isFinite(x) || !isFinite(y)) return { ok: false, error: "x, y required" };
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`whiteboard:${id}`).emit("whiteboard:cursor", {
+        boardId: id, userId, x, y, ts: Date.now(),
+      });
+    } catch (_e) { /* best effort */ }
+    return { ok: true, result: { id, userId, x, y } };
+  });
+
+  // ── Shared-board voting (aggregated across all participants) ──
+
+  registerLensAction("whiteboard", "shared-vote-cast", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || params.boardId || "");
+    const elementId = String(params.elementId || "");
+    const b = s.sharedBoards.get(id);
+    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b.participants?.has(userId)) return { ok: false, error: "not a participant" };
+    if (!elementId) return { ok: false, error: "elementId required" };
+    if (!s.sharedVotes.has(id)) s.sharedVotes.set(id, new Map());
+    const boardVotes = s.sharedVotes.get(id);
+    if (!boardVotes.has(elementId)) boardVotes.set(elementId, new Set());
+    boardVotes.get(elementId).add(userId);
+    saveWhiteboardState();
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`whiteboard:${id}`).emit("whiteboard:vote-cast", {
+        boardId: id, elementId, voterId: userId,
+        voteCount: boardVotes.get(elementId).size,
+        ts: Date.now(),
+      });
+    } catch (_e) { /* best effort */ }
+    return { ok: true, result: { boardId: id, elementId, voteCount: boardVotes.get(elementId).size } };
+  });
+
+  registerLensAction("whiteboard", "shared-vote-tally", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || params.boardId || "");
+    const b = s.sharedBoards.get(id);
+    if (!b) return { ok: false, error: "shared board not found" };
+    if (!b.participants?.has(userId)) return { ok: false, error: "not a participant" };
+    const boardVotes = s.sharedVotes.get(id);
     if (!boardVotes) return { ok: true, result: { tally: [], total: 0 } };
     const tally = Array.from(boardVotes.entries())
       .map(([elementId, voters]) => ({ elementId, count: voters.size }))

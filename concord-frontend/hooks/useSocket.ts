@@ -87,8 +87,11 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'app:published',
   // Music / studio
   'music:toggle',
-  // Whiteboard
+  // Whiteboard (legacy + real-time multiplayer)
   'whiteboard:updated',
+  'whiteboard:scene-update',
+  'whiteboard:cursor',
+  'whiteboard:vote-cast',
   // Resonance
   'resonance:update',
   // Platform presence
