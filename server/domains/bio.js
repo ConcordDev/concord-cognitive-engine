@@ -364,4 +364,239 @@ export default function registerBioActions(registerLensAction) {
       },
     };
   });
+
+  /**
+   * profile-organism
+   * Generate a structured profile for a species/organism. Reads
+   * artifact.data { name, kingdom?, habitat?, traits? } and returns
+   * taxonomy + habitat + characteristics + evolutionary context.
+   * Pre-this macro the UniversalAction button "profile-organism" was
+   * a dead click.
+   */
+  registerLensAction("bio", "profile-organism", (ctx, artifact, params) => {
+    const d = artifact.data || {};
+    const name = d.name || d.species || params?.name || artifact.title || "(unknown organism)";
+    const kingdom = d.kingdom || params?.kingdom || "Animalia";
+    const habitat = d.habitat || params?.habitat || "unspecified";
+
+    // Tiny taxonomy heuristic — real lookup would hit GBIF / NCBI
+    const KINGDOM_RANKS = {
+      Animalia: ["Phylum", "Class", "Order", "Family", "Genus", "Species"],
+      Plantae:  ["Division", "Class", "Order", "Family", "Genus", "Species"],
+      Fungi:    ["Division", "Class", "Order", "Family", "Genus", "Species"],
+      Bacteria: ["Phylum", "Class", "Order", "Family", "Genus", "Species"],
+      Archaea:  ["Phylum", "Class", "Order", "Family", "Genus", "Species"],
+      Protista: ["Phylum", "Class", "Order", "Family", "Genus", "Species"],
+    };
+    const ranks = KINGDOM_RANKS[kingdom] || KINGDOM_RANKS.Animalia;
+
+    const traits = Array.isArray(d.traits) ? d.traits
+      : (typeof d.traits === 'string' ? String(d.traits).split(/[,;]/).map(t => t.trim()).filter(Boolean) : []);
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      name,
+      kingdom,
+      taxonomyRanks: ranks,
+      taxonomy: d.taxonomy || ranks.reduce((o, r) => ({ ...o, [r]: "(unspecified)" }), {}),
+      habitat,
+      traits,
+      characteristics: d.characteristics || [],
+      evolutionaryNotes: d.evolutionaryNotes || `${name} sits within ${kingdom}. Connect to a phylogenetic tree DTU for full lineage context.`,
+      summary: `${name} (${kingdom}) — habitat: ${habitat}. ${traits.length} trait(s) recorded.`,
+    };
+    if (artifact.data) artifact.data.lastOrganismProfile = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * map-pathway
+   * Structure a biological pathway as a chain of {step, enzyme,
+   * substrate, product} relationships. artifact.data.steps[] or
+   * params.steps[].
+   */
+  registerLensAction("bio", "map-pathway", (ctx, artifact, params) => {
+    const steps = artifact.data?.steps || params?.steps || [];
+    if (steps.length === 0) {
+      return { ok: false, error: "no_steps", message: "Add at least one pathway step (substrate → enzyme → product)." };
+    }
+    const chain = steps.map((s, i) => ({
+      idx: i + 1,
+      substrate: s.substrate || s.input || "(unspecified)",
+      enzyme: s.enzyme || s.catalyst || null,
+      product: s.product || s.output || "(unspecified)",
+      cofactors: Array.isArray(s.cofactors) ? s.cofactors : [],
+      deltaG: Number.isFinite(Number(s.deltaG)) ? Number(s.deltaG) : null,
+    }));
+
+    // Find conservation: each step's product should be the next step's substrate
+    const breaks = [];
+    for (let i = 1; i < chain.length; i++) {
+      const prev = chain[i - 1].product;
+      const curr = chain[i].substrate;
+      if (prev !== curr && !(curr.includes(prev) || prev.includes(curr))) {
+        breaks.push({ at: i + 1, expected: prev, actual: curr });
+      }
+    }
+
+    const totalDeltaG = chain.reduce((s, c) => s + (c.deltaG || 0), 0);
+    const result = {
+      generatedAt: new Date().toISOString(),
+      pathway: artifact.title || params?.name || "(unnamed)",
+      steps: chain,
+      stepCount: chain.length,
+      chainBreaks: breaks,
+      totalDeltaG: totalDeltaG !== 0 ? Math.round(totalDeltaG * 100) / 100 : null,
+      thermodynamicallyFavorable: totalDeltaG < 0,
+      summary: `${chain.length}-step pathway from ${chain[0].substrate} to ${chain[chain.length - 1].product}. ${breaks.length === 0 ? 'Chain conserved.' : `${breaks.length} break(s) detected.`}`,
+    };
+    if (artifact.data) artifact.data.lastPathwayMap = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * review-protocol
+   * Audit a lab protocol for missing controls, safety steps, time
+   * estimates. artifact.data.steps[] (string[] or {action, time}[]).
+   */
+  registerLensAction("bio", "review-protocol", (ctx, artifact, params) => {
+    const steps = artifact.data?.steps || params?.steps || [];
+    if (steps.length === 0) {
+      return { ok: false, error: "no_steps", message: "Add protocol steps to review." };
+    }
+    const normalized = steps.map((s, i) => typeof s === 'string'
+      ? { idx: i + 1, action: s, time: null }
+      : { idx: i + 1, action: s.action || s.step || `Step ${i + 1}`, time: s.time || s.minutes || null }
+    );
+
+    const allText = normalized.map(s => s.action.toLowerCase()).join(' ');
+
+    // Heuristic gap detection
+    const missing = [];
+    if (!/control/i.test(allText)) missing.push({ kind: 'control', severity: 'high', suggestion: 'Add a negative and positive control to validate the assay.' });
+    if (!/safety|ppe|glove|goggle|fume|hood/i.test(allText)) missing.push({ kind: 'safety', severity: 'high', suggestion: 'Add a PPE/safety step (gloves, goggles, fume hood as appropriate).' });
+    if (!/wash|rinse/i.test(allText)) missing.push({ kind: 'wash', severity: 'medium', suggestion: 'Consider a wash step between incubation and detection.' });
+    if (normalized.every(s => s.time === null)) missing.push({ kind: 'time-estimates', severity: 'medium', suggestion: 'Add time estimates per step so the protocol is schedulable.' });
+    if (!/store|aliquot|label/i.test(allText)) missing.push({ kind: 'storage', severity: 'low', suggestion: 'Document storage / labeling / aliquoting of leftover material.' });
+
+    const totalTime = normalized.reduce((s, st) => s + (Number(st.time) || 0), 0);
+
+    const result = {
+      reviewedAt: new Date().toISOString(),
+      protocol: artifact.title || '(unnamed)',
+      stepCount: normalized.length,
+      totalEstimatedMinutes: totalTime || null,
+      gaps: missing,
+      severity: missing.some(m => m.severity === 'high') ? 'high' : missing.length > 0 ? 'medium' : 'ok',
+      summary: missing.length === 0
+        ? `${normalized.length}-step protocol looks complete. Estimated ${totalTime}min.`
+        : `${missing.length} gap(s): ${missing.map(g => g.kind).join(', ')}.`,
+    };
+    if (artifact.data) artifact.data.lastProtocolReview = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * link-gene-function
+   * Explain gene → protein → function chain. Reads artifact.data
+   * { gene, protein, function?, organism? }.
+   */
+  registerLensAction("bio", "link-gene-function", (ctx, artifact, params) => {
+    const d = artifact.data || {};
+    const gene = d.gene || d.symbol || params?.gene;
+    if (!gene) {
+      return { ok: false, error: "no_gene", message: "Provide a gene symbol (e.g. TP53, BRCA1)." };
+    }
+    const protein = d.protein || params?.protein || `${gene} protein`;
+    const fnNotes = d.function || d.functionNotes || params?.function || '(unspecified)';
+    const organism = d.organism || params?.organism || 'Homo sapiens';
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      organism,
+      gene,
+      protein,
+      chain: [
+        { stage: 'gene',    entity: gene, role: 'DNA locus' },
+        { stage: 'mRNA',    entity: `${gene} transcript`, role: 'transcribed' },
+        { stage: 'protein', entity: protein, role: 'translated product' },
+        { stage: 'function', entity: fnNotes, role: 'biological effect' },
+      ],
+      externalLinks: [
+        { source: 'NCBI Gene', url: `https://www.ncbi.nlm.nih.gov/gene/?term=${encodeURIComponent(gene)}+${encodeURIComponent(organism)}` },
+        { source: 'UniProt',   url: `https://www.uniprot.org/uniprotkb?query=${encodeURIComponent(gene)}+organism:${encodeURIComponent(organism)}` },
+        { source: 'Ensembl',   url: `https://www.ensembl.org/Multi/Search/Results?q=${encodeURIComponent(gene)}` },
+      ],
+      summary: `${gene} (${organism}) → ${protein} → ${String(fnNotes).slice(0, 80)}${fnNotes.length > 80 ? '…' : ''}`,
+    };
+    if (artifact.data) artifact.data.lastGeneFunction = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * trace-evolution
+   * Map evolutionary relationship between organisms. Reads
+   * artifact.data.organisms[] or params.organisms[].
+   */
+  registerLensAction("bio", "trace-evolution", (ctx, artifact, params) => {
+    const organisms = artifact.data?.organisms || params?.organisms || [];
+    if (organisms.length < 2) {
+      return { ok: false, error: "need_two", message: "Provide at least two organisms to trace evolutionary relationship." };
+    }
+    // Look up shared lineage by matching against simple taxonomic groupings
+    const GROUPS = {
+      mammals:  ['human', 'mouse', 'rat', 'dog', 'cat', 'whale', 'bat', 'cow', 'pig', 'horse'],
+      birds:    ['chicken', 'eagle', 'sparrow', 'owl', 'parrot'],
+      reptiles: ['lizard', 'snake', 'turtle', 'alligator', 'crocodile'],
+      fish:     ['salmon', 'tuna', 'shark', 'cod'],
+      insects:  ['bee', 'ant', 'fly', 'beetle', 'butterfly'],
+      plants:   ['oak', 'rose', 'grass', 'corn', 'rice', 'wheat'],
+      fungi:    ['yeast', 'mushroom', 'mold'],
+      bacteria: ['e. coli', 'e.coli', 'salmonella', 'staphylococcus'],
+    };
+    const inGroup = (org) => {
+      const o = String(org).toLowerCase();
+      return Object.entries(GROUPS).find(([, list]) => list.some(item => o.includes(item)))?.[0] || 'other';
+    };
+    const tagged = organisms.map(o => ({ name: o, group: inGroup(o) }));
+    const groups = Array.from(new Set(tagged.map(t => t.group)));
+    const sharedGroup = groups.length === 1 ? groups[0] : null;
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      organisms: tagged,
+      groups,
+      sharedGroup,
+      commonality: sharedGroup
+        ? `All ${organisms.length} organisms share group: ${sharedGroup}.`
+        : `Organisms span ${groups.length} groups: ${groups.join(', ')}.`,
+      suggestion: sharedGroup
+        ? 'Construct a phylogenetic tree to refine divergence times. Use phylogeneticDistance action with aligned sequences.'
+        : 'These organisms span distant branches. Use NCBI Taxonomy to find their MRCA (most recent common ancestor).',
+    };
+    if (artifact.data) artifact.data.lastEvolutionTrace = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * analyze (generic dispatcher)
+   * Frontend per-row Analyze button calls this with no specific kind.
+   * Route based on artifact shape.
+   */
+  registerLensAction("bio", "analyze", (ctx, artifact, _params) => {
+    const d = artifact.data || {};
+    if (d.sequenceA && d.sequenceB) return { ok: true, result: { dispatched: 'sequenceAlign', note: 'Use sequenceAlign action for full alignment output.' } };
+    if (d.expressionData || d.geneExpression) return { ok: true, result: { dispatched: 'geneExpression' } };
+    if (d.steps && Array.isArray(d.steps)) return { ok: true, result: { dispatched: 'map-pathway or review-protocol' } };
+    if (d.gene || d.symbol) return { ok: true, result: { dispatched: 'link-gene-function', gene: d.gene || d.symbol } };
+    if (d.organisms) return { ok: true, result: { dispatched: 'trace-evolution' } };
+    if (d.name || d.species || d.kingdom) return { ok: true, result: { dispatched: 'profile-organism', name: d.name || d.species } };
+    return {
+      ok: true,
+      result: {
+        message: 'Bio analyze: artifact shape did not match a specific dispatcher.',
+        availableActions: ['sequenceAlign','geneExpression','phylogeneticDistance','motifDetection','profile-organism','map-pathway','review-protocol','link-gene-function','trace-evolution'],
+      },
+    };
+  });
 }
