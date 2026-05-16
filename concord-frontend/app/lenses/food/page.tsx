@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
+import { FoodActionPanel } from '@/components/food/FoodActionPanel';
 import CookMode from '@/components/food/CookMode';
 import PantryTracker from '@/components/food/PantryTracker';
 import PlateScan from '@/components/food/PlateScan';
@@ -2803,6 +2804,11 @@ export default function FoodLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <OpenFoodFactsSearch />
+      </section>
+
+      {/* Yummly + POS-shape kitchen workbench: scale / cost / suggest / waste + actions */}
+      <section className="mt-6">
+        <FoodActionPanel />
       </section>
     </div>
     </LensShell>
