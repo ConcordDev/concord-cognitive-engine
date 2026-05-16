@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { CogsciFeed } from '@/components/metacognition/CogsciFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1461,6 +1462,9 @@ export default function MetacognitionLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <CogsciFeed />
+      </section>
     </div>
     </LensShell>
   );
