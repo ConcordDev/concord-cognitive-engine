@@ -35,6 +35,11 @@ interface TransportBarProps {
 }
 
 const VIEW_TABS: { id: StudioViewType; label: string }[] = [
+  // Session is the default hero view (Ableton-style clip grid).
+  // Leftmost position by design — primary entry point per canonical
+  // DAW research; other tabs are per-clip / per-track editors users
+  // reach via Session clip-click or directly via these chips.
+  { id: 'session', label: 'Session' },
   { id: 'arrange', label: 'Arrange' },
   { id: 'mixer', label: 'Mixer' },
   { id: 'pianoRoll', label: 'Piano Roll' },
