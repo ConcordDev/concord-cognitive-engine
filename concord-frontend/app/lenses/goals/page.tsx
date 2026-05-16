@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ProductivityFeed } from '@/components/goals/ProductivityFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -1219,6 +1220,9 @@ export default function GoalsLensPage() {
           return null;
         })()}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ProductivityFeed />
+      </section>
     </div>
     </LensShell>
   );
