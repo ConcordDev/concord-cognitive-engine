@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RoboticsRepos } from '@/components/robotics/RoboticsRepos';
+import { RoboticsActionPanel } from '@/components/robotics/RoboticsActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -589,6 +590,10 @@ export default function RoboticsLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <RoboticsRepos />
+      </section>
+
+      <section className="mt-6">
+        <RoboticsActionPanel />
       </section>
     </div>
     </LensShell>
