@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { MentorshipFeed } from '@/components/mentorship/MentorshipFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -609,6 +610,9 @@ export default function MentorshipLensPage() {
         </button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="mentorship" /></div>}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <MentorshipFeed />
+      </section>
     </div>
     </LensShell>
   );
