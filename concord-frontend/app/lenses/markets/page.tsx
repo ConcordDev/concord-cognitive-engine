@@ -15,6 +15,7 @@ import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import QuoteCardList, { type QuoteCardItem } from '@/components/lens/QuoteCardList';
+import MarketsWorkbench from '@/components/markets/MarketsWorkbench';
 
 interface Market {
   id: number;
@@ -55,6 +56,7 @@ export default function MarketsPage() {
 
   const [markets, setMarkets] = useState<Market[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [betting, setBetting] = useState<number | null>(null);
   // Live Yahoo Finance ticker feed for the mobile-style market list.
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('market');
@@ -184,6 +186,17 @@ export default function MarketsPage() {
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
       <a href="#markets-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to markets content</a>
+
+      {/* 2026 parity workbench — derivatives + global markets companion */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-cyan-50 shadow-2xl text-sm font-medium"
+        title="Markets Workbench — options chain (BSM greeks), futures, FX, depth-of-book, alerts"
+      >
+        Markets Workbench
+      </button>
+      <MarketsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
