@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
 import ShipmentTracker from '@/components/logistics/ShipmentTracker';
 import RouteOptimizer from '@/components/logistics/RouteOptimizer';
 import WarehouseInventory from '@/components/logistics/WarehouseInventory';
@@ -2745,6 +2746,9 @@ export default function LogisticsLensPage() {
           />
         </div>
       )}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LogisticsChatter />
+      </section>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
