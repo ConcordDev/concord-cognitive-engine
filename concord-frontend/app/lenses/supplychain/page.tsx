@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SupplyChainFeed } from '@/components/supplychain/SupplyChainFeed';
+import { SupplyChainActionPanel } from '@/components/supplychain/SupplyChainActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -223,6 +224,10 @@ export default function SupplyChainLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <SupplyChainFeed />
+      </section>
+
+      <section className="mt-6">
+        <SupplyChainActionPanel />
       </section>
     </div>
 

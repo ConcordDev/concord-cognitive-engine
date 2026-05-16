@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
+import { ManufacturingActionPanel } from '@/components/manufacturing/ManufacturingActionPanel';
 import OEEDashboard from '@/components/manufacturing/OEEDashboard';
 import WorkOrderBoard from '@/components/manufacturing/WorkOrderBoard';
 import QualitySPC from '@/components/manufacturing/QualitySPC';
@@ -2698,6 +2699,10 @@ export default function ManufacturingLensPage() {
       )}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ManufacturingFeed />
+      </section>
+
+      <section className="mt-6 max-w-7xl mx-auto px-4">
+        <ManufacturingActionPanel />
       </section>
     </LensPageShell>
     
