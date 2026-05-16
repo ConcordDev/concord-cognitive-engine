@@ -262,6 +262,26 @@ export const EVENT_SHAPES = Object.freeze({
     required: ["userId", "messageId", "durationMs"],
     optional: [],
   },
+
+  // ── World voice chat (WebRTC + 50m spatial cells) ─────────────────
+  // Emitted by server/domains/world.js voice-{join-cell,update-position,
+  // leave-cell,signal} macros. Two room scopes:
+  //   • `voice:${worldId}:${cellKey}` — peer-joined / peer-left
+  //   • `user:${userId}`              — voice:signal (WebRTC SDP/ICE)
+  // Audio NEVER touches the server; the substrate only handles peer
+  // discovery + signaling. payload is opaque to the validator.
+  "voice:peer-joined": {
+    required: ["userId", "worldId", "cellKey"],
+    optional: [],
+  },
+  "voice:peer-left": {
+    required: ["userId", "worldId", "cellKey"],
+    optional: [],
+  },
+  "voice:signal": {
+    required: ["from", "to", "kind", "payload"],
+    optional: ["worldId", "cellKey"],
+  },
 });
 
 /**

@@ -105,14 +105,15 @@ export default function registerWorldActions(registerLensAction) {
   function getWorldLensState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.worldLens) {
-      STATE.worldLens = {
-        shareCache: new Map(),        // userId -> Map<linkId, link>
-        overlayPrefs: new Map(),      // userId -> { factionOverlay, hotbarMode, photoTemplate }
-        recentWorlds: new Map(),      // userId -> Array<{ worldId, lastVisitedAt }>
-        pinnedQuests: new Map(),      // userId -> Set<questId>
-      };
-    }
+    if (!STATE.worldLens) STATE.worldLens = {};
+    if (!STATE.worldLens.shareCache)    STATE.worldLens.shareCache    = new Map();
+    if (!STATE.worldLens.overlayPrefs)  STATE.worldLens.overlayPrefs  = new Map();
+    if (!STATE.worldLens.recentWorlds)  STATE.worldLens.recentWorlds  = new Map();
+    if (!STATE.worldLens.pinnedQuests)  STATE.worldLens.pinnedQuests  = new Map();
+    // Voice chat substrate — peers grouped by 50m spatial cell within a
+    // world. Players in the same cell can hear each other via WebRTC.
+    if (!STATE.worldLens.voiceRooms)    STATE.worldLens.voiceRooms    = new Map(); // `${worldId}:${cellKey}` -> Set<userId>
+    if (!STATE.worldLens.voicePeers)    STATE.worldLens.voicePeers    = new Map(); // userId -> { worldId, cellKey, x, y, z, lastSeenMs }
     return STATE.worldLens;
   }
   function saveWorldLensState() {
@@ -340,5 +341,191 @@ export default function registerWorldActions(registerLensAction) {
     s.overlayPrefs.set(userId, current);
     saveWorldLensState();
     return { ok: true, result: { prefs: current } };
+  });
+
+  // ── Spatial voice chat (WebRTC + 50m cell scoping) ────────────────
+  //
+  // Each world is partitioned into 50m × 50m × 50m spatial cells. Two
+  // players in the same cell can hear each other; crossing a cell
+  // boundary triggers a peer set rotation. Voice is peer-to-peer via
+  // WebRTC; this substrate handles ONLY the signaling + peer-discovery
+  // layer. The actual audio never touches the server.
+  //
+  // Flow:
+  //   1. voice-join-cell → declares position; server updates the room
+  //      memberships, returns the current peer set. Emits
+  //      `voice:peer-joined` to all OTHER members of the new cell.
+  //   2. voice-update-position → recomputes cell; if changed, leaves
+  //      old room + joins new room (one shot). Emits peer-left to old
+  //      cell + peer-joined to new cell.
+  //   3. voice-signal → relays opaque WebRTC SDP / ICE-candidate JSON
+  //      to a specific peer userId via socket.io. Server NEVER reads
+  //      the audio payload — it routes a `voice:signal` event to the
+  //      `user:${target}` room with `{from, to, payload}`.
+  //   4. voice-leave-cell → explicit leave (also fires on disconnect
+  //      via a janitor sweep).
+  //   5. voice-peers-in-cell → query helper (UI uses to show "N in
+  //      voice range" indicator).
+  //
+  // Cell sizing: 50m feels natural for 3D world voice (large enough
+  // that a small group hangs together; small enough that a city
+  // square doesn't put 200 people on the same call). Configurable
+  // via env CONCORD_VOICE_CELL_M if needed.
+
+  const VOICE_CELL_M = Number(process.env.CONCORD_VOICE_CELL_M) || 50;
+  const VOICE_PEER_STALE_MS = Number(process.env.CONCORD_VOICE_STALE_MS) || 60_000;
+
+  function cellKeyFor(x, y, z) {
+    return `${Math.floor(x / VOICE_CELL_M)}:${Math.floor(y / VOICE_CELL_M)}:${Math.floor(z / VOICE_CELL_M)}`;
+  }
+
+  function emitVoiceToRoom(room, name, payload) {
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(room).emit(name, { ...payload, ts: Date.now() });
+    } catch (_e) { /* best effort */ }
+  }
+
+  function leaveCurrentVoiceCell(s, userId) {
+    const prev = s.voicePeers.get(userId);
+    if (!prev) return null;
+    const key = `${prev.worldId}:${prev.cellKey}`;
+    const room = s.voiceRooms.get(key);
+    if (room) {
+      room.delete(userId);
+      if (room.size === 0) s.voiceRooms.delete(key);
+    }
+    emitVoiceToRoom(`voice:${key}`, "voice:peer-left", { userId, worldId: prev.worldId, cellKey: prev.cellKey });
+    return prev;
+  }
+
+  registerLensAction("world", "voice-join-cell", (ctx, _artifact, params = {}) => {
+    const s = getWorldLensState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const worldId = String(params.worldId || "").trim();
+    if (!worldId) return { ok: false, error: "worldId required" };
+    const x = Number(params.x), y = Number(params.y), z = Number(params.z);
+    if (!isFinite(x) || !isFinite(y) || !isFinite(z)) {
+      return { ok: false, error: "x, y, z required (numeric position in world coords)" };
+    }
+    leaveCurrentVoiceCell(s, userId);
+    const cellKey = cellKeyFor(x, y, z);
+    const roomKey = `${worldId}:${cellKey}`;
+    if (!s.voiceRooms.has(roomKey)) s.voiceRooms.set(roomKey, new Set());
+    const room = s.voiceRooms.get(roomKey);
+    const peersBefore = Array.from(room).filter((p) => p !== userId);
+    room.add(userId);
+    s.voicePeers.set(userId, { worldId, cellKey, x, y, z, lastSeenMs: Date.now() });
+    saveWorldLensState();
+    // Tell existing peers a newcomer arrived (they'll initiate the offer)
+    emitVoiceToRoom(`voice:${roomKey}`, "voice:peer-joined", { userId, worldId, cellKey });
+    return {
+      ok: true,
+      result: {
+        worldId, cellKey, cellSizeM: VOICE_CELL_M,
+        peers: peersBefore,
+        peerCount: peersBefore.length,
+      },
+    };
+  });
+
+  registerLensAction("world", "voice-update-position", (ctx, _artifact, params = {}) => {
+    const s = getWorldLensState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const prev = s.voicePeers.get(userId);
+    if (!prev) return { ok: false, error: "not in a voice cell — call voice-join-cell first" };
+    const x = Number(params.x), y = Number(params.y), z = Number(params.z);
+    if (!isFinite(x) || !isFinite(y) || !isFinite(z)) return { ok: false, error: "x, y, z required" };
+    const newCellKey = cellKeyFor(x, y, z);
+    if (newCellKey === prev.cellKey) {
+      prev.x = x; prev.y = y; prev.z = z; prev.lastSeenMs = Date.now();
+      return { ok: true, result: { cellChanged: false, cellKey: prev.cellKey } };
+    }
+    // Cell crossed — rotate room membership.
+    leaveCurrentVoiceCell(s, userId);
+    const roomKey = `${prev.worldId}:${newCellKey}`;
+    if (!s.voiceRooms.has(roomKey)) s.voiceRooms.set(roomKey, new Set());
+    const room = s.voiceRooms.get(roomKey);
+    const peersBefore = Array.from(room).filter((p) => p !== userId);
+    room.add(userId);
+    s.voicePeers.set(userId, { worldId: prev.worldId, cellKey: newCellKey, x, y, z, lastSeenMs: Date.now() });
+    saveWorldLensState();
+    emitVoiceToRoom(`voice:${roomKey}`, "voice:peer-joined", { userId, worldId: prev.worldId, cellKey: newCellKey });
+    return {
+      ok: true,
+      result: { cellChanged: true, cellKey: newCellKey, peers: peersBefore, peerCount: peersBefore.length },
+    };
+  });
+
+  registerLensAction("world", "voice-leave-cell", (ctx, _artifact, _params = {}) => {
+    const s = getWorldLensState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const prev = leaveCurrentVoiceCell(s, userId);
+    s.voicePeers.delete(userId);
+    saveWorldLensState();
+    return { ok: true, result: { left: prev ? prev.cellKey : null } };
+  });
+
+  registerLensAction("world", "voice-peers-in-cell", (ctx, _artifact, _params = {}) => {
+    const s = getWorldLensState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const me = s.voicePeers.get(userId);
+    if (!me) return { ok: true, result: { peers: [], cellKey: null } };
+    const roomKey = `${me.worldId}:${me.cellKey}`;
+    const room = s.voiceRooms.get(roomKey) || new Set();
+    const peers = Array.from(room).filter((p) => p !== userId);
+    return { ok: true, result: { peers, peerCount: peers.length, worldId: me.worldId, cellKey: me.cellKey, cellSizeM: VOICE_CELL_M } };
+  });
+
+  // voice-signal — relays an opaque WebRTC SDP / ICE blob from the
+  // caller to a target peer. The payload is NEVER inspected — it's
+  // routed verbatim to `user:${target}` so the target's hook can
+  // feed it into their RTCPeerConnection.
+  registerLensAction("world", "voice-signal", (ctx, _artifact, params = {}) => {
+    const s = getWorldLensState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const fromUserId = worldActorId(ctx);
+    const target = String(params.target || "").trim();
+    const kind = String(params.kind || "");
+    if (!target) return { ok: false, error: "target userId required" };
+    if (!["offer", "answer", "ice-candidate"].includes(kind)) {
+      return { ok: false, error: "kind must be one of: offer, answer, ice-candidate" };
+    }
+    if (params.payload == null) return { ok: false, error: "payload required" };
+    // Anti-abuse: caller and target must currently share a voice cell.
+    const me = s.voicePeers.get(fromUserId);
+    const them = s.voicePeers.get(target);
+    if (!me || !them) return { ok: false, error: "both peers must be in a voice cell" };
+    if (me.worldId !== them.worldId || me.cellKey !== them.cellKey) {
+      return { ok: false, error: "peer is not in the same voice cell" };
+    }
+    emitVoiceToRoom(`user:${target}`, "voice:signal", {
+      from: fromUserId, to: target, kind, payload: params.payload,
+      worldId: me.worldId, cellKey: me.cellKey,
+    });
+    return { ok: true, result: { delivered: target, kind } };
+  });
+
+  // voice-sweep-stale — janitor that drops peers whose lastSeenMs is
+  // older than VOICE_PEER_STALE_MS (default 60s). Callable by a
+  // heartbeat or on demand. Idempotent.
+  registerLensAction("world", "voice-sweep-stale", (_ctx, _artifact, _params = {}) => {
+    const s = getWorldLensState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const cutoff = Date.now() - VOICE_PEER_STALE_MS;
+    let swept = 0;
+    for (const [uid, info] of Array.from(s.voicePeers.entries())) {
+      if (info.lastSeenMs < cutoff) {
+        leaveCurrentVoiceCell(s, uid);
+        s.voicePeers.delete(uid);
+        swept++;
+      }
+    }
+    if (swept > 0) saveWorldLensState();
+    return { ok: true, result: { swept } };
   });
 }
