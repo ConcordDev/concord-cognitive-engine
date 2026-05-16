@@ -1,4 +1,12 @@
 // server/domains/linguistics.js
+//
+// Pure-compute text-analysis helpers (readability, morphology,
+// frequency) plus real Free Dictionary API + Datamuse word
+// associations (both free, no API key).
+
+const FREE_DICTIONARY = "https://api.dictionaryapi.dev/api/v2/entries";
+const DATAMUSE = "https://api.datamuse.com/words";
+
 export default function registerLinguisticsActions(registerLensAction) {
   registerLensAction("linguistics", "textAnalysis", (ctx, artifact, _params) => {
     const text = artifact.data?.text || artifact.data?.content || "";
@@ -41,5 +49,92 @@ export default function registerLinguisticsActions(registerLensAction) {
     for (const w of words) { if (positive.some(p => w.includes(p))) posCount++; if (negative.some(n => w.includes(n))) negCount++; }
     const score = words.length > 0 ? Math.round(((posCount - negCount) / Math.max(posCount + negCount, 1)) * 100) : 0;
     return { ok: true, result: { sentiment: score > 20 ? "positive" : score < -20 ? "negative" : "neutral", score, positiveWords: posCount, negativeWords: negCount, totalWords: words.length, confidence: (posCount + negCount) > 3 ? "high" : (posCount + negCount) > 0 ? "moderate" : "low" } };
+  });
+
+  /**
+   * dictionary-lookup — Real word definition via Free Dictionary API.
+   * Returns definitions, etymology, examples, pronunciations (IPA +
+   * audio URLs when available), synonyms/antonyms. Free, no API key.
+   * params: { word: string, lang?: ISO-2 (default "en") }
+   */
+  registerLensAction("linguistics", "dictionary-lookup", async (_ctx, _artifact, params = {}) => {
+    const word = String(params.word || "").trim();
+    if (!word) return { ok: false, error: "word required" };
+    const lang = String(params.lang || "en").toLowerCase();
+    try {
+      const r = await fetch(`${FREE_DICTIONARY}/${lang}/${encodeURIComponent(word)}`);
+      if (r.status === 404) return { ok: false, error: `word not found: ${word}` };
+      if (!r.ok) throw new Error(`dictionary ${r.status}`);
+      const data = await r.json();
+      const entries = (Array.isArray(data) ? data : []).map((entry) => ({
+        word: entry.word,
+        phonetic: entry.phonetic,
+        phonetics: (entry.phonetics || []).map((p) => ({ text: p.text, audio: p.audio })),
+        origin: entry.origin,
+        meanings: (entry.meanings || []).map((m) => ({
+          partOfSpeech: m.partOfSpeech,
+          definitions: (m.definitions || []).map((d) => ({
+            definition: d.definition,
+            example: d.example,
+            synonyms: d.synonyms || [],
+            antonyms: d.antonyms || [],
+          })),
+          synonyms: m.synonyms || [],
+          antonyms: m.antonyms || [],
+        })),
+      }));
+      return {
+        ok: true,
+        result: { word, lang, entries, count: entries.length, source: "free-dictionary-api" },
+      };
+    } catch (e) {
+      return { ok: false, error: `dictionary unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * datamuse-words — Word association lookup via Datamuse API.
+   * Free, no key. Supports rhymes, synonyms, "means like", "sounds
+   * like", "related to topic", and many more constraint queries.
+   *
+   * params: One or more of:
+   *   rel_rhy: "perfectly rhyming with"
+   *   rel_nry: "near-rhyming with"
+   *   ml: "means like"
+   *   sl: "sounds like"
+   *   sp: "spelled like" (supports wildcards * and ?)
+   *   rel_syn: "synonym of"
+   *   rel_ant: "antonym of"
+   *   topics: "related to topic"
+   *   max?: 1-1000 (default 25)
+   */
+  registerLensAction("linguistics", "datamuse-words", async (_ctx, _artifact, params = {}) => {
+    const allowed = ["rel_rhy", "rel_nry", "ml", "sl", "sp", "rel_syn", "rel_ant", "topics"];
+    const supplied = Object.keys(params).filter((k) => allowed.includes(k));
+    if (supplied.length === 0) {
+      return { ok: false, error: `at least one of: ${allowed.join(", ")} required` };
+    }
+    const max = Math.max(1, Math.min(1000, Number(params.max) || 25));
+    const qs = new URLSearchParams({ max: String(max) });
+    for (const k of supplied) {
+      qs.set(k, String(params[k]));
+    }
+    try {
+      const r = await fetch(`${DATAMUSE}?${qs.toString()}`);
+      if (!r.ok) throw new Error(`datamuse ${r.status}`);
+      const data = await r.json();
+      const words = (data || []).map((w) => ({
+        word: w.word,
+        score: w.score,
+        numSyllables: w.numSyllables,
+        tags: w.tags,
+      }));
+      return {
+        ok: true,
+        result: { query: Object.fromEntries(supplied.map((k) => [k, params[k]])), words, count: words.length, source: "datamuse" },
+      };
+    } catch (e) {
+      return { ok: false, error: `datamuse unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
