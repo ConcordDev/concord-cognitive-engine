@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { BillsList } from '@/components/government/BillsList';
 import RepresentativeFinder from '@/components/government/RepresentativeFinder';
 import BillTracker from '@/components/government/BillTracker';
 import CivicAlerts from '@/components/government/CivicAlerts';
@@ -3533,8 +3534,13 @@ export default function GovernmentLensPage() {
           </div>
         )}
       </div>
+
+      {/* Bespoke Congress.gov recent-bills list with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <BillsList />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#government-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to government content</a>
     </LensShell>
