@@ -26,6 +26,8 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { PetActionDrawer } from '@/components/pets/PetActionDrawer';
+import { AnimatePresence } from 'framer-motion';
 
 type ModeTab = 'profiles' | 'health' | 'feeding' | 'activity' | 'expenses' | 'documents';
 type ArtifactType = 'PetProfile' | 'HealthRecord' | 'FeedingSchedule' | 'ActivityLog' | 'Expense' | 'Document';
@@ -81,6 +83,7 @@ export default function PetsLensPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<PetArtifact> | null>(null);
+  const [drawerPetId, setDrawerPetId] = useState<string | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
 
@@ -356,6 +359,15 @@ export default function PetsLensPage() {
                 {d.age && <span className="text-xs text-purple-400">{d.age}y</span>}
                 {d.nextVetVisit && <span className="text-xs text-yellow-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{d.nextVetVisit}</span>}
                 <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
+                {activeArtifactType === 'PetProfile' && (
+                  <button
+                    onClick={e => { e.stopPropagation(); setDrawerPetId(item.id); }}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 transition-colors"
+                    aria-label="Quick actions for this pet"
+                  >
+                    <Zap className="w-3 h-3" /> Actions
+                  </button>
+                )}
                 <button onClick={e => { e.stopPropagation(); handleAction('analyze', item.id); }} className={ds.btnGhost} aria-label="Activate"><Zap className="w-4 h-4 text-amber-400" /></button>
                 <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-4 h-4 text-red-400" /></button>
               </div>
@@ -413,6 +425,24 @@ export default function PetsLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#pets-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to pets content</a>
+
+      {/* Per-pet PetDesk-style action drawer */}
+      <AnimatePresence>
+        {drawerPetId && (() => {
+          const profile = items.find(i => i.id === drawerPetId);
+          if (!profile) return null;
+          return (
+            <PetActionDrawer
+              profile={{
+                id: profile.id,
+                title: profile.title,
+                data: profile.data as unknown as Record<string, unknown>,
+              }}
+              onClose={() => setDrawerPetId(null)}
+            />
+          );
+        })()}
+      </AnimatePresence>
     </LensShell>
   );
 }
