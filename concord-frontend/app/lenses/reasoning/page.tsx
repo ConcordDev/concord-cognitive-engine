@@ -29,6 +29,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { ArgumentWorkbench } from '@/components/reasoning/ArgumentWorkbench';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -2521,6 +2522,11 @@ export default function ReasoningLensPage() {
           </div>
         )}
       </div>
+      {/* Wolfram-shape argument workbench: validate / map / fallacy / premise + actions */}
+      <section className="mt-6">
+        <ArgumentWorkbench />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ReasoningArxiv />
       </section>
