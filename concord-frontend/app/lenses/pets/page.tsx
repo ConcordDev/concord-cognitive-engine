@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { BreedExplorer } from '@/components/pets/BreedExplorer';
 import { PetCarePlanner } from '@/components/pets/PetCarePlanner';
+import { ActivityWeightDashboard } from '@/components/pets/ActivityWeightDashboard';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -403,6 +404,10 @@ export default function PetsLensPage() {
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PetCarePlanner />
+      </section>
+
+      <section className="mt-6">
+        <ActivityWeightDashboard />
       </section>
     </div>
 
