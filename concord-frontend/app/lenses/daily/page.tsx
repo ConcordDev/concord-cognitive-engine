@@ -43,13 +43,7 @@ const QUOTES = [
   { text: 'Art is not what you see, but what you make others see.', author: 'Edgar Degas' },
 ];
 
-const INITIAL_ENTRIES: JournalEntry[] = [];
-
-const INITIAL_SESSIONS: SessionLog[] = [];
-
 const _INITIAL_CLIPS: AudioClip[] = [];
-
-const INITIAL_REMINDERS: Reminder[] = [];
 
 const SKILLS = ['Finger drumming', 'Chord voicings', 'Sound design', 'Ear training', 'Mixing technique', 'Rhythm exercises'];
 const MOODS = ['😤', '😕', '😐', '🙂', '🔥'];
@@ -141,13 +135,13 @@ export default function DailyLensPage() {
   const [isRunningAction, setIsRunningAction] = useState(false);
 
   const { isLoading, isError: isError, error: error, refetch: refetch, items: entryItems, create: createEntry } = useLensData('daily', 'entry', {
-    seed: INITIAL_ENTRIES.map(e => ({ title: e.date, data: e as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const { isError: isError2, error: error2, refetch: refetch2, items: sessionItems, create: createSession } = useLensData('daily', 'session', {
-    seed: INITIAL_SESSIONS.map(s => ({ title: s.project, data: s as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const { isError: isError3, error: error3, refetch: refetch3, items: reminderItems, create: createReminder } = useLensData('daily', 'reminder', {
-    seed: INITIAL_REMINDERS.map(r => ({ title: r.title, data: r as unknown as Record<string, unknown> })),
+    seed: [],
   });
 
   // Sync backend data into local state when available

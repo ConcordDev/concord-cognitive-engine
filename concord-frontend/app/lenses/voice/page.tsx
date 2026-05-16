@@ -106,8 +106,6 @@ const PRESET_CONFIGS: Record<ProcessingPreset, Record<string, { enabled: boolean
 const generateWaveform = (count: number): number[] =>
   Array.from({ length: count }, (_, i) => Math.sin(i * 0.5) * 0.35 + 0.5);
 
-const INITIAL_TAKES: Take[] = [];
-
 const DEFAULT_EFFECTS: EffectNode[] = [
   { id: 'noise-gate', name: 'Noise Gate', enabled: false, paramLabel: 'Threshold', paramValue: -40, paramMin: -80, paramMax: 0, paramUnit: 'dB' },
   { id: 'compressor', name: 'Compressor', enabled: false, paramLabel: 'Ratio', paramValue: 4, paramMin: 1, paramMax: 20, paramUnit: ':1' },
@@ -134,7 +132,7 @@ export default function VoiceLensPage() {
   // Takes
   const [takes, setTakes] = useState<Take[]>([]);
   const { isLoading, isError: isError, error: error, refetch: refetch, items: takeItems, create: createTake } = useLensData<Take>('voice', 'take', {
-    seed: INITIAL_TAKES.map(t => ({ title: t.name, data: t as unknown as Record<string, unknown> })),
+    seed: [],
   });
   const [activeTakeId, setActiveTakeId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);

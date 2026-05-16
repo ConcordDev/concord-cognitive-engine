@@ -253,13 +253,6 @@ const BUDGET_CATEGORIES = [
 // Initial Data (empty — all data comes from backend)
 // ---------------------------------------------------------------------------
 
-const INITIAL_STAKEHOLDERS: Stakeholder[] = [];
-const INITIAL_COMMITTEES: Committee[] = [];
-const INITIAL_PROPOSALS: Proposal[] = [];
-const INITIAL_BUDGET_ITEMS: BudgetItem[] = [];
-const INITIAL_AUDIT: AuditEntry[] = [];
-const INITIAL_DEBATES: DebateSession[] = [];
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -340,10 +333,7 @@ export default function CouncilLensPage() {
     update: updateProposalItem,
     remove: removeProposalItem,
   } = useLensData<Record<string, unknown>>('council', 'proposal', {
-    seed: INITIAL_PROPOSALS.map((p) => ({
-      title: p.title,
-      data: p as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     items: budgetLensItems,
@@ -351,10 +341,7 @@ export default function CouncilLensPage() {
     update: updateBudgetItem,
     remove: removeBudgetItem,
   } = useLensData<Record<string, unknown>>('council', 'budget', {
-    seed: INITIAL_BUDGET_ITEMS.map((b) => ({
-      title: b.description,
-      data: b as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     items: stakeholderLensItems,
@@ -362,10 +349,7 @@ export default function CouncilLensPage() {
     update: updateStakeholderItem,
     remove: removeStakeholderItem,
   } = useLensData<Record<string, unknown>>('council', 'stakeholder', {
-    seed: INITIAL_STAKEHOLDERS.map((s) => ({
-      title: s.name,
-      data: s as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     items: committeeLensItems,
@@ -373,10 +357,7 @@ export default function CouncilLensPage() {
     update: updateCommitteeItem,
     remove: removeCommitteeItem,
   } = useLensData<Record<string, unknown>>('council', 'committee', {
-    seed: INITIAL_COMMITTEES.map((c) => ({
-      title: c.name,
-      data: c as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     items: auditLensItems,
@@ -384,10 +365,7 @@ export default function CouncilLensPage() {
     update: updateAuditItem,
     remove: removeAuditItem,
   } = useLensData<Record<string, unknown>>('council', 'audit', {
-    seed: INITIAL_AUDIT.map((a) => ({
-      title: a.action,
-      data: a as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     items: debateLensItems,
@@ -395,10 +373,7 @@ export default function CouncilLensPage() {
     update: updateDebateItem,
     remove: removeDebateItem,
   } = useLensData<Record<string, unknown>>('council', 'debate', {
-    seed: INITIAL_DEBATES.map((d) => ({
-      title: d.topic,
-      data: d as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
 
   // Derive typed arrays from lens items (backend data is the source of truth)

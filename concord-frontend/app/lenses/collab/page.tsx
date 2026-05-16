@@ -232,14 +232,6 @@ function _makePart(idx: number, role: ParticipantRole, online = true): Participa
   };
 }
 
-const INITIAL_SESSIONS: CollabSession[] = [];
-
-const INITIAL_CHAT: ChatMessage[] = [];
-
-const INITIAL_INVITATIONS: Invitation[] = [];
-
-const INITIAL_HISTORY: HistoryEntry[] = [];
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -322,10 +314,7 @@ export default function CollabLensPage() {
     refetch,
     items: sessionItems,
   } = useLensData('collab', 'session', {
-    seed: INITIAL_SESSIONS.map((s) => ({
-      title: s.name,
-      data: s as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     isLoading: isLoadingInvitations,
@@ -334,10 +323,7 @@ export default function CollabLensPage() {
     refetch: refetch2,
     items: invitationItems,
   } = useLensData('collab', 'invitation', {
-    seed: INITIAL_INVITATIONS.map((i) => ({
-      title: i.sessionName,
-      data: i as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const {
     isLoading: isLoadingHistory,
@@ -346,10 +332,7 @@ export default function CollabLensPage() {
     refetch: refetch3,
     items: historyItems,
   } = useLensData('collab', 'history', {
-    seed: INITIAL_HISTORY.map((h) => ({
-      title: h.sessionName,
-      data: h as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
 
   // Fetch active collaborations from the API
@@ -1178,10 +1161,7 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
 function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLeave: () => void }) {
   const [chatInput, setChatInput] = useState('');
   const { items: chatItems, create: createChatMessage } = useLensData('collab', 'chat', {
-    seed: INITIAL_CHAT.map((m) => ({
-      title: m.senderName,
-      data: m as unknown as Record<string, unknown>,
-    })),
+    seed: [],
   });
   const messages: ChatMessage[] = chatItems.map((i) => i.data as unknown as ChatMessage);
   const chatEndRef = useRef<HTMLDivElement>(null);
