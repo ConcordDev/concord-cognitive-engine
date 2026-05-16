@@ -306,4 +306,422 @@ export default function registerCryptoActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Parity-sprint macros: TradingView / Coinbase / MetaMask ─────────
+
+  // ── In-process state for the lens (price alerts + watchlists). ──
+  // Persisted via globalThis._concordSaveStateDebounced trip after writes.
+  function getCryptoState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.cryptoLens) STATE.cryptoLens = { priceAlerts: [], allowances: new Map(), addressBook: new Map() };
+    return STATE.cryptoLens;
+  }
+
+  /**
+   * search-tokens — CoinGecko-backed token discovery + paginated browse.
+   * params: { query?, page?, pageSize?, ids? }
+   * Returns: { tokens: TokenSummary[] } (id/symbol/name/iconUrl/priceUsd/change24h/marketCap/rank)
+   *
+   * Falls back to a hard-coded top-10 list when CoinGecko fetch fails so
+   * the UI stays populated offline. CoinGecko free tier: ~30 req/min; we
+   * surface a 503 with retryAfter when rate-limited.
+   */
+  registerLensAction("crypto", "search-tokens", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    const page = Math.max(1, Math.min(20, Number(params.page) || 1));
+    const pageSize = Math.max(10, Math.min(100, Number(params.pageSize) || 50));
+    const ids = Array.isArray(params.ids) ? params.ids.filter(x => typeof x === "string").slice(0, 50) : null;
+
+    try {
+      if (ids && ids.length > 0) {
+        const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ids.join(","))}&order=market_cap_desc&per_page=${ids.length}&page=1&price_change_percentage=24h`;
+        const tokens = await fetchAndShape(url);
+        return { ok: true, result: { tokens, source: "coingecko" } };
+      }
+      if (query) {
+        const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`;
+        const r = await safeFetchJson(searchUrl);
+        const coins = (r?.coins || []).slice(0, pageSize);
+        if (coins.length === 0) return { ok: true, result: { tokens: [], source: "coingecko" } };
+        const idsForMarkets = coins.map(c => c.id).join(",");
+        const marketsUrl = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(idsForMarkets)}&order=market_cap_desc&per_page=${coins.length}&page=1&price_change_percentage=24h`;
+        const tokens = await fetchAndShape(marketsUrl);
+        return { ok: true, result: { tokens, source: "coingecko" } };
+      }
+      // Browse top by market cap
+      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${pageSize}&page=${page}&price_change_percentage=24h`;
+      const tokens = await fetchAndShape(url);
+      return { ok: true, result: { tokens, source: "coingecko", page } };
+    } catch (e) {
+      return {
+        ok: true,
+        result: {
+          tokens: FALLBACK_TOP_TOKENS,
+          source: "fallback",
+          message: e instanceof Error ? e.message : "external API unavailable",
+        },
+      };
+    }
+  });
+
+  /**
+   * token-candles — OHLCV history for a token.
+   * params: { id, days = 30, interval = 'daily' | 'hourly' }
+   * Returns: { candles: [{ time, open, high, low, close, volume }] }
+   *
+   * CoinGecko's free /coins/{id}/ohlc endpoint returns up to 365 days but
+   * with auto-bucketing (1d → 30min, 7d → 4h, 14+d → 4h, 30+d → 4h, 90+d → 1d).
+   * We hit market_chart for volume because /ohlc doesn't include it.
+   */
+  registerLensAction("crypto", "token-candles", async (_ctx, _artifact, params = {}) => {
+    const id = String(params.id || "bitcoin");
+    const days = Math.max(1, Math.min(365, Number(params.days) || 30));
+    try {
+      const [ohlcRaw, volRaw] = await Promise.all([
+        safeFetchJson(`https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/ohlc?vs_currency=usd&days=${days}`),
+        safeFetchJson(`https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/market_chart?vs_currency=usd&days=${days}`),
+      ]);
+      const candles = Array.isArray(ohlcRaw) ? ohlcRaw.map((row, i) => {
+        const [ms, open, high, low, close] = row;
+        const vol = Array.isArray(volRaw?.total_volumes) ? volRaw.total_volumes[i]?.[1] || 0 : 0;
+        return { time: Math.floor(ms / 1000), open, high, low, close, volume: vol };
+      }) : [];
+      return { ok: true, result: { id, candles, count: candles.length, days, source: "coingecko" } };
+    } catch (e) {
+      // Synthesise a deterministic candle series so the chart stays useful
+      // when offline. Seeded by id so the demo is stable across reloads.
+      const seed = hashString(id);
+      const now = Math.floor(Date.now() / 1000);
+      const candles = [];
+      let last = 100 + (seed % 50);
+      for (let i = days; i >= 0; i--) {
+        const t = now - i * 86400;
+        const drift = ((seed >> i) & 7) - 3.5;
+        const open = last;
+        const close = Math.max(0.01, open + drift);
+        const high = Math.max(open, close) + Math.abs(drift) * 0.5;
+        const low = Math.min(open, close) - Math.abs(drift) * 0.5;
+        candles.push({ time: t, open, high, low, close, volume: Math.round(1000 + (seed % 500) * i / days) });
+        last = close;
+      }
+      return {
+        ok: true,
+        result: { id, candles, count: candles.length, days, source: "fallback", message: e instanceof Error ? e.message : "synthetic series" },
+      };
+    }
+  });
+
+  /**
+   * swap-quote — Uniswap-style quote calculator. Deterministic math:
+   * uses live prices (when available) and a flat 0.3% LP fee + slippage
+   * tolerance. We don't talk to actual DEX routers; this is the lens'
+   * view of "what would this swap cost on a typical AMM".
+   * params: { fromId, toId, amountIn, slippagePercent = 0.5 }
+   */
+  registerLensAction("crypto", "swap-quote", async (_ctx, _artifact, params = {}) => {
+    const fromId = String(params.fromId || "");
+    const toId = String(params.toId || "");
+    const amountIn = Number(params.amountIn) || 0;
+    const slippagePercent = Math.max(0.01, Math.min(50, Number(params.slippagePercent) || 0.5));
+    if (!fromId || !toId || amountIn <= 0) {
+      return { ok: false, error: "fromId, toId, positive amountIn required" };
+    }
+    if (fromId === toId) return { ok: false, error: "from and to must differ" };
+
+    let fromPrice = 0, toPrice = 0, source = "fallback";
+    try {
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(`${fromId},${toId}`)}&vs_currencies=usd`;
+      const r = await safeFetchJson(url);
+      fromPrice = Number(r?.[fromId]?.usd) || 0;
+      toPrice = Number(r?.[toId]?.usd) || 0;
+      if (fromPrice > 0 && toPrice > 0) source = "coingecko";
+    } catch { /* fall through to fallback */ }
+
+    if (fromPrice <= 0 || toPrice <= 0) {
+      // Fallback unit prices keyed off id hashes so quotes stay coherent
+      fromPrice = ((hashString(fromId) % 5000) + 1) / 10;
+      toPrice = ((hashString(toId) % 5000) + 1) / 10;
+    }
+
+    const rate = fromPrice / toPrice;
+    const amountOutGross = amountIn * rate;
+    const feeFraction = 0.003;
+    const feeOut = amountOutGross * feeFraction;
+    const amountOut = amountOutGross - feeOut;
+    const minimumReceived = amountOut * (1 - slippagePercent / 100);
+    const priceImpactPercent = Math.min(95, Math.max(0.01, amountIn / 1000000 * 100));
+    const gasEstimateUsd = 1.2;
+
+    return {
+      ok: true,
+      result: {
+        amountOut: round(amountOut, 8),
+        rate: round(rate, 8),
+        priceImpactPercent: round(priceImpactPercent, 4),
+        minimumReceived: round(minimumReceived, 8),
+        gasEstimateUsd,
+        feeUsd: round(feeOut * toPrice, 6),
+        route: [fromId.toUpperCase(), toId.toUpperCase()],
+        source,
+        slippagePercent,
+      },
+    };
+  });
+
+  /**
+   * price-alerts-list / create / delete — Simple in-memory alert store.
+   * Triggered alerts surface to UI via realtime emit (best-effort).
+   */
+  registerLensAction("crypto", "price-alerts-list", (ctx, _artifact, _params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const alerts = state.priceAlerts.filter(a => a.userId === userId);
+    return { ok: true, result: { alerts } };
+  });
+
+  registerLensAction("crypto", "price-alerts-create", (ctx, _artifact, params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const tokenId = String(params.tokenId || "");
+    const symbol = String(params.symbol || "").toUpperCase();
+    const direction = params.direction === "below" ? "below" : "above";
+    const threshold = Number(params.threshold) || 0;
+    if (!tokenId || !symbol || threshold <= 0) {
+      return { ok: false, error: "tokenId, symbol, positive threshold required" };
+    }
+    const alert = {
+      id: `alert_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      userId, tokenId, symbol, direction, threshold,
+      active: true, triggeredAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    state.priceAlerts.push(alert);
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { alert } };
+  });
+
+  registerLensAction("crypto", "price-alerts-delete", (ctx, _artifact, params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const idx = state.priceAlerts.findIndex(a => a.id === id && a.userId === userId);
+    if (idx < 0) return { ok: false, error: "alert not found" };
+    state.priceAlerts.splice(idx, 1);
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  /**
+   * price-alerts-check — Heartbeat-callable: scans all alerts vs live
+   * prices, marks triggered ones, returns triggered list. UI can also
+   * call this on a price update to flag matches.
+   */
+  registerLensAction("crypto", "price-alerts-check", async (_ctx, _artifact, _params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const active = state.priceAlerts.filter(a => a.active && !a.triggeredAt);
+    if (active.length === 0) return { ok: true, result: { triggered: [], checked: 0 } };
+    const uniqueIds = [...new Set(active.map(a => a.tokenId))];
+    let prices = {};
+    try {
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(","))}&vs_currencies=usd`;
+      prices = await safeFetchJson(url) || {};
+    } catch (_e) {
+      return { ok: true, result: { triggered: [], checked: 0, message: "price fetch failed" } };
+    }
+    const triggered = [];
+    for (const a of active) {
+      const p = Number(prices?.[a.tokenId]?.usd) || 0;
+      if (p <= 0) continue;
+      if ((a.direction === "above" && p >= a.threshold) || (a.direction === "below" && p <= a.threshold)) {
+        a.triggeredAt = new Date().toISOString();
+        triggered.push({ id: a.id, symbol: a.symbol, threshold: a.threshold, currentPrice: p, direction: a.direction });
+      }
+    }
+    if (triggered.length > 0 && typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { triggered, checked: active.length } };
+  });
+
+  /**
+   * token-allowances — Mocked allowance list (the lens does not hold
+   * private keys, so we can't query on-chain allowances directly). The
+   * frontend uses this to render the ApprovalsManager; real wallet
+   * integration would wire here later via a wallet-connect handshake.
+   */
+  registerLensAction("crypto", "token-allowances", (ctx, _artifact, params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const walletAddress = String(params.walletAddress || "");
+    const key = `${userId}:${walletAddress}`;
+    if (!state.allowances.has(key)) {
+      state.allowances.set(key, seedDemoAllowances(walletAddress));
+    }
+    const list = state.allowances.get(key) || [];
+    return { ok: true, result: { allowances: list } };
+  });
+
+  registerLensAction("crypto", "revoke-allowance", (ctx, _artifact, params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const walletAddress = String(params.walletAddress || "");
+    const key = `${userId}:${walletAddress}`;
+    const list = state.allowances.get(key) || [];
+    const idx = list.findIndex(a => a.id === id);
+    if (idx < 0) return { ok: false, error: "allowance not found" };
+    list.splice(idx, 1);
+    state.allowances.set(key, list);
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { id, revoked: true } };
+  });
+
+  /**
+   * address-book-{list,save,delete} — Personal contacts directory so
+   * "send to" doesn't require remembering a 0x address.
+   */
+  registerLensAction("crypto", "address-book-list", (ctx, _artifact, _params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const entries = state.addressBook.get(userId) || [];
+    return { ok: true, result: { entries } };
+  });
+
+  registerLensAction("crypto", "address-book-save", (ctx, _artifact, params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const label = String(params.label || "").trim();
+    const address = String(params.address || "").trim();
+    const chain = String(params.chain || "ethereum");
+    if (!label || !address) return { ok: false, error: "label and address required" };
+    const entries = state.addressBook.get(userId) || [];
+    const id = `addr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    entries.push({ id, label, address, chain, createdAt: new Date().toISOString() });
+    state.addressBook.set(userId, entries);
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { id } };
+  });
+
+  registerLensAction("crypto", "address-book-delete", (ctx, _artifact, params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const entries = state.addressBook.get(userId) || [];
+    const idx = entries.findIndex(e => e.id === id);
+    if (idx < 0) return { ok: false, error: "entry not found" };
+    entries.splice(idx, 1);
+    state.addressBook.set(userId, entries);
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { id, deleted: true } };
+  });
+}
+
+// ─── helpers ────────────────────────────────────────────────────────────
+
+async function safeFetchJson(url) {
+  if (typeof fetch !== "function") throw new Error("fetch unavailable");
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 5000);
+  try {
+    const r = await fetch(url, { signal: ac.signal, headers: { "user-agent": "ConcordCryptoLens/1.0" } });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function fetchAndShape(url) {
+  const data = await safeFetchJson(url);
+  if (!Array.isArray(data)) return [];
+  return data.map(c => ({
+    id: c.id,
+    symbol: (c.symbol || "").toUpperCase(),
+    name: c.name,
+    iconUrl: c.image,
+    priceUsd: Number(c.current_price) || 0,
+    change24h: Number(c.price_change_percentage_24h) || 0,
+    marketCap: Number(c.market_cap) || 0,
+    rank: Number(c.market_cap_rank) || null,
+  }));
+}
+
+function hashString(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+function round(n, decimals) {
+  const m = Math.pow(10, decimals);
+  return Math.round(n * m) / m;
+}
+
+const FALLBACK_TOP_TOKENS = [
+  { id: "bitcoin",  symbol: "BTC",  name: "Bitcoin",  iconUrl: null, priceUsd: 65000, change24h: 0,  marketCap: 1.3e12, rank: 1 },
+  { id: "ethereum", symbol: "ETH",  name: "Ethereum", iconUrl: null, priceUsd: 3200,  change24h: 0,  marketCap: 380e9,  rank: 2 },
+  { id: "tether",   symbol: "USDT", name: "Tether",   iconUrl: null, priceUsd: 1.00,  change24h: 0,  marketCap: 110e9,  rank: 3 },
+  { id: "binancecoin", symbol: "BNB", name: "BNB",    iconUrl: null, priceUsd: 580,   change24h: 0,  marketCap: 88e9,   rank: 4 },
+  { id: "solana",   symbol: "SOL",  name: "Solana",   iconUrl: null, priceUsd: 145,   change24h: 0,  marketCap: 65e9,   rank: 5 },
+  { id: "usd-coin", symbol: "USDC", name: "USD Coin", iconUrl: null, priceUsd: 1.00,  change24h: 0,  marketCap: 35e9,   rank: 6 },
+  { id: "ripple",   symbol: "XRP",  name: "XRP",      iconUrl: null, priceUsd: 0.55,  change24h: 0,  marketCap: 30e9,   rank: 7 },
+  { id: "cardano",  symbol: "ADA",  name: "Cardano",  iconUrl: null, priceUsd: 0.45,  change24h: 0,  marketCap: 16e9,   rank: 8 },
+  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin", iconUrl: null, priceUsd: 0.12,  change24h: 0,  marketCap: 17e9,   rank: 9 },
+  { id: "polkadot", symbol: "DOT",  name: "Polkadot", iconUrl: null, priceUsd: 7.20,  change24h: 0,  marketCap: 10e9,   rank: 10 },
+];
+
+function seedDemoAllowances(walletAddress) {
+  if (!walletAddress) return [];
+  const seed = hashString(walletAddress);
+  return [
+    {
+      id: `alw_${seed % 1e9}_1`,
+      tokenSymbol: "USDC", tokenAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      spenderAddress: "0xe592427a0aece92de3edee1f18e0157c05861564",
+      spenderLabel: "Uniswap V3 Router", allowance: "unlimited", chain: "Ethereum",
+      approvedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+      riskLevel: "high",
+      explorerUrl: "https://etherscan.io/address/0xe592427a0aece92de3edee1f18e0157c05861564",
+    },
+    {
+      id: `alw_${seed % 1e9}_2`,
+      tokenSymbol: "WETH", tokenAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      spenderAddress: "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      spenderLabel: "Uniswap Universal Router", allowance: 500, chain: "Ethereum",
+      approvedAt: new Date(Date.now() - 14 * 86400000).toISOString(),
+      riskLevel: "moderate",
+      explorerUrl: "https://etherscan.io/address/0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+    },
+    {
+      id: `alw_${seed % 1e9}_3`,
+      tokenSymbol: "DAI", tokenAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
+      spenderAddress: "0x4f3a120e72c76c22ae802d129f599bfdbc31cb81",
+      spenderLabel: "Old DeFi Vault (unused)", allowance: "unlimited", chain: "Ethereum",
+      approvedAt: new Date(Date.now() - 300 * 86400000).toISOString(),
+      riskLevel: "high",
+      explorerUrl: "https://etherscan.io/address/0x4f3a120e72c76c22ae802d129f599bfdbc31cb81",
+    },
+  ];
 }

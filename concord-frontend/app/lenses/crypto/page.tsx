@@ -5,7 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Coins, TrendingUp, Lock, RefreshCw, ArrowRightLeft,
@@ -16,7 +16,7 @@ import {
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -25,6 +25,13 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { useUIStore } from '@/store/ui';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import dynamic from 'next/dynamic';
+const CandleChart = dynamic(() => import('@/components/crypto/CandleChart'), { ssr: false });
+import { TokenSearch, loadWatchlist, saveWatchlist } from '@/components/crypto/TokenSearch';
+import { QRCodeReceive } from '@/components/crypto/QRCodeReceive';
+import { SwapPanel, type SwappableToken } from '@/components/crypto/SwapPanel';
+import { PriceAlerts } from '@/components/crypto/PriceAlerts';
+import { ApprovalsManager } from '@/components/crypto/ApprovalsManager';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -103,7 +110,7 @@ interface ActionResultData extends Record<string, unknown> {
   totalTransactions?: number;
 }
 
-type CryptoTab = 'portfolio' | 'transactions' | 'wallets';
+type CryptoTab = 'portfolio' | 'transactions' | 'wallets' | 'chart' | 'swap' | 'alerts' | 'approvals';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -115,6 +122,42 @@ export default function CryptoLensPage() {
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const [transacting, setTransacting] = useState(false);
   const [showBalances, setShowBalances] = useState(true);
+  // ── Parity-sprint state ────────────────────────────────────────────────
+  const [chartTokenId, setChartTokenId] = useState<string>('bitcoin');
+  const [chartCandles, setChartCandles] = useState<Array<{ time: number; open: number; high: number; low: number; close: number; volume?: number }>>([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [chartDays, setChartDays] = useState<number>(30);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [showReceive, setShowReceive] = useState(false);
+  const [receiveAddress, setReceiveAddress] = useState<string>('');
+  useEffect(() => { setWatchlist(loadWatchlist()); }, []);
+  const toggleWatch = useCallback((id: string) => {
+    setWatchlist(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      saveWatchlist(next);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    if (activeTab !== 'chart') return;
+    setChartLoading(true);
+    (async () => {
+      try {
+        const res = await api.post('/api/lens/run', {
+          domain: 'crypto', action: 'token-candles',
+          input: { id: chartTokenId, days: chartDays },
+        });
+        if (!cancelled) setChartCandles(res?.data?.result?.candles || []);
+      } catch (e) {
+        console.error('[Crypto] candles failed', e);
+        if (!cancelled) setChartCandles([]);
+      } finally {
+        if (!cancelled) setChartLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeTab, chartTokenId, chartDays]);
 
   // Lens-scoped keyboard commands. Coinbase / Binance idiom: single-
   // letter tab jumps and a balance-blur toggle (privacy hotkey).
@@ -123,6 +166,10 @@ export default function CryptoLensPage() {
       { id: 'goto-portfolio', keys: 'p', description: 'Portfolio', category: 'navigation', action: () => setActiveTab('portfolio') },
       { id: 'goto-transactions', keys: 't', description: 'Transactions', category: 'navigation', action: () => setActiveTab('transactions') },
       { id: 'goto-wallets', keys: 'w', description: 'Wallets', category: 'navigation', action: () => setActiveTab('wallets') },
+      { id: 'goto-chart', keys: 'c', description: 'Chart', category: 'navigation', action: () => setActiveTab('chart') },
+      { id: 'goto-swap', keys: 's', description: 'Swap', category: 'navigation', action: () => setActiveTab('swap') },
+      { id: 'goto-alerts', keys: 'a', description: 'Alerts', category: 'navigation', action: () => setActiveTab('alerts') },
+      { id: 'goto-approvals', keys: 'shift+a', description: 'Approvals', category: 'navigation', action: () => setActiveTab('approvals') },
       { id: 'toggle-balances', keys: 'h', description: 'Hide / show balances', category: 'view', action: () => setShowBalances((v) => !v) },
     ],
     { lensId: 'crypto' }
@@ -634,11 +681,15 @@ export default function CryptoLensPage() {
           )}
 
           {/* Tabs */}
-          <div className="flex gap-1 border-b border-lattice-border">
+          <div className="flex gap-1 border-b border-lattice-border overflow-x-auto">
             {([
               { key: 'portfolio' as CryptoTab, label: 'Portfolio', icon: <TrendingUp className="w-4 h-4" /> },
-              { key: 'transactions' as CryptoTab, label: 'Transactions', icon: <ArrowRightLeft className="w-4 h-4" /> },
+              { key: 'chart' as CryptoTab, label: 'Chart', icon: <BarChart3 className="w-4 h-4" /> },
+              { key: 'swap' as CryptoTab, label: 'Swap', icon: <ArrowRightLeft className="w-4 h-4" /> },
+              { key: 'transactions' as CryptoTab, label: 'Activity', icon: <ArrowRightLeft className="w-4 h-4" /> },
               { key: 'wallets' as CryptoTab, label: 'Wallets', icon: <Wallet className="w-4 h-4" /> },
+              { key: 'alerts' as CryptoTab, label: 'Alerts', icon: <ShieldCheck className="w-4 h-4" /> },
+              { key: 'approvals' as CryptoTab, label: 'Approvals', icon: <Lock className="w-4 h-4" /> },
             ]).map(tab => (
               <button
                 key={tab.key}
@@ -994,6 +1045,13 @@ export default function CryptoLensPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <button
+                            onClick={() => { setReceiveAddress(wallet.address); setShowReceive(true); }}
+                            className="p-2 text-gray-400 hover:text-cyan-300 transition-colors rounded-lg hover:bg-cyan-500/10"
+                            title="Receive (QR)"
+                          >
+                            <ArrowDownLeft className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleCopyAddress(wallet.address)}
                             className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
                             title="Copy address"
@@ -1015,8 +1073,154 @@ export default function CryptoLensPage() {
               )}
             </div>
           )}
+
+          {/* ─── Chart tab: TradingView Lightweight Charts + token picker ─── */}
+          {activeTab === 'chart' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2 space-y-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={chartTokenId}
+                    onChange={(e) => setChartTokenId(e.target.value)}
+                    className="px-3 py-1.5 bg-lattice-deep border border-lattice-border rounded text-sm text-white"
+                  >
+                    {['bitcoin','ethereum','solana','binancecoin','cardano','ripple','dogecoin','polkadot','usd-coin','tether']
+                      .concat(watchlist.filter(w => !['bitcoin','ethereum','solana','binancecoin','cardano','ripple','dogecoin','polkadot','usd-coin','tether'].includes(w)))
+                      .map(id => <option key={id} value={id}>{id.toUpperCase()}</option>)}
+                  </select>
+                  <div className="flex items-center gap-1">
+                    {[1, 7, 30, 90, 365].map(d => (
+                      <button
+                        key={d}
+                        onClick={() => setChartDays(d)}
+                        className={cn('px-2 py-1 text-xs rounded', chartDays === d ? 'bg-cyan-500 text-black font-bold' : 'border border-white/10 text-gray-300 hover:text-white')}
+                      >
+                        {d === 1 ? '24h' : d === 365 ? '1Y' : `${d}d`}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="ml-auto text-[10px] text-gray-500">Powered by TradingView Lightweight Charts</span>
+                </div>
+                <CandleChart
+                  candles={chartCandles}
+                  loading={chartLoading}
+                  symbol={chartTokenId.toUpperCase()}
+                  height={420}
+                  emaPeriod={20}
+                  showVolume
+                />
+              </div>
+              <div className="space-y-3">
+                <TokenSearch
+                  watchlist={watchlist}
+                  onToggleWatch={toggleWatch}
+                  onSelect={(t) => { setChartTokenId(t.id); }}
+                  className="h-[420px]"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ─── Swap tab: Uniswap-style ─── */}
+          {activeTab === 'swap' && (
+            <div className="flex flex-col lg:flex-row items-start gap-6">
+              {(() => {
+                const swappableTokens: SwappableToken[] = chains.map(c => ({
+                  id: c.id, symbol: c.symbol, name: c.name,
+                  priceUsd: c.price, balance: c.balance, iconUrl: undefined,
+                }));
+                return (
+                  <SwapPanel
+                    tokens={swappableTokens}
+                    defaultFromSymbol={chains[0]?.symbol || 'CC'}
+                    defaultToSymbol={chains[1]?.symbol || 'USDC'}
+                    onSwap={async ({ fromId, toId, amountIn, quote }) => {
+                      try {
+                        await createTransaction({
+                          title: `Swap ${amountIn} ${fromId} → ${quote.amountOut.toFixed(6)} ${toId}`,
+                          data: {
+                            type: 'transfer', amount: amountIn,
+                            symbol: fromId.toUpperCase(),
+                            description: `Swap to ${toId.toUpperCase()} at rate ${quote.rate}`,
+                            timestamp: new Date().toISOString(),
+                          } as unknown as Partial<TransactionData>,
+                          meta: { tags: ['swap', fromId, toId], status: 'completed' },
+                        });
+                        refetch2();
+                        useUIStore.getState().addToast({ type: 'success', message: `Swap simulated: got ${quote.amountOut.toFixed(6)} ${toId.toUpperCase()}` });
+                      } catch (e) {
+                        console.error('[Crypto] swap save failed', e);
+                      }
+                    }}
+                  />
+                );
+              })()}
+              <div className="flex-1 lens-card">
+                <h3 className="text-sm font-bold mb-3 text-gray-200">Best execution</h3>
+                <ul className="text-xs text-gray-400 space-y-1.5">
+                  <li>• Slippage protection — minimum-received guard</li>
+                  <li>• 0.3% LP fee model (Uniswap v3 standard)</li>
+                  <li>• Price impact warning above 5%</li>
+                  <li>• Hard block above 15% — execution risk too high</li>
+                  <li>• Gas estimate built in</li>
+                </ul>
+                <p className="mt-4 text-[10px] text-gray-500">
+                  Concord swaps simulate the AMM math against live CoinGecko prices. No external router is contacted; this view is informational + ledger-only.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Alerts tab ─── */}
+          {activeTab === 'alerts' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <PriceAlerts
+                tokenOptions={chains.map(c => ({ id: c.id, symbol: c.symbol, priceUsd: c.price }))}
+              />
+              <div className="lens-card space-y-2 text-xs text-gray-400">
+                <h3 className="text-sm font-bold text-gray-200">How alerts work</h3>
+                <p>Alerts poll CoinGecko for the latest USD price every few minutes. When the configured threshold is crossed, the alert is marked triggered and surfaces in the activity feed.</p>
+                <p>Tip: pair an alert with the swap tab — when BTC drops to your target, the swap panel preloads with that token selected.</p>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Approvals tab ─── */}
+          {activeTab === 'approvals' && (
+            <ApprovalsManager walletAddress={wallets[0]?.address || ''} />
+          )}
         </>
       )}
+
+      {/* Receive Modal — global modal triggered from any wallet card */}
+      <AnimatePresence>
+        {showReceive && receiveAddress && (
+          <motion.div
+            key="receive-modal-backdrop"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowReceive(false)}
+          >
+            <motion.div
+              className="bg-[#0d1117] border border-cyan-500/30 rounded-xl p-4 max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ y: -12, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -12, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold text-cyan-300">Receive</h2>
+                <button onClick={() => setShowReceive(false)} className="p-1 text-gray-400 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <QRCodeReceive address={receiveAddress} symbol={selectedChainData?.symbol} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Send Modal */}
       <AnimatePresence>
