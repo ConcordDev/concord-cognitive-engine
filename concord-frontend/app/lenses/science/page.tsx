@@ -49,6 +49,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
+import ScienceWorkbench from '@/components/science/ScienceWorkbench';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -360,6 +361,7 @@ export default function ScienceLensPage() {
 
   const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('Dashboard');
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
@@ -2176,6 +2178,17 @@ export default function ScienceLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#science-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to science content</a>
+
+      {/* 2026 parity workbench — descriptive stats / t-test / correlation */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-teal-500 hover:bg-teal-400 text-teal-50 shadow-2xl text-sm font-medium"
+        title="Science Workbench — descriptive stats, t-test, correlation/regression"
+      >
+        Science Workbench
+      </button>
+      <ScienceWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
