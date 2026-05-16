@@ -1,6 +1,10 @@
 // server/domains/repos.js
-// Domain actions for repository/code management: code complexity analysis,
-// commit pattern analysis, and dependency tree auditing.
+// Domain actions for repository/code management: code complexity
+// analysis, commit pattern analysis, dependency tree auditing, plus
+// real GitHub API lookups (commits, issues, language breakdown).
+// Free at 60 req/hr; GITHUB_TOKEN env raises to 5000/hr.
+
+const GITHUB_API_REPOS = "https://api.github.com";
 
 export default function registerReposActions(registerLensAction) {
   /**
@@ -471,5 +475,132 @@ export default function registerReposActions(registerLensAction) {
         healthGrade: healthScore >= 90 ? "A" : healthScore >= 75 ? "B" : healthScore >= 60 ? "C" : healthScore >= 40 ? "D" : "F",
       },
     };
+  });
+
+  function ghHeaders() {
+    const token = process.env.GITHUB_TOKEN;
+    return token
+      ? { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" }
+      : { Accept: "application/vnd.github+json" };
+  }
+
+  /**
+   * github-commits-recent — Real recent commits for a repo. Author,
+   * commit message, SHA, date, additions/deletions.
+   *
+   * params: { owner, repo, since?: ISO datetime, until?: ISO, limit?: 1-100 }
+   */
+  registerLensAction("repos", "github-commits-recent", async (_ctx, _artifact, params = {}) => {
+    const owner = String(params.owner || "").trim();
+    const repo = String(params.repo || "").trim();
+    if (!owner || !repo) return { ok: false, error: "owner + repo required" };
+    const perPage = Math.max(1, Math.min(100, Number(params.limit) || 30));
+    const qs = new URLSearchParams({ per_page: String(perPage) });
+    if (params.since) qs.set("since", String(params.since));
+    if (params.until) qs.set("until", String(params.until));
+    try {
+      const r = await fetch(`${GITHUB_API_REPOS}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?${qs.toString()}`, { headers: ghHeaders() });
+      if (r.status === 404) return { ok: false, error: `repo not found: ${owner}/${repo}` };
+      if (r.status === 403) return { ok: false, error: "github rate limit — set GITHUB_TOKEN env" };
+      if (!r.ok) throw new Error(`github ${r.status}`);
+      const data = await r.json();
+      const commits = (Array.isArray(data) ? data : []).map((c) => ({
+        sha: c.sha,
+        message: c.commit?.message,
+        author: c.commit?.author?.name,
+        authorEmail: c.commit?.author?.email,
+        date: c.commit?.author?.date,
+        committer: c.commit?.committer?.name,
+        url: c.html_url,
+        loginAuthor: c.author?.login,
+        loginCommitter: c.committer?.login,
+      }));
+      return {
+        ok: true,
+        result: {
+          owner, repo, commits, count: commits.length,
+          authenticated: !!process.env.GITHUB_TOKEN,
+          source: "github-api",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * github-issues — Real list of open/closed issues for a repo.
+   * params: { owner, repo, state?: "open"|"closed"|"all", labels?: comma-string, limit?: 1-100 }
+   */
+  registerLensAction("repos", "github-issues", async (_ctx, _artifact, params = {}) => {
+    const owner = String(params.owner || "").trim();
+    const repo = String(params.repo || "").trim();
+    if (!owner || !repo) return { ok: false, error: "owner + repo required" };
+    const state = ["open", "closed", "all"].includes(params.state) ? params.state : "open";
+    const perPage = Math.max(1, Math.min(100, Number(params.limit) || 30));
+    const qs = new URLSearchParams({ state, per_page: String(perPage) });
+    if (params.labels) qs.set("labels", String(params.labels));
+    try {
+      const r = await fetch(`${GITHUB_API_REPOS}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues?${qs.toString()}`, { headers: ghHeaders() });
+      if (r.status === 404) return { ok: false, error: `repo not found: ${owner}/${repo}` };
+      if (r.status === 403) return { ok: false, error: "github rate limit — set GITHUB_TOKEN env" };
+      if (!r.ok) throw new Error(`github ${r.status}`);
+      const data = await r.json();
+      const issues = (Array.isArray(data) ? data : []).map((i) => ({
+        number: i.number,
+        title: i.title,
+        state: i.state,
+        author: i.user?.login,
+        labels: (i.labels || []).map((l) => l.name),
+        comments: i.comments,
+        createdAt: i.created_at,
+        updatedAt: i.updated_at,
+        closedAt: i.closed_at,
+        url: i.html_url,
+        isPullRequest: !!i.pull_request,
+      }));
+      return {
+        ok: true,
+        result: {
+          owner, repo, state,
+          issues, count: issues.length,
+          openIssues: issues.filter((i) => i.state === "open").length,
+          source: "github-api",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * github-languages — Real language breakdown (bytes per language)
+   * for a repo. Useful for the polyglot percentage analysis.
+   */
+  registerLensAction("repos", "github-languages", async (_ctx, _artifact, params = {}) => {
+    const owner = String(params.owner || "").trim();
+    const repo = String(params.repo || "").trim();
+    if (!owner || !repo) return { ok: false, error: "owner + repo required" };
+    try {
+      const r = await fetch(`${GITHUB_API_REPOS}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/languages`, { headers: ghHeaders() });
+      if (r.status === 404) return { ok: false, error: `repo not found: ${owner}/${repo}` };
+      if (r.status === 403) return { ok: false, error: "github rate limit — set GITHUB_TOKEN env" };
+      if (!r.ok) throw new Error(`github ${r.status}`);
+      const data = await r.json();
+      const totalBytes = Object.values(data).reduce((s, v) => s + v, 0);
+      const languages = Object.entries(data)
+        .map(([lang, bytes]) => ({
+          language: lang,
+          bytes,
+          percent: totalBytes > 0 ? Math.round((bytes / totalBytes) * 10000) / 100 : 0,
+        }))
+        .sort((a, b) => b.bytes - a.bytes);
+      return {
+        ok: true,
+        result: { owner, repo, languages, totalBytes, primaryLanguage: languages[0]?.language, source: "github-api" },
+      };
+    } catch (e) {
+      return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
