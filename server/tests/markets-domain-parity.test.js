@@ -187,3 +187,76 @@ describe("markets — STATE unavailable path", () => {
     assert.match(r.error, /STATE unavailable/);
   });
 });
+
+describe("markets.quote-history (Yahoo Finance chart endpoint)", () => {
+  it("rejects empty symbol", async () => {
+    assert.equal((await call("quote-history", ctxA, {})).ok, false);
+  });
+
+  it("rejects invalid range / interval", async () => {
+    assert.equal((await call("quote-history", ctxA, { symbol: "SPY", range: "bogus" })).ok, false);
+    assert.equal((await call("quote-history", ctxA, { symbol: "SPY", interval: "10s" })).ok, false);
+  });
+
+  it("hits Yahoo chart + parses OHLCV bars", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = String(url);
+      return {
+        ok: true, status: 200,
+        json: async () => ({
+          chart: {
+            result: [{
+              meta: { symbol: "AAPL", currency: "USD", exchangeName: "NMS",
+                instrumentType: "EQUITY", chartPreviousClose: 175.5, regularMarketPrice: 178.2 },
+              timestamp: [1700000000, 1700086400, 1700172800],
+              indicators: {
+                quote: [{
+                  open:  [175.0, 176.5, 177.0],
+                  high:  [177.5, 178.0, 179.2],
+                  low:   [174.5, 176.0, 176.8],
+                  close: [176.5, 177.0, 178.2],
+                  volume: [50000000, 48000000, 52000000],
+                }],
+                adjclose: [{ adjclose: [176.5, 177.0, 178.2] }],
+              },
+            }],
+          },
+        }),
+      };
+    };
+    const r = await call("quote-history", ctxA, { symbol: "AAPL", range: "1mo", interval: "1d" });
+    assert.equal(r.ok, true);
+    assert.match(capturedUrl, /query1\.finance\.yahoo\.com\/v8\/finance\/chart\/AAPL/);
+    assert.match(capturedUrl, /range=1mo/);
+    assert.match(capturedUrl, /interval=1d/);
+    assert.equal(r.result.symbol, "AAPL");
+    assert.equal(r.result.bars.length, 3);
+    assert.equal(r.result.bars[0].close, 176.5);
+    assert.equal(r.result.currency, "USD");
+    assert.equal(r.result.source, "yahoo-finance-chart");
+  });
+
+  it("filters out null-close bars (halted / pre-market gaps)", async () => {
+    globalThis.fetch = async () => ({
+      ok: true, status: 200,
+      json: async () => ({
+        chart: { result: [{
+          meta: {},
+          timestamp: [1, 2, 3],
+          indicators: { quote: [{ open: [1, 2, 3], high: [1, 2, 3], low: [1, 2, 3], close: [1, null, 3], volume: [10, null, 30] }] },
+        }] },
+      }),
+    });
+    const r = await call("quote-history", ctxA, { symbol: "X", range: "1mo" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.bars.length, 2);
+  });
+
+  it("surfaces 404 from Yahoo for unknown symbols", async () => {
+    globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
+    const r = await call("quote-history", ctxA, { symbol: "ZZZZZ", range: "1mo" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not found/);
+  });
+});

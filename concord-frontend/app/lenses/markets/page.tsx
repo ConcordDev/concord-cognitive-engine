@@ -16,6 +16,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import QuoteCardList, { type QuoteCardItem } from '@/components/lens/QuoteCardList';
 import MarketsWorkbench from '@/components/markets/MarketsWorkbench';
+import { MarketsQuoteDetail } from '@/components/markets/MarketsQuoteDetail';
 
 interface Market {
   id: number;
@@ -105,6 +106,11 @@ export default function MarketsPage() {
             isLive={isLive}
             lastUpdated={lastUpdated}
           />
+        </div>
+
+        {/* Bespoke quote research — lightweight-charts + percent-rebase compare + Save-as-DTU */}
+        <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <MarketsQuoteDetail />
         </div>
 
         {status && (
