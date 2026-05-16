@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { BillsList } from '@/components/government/BillsList';
+import { GovernmentActionPanel } from '@/components/government/GovernmentActionPanel';
 import RepresentativeFinder from '@/components/government/RepresentativeFinder';
 import BillTracker from '@/components/government/BillTracker';
 import CivicAlerts from '@/components/government/CivicAlerts';
@@ -3538,6 +3539,11 @@ export default function GovernmentLensPage() {
       {/* Bespoke Congress.gov recent-bills list with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <BillsList />
+      </section>
+
+      {/* GovTrack + USAspending-shape civic workbench: reps / bills / permit / violation + actions */}
+      <section className="mt-6">
+        <GovernmentActionPanel />
       </section>
     </div>
 
