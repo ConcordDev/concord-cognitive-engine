@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ImportToolingGallery } from '@/components/import/ImportToolingGallery';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1014,6 +1015,9 @@ export default function ImportLens() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ImportToolingGallery />
+      </section>
     </div>
     </LensShell>
   );
