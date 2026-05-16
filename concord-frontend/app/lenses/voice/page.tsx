@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { VoiceRepos } from '@/components/voice/VoiceRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1103,6 +1104,9 @@ export default function VoiceLensPage() {
         </>
       )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <VoiceRepos />
+      </section>
     </div>
     </LensShell>
   );
