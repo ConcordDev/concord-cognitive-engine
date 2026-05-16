@@ -22,6 +22,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { SandboxRepos } from '@/components/sandbox/SandboxRepos';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
@@ -284,7 +285,10 @@ export default function CombatSandboxPage() {
     <Suspense fallback={<div className="h-screen w-screen bg-slate-900" />}>
       <CombatSandboxInner />
     </Suspense>
-    
+    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <SandboxRepos />
+    </section>
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
