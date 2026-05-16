@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { MpSearch } from '@/components/materials/MpSearch';
+import { CorrosionThermalPanel } from '@/components/materials/CorrosionThermalPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -362,6 +363,10 @@ export default function MaterialsLensPage() {
       {/* Bespoke Materials Project search with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MpSearch />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <CorrosionThermalPanel />
       </section>
     </div>
 
