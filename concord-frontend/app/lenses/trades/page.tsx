@@ -68,6 +68,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import QuoteChart, { type QuoteSnapshot } from '@/components/lens/QuoteChart';
+import TradesWorkbench from '@/components/trades/TradesWorkbench';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -248,6 +249,7 @@ export default function TradesLensPage() {
 
   // ----- Top-level navigation -----
   const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [subView, setSubView] = useState<SubView>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
@@ -2497,6 +2499,17 @@ export default function TradesLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#trades-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to trades content</a>
+
+      {/* 2026 parity workbench — dispatch / customers / contracts */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-50 shadow-2xl text-sm font-medium"
+        title="Trades Workbench — dispatch board, customers, maintenance contracts"
+      >
+        Trades Workbench
+      </button>
+      <TradesWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }

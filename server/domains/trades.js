@@ -419,4 +419,203 @@ export default function registerTradesActions(registerLensAction) {
 
     return { ok: true, result: report };
   });
+
+  // ─── 2026 parity — ServiceTitan/Jobber/Houzz Pro/BuilderTrend ──
+
+  function getTradesState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.tradesLens) {
+      STATE.tradesLens = {
+        jobs:      new Map(), // userId -> Map<id, job>
+        customers: new Map(), // userId -> Map<id, customer>
+        contracts: new Map(), // userId -> Map<id, contract>
+        seq:       new Map(), // userId -> { job: 1, invoice: 1 }
+      };
+    }
+    return STATE.tradesLens;
+  }
+  function saveTradesState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function tradesActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function nextTradesId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function nowIsoTrades() { return new Date().toISOString(); }
+
+  // ── Customers ──
+
+  registerLensAction("trades", "customer-upsert", (ctx, _artifact, params = {}) => {
+    const s = getTradesState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (!s.customers.has(userId)) s.customers.set(userId, new Map());
+    const id = params.id ? String(params.id) : nextTradesId("cust");
+    const existing = s.customers.get(userId).get(id);
+    const customer = {
+      id, name,
+      phone: String(params.phone || existing?.phone || "").slice(0, 30),
+      email: String(params.email || existing?.email || "").slice(0, 80),
+      address: String(params.address || existing?.address || "").slice(0, 200),
+      notes: String(params.notes || existing?.notes || "").slice(0, 500),
+      createdAt: existing?.createdAt || nowIsoTrades(),
+      updatedAt: nowIsoTrades(),
+    };
+    s.customers.get(userId).set(id, customer);
+    saveTradesState();
+    return { ok: true, result: { customer } };
+  });
+
+  registerLensAction("trades", "customer-list", (ctx, _artifact, _params = {}) => {
+    const s = getTradesState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const map = s.customers.get(userId);
+    if (!map) return { ok: true, result: { customers: [] } };
+    const customers = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return { ok: true, result: { customers } };
+  });
+
+  // ── Jobs (work orders / dispatch board) ──
+
+  registerLensAction("trades", "job-create", (ctx, _artifact, params = {}) => {
+    const s = getTradesState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const customerId = String(params.customerId || "");
+    if (!customerId) return { ok: false, error: "customerId required" };
+    const customer = s.customers.get(userId)?.get(customerId);
+    if (!customer) return { ok: false, error: "customer not found" };
+    const description = String(params.description || "").trim();
+    if (!description) return { ok: false, error: "description required" };
+    if (description.length > 500) return { ok: false, error: "description too long" };
+    const priority = ["low", "normal", "high", "emergency"].includes(params.priority) ? params.priority : "normal";
+    if (!s.seq.has(userId)) s.seq.set(userId, { job: 1, invoice: 1 });
+    const seq = s.seq.get(userId);
+    const job = {
+      id: nextTradesId("job"),
+      number: `JOB-${String(seq.job).padStart(5, "0")}`,
+      customerId,
+      customerName: customer.name,
+      description,
+      priority,
+      status: "unassigned",
+      scheduledFor: params.scheduledFor ? String(params.scheduledFor) : null,
+      assignedTech: params.assignedTech ? String(params.assignedTech) : null,
+      estimatedHours: Number(params.estimatedHours) || 0,
+      notes: "",
+      createdAt: nowIsoTrades(),
+      updatedAt: nowIsoTrades(),
+    };
+    seq.job++;
+    if (!s.jobs.has(userId)) s.jobs.set(userId, new Map());
+    s.jobs.get(userId).set(job.id, job);
+    saveTradesState();
+    return { ok: true, result: { job } };
+  });
+
+  registerLensAction("trades", "job-list", (ctx, _artifact, params = {}) => {
+    const s = getTradesState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const status = params.status ? String(params.status) : null;
+    const map = s.jobs.get(userId);
+    if (!map) return { ok: true, result: { jobs: [] } };
+    let jobs = Array.from(map.values());
+    if (status) jobs = jobs.filter((j) => j.status === status);
+    jobs.sort((a, b) => {
+      const priO = { emergency: 0, high: 1, normal: 2, low: 3 };
+      const pa = priO[a.priority] ?? 4, pb = priO[b.priority] ?? 4;
+      if (pa !== pb) return pa - pb;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return { ok: true, result: { jobs } };
+  });
+
+  registerLensAction("trades", "job-update-status", (ctx, _artifact, params = {}) => {
+    const s = getTradesState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const id = String(params.id || "");
+    const job = s.jobs.get(userId)?.get(id);
+    if (!job) return { ok: false, error: "job not found" };
+    const status = String(params.status || "");
+    if (!["unassigned", "dispatched", "en-route", "on-site", "completed", "invoiced", "cancelled"].includes(status)) {
+      return { ok: false, error: "invalid status" };
+    }
+    job.status = status;
+    if (status === "completed") job.completedAt = nowIsoTrades();
+    job.updatedAt = nowIsoTrades();
+    saveTradesState();
+    return { ok: true, result: { job } };
+  });
+
+  registerLensAction("trades", "job-assign", (ctx, _artifact, params = {}) => {
+    const s = getTradesState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const id = String(params.id || "");
+    const job = s.jobs.get(userId)?.get(id);
+    if (!job) return { ok: false, error: "job not found" };
+    const tech = String(params.tech || "").trim();
+    if (!tech) return { ok: false, error: "tech required" };
+    job.assignedTech = tech;
+    if (job.status === "unassigned") job.status = "dispatched";
+    job.updatedAt = nowIsoTrades();
+    saveTradesState();
+    return { ok: true, result: { job } };
+  });
+
+  // ── Maintenance contracts (recurring service agreements) ──
+
+  registerLensAction("trades", "contract-create", (ctx, _artifact, params = {}) => {
+    const s = getTradesState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const customerId = String(params.customerId || "");
+    if (!customerId || !s.customers.get(userId)?.has(customerId)) return { ok: false, error: "customerId required + must exist" };
+    const cadence = ["monthly", "quarterly", "semiannual", "annual"].includes(params.cadence) ? params.cadence : "annual";
+    const monthlyRate = Number(params.monthlyRate);
+    if (!Number.isFinite(monthlyRate) || monthlyRate < 0) return { ok: false, error: "monthlyRate must be >= 0" };
+    const contract = {
+      id: nextTradesId("contract"),
+      customerId,
+      customerName: s.customers.get(userId).get(customerId).name,
+      cadence,
+      monthlyRate,
+      description: String(params.description || "").slice(0, 200),
+      active: true,
+      nextVisitAt: params.nextVisitAt ? String(params.nextVisitAt) : null,
+      createdAt: nowIsoTrades(),
+    };
+    if (!s.contracts.has(userId)) s.contracts.set(userId, new Map());
+    s.contracts.get(userId).set(contract.id, contract);
+    saveTradesState();
+    return { ok: true, result: { contract } };
+  });
+
+  registerLensAction("trades", "contract-list", (ctx, _artifact, _params = {}) => {
+    const s = getTradesState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const map = s.contracts.get(userId);
+    if (!map) return { ok: true, result: { contracts: [] } };
+    return { ok: true, result: { contracts: Array.from(map.values()) } };
+  });
+
+  registerLensAction("trades", "contract-cancel", (ctx, _artifact, params = {}) => {
+    const s = getTradesState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const id = String(params.id || "");
+    const c = s.contracts.get(userId)?.get(id);
+    if (!c) return { ok: false, error: "not found" };
+    c.active = false;
+    c.cancelledAt = nowIsoTrades();
+    saveTradesState();
+    return { ok: true, result: { contract: c } };
+  });
 };
