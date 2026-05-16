@@ -87,16 +87,68 @@ export default function registerPaperActions(registerLensAction) {
     return { ok: true, result: { oldStats: { lines: oldLines.length, words: oldWords.length, chars: oldChars }, newStats: { lines: newLines.length, words: newWords.length, chars: newChars }, diff: { linesAdded: added.length, linesRemoved: removed.length, linesUnchanged: unchanged.length, wordDelta: newWords.length - oldWords.length, charDelta: newChars - oldChars }, changeRate: Math.round(((added.length + removed.length) / Math.max(1, oldLines.length)) * 100), addedPreview: added.slice(0, 10), removedPreview: removed.slice(0, 10) } };
   });
 
-  // ─── Parity-sprint ──
-  registerLensAction("paper", "search", (_ctx, _artifact, params = {}) => {
-    const query = String(params.query || "").trim().toLowerCase();
+  // ─── Real paper search via arXiv (free, no key) ──
+  //
+  // arXiv export API: http://export.arxiv.org/api/query — returns Atom XML
+  // with title, summary, authors, published date, primary category, links
+  // to PDF/abstract. Covers physics, math, CS, biology, finance, statistics,
+  // economics. Comprehensive academic preprint repository.
+
+  function parseArxivAtom(xml) {
+    // Lightweight Atom parser — extracts <entry> blocks
+    const entries = [];
+    const entryMatches = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
+    for (const entryXml of entryMatches) {
+      const get = (tag) => {
+        const m = entryXml.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
+        return m ? m[1].trim() : "";
+      };
+      const id = get("id");
+      const arxivId = id.replace(/^http(s)?:\/\/arxiv\.org\/abs\//, "").trim();
+      const authors = [];
+      const authorMatches = entryXml.match(/<author>[\s\S]*?<\/author>/g) || [];
+      for (const am of authorMatches) {
+        const n = am.match(/<name>([\s\S]*?)<\/name>/);
+        if (n) authors.push(n[1].trim());
+      }
+      const linkPdf = entryXml.match(/<link[^>]+title="pdf"[^>]+href="([^"]+)"/);
+      entries.push({
+        id: arxivId,
+        title: get("title").replace(/\s+/g, " "),
+        abstract: get("summary").replace(/\s+/g, " "),
+        authors,
+        published: get("published"),
+        updated: get("updated"),
+        url: id,
+        pdfUrl: linkPdf ? linkPdf[1] : null,
+        primaryCategory: (entryXml.match(/<arxiv:primary_category[^>]+term="([^"]+)"/) || [, null])[1],
+      });
+    }
+    return entries;
+  }
+
+  registerLensAction("paper", "search", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
     if (!query) return { ok: false, error: "query required" };
-    const matched = SAMPLE_PAPERS.filter(p =>
-      p.title.toLowerCase().includes(query) ||
-      p.abstract.toLowerCase().includes(query) ||
-      p.authors.some(a => a.toLowerCase().includes(query))
-    ).slice(0, 20);
-    return { ok: true, result: { papers: matched.length > 0 ? matched : SAMPLE_PAPERS.slice(0, 5), query } };
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 20));
+    try {
+      const url = `http://export.arxiv.org/api/query?search_query=${encodeURIComponent("all:" + query)}&start=0&max_results=${limit}&sortBy=relevance`;
+      const r = await globalThis.fetch(url);
+      if (!r.ok) return { ok: false, error: `arxiv ${r.status}` };
+      const xml = await r.text();
+      const papers = parseArxivAtom(xml);
+      return {
+        ok: true,
+        result: {
+          papers,
+          query,
+          count: papers.length,
+          source: "arXiv export API",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `arxiv search failed: ${e?.message || "network"}` };
+    }
   });
 
   registerLensAction("paper", "summarize", async (ctx, _artifact, params = {}) => {
@@ -123,13 +175,8 @@ export default function registerPaperActions(registerLensAction) {
   });
 }
 
-const SAMPLE_PAPERS = [
-  { id: "1706.03762", title: "Attention Is All You Need", authors: ["Vaswani", "Shazeer", "Parmar"], journal: "NeurIPS", year: 2017, doi: "10.5555/3295222.3295349", abstract: "We propose a new simple network architecture, the Transformer, based solely on attention mechanisms…", citationCount: 92340, openAccess: true },
-  { id: "1810.04805", title: "BERT: Pre-training of Deep Bidirectional Transformers", authors: ["Devlin", "Chang", "Lee", "Toutanova"], journal: "NAACL", year: 2018, abstract: "We introduce a new language representation model called BERT…", citationCount: 78410, openAccess: true },
-  { id: "2005.14165", title: "Language Models are Few-Shot Learners", authors: ["Brown", "Mann"], journal: "NeurIPS", year: 2020, abstract: "Recent work has demonstrated substantial gains on many NLP tasks by pre-training on a large corpus of text…", citationCount: 35210, openAccess: true },
-  { id: "1512.03385", title: "Deep Residual Learning for Image Recognition", authors: ["He", "Zhang", "Ren", "Sun"], journal: "CVPR", year: 2016, abstract: "We present a residual learning framework to ease the training of substantially deeper networks…", citationCount: 145200, openAccess: true },
-  { id: "1409.0473", title: "Neural Machine Translation by Jointly Learning to Align and Translate", authors: ["Bahdanau", "Cho", "Bengio"], journal: "ICLR", year: 2015, abstract: "Neural machine translation is a recently proposed approach to machine translation…", citationCount: 28500, openAccess: true },
-  { id: "1502.03167", title: "Batch Normalization", authors: ["Ioffe", "Szegedy"], journal: "ICML", year: 2015, abstract: "Training Deep Neural Networks is complicated by internal covariate shift…", citationCount: 56200, openAccess: true },
-  { id: "1406.2661", title: "Generative Adversarial Networks", authors: ["Goodfellow"], journal: "NeurIPS", year: 2014, abstract: "We propose a new framework for estimating generative models via an adversarial process…", citationCount: 71200, openAccess: true },
-  { id: "2103.00020", title: "CLIP: Learning Transferable Visual Models From Natural Language Supervision", authors: ["Radford", "Kim", "Hallacy"], journal: "ICML", year: 2021, abstract: "State-of-the-art computer vision systems are trained to predict a fixed set of predetermined object categories…", citationCount: 13400, openAccess: true },
-];
+// Note: prior versions held a SAMPLE_PAPERS array of 8 hand-curated ML
+// preprints used to back paper-search. Per the "everything must be real"
+// directive, that table has been removed — paper.search now hits the
+// arXiv export API directly (free, no key, full preprint repository
+// covering physics, math, CS, biology, finance, statistics, economics).
