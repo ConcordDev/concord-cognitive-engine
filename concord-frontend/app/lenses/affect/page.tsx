@@ -51,6 +51,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { LiveAffectStream } from '@/components/affect/LiveAffectStream';
 
 // --- Types ---
 
@@ -2208,8 +2209,11 @@ export default function AffectLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LiveAffectStream />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#affect-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to affect content</a>
     </LensShell>
