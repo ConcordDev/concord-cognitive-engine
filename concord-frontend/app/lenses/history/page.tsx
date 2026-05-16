@@ -17,6 +17,7 @@ import {
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { WikipediaExplorer } from '@/components/history/WikipediaExplorer';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
@@ -25,7 +26,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Events' | 'Periods' | 'Figures' | 'Sources' | 'Timeline' | 'Dashboard';
+type ModeTab = 'Events' | 'Periods' | 'Figures' | 'Sources' | 'Timeline' | 'Dashboard' | 'Wikipedia';
 type ArtifactType = 'Event' | 'Period' | 'Figure' | 'Source';
 type Region = 'global' | 'europe' | 'asia' | 'africa' | 'americas' | 'middle_east' | 'oceania' | 'other';
 
@@ -58,6 +59,7 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof Clock; type: Artifac
   { id: 'Sources', label: 'Sources', icon: BookOpen, type: 'Source' },
   { id: 'Timeline', label: 'Timeline', icon: ArrowRight, type: 'Event' },
   { id: 'Dashboard', label: 'Dashboard', icon: Globe, type: 'Event' },
+  { id: 'Wikipedia', label: 'Wikipedia', icon: BookOpen, type: 'Source' },
 ];
 
 const REGION_COLORS: Record<Region, string> = {
@@ -621,6 +623,13 @@ export default function HistoryLensPage() {
           </div>
         )}
       </div>
+
+      {/* Wikipedia tab — bespoke article + on-this-day surface with Save-as-DTU */}
+      {activeTab === 'Wikipedia' && (
+        <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <WikipediaExplorer />
+        </div>
+      )}
     </div>
     </LensShell>
   );
