@@ -21,6 +21,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import ChemWorkbench from '@/components/chem/ChemWorkbench';
+import { ChemActionPanel } from '@/components/chem/ChemActionPanel';
 
 interface Compound {
   id: string;
@@ -644,6 +645,10 @@ export default function ChemLensPage() {
       {/* Bespoke 118-element periodic table with click-to-detail + Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PeriodicTable />
+      </section>
+
+      <section className="mt-6">
+        <ChemActionPanel />
       </section>
     </LensShell>
   );
