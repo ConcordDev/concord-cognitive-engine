@@ -14,6 +14,7 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { WalletMarkets } from '@/components/wallet/WalletMarkets';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -1145,7 +1146,10 @@ export default function WalletPage() {
     >
       <WalletPageInner />
     </Suspense>
-    
+    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <WalletMarkets />
+    </section>
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
