@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { MarketingFeed } from '@/components/marketing/MarketingFeed';
+import { MarketingActionPanel } from '@/components/marketing/MarketingActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -508,6 +509,10 @@ export default function MarketingLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MarketingFeed />
+      </section>
+
+      <section className="mt-6">
+        <MarketingActionPanel />
       </section>
     </div>
 
