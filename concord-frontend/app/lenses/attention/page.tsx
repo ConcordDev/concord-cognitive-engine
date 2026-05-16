@@ -24,6 +24,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { AttentionThreads } from '@/components/attention/AttentionThreads';
 import { AttentionPanel as EmergentAttentionPanel } from '@/components/emergent/AttentionPanel';
 import { DreamPanel } from '@/components/emergent/DreamPanel';
 import { ForgettingPanel } from '@/components/emergent/ForgettingPanel';
@@ -944,8 +945,11 @@ export default function AttentionLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <AttentionThreads />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#attention-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to attention content</a>
     </LensShell>
