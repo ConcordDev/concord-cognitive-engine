@@ -187,3 +187,100 @@ describe("regression: pre-existing analytical macros still work", () => {
     assert.ok(ACTIONS.size > 12);
   });
 });
+
+describe("healthcare.appointment-charge-copay (real Stripe)", () => {
+  it("rejects when STRIPE_SECRET_KEY env not set", async () => {
+    delete process.env.STRIPE_SECRET_KEY;
+    const booked = call("appointment-book", ctxA, { providerId: "p1", date: "2026-06-01", time: "10:00", copayUsd: 30 });
+    const r = await call("appointment-charge-copay", ctxA, { appointmentId: booked.result.appointment.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /STRIPE_SECRET_KEY|Stripe not configured/);
+  });
+
+  it("rejects when appointment has no copay amount", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
+    const booked = call("appointment-book", ctxA, { providerId: "p1", date: "2026-06-01", time: "10:00" });
+    const r = await call("appointment-charge-copay", ctxA, { appointmentId: booked.result.appointment.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no copay amount/);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("creates a Stripe PaymentIntent for the copay (real API shape)", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_real";
+    let captured;
+    globalThis.fetch = async (url, opts) => {
+      captured = { url, body: opts?.body };
+      return {
+        ok: true,
+        json: async () => ({ id: "pi_copay123", client_secret: "pi_copay123_secret_xyz", status: "requires_payment_method", amount: 3000 }),
+      };
+    };
+    const booked = call("appointment-book", ctxA, { providerId: "p1", date: "2026-06-01", time: "10:00", copayUsd: 30 });
+    const r = await call("appointment-charge-copay", ctxA, { appointmentId: booked.result.appointment.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.clientSecret, "pi_copay123_secret_xyz");
+    assert.equal(r.result.paymentIntentId, "pi_copay123");
+    assert.equal(r.result.copayUsd, 30);
+    assert.match(captured.url, /\/payment_intents/);
+    assert.match(captured.body, /amount=3000/);
+    assert.match(captured.body, /metadata%5Bconcord_purpose%5D=healthcare_copay/);
+    assert.match(captured.body, /metadata%5Bconcord_user_id%5D=user_a/);
+    // appointment now in pending status
+    const list = globalThis._concordSTATE.healthLens.appointments.get("user_a");
+    assert.equal(list[0].copayStatus, "pending");
+    assert.equal(list[0].stripePaymentIntentId, "pi_copay123");
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("rejects double-charging an already-paid copay", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_real";
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ id: "pi_xx", client_secret: "x", status: "requires_payment_method", amount: 3000 }),
+    });
+    const booked = call("appointment-book", ctxA, { providerId: "p1", date: "2026-06-01", time: "10:00", copayUsd: 30 });
+    await call("appointment-charge-copay", ctxA, { appointmentId: booked.result.appointment.id });
+    // Simulate webhook flipping to paid
+    globalThis._concordSTATE.healthLens.appointments.get("user_a")[0].copayStatus = "paid";
+    const r2 = await call("appointment-charge-copay", ctxA, { appointmentId: booked.result.appointment.id });
+    assert.equal(r2.ok, false);
+    assert.match(r2.error, /already paid/);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("surfaces real Stripe error messages on API failure", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_bad";
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: { message: "Invalid API Key" } }),
+    });
+    const booked = call("appointment-book", ctxA, { providerId: "p1", date: "2026-06-01", time: "10:00", copayUsd: 30 });
+    const r = await call("appointment-charge-copay", ctxA, { appointmentId: booked.result.appointment.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /Invalid API Key|stripe/i);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+});
+
+describe("healthcare.appointment-list", () => {
+  it("lists appointments scoped per-user, sorted date desc", () => {
+    call("appointment-book", ctxA, { providerId: "p1", date: "2026-05-01", time: "09:00" });
+    call("appointment-book", ctxA, { providerId: "p1", date: "2026-06-01", time: "10:00" });
+    const r = call("appointment-list", ctxA, {});
+    assert.equal(r.result.appointments.length, 2);
+    assert.equal(r.result.appointments[0].date, "2026-06-01");
+  });
+
+  it("filters by copayStatus", () => {
+    const a = call("appointment-book", ctxA, { providerId: "p1", date: "2026-06-01", time: "10:00", copayUsd: 25 });
+    const b = call("appointment-book", ctxA, { providerId: "p1", date: "2026-06-02", time: "11:00", copayUsd: 25 });
+    // Mark first one paid
+    globalThis._concordSTATE.healthLens.appointments.get("user_a")
+      .find((x) => x.id === a.result.appointment.id).copayStatus = "paid";
+    void b;
+    assert.equal(call("appointment-list", ctxA, { copayStatus: "paid" }).result.appointments.length, 1);
+    assert.equal(call("appointment-list", ctxA, { copayStatus: "unpaid" }).result.appointments.length, 1);
+  });
+});
