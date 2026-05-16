@@ -40,24 +40,9 @@ async function callSvc<T>(action: string, input: Record<string, unknown>): Promi
 const today = new Date();
 const dayOffset = (n: number) => new Date(today.getTime() - n * 86400000).toISOString().slice(0, 10);
 
-const DEFAULT_APPTS: Appt[] = [
-  { provider: 'Anya', date: dayOffset(2), price: '120', status: 'completed' },
-  { provider: 'Anya', date: dayOffset(5), price: '85', status: 'paid' },
-  { provider: 'Marcus', date: dayOffset(1), price: '150', status: 'completed' },
-  { provider: 'Marcus', date: dayOffset(8), price: '95', status: 'paid' },
-  { provider: 'Priya', date: dayOffset(3), price: '60', status: 'completed' },
-];
-
-const DEFAULT_CLIENTS: Client[] = [
-  { name: 'Sara Chen', visits: '6', totalRevenue: '720', lastVisit: dayOffset(14) },
-  { name: 'Diego Martinez', visits: '1', totalRevenue: '85', lastVisit: dayOffset(200) },
-  { name: 'Iris Tanaka', visits: '12', totalRevenue: '1800', lastVisit: dayOffset(45) },
-  { name: 'Kofi Asante', visits: '3', totalRevenue: '320', lastVisit: dayOffset(120) },
-];
-
 export function RevenueRetentionPanel() {
-  const [appts, setAppts] = useState<Appt[]>(DEFAULT_APPTS);
-  const [clients, setClients] = useState<Client[]>(DEFAULT_CLIENTS);
+  const [appts, setAppts] = useState<Appt[]>([{ provider: '', date: dayOffset(0), price: '', status: 'completed' }]);
+  const [clients, setClients] = useState<Client[]>([{ name: '', visits: '0', totalRevenue: '0', lastVisit: dayOffset(0) }]);
   const [period, setPeriod] = useState(30);
   const [revenue, setRevenue] = useState<RevenueResult | null>(null);
   const [retention, setRetention] = useState<RetentionResult | null>(null);

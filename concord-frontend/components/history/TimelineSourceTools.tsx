@@ -22,13 +22,6 @@ const SIGNIFICANCES = ['low', 'medium', 'high', 'critical'] as const;
 const TYPES = ['primary', 'secondary', 'tertiary'] as const;
 const BIASES = ['none', 'low', 'moderate', 'high'] as const;
 
-const DEFAULT_EVENTS: HistEvent[] = [
-  { name: 'Magna Carta signed', date: '1215', era: 'High Middle Ages', category: 'political', significance: 'critical' },
-  { name: 'Fall of Constantinople', date: '1453', era: 'Late Middle Ages', category: 'military', significance: 'high' },
-  { name: 'Gutenberg press', date: '1440', era: 'Renaissance', category: 'cultural', significance: 'critical' },
-  { name: 'Black Death peak', date: '1349', era: 'High Middle Ages', category: 'social', significance: 'high' },
-];
-
 const reliabilityColour = (score?: number) => {
   if (!score) return 'text-zinc-400';
   if (score >= 70) return 'text-emerald-200';
@@ -37,8 +30,8 @@ const reliabilityColour = (score?: number) => {
 };
 
 export function TimelineSourceTools() {
-  const [events, setEvents] = useState<HistEvent[]>(DEFAULT_EVENTS);
-  const [source, setSource] = useState<Source>({ title: 'Magna Carta facsimile (British Library)', type: 'primary', author: 'Anonymous scribes', date: '1215', bias: 'low' });
+  const [events, setEvents] = useState<HistEvent[]>([{ name: '', date: '', era: '', category: 'political', significance: 'medium' }]);
+  const [source, setSource] = useState<Source>({ title: '', type: 'primary', author: '', date: '', bias: 'none' });
 
   const addEvent = () => setEvents((es) => [...es, { name: '', date: '', era: '', category: 'political', significance: 'medium' }]);
   const updateEvent = <K extends keyof HistEvent>(i: number, key: K, value: HistEvent[K]) =>

@@ -21,19 +21,6 @@ interface RepairResult { repairs?: Array<{ repair: string; partsCost: number; la
 const today = new Date();
 const dayOffset = (n: number) => new Date(today.getTime() - n * 86400000).toISOString().slice(0, 10);
 
-const DEFAULT_FILLUPS: FillUp[] = [
-  { date: dayOffset(35), mileage: '54200', gallons: '12.4', pricePerGallon: '3.85' },
-  { date: dayOffset(22), mileage: '54580', gallons: '11.8', pricePerGallon: '3.92' },
-  { date: dayOffset(10), mileage: '54920', gallons: '13.1', pricePerGallon: '3.78' },
-  { date: dayOffset(1), mileage: '55290', gallons: '12.0', pricePerGallon: '3.95' },
-];
-
-const DEFAULT_REPAIRS: Repair[] = [
-  { name: 'Front brake pads + rotors', partsCost: '320', laborHours: '2.5', priority: 'high' },
-  { name: 'Oil change (synthetic)', partsCost: '65', laborHours: '0.5', priority: 'medium' },
-  { name: 'Cabin air filter', partsCost: '28', laborHours: '0.3', priority: 'low' },
-];
-
 const prBadge = (p: string) => {
   if (p === 'high') return 'bg-rose-500/20 text-rose-200';
   if (p === 'medium') return 'bg-amber-500/20 text-amber-200';
@@ -41,8 +28,8 @@ const prBadge = (p: string) => {
 };
 
 export function FuelRepairPanel() {
-  const [fillups, setFillups] = useState<FillUp[]>(DEFAULT_FILLUPS);
-  const [repairs, setRepairs] = useState<Repair[]>(DEFAULT_REPAIRS);
+  const [fillups, setFillups] = useState<FillUp[]>([{ date: dayOffset(0), mileage: '', gallons: '', pricePerGallon: '' }, { date: dayOffset(0), mileage: '', gallons: '', pricePerGallon: '' }]);
+  const [repairs, setRepairs] = useState<Repair[]>([{ name: '', partsCost: '', laborHours: '', priority: 'medium' }]);
   const [shopRate, setShopRate] = useState(120);
 
   const addFill = () => setFillups((fs) => [...fs, { date: dayOffset(0), mileage: '', gallons: '', pricePerGallon: '' }]);

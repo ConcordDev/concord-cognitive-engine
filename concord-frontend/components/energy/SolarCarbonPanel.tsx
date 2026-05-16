@@ -26,8 +26,8 @@ const coverageColour = (pct?: number) => {
 };
 
 export function SolarCarbonPanel() {
-  const [solar, setSolar] = useState<SolarInput>({ roofAreaSqFt: 1500, peakSunHours: 5, monthlyUsageKWh: 900 });
-  const [carbon, setCarbon] = useState<CarbonInput>({ electricityKWh: 900, naturalGasTherms: 45, gasolineGallons: 40, flightMiles: 250 });
+  const [solar, setSolar] = useState<SolarInput>({ roofAreaSqFt: 0, peakSunHours: 0, monthlyUsageKWh: 0 });
+  const [carbon, setCarbon] = useState<CarbonInput>({ electricityKWh: 0, naturalGasTherms: 0, gasolineGallons: 0, flightMiles: 0 });
 
   return (
     <CalcPanel<SolarResult, CarbonResult>

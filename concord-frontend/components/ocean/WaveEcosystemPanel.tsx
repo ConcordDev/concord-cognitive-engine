@@ -19,15 +19,6 @@ interface EcoResult { speciesCount?: number; trophicLevels?: Record<string, numb
 
 const TROPHIC_LEVELS = ['primary', 'secondary', 'tertiary', 'apex'] as const;
 
-const DEFAULT_SPECIES: Species[] = [
-  { name: 'Phytoplankton', trophicLevel: 'primary', threatened: false, invasive: false },
-  { name: 'Zooplankton', trophicLevel: 'primary', threatened: false, invasive: false },
-  { name: 'Anchovy', trophicLevel: 'secondary', threatened: false, invasive: false },
-  { name: 'Mackerel', trophicLevel: 'secondary', threatened: false, invasive: false },
-  { name: 'Bluefin tuna', trophicLevel: 'tertiary', threatened: true, invasive: false },
-  { name: 'Great white shark', trophicLevel: 'apex', threatened: true, invasive: false },
-  { name: 'Lionfish (Atlantic)', trophicLevel: 'tertiary', threatened: false, invasive: true },
-];
 
 const healthColour = (h?: string) => {
   if (h === 'thriving') return 'text-emerald-200';
@@ -38,8 +29,8 @@ const healthColour = (h?: string) => {
 };
 
 export function WaveEcosystemPanel() {
-  const [wave, setWave] = useState<WaveInput>({ waveHeightMeters: 2.5, wavePeriodSeconds: 9, windSpeedKnots: 22 });
-  const [species, setSpecies] = useState<Species[]>(DEFAULT_SPECIES);
+  const [wave, setWave] = useState<WaveInput>({ waveHeightMeters: 0, wavePeriodSeconds: 0, windSpeedKnots: 0 });
+  const [species, setSpecies] = useState<Species[]>([{ name: '', trophicLevel: 'primary', threatened: false, invasive: false }]);
 
   const addSpecies = () => setSpecies((ss) => [...ss, { name: '', trophicLevel: 'primary', threatened: false, invasive: false }]);
   const updateSpecies = <K extends keyof Species>(i: number, key: K, value: Species[K]) =>

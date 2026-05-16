@@ -36,8 +36,8 @@ const suitColour = (s?: string) => {
 };
 
 export function CorrosionThermalPanel() {
-  const [corrosion, setCorrosion] = useState<CorrosionInput>({ name: '316L stainless', category: 'metal', environment: 'marine', temperature: 22, humidity: 75 });
-  const [thermal, setThermal] = useState<ThermalInput>({ thermalConductivity: 16, meltingPoint: 1400, thermalExpansion: 16, operatingTemp: 200, application: 'high-temp' });
+  const [corrosion, setCorrosion] = useState<CorrosionInput>({ name: '', category: 'metal', environment: 'indoor', temperature: 0, humidity: 0 });
+  const [thermal, setThermal] = useState<ThermalInput>({ thermalConductivity: 0, meltingPoint: 0, thermalExpansion: 0, operatingTemp: 0, application: 'general' });
 
   return (
     <CalcPanel<CorrosionResult, ThermalResult>

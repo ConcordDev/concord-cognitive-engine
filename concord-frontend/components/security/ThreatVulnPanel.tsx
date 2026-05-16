@@ -39,21 +39,9 @@ async function callSec<T>(action: string, input: Record<string, unknown>): Promi
   } catch { return null; }
 }
 
-const DEFAULT_THREATS: Threat[] = [
-  { name: 'Ransomware', type: 'malware', probability: 4, impact: 5, vulnerabilities: 3, activeControls: 4, totalControls: 6 },
-  { name: 'Insider data exfil', type: 'insider', probability: 2, impact: 5, vulnerabilities: 2, activeControls: 2, totalControls: 5 },
-  { name: 'Phishing campaign', type: 'social', probability: 5, impact: 3, vulnerabilities: 1, activeControls: 3, totalControls: 4 },
-];
-
-const DEFAULT_SYSTEMS: SysConfig[] = [
-  { hostname: 'web-prod-01', firewall: true, encryption: true, mfa: true, defaultCredentials: false },
-  { hostname: 'db-legacy-03', firewall: true, encryption: false, mfa: false, defaultCredentials: false },
-  { hostname: 'iot-cam-cluster', firewall: false, encryption: false, mfa: false, defaultCredentials: true },
-];
-
 export function ThreatVulnPanel() {
-  const [threats, setThreats] = useState<Threat[]>(DEFAULT_THREATS);
-  const [systems, setSystems] = useState<SysConfig[]>(DEFAULT_SYSTEMS);
+  const [threats, setThreats] = useState<Threat[]>([{ name: '', type: '', probability: 3, impact: 3, vulnerabilities: 0, activeControls: 0, totalControls: 0 }]);
+  const [systems, setSystems] = useState<SysConfig[]>([{ hostname: '', firewall: true, encryption: true, mfa: true, defaultCredentials: false }]);
   const [threatResult, setThreatResult] = useState<ThreatResult | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 

@@ -52,8 +52,8 @@ type TimelineEvent =
   | { kind: 'maintenance'; mileage: number; item: ScheduleItem };
 
 export function VehicleHistory() {
-  const [vin, setVin] = useState('1HGCM82633A123456');
-  const [odometer, setOdometer] = useState(67500);
+  const [vin, setVin] = useState('');
+  const [odometer, setOdometer] = useState(0);
   const [vinData, setVinData] = useState<VinData | null>(null);
   const [recalls, setRecalls] = useState<Recall[]>([]);
   const [schedule, setSchedule] = useState<ScheduleResult | null>(null);
