@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { OpenHardwarePulse } from '@/components/electrical/OpenHardwarePulse';
+import { NecCodeCalc } from '@/components/electrical/NecCodeCalc';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -720,6 +721,10 @@ export default function ElectricalLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <OpenHardwarePulse />
+      </section>
+
+      <section className="mt-6">
+        <NecCodeCalc />
       </section>
     </LensPageShell>
     
