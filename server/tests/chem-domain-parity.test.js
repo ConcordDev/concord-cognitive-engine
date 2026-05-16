@@ -20,11 +20,33 @@ beforeEach(() => {
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 
 describe("chem — periodic table", () => {
-  it("returns the seeded elements map", () => {
+  it("returns the full 118 elements", () => {
     const r = call("periodic-table", ctxA);
     assert.equal(r.ok, true);
-    assert.ok(r.result.count > 60);
+    assert.equal(r.result.count, 118);
     assert.equal(r.result.elements.H.name, "Hydrogen");
+    assert.equal(r.result.elements.Og.name, "Oganesson");
+    assert.equal(r.result.elements.Og.z, 118);
+  });
+
+  it("covers all atomic numbers 1-118", () => {
+    const r = call("periodic-table", ctxA);
+    const zSet = new Set(Object.values(r.result.elements).map((el) => el.z));
+    for (let z = 1; z <= 118; z++) {
+      assert.ok(zSet.has(z), `missing atomic number ${z}`);
+    }
+  });
+
+  it("includes all 15 lanthanides", () => {
+    const r = call("periodic-table", ctxA);
+    const lanthanides = Object.values(r.result.elements).filter((el) => el.category === "lanthanide");
+    assert.equal(lanthanides.length, 15);
+  });
+
+  it("includes all 15 actinides", () => {
+    const r = call("periodic-table", ctxA);
+    const actinides = Object.values(r.result.elements).filter((el) => el.category === "actinide");
+    assert.equal(actinides.length, 15);
   });
 });
 
