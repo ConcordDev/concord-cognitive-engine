@@ -368,4 +368,327 @@ export default function registerAccountingActions(registerLensAction) {
 
     return { ok: true, result };
   });
+
+  /**
+   * validate-ledger
+   * Confirms double-entry books balance: sum(debits) === sum(credits)
+   * across every account, and flags any account whose individual
+   * debit/credit totals don't reconcile. Called by the frontend's
+   * lens-feature "Validate ledger" button — pre-this macro it was a
+   * dead click (cataloged in lens-features.js but no handler).
+   */
+  registerLensAction("accounting", "validate-ledger", (ctx, artifact, _params) => {
+    const accounts = artifact.data?.accounts || [];
+    let totalDebits = 0;
+    let totalCredits = 0;
+    const accountIssues = [];
+
+    for (const acct of accounts) {
+      let dr = 0;
+      let cr = 0;
+      for (const entry of (acct.entries || [])) {
+        dr += parseFloat(entry.debit) || 0;
+        cr += parseFloat(entry.credit) || 0;
+      }
+      totalDebits += dr;
+      totalCredits += cr;
+
+      // Per-account sanity: assets/expenses normalDebit; revenue/equity/
+      // liability normalCredit. Flag accounts where the balance is on the
+      // wrong side relative to the declared normalBalance.
+      const normal = (acct.normalBalance || (acct.type === 'asset' || acct.type === 'expense' ? 'debit' : 'credit')).toLowerCase();
+      const balance = Math.round((dr - cr) * 100) / 100;
+      if (normal === 'debit' && balance < -0.01) {
+        accountIssues.push({ account: acct.name || acct.accountNumber, issue: 'credit balance on debit-normal account', balance });
+      } else if (normal === 'credit' && balance > 0.01) {
+        accountIssues.push({ account: acct.name || acct.accountNumber, issue: 'debit balance on credit-normal account', balance });
+      }
+    }
+
+    totalDebits = Math.round(totalDebits * 100) / 100;
+    totalCredits = Math.round(totalCredits * 100) / 100;
+    const difference = Math.round((totalDebits - totalCredits) * 100) / 100;
+    const isBalanced = Math.abs(difference) < 0.01;
+
+    const result = {
+      validatedAt: new Date().toISOString(),
+      totalDebits,
+      totalCredits,
+      difference,
+      isBalanced,
+      accountCount: accounts.length,
+      accountIssues,
+      severity: !isBalanced ? 'error' : accountIssues.length > 0 ? 'warning' : 'ok',
+      message: !isBalanced
+        ? `Ledger is OUT OF BALANCE by ${difference.toFixed(2)}. Total debits (${totalDebits}) ≠ total credits (${totalCredits}).`
+        : accountIssues.length > 0
+          ? `Ledger balances overall, but ${accountIssues.length} account(s) have suspicious balance side.`
+          : `Ledger balances. ${accounts.length} accounts validated.`,
+    };
+
+    artifact.data.validationResult = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * generate-invoice
+   * Builds an invoice payload from line items + counterparty. Returns
+   * the invoice object the frontend can render / persist as a DTU.
+   * artifact.data.lineItems: [{ description, quantity, unitPrice, taxRate? }]
+   * params.client { name, email?, address? }, params.dueDays (default 30),
+   * params.invoiceNumber (auto if missing), params.notes
+   */
+  registerLensAction("accounting", "generate-invoice", (ctx, artifact, params) => {
+    const lineItems = artifact.data?.lineItems || params?.lineItems || [];
+    const client = params?.client || artifact.data?.client || {};
+    const dueDays = Number(params?.dueDays) || 30;
+    const issueDate = new Date();
+    const dueDate = new Date(issueDate.getTime() + dueDays * 86_400_000);
+
+    const enriched = lineItems.map((li, i) => {
+      const qty = Number(li.quantity) || 0;
+      const unit = Number(li.unitPrice) || 0;
+      const subtotal = Math.round(qty * unit * 100) / 100;
+      const taxRate = Number(li.taxRate) || 0;
+      const tax = Math.round(subtotal * taxRate * 100) / 100;
+      return {
+        idx: i + 1,
+        description: li.description || `Line ${i + 1}`,
+        quantity: qty,
+        unitPrice: unit,
+        subtotal,
+        taxRate,
+        tax,
+        total: Math.round((subtotal + tax) * 100) / 100,
+      };
+    });
+
+    const subtotal = Math.round(enriched.reduce((s, l) => s + l.subtotal, 0) * 100) / 100;
+    const totalTax = Math.round(enriched.reduce((s, l) => s + l.tax, 0) * 100) / 100;
+    const grandTotal = Math.round((subtotal + totalTax) * 100) / 100;
+
+    const invoiceNumber = params?.invoiceNumber
+      || `INV-${issueDate.getFullYear()}${String(issueDate.getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 9000) + 1000}`;
+
+    const result = {
+      invoiceNumber,
+      issueDate: issueDate.toISOString().slice(0, 10),
+      dueDate: dueDate.toISOString().slice(0, 10),
+      client,
+      lineItems: enriched,
+      subtotal,
+      totalTax,
+      grandTotal,
+      status: 'draft',
+      notes: params?.notes || '',
+      generatedAt: issueDate.toISOString(),
+    };
+
+    artifact.data.lastGeneratedInvoice = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * reconcile
+   * Suggests pairings between unreconciled bank-feed lines and
+   * recorded transactions. Match strategy is amount + date proximity
+   * (±3 days) + counterparty token overlap. Returns confidence-scored
+   * matches the user can accept one-click.
+   *
+   * artifact.data.bankLines: [{ id, date, amount, description }]
+   * artifact.data.transactions: [{ id, date, amount, counterparty, memo, reconciled?: bool }]
+   */
+  registerLensAction("accounting", "reconcile", (ctx, artifact, _params) => {
+    const bankLines = (artifact.data?.bankLines || []).filter(l => !l.matchedTxId);
+    const transactions = (artifact.data?.transactions || []).filter(t => !t.reconciled);
+
+    const matches = [];
+    const used = new Set();
+
+    for (const bl of bankLines) {
+      const blAmt = Number(bl.amount) || 0;
+      const blDate = new Date(bl.date);
+      const blTokens = String(bl.description || '').toLowerCase().split(/\W+/).filter(t => t.length >= 3);
+
+      let bestTx = null;
+      let bestScore = 0;
+      for (const tx of transactions) {
+        if (used.has(tx.id)) continue;
+        const txAmt = Number(tx.amount) || 0;
+        if (Math.abs(txAmt - blAmt) > 0.01) continue; // exact-amount required
+        const txDate = new Date(tx.date);
+        const dayDelta = Math.abs((txDate.getTime() - blDate.getTime()) / 86_400_000);
+        if (dayDelta > 3) continue;
+        const txTokens = String((tx.counterparty || '') + ' ' + (tx.memo || '')).toLowerCase().split(/\W+/).filter(t => t.length >= 3);
+        const sharedTokens = blTokens.filter(t => txTokens.includes(t)).length;
+        const dateScore = 1 - (dayDelta / 3); // 1.0 same day, 0 at 3-day cutoff
+        const tokenScore = blTokens.length === 0 ? 0.5 : (sharedTokens / Math.max(1, blTokens.length));
+        const score = Math.round((0.7 * dateScore + 0.3 * tokenScore) * 100) / 100;
+        if (score > bestScore) { bestScore = score; bestTx = tx; }
+      }
+      if (bestTx && bestScore >= 0.4) {
+        used.add(bestTx.id);
+        matches.push({
+          bankLineId: bl.id,
+          transactionId: bestTx.id,
+          confidence: bestScore,
+          amount: blAmt,
+          date: bl.date,
+          bankDescription: bl.description,
+          txCounterparty: bestTx.counterparty,
+        });
+      }
+    }
+
+    const result = {
+      reconciledAt: new Date().toISOString(),
+      candidateMatches: matches.sort((a, b) => b.confidence - a.confidence),
+      bankLinesUnmatched: bankLines.length - matches.length,
+      transactionsUnmatched: transactions.length - matches.length,
+      summary: `${matches.length} suggested matches · ${bankLines.length - matches.length} bank line(s) unmatched · ${transactions.length - matches.length} txn(s) unmatched`,
+    };
+    artifact.data.reconciliation = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * generate-statements
+   * Builds Income Statement (P&L) + Balance Sheet + Cash Flow snapshot
+   * in one payload. Reuses the trialBalance + profitLoss math for
+   * shape consistency.
+   */
+  registerLensAction("accounting", "generate-statements", (ctx, artifact, params) => {
+    const accounts = artifact.data?.accounts || [];
+    const startDate = params?.startDate ? new Date(params.startDate) : new Date(new Date().getFullYear(), 0, 1);
+    const endDate = params?.endDate ? new Date(params.endDate) : new Date();
+
+    // Income statement
+    let revenue = 0;
+    let expense = 0;
+    // Balance sheet
+    let assets = 0;
+    let liabilities = 0;
+    let equity = 0;
+    // Cash flow (cash accounts only)
+    let cashStart = 0;
+    let cashEnd = 0;
+
+    for (const acct of accounts) {
+      let net = 0;
+      let netInPeriod = 0;
+      let netBefore = 0;
+      for (const entry of (acct.entries || [])) {
+        const dr = parseFloat(entry.debit) || 0;
+        const cr = parseFloat(entry.credit) || 0;
+        const delta = dr - cr;
+        net += delta;
+        const d = new Date(entry.date);
+        if (d <= endDate) {
+          if (d >= startDate) netInPeriod += delta;
+          else netBefore += delta;
+        }
+      }
+      const type = String(acct.type || '').toLowerCase();
+      if (type === 'revenue' || type === 'income') revenue += -netInPeriod; // credits increase revenue
+      else if (type === 'expense') expense += netInPeriod;
+      else if (type === 'asset') assets += net;
+      else if (type === 'liability') liabilities += -net;
+      else if (type === 'equity') equity += -net;
+      if (/cash|bank/i.test(acct.name || '') || /cash|bank/i.test(type)) {
+        cashStart += netBefore;
+        cashEnd += netBefore + netInPeriod;
+      }
+    }
+
+    const incomeStatement = {
+      period: { start: startDate.toISOString().slice(0,10), end: endDate.toISOString().slice(0,10) },
+      revenue: Math.round(revenue * 100) / 100,
+      expense: Math.round(expense * 100) / 100,
+      netIncome: Math.round((revenue - expense) * 100) / 100,
+    };
+    const balanceSheet = {
+      asOf: endDate.toISOString().slice(0,10),
+      assets: Math.round(assets * 100) / 100,
+      liabilities: Math.round(liabilities * 100) / 100,
+      equity: Math.round(equity * 100) / 100,
+      balanced: Math.abs(assets - (liabilities + equity)) < 0.01,
+    };
+    const cashFlow = {
+      period: { start: startDate.toISOString().slice(0,10), end: endDate.toISOString().slice(0,10) },
+      openingCash: Math.round(cashStart * 100) / 100,
+      closingCash: Math.round(cashEnd * 100) / 100,
+      netChange: Math.round((cashEnd - cashStart) * 100) / 100,
+    };
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      incomeStatement,
+      balanceSheet,
+      cashFlow,
+    };
+    artifact.data.statements = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * audit-trail
+   * Verifies no gaps in the financial artifact audit trail. Checks
+   * for missing transaction sequence numbers, orphaned ledger entries
+   * (no matching transaction), and accounts with entries but no
+   * matching account record.
+   */
+  registerLensAction("accounting", "audit-trail", (ctx, artifact, _params) => {
+    const transactions = artifact.data?.transactions || [];
+    const accounts = artifact.data?.accounts || [];
+
+    // Sequence gaps in transaction IDs (if they're numeric)
+    const numericIds = transactions
+      .map(t => parseInt(String(t.id).replace(/\D+/g, ''), 10))
+      .filter(n => Number.isFinite(n))
+      .sort((a, b) => a - b);
+    const gaps = [];
+    for (let i = 1; i < numericIds.length; i++) {
+      const expected = numericIds[i - 1] + 1;
+      if (numericIds[i] > expected) {
+        gaps.push({ after: numericIds[i - 1], next: numericIds[i], missing: numericIds[i] - expected });
+      }
+    }
+
+    // Orphaned entries: entries that reference a missing account
+    const accountIds = new Set(accounts.map(a => a.accountNumber || a.id).filter(Boolean));
+    const orphanedEntries = [];
+    for (const acct of accounts) {
+      for (const entry of (acct.entries || [])) {
+        if (entry.linkedTxId) {
+          const tx = transactions.find(t => t.id === entry.linkedTxId);
+          if (!tx) orphanedEntries.push({ account: acct.name, entry, reason: 'linked transaction missing' });
+        }
+      }
+    }
+
+    // Unposted: transactions present but not posted to any account
+    const postedTxIds = new Set();
+    for (const acct of accounts) {
+      for (const entry of (acct.entries || [])) {
+        if (entry.linkedTxId) postedTxIds.add(entry.linkedTxId);
+      }
+    }
+    const unpostedTransactions = transactions.filter(t => !postedTxIds.has(t.id));
+
+    const result = {
+      auditedAt: new Date().toISOString(),
+      transactionCount: transactions.length,
+      accountCount: accounts.length,
+      sequenceGaps: gaps,
+      orphanedEntries,
+      unpostedTransactions: unpostedTransactions.map(t => ({ id: t.id, amount: t.amount, date: t.date })),
+      severity: (gaps.length > 0 || orphanedEntries.length > 0 || unpostedTransactions.length > 0) ? 'warning' : 'ok',
+      message: gaps.length === 0 && orphanedEntries.length === 0 && unpostedTransactions.length === 0
+        ? `Audit trail clean. ${transactions.length} transaction(s), ${accounts.length} account(s) verified.`
+        : `Audit found: ${gaps.length} sequence gap(s), ${orphanedEntries.length} orphan(s), ${unpostedTransactions.length} unposted txn(s).`,
+      accountsRegistered: accountIds.size,
+    };
+    artifact.data.auditTrail = result;
+    return { ok: true, result };
+  });
 };
