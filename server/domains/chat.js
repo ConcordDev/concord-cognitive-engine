@@ -388,4 +388,373 @@ export default function registerChatActions(registerLensAction) {
       },
     };
   });
+
+  // ─── 2026 parity macros — Projects / Prompts / Search / Branches / Scheduled ──
+  //
+  // Parity targets: Claude Projects + ChatGPT Projects/Tasks + Perplexity Spaces.
+  // All state is in-memory, per-user (CLAUDE.md migration-101 invariant),
+  // and lives under STATE.chatLens.
+
+  function getChatState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.chatLens) {
+      STATE.chatLens = {
+        projects: new Map(),
+        prompts: new Map(),
+        threadIndex: new Map(),
+        branches: new Map(),
+        scheduled: new Map(),
+      };
+    }
+    return STATE.chatLens;
+  }
+  function saveChatState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function actorIdFor(ctx) {
+    return ctx?.actor?.userId || ctx?.userId || "anon";
+  }
+  function nextChatId(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function nowIsoChat() { return new Date().toISOString(); }
+  function asStringArr(v, max) {
+    if (!Array.isArray(v)) return [];
+    return v.slice(0, max).map((x) => String(x));
+  }
+
+  // ── Projects (Claude / ChatGPT Projects, Perplexity Spaces) ──
+
+  registerLensAction("chat", "projects-list", (ctx, _artifact, _params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const map = s.projects.get(userId);
+    if (!map) return { ok: true, result: { projects: [] } };
+    const projects = Array.from(map.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return { ok: true, result: { projects } };
+  });
+
+  registerLensAction("chat", "project-create", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (name.length > 80) return { ok: false, error: "name too long (max 80)" };
+    const systemPrompt = String(params.systemPrompt || "").slice(0, 4000);
+    const attachedDtuIds = asStringArr(params.attachedDtuIds, 50);
+    const color = String(params.color || "cyan").slice(0, 16);
+    const project = {
+      id: nextChatId("proj"),
+      name, systemPrompt, attachedDtuIds, color,
+      threadIds: [],
+      createdAt: nowIsoChat(),
+      updatedAt: nowIsoChat(),
+    };
+    if (!s.projects.has(userId)) s.projects.set(userId, new Map());
+    s.projects.get(userId).set(project.id, project);
+    saveChatState();
+    return { ok: true, result: { project } };
+  });
+
+  registerLensAction("chat", "project-update", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.projects.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    const p = map.get(id);
+    if (typeof params.name === "string") {
+      const n = params.name.trim();
+      if (!n) return { ok: false, error: "name cannot be empty" };
+      p.name = n.slice(0, 80);
+    }
+    if (typeof params.systemPrompt === "string") p.systemPrompt = params.systemPrompt.slice(0, 4000);
+    if (Array.isArray(params.attachedDtuIds)) p.attachedDtuIds = asStringArr(params.attachedDtuIds, 50);
+    if (typeof params.color === "string") p.color = params.color.slice(0, 16);
+    if (Array.isArray(params.threadIds)) p.threadIds = asStringArr(params.threadIds, 500);
+    p.updatedAt = nowIsoChat();
+    saveChatState();
+    return { ok: true, result: { project: p } };
+  });
+
+  registerLensAction("chat", "project-delete", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.projects.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveChatState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("chat", "project-get", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.projects.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    return { ok: true, result: { project: map.get(id) } };
+  });
+
+  // ── Saved prompt library (slash-command extensible templates) ──
+
+  registerLensAction("chat", "prompts-list", (ctx, _artifact, _params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const map = s.prompts.get(userId);
+    if (!map) return { ok: true, result: { prompts: [] } };
+    const prompts = Array.from(map.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return { ok: true, result: { prompts } };
+  });
+
+  registerLensAction("chat", "prompt-create", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (name.length > 60) return { ok: false, error: "name too long (max 60)" };
+    const content = String(params.content || "");
+    if (!content.trim()) return { ok: false, error: "content required" };
+    if (content.length > 8000) return { ok: false, error: "content too long (max 8000)" };
+    const tags = asStringArr(params.tags, 10);
+    const shortcut = typeof params.shortcut === "string"
+      ? params.shortcut.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 24)
+      : null;
+    const prompt = {
+      id: nextChatId("pmt"),
+      name, content, tags, shortcut,
+      createdAt: nowIsoChat(),
+      updatedAt: nowIsoChat(),
+    };
+    if (!s.prompts.has(userId)) s.prompts.set(userId, new Map());
+    s.prompts.get(userId).set(prompt.id, prompt);
+    saveChatState();
+    return { ok: true, result: { prompt } };
+  });
+
+  registerLensAction("chat", "prompt-update", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.prompts.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    const p = map.get(id);
+    if (typeof params.name === "string") {
+      const n = params.name.trim();
+      if (!n) return { ok: false, error: "name cannot be empty" };
+      p.name = n.slice(0, 60);
+    }
+    if (typeof params.content === "string") {
+      if (!params.content.trim()) return { ok: false, error: "content cannot be empty" };
+      p.content = params.content.slice(0, 8000);
+    }
+    if (Array.isArray(params.tags)) p.tags = asStringArr(params.tags, 10);
+    if (typeof params.shortcut === "string") {
+      p.shortcut = params.shortcut.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 24);
+    }
+    p.updatedAt = nowIsoChat();
+    saveChatState();
+    return { ok: true, result: { prompt: p } };
+  });
+
+  registerLensAction("chat", "prompt-delete", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.prompts.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveChatState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── Thread search across the user's indexed conversation snapshots ──
+
+  registerLensAction("chat", "thread-index", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const threadId = String(params.threadId || "");
+    if (!threadId) return { ok: false, error: "threadId required" };
+    const title = String(params.title || "").slice(0, 200);
+    const snippet = String(params.snippet || "").slice(0, 4000);
+    const lastMsgAt = String(params.lastMsgAt || nowIsoChat());
+    const projectId = params.projectId ? String(params.projectId) : null;
+    if (!s.threadIndex.has(userId)) s.threadIndex.set(userId, []);
+    const arr = s.threadIndex.get(userId);
+    const existingIdx = arr.findIndex((x) => x.threadId === threadId);
+    const entry = { threadId, title, snippet, projectId, lastMsgAt, indexedAt: nowIsoChat() };
+    if (existingIdx >= 0) arr[existingIdx] = entry;
+    else {
+      arr.push(entry);
+      if (arr.length > 1000) arr.splice(0, arr.length - 1000);
+    }
+    saveChatState();
+    return { ok: true, result: { threadId, total: arr.length } };
+  });
+
+  registerLensAction("chat", "threads-search", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    if (query.length < 2) return { ok: false, error: "query too short (min 2 chars)" };
+    if (query.length > 200) return { ok: false, error: "query too long (max 200)" };
+    const projectId = params.projectId ? String(params.projectId) : null;
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 20));
+    const arr = s.threadIndex.get(userId) || [];
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const scored = [];
+    for (const entry of arr) {
+      if (projectId && entry.projectId !== projectId) continue;
+      const titleLower = (entry.title || "").toLowerCase();
+      const snippetLower = (entry.snippet || "").toLowerCase();
+      let score = 0;
+      for (const t of terms) {
+        if (titleLower.includes(t)) score += 5;
+        if (snippetLower.includes(t)) score += 1;
+      }
+      if (score > 0) scored.push({ ...entry, score });
+    }
+    scored.sort((a, b) =>
+      b.score - a.score ||
+      new Date(b.lastMsgAt).getTime() - new Date(a.lastMsgAt).getTime()
+    );
+    return {
+      ok: true,
+      result: {
+        hits: scored.slice(0, limit),
+        totalIndexed: arr.length,
+        totalMatched: scored.length,
+      },
+    };
+  });
+
+  // ── Conversation branches (fork from a message) ──
+
+  registerLensAction("chat", "branches-list", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const sourceThreadId = params.sourceThreadId ? String(params.sourceThreadId) : null;
+    const map = s.branches.get(userId);
+    if (!map) return { ok: true, result: { branches: [] } };
+    let branches = Array.from(map.values());
+    if (sourceThreadId) branches = branches.filter((b) => b.sourceThreadId === sourceThreadId);
+    branches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return { ok: true, result: { branches } };
+  });
+
+  registerLensAction("chat", "branch-fork", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const sourceThreadId = String(params.sourceThreadId || "");
+    if (!sourceThreadId) return { ok: false, error: "sourceThreadId required" };
+    const atMessageIdx = Number.isInteger(params.atMessageIdx) ? params.atMessageIdx : -1;
+    if (atMessageIdx < 0) return { ok: false, error: "atMessageIdx required (>= 0)" };
+    const seededMessages = Array.isArray(params.messages)
+      ? params.messages.slice(0, atMessageIdx + 1)
+      : [];
+    const note = String(params.note || "").slice(0, 200);
+    const branch = {
+      id: nextChatId("br"),
+      sourceThreadId, atMessageIdx, note,
+      seededMessages,
+      createdAt: nowIsoChat(),
+    };
+    if (!s.branches.has(userId)) s.branches.set(userId, new Map());
+    s.branches.get(userId).set(branch.id, branch);
+    saveChatState();
+    return { ok: true, result: { branch } };
+  });
+
+  registerLensAction("chat", "branch-delete", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.branches.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveChatState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── Scheduled tasks (ChatGPT-style scheduled prompts) ──
+
+  registerLensAction("chat", "scheduled-list", (ctx, _artifact, _params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const map = s.scheduled.get(userId);
+    if (!map) return { ok: true, result: { tasks: [] } };
+    const tasks = Array.from(map.values())
+      .sort((a, b) => new Date(a.runAt).getTime() - new Date(b.runAt).getTime());
+    return { ok: true, result: { tasks } };
+  });
+
+  registerLensAction("chat", "scheduled-create", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const promptText = String(params.prompt || "").trim();
+    if (!promptText) return { ok: false, error: "prompt required" };
+    if (promptText.length > 4000) return { ok: false, error: "prompt too long (max 4000)" };
+    const runAt = String(params.runAt || "");
+    if (!runAt) return { ok: false, error: "runAt required (ISO timestamp)" };
+    const runAtMs = new Date(runAt).getTime();
+    if (!Number.isFinite(runAtMs)) return { ok: false, error: "runAt invalid timestamp" };
+    if (runAtMs <= Date.now()) return { ok: false, error: "runAt must be in the future" };
+    const projectId = params.projectId ? String(params.projectId) : null;
+    const recurring = ["daily", "weekly", "monthly"].includes(params.recurring)
+      ? params.recurring : null;
+    const task = {
+      id: nextChatId("sch"),
+      prompt: promptText, runAt, projectId, recurring,
+      status: "pending",
+      createdAt: nowIsoChat(),
+    };
+    if (!s.scheduled.has(userId)) s.scheduled.set(userId, new Map());
+    s.scheduled.get(userId).set(task.id, task);
+    saveChatState();
+    return { ok: true, result: { task } };
+  });
+
+  registerLensAction("chat", "scheduled-cancel", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.scheduled.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    const t = map.get(id);
+    t.status = "cancelled";
+    t.cancelledAt = nowIsoChat();
+    saveChatState();
+    return { ok: true, result: { task: t } };
+  });
 }
