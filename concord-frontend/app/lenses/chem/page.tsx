@@ -19,6 +19,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
+import ChemWorkbench from '@/components/chem/ChemWorkbench';
 
 interface Compound {
   id: string;
@@ -42,6 +43,7 @@ export default function ChemLensPage() {
   const [reactionInput, setReactionInput] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'elements' | 'reactions' | 'compounds'>('reactions');
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('chem');
 
   useLensCommand(
@@ -626,6 +628,17 @@ export default function ChemLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#chem-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to chem content</a>
+
+      {/* 2026 parity workbench — MW, molarity, dilution, pH, gas law, periodic table */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-violet-500 hover:bg-violet-400 text-violet-50 shadow-2xl text-sm font-medium"
+        title="Chem Workbench — MW, molarity, dilution, pH, gas law, periodic table"
+      >
+        Chem Workbench
+      </button>
+      <ChemWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
