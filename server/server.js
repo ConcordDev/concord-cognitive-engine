@@ -96,6 +96,7 @@ registerHeartbeat("fauna-spawner", {
 // Frequency 4 (~60s) = visibly responsive without churning the DB.
 import { runCreatureFlockCycle } from "./emergent/creature-flock-cycle.js";
 import { LruMap, LruSet } from "./lib/lru-map.js";
+import { serializeLensState, hydrateLensState, LENS_STATE_KEYS } from "./lib/lens-state-persistence.js";
 registerHeartbeat("creature-flock-cycle", {
   frequency: 4,
   handler: runCreatureFlockCycle,
@@ -8366,6 +8367,11 @@ function _serializeState() {
       councilQueue: (STATE.globalThread?.councilQueue || []).slice(-500),
       acceptedContributions: (STATE.globalThread?.acceptedContributions || []).slice(-200),
     },
+    // Per-lens user state (chatLens / worldLens / accountingLens / etc.).
+    // Bucket 2 Gap A fix: was in-memory only until this snapshot was
+    // extended; hard restarts lost user data. Generic helper in
+    // server/lib/lens-state-persistence.js handles nested Map/Set.
+    lensState: serializeLensState(STATE),
     // Excluded from save: _caches, _derivedIndexes, _repairCaches, _styleVectors (transient)
   };
 }
@@ -8525,6 +8531,11 @@ function _hydrateState(obj) {
       acceptedContributions: Array.isArray(obj.globalThread.acceptedContributions) ? obj.globalThread.acceptedContributions : [],
     };
   }
+
+  // Per-lens user state (chatLens / worldLens / accountingLens / etc.).
+  // Bucket 2 Gap A: hydrates the 26 STATE.<lens>Lens stores from the
+  // snapshot so user data survives restart.
+  if (obj.lensState) hydrateLensState(STATE, obj.lensState);
 }
 
 
@@ -70548,4 +70559,8 @@ export const __TEST__ = Object.freeze({
   verifyCitationIntegrity,
   registerInCreativeRegistry,
   entityExploreCreativeGlobal,
+  // Bucket 2 Gap A — lens state persistence helpers (test surface)
+  serializeLensState,
+  hydrateLensState,
+  LENS_STATE_KEYS,
 });
