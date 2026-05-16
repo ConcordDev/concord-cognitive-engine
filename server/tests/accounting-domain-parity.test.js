@@ -267,3 +267,140 @@ describe("accounting — STATE unavailable path", () => {
     assert.match(r.error, /STATE unavailable/);
   });
 });
+
+describe("accounting.invoice-list", () => {
+  it("returns invoices sorted by issuedAt desc, scoped per user", () => {
+    call("coa-list", ctxA);
+    call("invoice-create", ctxA, { customerName: "Old Co", total: 100, issuedAt: "2026-01-01" });
+    call("invoice-create", ctxA, { customerName: "New Co", total: 200, issuedAt: "2026-05-01" });
+    const r = call("invoice-list", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.invoices.length, 2);
+    assert.equal(r.result.invoices[0].customerName, "New Co");
+    assert.equal(call("invoice-list", ctxB, {}).result.invoices.length, 0);
+  });
+
+  it("filters by status when requested", () => {
+    call("coa-list", ctxA);
+    const open = call("invoice-create", ctxA, { customerName: "Open", total: 100 });
+    const paid = call("invoice-create", ctxA, { customerName: "Paid", total: 50 });
+    call("invoice-mark-paid", ctxA, { id: paid.result.invoice.id });
+    void open;
+    assert.equal(call("invoice-list", ctxA, { status: "open" }).result.invoices.length, 1);
+    assert.equal(call("invoice-list", ctxA, { status: "paid" }).result.invoices.length, 1);
+    assert.equal(call("invoice-list", ctxA, { status: "all" }).result.invoices.length, 2);
+  });
+});
+
+describe("accounting.invoice-create-payment-link (real Stripe)", () => {
+  it("returns error pointing to STRIPE_SECRET_KEY when env not set", async () => {
+    delete process.env.STRIPE_SECRET_KEY;
+    call("coa-list", ctxA);
+    const inv = call("invoice-create", ctxA, { customerName: "X", total: 250 });
+    const r = await call("invoice-create-payment-link", ctxA, { id: inv.result.invoice.id, customerEmail: "x@example.com" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /STRIPE_SECRET_KEY/);
+  });
+
+  it("rejects when invoice is already paid", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
+    call("coa-list", ctxA);
+    const inv = call("invoice-create", ctxA, { customerName: "X", total: 250 });
+    call("invoice-mark-paid", ctxA, { id: inv.result.invoice.id });
+    const r = await call("invoice-create-payment-link", ctxA, { id: inv.result.invoice.id, customerEmail: "x@example.com" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /already paid/);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("rejects without customerEmail", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
+    call("coa-list", ctxA);
+    const inv = call("invoice-create", ctxA, { customerName: "X", total: 100 });
+    const r = await call("invoice-create-payment-link", ctxA, { id: inv.result.invoice.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /customerEmail/);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("makes real Stripe REST calls (customer → invoiceitem → invoice → finalize)", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_real";
+    const calls = [];
+    globalThis.fetch = async (url, opts) => {
+      calls.push({ url, body: opts?.body, hasAuth: opts?.headers?.Authorization?.startsWith("Bearer ") });
+      if (url.endsWith("/customers")) {
+        return { ok: true, json: async () => ({ id: "cus_test123" }) };
+      }
+      if (url.endsWith("/invoiceitems")) {
+        return { ok: true, json: async () => ({ id: "ii_test456" }) };
+      }
+      if (url.endsWith("/invoices")) {
+        return { ok: true, json: async () => ({ id: "in_test789" }) };
+      }
+      if (url.endsWith("/invoices/in_test789/finalize")) {
+        return {
+          ok: true,
+          json: async () => ({
+            id: "in_test789",
+            hosted_invoice_url: "https://invoice.stripe.com/i/abc123",
+            invoice_pdf: "https://pay.stripe.com/i/abc123/pdf",
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({ error: { message: "unknown" } }) };
+    };
+    call("coa-list", ctxA);
+    const inv = call("invoice-create", ctxA, { customerName: "Acme", total: 1500 });
+    const r = await call("invoice-create-payment-link", ctxA, { id: inv.result.invoice.id, customerEmail: "billing@acme.com" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.hostedUrl, "https://invoice.stripe.com/i/abc123");
+    assert.equal(r.result.pdfUrl, "https://pay.stripe.com/i/abc123/pdf");
+    assert.equal(r.result.stripeInvoiceId, "in_test789");
+    assert.equal(calls.length, 4);
+    // All requests bearer-authed
+    for (const c of calls) assert.equal(c.hasAuth, true);
+    // Invoice metadata carries the concord IDs
+    const itemBody = calls[1].body;
+    assert.match(itemBody, /customer=cus_test123/);
+    // Stripe IDs persisted on the local invoice
+    const updated = call("invoice-list", ctxA, {}).result.invoices.find((i) => i.id === inv.result.invoice.id);
+    assert.equal(updated.stripeInvoiceId, "in_test789");
+    assert.equal(updated.stripeHostedInvoiceUrl, "https://invoice.stripe.com/i/abc123");
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("surfaces Stripe API failures clearly", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_bad";
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: { message: "Invalid API Key" } }),
+    });
+    call("coa-list", ctxA);
+    const inv = call("invoice-create", ctxA, { customerName: "X", total: 100 });
+    const r = await call("invoice-create-payment-link", ctxA, { id: inv.result.invoice.id, customerEmail: "x@example.com" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /Invalid API Key|stripe/i);
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+});
+
+describe("accounting.invoice-webhook-mark-paid", () => {
+  it("marks the local invoice paid via stripeInvoiceId match", () => {
+    call("coa-list", ctxA);
+    const inv = call("invoice-create", ctxA, { customerName: "X", total: 100 });
+    // Simulate what invoice-create-payment-link would store
+    const stored = globalThis._concordSTATE.accountingLens.invoices.get("user_a").find((i) => i.id === inv.result.invoice.id);
+    stored.stripeInvoiceId = "in_webhook_test";
+    const r = call("invoice-webhook-mark-paid", ctxA, { stripeInvoiceId: "in_webhook_test", userId: "user_a" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.invoice.status, "paid");
+    assert.equal(r.result.invoice.paidVia, "stripe");
+  });
+
+  it("returns error when no local invoice matches", () => {
+    call("coa-list", ctxA);
+    const r = call("invoice-webhook-mark-paid", ctxA, { stripeInvoiceId: "in_does_not_exist", userId: "user_a" });
+    assert.equal(r.ok, false);
+  });
+});
