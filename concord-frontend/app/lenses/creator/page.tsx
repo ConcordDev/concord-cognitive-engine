@@ -22,6 +22,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { CreatorLeaderboard } from '@/components/creator/CreatorLeaderboard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -242,6 +243,9 @@ export default function CreatorDashboardPage() {
         {tab === 'profile'   && <ProfileTab profile={profile} onSaved={refreshDashboard} />}
         {tab === 'followers' && <FollowersTab profile={profile} />}
         {tab === 'cascade'   && <CascadePanel topCited={me?.topCitedDTUs ?? []} />}
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <CreatorLeaderboard />
+        </section>
       </div>
       <LensAgentFab
         lensId="creator"
