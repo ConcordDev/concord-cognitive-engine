@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DesertWeatherWatch } from '@/components/desert/DesertWeatherWatch';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -364,6 +365,9 @@ export default function DesertLensPage() {
       )}
 
       <UniversalActions domain="desert" artifactId={items[0]?.id} />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <DesertWeatherWatch />
+      </section>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
