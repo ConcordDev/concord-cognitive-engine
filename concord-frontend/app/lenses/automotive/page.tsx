@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { VinDecoder } from '@/components/automotive/VinDecoder';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -703,8 +704,13 @@ export default function AutomotiveLensPage() {
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+
+      {/* Bespoke NHTSA VIN decoder + recall lookup with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <VinDecoder />
+      </section>
     </LensPageShell>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#automotive-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to automotive content</a>
