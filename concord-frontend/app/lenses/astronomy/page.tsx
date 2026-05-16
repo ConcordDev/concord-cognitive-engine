@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -395,6 +396,11 @@ export default function AstronomyLensPage() {
           )}
         </div>
       )}
+
+      {/* Bespoke NASA APOD + ISS + NEO explorer with shared DateScrubber + Save-as-DTU */}
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <NasaExplorer />
+      </section>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">
