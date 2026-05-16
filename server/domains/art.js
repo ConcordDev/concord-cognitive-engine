@@ -389,4 +389,105 @@ export default function registerArtActions(registerLensAction) {
       },
     };
   });
+
+  // ── Real museum collection APIs (free, no API key) ──
+
+  /**
+   * met-search — Metropolitan Museum of Art Collection. Free, no key.
+   * 470,000+ objects.
+   */
+  registerLensAction("art", "met-search", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    const hasImages = params.hasImages === true ? "&hasImages=true" : "";
+    try {
+      const r = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/search?q=${encodeURIComponent(query)}${hasImages}`);
+      if (!r.ok) throw new Error(`met ${r.status}`);
+      const data = await r.json();
+      return {
+        ok: true,
+        result: {
+          query,
+          objectIds: (data.objectIDs || []).slice(0, 50),
+          total: data.total || 0,
+          source: "metmuseum",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `met unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * met-object — Full object record by Met objectID.
+   */
+  registerLensAction("art", "met-object", async (_ctx, _artifact, params = {}) => {
+    const objectId = Number(params.objectId);
+    if (!Number.isFinite(objectId) || objectId <= 0) return { ok: false, error: "objectId required (Met collection object ID)" };
+    try {
+      const r = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${objectId}`);
+      if (r.status === 404) return { ok: false, error: `Met object not found: ${objectId}` };
+      if (!r.ok) throw new Error(`met ${r.status}`);
+      const o = await r.json();
+      return {
+        ok: true,
+        result: {
+          objectId: o.objectID, isHighlight: o.isHighlight,
+          accessionNumber: o.accessionNumber, accessionYear: o.accessionYear,
+          title: o.title, artist: o.artistDisplayName,
+          artistBio: o.artistDisplayBio, artistNationality: o.artistNationality,
+          artistRole: o.artistRole,
+          dated: o.objectDate, beginDate: o.objectBeginDate, endDate: o.objectEndDate,
+          medium: o.medium, dimensions: o.dimensions,
+          classification: o.classification, department: o.department,
+          culture: o.culture, period: o.period, dynasty: o.dynasty,
+          repository: o.repository,
+          publicDomain: o.isPublicDomain,
+          primaryImage: o.primaryImage, primaryImageSmall: o.primaryImageSmall,
+          additionalImages: o.additionalImages || [],
+          objectUrl: o.objectURL,
+          tags: (o.tags || []).map((t) => t.term),
+          source: "metmuseum",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `met unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * aic-search — Art Institute of Chicago. Free, no key, 113,000+ artworks.
+   * Returns full details + IIIF image URLs in one call.
+   */
+  registerLensAction("art", "aic-search", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 10));
+    const fields = "id,title,artist_title,artist_display,date_display,date_start,date_end,medium_display,dimensions,image_id,classification_title,department_title,place_of_origin,style_title,is_public_domain";
+    try {
+      const r = await fetch(`https://api.artic.edu/api/v1/artworks/search?q=${encodeURIComponent(query)}&limit=${limit}&fields=${fields}`);
+      if (!r.ok) throw new Error(`aic ${r.status}`);
+      const data = await r.json();
+      const artworks = (data.data || []).map((a) => ({
+        id: a.id, title: a.title,
+        artist: a.artist_title, artistDisplay: a.artist_display,
+        dated: a.date_display, beginDate: a.date_start, endDate: a.date_end,
+        medium: a.medium_display, dimensions: a.dimensions,
+        classification: a.classification_title, department: a.department_title,
+        placeOfOrigin: a.place_of_origin, style: a.style_title,
+        publicDomain: a.is_public_domain,
+        imageUrl: a.image_id ? `https://www.artic.edu/iiif/2/${a.image_id}/full/843,/0/default.jpg` : null,
+      }));
+      return {
+        ok: true,
+        result: {
+          query, artworks, count: artworks.length,
+          totalResults: data.pagination?.total,
+          source: "art-institute-of-chicago",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `aic unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
