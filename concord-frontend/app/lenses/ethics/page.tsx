@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { PhilosophyStack } from '@/components/ethics/PhilosophyStack';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -856,6 +857,9 @@ export default function EthicsLensPage() {
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <PhilosophyStack />
+      </section>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
