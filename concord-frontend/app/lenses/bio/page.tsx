@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import BioWorkbench from '@/components/bio/BioWorkbench';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,6 +37,7 @@ export default function BioLensPage() {
 
   const [selectedSystem, setSelectedSystem] = useState('homeostasis');
   const [showFeatures, setShowFeatures] = useState(true);
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'organisms' | 'experiments' | 'sequences'>('organisms');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('bio');
 
@@ -438,6 +440,16 @@ export default function BioLensPage() {
         )}
       </div>
     </div>
+    {/* 2026 parity workbench — sequence analysis, primers, alignment, restriction, library */}
+    <button
+      type="button"
+      onClick={() => setWorkbenchOpen(true)}
+      className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-emerald-50 shadow-2xl text-sm font-medium"
+      title="Bio Workbench — sequence analysis, primer design, alignment, restriction mapping"
+    >
+      Bio Workbench
+    </button>
+    <BioWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
