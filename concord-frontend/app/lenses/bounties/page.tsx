@@ -12,6 +12,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { Coins, Loader2, AlertTriangle, RefreshCw, Trophy } from 'lucide-react';
+import { GhsaAdvisories } from '@/components/bounties/GhsaAdvisories';
 
 interface Bounty {
   autofix_id: number;
@@ -182,8 +183,11 @@ export default function BountiesPage() {
             ))}
           </ul>
         )}
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <GhsaAdvisories />
+        </section>
       </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
