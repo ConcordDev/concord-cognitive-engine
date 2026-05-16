@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { LegacyChatter } from '@/components/legacy/LegacyChatter';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -519,8 +520,11 @@ export default function LegacyLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LegacyChatter />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#legacy-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legacy content</a>
     </LensShell>
