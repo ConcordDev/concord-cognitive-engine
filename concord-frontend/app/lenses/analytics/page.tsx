@@ -43,6 +43,7 @@ import { api, apiHelpers } from '@/lib/api/client';
 import { CreatorAnalytics } from '@/components/social/CreatorAnalytics';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { PlatformGrowth } from '@/components/analytics/PlatformGrowth';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -908,8 +909,11 @@ export default function AnalyticsPage() {
           </div>
         )}
       </main>
+      <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <PlatformGrowth />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#analytics-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to analytics content</a>
