@@ -1,4 +1,12 @@
 // server/domains/energy.js
+//
+// Pure-compute energy helpers (consumption, solar estimate, carbon
+// footprint, grid status) plus real US Energy Information
+// Administration (EIA) data. EIA API requires free API key (register
+// at https://www.eia.gov/opendata/register.php); set EIA_API_KEY env.
+
+const EIA_BASE = "https://api.eia.gov/v2";
+
 export default function registerEnergyActions(registerLensAction) {
   registerLensAction("energy", "consumptionAnalysis", (ctx, artifact, _params) => {
     const readings = artifact.data?.readings || [];
@@ -41,6 +49,119 @@ export default function registerEnergyActions(registerLensAction) {
     const usAvg = 16; // tons per capita
     return { ok: true, result: { breakdown: { electricity: Math.round(co2Electricity * 1000) / 1000, naturalGas: Math.round(co2Gas * 1000) / 1000, transportation: Math.round(co2Gasoline * 1000) / 1000, flights: Math.round(co2Flights * 1000) / 1000 }, totalMetricTons: Math.round(total * 1000) / 1000, annualEstimate: Math.round(total * 12 * 100) / 100, vsUSAverage: `${Math.round((total * 12 / usAvg) * 100)}% of US average`, topSource: [["electricity", co2Electricity], ["naturalGas", co2Gas], ["transportation", co2Gasoline], ["flights", co2Flights]].sort((a, b) => b[1] - a[1])[0][0], reductionTips: co2Electricity > co2Gas ? ["Switch to renewable energy provider", "Improve insulation", "LED lighting"] : ["Improve heating efficiency", "Seal air leaks", "Smart thermostat"] } };
   });
+  /**
+   * eia-electricity-rates — Real average retail electricity price by
+   * state (cents/kWh). Pulled from EIA's seriesId
+   * ELEC.PRICE.{STATE}-RES.M (residential, monthly).
+   * Requires EIA_API_KEY env (free at eia.gov/opendata/register.php).
+   * params: { state: "CA"|"TX"|..., sector?: "RES"|"COM"|"IND" }
+   */
+  registerLensAction("energy", "eia-electricity-rates", async (_ctx, _artifact, params = {}) => {
+    const state = String(params.state || "").toUpperCase().trim();
+    const sector = String(params.sector || "RES").toUpperCase();
+    if (!state) return { ok: false, error: "state required (2-letter code)" };
+    if (!/^[A-Z]{2}$/.test(state)) return { ok: false, error: "state must be 2-letter code (e.g. CA, TX)" };
+    if (!["RES", "COM", "IND", "TRA", "ALL"].includes(sector)) {
+      return { ok: false, error: "sector must be one of: RES (residential), COM (commercial), IND (industrial), TRA (transport), ALL" };
+    }
+    const apiKey = process.env.EIA_API_KEY;
+    if (!apiKey) {
+      return { ok: false, error: "EIA_API_KEY env required (free at https://www.eia.gov/opendata/register.php)" };
+    }
+    try {
+      const url = `${EIA_BASE}/electricity/retail-sales/data/?api_key=${encodeURIComponent(apiKey)}&frequency=monthly&data[0]=price&facets[stateid][]=${state}&facets[sectorid][]=${sector}&sort[0][column]=period&sort[0][direction]=desc&offset=0&length=12`;
+      const r = await fetch(url);
+      if (!r.ok) {
+        if (r.status === 403) return { ok: false, error: "EIA API key invalid or quota exceeded" };
+        throw new Error(`eia ${r.status}`);
+      }
+      const data = await r.json();
+      const rows = data?.response?.data || [];
+      const series = rows.map((row) => ({
+        period: row.period,
+        state: row.stateDescription,
+        sector: row.sectorName,
+        priceCentsPerKwh: parseFloat(row.price),
+      }));
+      const latest = series[0];
+      const yearAgo = series[11];
+      return {
+        ok: true,
+        result: {
+          state, sector,
+          latest: latest ? { period: latest.period, priceCentsPerKwh: latest.priceCentsPerKwh } : null,
+          yearOverYearChangePct: latest && yearAgo && yearAgo.priceCentsPerKwh > 0
+            ? Math.round(((latest.priceCentsPerKwh - yearAgo.priceCentsPerKwh) / yearAgo.priceCentsPerKwh) * 1000) / 10
+            : null,
+          monthlySeries: series,
+          source: "eia-electricity-retail-sales",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `eia unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * eia-generation-mix — Real generation source mix by region (coal,
+   * natural gas, nuclear, hydro, solar, wind, etc.). Latest monthly
+   * data from EIA seriesId ELEC.GEN.*.M.
+   * params: { region?: "US"|"CAL"|"TEX"|"NY"|... (regionId from EIA) }
+   */
+  registerLensAction("energy", "eia-generation-mix", async (_ctx, _artifact, params = {}) => {
+    const region = String(params.region || "US").toUpperCase().trim();
+    const apiKey = process.env.EIA_API_KEY;
+    if (!apiKey) {
+      return { ok: false, error: "EIA_API_KEY env required (free at https://www.eia.gov/opendata/register.php)" };
+    }
+    try {
+      const url = `${EIA_BASE}/electricity/electric-power-operational-data/data/?api_key=${encodeURIComponent(apiKey)}&frequency=monthly&data[0]=generation&facets[location][]=${region}&facets[sectorid][]=99&sort[0][column]=period&sort[0][direction]=desc&offset=0&length=50`;
+      const r = await fetch(url);
+      if (!r.ok) {
+        if (r.status === 403) return { ok: false, error: "EIA API key invalid or quota exceeded" };
+        throw new Error(`eia ${r.status}`);
+      }
+      const data = await r.json();
+      const rows = data?.response?.data || [];
+      if (rows.length === 0) {
+        return { ok: true, result: { region, mix: [], totalMWh: 0, source: "eia-electric-power-operational" } };
+      }
+      // Group by fuel type from the latest period.
+      const latestPeriod = rows[0]?.period;
+      const latestRows = rows.filter((r) => r.period === latestPeriod);
+      const byFuel = {};
+      let totalMWh = 0;
+      for (const row of latestRows) {
+        const fuel = row.fueltypeDescription || row.fueltype || "Other";
+        const gen = parseFloat(row.generation) || 0;
+        byFuel[fuel] = (byFuel[fuel] || 0) + gen;
+        totalMWh += gen;
+      }
+      const mix = Object.entries(byFuel)
+        .map(([fuel, mwh]) => ({
+          fuel,
+          mwh: Math.round(mwh),
+          sharePct: totalMWh > 0 ? Math.round((mwh / totalMWh) * 1000) / 10 : 0,
+        }))
+        .sort((a, b) => b.mwh - a.mwh);
+      const renewables = ["Solar", "Wind", "Hydro", "Geothermal", "Other Biomass", "Wood and Wood-Derived Fuels"];
+      const renewableShare = mix
+        .filter((m) => renewables.some((r) => m.fuel.toLowerCase().includes(r.toLowerCase())))
+        .reduce((s, m) => s + m.sharePct, 0);
+      return {
+        ok: true,
+        result: {
+          region, latestPeriod,
+          mix, totalMWh,
+          renewableSharePct: Math.round(renewableShare * 10) / 10,
+          source: "eia-electric-power-operational",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `eia unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
   registerLensAction("energy", "gridStatus", (ctx, artifact, _params) => {
     const data = artifact.data || {};
     const demandMW = parseFloat(data.currentDemandMW) || 0;
