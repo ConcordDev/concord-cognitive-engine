@@ -1,6 +1,14 @@
 // server/domains/law.js
-// Domain actions for law: case analysis, statute lookup,
-// deadline tracking, and billing calculation.
+// Domain actions for law: case analysis, statute lookup, deadline
+// tracking, billing calculation, plus real USPTO PatentsView (patent
+// search) and CourtListener (federal + state case opinions).
+//
+// USPTO PatentsView is free + no API key.
+// CourtListener search is free without auth; full text + dockets
+// require a free COURTLISTENER_API_TOKEN env (courtlistener.com/help/api/rest/).
+
+const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
+const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
 
 export default function registerLawActions(registerLensAction) {
   /**
@@ -429,6 +437,109 @@ export default function registerLawActions(registerLensAction) {
         monthlyBreakdown,
       },
     };
+  });
+
+  /**
+   * uspto-patent-search — Real US patent search via USPTO PatentsView.
+   * Free, no API key. Searches by inventor name, title keyword, or
+   * assignee. Returns patent number, title, abstract, grant date,
+   * inventor, assignee.
+   *
+   * params: { query: string, field?: "title"|"abstract"|"inventor"|"assignee", limit?: 1-100 }
+   */
+  registerLensAction("law", "uspto-patent-search", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    const field = ["title", "abstract", "inventor", "assignee"].includes(params.field) ? params.field : "title";
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
+    const queryShape = field === "title"
+      ? { _text_phrase: { patent_title: query } }
+      : field === "abstract"
+      ? { _text_phrase: { patent_abstract: query } }
+      : field === "inventor"
+      ? { _text_phrase: { inventor_name_last: query } }
+      : { _text_phrase: { assignee_organization: query } };
+    try {
+      const url = `${USPTO_PATENTSVIEW}/patent/?q=${encodeURIComponent(JSON.stringify(queryShape))}&f=${encodeURIComponent(JSON.stringify(["patent_id","patent_title","patent_abstract","patent_date","inventors","assignees"]))}&o=${encodeURIComponent(JSON.stringify({ per_page: limit }))}`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`uspto ${r.status}`);
+      const data = await r.json();
+      const patents = (data.patents || []).map((p) => ({
+        patentId: p.patent_id,
+        title: p.patent_title,
+        abstract: p.patent_abstract,
+        grantDate: p.patent_date,
+        inventors: (p.inventors || []).map((i) => `${i.inventor_name_first} ${i.inventor_name_last}`.trim()),
+        assignees: (p.assignees || []).map((a) => a.assignee_organization || a.assignee_individual_name).filter(Boolean),
+      }));
+      return {
+        ok: true,
+        result: {
+          query, field,
+          patents, count: patents.length,
+          totalHits: data.count || data.total_patent_count,
+          source: "uspto-patentsview",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `uspto unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * courtlistener-search — Real federal + state case opinion search
+   * via CourtListener (Free Law Project). Search-only endpoint is
+   * unauthenticated; full-text + dockets require COURTLISTENER_API_TOKEN
+   * env (free at courtlistener.com/help/api/rest/).
+   *
+   * params: { query: string, court?: court code (e.g. "scotus"|"ca9"|"cal-1"),
+   *           dateAfter?: "YYYY-MM-DD", dateBefore?: "YYYY-MM-DD", limit?: 1-50 }
+   */
+  registerLensAction("law", "courtlistener-search", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 10));
+    const token = process.env.COURTLISTENER_API_TOKEN;
+    const qs = new URLSearchParams({ q: query, type: "o" });  // type=o = opinions
+    if (params.court) qs.set("court", String(params.court));
+    if (params.dateAfter) qs.set("filed_after", String(params.dateAfter));
+    if (params.dateBefore) qs.set("filed_before", String(params.dateBefore));
+    qs.set("page_size", String(limit));
+    try {
+      const headers = token ? { Authorization: `Token ${token}` } : {};
+      const r = await fetch(`${COURTLISTENER_BASE}/search/?${qs.toString()}`, { headers });
+      if (!r.ok) {
+        if (r.status === 429) return { ok: false, error: "courtlistener rate limit — set COURTLISTENER_API_TOKEN env" };
+        throw new Error(`courtlistener ${r.status}`);
+      }
+      const data = await r.json();
+      const results = (data.results || []).map((o) => ({
+        id: o.id,
+        caseName: o.caseName,
+        court: o.court,
+        courtId: o.court_id,
+        dateFiled: o.dateFiled,
+        absoluteUrl: o.absolute_url ? `https://www.courtlistener.com${o.absolute_url}` : null,
+        snippet: o.snippet,
+        citation: o.citation,
+        precedentialStatus: o.status,
+        docketNumber: o.docketNumber,
+        judges: o.judge,
+        author: o.author,
+      }));
+      return {
+        ok: true,
+        result: {
+          query,
+          results, count: results.length,
+          totalHits: data.count,
+          authenticatedWithToken: !!token,
+          source: "courtlistener",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
 
