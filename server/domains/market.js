@@ -360,4 +360,73 @@ export default function registerMarketActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Parity-sprint macros ──
+
+  registerLensAction("market", "sector-performance", (_ctx, _artifact, params = {}) => {
+    const range = ["1D", "1W", "1M", "YTD"].includes(params.range) ? params.range : "1D";
+    const mult = { "1D": 1, "1W": 4, "1M": 12, "YTD": 30 }[range];
+    const seed = hashStringMkt(range);
+    const sectors = SAMPLE_SECTORS.map((s, i) => {
+      const pct = (((seed >> i) & 31) - 15) / 15 * mult;
+      const movers = (s.topSymbols || []).slice(0, 3).map((sym, j) => ({ symbol: sym, pct: ((((seed >> (i * 3 + j)) & 31) - 15) / 10 * mult) }));
+      return { sector: s.name, pct, marketCap: s.cap, topMovers: movers };
+    });
+    return { ok: true, result: { sectors, range } };
+  });
+
+  registerLensAction("market", "quotes-batch", (_ctx, _artifact, params = {}) => {
+    const symbols = Array.isArray(params.symbols) ? params.symbols.filter(s => typeof s === "string").slice(0, 50) : [];
+    if (symbols.length === 0) return { ok: true, result: { quotes: [] } };
+    const quotes = symbols.map(sym => {
+      const seed = hashStringMkt(sym);
+      const ref = SAMPLE_QUOTES.find(q => q.symbol === sym.toUpperCase());
+      const basePrice = ref?.basePrice || (10 + (seed % 500));
+      return {
+        symbol: sym.toUpperCase(),
+        name: ref?.name || `${sym.toUpperCase()} Inc.`,
+        price: Math.round(basePrice * (1 + ((seed % 11) - 5) / 100) * 100) / 100,
+        pctChange1d: ((seed % 21) - 10) / 5,
+        pctChange1y: ((seed >> 4) % 41 - 20),
+        volume: 1_000_000 + (seed % 50_000_000),
+        marketCap: ref?.cap || (basePrice * 1_000_000 * (1 + (seed % 100))),
+        pe: ref?.pe || (10 + (seed % 50)),
+        eps: Math.round((basePrice / 25) * 100) / 100,
+      };
+    });
+    return { ok: true, result: { quotes } };
+  });
 }
+
+function hashStringMkt(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+const SAMPLE_SECTORS = [
+  { name: "Technology", cap: 18_000_000_000_000, topSymbols: ["AAPL", "MSFT", "NVDA", "GOOGL"] },
+  { name: "Healthcare", cap: 7_500_000_000_000, topSymbols: ["UNH", "JNJ", "PFE", "LLY"] },
+  { name: "Financials", cap: 6_800_000_000_000, topSymbols: ["JPM", "BAC", "WFC", "GS"] },
+  { name: "Consumer Discretionary", cap: 5_500_000_000_000, topSymbols: ["AMZN", "TSLA", "HD", "NKE"] },
+  { name: "Communication Services", cap: 4_800_000_000_000, topSymbols: ["META", "NFLX", "DIS", "T"] },
+  { name: "Industrials", cap: 4_200_000_000_000, topSymbols: ["CAT", "BA", "HON", "UPS"] },
+  { name: "Consumer Staples", cap: 3_800_000_000_000, topSymbols: ["WMT", "PG", "KO", "PEP"] },
+  { name: "Energy", cap: 3_500_000_000_000, topSymbols: ["XOM", "CVX", "COP", "OXY"] },
+  { name: "Utilities", cap: 1_800_000_000_000, topSymbols: ["NEE", "DUK", "SO", "AEP"] },
+  { name: "Materials", cap: 1_700_000_000_000, topSymbols: ["LIN", "SHW", "APD", "ECL"] },
+  { name: "Real Estate", cap: 1_500_000_000_000, topSymbols: ["AMT", "PLD", "CCI", "EQIX"] },
+];
+
+const SAMPLE_QUOTES = [
+  { symbol: "AAPL", name: "Apple Inc.", basePrice: 195, cap: 3_000_000_000_000, pe: 30 },
+  { symbol: "MSFT", name: "Microsoft Corporation", basePrice: 425, cap: 3_200_000_000_000, pe: 35 },
+  { symbol: "GOOGL", name: "Alphabet Inc.", basePrice: 175, cap: 2_200_000_000_000, pe: 28 },
+  { symbol: "AMZN", name: "Amazon.com Inc.", basePrice: 185, cap: 1_900_000_000_000, pe: 50 },
+  { symbol: "NVDA", name: "NVIDIA Corporation", basePrice: 880, cap: 2_200_000_000_000, pe: 75 },
+  { symbol: "TSLA", name: "Tesla Inc.", basePrice: 245, cap: 770_000_000_000, pe: 65 },
+  { symbol: "META", name: "Meta Platforms Inc.", basePrice: 495, cap: 1_300_000_000_000, pe: 28 },
+  { symbol: "JPM", name: "JPMorgan Chase & Co.", basePrice: 215, cap: 620_000_000_000, pe: 12 },
+  { symbol: "V", name: "Visa Inc.", basePrice: 275, cap: 560_000_000_000, pe: 30 },
+  { symbol: "WMT", name: "Walmart Inc.", basePrice: 165, cap: 530_000_000_000, pe: 28 },
+];
