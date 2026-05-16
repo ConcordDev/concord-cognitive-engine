@@ -139,19 +139,19 @@ export default function registerWorldActions(registerLensAction) {
     if (sim && Array.isArray(sim.factions) && sim.factions.length > 0) {
       return { ok: true, result: { worldId, source: "live", factions: sim.factions, relations: sim.relations || [] } };
     }
-    // Sample: 4 named factions with stance + relations
-    const factions = [
-      { id: "fac_sovereign", name: "The Sovereign", stance: "consolidate", momentum: 0.15, color: "#67e8f9", cx: 320, cy: 180, radius: 90 },
-      { id: "fac_coalition", name: "The Coalition", stance: "expand", momentum: 0.45, color: "#fcd34d", cx: 540, cy: 240, radius: 110 },
-      { id: "fac_weavers",   name: "Weavers of Echoes", stance: "alliance", momentum: 0.20, color: "#a78bfa", cx: 250, cy: 380, radius: 80 },
-      { id: "fac_concord",   name: "Concord", stance: "isolation", momentum: -0.05, color: "#34d399", cx: 480, cy: 420, radius: 95 },
-    ];
-    const relations = [
-      { a: "fac_sovereign", b: "fac_coalition", kind: "tension", score: -0.3 },
-      { a: "fac_coalition", b: "fac_weavers",   kind: "alliance", score: 0.55 },
-      { a: "fac_concord",   b: "fac_sovereign", kind: "truce",    score: 0.10 },
-    ];
-    return { ok: true, result: { worldId, source: "sample", factions, relations } };
+    // Per "everything must be real" directive: no sample fallback. If the
+    // faction strategy hasn't seeded this world, return empty + a setup
+    // hint pointing to the authored content location.
+    return {
+      ok: true,
+      result: {
+        worldId,
+        source: "empty",
+        factions: [],
+        relations: [],
+        notes: `No factions seeded for world '${worldId}'. Authored factions live in content/world/${worldId}/factions.json; faction-strategy-cycle will hydrate STATE.factionStrategy from those on next tick.`,
+      },
+    };
   });
 
   // ── Share link primitive (copy-world-spot, UEFN-style island codes) ──
@@ -251,20 +251,64 @@ export default function registerWorldActions(registerLensAction) {
     const worldId = String(params.worldId || "concordia-hub");
     const kind = String(params.kind || "all");
     const STATE = globalThis._concordSTATE;
+    // Real sources, in priority order:
+    //   1. STATE.marketplace[worldId].listings — per-world marketplace state
+    //   2. STATE.listings — global marketplace (filter by worldId tag)
+    //   3. STATE.dtus filtered by kind ∈ {spell_recipe, blueprint,
+    //      fighting_style_recipe, ...} — every published DTU IS a listing
+    //      via the creator economy pipeline.
+    // Per "everything must be real" directive: no sample fallback. Returns
+    // empty + setup hint if no real listings exist yet.
+
     const live = STATE?.marketplace?.[worldId];
-    if (live && Array.isArray(live.listings)) {
+    if (live && Array.isArray(live.listings) && live.listings.length > 0) {
       const filtered = kind === "all" ? live.listings : live.listings.filter((l) => l.kind === kind);
-      return { ok: true, result: { worldId, source: "live", kind, listings: filtered.slice(0, 50) } };
+      return { ok: true, result: { worldId, source: "marketplace-per-world", kind, listings: filtered.slice(0, 50) } };
     }
-    const sample = [
-      { id: "lst_glyph_frost", kind: "spell_recipe", title: "Frost Lattice (level 2)", price: 120, currency: "cc", sellerName: "Elder Tinkerer", rarity: "uncommon" },
-      { id: "lst_blueprint_cabin", kind: "blueprint", title: "Stoneward Cabin (3×4)", price: 480, currency: "cc", sellerName: "Mason of the Vale", rarity: "common" },
-      { id: "lst_recipe_bread", kind: "fighting_style_recipe", title: "Hearth-grain Bread (cooked)", price: 12, currency: "cc", sellerName: "Mother Yarrow", rarity: "common" },
-      { id: "lst_dtu_oracle", kind: "dtu", title: "Oracle's Cipher (notebook page)", price: 240, currency: "cc", sellerName: "The Weaver", rarity: "rare" },
-      { id: "lst_glyph_storm", kind: "spell_recipe", title: "Stormcall (level 4)", price: 1100, currency: "cc", sellerName: "Sage Halloran", rarity: "rare" },
-    ];
-    const filtered = kind === "all" ? sample : sample.filter((l) => l.kind === kind);
-    return { ok: true, result: { worldId, source: "sample", kind, listings: filtered } };
+
+    const globalListings = STATE?.listings instanceof Map ? Array.from(STATE.listings.values()) : (Array.isArray(STATE?.listings) ? STATE.listings : []);
+    if (globalListings.length > 0) {
+      const LISTABLE_KINDS = new Set(["spell_recipe", "blueprint", "fighting_style_recipe", "dtu", "trade_pricebook_recipe", "forge_app", "audio_sample"]);
+      const filtered = globalListings
+        .filter((l) => l && typeof l === "object" && LISTABLE_KINDS.has(l.kind))
+        .filter((l) => !l.worldId || l.worldId === worldId)
+        .filter((l) => kind === "all" || l.kind === kind)
+        .slice(0, 50);
+      if (filtered.length > 0) {
+        return { ok: true, result: { worldId, source: "global-listings", kind, listings: filtered } };
+      }
+    }
+
+    // Fall back to DTU corpus — every kind='listing'-shaped DTU is a marketplace entry.
+    const dtus = STATE?.dtus instanceof Map ? Array.from(STATE.dtus.values()) : [];
+    const LISTABLE_DTU_KINDS = new Set(["spell_recipe", "blueprint", "fighting_style_recipe", "trade_pricebook_recipe", "forge_app", "audio_sample"]);
+    const dtuListings = dtus
+      .filter((d) => d && LISTABLE_DTU_KINDS.has(d.kind))
+      .filter((d) => !d.worldId || d.worldId === worldId)
+      .filter((d) => kind === "all" || d.kind === kind)
+      .slice(0, 50)
+      .map((d) => ({
+        id: d.id,
+        kind: d.kind,
+        title: d.human?.title || d.title || d.id,
+        price: d.machine?.price ?? d.price ?? null,
+        currency: "cc",
+        sellerName: d.creatorName || d.creatorId || "unknown",
+        rarity: d.machine?.rarity || "common",
+      }));
+
+    return {
+      ok: true,
+      result: {
+        worldId,
+        source: dtuListings.length > 0 ? "dtu-corpus" : "empty",
+        kind,
+        listings: dtuListings,
+        notes: dtuListings.length === 0
+          ? `No listings for world '${worldId}'. Players publish DTUs (kind in spell_recipe/blueprint/fighting_style_recipe/etc.) to populate the marketplace.`
+          : undefined,
+      },
+    };
   });
 
   // ── Overlay preferences (per-user) ──

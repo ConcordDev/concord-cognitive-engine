@@ -40,7 +40,7 @@ export function WorldMarketplacePanel({ worldId, open, onClose }: Props) {
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeKind, setActiveKind] = useState<string>('all');
-  const [source, setSource] = useState<'live' | 'sample'>('sample');
+  const [source, setSource] = useState<'marketplace-per-world' | 'global-listings' | 'dtu-corpus' | 'empty'>('empty');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -51,10 +51,10 @@ export function WorldMarketplacePanel({ worldId, open, onClose }: Props) {
         input: { worldId, kind: activeKind },
       });
       const result = (res.data as {
-        result?: { listings?: MarketplaceListing[]; source?: 'live' | 'sample' };
+        result?: { listings?: MarketplaceListing[]; source?: 'marketplace-per-world' | 'global-listings' | 'dtu-corpus' | 'empty' };
       })?.result;
       setListings(result?.listings || []);
-      setSource(result?.source || 'sample');
+      setSource(result?.source || 'empty');
     } catch (e) {
       console.error('[WorldMarketplacePanel] fetch failed', e);
     } finally {
@@ -77,9 +77,9 @@ export function WorldMarketplacePanel({ worldId, open, onClose }: Props) {
           <span
             className={cn(
               'text-[10px] px-1.5 py-0.5 rounded',
-              source === 'live'
-                ? 'bg-emerald-500/15 text-emerald-300'
-                : 'bg-amber-500/15 text-amber-300',
+              source === 'empty'
+                ? 'bg-gray-500/15 text-gray-400'
+                : 'bg-emerald-500/15 text-emerald-300',
             )}
           >
             {source}
