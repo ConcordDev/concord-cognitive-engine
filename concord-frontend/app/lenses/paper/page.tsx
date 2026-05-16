@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import CitationSearch from '@/components/paper/CitationSearch';
+import PaperSummarizer from '@/components/paper/PaperSummarizer';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { showToast } from '@/components/common/Toasts';
@@ -1093,6 +1095,10 @@ export default function PaperLensPage() {
         </div>
       );
     })()}
+    <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+      <CitationSearch />
+      <PaperSummarizer />
+    </div>
     </LensShell>
   );
 }

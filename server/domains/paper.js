@@ -86,4 +86,50 @@ export default function registerPaperActions(registerLensAction) {
     const newChars = newText.length;
     return { ok: true, result: { oldStats: { lines: oldLines.length, words: oldWords.length, chars: oldChars }, newStats: { lines: newLines.length, words: newWords.length, chars: newChars }, diff: { linesAdded: added.length, linesRemoved: removed.length, linesUnchanged: unchanged.length, wordDelta: newWords.length - oldWords.length, charDelta: newChars - oldChars }, changeRate: Math.round(((added.length + removed.length) / Math.max(1, oldLines.length)) * 100), addedPreview: added.slice(0, 10), removedPreview: removed.slice(0, 10) } };
   });
+
+  // ─── Parity-sprint ──
+  registerLensAction("paper", "search", (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim().toLowerCase();
+    if (!query) return { ok: false, error: "query required" };
+    const matched = SAMPLE_PAPERS.filter(p =>
+      p.title.toLowerCase().includes(query) ||
+      p.abstract.toLowerCase().includes(query) ||
+      p.authors.some(a => a.toLowerCase().includes(query))
+    ).slice(0, 20);
+    return { ok: true, result: { papers: matched.length > 0 ? matched : SAMPLE_PAPERS.slice(0, 5), query } };
+  });
+
+  registerLensAction("paper", "summarize", async (ctx, _artifact, params = {}) => {
+    const text = String(params.text || "").trim();
+    if (text.length < 300) return { ok: false, error: "text too short" };
+    if (!ctx?.llm?.chat) {
+      return { ok: true, result: { problem: "(AI unavailable)", approach: text.slice(0, 200), results: "", limitations: "", whyItMatters: "", keyTerms: [] } };
+    }
+    const sys = `Summarize a research paper. Output ONLY JSON: {"problem":"...","approach":"...","results":"...","limitations":"...","whyItMatters":"...","keyTerms":["..."]}. Each field 1-2 sentences; keyTerms 3-6 strings.`;
+    try {
+      const r = await ctx.llm.chat({
+        messages: [{ role: "system", content: sys }, { role: "user", content: text.slice(0, 10000) }],
+        temperature: 0.2, maxTokens: 1500, slot: "conscious",
+      });
+      const raw = String(r?.text || r?.content || "").trim();
+      const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const body = fence ? fence[1] : raw;
+      const first = body.indexOf("{");
+      const last = body.lastIndexOf("}");
+      if (first < 0) return { ok: false, error: "parse failed" };
+      const parsed = JSON.parse(body.slice(first, last + 1));
+      return { ok: true, result: parsed };
+    } catch (e) { return { ok: false, error: e?.message || "summarize failed" }; }
+  });
 }
+
+const SAMPLE_PAPERS = [
+  { id: "1706.03762", title: "Attention Is All You Need", authors: ["Vaswani", "Shazeer", "Parmar"], journal: "NeurIPS", year: 2017, doi: "10.5555/3295222.3295349", abstract: "We propose a new simple network architecture, the Transformer, based solely on attention mechanisms…", citationCount: 92340, openAccess: true },
+  { id: "1810.04805", title: "BERT: Pre-training of Deep Bidirectional Transformers", authors: ["Devlin", "Chang", "Lee", "Toutanova"], journal: "NAACL", year: 2018, abstract: "We introduce a new language representation model called BERT…", citationCount: 78410, openAccess: true },
+  { id: "2005.14165", title: "Language Models are Few-Shot Learners", authors: ["Brown", "Mann"], journal: "NeurIPS", year: 2020, abstract: "Recent work has demonstrated substantial gains on many NLP tasks by pre-training on a large corpus of text…", citationCount: 35210, openAccess: true },
+  { id: "1512.03385", title: "Deep Residual Learning for Image Recognition", authors: ["He", "Zhang", "Ren", "Sun"], journal: "CVPR", year: 2016, abstract: "We present a residual learning framework to ease the training of substantially deeper networks…", citationCount: 145200, openAccess: true },
+  { id: "1409.0473", title: "Neural Machine Translation by Jointly Learning to Align and Translate", authors: ["Bahdanau", "Cho", "Bengio"], journal: "ICLR", year: 2015, abstract: "Neural machine translation is a recently proposed approach to machine translation…", citationCount: 28500, openAccess: true },
+  { id: "1502.03167", title: "Batch Normalization", authors: ["Ioffe", "Szegedy"], journal: "ICML", year: 2015, abstract: "Training Deep Neural Networks is complicated by internal covariate shift…", citationCount: 56200, openAccess: true },
+  { id: "1406.2661", title: "Generative Adversarial Networks", authors: ["Goodfellow"], journal: "NeurIPS", year: 2014, abstract: "We propose a new framework for estimating generative models via an adversarial process…", citationCount: 71200, openAccess: true },
+  { id: "2103.00020", title: "CLIP: Learning Transferable Visual Models From Natural Language Supervision", authors: ["Radford", "Kim", "Hallacy"], journal: "ICML", year: 2021, abstract: "State-of-the-art computer vision systems are trained to predict a fixed set of predetermined object categories…", citationCount: 13400, openAccess: true },
+];
