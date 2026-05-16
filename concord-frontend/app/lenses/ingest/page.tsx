@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { IngestionRepos } from '@/components/ingest/IngestionRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -795,6 +796,9 @@ export default function IngestLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <IngestionRepos />
+      </section>
     </div>
     </LensShell>
   );
