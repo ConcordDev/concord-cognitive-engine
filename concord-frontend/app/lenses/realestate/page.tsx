@@ -63,6 +63,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed from '@/components/lens/LiveFeed';
+import RealEstateWorkbench from '@/components/realestate/RealEstateWorkbench';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -398,6 +399,7 @@ export default function RealEstateLensPage() {
 
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<ModeTab>('Dashboard');
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -3335,6 +3337,17 @@ export default function RealEstateLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#realestate-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to realestate content</a>
+
+      {/* 2026 parity workbench — mortgage / affordability / rent vs buy / saved searches */}
+      <button
+        type="button"
+        onClick={() => setWorkbenchOpen(true)}
+        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-orange-500 hover:bg-orange-400 text-orange-50 shadow-2xl text-sm font-medium"
+        title="Real Estate Workbench — mortgage, affordability, rent vs buy, saved searches"
+      >
+        Real Estate Workbench
+      </button>
+      <RealEstateWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }
