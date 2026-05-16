@@ -412,4 +412,78 @@ export default function registerPetsActions(registerLensAction) {
       },
     };
   });
+
+  // ── Real breed APIs (The Dog API + The Cat API) ──
+  // Both run by TheCatAPI/TheDogAPI; no API key needed for breed
+  // metadata. Set THE_DOG_API_KEY / THE_CAT_API_KEY env to raise the
+  // free-tier rate limit (currently 10k req/month anonymous).
+
+  /**
+   * breed-info — Lookup breed metadata for dogs or cats.
+   * Returns name, temperament, life span, weight, origin, hypoallergenic,
+   * Wikipedia URL, and a reference image when available.
+   * params: { species: "dog"|"cat", name: string }
+   */
+  registerLensAction("pets", "breed-info", async (_ctx, _artifact, params = {}) => {
+    const species = String(params.species || "").toLowerCase();
+    const name = String(params.name || "").trim();
+    if (!["dog", "cat"].includes(species)) return { ok: false, error: "species must be 'dog' or 'cat'" };
+    if (!name) return { ok: false, error: "name required" };
+    const base = species === "dog" ? "https://api.thedogapi.com/v1" : "https://api.thecatapi.com/v1";
+    try {
+      const r = await fetch(`${base}/breeds/search?q=${encodeURIComponent(name)}`);
+      if (!r.ok) throw new Error(`${species}api ${r.status}`);
+      const data = await r.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        return { ok: false, error: `breed not found: ${name}` };
+      }
+      const breeds = data.map((b) => ({
+        id: b.id, name: b.name,
+        bredFor: b.bred_for, breedGroup: b.breed_group,
+        lifeSpan: b.life_span, temperament: b.temperament,
+        origin: b.origin, countryCode: b.country_code,
+        weightImperial: b.weight?.imperial, weightMetric: b.weight?.metric,
+        heightImperial: b.height?.imperial, heightMetric: b.height?.metric,
+        description: b.description,
+        hypoallergenic: b.hypoallergenic === 1 || b.hypoallergenic === true,
+        wikipediaUrl: b.wikipedia_url,
+        referenceImageId: b.reference_image_id,
+        referenceImageUrl: b.reference_image_id
+          ? `https://cdn2.${species === "dog" ? "thedogapi" : "thecatapi"}.com/images/${b.reference_image_id}.jpg`
+          : null,
+      }));
+      return {
+        ok: true,
+        result: { species, query: name, breeds, count: breeds.length, source: `the-${species}-api` },
+      };
+    } catch (e) {
+      return { ok: false, error: `${species}api unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * breeds-all — Full breed catalog. Useful for UI breed-picker dropdowns.
+   * params: { species: "dog"|"cat", limit?: 1-200 }
+   */
+  registerLensAction("pets", "breeds-all", async (_ctx, _artifact, params = {}) => {
+    const species = String(params.species || "").toLowerCase();
+    if (!["dog", "cat"].includes(species)) return { ok: false, error: "species must be 'dog' or 'cat'" };
+    const limit = Math.max(1, Math.min(200, Number(params.limit) || 100));
+    const base = species === "dog" ? "https://api.thedogapi.com/v1" : "https://api.thecatapi.com/v1";
+    try {
+      const r = await fetch(`${base}/breeds?limit=${limit}`);
+      if (!r.ok) throw new Error(`${species}api ${r.status}`);
+      const data = await r.json();
+      const breeds = (Array.isArray(data) ? data : []).map((b) => ({
+        id: b.id, name: b.name, origin: b.origin,
+        breedGroup: b.breed_group, temperament: b.temperament,
+      }));
+      return {
+        ok: true,
+        result: { species, breeds, count: breeds.length, source: `the-${species}-api` },
+      };
+    } catch (e) {
+      return { ok: false, error: `${species}api unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
