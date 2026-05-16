@@ -1,10 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+/**
+ * PetCarePlanner — feeding plan + vaccination schedule pulled from the
+ * user's actual PetProfile artifacts. No defaults: if the user has no
+ * pets yet, the panel renders an empty-state CTA. Otherwise, picks the
+ * active pet via a selector and feeds the macros real species/weight/
+ * age/activity from that pet's record.
+ *
+ * Backend (no changes): pets.feedingPlan + pets.vaccinationSchedule.
+ * Substrate: useLensData<PetArtifact>('pets', 'PetProfile').
+ */
+
+import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Heart, Loader2, Wand2, Syringe, Utensils } from 'lucide-react';
+import { Heart, Loader2, Wand2, Syringe, Utensils, PawPrint } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+
+interface PetArtifact {
+  name?: string; species?: string; age?: number; weight?: number;
+  activityLevel?: 'low' | 'moderate' | 'high';
+  petName?: string; type?: string;
+}
 
 interface FeedingResult { dailyCalories?: number; mealsPerDay?: number; gramsPerMeal?: number; recommendations?: string[]; species?: string; weight?: number }
 interface VaccineEntry { name: string; due?: string; dueAt?: string; ageMonths?: number; status?: string }
@@ -26,16 +44,28 @@ async function callPets<T>(action: string, input: Record<string, unknown>): Prom
 const ACTIVITY = ['low', 'moderate', 'high'] as const;
 
 export function PetCarePlanner() {
-  const [species, setSpecies] = useState<'dog' | 'cat'>('dog');
-  const [weight, setWeight] = useState(15);
-  const [age, setAge] = useState(3);
-  const [activity, setActivity] = useState<typeof ACTIVITY[number]>('moderate');
+  const { items: pets, isLoading } = useLensData<PetArtifact>('pets', 'PetProfile', { seed: [] });
+  const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
+  const [activityOverride, setActivityOverride] = useState<typeof ACTIVITY[number] | null>(null);
   const [feeding, setFeeding] = useState<FeedingResult | null>(null);
   const [vaccines, setVaccines] = useState<VaccineResult | null>(null);
 
+  const activePet: LensItem<PetArtifact> | null = useMemo(() => {
+    if (!pets.length) return null;
+    return pets.find((p) => p.id === selectedPetId) || pets[0];
+  }, [pets, selectedPetId]);
+
+  // Use pet's stored activityLevel, falling back to 'moderate' if missing. User can override per-session via the selector.
+  const effectiveActivity: typeof ACTIVITY[number] = activityOverride ?? activePet?.data.activityLevel ?? 'moderate';
+
   const compute = useMutation({
     mutationFn: async () => {
-      const artifact = { data: { species, weight, age, activityLevel: activity } };
+      if (!activePet) return null;
+      const d = activePet.data;
+      const species = (d.species || '').toLowerCase().includes('cat') ? 'cat' : 'dog';
+      const weight = typeof d.weight === 'number' ? d.weight : 0;
+      const age = typeof d.age === 'number' ? d.age : 0;
+      const artifact = { data: { species, weight, age, activityLevel: effectiveActivity } };
       const [f, v] = await Promise.all([
         callPets<FeedingResult>('feedingPlan', { artifact }),
         callPets<VaccineResult>('vaccinationSchedule', { artifact }),
@@ -48,6 +78,21 @@ export function PetCarePlanner() {
 
   const allVaccines = vaccines ? [...(vaccines.upcoming || []), ...(vaccines.overdue || []), ...(vaccines.schedule || [])] : [];
 
+  if (isLoading) return <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" />Loading pets…</div>;
+
+  if (pets.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950 p-8 text-center">
+        <PawPrint className="mx-auto h-8 w-8 text-zinc-600" />
+        <div className="mt-3 text-sm text-zinc-300">Add your first pet to build a care plan.</div>
+        <div className="mt-1 text-xs text-zinc-500">Create a PetProfile via the "New" button above. Once saved, this panel will compute real feeding + vaccination plans from that pet's species, weight, age, and activity level.</div>
+      </div>
+    );
+  }
+
+  const d = activePet?.data || {};
+  const hasMissingFields = typeof d.weight !== 'number' || typeof d.age !== 'number' || !d.species;
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
@@ -56,45 +101,42 @@ export function PetCarePlanner() {
           <h2 className="text-sm font-semibold text-white">Pet care planner</h2>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">pets.feedingPlan + vaccinationSchedule</span>
         </div>
-        {(feeding || vaccines) && (
+        {(feeding || vaccines) && activePet && (
           <SaveAsDtuButton
             compact
             apiSource="concord-pets-care"
-            title={`${species} care plan — ${weight}kg, ${age}y, ${activity}`}
-            content={`Species: ${species}\nWeight: ${weight} kg\nAge: ${age} y\nActivity: ${activity}\n\nFeeding:\n  Daily calories: ${feeding?.dailyCalories ?? '—'}\n  Meals/day: ${feeding?.mealsPerDay ?? '—'}\n  Grams/meal: ${feeding?.gramsPerMeal ?? '—'}\n${feeding?.recommendations?.length ? `\nRecommendations:\n${feeding.recommendations.map((r) => `  - ${r}`).join('\n')}` : ''}\n\nVaccinations:\n${allVaccines.map((v) => `  ${v.name}${v.status ? ` (${v.status})` : ''}${v.due ? ` — due ${v.due}` : ''}`).join('\n')}`}
-            extraTags={['pets', species, 'care-plan']}
-            rawData={{ inputs: { species, weight, age, activity }, feeding, vaccines }}
+            title={`${d.name || activePet.title} care plan — ${d.weight}kg, ${d.age}y, ${effectiveActivity}`}
+            content={`Pet: ${d.name || activePet.title}\nSpecies: ${d.species}\nWeight: ${d.weight} kg\nAge: ${d.age} y\nActivity: ${effectiveActivity}\n\nFeeding:\n  Daily calories: ${feeding?.dailyCalories ?? '—'}\n  Meals/day: ${feeding?.mealsPerDay ?? '—'}\n  Grams/meal: ${feeding?.gramsPerMeal ?? '—'}\n${feeding?.recommendations?.length ? `\nRecommendations:\n${feeding.recommendations.map((r) => `  - ${r}`).join('\n')}` : ''}\n\nVaccinations:\n${allVaccines.map((v) => `  ${v.name}${v.status ? ` (${v.status})` : ''}${v.due ? ` — due ${v.due}` : ''}`).join('\n')}`}
+            extraTags={['pets', (d.species || '').toLowerCase(), 'care-plan']}
+            rawData={{ petId: activePet.id, pet: d, activity: effectiveActivity, feeding, vaccines }}
           />
         )}
       </header>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Species</span>
-          <select value={species} onChange={(e) => setSpecies(e.target.value as 'dog' | 'cat')} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
-            <option value="dog">Dog</option>
-            <option value="cat">Cat</option>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <label className="block sm:col-span-2">
+          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Pet</span>
+          <select value={activePet?.id || ''} onChange={(e) => { setSelectedPetId(e.target.value); setActivityOverride(null); setFeeding(null); setVaccines(null); }} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
+            {pets.map((p) => <option key={p.id} value={p.id}>{p.data.name || p.title}{p.data.species ? ` (${p.data.species})` : ''}</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Weight (kg)</span>
-          <input type="number" min={0.5} max={100} step={0.5} value={weight} onChange={(e) => setWeight(Math.max(0.5, Math.min(100, Number(e.target.value) || 15)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
-        </label>
-        <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Age (yrs)</span>
-          <input type="number" min={0} max={30} step={0.5} value={age} onChange={(e) => setAge(Math.max(0, Math.min(30, Number(e.target.value) || 3)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
-        </label>
-        <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Activity</span>
-          <select value={activity} onChange={(e) => setActivity(e.target.value as typeof ACTIVITY[number])} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
+          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Activity (override)</span>
+          <select value={effectiveActivity} onChange={(e) => setActivityOverride(e.target.value as typeof ACTIVITY[number])} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
             {ACTIVITY.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
         </label>
-        <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending} className="mt-auto inline-flex items-center justify-center gap-1 rounded border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs font-mono text-rose-200 hover:bg-rose-500/25 disabled:opacity-50">
+        <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || !activePet || hasMissingFields} className="mt-auto inline-flex items-center justify-center gap-1 rounded border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs font-mono text-rose-200 hover:bg-rose-500/25 disabled:opacity-50">
           {compute.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
           Plan
         </button>
       </div>
+
+      {hasMissingFields && (
+        <div className="rounded border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
+          This pet's profile is missing species, weight, or age. Edit the PetProfile above to fill them in, then return to compute.
+        </div>
+      )}
 
       {compute.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Plan generation failed.</div>}
 
