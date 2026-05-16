@@ -2,6 +2,12 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import CookMode from '@/components/food/CookMode';
+import PantryTracker from '@/components/food/PantryTracker';
+import PlateScan from '@/components/food/PlateScan';
+import MealPlanner from '@/components/food/MealPlanner';
+import RecipeImporter from '@/components/food/RecipeImporter';
+import RecipeScaler from '@/components/food/RecipeScaler';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -15,7 +21,7 @@ import {
   TrendingUp, Flame, Leaf, Scale, DollarSign, ClipboardList, CalendarDays,
   Star, Puzzle, TrendingDown, Package, FileText, UserCheck, MapPin,
   ArrowDown, ArrowUp, Minus, Hash, CircleDot, Layers,
-  RotateCcw, Zap, Target, PieChart, Armchair, ChevronDown,
+  RotateCcw, Zap, Target, PieChart, Armchair, ChevronDown, Camera, Link,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -38,7 +44,7 @@ import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 // Types
 // ---------------------------------------------------------------------------
 
-type ModeTab = 'recipes' | 'mealplan' | 'shopping' | 'nutrition' | 'pantry' | 'menu' | 'inventory' | 'bookings' | 'batches' | 'shifts';
+type ModeTab = 'recipes' | 'mealplan' | 'shopping' | 'nutrition' | 'pantry' | 'menu' | 'inventory' | 'bookings' | 'batches' | 'shifts' | 'cookmode' | 'platescan' | 'planner' | 'pantry2' | 'import' | 'scaler';
 type ArtifactType = 'Recipe' | 'MealPlan' | 'ShoppingItem' | 'PantryItem' | 'Menu' | 'InventoryItem' | 'Booking' | 'Batch' | 'Shift';
 type Status = 'prep' | 'active' | '86d' | 'seasonal' | 'archived';
 type MenuQuadrant = 'star' | 'puzzle' | 'plowhorse' | 'dog';
@@ -164,6 +170,12 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof ChefHat; artifactTyp
   { id: 'bookings', label: 'Bookings', icon: CalendarClock, artifactType: 'Booking' },
   { id: 'batches', label: 'Batches', icon: FlaskConical, artifactType: 'Batch' },
   { id: 'shifts', label: 'Shifts', icon: Clock, artifactType: 'Shift' },
+  { id: 'planner', label: 'Plan AI', icon: CalendarDays, artifactType: 'MealPlan' },
+  { id: 'pantry2', label: 'Pantry+', icon: Package, artifactType: 'PantryItem' },
+  { id: 'platescan', label: 'Plate Scan', icon: Camera, artifactType: 'Recipe' },
+  { id: 'import', label: 'Import URL', icon: Link, artifactType: 'Recipe' },
+  { id: 'scaler', label: 'Scaler', icon: ChefHat, artifactType: 'Recipe' },
+  { id: 'cookmode', label: 'Cook Mode', icon: Flame, artifactType: 'Recipe' },
 ];
 
 const STATUS_CONFIG: Record<Status, { label: string; color: string }> = {
@@ -1802,6 +1814,29 @@ export default function FoodLensPage() {
     if (activeTab === 'shopping') return renderShoppingList();
     if (activeTab === 'nutrition') return renderNutritionTracker();
     if (activeTab === 'pantry') return renderPantry();
+    // Parity-sprint surfaces
+    if (activeTab === 'planner') return <div className="p-4"><MealPlanner /></div>;
+    if (activeTab === 'pantry2') return <div className="p-4"><PantryTracker /></div>;
+    if (activeTab === 'platescan') return <div className="p-4"><PlateScan /></div>;
+    if (activeTab === 'import') return <div className="p-4"><RecipeImporter /></div>;
+    if (activeTab === 'scaler') return <div className="p-4 max-w-xl"><RecipeScaler baseServings={4} ingredients={[{ qty: 2, unit: 'cup', item: 'flour' }, { qty: 1, unit: 'tsp', item: 'salt' }, { qty: 1, unit: 'cup', item: 'water' }]} /></div>;
+    if (activeTab === 'cookmode') return (
+      <div className="p-4">
+        <CookMode
+          open={true}
+          onClose={() => setActiveTab('recipes')}
+          recipeTitle="Sample: One-Pan Lemon Garlic Chicken"
+          servings={4}
+          steps={[
+            { order: 1, instruction: 'Preheat oven to 425°F (220°C).', timerSec: 0 },
+            { order: 2, instruction: 'Pat chicken thighs dry, season with salt, pepper, paprika.', ingredients: ['4 chicken thighs', 'salt', 'pepper', 'paprika'] },
+            { order: 3, instruction: 'In a large oven-safe skillet, heat olive oil over medium-high. Sear chicken skin-down 5 min until golden.', timerSec: 300, ingredients: ['2 tbsp olive oil'] },
+            { order: 4, instruction: 'Flip, add garlic, lemon slices, and broth. Transfer to oven; roast 20 min.', timerSec: 1200, ingredients: ['6 cloves garlic', '1 lemon, sliced', '1/2 cup chicken broth'] },
+            { order: 5, instruction: 'Internal temp should read 165°F. Rest 5 min before serving over rice.', timerSec: 300, ingredients: ['cooked rice'] },
+          ]}
+        />
+      </div>
+    );
     if (activeTab === 'menu' && showMenuMatrix) return renderMenuMatrix();
     if (activeTab === 'inventory' && showWasteLog) return renderWasteLog();
     if (activeTab === 'inventory' && showCountSheet) return renderCountSheet();

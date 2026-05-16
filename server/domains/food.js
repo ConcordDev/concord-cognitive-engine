@@ -525,4 +525,409 @@ export default function registerFoodActions(registerLensAction) {
 
     return { ok: true, result: { items: costed, avgPourCostPct: avgPourCost } };
   });
+
+  // ─── Parity-sprint macros: Paprika/Mealime/Tasty/Lose It! ────────────
+
+  function getFoodState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.foodLens) {
+      STATE.foodLens = {
+        pantry: new Map(),
+        mealPlans: new Map(),
+        nutritionLog: new Map(),
+      };
+    }
+    return STATE.foodLens;
+  }
+
+  function saveStateIfAvailable() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+
+  registerLensAction("food", "pantry-list", (ctx, _artifact, _params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    return { ok: true, result: { items: state.pantry.get(userId) || [] } };
+  });
+
+  registerLensAction("food", "pantry-add", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const itemName = String(params.itemName || "").trim();
+    if (!itemName) return { ok: false, error: "itemName required" };
+    if (!state.pantry.has(userId)) state.pantry.set(userId, []);
+    const item = {
+      id: `pan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      itemName,
+      qty: Number(params.qty) || 1,
+      unit: String(params.unit || "item"),
+      purchaseDate: params.purchaseDate || new Date().toISOString().slice(0, 10),
+      expirationDate: params.expirationDate || null,
+      location: ["fridge", "freezer", "pantry", "counter"].includes(params.location) ? params.location : "pantry",
+    };
+    state.pantry.get(userId).push(item);
+    saveStateIfAvailable();
+    return { ok: true, result: { item } };
+  });
+
+  registerLensAction("food", "pantry-delete", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const list = state.pantry.get(userId) || [];
+    const idx = list.findIndex(i => i.id === id);
+    if (idx < 0) return { ok: false, error: "item not found" };
+    list.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("food", "recipe-scale", (_ctx, _artifact, params = {}) => {
+    const baseServings = Math.max(1, Number(params.baseServings) || 1);
+    const targetServings = Math.max(1, Number(params.targetServings) || 1);
+    const ingredients = Array.isArray(params.ingredients) ? params.ingredients : [];
+    const factor = targetServings / baseServings;
+    const scaled = ingredients.map(i => {
+      const newQty = roundKitchen((Number(i.qty) || 0) * factor);
+      return {
+        original: i,
+        scaled: { qty: newQty, unit: i.unit, item: i.item },
+        display: `${formatQty(newQty)} ${i.unit || ""}${i.unit ? " " : ""}${i.item}`.trim(),
+      };
+    });
+    return { ok: true, result: { ingredients: scaled, factor, baseServings, targetServings } };
+  });
+
+  registerLensAction("food", "recipe-substitute", async (ctx, _artifact, params = {}) => {
+    if (!ctx?.llm?.chat) return { ok: false, error: "llm unavailable" };
+    const ingredient = String(params.ingredient || "").trim();
+    const excludeAllergens = Array.isArray(params.excludeAllergens) ? params.excludeAllergens : [];
+    const mode = ["simpler", "healthier", "surprise", "allergen_swap"].includes(params.mode) ? params.mode : "allergen_swap";
+    if (!ingredient) return { ok: false, error: "ingredient required" };
+    const sys = `You are a culinary swap engine. Output ONLY JSON: {"substitutes":[{"original":"...","substitute":"...","ratio":"1:1","confidence":0.0-1.0,"caveat":"..."}],"allergenWarning":"Always check labels for cross-contamination — AI cannot read 'may contain traces' warnings."}`;
+    const user = `Original: ${ingredient}\nExclude allergens: ${excludeAllergens.join(", ") || "none"}\nMode: ${mode}\nGive 3 substitutes ranked by confidence.`;
+    try {
+      const llmRes = await ctx.llm.chat({
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: user },
+        ],
+        temperature: 0.3, maxTokens: 512, slot: "subconscious",
+      });
+      const raw = String(llmRes?.text || llmRes?.content || "").trim();
+      const parsed = extractJsonFood(raw);
+      if (!parsed?.substitutes) return { ok: false, error: "parse failed" };
+      const allergenWarning = parsed.allergenWarning || "Always check product labels for cross-contamination — AI substitution cannot detect 'may contain traces' warnings.";
+      return { ok: true, result: { substitutes: parsed.substitutes.slice(0, 5), allergenWarning, mode } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "llm failed" };
+    }
+  });
+
+  registerLensAction("food", "vision-identify", async (_ctx, _artifact, params = {}) => {
+    const dataUrl = String(params.imageDataUrl || "");
+    if (!dataUrl) return { ok: false, error: "imageDataUrl required" };
+    const imageB64 = dataUrl.startsWith("data:") ? dataUrl.split(",")[1] : dataUrl;
+    if (!imageB64) return { ok: false, error: "image decode failed" };
+    try {
+      const { callVision } = await import("../lib/vision-inference.js");
+      const prompt = `Identify the food in this image. Output ONLY JSON: {"dish":"name","ingredientsVisible":["..."],"estimatedCalories":350,"confidence":0.0-1.0,"macros":{"protein_g":20,"carbs_g":40,"fat_g":12}}`;
+      const out = await callVision(imageB64, prompt, { temperature: 0.1, max_tokens: 512 });
+      const text = String(out?.text || out?.content || out?.response || "").trim();
+      const parsed = extractJsonFood(text);
+      if (!parsed?.dish) return { ok: true, result: { dish: "Unknown food", ingredientsVisible: [], estimatedCalories: 0, confidence: 0, source: "fallback" } };
+      return {
+        ok: true,
+        result: {
+          dish: String(parsed.dish),
+          ingredientsVisible: Array.isArray(parsed.ingredientsVisible) ? parsed.ingredientsVisible.slice(0, 10).map(String) : [],
+          estimatedCalories: Math.max(0, Number(parsed.estimatedCalories) || 0),
+          confidence: Math.max(0, Math.min(1, Number(parsed.confidence) || 0.5)),
+          macros: parsed.macros ? {
+            protein_g: Math.max(0, Number(parsed.macros.protein_g) || 0),
+            carbs_g: Math.max(0, Number(parsed.macros.carbs_g) || 0),
+            fat_g: Math.max(0, Number(parsed.macros.fat_g) || 0),
+          } : undefined,
+          source: "llava-vision",
+        },
+      };
+    } catch (e) {
+      return { ok: true, result: { dish: "Vision unavailable", ingredientsVisible: [], estimatedCalories: 0, confidence: 0, source: "error", error: e?.message } };
+    }
+  });
+
+  registerLensAction("food", "nutrition-log", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const dish = String(params.dish || "").trim();
+    const calories = Math.max(0, Number(params.calories) || 0);
+    if (!dish && calories === 0) return { ok: false, error: "dish or calories required" };
+    if (!state.nutritionLog.has(userId)) state.nutritionLog.set(userId, []);
+    const entry = {
+      id: `nut_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      loggedAt: new Date().toISOString(),
+      source: ["photo", "barcode", "recipe", "manual"].includes(params.source) ? params.source : "manual",
+      dish, calories,
+      macros: params.macros || null,
+    };
+    state.nutritionLog.get(userId).push(entry);
+    saveStateIfAvailable();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("food", "meal-plan-list", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const startDate = String(params.startDate || new Date().toISOString().slice(0, 10));
+    const days = Math.max(1, Math.min(30, Number(params.days) || 7));
+    const all = state.mealPlans.get(userId) || [];
+    const start = new Date(startDate).getTime();
+    const end = start + days * 86400000;
+    const meals = all.filter(m => {
+      const t = new Date(m.date).getTime();
+      return t >= start && t < end;
+    });
+    return { ok: true, result: { meals, startDate, days } };
+  });
+
+  registerLensAction("food", "meal-plan-generate", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const startDate = String(params.startDate || new Date().toISOString().slice(0, 10));
+    const days = Math.max(1, Math.min(14, Number(params.days) || 7));
+    const mealsPerDay = Math.max(1, Math.min(4, Number(params.mealsPerDay) || 3));
+    const slots = ["Breakfast", "Lunch", "Dinner", "Snack"].slice(0, mealsPerDay);
+    const TEMPLATES = {
+      Breakfast: [
+        { title: "Greek yogurt parfait", calories: 320, protein: 24, carbs: 36, fat: 8 },
+        { title: "Veggie scramble", calories: 380, protein: 22, carbs: 12, fat: 26 },
+        { title: "Overnight oats", calories: 410, protein: 18, carbs: 58, fat: 12 },
+        { title: "Avocado toast w/ eggs", calories: 440, protein: 19, carbs: 32, fat: 26 },
+      ],
+      Lunch: [
+        { title: "Chicken Caesar wrap", calories: 520, protein: 35, carbs: 42, fat: 22 },
+        { title: "Quinoa Buddha bowl", calories: 480, protein: 18, carbs: 62, fat: 18 },
+        { title: "Turkey + hummus pita", calories: 460, protein: 32, carbs: 48, fat: 14 },
+        { title: "Tomato basil soup + grilled cheese", calories: 540, protein: 18, carbs: 56, fat: 26 },
+      ],
+      Dinner: [
+        { title: "Sheet-pan salmon + asparagus", calories: 580, protein: 42, carbs: 18, fat: 34 },
+        { title: "Veggie stir-fry + brown rice", calories: 520, protein: 16, carbs: 78, fat: 14 },
+        { title: "Pesto pasta w/ shrimp", calories: 620, protein: 32, carbs: 64, fat: 24 },
+        { title: "Steak tacos + slaw", calories: 670, protein: 38, carbs: 48, fat: 32 },
+      ],
+      Snack: [
+        { title: "Apple + almond butter", calories: 230, protein: 6, carbs: 32, fat: 12 },
+        { title: "Protein shake", calories: 180, protein: 24, carbs: 12, fat: 4 },
+        { title: "Trail mix", calories: 260, protein: 8, carbs: 24, fat: 16 },
+      ],
+    };
+    const meals = [];
+    for (let d = 0; d < days; d++) {
+      const date = new Date(new Date(startDate).getTime() + d * 86400000).toISOString().slice(0, 10);
+      for (const slot of slots) {
+        const choices = TEMPLATES[slot] || [];
+        const idx = hashStringFood(`${userId}_${date}_${slot}`) % choices.length;
+        const c = choices[idx];
+        meals.push({ date, slot, title: c.title, servings: 1, calories: c.calories, protein: c.protein, carbs: c.carbs, fat: c.fat });
+      }
+    }
+    if (!state.mealPlans.has(userId)) state.mealPlans.set(userId, []);
+    const existing = state.mealPlans.get(userId);
+    const start = new Date(startDate).getTime();
+    const end = start + days * 86400000;
+    const kept = existing.filter(m => {
+      const t = new Date(m.date).getTime();
+      return !(t >= start && t < end);
+    });
+    state.mealPlans.set(userId, [...kept, ...meals]);
+    saveStateIfAvailable();
+    return { ok: true, result: { meals, days } };
+  });
+
+  registerLensAction("food", "grocery-list-build", (ctx, _artifact, params = {}) => {
+    const state = getFoodState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const startDate = String(params.startDate || new Date().toISOString().slice(0, 10));
+    const days = Math.max(1, Math.min(14, Number(params.days) || 7));
+    const all = state.mealPlans.get(userId) || [];
+    const start = new Date(startDate).getTime();
+    const end = start + days * 86400000;
+    const meals = all.filter(m => {
+      const t = new Date(m.date).getTime();
+      return t >= start && t < end;
+    });
+    const aisles = {
+      Produce: ["Lettuce", "Tomatoes", "Avocado", "Spinach", "Apples", "Lemons", "Garlic", "Onions", "Asparagus", "Mixed greens"],
+      Protein: ["Chicken breast", "Salmon fillet", "Eggs", "Greek yogurt", "Tofu", "Ground turkey", "Shrimp", "Steak", "Almond butter"],
+      Pantry: ["Olive oil", "Quinoa", "Brown rice", "Pasta", "Pesto", "Hummus", "Pita bread", "Tortillas", "Trail mix"],
+      Dairy: ["Milk", "Butter", "Parmesan", "Mozzarella", "Sour cream"],
+      Frozen: ["Berries"],
+    };
+    const byAisle = Object.entries(aisles).map(([aisle, items]) => ({
+      aisle,
+      items: items.slice(0, Math.min(items.length, Math.ceil(meals.length / 2))).map(name => ({ name, qty: 1, unit: "item" })),
+    }));
+    return { ok: true, result: { byAisle, meals: meals.length, days } };
+  });
+
+  registerLensAction("food", "recipe-import-url", async (ctx, _artifact, params = {}) => {
+    const url = String(params.url || "").trim();
+    if (!url) return { ok: false, error: "url required" };
+    if (typeof fetch !== "function") return { ok: false, error: "fetch unavailable" };
+    let html = "";
+    try {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 8000);
+      const r = await fetch(url, { signal: ac.signal, headers: { "user-agent": "ConcordFoodLens/1.0" } });
+      clearTimeout(t);
+      if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
+      html = await r.text();
+    } catch (e) {
+      return { ok: false, error: e?.message || "fetch failed" };
+    }
+    const jsonldMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+    if (jsonldMatch) {
+      for (const block of jsonldMatch) {
+        const body = block.replace(/<script[^>]*>/, "").replace(/<\/script>/, "");
+        try {
+          const parsed = JSON.parse(body);
+          const recipe = findRecipeNode(parsed);
+          if (recipe) return { ok: true, result: { recipe: shapeRecipe(recipe, url), source: "jsonld" } };
+        } catch { /* try next */ }
+      }
+    }
+    if (!ctx?.llm?.chat) return { ok: false, error: "no JSON-LD and llm unavailable" };
+    const stripped = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 6000);
+    const sys = `You are a recipe extraction engine. Output ONLY JSON: {"recipe":{"title":"","servings":4,"totalTimeMin":30,"ingredients":[{"qty":2,"unit":"tbsp","item":"olive oil"}],"steps":[{"order":1,"instruction":"..."}],"nutrition":{"calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}}}. If you cannot find a recipe, output {"recipe":null}.`;
+    try {
+      const llmRes = await ctx.llm.chat({
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: `Page text:\n${stripped}\n\nExtract.` },
+        ],
+        temperature: 0.1, maxTokens: 2048, slot: "utility",
+      });
+      const raw = String(llmRes?.text || llmRes?.content || "").trim();
+      const parsed = extractJsonFood(raw);
+      if (!parsed?.recipe) return { ok: false, error: "extraction failed", raw: raw.slice(0, 200) };
+      return { ok: true, result: { recipe: shapeRecipe(parsed.recipe, url), source: "llm" } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "llm extract failed" };
+    }
+  });
 };
+
+function hashStringFood(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function extractJsonFood(text) {
+  if (!text) return null;
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = fence ? fence[1] : text;
+  const first = body.indexOf("{");
+  const last = body.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
+}
+
+function roundKitchen(n) {
+  if (n === 0) return 0;
+  const whole = Math.floor(n);
+  const frac = n - whole;
+  const stops = [0, 0.25, 1/3, 0.5, 2/3, 0.75, 1];
+  let best = 0, bestDist = Infinity;
+  for (const s of stops) {
+    const d = Math.abs(frac - s);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  return Math.round((whole + best) * 100) / 100;
+}
+
+function formatQty(n) {
+  if (n === 0) return "0";
+  const whole = Math.floor(n);
+  const frac = n - whole;
+  const fractions = { 0.25: "¼", 0.333: "⅓", 0.5: "½", 0.667: "⅔", 0.75: "¾" };
+  const found = Object.entries(fractions).find(([k]) => Math.abs(Number(k) - frac) < 0.05);
+  if (found) return whole > 0 ? `${whole} ${found[1]}` : found[1];
+  return String(Math.round(n * 100) / 100);
+}
+
+function findRecipeNode(obj) {
+  if (!obj) return null;
+  if (Array.isArray(obj)) {
+    for (const x of obj) {
+      const r = findRecipeNode(x);
+      if (r) return r;
+    }
+    return null;
+  }
+  if (typeof obj === "object") {
+    const type = obj["@type"];
+    if (type === "Recipe" || (Array.isArray(type) && type.includes("Recipe"))) return obj;
+    if (obj["@graph"]) return findRecipeNode(obj["@graph"]);
+  }
+  return null;
+}
+
+function shapeRecipe(r, sourceUrl) {
+  const ingredients = (Array.isArray(r.recipeIngredient) ? r.recipeIngredient : Array.isArray(r.ingredients) ? r.ingredients : [])
+    .map(parseIngredient);
+  const instructions = parseInstructions(r.recipeInstructions || r.steps || []);
+  const servings = Number(r.recipeYield) || Number(r.yield) || Number(r.servings) || 4;
+  const totalTimeMin = parseDuration(r.totalTime) || Number(r.totalTimeMin) || 30;
+  const nutrition = r.nutrition ? {
+    calories: Number(String(r.nutrition.calories || "").replace(/[^0-9.]/g, "")) || 0,
+    protein_g: Number(String(r.nutrition.proteinContent || "").replace(/[^0-9.]/g, "")) || 0,
+    carbs_g: Number(String(r.nutrition.carbohydrateContent || "").replace(/[^0-9.]/g, "")) || 0,
+    fat_g: Number(String(r.nutrition.fatContent || "").replace(/[^0-9.]/g, "")) || 0,
+  } : r.nutrition;
+  return {
+    title: String(r.name || r.title || "Untitled"),
+    servings,
+    totalTimeMin,
+    ingredients,
+    steps: instructions,
+    nutrition,
+    sourceUrl,
+  };
+}
+
+function parseIngredient(s) {
+  if (typeof s === "object" && s !== null) {
+    return { qty: Number(s.qty) || 0, unit: String(s.unit || ""), item: String(s.item || "") };
+  }
+  const str = String(s).trim();
+  const m = str.match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s+(\w+)?\s+(.+)$/);
+  if (m) {
+    const qty = m[1].includes("/") ? Number(m[1].split("/")[0]) / Number(m[1].split("/")[1]) : Number(m[1]);
+    return { qty, unit: m[2] || "", item: m[3] };
+  }
+  return { qty: 1, unit: "", item: str };
+}
+
+function parseInstructions(raw) {
+  if (!Array.isArray(raw)) return [{ order: 1, instruction: String(raw || "") }];
+  return raw.map((s, i) => {
+    if (typeof s === "object" && s !== null) {
+      const text = String(s.text || s.instruction || "");
+      return { order: i + 1, instruction: text, timerSec: s.timerSec };
+    }
+    return { order: i + 1, instruction: String(s) };
+  });
+}
+
+function parseDuration(d) {
+  if (!d) return 0;
+  const s = String(d);
+  const m = s.match(/PT?(?:(\d+)H)?(?:(\d+)M)?/);
+  if (m) return (Number(m[1] || 0) * 60) + Number(m[2] || 0);
+  return 0;
+}
