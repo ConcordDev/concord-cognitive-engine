@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { TimezoneTools } from '@/components/calendar/TimezoneTools';
+import { ScheduleAnalyzer } from '@/components/calendar/ScheduleAnalyzer';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -2058,6 +2059,10 @@ export default function CalendarLensPage() {
       {/* Bespoke timezone + iCal tools with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TimezoneTools />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ScheduleAnalyzer />
       </section>
     </div>
     </LensShell>
