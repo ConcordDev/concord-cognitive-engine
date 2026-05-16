@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { BarcodeLookup } from '@/components/household/BarcodeLookup';
+import { ChoreRotation } from '@/components/household/ChoreRotation';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1847,6 +1848,9 @@ export default function HouseholdLensPage() {
       {/* Bespoke Open Food Facts barcode lookup with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <BarcodeLookup />
+      </section>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ChoreRotation />
       </section>
     </div>
     </LensShell>
