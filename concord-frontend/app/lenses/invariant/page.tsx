@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FormalVerificationRepos } from '@/components/invariant/FormalVerificationRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -710,6 +711,9 @@ export default function InvariantLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <FormalVerificationRepos />
+      </section>
     </div>
     </LensShell>
   );
