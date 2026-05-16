@@ -5,6 +5,7 @@ import MarketHeatmap from '@/components/market/MarketHeatmap';
 import Watchlist from '@/components/market/Watchlist';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { SectorHeatmapPanel } from '@/components/market/SectorHeatmap';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useState, useMemo, useRef} from 'react';
@@ -639,6 +640,11 @@ export default function MarketLensPage() {
         <MarketHeatmap />
         <Watchlist />
       </div>
+
+      {/* Bespoke SPDR sector heatmap with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <SectorHeatmapPanel />
+      </section>
     </div>
     </LensShell>
   );
