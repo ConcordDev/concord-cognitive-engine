@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { OshaIncidentSearch } from '@/components/construction/OshaIncidentSearch';
+import { ProcorePanel } from '@/components/construction/ProcorePanel';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -783,6 +784,10 @@ export default function ConstructionLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <OshaIncidentSearch />
+      </section>
+
+      <section className="mt-6">
+        <ProcorePanel />
       </section>
     </LensPageShell>
     
