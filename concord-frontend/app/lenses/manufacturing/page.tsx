@@ -3,6 +3,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import OEEDashboard from '@/components/manufacturing/OEEDashboard';
+import WorkOrderBoard from '@/components/manufacturing/WorkOrderBoard';
+import QualitySPC from '@/components/manufacturing/QualitySPC';
 import { motion } from 'framer-motion';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -64,7 +67,10 @@ type ModeTab =
   | 'quality'
   | 'scheduling'
   | 'machines'
-  | 'safety';
+  | 'safety'
+  | 'oeeBoard'
+  | 'woBoard'
+  | 'spc';
 type ArtifactType = 'WorkOrder' | 'BOM' | 'QCInspection' | 'Schedule' | 'Machine' | 'SafetyItem';
 
 type WOStatus = 'planned' | 'released' | 'in_progress' | 'qc' | 'complete';
@@ -116,6 +122,9 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof ClipboardList }[] = 
   { id: 'scheduling', label: 'Scheduling', icon: Calendar },
   { id: 'machines', label: 'Equipment', icon: Cog },
   { id: 'safety', label: 'Safety', icon: HardHat },
+  { id: 'oeeBoard', label: 'OEE Board', icon: BarChart3 },
+  { id: 'woBoard', label: 'WO Board', icon: ClipboardList },
+  { id: 'spc', label: 'SPC', icon: ShieldCheck },
 ];
 
 const ARTIFACT_FOR_TAB: Record<ModeTab, ArtifactType> = {
@@ -126,6 +135,9 @@ const ARTIFACT_FOR_TAB: Record<ModeTab, ArtifactType> = {
   scheduling: 'Schedule',
   machines: 'Machine',
   safety: 'SafetyItem',
+  oeeBoard: 'Machine',
+  woBoard: 'WorkOrder',
+  spc: 'QCInspection',
 };
 
 // ---------------------------------------------------------------------------
@@ -641,6 +653,9 @@ export default function ManufacturingLensPage() {
       { key: 'description', label: 'Description', type: 'textarea' },
       { key: 'correctiveAction', label: 'Corrective Action', type: 'textarea' },
     ],
+    oeeBoard: [],
+    woBoard: [],
+    spc: [],
   };
 
   // Dashboard metrics — computed from real API data
@@ -2295,6 +2310,12 @@ export default function ManufacturingLensPage() {
         return renderMachines();
       case 'safety':
         return renderSafety();
+      case 'oeeBoard':
+        return <div className="p-4"><OEEDashboard /></div>;
+      case 'woBoard':
+        return <div className="p-4"><WorkOrderBoard /></div>;
+      case 'spc':
+        return <div className="p-4"><QualitySPC /></div>;
       default:
         return null;
     }
