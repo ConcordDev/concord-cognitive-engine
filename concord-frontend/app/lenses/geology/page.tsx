@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { EarthquakeList } from '@/components/geology/EarthquakeList';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -562,8 +563,12 @@ export default function GeologyLensPage() {
       <div className="px-4 mb-2">
         <LensFeedPanel lensId="geology" />
       </div>
+      {/* Bespoke USGS earthquake feed with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
+        <EarthquakeList />
+      </section>
     </LensPageShell>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
