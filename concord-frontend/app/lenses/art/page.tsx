@@ -59,6 +59,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { ArtExplorer } from '@/components/art/ArtExplorer';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
 import { FeedBanner } from '@/components/lens/FeedBanner';
@@ -1266,6 +1267,11 @@ export default function ArtLensPage() {
           </div>
         )}
       </div>
+
+      {/* Bespoke Met + Art Institute of Chicago artwork explorer with Save-as-DTU */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ArtExplorer />
+      </section>
     </div>
     </LensShell>
   );
