@@ -22,6 +22,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { LatticeRepos } from '@/components/lattice/LatticeRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -340,8 +341,11 @@ export default function LatticeLensPage() {
           )}
         </AnimatePresence>
       </main>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LatticeRepos />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
