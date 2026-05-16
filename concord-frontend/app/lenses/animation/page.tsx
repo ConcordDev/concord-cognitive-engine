@@ -26,6 +26,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { AnimationReference } from '@/components/animation/AnimationReference';
 
 type AnimTab = 'projects' | 'timeline' | 'assets' | 'render' | 'stats';
 type AnimType = '2d' | '3d' | 'motion-graphics' | 'stop-motion' | 'pixel' | 'vector';
@@ -668,6 +669,9 @@ export default function AnimationPage() {
           )}
         </AnimatePresence>
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <AnimationReference />
+      </section>
     </div>
     </LensShell>
   );
