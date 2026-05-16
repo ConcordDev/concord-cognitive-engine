@@ -1,6 +1,15 @@
 // server/domains/astronomy.js
-// Domain actions for astronomy: celestial position calculation, magnitude estimation,
-// observation planning, light travel time, orbital mechanics.
+// Domain actions for astronomy: celestial position, observation planning,
+// orbital mechanics, plus real-data NASA APIs (APOD, ISS location, near-earth-object lookup).
+//
+// Free data sources:
+//   • NASA APOD (Astronomy Picture of the Day): api.nasa.gov/planetary/apod
+//     Optional NASA_API_KEY env; falls back to DEMO_KEY (rate-limited to 30/hr).
+//   • Where Is The ISS At: api.wheretheiss.at/v1/satellites/25544 — no key needed.
+//   • NASA NeoWs (Near Earth Objects): api.nasa.gov/neo/rest/v1/feed — uses NASA_API_KEY.
+
+const NASA_API_BASE = "https://api.nasa.gov";
+const ISS_API_BASE = "https://api.wheretheiss.at/v1/satellites/25544";
 
 export default function registerAstronomyActions(registerLensAction) {
   registerLensAction("astronomy", "celestialPosition", (ctx, artifact, _params) => {
@@ -54,5 +63,130 @@ export default function registerAstronomyActions(registerLensAction) {
     const aphelion = semiMajorAU * (1 + eccentricity);
     const orbitalVelocity = 29.78 / Math.sqrt(semiMajorAU); // km/s, simplified
     return { ok: true, result: { object: data.name || artifact.title, semiMajorAxisAU: semiMajorAU, eccentricity, periodYears: Math.round(periodYears * 1000) / 1000, periodDays: Math.round(periodYears * 365.25 * 10) / 10, perihelionAU: Math.round(perihelion * 1000) / 1000, aphelionAU: Math.round(aphelion * 1000) / 1000, avgOrbitalVelocityKmS: Math.round(orbitalVelocity * 10) / 10, orbitType: eccentricity < 0.05 ? "nearly-circular" : eccentricity < 0.5 ? "elliptical" : "highly-eccentric" } };
+  });
+
+  /**
+   * apod — Astronomy Picture of the Day from NASA.
+   * Free; NASA_API_KEY env optional (falls back to DEMO_KEY).
+   * params: { date?: "YYYY-MM-DD" — defaults to today }
+   */
+  registerLensAction("astronomy", "apod", async (_ctx, _artifact, params = {}) => {
+    const apiKey = process.env.NASA_API_KEY || "DEMO_KEY";
+    const date = params.date ? `&date=${encodeURIComponent(String(params.date))}` : "";
+    const url = `${NASA_API_BASE}/planetary/apod?api_key=${encodeURIComponent(apiKey)}${date}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`nasa apod ${r.status}`);
+      const data = await r.json();
+      return {
+        ok: true,
+        result: {
+          date: data.date,
+          title: data.title,
+          explanation: data.explanation,
+          mediaType: data.media_type,
+          url: data.url,
+          hdurl: data.hdurl || null,
+          copyright: data.copyright || null,
+          source: "nasa-apod",
+          usingDemoKey: apiKey === "DEMO_KEY",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `nasa apod unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * iss-current-location — Real-time International Space Station
+   * latitude/longitude/altitude/velocity. Free, no API key.
+   */
+  registerLensAction("astronomy", "iss-current-location", async (_ctx, _artifact, _params = {}) => {
+    try {
+      const r = await fetch(ISS_API_BASE);
+      if (!r.ok) throw new Error(`iss api ${r.status}`);
+      const data = await r.json();
+      return {
+        ok: true,
+        result: {
+          satelliteId: data.id,
+          name: data.name,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          altitudeKm: data.altitude,
+          velocityKmH: data.velocity,
+          visibility: data.visibility,
+          footprintKm: data.footprint,
+          solarLatitude: data.solar_lat,
+          solarLongitude: data.solar_lon,
+          timestamp: data.timestamp,
+          daynum: data.daynum,
+          units: data.units,
+          source: "wheretheiss.at",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `iss api unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * near-earth-objects — NASA NeoWs feed of asteroids/comets passing
+   * close to Earth in a given date range (max 7 days).
+   * Requires NASA_API_KEY (DEMO_KEY rate-limited).
+   * params: { startDate: "YYYY-MM-DD", endDate?: "YYYY-MM-DD" }
+   */
+  registerLensAction("astronomy", "near-earth-objects", async (_ctx, _artifact, params = {}) => {
+    const startDate = String(params.startDate || new Date().toISOString().slice(0, 10));
+    const endDate = String(params.endDate || startDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return { ok: false, error: "startDate / endDate must be YYYY-MM-DD" };
+    }
+    const apiKey = process.env.NASA_API_KEY || "DEMO_KEY";
+    const url = `${NASA_API_BASE}/neo/rest/v1/feed?start_date=${startDate}&end_date=${endDate}&api_key=${encodeURIComponent(apiKey)}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`neows ${r.status}`);
+      const data = await r.json();
+      const objects = [];
+      for (const [date, list] of Object.entries(data.near_earth_objects || {})) {
+        for (const obj of list) {
+          const approach = obj.close_approach_data?.[0];
+          objects.push({
+            id: obj.id,
+            name: obj.name,
+            absoluteMagnitude: obj.absolute_magnitude_h,
+            estimatedDiameterMeters: {
+              min: obj.estimated_diameter?.meters?.estimated_diameter_min,
+              max: obj.estimated_diameter?.meters?.estimated_diameter_max,
+            },
+            potentiallyHazardous: obj.is_potentially_hazardous_asteroid,
+            sentryObject: obj.is_sentry_object || false,
+            approach: approach ? {
+              date,
+              relativeVelocityKmH: parseFloat(approach.relative_velocity?.kilometers_per_hour),
+              missDistanceKm: parseFloat(approach.miss_distance?.kilometers),
+              missDistanceLunar: parseFloat(approach.miss_distance?.lunar),
+              orbitingBody: approach.orbiting_body,
+            } : null,
+            nasaJplUrl: obj.nasa_jpl_url,
+          });
+        }
+      }
+      objects.sort((a, b) => (a.approach?.missDistanceKm || Infinity) - (b.approach?.missDistanceKm || Infinity));
+      return {
+        ok: true,
+        result: {
+          startDate, endDate,
+          objects,
+          count: objects.length,
+          hazardousCount: objects.filter((o) => o.potentiallyHazardous).length,
+          source: "nasa-neows",
+          usingDemoKey: apiKey === "DEMO_KEY",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `neows unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
