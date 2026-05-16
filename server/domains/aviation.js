@@ -273,4 +273,122 @@ export default function registerAviationActions(registerLensAction) {
     const revenue = slips.filter(s => s.assignedVessel).reduce((sum, s) => sum + (s.rate || 0), 0);
     return { ok: true, result: { marina: artifact.title, utilization, occupied, vacant, total: slips.length, monthlyRevenue: revenue } };
   });
+
+  /**
+   * calculate-wb (Weight & Balance)
+   * Reads aircraft empty W/Arm + loading stations (pilot, copilot, fuel,
+   * baggage, etc.) and returns gross weight + CG. Pre-this-macro the
+   * "W&B Calculate" UI button was a dead click — the alias resolved
+   * to "calculate-wb" but no handler was registered for that name.
+   *
+   * artifact.data.aircraft: { tailNumber, emptyWeight, emptyArm,
+   *                           maxGrossWeight, cgEnvelope: {fwd, aft} }
+   * artifact.data.loading: [{ station, weight, arm }]
+   */
+  registerLensAction("aviation", "calculate-wb", (ctx, artifact, params) => {
+    const ac = artifact.data?.aircraft || params?.aircraft || {};
+    const loading = artifact.data?.loading || params?.loading || [];
+
+    const emptyWeight = Number(ac.emptyWeight) || 0;
+    const emptyArm = Number(ac.emptyArm) || 0;
+    const emptyMoment = emptyWeight * emptyArm;
+
+    const stations = loading.map((l, i) => {
+      const w = Number(l.weight) || 0;
+      const arm = Number(l.arm) || 0;
+      return {
+        idx: i + 1,
+        station: l.station || `Station ${i + 1}`,
+        weight: Math.round(w * 10) / 10,
+        arm: Math.round(arm * 100) / 100,
+        moment: Math.round(w * arm * 10) / 10,
+      };
+    });
+
+    const totalLoadWeight = stations.reduce((s, st) => s + st.weight, 0);
+    const totalLoadMoment = stations.reduce((s, st) => s + st.moment, 0);
+    const grossWeight = Math.round((emptyWeight + totalLoadWeight) * 10) / 10;
+    const totalMoment = Math.round((emptyMoment + totalLoadMoment) * 10) / 10;
+    const cg = grossWeight > 0 ? Math.round((totalMoment / grossWeight) * 100) / 100 : 0;
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      aircraft: { tailNumber: ac.tailNumber, emptyWeight, emptyArm, emptyMoment: Math.round(emptyMoment * 10) / 10 },
+      stations,
+      totals: { loadWeight: Math.round(totalLoadWeight * 10) / 10, loadMoment: Math.round(totalLoadMoment * 10) / 10 },
+      grossWeight,
+      totalMoment,
+      cg,
+      maxGrossWeight: Number(ac.maxGrossWeight) || null,
+      cgEnvelope: ac.cgEnvelope || null,
+      summary: `Gross ${grossWeight} lb @ CG ${cg} in. Total moment ${totalMoment} lb-in.`,
+    };
+    if (artifact.data) artifact.data.lastWB = result;
+    return { ok: true, result };
+  });
+
+  /**
+   * validate-wb
+   * Verify W&B is within the aircraft's envelope. Runs the same math
+   * as calculate-wb and then checks gross weight against maxGrossWeight
+   * + CG against the fwd/aft envelope. Returns severity (ok/warning/
+   * critical) with specific failure reasons. Pre-this-macro the
+   * "Validate W&B" feature in lens-features.js had no handler.
+   */
+  registerLensAction("aviation", "validate-wb", (ctx, artifact, params) => {
+    const ac = artifact.data?.aircraft || params?.aircraft || {};
+    const loading = artifact.data?.loading || params?.loading || [];
+    const emptyWeight = Number(ac.emptyWeight) || 0;
+    const emptyArm = Number(ac.emptyArm) || 0;
+    const totalLoadWeight = loading.reduce((s, l) => s + (Number(l.weight) || 0), 0);
+    const totalLoadMoment = loading.reduce((s, l) => s + ((Number(l.weight) || 0) * (Number(l.arm) || 0)), 0);
+    const grossWeight = emptyWeight + totalLoadWeight;
+    const totalMoment = emptyWeight * emptyArm + totalLoadMoment;
+    const cg = grossWeight > 0 ? totalMoment / grossWeight : 0;
+
+    const maxGross = Number(ac.maxGrossWeight) || null;
+    const cgFwd = Number(ac.cgEnvelope?.fwd) || null;
+    const cgAft = Number(ac.cgEnvelope?.aft) || null;
+
+    const issues = [];
+    if (maxGross != null && grossWeight > maxGross) {
+      issues.push({
+        severity: 'critical', kind: 'over-gross',
+        message: `Gross weight ${grossWeight.toFixed(1)} lb exceeds max ${maxGross.toFixed(1)} lb by ${(grossWeight - maxGross).toFixed(1)} lb. DO NOT FLY.`,
+      });
+    }
+    if (cgFwd != null && cg < cgFwd) {
+      issues.push({
+        severity: 'critical', kind: 'cg-forward',
+        message: `CG ${cg.toFixed(2)} in is forward of envelope (${cgFwd.toFixed(2)} in). Move weight aft.`,
+      });
+    }
+    if (cgAft != null && cg > cgAft) {
+      issues.push({
+        severity: 'critical', kind: 'cg-aft',
+        message: `CG ${cg.toFixed(2)} in is aft of envelope (${cgAft.toFixed(2)} in). Move weight forward.`,
+      });
+    }
+    if (maxGross != null && grossWeight > maxGross * 0.95 && grossWeight <= maxGross) {
+      issues.push({
+        severity: 'warning', kind: 'near-max-gross',
+        message: `Gross weight ${grossWeight.toFixed(1)} lb is within 5% of max ${maxGross.toFixed(1)} lb. Performance margin reduced.`,
+      });
+    }
+
+    const result = {
+      validatedAt: new Date().toISOString(),
+      aircraft: ac.tailNumber || '(unknown)',
+      grossWeight: Math.round(grossWeight * 10) / 10,
+      cg: Math.round(cg * 100) / 100,
+      withinEnvelope: issues.filter(i => i.severity === 'critical').length === 0,
+      issues,
+      overallSeverity: issues.some(i => i.severity === 'critical') ? 'critical' : issues.length > 0 ? 'warning' : 'ok',
+      message: issues.length === 0
+        ? 'Within limits. Gross weight and CG within envelope.'
+        : issues.map(i => i.message).join(' '),
+    };
+    if (artifact.data) artifact.data.lastWBValidation = result;
+    return { ok: true, result };
+  });
 };

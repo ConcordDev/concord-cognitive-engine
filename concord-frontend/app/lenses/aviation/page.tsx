@@ -1694,6 +1694,108 @@ export default function AviationLensPage() {
         ))}
       </div>
 
+      {/* HERO: Flight ops today + Action queue. Per canonical research
+          (FlightAware / FlightRadar24 / NTSB CAROL / ForeFlight):
+          aviation surface should lead with the actionable safety stream
+          + fleet status — NOT a stat grid. The LiveFeed below is the
+          NTSB/FAA alert ticker; this panel is the per-operator
+          go/no-go-style situational awareness. */}
+      {(() => {
+        const all = items.map(i => ({ id: i.id, data: i.data as Record<string, unknown> }));
+        const pilots = all.filter(i => (i.data as { type?: string }).type === 'pilot' || i.data.medicalExpiry);
+        const aircraft = all.filter(i => i.data.tailNumber || (i.data as { type?: string }).type === 'aircraft');
+        const maint = all.filter(i => (i.data as { type?: string }).type === 'maintenance' || i.data.workOrderNumber);
+        const wb = all.filter(i => (i.data as { type?: string }).type === 'wb' || i.data.cgInches);
+
+        const today = new Date();
+        const in30 = new Date(today.getTime() + 30 * 86_400_000);
+        const expiringPilots = pilots.filter(p => {
+          const exp = p.data.medicalExpiry ? new Date(p.data.medicalExpiry as string) : null;
+          return exp && exp > today && exp < in30;
+        }).length;
+        const overdueMaint = maint.filter(m => {
+          const dh = Number(m.data.dueHobbs || 0);
+          const cur = Number(m.data.currentHobbs || 0);
+          return dh > 0 && cur >= dh;
+        }).length;
+        const recentSafetyAlerts = (((realtimeData as { articles?: Array<{ pubDate?: string }> } | null)?.articles) || [])
+          .filter(a => {
+            const pd = a.pubDate ? new Date(a.pubDate) : null;
+            return pd && (today.getTime() - pd.getTime()) < 7 * 86_400_000;
+          }).length;
+
+        const queueItems = [
+          expiringPilots > 0 && {
+            label: `${expiringPilots} pilot${expiringPilots === 1 ? '' : 's'} medical expiring in 30 days`,
+            action: () => { setActiveMode('pilots'); handleAction('currency_check'); },
+            color: 'text-amber-300',
+          },
+          overdueMaint > 0 && {
+            label: `${overdueMaint} aircraft maintenance overdue (Hobbs)`,
+            action: () => { setActiveMode('maintenance'); handleAction('maintenance_alert'); },
+            color: 'text-rose-300',
+          },
+          recentSafetyAlerts > 0 && {
+            label: `${recentSafetyAlerts} NTSB/FAA alert${recentSafetyAlerts === 1 ? '' : 's'} this week — review`,
+            action: () => { /* scroll wire feed below into view */ },
+            color: 'text-sky-300',
+          },
+        ].filter(Boolean) as Array<{ label: string; action: () => void; color: string }>;
+
+        return (
+          <section className="rounded-xl border border-white/10 bg-gradient-to-br from-sky-900/20 via-zinc-900/40 to-amber-900/15 backdrop-blur-sm p-5">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-5">
+              {/* Flight ops snapshot */}
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-sky-300/80 mb-1">Flight ops</div>
+                <div className="flex items-baseline gap-3">
+                  <span className="text-4xl font-light text-zinc-100">{aircraft.length}</span>
+                  <span className="text-sm text-zinc-400">aircraft · {pilots.length} pilot{pilots.length === 1 ? '' : 's'}</span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <div className="text-[10px] text-zinc-500 uppercase">Maintenance</div>
+                    <div className="text-zinc-200 font-medium">{maint.length}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-zinc-500 uppercase">W&amp;B configs</div>
+                    <div className="text-zinc-200 font-medium">{wb.length}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-zinc-500 uppercase">Safety wire</div>
+                    <div className="text-zinc-200 font-medium">{recentSafetyAlerts}/7d</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action queue */}
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-amber-300/80 mb-1">Pre-flight queue</div>
+                {queueItems.length === 0 ? (
+                  <div className="mt-2 text-sm text-zinc-400">
+                    {aircraft.length === 0 ? 'Add an aircraft to begin flight ops tracking.' : 'All clear. Run W&B for today\'s flight to add it here.'}
+                  </div>
+                ) : (
+                  <ul className="mt-2 space-y-1.5">
+                    {queueItems.map((item, i) => (
+                      <li key={i}>
+                        <button
+                          onClick={item.action}
+                          className={cn('w-full text-left text-sm px-3 py-1.5 rounded border border-white/10 hover:border-white/30 bg-white/[0.02] hover:bg-white/[0.05] transition-colors flex items-center justify-between gap-2', item.color)}
+                        >
+                          <span>{item.label}</span>
+                          <span className="text-xs opacity-60">→</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* AI Actions */}
       <UniversalActions domain="aviation" artifactId={items[0]?.id} compact />
       {/* Aviation Safety Wire — NTSB + FAA + ASN live feed */}
