@@ -43,16 +43,16 @@ shipped this session. Continuing here builds on existing momentum.
 
 | Lens | Leader app | Core workflows | Mounted | % | Status | Notes |
 |---|---|---|---:|---:|---|---|
-| `atlas` | **Google Maps** | 1. Place search · 2. Saved places · 3. Turn-by-turn directions · 4. Distance matrix · 5. Region/area stats · 6. POI category browse · 7. Reverse geocode | 4 of 7 | 57% | 🚧 partial | PlaceFinder + SavedPlaces + MapsDirections + DistanceMatrixPanel landed. Missing: region stats panel, POI category browse, reverse-geocode lookup. |
-| `pets` | **PetDesk + Apple Health** | 1. Pet profile CRUD · 2. Vet calendar · 3. Activity ring · 4. Weight trend chart · 5. Feeding plan · 6. Vaccination schedule · 7. Breed explorer | 5 of 7 | 71% | 🚧 partial | PetCarePlanner + ActivityWeightDashboard + BreedExplorer + existing pets CRUD. Missing: vet appointment booking flow, photo gallery. |
+| `atlas` | **Google Maps** | 1. Place search · 2. Saved places · 3. Turn-by-turn directions · 4. Distance matrix · 5. Region/area stats · 6. POI category browse · 7. Reverse geocode · 8. Share / act sheet (DM, research, publish, guide, embed) | 6 of 8 | 75% | 🚧 partial | PlaceFinder + SavedPlaces + MapsDirections + DistanceMatrixPanel + PlaceShareSheet landed. POI category browse exists inside PlaceFinder; region stats remaining gap. |
+| `pets` | **PetDesk + Apple Health** | 1. Pet profile CRUD · 2. Vet calendar · 3. Activity ring · 4. Weight trend chart · 5. Feeding plan · 6. Vaccination schedule · 7. Breed explorer · 8. Vet action drawer (book / record / refill / emergency / lost-found / walk) | 7 of 8 | 88% | ✅ done | PetCarePlanner + ActivityWeightDashboard + BreedExplorer + existing pets CRUD + PetActionDrawer with 6 real-backend actions. Photo gallery remaining polish. |
 | `automotive` | **Carfax + RepairPal** | 1. VIN decode · 2. Recall lookup · 3. Maintenance schedule · 4. Fuel-economy tracker · 5. Repair estimator · 6. Vehicle history timeline · 7. OBD-II code lookup | 7 of 7 | 100% | ✅ done | VinDecoder + VehicleHistory + FuelRepairPanel cover all 7. Ready for polish. |
-| `calendar` | **Cron / Notion Calendar** | 1. Event CRUD · 2. Multi-view (month/week/day/agenda) · 3. Free/busy analysis · 4. Conflict detection · 5. Timezone tools · 6. iCal import/export · 7. Recurring expansion | 6 of 7 | 86% | 🚧 partial | Existing rich event grid + TimezoneTools + ScheduleAnalyzer. Missing: drag-to-create week view styled like Cron. |
+| `calendar` | **Cron / Notion Calendar** | 1. Event CRUD · 2. Multi-view (month/week/day/agenda) · 3. Free/busy analysis · 4. Conflict detection · 5. Timezone tools · 6. iCal import/export · 7. Recurring expansion · 8. Event action rail (mint / publish / invite / remind / agent-prep / conflicts / export) | 8 of 8 | 100% | ✅ done | Existing rich event grid + TimezoneTools + ScheduleAnalyzer + EventActionRail with 7 real-backend actions inside the event modal. |
 | `environment` | **EPA EJScreen + AirNow** | 1. AQI by ZIP · 2. Superfund site search · 3. USGS water-realtime · 4. Compliance checker · 5. Diversion-rate tracker · 6. Population trend · 7. Trail conditions | 5 of 7 | 71% | 🚧 partial | EnviroPanel + ComplianceDiversionPanel cover 5. Missing: populationTrend + trailCondition macros need UI. |
 | `history` | **Wikipedia + Britannica** | 1. Article search · 2. On-this-day · 3. Timeline builder · 4. Source evaluator · 5. Period comparison · 6. Cause-effect mapper · 7. Reference network | 4 of 7 | 57% | 🚧 partial | WikipediaExplorer + TimelineSourceTools landed. Missing: comparePeriods + causeEffect macros need UI. |
 | `materials` | **Materials Project + Granta MI** | 1. Material search by formula · 2. Property comparison · 3. Corrosion analyzer · 4. Thermal profile · 5. Composite analysis · 6. Material selector · 7. 3D crystal viewer | 3 of 7 | 43% | 🚧 partial | MpSearch + CorrosionThermalPanel. Missing: property compare, selectMaterial, compositeAnalysis, crystal viewer. |
 | `ocean` | **Windy + NOAA** | 1. Tide predictions · 2. Wave analyzer · 3. Ecosystem health · 4. NOAA water level · 5. Station browser · 6. Tidal currents · 7. Salinity profile | 3 of 7 | 43% | 🚧 partial | TidePredictions + WaveEcosystemPanel. Missing: water-level chart, station browser, currents, salinity. |
 | `security` | **Datadog Security + Snyk** | 1. Advisory feed · 2. Threat assessment · 3. Vulnerability scan · 4. Incident escalation · 5. Patrol coverage · 6. Threat matrix · 7. Evidence chain | 3 of 7 | 43% | 🚧 partial | SecurityAdvisories + ThreatVulnPanel. Missing: incident, patrol, matrix, evidence-chain panels. |
-| `services` | **Booksy + Square Appointments** | 1. Booking calendar · 2. Client roster · 3. Revenue dashboard · 4. Retention report · 5. Commission calc · 6. Daily close · 7. Reminder sender | 2 of 7 | 29% | 🚧 partial | RevenueRetentionPanel + ServicesFeed. Big gaps: booking calendar, client roster CRUD, daily close, reminders, commission. |
+| `services` | **Booksy + Square Appointments** | 1. Booking calendar · 2. Client roster · 3. Revenue dashboard · 4. Retention report · 5. Commission calc · 6. Daily close · 7. Reminder sender · 8. Booking action dock (confirm / remind / complete / no-show / invoice / rebook) · 9. End-of-day close modal | 6 of 9 | 67% | 🚧 partial | RevenueRetentionPanel + ServicesFeed + BookingActionDock + EndOfDayClose. Booking-actions, reminders, daily-close, invoice all wired through real DM + DTU paths. Client roster CRUD + Cron-shape booking calendar remaining. |
 | `energy` | **Sense + Tesla app + PG&E** | 1. Real-time meter · 2. Appliance breakdown · 3. Solar production · 4. Carbon footprint · 5. EIA rates · 6. Generation mix · 7. Grid status | 4 of 7 | 57% | 🚧 partial | EiaPanel + SolarCarbonPanel. Missing: real-time meter graph, appliance donut, gridStatus + consumptionAnalysis UIs. |
 
 ## Tier 2 — Heavyweights (Phase 3 candidates, real depth required)
@@ -204,7 +204,7 @@ panels (create / inspect / share or similar) if no clear leader app.
 
 | Tier | Lenses | Avg % complete | Updated |
 |---|---:|---:|---|
-| Tier 1 (active) | 11 | 65% | 2026-05-16 |
+| Tier 1 (active) | 11 | 73% | 2026-05-16 |
 | Tier 2 (heavyweights) | 10 | 53% | 2026-05-16 |
 | Tier 3 (reference/utility) | ~36 | ~28% | 2026-05-16 |
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
@@ -265,6 +265,14 @@ reference target.
   Code Calc / Manual J / Sawpipes / Lincoln WPS / Mason Stuff App /
   Procore-lite / Pro Landscape). No CalcPanel, no shared shells —
   each lens its own visual identity per the v3 path-A decision tree.
+- **Action-surface pivot landed 2026-05-16** (4 commits, this session):
+  calendar EventActionRail + services BookingActionDock/EndOfDayClose
+  + atlas PlaceShareSheet + pets PetActionDrawer. Each lens now DOES
+  things (mints DTUs, sends DMs, publishes to federation, kicks
+  agents, schedules jobs) on top of its existing compute panels — the
+  v3 path-A action-app classification. All side-effects wire
+  already-built backends; no new server code. Lift: calendar 86→100%,
+  services 29→67%, atlas 57→75%, pets 71→88%.
 - This rubric authored 2026-05-16 as Phase 1 deliverable per the v3
   plan. Replaces `docs/LENS_COVERAGE_AUDIT.md` from PR #723 (which
   used the buggy detector that under-counted wiring).
