@@ -300,4 +300,92 @@ export default function registerRealEstateActions(registerLensAction) {
     saveREState();
     return { ok: true, result: { deleted: id } };
   });
+
+  // ── Neighborhood stats (real Census ACS + Census Geocoder) ──
+  //
+  // Two-step lookup: street address → census tract via the Census Geocoder
+  // (free, no key), then tract → ACS 5-year demographic + economic data
+  // (free, no key for non-bulk requests; production deploy can register a
+  // free CENSUS_API_KEY at api.census.gov/data/key_signup.html to raise
+  // the rate limit).
+  //
+  // Returns real demographics: median household income, population,
+  // median age, education breakdown, housing tenure, commute time.
+
+  registerLensAction("realestate", "neighborhood-stats", async (_ctx, _artifact, params = {}) => {
+    const address = String(params.address || "").trim();
+    if (!address) return { ok: false, error: "address required (e.g. '1600 Pennsylvania Ave NW, Washington, DC')" };
+    try {
+      // Step 1: Geocode address → tract
+      const geocodeUrl = `https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`;
+      const geoR = await globalThis.fetch(geocodeUrl);
+      if (!geoR.ok) return { ok: false, error: `census geocoder ${geoR.status}` };
+      const geoData = await geoR.json();
+      const match = (geoData?.result?.addressMatches || [])[0];
+      if (!match) return { ok: false, error: `address not geocoded: '${address}'` };
+      const tract = match.geographies?.["Census Tracts"]?.[0];
+      if (!tract) return { ok: false, error: "address geocoded but no census tract resolved" };
+      const stateFips = tract.STATE;
+      const countyFips = tract.COUNTY;
+      const tractFips = tract.TRACT;
+      // Step 2: ACS 5-year data for that tract
+      // Variables: B19013_001E (median household income),
+      //   B01003_001E (total pop), B01002_001E (median age),
+      //   B15003_022E (bachelor's degree count),
+      //   B25003_002E (owner-occupied units), B25003_003E (renter-occupied),
+      //   B08303_001E (commute aggregate)
+      const vars = "NAME,B19013_001E,B01003_001E,B01002_001E,B15003_022E,B25003_002E,B25003_003E,B08303_001E";
+      const apiKeyParam = process.env.CENSUS_API_KEY ? `&key=${encodeURIComponent(process.env.CENSUS_API_KEY)}` : "";
+      const acsUrl = `https://api.census.gov/data/2022/acs/acs5?get=${vars}&for=tract:${tractFips}&in=state:${stateFips}+county:${countyFips}${apiKeyParam}`;
+      const acsR = await globalThis.fetch(acsUrl);
+      if (!acsR.ok) return { ok: false, error: `census ACS ${acsR.status}` };
+      const acsData = await acsR.json();
+      if (!Array.isArray(acsData) || acsData.length < 2) {
+        return { ok: false, error: "no ACS data for tract" };
+      }
+      // Row 0 is headers, row 1 is data
+      const headers = acsData[0];
+      const row = acsData[1];
+      const get = (name) => row[headers.indexOf(name)];
+      const medianIncome = Number(get("B19013_001E"));
+      const totalPop = Number(get("B01003_001E"));
+      const medianAge = Number(get("B01002_001E"));
+      const bachelorsCount = Number(get("B15003_022E"));
+      const ownerOcc = Number(get("B25003_002E"));
+      const renterOcc = Number(get("B25003_003E"));
+      const totalHousing = ownerOcc + renterOcc;
+      return {
+        ok: true,
+        result: {
+          address,
+          matchedAddress: match.matchedAddress,
+          coords: { lat: match.coordinates?.y, lng: match.coordinates?.x },
+          tract: { state: stateFips, county: countyFips, tract: tractFips, name: get("NAME") },
+          demographics: {
+            totalPopulation: totalPop,
+            medianAge,
+            bachelorsOrHigherCount: bachelorsCount,
+            bachelorsOrHigherPct: totalPop > 0 ? Math.round((bachelorsCount / totalPop) * 10000) / 100 : null,
+          },
+          economics: {
+            medianHouseholdIncome: medianIncome,
+            medianIncomeUSD: medianIncome > 0 ? `$${medianIncome.toLocaleString()}` : null,
+          },
+          housing: {
+            ownerOccupiedUnits: ownerOcc,
+            renterOccupiedUnits: renterOcc,
+            totalUnits: totalHousing,
+            ownerOccupiedPct: totalHousing > 0 ? Math.round((ownerOcc / totalHousing) * 10000) / 100 : null,
+            renterOccupiedPct: totalHousing > 0 ? Math.round((renterOcc / totalHousing) * 10000) / 100 : null,
+          },
+          source: "Census ACS 5-year 2022 (free, US Census Bureau)",
+          notes: process.env.CENSUS_API_KEY
+            ? "Authed request (CENSUS_API_KEY set)"
+            : "Unauthed request — register a free key at https://api.census.gov/data/key_signup.html to raise the rate limit",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `neighborhood stats failed: ${e?.message || "network"}` };
+    }
+  });
 };

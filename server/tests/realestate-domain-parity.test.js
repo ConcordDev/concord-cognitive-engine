@@ -73,6 +73,58 @@ describe("realestate — rent vs buy", () => {
   });
 });
 
+describe("realestate — neighborhood-stats (Census ACS live)", () => {
+  it("rejects empty address", async () => {
+    const r = await call("neighborhood-stats", ctxA, { address: "" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /address required/);
+  });
+
+  it("returns error when geocoder returns no match", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ result: { addressMatches: [] } }),
+    });
+    const r = await call("neighborhood-stats", ctxA, { address: "999 Fake St" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not geocoded/);
+  });
+
+  it("parses full two-step Census flow", async () => {
+    let callIdx = 0;
+    globalThis.fetch = async (url) => {
+      callIdx++;
+      if (url.includes("geocoder")) {
+        return {
+          ok: true,
+          json: async () => ({
+            result: { addressMatches: [{
+              matchedAddress: "1600 PENNSYLVANIA AVE NW, WASHINGTON, DC, 20500",
+              coordinates: { x: -77.036, y: 38.898 },
+              geographies: { "Census Tracts": [{ STATE: "11", COUNTY: "001", TRACT: "006202" }] },
+            }] },
+          }),
+        };
+      }
+      // ACS endpoint
+      return {
+        ok: true,
+        json: async () => ([
+          ["NAME", "B19013_001E", "B01003_001E", "B01002_001E", "B15003_022E", "B25003_002E", "B25003_003E", "B08303_001E", "state", "county", "tract"],
+          ["Census Tract 62.02", "120000", "3500", "38.5", "1200", "800", "700", "5000", "11", "001", "006202"],
+        ]),
+      };
+    };
+    const r = await call("neighborhood-stats", ctxA, { address: "1600 Pennsylvania Ave NW, Washington, DC" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.demographics.totalPopulation, 3500);
+    assert.equal(r.result.economics.medianHouseholdIncome, 120000);
+    assert.equal(r.result.housing.ownerOccupiedUnits, 800);
+    assert.match(r.result.source, /Census ACS/);
+    assert.equal(callIdx, 2); // geocode + ACS
+  });
+});
+
 describe("realestate — saved searches", () => {
   it("create + list", () => {
     call("save-search", ctxA, { name: "Austin 3BR", alertCadence: "daily" });
