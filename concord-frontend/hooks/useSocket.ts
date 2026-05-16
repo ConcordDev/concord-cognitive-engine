@@ -92,6 +92,11 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'whiteboard:scene-update',
   'whiteboard:cursor',
   'whiteboard:vote-cast',
+  // Message lens multi-device sync
+  'message:saved',
+  'message:unsaved',
+  'message:reacted',
+  'message:voice-registered',
   // Resonance
   'resonance:update',
   // Platform presence

@@ -241,6 +241,27 @@ export const EVENT_SHAPES = Object.freeze({
     required: ["boardId", "elementId", "voterId", "voteCount"],
     optional: [],
   },
+
+  // ── Message lens multi-device sync ────────────────────────────────
+  // Emitted by server/domains/message.js to room `user:${userId}` so
+  // a save/react/voice action on one device flips instantly on every
+  // other device the same user has open.
+  "message:saved": {
+    required: ["userId", "messageId"],
+    optional: ["threadId", "entry"],
+  },
+  "message:unsaved": {
+    required: ["userId", "messageId"],
+    optional: [],
+  },
+  "message:reacted": {
+    required: ["userId", "messageId", "emoji", "count"],
+    optional: [],
+  },
+  "message:voice-registered": {
+    required: ["userId", "messageId", "durationMs"],
+    optional: [],
+  },
 });
 
 /**
