@@ -18,24 +18,10 @@ interface Stream { name: string; volume: string }
 interface ComplianceResult { results?: Array<{ parameter: string; value: number; unit: string; threshold?: { min?: number; max?: number }; compliant: boolean }>; overallCompliant?: boolean; violations?: number; checkedAt?: string }
 interface DiversionResult { diversionRate?: number; totalWaste?: number; diverted?: number; landfilled?: number; target?: number; meetsTarget?: boolean; streams?: Stream[] }
 
-const DEFAULT_PARAMS: Param[] = [
-  { name: 'pH', value: '7.2', unit: 'pH', min: '6.5', max: '8.5' },
-  { name: 'Lead (Pb)', value: '0.008', unit: 'mg/L', min: '0', max: '0.015' },
-  { name: 'Turbidity', value: '0.9', unit: 'NTU', min: '0', max: '1.0' },
-  { name: 'Nitrate', value: '12', unit: 'mg/L', min: '0', max: '10' },
-];
-
-const DEFAULT_STREAMS: Stream[] = [
-  { name: 'Cardboard', volume: '850' },
-  { name: 'Glass', volume: '320' },
-  { name: 'Aluminum', volume: '180' },
-  { name: 'Organics (compost)', volume: '450' },
-];
-
 export function ComplianceDiversionPanel() {
-  const [params, setParams] = useState<Param[]>(DEFAULT_PARAMS);
-  const [streams, setStreams] = useState<Stream[]>(DEFAULT_STREAMS);
-  const [totalWaste, setTotalWaste] = useState(3500);
+  const [params, setParams] = useState<Param[]>([{ name: '', value: '', unit: '', min: '', max: '' }]);
+  const [streams, setStreams] = useState<Stream[]>([{ name: '', volume: '' }]);
+  const [totalWaste, setTotalWaste] = useState(0);
   const [target, setTarget] = useState(50);
 
   const addParam = () => setParams((ps) => [...ps, { name: '', value: '', unit: '', min: '', max: '' }]);
