@@ -22,6 +22,7 @@ import { } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
+import { WorldBuilderInspo } from '@/components/world-creator/WorldBuilderInspo';
 
 const UNIVERSE_TYPES = [
   { id: 'concordia-hub', label: 'Concordia (default)', description: 'Earth-like physics, balanced ecosystem.' },
@@ -227,8 +228,11 @@ export default function WorldCreatorPage() {
             </Link>
           </div>
         </form>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <WorldBuilderInspo />
+        </section>
       </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
