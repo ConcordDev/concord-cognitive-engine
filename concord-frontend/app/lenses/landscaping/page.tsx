@@ -31,6 +31,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
+import { PlantFinder } from '@/components/landscaping/PlantFinder';
 
 type ModeTab =
   | 'jobs'
@@ -710,6 +711,9 @@ export default function LandscapingLensPage() {
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <PlantFinder />
+      </section>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
