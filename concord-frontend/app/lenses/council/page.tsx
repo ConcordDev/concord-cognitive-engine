@@ -5,6 +5,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { CouncilVoices } from '@/components/council/CouncilVoices';
+import { CouncilActionPanel } from '@/components/council/CouncilActionPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -3439,6 +3440,11 @@ export default function CouncilLensPage() {
       )}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CouncilVoices />
+      </section>
+
+      {/* DAO + IBIS-shape governance workbench: deliberate / vote / minutes / resolve + actions */}
+      <section className="mt-6">
+        <CouncilActionPanel />
       </section>
     </div>
 
