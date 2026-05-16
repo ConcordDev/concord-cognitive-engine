@@ -27,6 +27,17 @@ export default function registerMessageActions(registerLensAction) {
   function nextMsgId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function nowIsoMsg() { return new Date().toISOString(); }
 
+  // Multi-device sync: emit to the per-user room so a star/react/voice
+  // on one device flips instantly on every other device the user has
+  // open. The DM substrate already broadcasts the messages themselves;
+  // this is purely the lens-scoped layer (saves / reactions / voice).
+  function emitToUserRoom(userId, name, payload) {
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`user:${userId}`).emit(name, { userId, ...payload, ts: Date.now() });
+    } catch (_e) { /* best effort */ }
+  }
+
   // ── Saved (starred) messages ──
 
   registerLensAction("message", "saved-list", (ctx, _artifact, _params = {}) => {
@@ -60,6 +71,7 @@ export default function registerMessageActions(registerLensAction) {
     };
     s.saved.get(userId).set(messageId, entry);
     saveMessageState();
+    emitToUserRoom(userId, "message:saved", { messageId, threadId, entry });
     return { ok: true, result: { entry } };
   });
 
@@ -73,6 +85,7 @@ export default function registerMessageActions(registerLensAction) {
     if (!map || !map.has(messageId)) return { ok: false, error: "not saved" };
     map.delete(messageId);
     saveMessageState();
+    emitToUserRoom(userId, "message:unsaved", { messageId });
     return { ok: true, result: { unsaved: messageId } };
   });
 
@@ -148,7 +161,9 @@ export default function registerMessageActions(registerLensAction) {
     const reactMap = userMap.get(messageId);
     reactMap.set(emoji, (reactMap.get(emoji) || 0) + 1);
     saveMessageState();
-    return { ok: true, result: { messageId, emoji, count: reactMap.get(emoji) } };
+    const count = reactMap.get(emoji);
+    emitToUserRoom(userId, "message:reacted", { messageId, emoji, count });
+    return { ok: true, result: { messageId, emoji, count } };
   });
 
   registerLensAction("message", "unreact", (ctx, _artifact, params = {}) => {
@@ -167,7 +182,9 @@ export default function registerMessageActions(registerLensAction) {
     if (next <= 0) reactMap.delete(emoji);
     else reactMap.set(emoji, next);
     saveMessageState();
-    return { ok: true, result: { messageId, emoji, count: reactMap.get(emoji) || 0 } };
+    const count = reactMap.get(emoji) || 0;
+    emitToUserRoom(userId, "message:reacted", { messageId, emoji, count });
+    return { ok: true, result: { messageId, emoji, count } };
   });
 
   registerLensAction("message", "reactions-for", (ctx, _artifact, params = {}) => {
@@ -203,6 +220,7 @@ export default function registerMessageActions(registerLensAction) {
     if (!s.voice.has(userId)) s.voice.set(userId, new Map());
     s.voice.get(userId).set(messageId, meta);
     saveMessageState();
+    emitToUserRoom(userId, "message:voice-registered", { messageId, durationMs });
     return { ok: true, result: { meta } };
   });
 

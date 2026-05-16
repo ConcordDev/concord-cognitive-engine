@@ -147,3 +147,79 @@ describe("message — STATE unavailable path", () => {
     assert.equal(r.ok, false);
   });
 });
+
+describe("message — multi-device realtime sync (per-user room fan-out)", () => {
+  function captureRealtimeEmits() {
+    const events = [];
+    globalThis._concordREALTIME = {
+      io: { to: (room) => ({ emit: (name, payload) => events.push({ room, name, payload }) }) },
+    };
+    return events;
+  }
+
+  it("save-message emits message:saved to user:${userId} room only", () => {
+    const events = captureRealtimeEmits();
+    const r = call("save-message", ctxA, { messageId: "m1", threadId: "t1", sender: "alice", body: "hi" });
+    assert.equal(r.ok, true);
+    const e = events.find((ev) => ev.name === "message:saved");
+    assert.ok(e);
+    assert.equal(e.room, "user:user_a");
+    // userId injected by emitToUserRoom
+    assert.equal(e.payload.userId, "user_a");
+    assert.equal(e.payload.messageId, "m1");
+    assert.equal(e.payload.threadId, "t1");
+  });
+
+  it("unsave-message emits message:unsaved", () => {
+    call("save-message", ctxA, { messageId: "m1", body: "hi" });
+    const events = captureRealtimeEmits();
+    call("unsave-message", ctxA, { messageId: "m1" });
+    const e = events.find((ev) => ev.name === "message:unsaved");
+    assert.ok(e);
+    assert.equal(e.payload.messageId, "m1");
+  });
+
+  it("react emits message:reacted with current count", () => {
+    const events = captureRealtimeEmits();
+    call("react", ctxA, { messageId: "m1", emoji: "👍" });
+    call("react", ctxA, { messageId: "m1", emoji: "👍" });
+    const reactEvents = events.filter((ev) => ev.name === "message:reacted");
+    assert.equal(reactEvents.length, 2);
+    assert.equal(reactEvents[1].payload.count, 2);
+    assert.equal(reactEvents[1].payload.emoji, "👍");
+  });
+
+  it("unreact emits message:reacted with decremented count", () => {
+    call("react", ctxA, { messageId: "m1", emoji: "👍" });
+    call("react", ctxA, { messageId: "m1", emoji: "👍" });
+    const events = captureRealtimeEmits();
+    call("unreact", ctxA, { messageId: "m1", emoji: "👍" });
+    const e = events.find((ev) => ev.name === "message:reacted");
+    assert.ok(e);
+    assert.equal(e.payload.count, 1);
+  });
+
+  it("voice-register emits message:voice-registered", () => {
+    const events = captureRealtimeEmits();
+    call("voice-register", ctxA, { messageId: "m1", durationMs: 1500 });
+    const e = events.find((ev) => ev.name === "message:voice-registered");
+    assert.ok(e);
+    assert.equal(e.payload.durationMs, 1500);
+  });
+
+  it("realtime emit failure does not throw (best-effort)", () => {
+    globalThis._concordREALTIME = {
+      io: { to: () => ({ emit: () => { throw new Error("socket dead"); } }) },
+    };
+    const r = call("save-message", ctxA, { messageId: "m1", body: "hi" });
+    assert.equal(r.ok, true);
+  });
+
+  it("INVARIANT: emits use user:${userId} as the room (per-user scoping, not per-thread)", () => {
+    const events = captureRealtimeEmits();
+    call("save-message", ctxA, { messageId: "m1", body: "x" });
+    call("save-message", ctxB, { messageId: "m2", body: "y" });
+    const rooms = events.filter((ev) => ev.name === "message:saved").map((ev) => ev.room);
+    assert.deepEqual(rooms.sort(), ["user:user_a", "user:user_b"]);
+  });
+});

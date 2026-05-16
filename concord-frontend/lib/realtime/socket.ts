@@ -168,6 +168,11 @@ export type SocketEvent =
   | 'whiteboard:scene-update'
   | 'whiteboard:cursor'
   | 'whiteboard:vote-cast'
+  // Message lens multi-device sync (server/domains/message.js, room user:${userId})
+  | 'message:saved'
+  | 'message:unsaved'
+  | 'message:reacted'
+  | 'message:voice-registered'
   // Creative Registry & Royalties
   | 'creative_registry:update'
   | 'marketplace:purchase'
