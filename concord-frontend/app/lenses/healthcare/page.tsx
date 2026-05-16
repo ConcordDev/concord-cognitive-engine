@@ -7,6 +7,7 @@ import MedicationTracker from '@/components/healthcare/MedicationTracker';
 import PatientChart from '@/components/healthcare/PatientChart';
 import AppointmentScheduler from '@/components/healthcare/AppointmentScheduler';
 import RxPriceCompare from '@/components/healthcare/RxPriceCompare';
+import { ProviderDirectory } from '@/components/healthcare/ProviderDirectory';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -94,7 +95,8 @@ type ModeTab =
   | 'SymptomAI'
   | 'Meds'
   | 'Appointments'
-  | 'RxPrice';
+  | 'RxPrice'
+  | 'Providers';
 type ArtifactType =
   | 'Patient'
   | 'Encounter'
@@ -187,6 +189,7 @@ const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; 
   { id: 'Meds', icon: Pill, defaultType: 'Patient' },
   { id: 'Appointments', icon: Calendar, defaultType: 'Encounter' },
   { id: 'RxPrice', icon: DollarSign, defaultType: 'Patient' },
+  { id: 'Providers', icon: Search, defaultType: 'Patient' },
 ];
 
 const ALL_STATUSES: Status[] = ['scheduled', 'active', 'completed', 'cancelled', 'archived'];
@@ -1983,6 +1986,7 @@ export default function HealthcareLensPage() {
               {activeTab === 'Meds' && <div className="w-full mt-4"><MedicationTracker /></div>}
               {activeTab === 'Appointments' && <div className="w-full mt-4"><AppointmentScheduler /></div>}
               {activeTab === 'RxPrice' && <div className="w-full mt-4"><RxPriceCompare /></div>}
+              {activeTab === 'Providers' && <div className="w-full mt-4"><ProviderDirectory /></div>}
               {/* View mode toggle for Patients tab */}
               {activeTab === 'Patients' && (
                 <div className="flex items-center border border-lattice-border rounded-lg overflow-hidden">
