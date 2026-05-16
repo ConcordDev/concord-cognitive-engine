@@ -25,6 +25,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecipeLedger } from '@/components/crafting/RecipeLedger';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import {
   useArtifacts,
@@ -273,8 +274,11 @@ export default function CraftingPage() {
             <RecipeAuthorPanel onPublished={() => { setTab('mine'); refreshHeader(); }} />
           </section>
         )}
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <RecipeLedger />
+        </section>
       </main>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
