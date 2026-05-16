@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { CountryAtlas } from '@/components/global/CountryAtlas';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -680,6 +681,9 @@ export default function GlobalLensPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <CountryAtlas />
+      </section>
     </div>
     </LensShell>
   );
