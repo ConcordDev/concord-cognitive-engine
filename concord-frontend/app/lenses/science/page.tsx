@@ -48,6 +48,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -2125,6 +2126,14 @@ export default function ScienceLensPage() {
           </div>
 
           {/* Real-time Data Panel */}
+          {/* Live arXiv papers — broad science categories */}
+          <LiveFeed
+            articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+            domain="research"
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            limit={8}
+          />
           {realtimeData && (
             <RealtimeDataPanel
               domain="science"

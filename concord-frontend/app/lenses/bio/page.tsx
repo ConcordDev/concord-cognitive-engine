@@ -18,6 +18,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 
 interface BioMetric {
   name: string;
@@ -150,6 +151,14 @@ export default function BioLensPage() {
         </div>
       )}
 
+      {/* Live arXiv papers — q-bio / bio.* categories */}
+      <LiveFeed
+        articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+        domain="research"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={8}
+      />
       <RealtimeDataPanel domain="bio" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <UniversalActions domain="bio" artifactId={null} compact />
       <DTUExportButton domain="bio" data={{}} compact />

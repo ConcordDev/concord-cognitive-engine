@@ -35,6 +35,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 
 // Physics body types
 interface Vector2D {
@@ -1585,6 +1586,14 @@ export default function PhysicsLensPage() {
           </div>
         </div>
 
+      {/* Live arXiv papers — physics.* + hep-* categories */}
+      <LiveFeed
+        articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+        domain="research"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={8}
+      />
       {/* Real-time Data Panel */}
       {realtimeData && (
         <>

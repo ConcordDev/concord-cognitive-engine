@@ -62,6 +62,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import LiveFeed from '@/components/lens/LiveFeed';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -974,6 +975,14 @@ export default function RealEstateLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="realestate" artifactId={items[0]?.id} compact />
+      {/* Housing Wire — HUD + Realtor.com Research live feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="realestate"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
       <RealtimeDataPanel
         domain="realestate"
         data={realtimeData}

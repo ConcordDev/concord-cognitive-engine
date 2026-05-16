@@ -70,6 +70,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 
 /* ------------------------------------------------------------------ */
@@ -1588,6 +1589,14 @@ export default function HealthcareLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="healthcare" artifactId={items[0]?.id} compact />
+      {/* Live WHO health alerts */}
+      <LiveFeed
+        articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+        domain="legal"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={8}
+      />
       <RealtimeDataPanel
         domain="healthcare"
         data={realtimeData}

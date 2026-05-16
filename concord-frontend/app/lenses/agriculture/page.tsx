@@ -49,6 +49,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import LiveFeed from '@/components/lens/LiveFeed';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1461,6 +1462,15 @@ export default function AgricultureLensPage() {
           )}
         </div>
       </header>
+
+      {/* Ag Wire — USDA AMS + USDA Press live feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="agriculture"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+      />
 
       <RealtimeDataPanel
         domain="agriculture"

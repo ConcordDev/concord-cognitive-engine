@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
@@ -268,7 +268,54 @@ export default function FinanceLensPage() {
     [assetItems, runFinanceAction]
   );
 
-  const assets: Asset[] = assetItems.map((i) => ({ ...(i.data as unknown as Asset), id: i.id }));
+  // Live market feed (Yahoo Finance — NASDAQ ^IXIC, S&P ^GSPC, Dow
+  // ^DJI, Russell 2000 ^RUT, VIX ^VIX). Pre-this-fix realtimeData
+  // populated only the side RealtimeDataPanel — now folded into the
+  // main asset list so the trading dashboard's ticker grid shows real
+  // market data, not just the user-portfolio shape.
+  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('finance');
+
+  const liveAssets: Asset[] = useMemo(() => {
+    const quotes = ((realtimeData as { quotes?: Array<Record<string, unknown>> } | null)?.quotes) || [];
+    return quotes.map((q) => {
+      const sym = String(q.symbol || '').replace('^', '');
+      const price = Number(q.price) || 0;
+      const change = Number(q.change) || 0;
+      const changePct = Number(q.changePercent) || 0;
+      const NAME_MAP: Record<string, string> = { GSPC: 'S&P 500', DJI: 'Dow Jones', IXIC: 'NASDAQ Composite', RUT: 'Russell 2000', VIX: 'CBOE VIX' };
+      return {
+        id: `live-${sym}`,
+        symbol: sym,
+        name: NAME_MAP[sym] || sym,
+        type: 'stock',
+        price,
+        change24h: change,
+        changePercent24h: changePct,
+        volume24h: 0,
+        holdings: 0,
+        value: 0,
+        avgBuyPrice: 0,
+        pnl: 0,
+        pnlPercent: 0,
+        allocation: 0,
+      } as Asset;
+    });
+  }, [realtimeData]);
+
+  const userAssets: Asset[] = assetItems.map((i) => ({ ...(i.data as unknown as Asset), id: i.id }));
+  // Live indices first (market overview), then user-portfolio assets.
+  // Dedup by symbol so a user-held NASDAQ-listed ticker doesn't appear twice.
+  const assets: Asset[] = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Asset[] = [];
+    for (const a of [...liveAssets, ...userAssets]) {
+      const key = (a.symbol || a.id || '').toUpperCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(a);
+    }
+    return out;
+  }, [liveAssets, userAssets]);
   const transactions: Transaction[] = txItems.map((i) => ({
     ...(i.data as unknown as Transaction),
     id: i.id,
@@ -282,8 +329,6 @@ export default function FinanceLensPage() {
 
   const isLoading =
     isLoadingAssets || isLoadingTx || isLoadingOrders || isLoadingAlerts || isLoadingNews;
-
-  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('finance');
 
   const chartRef = useRef<HTMLCanvasElement>(null);
 

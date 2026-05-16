@@ -5,7 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Coins, TrendingUp, Lock, RefreshCw, ArrowRightLeft,
@@ -200,14 +200,63 @@ export default function CryptoLensPage() {
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
-  const chains = chainItems.map(item => ({
+  // Live coin quotes (CoinGecko free API: BTC/ETH/SOL/ADA/DOT) folded
+  // into the chains list so the wallet view shows real prices instead
+  // of only user-deposited tokens. realtimeData arrives via the
+  // useRealtimeLens('crypto') hook above; the price field updates
+  // every ~75s, the dashboard reactively re-totals.
+  const userChains = chainItems.map(item => ({
     id: item.data.chainId || item.id,
     name: item.data.name || item.title,
     symbol: item.data.symbol || '??',
     balance: item.data.balance ?? 0,
     price: item.data.price ?? 0,
     _lensId: item.id,
+    change24h: 0,
+    marketCap: 0,
   }));
+
+  const liveCoinMap = useMemo(() => {
+    const m = new Map<string, { price: number; change24h: number; marketCap: number }>();
+    const coins = ((realtimeData as { coins?: Array<{ id: string; price: number; change24h: string; marketCap: number }> } | null)?.coins) || [];
+    const SYM: Record<string, string> = { bitcoin: 'BTC', ethereum: 'ETH', solana: 'SOL', cardano: 'ADA', polkadot: 'DOT' };
+    for (const c of coins) {
+      const sym = SYM[c.id] || c.id.toUpperCase().slice(0, 5);
+      m.set(sym, { price: Number(c.price) || 0, change24h: Number(c.change24h) || 0, marketCap: Number(c.marketCap) || 0 });
+      m.set(c.id, m.get(sym)!);
+    }
+    return m;
+  }, [realtimeData]);
+
+  const chains = useMemo(() => {
+    // Patch user holdings with live prices when we have them.
+    const patched = userChains.map(c => {
+      const live = liveCoinMap.get((c.symbol || '').toUpperCase()) || liveCoinMap.get(c.id);
+      return live
+        ? { ...c, price: live.price, change24h: live.change24h, marketCap: live.marketCap }
+        : c;
+    });
+    // Append live coins the user doesn't hold yet (balance=0) so the
+    // market overview still shows them. Dedup by symbol.
+    const heldSymbols = new Set(patched.map(c => (c.symbol || '').toUpperCase()));
+    const SYM: Record<string, string> = { bitcoin: 'BTC', ethereum: 'ETH', solana: 'SOL', cardano: 'ADA', polkadot: 'DOT' };
+    const NAME: Record<string, string> = { bitcoin: 'Bitcoin', ethereum: 'Ethereum', solana: 'Solana', cardano: 'Cardano', polkadot: 'Polkadot' };
+    const liveCoins = ((realtimeData as { coins?: Array<{ id: string; price: number; change24h: string; marketCap: number }> } | null)?.coins) || [];
+    const liveExtra = liveCoins
+      .filter(c => !heldSymbols.has(SYM[c.id] || c.id.toUpperCase()))
+      .map(c => ({
+        id: `live-${c.id}`,
+        name: NAME[c.id] || c.id,
+        symbol: SYM[c.id] || c.id.toUpperCase(),
+        balance: 0,
+        price: Number(c.price) || 0,
+        _lensId: `live-${c.id}`,
+        change24h: Number(c.change24h) || 0,
+        marketCap: Number(c.marketCap) || 0,
+      }));
+    return [...patched, ...liveExtra];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chainItems, liveCoinMap, realtimeData]);
 
   const transactions = txItems.map(item => ({
     id: item.id,

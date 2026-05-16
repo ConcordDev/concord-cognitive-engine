@@ -11,6 +11,9 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import LiveFeed from '@/components/lens/LiveFeed';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import {
   Truck,
   Users,
@@ -228,6 +231,8 @@ function StatCard({
 // ---------------------------------------------------------------------------
 export default function LogisticsLensPage() {
   const [mode, setMode] = useState<ModeTab>('fleet');
+  // Live BTS + DOT transit feed.
+  const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('logistics');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -2094,11 +2099,23 @@ export default function LogisticsLensPage() {
       error={error}
       onRetry={refetch}
       actions={
-        <button onClick={openCreate} className={ds.btnPrimary}>
-          <Plus className="w-4 h-4" /> New {currentType}
-        </button>
+        <>
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+          <button onClick={openCreate} className={ds.btnPrimary}>
+            <Plus className="w-4 h-4" /> New {currentType}
+          </button>
+        </>
       }
     >
+      {/* Transit Wire — BTS + DOT live press feed */}
+      <LiveFeed
+        articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+        domain="logistics"
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        limit={10}
+        className="mb-4"
+      />
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
