@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FitnessFeed } from '@/components/fitness/FitnessFeed';
 import WorkoutLogger from '@/components/fitness/WorkoutLogger';
 import HeartRateZones from '@/components/fitness/HeartRateZones';
 import SleepRecovery from '@/components/fitness/SleepRecovery';
@@ -2215,6 +2216,9 @@ export default function FitnessLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <FitnessFeed />
+      </section>
     </div>
     </LensShell>
   );
