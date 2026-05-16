@@ -5,6 +5,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { TimezoneTools } from '@/components/calendar/TimezoneTools';
 import { ScheduleAnalyzer } from '@/components/calendar/ScheduleAnalyzer';
+import { CalendarActionPanel } from '@/components/calendar/CalendarActionPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -2067,6 +2068,10 @@ export default function CalendarLensPage() {
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ScheduleAnalyzer />
+      </section>
+
+      <section className="mt-6">
+        <CalendarActionPanel />
       </section>
     </div>
     </LensShell>

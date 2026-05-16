@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { AnalyticsActionPanel } from '@/components/analytics/AnalyticsActionPanel';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -913,6 +914,10 @@ export default function AnalyticsPage() {
         <PlatformGrowth />
       </section>
     </div>
+
+      <section className="mt-6 max-w-7xl mx-auto px-4">
+        <AnalyticsActionPanel />
+      </section>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
