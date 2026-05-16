@@ -50,7 +50,7 @@ const STANCE_LABEL: Record<string, string> = {
 export function FactionOverlay({ worldId, open, onClose }: Props) {
   const [factions, setFactions] = useState<FactionNode[]>([]);
   const [relations, setRelations] = useState<FactionRelation[]>([]);
-  const [source, setSource] = useState<'live' | 'sample'>('sample');
+  const [source, setSource] = useState<'live' | 'empty'>('empty');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -63,11 +63,11 @@ export function FactionOverlay({ worldId, open, onClose }: Props) {
         input: { worldId },
       });
       const result = (res.data as {
-        result?: { factions?: FactionNode[]; relations?: FactionRelation[]; source?: 'live' | 'sample' };
+        result?: { factions?: FactionNode[]; relations?: FactionRelation[]; source?: 'live' | 'empty' };
       })?.result;
       setFactions(result?.factions || []);
       setRelations(result?.relations || []);
-      setSource(result?.source || 'sample');
+      setSource(result?.source || 'empty');
     } catch (e) {
       console.error('[FactionOverlay] fetch failed', e);
     } finally {
@@ -99,7 +99,7 @@ export function FactionOverlay({ worldId, open, onClose }: Props) {
               'text-[10px] px-1.5 py-0.5 rounded',
               source === 'live'
                 ? 'bg-emerald-500/15 text-emerald-300'
-                : 'bg-amber-500/15 text-amber-300',
+                : 'bg-gray-500/15 text-gray-400',
             )}
           >
             {source}

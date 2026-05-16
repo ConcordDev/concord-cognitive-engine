@@ -31,24 +31,17 @@ beforeEach(() => {
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
-describe("world — faction overlay data", () => {
-  it("returns sample factions + relations when simulation absent", () => {
+describe("world — faction overlay data (real data only)", () => {
+  it("returns empty + setup hint when simulation isn't seeded", () => {
     const r = call("faction-overlay-data", ctxA, { worldId: "concordia-hub" });
     assert.equal(r.ok, true);
-    assert.equal(r.result.source, "sample");
-    assert.ok(r.result.factions.length >= 3);
-    assert.ok(Array.isArray(r.result.relations));
-    for (const f of r.result.factions) {
-      assert.ok(f.id, "faction id present");
-      assert.ok(f.name);
-      assert.ok(f.stance);
-      assert.ok(Number.isFinite(f.cx));
-      assert.ok(Number.isFinite(f.cy));
-      assert.ok(Number.isFinite(f.radius));
-    }
+    assert.equal(r.result.source, "empty");
+    assert.equal(r.result.factions.length, 0);
+    assert.equal(r.result.relations.length, 0);
+    assert.match(r.result.notes, /content\/world\/concordia-hub\/factions\.json/);
   });
 
-  it("returns live data when simulation state seeded", () => {
+  it("returns live data when STATE.factionStrategy seeded", () => {
     globalThis._concordSTATE.factionStrategy = {
       "world_test": {
         factions: [{ id: "f1", name: "Live faction", stance: "war", momentum: 0.8, color: "#ff0000", cx: 100, cy: 100, radius: 50 }],
@@ -144,14 +137,13 @@ describe("world — quest summary", () => {
   });
 });
 
-describe("world — marketplace summary", () => {
-  it("returns listings filtered by kind", () => {
-    const all = call("marketplace-summary", ctxA, { worldId: "concordia-hub", kind: "all" });
-    const spells = call("marketplace-summary", ctxA, { worldId: "concordia-hub", kind: "spell_recipe" });
-    assert.ok(all.result.listings.length > spells.result.listings.length);
-    for (const l of spells.result.listings) {
-      assert.equal(l.kind, "spell_recipe");
-    }
+describe("world — marketplace summary (real DTU corpus only)", () => {
+  it("returns empty + setup hint when no listings exist", () => {
+    const r = call("marketplace-summary", ctxA, { worldId: "concordia-hub" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "empty");
+    assert.equal(r.result.listings.length, 0);
+    assert.match(r.result.notes, /No listings/);
   });
 
   it("defaults to all when no kind provided", () => {
@@ -159,7 +151,7 @@ describe("world — marketplace summary", () => {
     assert.equal(r.result.kind, "all");
   });
 
-  it("returns live data when STATE.marketplace seeded", () => {
+  it("returns per-world marketplace when STATE.marketplace seeded", () => {
     globalThis._concordSTATE.marketplace = {
       "world_test": {
         listings: [{
@@ -169,8 +161,28 @@ describe("world — marketplace summary", () => {
       },
     };
     const r = call("marketplace-summary", ctxA, { worldId: "world_test" });
-    assert.equal(r.result.source, "live");
+    assert.equal(r.result.source, "marketplace-per-world");
     assert.equal(r.result.listings[0].title, "Live");
+  });
+
+  it("pulls from STATE.dtus when no marketplace state but DTUs exist", () => {
+    globalThis._concordSTATE.dtus = new Map([
+      ["dtu_1", { id: "dtu_1", kind: "spell_recipe", human: { title: "Frostbolt recipe" }, machine: { price: 50, rarity: "uncommon" }, creatorName: "Mage Anya", worldId: "concordia-hub" }],
+      ["dtu_2", { id: "dtu_2", kind: "blueprint", human: { title: "Tower blueprint" }, machine: { price: 200 }, creatorName: "Builder Greg" }],
+    ]);
+    const r = call("marketplace-summary", ctxA, { worldId: "concordia-hub" });
+    assert.equal(r.result.source, "dtu-corpus");
+    assert.equal(r.result.listings.length, 2);
+  });
+
+  it("filters by kind across all real sources", () => {
+    globalThis._concordSTATE.dtus = new Map([
+      ["d1", { id: "d1", kind: "spell_recipe", human: { title: "Spell" }, machine: { price: 1 } }],
+      ["d2", { id: "d2", kind: "blueprint", human: { title: "Blueprint" }, machine: { price: 2 } }],
+    ]);
+    const r = call("marketplace-summary", ctxA, { worldId: "concordia-hub", kind: "spell_recipe" });
+    assert.equal(r.result.listings.length, 1);
+    assert.equal(r.result.listings[0].kind, "spell_recipe");
   });
 });
 
