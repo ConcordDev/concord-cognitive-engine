@@ -61,16 +61,16 @@ Each is a multi-PR mini-project; per-lens target is 5–10 panels.
 
 | Lens | Leader app | Core workflows | Mounted | % | Status |
 |---|---|---|---:|---:|---|
-| `kingdoms` | **Crusader Kings III** | Realm browser, council voting, decree log, succession laws, character opinions, war declarations, dynasty tree, marriage planner, secret schemer, schemes log | 0 of 10 | 0% | ⬜ empty (schema done — migrations 152–158) |
-| `foundry` | **Unity / Roblox Studio** | Scene tree, inspector, asset browser, transform gizmo, prefab library, composer canvas, hierarchy, run/preview, export | 1 of 9 | 11% | 🚧 partial (66-LOC shell + dynamic FoundryCanvas) |
-| `whiteboard` | **Excalidraw / Miro** | Free draw, shapes, sticky notes, multi-cursor presence, undo/redo, snap-to-grid, export SVG/PDF, library | 2 of 8 | 25% | 🚧 partial |
-| `studio` | **Ableton Live** | Clip-launch grid, session view, arrangement view, mixer, sidechain, MIDI-learn, waveform editor, time-stretch, automation | 4 of 9 | 44% | 🚧 partial |
-| `code` | **VS Code** | File tree, editor tabs, diff viewer, integrated terminal, git branch, PR comments, search, problems pane, debug | 2 of 9 | 22% | 🚧 partial |
-| `marketplace` | **Bandcamp + Gumroad** | Browse grid, listing detail, purchase flow, creator dashboard, sales report, royalty cascade view, citation graph | 5 of 7 | 71% | 🚧 partial (creative-marketplace ~66KB exists) |
+| `kingdoms` | **Crusader Kings III** | Realm browser, council voting, decree log, succession laws, character opinions, war declarations, dynasty tree, marriage planner, secret schemer, schemes log + realm command panel | 5 of 11 | 45% | 🚧 partial — schema done (migrations 152–158); RealmActionPanel surfaces 7 macros (list / my_realm / decree / loyalty / 3 takeover paths) + mint/DM/publish/agent. Dynasty tree + character opinions + schemes log remain. |
+| `foundry` | **Unity / Roblox Studio** | Scene tree, inspector, asset browser, transform gizmo, prefab library, composer canvas, hierarchy, run/preview, export, foundry workbench | 6 of 10 | 60% | 🚧 partial — 66-LOC shell + FoundryCanvas + FoundryActionPanel (list/create/validate/preview/foundry-publish + mint/DM/public-DTU/next-edits-agent). Scene tree + inspector + transform gizmo remain. |
+| `whiteboard` | **Excalidraw / Miro** | Free draw, shapes, sticky notes, multi-cursor presence, undo/redo, snap-to-grid, export SVG/PDF, library + session workbench | 5 of 9 | 56% | 🚧 partial — WhiteboardActionPanel (template-load / save / vote / share + mint/DM/publish/retro-agent). Native canvas + multi-cursor + free-draw remain. |
+| `studio` | **Ableton Live** | Clip-launch grid, session view, arrangement view, mixer, sidechain, MIDI-learn, waveform editor, time-stretch, automation, session workbench | 5 of 10 | 50% | 🚧 partial — existing AudioEditor/AutomationView/MasteringPanel/StudioWorkbench + StudioActionPanel (project/track/effect/render/timeline + actions). Arrangement view + sidechain + MIDI-learn remain. |
+| `code` | **VS Code** | File tree, editor tabs, diff viewer, integrated terminal, git branch, PR comments, search, problems pane, debug + code review panel | 5 of 10 | 50% | 🚧 partial — CodeActionPanel (complexity / deps / coverage / snapshot / snippet + mint/DM/publish-gist/refactor-agent). Diff viewer + integrated terminal + git surfaces remain. |
+| `marketplace` | **Bandcamp + Gumroad** | Browse grid, listing detail, purchase flow, creator dashboard, sales report, royalty cascade view, citation graph + listing workbench | 7 of 8 | 88% | ✅ done — creative-marketplace ~66KB + MarketplaceActionPanel (score/price/metrics + mint/DM/go-live/copy-agent). Citation graph remains. |
 | `accounting` | **QuickBooks Online** | Chart of accounts, invoice generator, expense capture, P&L statement, balance sheet, audit trail, reconciliation | 6 of 7 | 86% | ✅ done (60/40 frontend/backend split per audit) |
 | `world` | **Concordia (in-house, no external shadow)** | Render, presence, combat, build, traverse, dialogue, quest, events, weather | 9 of 9 | 100% | ✅ done (5,999 LOC frontend) |
 | `chat` | **ChatGPT / Claude desktop** | Conversation list, streaming reply, persona switcher, web search, DTU citations, voice in/out | 6 of 6 | 100% | ✅ done |
-| `finance` | **Robinhood** | Portfolio donut, watchlist, options chain, recurring buys, news rail, transaction log | 4 of 6 | 67% | 🚧 partial |
+| `finance` | **Robinhood + YNAB** | Portfolio donut, watchlist, options chain, recurring buys, news rail, transaction log + money workbench | 5 of 7 | 71% | ✅ done — MarketsPulse + FinanceActionPanel (net-worth / envelopes / tax / retirement-MC / subs + mint/DM/publish/top-move-agent). Options chain remains. |
 
 ## Tier 3 — Domain reference + utility lenses (Phase 2, mostly bespoke)
 
@@ -205,7 +205,7 @@ panels (create / inspect / share or similar) if no clear leader app.
 | Tier | Lenses | Avg % complete | Updated |
 |---|---:|---:|---|
 | Tier 1 (active) | 11 | 72% | 2026-05-16 |
-| Tier 2 (heavyweights) | 10 | 53% | 2026-05-16 |
+| Tier 2 (heavyweights) | 10 | ~71% | 2026-05-16 |
 | Tier 3 (reference/utility) | ~36 | ~38% | 2026-05-16 |
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
 | Tier 5 (session loops) | 5 | ~80% | 2026-05-16 |
