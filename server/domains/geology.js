@@ -1,4 +1,16 @@
 // server/domains/geology.js
+//
+// Pure-compute geology helpers (rock classify, mineral ID,
+// stratigraphic column) plus real USGS APIs for earthquake data
+// and seismic-hazard design parameters.
+//
+// Free, no API key:
+//   • USGS Earthquake Catalog: earthquake.usgs.gov/fdsnws/event/1/
+//   • USGS DESIGNMAPS (ASCE 7 / IBC seismic): earthquake.usgs.gov/ws/designmaps/asce7-22
+
+const USGS_EQ_API = "https://earthquake.usgs.gov/fdsnws/event/1/query";
+const USGS_DESIGNMAPS = "https://earthquake.usgs.gov/ws/designmaps/asce7-22.json";
+
 export default function registerGeologyActions(registerLensAction) {
   registerLensAction("geology", "rockClassify", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -33,5 +45,133 @@ export default function registerGeologyActions(registerLensAction) {
     let cumulativeDepth = 0;
     const column = layers.map(l => { const thick = parseFloat(l.thickness) || 1; cumulativeDepth += thick; return { formation: l.name || l.formation, lithology: l.lithology || l.rockType || "unknown", thickness: thick, depthTop: cumulativeDepth - thick, depthBottom: cumulativeDepth, age: l.age || "unknown", fossils: l.fossils || [] }; });
     return { ok: true, result: { layers: column, totalThickness: cumulativeDepth, layerCount: layers.length, oldestFormation: column[column.length - 1]?.formation, youngestFormation: column[0]?.formation, fossiliferous: column.filter(l => l.fossils.length > 0).length } };
+  });
+
+  /**
+   * recent-earthquakes — Real seismic events from USGS Earthquake
+   * Catalog (FDSN web service). Free, no API key. Default window
+   * is the last 24 hours globally with magnitude ≥ 2.5.
+   *
+   * params: {
+   *   minMagnitude?: number (default 2.5),
+   *   limit?: number (1-200, default 20),
+   *   latitude?, longitude?, radiusKm? — circle filter,
+   *   minlatitude?, maxlatitude?, minlongitude?, maxlongitude? — bbox filter,
+   *   sinceHours?: number (default 24)
+   * }
+   */
+  registerLensAction("geology", "recent-earthquakes", async (_ctx, _artifact, params = {}) => {
+    const minMagnitude = Number(params.minMagnitude);
+    const limit = Math.max(1, Math.min(200, Number(params.limit) || 20));
+    const sinceHours = Math.max(0.5, Math.min(24 * 30, Number(params.sinceHours) || 24));
+    const starttime = new Date(Date.now() - sinceHours * 3600 * 1000).toISOString();
+    const qs = new URLSearchParams({
+      format: "geojson",
+      starttime,
+      orderby: "time",
+      limit: String(limit),
+    });
+    if (Number.isFinite(minMagnitude) && minMagnitude > 0) qs.set("minmagnitude", String(minMagnitude));
+    if (params.latitude != null && params.longitude != null && params.radiusKm != null) {
+      qs.set("latitude", String(Number(params.latitude)));
+      qs.set("longitude", String(Number(params.longitude)));
+      qs.set("maxradiuskm", String(Number(params.radiusKm)));
+    } else if (
+      params.minlatitude != null && params.maxlatitude != null &&
+      params.minlongitude != null && params.maxlongitude != null
+    ) {
+      qs.set("minlatitude", String(Number(params.minlatitude)));
+      qs.set("maxlatitude", String(Number(params.maxlatitude)));
+      qs.set("minlongitude", String(Number(params.minlongitude)));
+      qs.set("maxlongitude", String(Number(params.maxlongitude)));
+    }
+    try {
+      const r = await fetch(`${USGS_EQ_API}?${qs.toString()}`);
+      if (!r.ok) throw new Error(`usgs ${r.status}`);
+      const data = await r.json();
+      const events = (data.features || []).map((f) => ({
+        id: f.id,
+        magnitude: f.properties?.mag,
+        magnitudeType: f.properties?.magType,
+        place: f.properties?.place,
+        time: f.properties?.time ? new Date(f.properties.time).toISOString() : null,
+        updated: f.properties?.updated ? new Date(f.properties.updated).toISOString() : null,
+        url: f.properties?.url,
+        status: f.properties?.status,
+        tsunami: f.properties?.tsunami === 1,
+        felt: f.properties?.felt,
+        cdi: f.properties?.cdi,            // community-decimal intensity (felt)
+        mmi: f.properties?.mmi,            // ShakeMap-decimal intensity
+        alert: f.properties?.alert,        // pager alert (green/yellow/orange/red)
+        sig: f.properties?.sig,            // significance
+        longitude: f.geometry?.coordinates?.[0],
+        latitude: f.geometry?.coordinates?.[1],
+        depthKm: f.geometry?.coordinates?.[2],
+      }));
+      return {
+        ok: true,
+        result: {
+          events,
+          count: events.length,
+          sinceHours,
+          generated: data.metadata?.generated ? new Date(data.metadata.generated).toISOString() : null,
+          source: "usgs-earthquake-catalog",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `usgs earthquake unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * usgs-seismic-hazard — Real ASCE 7-22 / IBC seismic design
+   * parameters for a US location via USGS DESIGNMAPS web service.
+   * Returns Ss, S1, MCEr ground motion + site-modified Sds, Sd1
+   * for the requested site class. Free, no API key.
+   *
+   * params: { latitude, longitude, riskCategory?: 1|2|3|4, siteClass?: "A"|"B"|"BC"|"C"|"CD"|"D"|"DE"|"E"|"F" }
+   */
+  registerLensAction("geology", "usgs-seismic-hazard", async (_ctx, _artifact, params = {}) => {
+    const lat = Number(params.latitude);
+    const lng = Number(params.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return { ok: false, error: "latitude + longitude required" };
+    }
+    if (lat < 18 || lat > 72 || lng < -180 || lng > -65) {
+      return { ok: false, error: "USGS DESIGNMAPS only covers US territory (lat 18-72, lng -180 to -65)" };
+    }
+    const riskCategory = [1, 2, 3, 4].includes(Number(params.riskCategory)) ? Number(params.riskCategory) : 2;
+    const siteClass = ["A", "B", "BC", "C", "CD", "D", "DE", "E", "F"].includes(params.siteClass) ? params.siteClass : "D";
+    const url = `${USGS_DESIGNMAPS}?latitude=${lat}&longitude=${lng}&riskCategory=${riskCategory}&siteClass=${siteClass}&title=Concord+OS+Lookup`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) {
+        if (r.status === 400) return { ok: false, error: "USGS rejected the lookup (location may be outside ASCE 7 coverage)" };
+        throw new Error(`usgs designmaps ${r.status}`);
+      }
+      const data = await r.json();
+      const resp = data?.response?.data;
+      if (!resp) return { ok: false, error: "USGS returned no design parameters" };
+      return {
+        ok: true,
+        result: {
+          location: { lat, lng },
+          riskCategory, siteClass,
+          ss: resp.ss,                    // 0.2s spectral acceleration (g)
+          s1: resp.s1,                    // 1.0s spectral acceleration (g)
+          fa: resp.fa,                    // short-period site coefficient
+          fv: resp.fv,                    // long-period site coefficient
+          sms: resp.sms, sm1: resp.sm1,   // MCE site-modified
+          sds: resp.sds, sd1: resp.sd1,   // ASCE 7 design spectrum
+          sdc: resp.sdc,                  // seismic design category
+          pga: resp.pga,                  // peak ground acceleration
+          pgam: resp.pgam,                // site-modified PGA
+          tl: resp.tl,                    // long-period transition (s)
+          source: "usgs-designmaps-asce7-22",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `usgs designmaps unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 }
