@@ -113,31 +113,54 @@ describe("food.nutrition-log + daily aggregate (via list)", () => {
   });
 });
 
-describe("food.meal-plan-generate + list + grocery-list-build", () => {
-  it("generates a deterministic 7-day × 3-meal plan", () => {
-    const r = call("meal-plan-generate", ctxA, { startDate: "2026-05-18", days: 7, mealsPerDay: 3 });
+describe("food.meal-plan-generate (real recipes or Spoonacular API)", () => {
+  function seedRecipes(userId) {
+    const STATE = globalThis._concordSTATE;
+    STATE.foodLens = STATE.foodLens || {};
+    STATE.foodLens.recipes = STATE.foodLens.recipes || new Map();
+    STATE.foodLens.recipes.set(userId, [
+      { id: "r1", slot: "Breakfast", title: "Greek yogurt parfait", calories: 320, protein: 24, carbs: 36, fat: 8 },
+      { id: "r2", slot: "Lunch", title: "Chicken Caesar wrap", calories: 520, protein: 35, carbs: 42, fat: 22 },
+      { id: "r3", slot: "Dinner", title: "Sheet-pan salmon", calories: 580, protein: 42, carbs: 18, fat: 34 },
+      { id: "r4", slot: "Snack", title: "Apple + almond butter", calories: 230, protein: 6, carbs: 32, fat: 12 },
+    ]);
+  }
+
+  it("returns error pointing to recipe library when none configured and no Spoonacular key", async () => {
+    delete process.env.SPOONACULAR_API_KEY;
+    const r = await call("meal-plan-generate", ctxA, { startDate: "2026-05-18", days: 7, mealsPerDay: 3 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /recipe library|food\.recipe-add|SPOONACULAR_API_KEY/);
+  });
+
+  it("generates plan from real user recipe library when populated", async () => {
+    seedRecipes("user_a");
+    const r = await call("meal-plan-generate", ctxA, { startDate: "2026-05-18", days: 7, mealsPerDay: 3 });
     assert.equal(r.ok, true);
     assert.equal(r.result.meals.length, 21);
     for (const m of r.result.meals) {
-      assert.ok(["Breakfast", "Lunch", "Dinner", "Snack"].includes(m.slot));
+      assert.ok(["Breakfast", "Lunch", "Dinner"].includes(m.slot));
       assert.ok(m.title.length > 0);
       assert.ok(m.calories > 0);
+      assert.ok(m.recipeId);
     }
   });
 
-  it("list returns only meals in range", () => {
-    call("meal-plan-generate", ctxA, { startDate: "2026-05-18", days: 7, mealsPerDay: 2 });
+  it("list returns only meals in range after real-recipe generation", async () => {
+    seedRecipes("user_a");
+    await call("meal-plan-generate", ctxA, { startDate: "2026-05-18", days: 7, mealsPerDay: 2 });
     const r = call("meal-plan-list", ctxA, { startDate: "2026-05-18", days: 7 });
     assert.equal(r.result.meals.length, 14);
   });
 
-  it("grocery list builds aisle groupings", () => {
-    call("meal-plan-generate", ctxA, { startDate: "2026-05-18", days: 7, mealsPerDay: 3 });
+  it("grocery list builds aisle groupings from real-recipe plan", async () => {
+    seedRecipes("user_a");
+    await call("meal-plan-generate", ctxA, { startDate: "2026-05-18", days: 7, mealsPerDay: 3 });
     const r = call("grocery-list-build", ctxA, { startDate: "2026-05-18", days: 7 });
     assert.equal(r.ok, true);
     assert.ok(r.result.byAisle.length >= 4);
-    assert.ok(r.result.byAisle.some(a => a.aisle === "Produce"));
-    assert.ok(r.result.byAisle.some(a => a.aisle === "Protein"));
+    assert.ok(r.result.byAisle.some((a) => a.aisle === "Produce"));
+    assert.ok(r.result.byAisle.some((a) => a.aisle === "Protein"));
   });
 });
 
