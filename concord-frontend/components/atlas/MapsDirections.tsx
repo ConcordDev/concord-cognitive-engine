@@ -90,8 +90,8 @@ function formatDuration(km: number, speedKph: number): string {
 }
 
 export function MapsDirections() {
-  const [origin, setOrigin] = useState<Place>({ query: 'San Francisco, CA' });
-  const [destination, setDestination] = useState<Place>({ query: 'Los Angeles, CA' });
+  const [origin, setOrigin] = useState<Place>({ query: '' });
+  const [destination, setDestination] = useState<Place>({ query: '' });
   const [stops, setStops] = useState<Place[]>([]);
   const [mode, setMode] = useState<Mode>('drive');
   const [route, setRoute] = useState<RouteData | null>(null);
