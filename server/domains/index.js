@@ -66,6 +66,7 @@ import fractal from './fractal.js';
 import globalDomain from './global.js';
 import market from './market.js';
 import markets from './markets.js';
+import message from './message.js';
 import meta from './meta.js';
 import metacognition from './metacognition.js';
 import metalearning from './metalearning.js';
@@ -249,6 +250,7 @@ export default [
   globalDomain,
   market,
   markets,
+  message,
   meta,
   metacognition,
   metalearning,
