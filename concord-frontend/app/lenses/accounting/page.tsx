@@ -17,7 +17,7 @@ import {
   Plus, Search, Filter, X, Edit3, Trash2, TrendingUp, DollarSign,
   BarChart3, AlertCircle, ChevronDown, ChevronRight, ArrowUpRight,
   ArrowDownRight, ListChecks, Calculator, Scale, Landmark, CreditCard,
-  Users, Clock, FileText, CheckCircle, XCircle, Percent,
+  Users, Clock, FileText, CheckCircle, XCircle, Percent, Send,
   Layers, Download, RefreshCw, ArrowRight,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -29,6 +29,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import IndicatorChart, { type IndicatorPayload } from '@/components/lens/IndicatorChart';
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
+import { StripeInvoicePanel } from '@/components/accounting/StripeInvoicePanel';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -40,7 +41,7 @@ type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue' | 'void';
 type TransactionStatus = 'pending' | 'cleared' | 'reconciled';
 type AccountCategory = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense';
 type LedgerView = 'accounts' | 'journal' | 'trial-balance' | 'pnl' | 'balance-sheet' | 'cash-flow' | 'reconciliation';
-type InvoicingView = 'list' | 'builder' | 'aging';
+type InvoicingView = 'list' | 'builder' | 'aging' | 'stripe';
 type PayrollView = 'list' | 'calculator';
 type BudgetView = 'list' | 'variance';
 type PeriodType = 'monthly' | 'quarterly' | 'annual';
@@ -2954,6 +2955,15 @@ export default function AccountingLensPage() {
           <button className={invoicingView === 'aging' ? ds.btnPrimary : ds.btnSecondary} onClick={() => setInvoicingView('aging')}>
             <Clock className="w-4 h-4" /> Aging Report
           </button>
+          <button className={invoicingView === 'stripe' ? ds.btnPrimary : ds.btnSecondary} onClick={() => setInvoicingView('stripe')}>
+            <Send className="w-4 h-4" /> Stripe Payments
+          </button>
+        </div>
+      )}
+
+      {view === 'library' && mode === 'Invoicing' && invoicingView === 'stripe' && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <StripeInvoicePanel />
         </div>
       )}
 
