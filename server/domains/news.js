@@ -498,26 +498,82 @@ export default function registerNewsActions(registerLensAction) {
   });
 
   // ─── Parity-sprint ──
-  registerLensAction("news", "headlines", (_ctx, _artifact, params = {}) => {
+  // ── Real headlines via GDELT Project (free, no key) ──
+  //
+  // GDELT 2.0 doc API returns real news articles indexed every 15 minutes
+  // from sources worldwide. No API key, no rate limit for reasonable use.
+  // Endpoint: api.gdeltproject.org/api/v2/doc/doc
+
+  const CATEGORY_QUERIES = {
+    top:        "(world OR breaking) sourcelang:eng",
+    world:      "(world OR international OR foreign) sourcelang:eng",
+    business:   "(business OR economy OR markets OR earnings) sourcelang:eng",
+    tech:       "(technology OR AI OR software OR startup) sourcelang:eng",
+    science:    "(science OR research OR climate OR space) sourcelang:eng",
+    politics:   "(politics OR congress OR election OR policy) sourcelang:eng",
+    sports:     "(sports OR olympics OR football OR basketball) sourcelang:eng",
+    health:     "(health OR medicine OR vaccine OR pandemic) sourcelang:eng",
+    entertainment: "(entertainment OR film OR music OR celebrity) sourcelang:eng",
+  };
+
+  async function fetchGdeltArticles(query, limit) {
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=ArtList&maxrecords=${limit}&format=json&sort=DateDesc`;
+    const r = await globalThis.fetch(url);
+    if (!r.ok) throw new Error(`GDELT ${r.status}`);
+    const data = await r.json();
+    return Array.isArray(data?.articles) ? data.articles : [];
+  }
+
+  function mapGdeltArticle(a, idx, category) {
+    return {
+      id: `hl_${category}_${idx}`,
+      category,
+      title: a.title || "",
+      url: a.url || "",
+      source: a.domain || "",
+      sourceCountry: a.sourcecountry || null,
+      language: a.language || "English",
+      publishedAt: a.seendate ? new Date(`${a.seendate.slice(0,4)}-${a.seendate.slice(4,6)}-${a.seendate.slice(6,8)}T${a.seendate.slice(9,11)}:${a.seendate.slice(11,13)}:${a.seendate.slice(13,15)}Z`).toISOString() : new Date().toISOString(),
+      socialImageUrl: a.socialimage || null,
+    };
+  }
+
+  registerLensAction("news", "headlines", async (_ctx, _artifact, params = {}) => {
     const category = String(params.category || "top");
     const limit = Math.min(50, Math.max(5, Number(params.limit) || 30));
-    const seed = hashStringNews(category);
-    const headlines = SAMPLE_HEADLINES.filter(h => category === "top" || h.category === category).slice(0, limit).map((h, i) => ({
-      ...h,
-      id: `hl_${category}_${i}`,
-      publishedAt: new Date(Date.now() - (i * 1800000 + (seed % 60) * 60000)).toISOString(),
-    }));
-    return { ok: true, result: { headlines, category } };
+    const query = CATEGORY_QUERIES[category] || CATEGORY_QUERIES.top;
+    try {
+      const articles = await fetchGdeltArticles(query, limit);
+      const headlines = articles.map((a, i) => mapGdeltArticle(a, i, category));
+      return {
+        ok: true,
+        result: {
+          headlines,
+          category,
+          count: headlines.length,
+          source: "GDELT Project (real-time global news, no key required)",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `headlines fetch failed: ${e?.message || "network"}` };
+    }
   });
 
   registerLensAction("news", "daily-briefing", async (ctx, _artifact, _params = {}) => {
     const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     const greeting = `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'} — here's what's happening today.`;
-    const tops = SAMPLE_HEADLINES.filter(h => h.category === 'top' || h.category === 'world').slice(0, 5);
-    const biz = SAMPLE_HEADLINES.filter(h => h.category === 'business').slice(0, 4);
-    const tech = SAMPLE_HEADLINES.filter(h => h.category === 'tech').slice(0, 4);
-    const sci = SAMPLE_HEADLINES.filter(h => h.category === 'science').slice(0, 3);
-    const summarise = arr => arr.map(h => h.title);
+    let tops = [], biz = [], tech = [], sci = [];
+    try {
+      [tops, biz, tech, sci] = await Promise.all([
+        fetchGdeltArticles(CATEGORY_QUERIES.world, 5),
+        fetchGdeltArticles(CATEGORY_QUERIES.business, 4),
+        fetchGdeltArticles(CATEGORY_QUERIES.tech, 4),
+        fetchGdeltArticles(CATEGORY_QUERIES.science, 3),
+      ]);
+    } catch (e) {
+      return { ok: false, error: `briefing fetch failed: ${e?.message || "network"}` };
+    }
+    const summarise = arr => arr.map(a => a.title).filter(Boolean);
     let briefing = {
       greeting, date: today,
       topStories: { heading: "Top stories", bullets: summarise(tops) },
@@ -525,8 +581,8 @@ export default function registerNewsActions(registerLensAction) {
       tech: { heading: "Technology", bullets: summarise(tech) },
       science: { heading: "Science & health", bullets: summarise(sci) },
       closing: "That's the briefing. Read any story in full from the Headlines tab.",
+      source: "GDELT Project",
     };
-    // Optional LLM enhancement to add narrative flair
     if (ctx?.llm?.chat) {
       try {
         const llmRes = await ctx.llm.chat({
@@ -544,31 +600,3 @@ export default function registerNewsActions(registerLensAction) {
   });
 }
 
-function hashStringNews(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-const SAMPLE_HEADLINES = [
-  { title: "Fed signals pause as inflation cools to 2.1%", source: "Reuters", url: "https://reuters.com/fed-pause", excerpt: "The Federal Reserve indicated it will hold rates steady…", category: "business", sentiment: "neutral" },
-  { title: "Climate accord reaches binding targets for 2030", source: "BBC", url: "https://bbc.com/climate", excerpt: "Nations agree to enforceable emission cuts…", category: "world", sentiment: "positive" },
-  { title: "AI breakthrough: model passes USMLE Step 1 at 98%", source: "Nature", url: "https://nature.com/ai-med", excerpt: "Latest medical-tuned model exceeds human average…", category: "tech", sentiment: "positive" },
-  { title: "Major hurricane forms in Gulf, evacuations underway", source: "NOAA", url: "https://noaa.gov", excerpt: "Cat-4 storm approaching coast…", category: "us", sentiment: "negative" },
-  { title: "Quantum chip from IBM hits 1,121-qubit milestone", source: "Ars Technica", url: "https://arstechnica.com/quantum", excerpt: "New architecture supports error correction at scale…", category: "tech", sentiment: "positive" },
-  { title: "New CRISPR therapy approved for sickle cell disease", source: "Reuters", url: "https://reuters.com/crispr-sickle", excerpt: "FDA gives green light to gene-editing treatment…", category: "science", sentiment: "positive" },
-  { title: "Markets rally as tech earnings beat estimates", source: "Bloomberg", url: "https://bloomberg.com/markets", excerpt: "S&P 500 up 2.3% led by semiconductor names…", category: "business", sentiment: "positive" },
-  { title: "Major tech layoffs: 12,000 cuts announced", source: "WSJ", url: "https://wsj.com/layoffs", excerpt: "Restructuring continues across the sector…", category: "tech", sentiment: "negative" },
-  { title: "World Cup final draws record TV audience", source: "ESPN", url: "https://espn.com", excerpt: "1.5B watch worldwide…", category: "sports", sentiment: "positive" },
-  { title: "New exoplanet discovered in habitable zone", source: "Space.com", url: "https://space.com/exo", excerpt: "Kepler successor confirms Earth-like candidate…", category: "science", sentiment: "positive" },
-  { title: "Election turnout breaks 30-year record", source: "AP", url: "https://apnews.com", excerpt: "Highest participation since 1994…", category: "us", sentiment: "positive" },
-  { title: "Vaccine cuts childhood mortality by 40%", source: "WHO", url: "https://who.int", excerpt: "5-year study confirms efficacy…", category: "health", sentiment: "positive" },
-  { title: "Wildfires consume 200k acres, air quality red", source: "CalFire", url: "https://fire.ca.gov", excerpt: "Drought + heat fuel rapid spread…", category: "us", sentiment: "negative" },
-  { title: "Streaming wars: Disney+ overtakes Netflix subs", source: "Variety", url: "https://variety.com", excerpt: "Q4 numbers show shift…", category: "entertainment", sentiment: "neutral" },
-  { title: "EU passes landmark AI safety regulation", source: "Politico EU", url: "https://politico.eu", excerpt: "Framework targets high-risk systems…", category: "world", sentiment: "neutral" },
-  { title: "Stock buybacks hit record $1.5T", source: "FT", url: "https://ft.com", excerpt: "Corporate cash returns climb…", category: "business", sentiment: "neutral" },
-  { title: "Olympic city named for 2032 games", source: "IOC", url: "https://olympics.com", excerpt: "Bidding process concludes…", category: "sports", sentiment: "positive" },
-  { title: "Cybersecurity firm reports nation-state breach", source: "CrowdStrike", url: "https://crowdstrike.com", excerpt: "Targeted attack on critical infrastructure…", category: "tech", sentiment: "negative" },
-  { title: "Box office record broken by sci-fi franchise", source: "Variety", url: "https://variety.com", excerpt: "Opening weekend tops $250M…", category: "entertainment", sentiment: "positive" },
-  { title: "Pharma giant settles opioid case for $7B", source: "NYT", url: "https://nytimes.com", excerpt: "Decade-long litigation resolved…", category: "us", sentiment: "neutral" },
-];
