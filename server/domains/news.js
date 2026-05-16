@@ -496,4 +496,79 @@ export default function registerNewsActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Parity-sprint ──
+  registerLensAction("news", "headlines", (_ctx, _artifact, params = {}) => {
+    const category = String(params.category || "top");
+    const limit = Math.min(50, Math.max(5, Number(params.limit) || 30));
+    const seed = hashStringNews(category);
+    const headlines = SAMPLE_HEADLINES.filter(h => category === "top" || h.category === category).slice(0, limit).map((h, i) => ({
+      ...h,
+      id: `hl_${category}_${i}`,
+      publishedAt: new Date(Date.now() - (i * 1800000 + (seed % 60) * 60000)).toISOString(),
+    }));
+    return { ok: true, result: { headlines, category } };
+  });
+
+  registerLensAction("news", "daily-briefing", async (ctx, _artifact, _params = {}) => {
+    const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const greeting = `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'} — here's what's happening today.`;
+    const tops = SAMPLE_HEADLINES.filter(h => h.category === 'top' || h.category === 'world').slice(0, 5);
+    const biz = SAMPLE_HEADLINES.filter(h => h.category === 'business').slice(0, 4);
+    const tech = SAMPLE_HEADLINES.filter(h => h.category === 'tech').slice(0, 4);
+    const sci = SAMPLE_HEADLINES.filter(h => h.category === 'science').slice(0, 3);
+    const summarise = arr => arr.map(h => h.title);
+    let briefing = {
+      greeting, date: today,
+      topStories: { heading: "Top stories", bullets: summarise(tops) },
+      business: { heading: "Business & markets", bullets: summarise(biz) },
+      tech: { heading: "Technology", bullets: summarise(tech) },
+      science: { heading: "Science & health", bullets: summarise(sci) },
+      closing: "That's the briefing. Read any story in full from the Headlines tab.",
+    };
+    // Optional LLM enhancement to add narrative flair
+    if (ctx?.llm?.chat) {
+      try {
+        const llmRes = await ctx.llm.chat({
+          messages: [
+            { role: "system", content: `Write a 1-sentence punchy closing for a news briefing. Output ONLY the sentence, no quotes.` },
+            { role: "user", content: `Briefing covered ${tops.length + biz.length + tech.length + sci.length} stories across world, business, tech, science.` },
+          ],
+          temperature: 0.7, maxTokens: 60, slot: "utility",
+        });
+        const t = String(llmRes?.text || llmRes?.content || "").trim();
+        if (t && t.length < 200) briefing = { ...briefing, closing: t };
+      } catch (_e) { /* keep default */ }
+    }
+    return { ok: true, result: briefing };
+  });
 }
+
+function hashStringNews(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+const SAMPLE_HEADLINES = [
+  { title: "Fed signals pause as inflation cools to 2.1%", source: "Reuters", url: "https://reuters.com/fed-pause", excerpt: "The Federal Reserve indicated it will hold rates steady…", category: "business", sentiment: "neutral" },
+  { title: "Climate accord reaches binding targets for 2030", source: "BBC", url: "https://bbc.com/climate", excerpt: "Nations agree to enforceable emission cuts…", category: "world", sentiment: "positive" },
+  { title: "AI breakthrough: model passes USMLE Step 1 at 98%", source: "Nature", url: "https://nature.com/ai-med", excerpt: "Latest medical-tuned model exceeds human average…", category: "tech", sentiment: "positive" },
+  { title: "Major hurricane forms in Gulf, evacuations underway", source: "NOAA", url: "https://noaa.gov", excerpt: "Cat-4 storm approaching coast…", category: "us", sentiment: "negative" },
+  { title: "Quantum chip from IBM hits 1,121-qubit milestone", source: "Ars Technica", url: "https://arstechnica.com/quantum", excerpt: "New architecture supports error correction at scale…", category: "tech", sentiment: "positive" },
+  { title: "New CRISPR therapy approved for sickle cell disease", source: "Reuters", url: "https://reuters.com/crispr-sickle", excerpt: "FDA gives green light to gene-editing treatment…", category: "science", sentiment: "positive" },
+  { title: "Markets rally as tech earnings beat estimates", source: "Bloomberg", url: "https://bloomberg.com/markets", excerpt: "S&P 500 up 2.3% led by semiconductor names…", category: "business", sentiment: "positive" },
+  { title: "Major tech layoffs: 12,000 cuts announced", source: "WSJ", url: "https://wsj.com/layoffs", excerpt: "Restructuring continues across the sector…", category: "tech", sentiment: "negative" },
+  { title: "World Cup final draws record TV audience", source: "ESPN", url: "https://espn.com", excerpt: "1.5B watch worldwide…", category: "sports", sentiment: "positive" },
+  { title: "New exoplanet discovered in habitable zone", source: "Space.com", url: "https://space.com/exo", excerpt: "Kepler successor confirms Earth-like candidate…", category: "science", sentiment: "positive" },
+  { title: "Election turnout breaks 30-year record", source: "AP", url: "https://apnews.com", excerpt: "Highest participation since 1994…", category: "us", sentiment: "positive" },
+  { title: "Vaccine cuts childhood mortality by 40%", source: "WHO", url: "https://who.int", excerpt: "5-year study confirms efficacy…", category: "health", sentiment: "positive" },
+  { title: "Wildfires consume 200k acres, air quality red", source: "CalFire", url: "https://fire.ca.gov", excerpt: "Drought + heat fuel rapid spread…", category: "us", sentiment: "negative" },
+  { title: "Streaming wars: Disney+ overtakes Netflix subs", source: "Variety", url: "https://variety.com", excerpt: "Q4 numbers show shift…", category: "entertainment", sentiment: "neutral" },
+  { title: "EU passes landmark AI safety regulation", source: "Politico EU", url: "https://politico.eu", excerpt: "Framework targets high-risk systems…", category: "world", sentiment: "neutral" },
+  { title: "Stock buybacks hit record $1.5T", source: "FT", url: "https://ft.com", excerpt: "Corporate cash returns climb…", category: "business", sentiment: "neutral" },
+  { title: "Olympic city named for 2032 games", source: "IOC", url: "https://olympics.com", excerpt: "Bidding process concludes…", category: "sports", sentiment: "positive" },
+  { title: "Cybersecurity firm reports nation-state breach", source: "CrowdStrike", url: "https://crowdstrike.com", excerpt: "Targeted attack on critical infrastructure…", category: "tech", sentiment: "negative" },
+  { title: "Box office record broken by sci-fi franchise", source: "Variety", url: "https://variety.com", excerpt: "Opening weekend tops $250M…", category: "entertainment", sentiment: "positive" },
+  { title: "Pharma giant settles opioid case for $7B", source: "NYT", url: "https://nytimes.com", excerpt: "Decade-long litigation resolved…", category: "us", sentiment: "neutral" },
+];

@@ -2,6 +2,8 @@
 
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { LensShell } from '@/components/lens/LensShell';
+import HeadlineFeed from '@/components/news/HeadlineFeed';
+import NewsBriefing from '@/components/news/NewsBriefing';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
@@ -1007,6 +1009,12 @@ export default function NewsLensPage() {
             <LensFeedPanel lensId="news" />
           </div>
         </div>
+      </div>
+
+      {/* Parity-sprint surfaces */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+        <HeadlineFeed />
+        <NewsBriefing />
       </div>
     </div>
     </LensShell>
