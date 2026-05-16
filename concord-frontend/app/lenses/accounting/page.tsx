@@ -25,6 +25,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import IndicatorChart, { type IndicatorPayload } from '@/components/lens/IndicatorChart';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -2660,6 +2661,13 @@ export default function AccountingLensPage() {
         </div>
       </header>
 
+
+      {/* Live World Bank economic indicators — FRED-style chart */}
+      <IndicatorChart
+        data={realtimeData as IndicatorPayload | null}
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+      />
 
       {/* AI Actions */}
       <UniversalActions domain="accounting" artifactId={items[0]?.id} compact />

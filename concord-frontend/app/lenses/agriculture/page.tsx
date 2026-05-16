@@ -50,6 +50,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
+import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -225,6 +226,14 @@ export default function AgricultureLensPage() {
     lastUpdated,
     insights,
   } = useRealtimeLens('agriculture');
+  // Subscribe separately to the weather feed for the hero panel — per
+  // the research blueprint, the canonical USDA NASS Crop Progress
+  // dashboard hero is "weather + 7-day strip" above the crop tiles.
+  const {
+    latestData: weatherData,
+    isLive: weatherLive,
+    lastUpdated: weatherUpdated,
+  } = useRealtimeLens('eco');
 
   const [activeTab, setActiveTab] = useState<ModeTab>('fields');
 
@@ -1462,6 +1471,13 @@ export default function AgricultureLensPage() {
           )}
         </div>
       </header>
+
+      {/* Live weather hero — USDA NASS-style weather-above-crops layout */}
+      <WeatherHero
+        data={weatherData as WeatherPayload | null}
+        isLive={weatherLive}
+        lastUpdated={weatherUpdated}
+      />
 
       {/* Ag Wire — USDA AMS + USDA Press live feed */}
       <LiveFeed

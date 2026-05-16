@@ -13,6 +13,8 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import QuoteCardList, { type QuoteCardItem } from '@/components/lens/QuoteCardList';
 
 interface Market {
   id: number;
@@ -54,6 +56,8 @@ export default function MarketsPage() {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [betting, setBetting] = useState<number | null>(null);
+  // Live Yahoo Finance ticker feed for the mobile-style market list.
+  const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('market');
   const [stake, setStake] = useState(10);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -91,6 +95,15 @@ export default function MarketsPage() {
             Wager <strong>⚡ Sparks</strong> on emergent outcomes. Non-extractive — no real money. Sparks are earned by playing; markets resolve via substrate signals.
           </p>
         </header>
+
+        {/* Live Yahoo Finance ticker list — CNBC mobile style */}
+        <div className="mb-6">
+          <QuoteCardList
+            quotes={(realtimeData as { quotes?: QuoteCardItem[] } | null)?.quotes}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+          />
+        </div>
 
         {status && (
           <div className="mb-4 bg-amber-950/50 border border-amber-700/50 text-amber-200 px-3 py-2 rounded-lg text-sm">{status}</div>

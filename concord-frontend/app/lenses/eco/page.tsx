@@ -22,6 +22,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { cn } from '@/lib/utils';
+import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -969,6 +970,13 @@ export default function EcoLensPage() {
           </button>
         </div>
       </header>
+
+      {/* Live Open-Meteo weather hero — temperature + conditions + 7-day strip */}
+      <WeatherHero
+        data={realtimeData as WeatherPayload | null}
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+      />
 
       <RealtimeDataPanel domain="eco" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 

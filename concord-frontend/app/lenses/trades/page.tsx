@@ -67,6 +67,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import QuoteChart, { type QuoteSnapshot } from '@/components/lens/QuoteChart';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -234,6 +235,16 @@ const genId = () => `local-${Date.now()}-${++_idCounter}`;
 export default function TradesLensPage() {
   useLensNav('trades');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('trades');
+  // TradingView-style chart selection — defaults to NASDAQ Composite.
+  // Persists across navigations via localStorage.
+  const [chartSymbol, setChartSymbol] = useState<string>(() => {
+    if (typeof window === 'undefined') return '^IXIC';
+    return localStorage.getItem('concord_trades_chart_symbol') || '^IXIC';
+  });
+  const handleChangeSymbol = (s: string) => {
+    setChartSymbol(s);
+    try { localStorage.setItem('concord_trades_chart_symbol', s); } catch { /* private mode */ }
+  };
 
   // ----- Top-level navigation -----
   const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
@@ -2268,6 +2279,17 @@ export default function TradesLensPage() {
         </div>
       </header>
 
+
+      {/* TradingView-style session chart for the selected index. Rolling
+          buffer accumulates Yahoo Finance ticks (every ~75s) into a
+          line chart; localStorage-persisted across page navigations. */}
+      <QuoteChart
+        symbol={chartSymbol}
+        quotes={(realtimeData as { quotes?: QuoteSnapshot[] } | null)?.quotes}
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        onChangeSymbol={handleChangeSymbol}
+      />
 
       <RealtimeDataPanel domain="trades" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
