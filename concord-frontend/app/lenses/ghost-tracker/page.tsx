@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { HauntingsFeed } from '@/components/ghost-tracker/HauntingsFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 
@@ -94,6 +95,9 @@ export default function GhostTrackerPage() {
             ))}
           </ul>
         )}
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <HauntingsFeed />
+        </section>
       </div>
     </LensShell>
   );
