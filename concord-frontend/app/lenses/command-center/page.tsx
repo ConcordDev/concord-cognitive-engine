@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ConcordVitals } from '@/components/command-center/ConcordVitals';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -2022,6 +2023,9 @@ export default function CommandCenterPage() {
           onCancel={() => setActionPreview(null)}
         />
       )}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ConcordVitals />
+      </section>
     </div>
     </LensShell>
   );
