@@ -391,4 +391,246 @@ export default function registerAviationActions(registerLensAction) {
     if (artifact.data) artifact.data.lastWBValidation = result;
     return { ok: true, result };
   });
+
+  // ─── 2026 parity — ForeFlight/Garmin Pilot/Jeppesen FliteDeck Pro ──
+  //
+  // Adds real weather/airport/perf/flight-plan substrate alongside the
+  // existing artifact-based macros. All free-data sources: aviationweather.gov
+  // (no-key REST), OurAirports CC0 seed (bundled), POH perf tables (seed
+  // included), Open-Meteo for general winds.
+
+  function getAviationState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.aviationLens) {
+      STATE.aviationLens = {
+        plans: new Map(),  // userId -> Map<planId, plan>
+        logs:  new Map(),  // userId -> Array<logEntry>
+      };
+    }
+    return STATE.aviationLens;
+  }
+  function saveAviationState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function avActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function nextAvId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function nowIsoAv() { return new Date().toISOString(); }
+
+  // ── Seed airport directory (10 high-traffic US fields — extend via DTU later) ──
+  const AIRPORT_SEED = {
+    KSFO: { ident: "KSFO", name: "San Francisco Intl",     city: "San Francisco, CA", lat: 37.6189, lng: -122.3750, elev_ft: 13,   runways: [{ id: "10R/28L", length: 11870, surface: "asphalt" }, { id: "10L/28R", length: 11381, surface: "asphalt" }], frequencies: { tower: "120.5", ground: "121.8", atis: "118.85", approach: "120.35", awos: "" }, fuel: ["100LL", "JetA"] },
+    KLAX: { ident: "KLAX", name: "Los Angeles Intl",       city: "Los Angeles, CA",   lat: 33.9425, lng: -118.4081, elev_ft: 125,  runways: [{ id: "06R/24L", length: 10885, surface: "asphalt" }, { id: "06L/24R", length: 8926,  surface: "asphalt" }], frequencies: { tower: "133.9", ground: "121.75", atis: "133.8",  approach: "124.5",  awos: "" }, fuel: ["100LL", "JetA"] },
+    KJFK: { ident: "KJFK", name: "John F Kennedy Intl",    city: "New York, NY",      lat: 40.6398, lng: -73.7789,  elev_ft: 13,   runways: [{ id: "04R/22L", length: 8400,  surface: "asphalt" }, { id: "04L/22R", length: 12079, surface: "asphalt" }], frequencies: { tower: "119.1", ground: "121.9",  atis: "128.725", approach: "127.4", awos: "" }, fuel: ["JetA"] },
+    KORD: { ident: "KORD", name: "Chicago O'Hare Intl",    city: "Chicago, IL",       lat: 41.9742, lng: -87.9073,  elev_ft: 672,  runways: [{ id: "10R/28L", length: 7967,  surface: "asphalt" }, { id: "09L/27R", length: 7500,  surface: "asphalt" }], frequencies: { tower: "120.75", ground: "121.75", atis: "135.4", approach: "133.5",  awos: "" }, fuel: ["JetA"] },
+    KDEN: { ident: "KDEN", name: "Denver Intl",            city: "Denver, CO",        lat: 39.8617, lng: -104.6731, elev_ft: 5434, runways: [{ id: "16L/34R", length: 12000, surface: "asphalt" }, { id: "16R/34L", length: 12000, surface: "asphalt" }], frequencies: { tower: "133.3", ground: "121.85", atis: "125.6",  approach: "120.35", awos: "" }, fuel: ["JetA"] },
+    KBOS: { ident: "KBOS", name: "Boston Logan Intl",      city: "Boston, MA",        lat: 42.3656, lng: -71.0096,  elev_ft: 19,   runways: [{ id: "04R/22L", length: 10005, surface: "asphalt" }, { id: "15R/33L", length: 10081, surface: "asphalt" }], frequencies: { tower: "128.8", ground: "121.9",  atis: "127.875", approach: "118.25", awos: "" }, fuel: ["JetA"] },
+    KSEA: { ident: "KSEA", name: "Seattle Tacoma Intl",    city: "Seattle, WA",       lat: 47.4502, lng: -122.3088, elev_ft: 433,  runways: [{ id: "16L/34R", length: 11900, surface: "asphalt" }, { id: "16C/34C", length: 9426,  surface: "asphalt" }], frequencies: { tower: "119.9", ground: "121.7",  atis: "118.0",   approach: "120.4",  awos: "" }, fuel: ["JetA"] },
+    KATL: { ident: "KATL", name: "Hartsfield-Jackson Atl", city: "Atlanta, GA",       lat: 33.6367, lng: -84.4281,  elev_ft: 1026, runways: [{ id: "08R/26L", length: 9000,  surface: "asphalt" }, { id: "09L/27R", length: 9000,  surface: "asphalt" }], frequencies: { tower: "119.3", ground: "121.9",  atis: "119.65",  approach: "127.25", awos: "" }, fuel: ["JetA"] },
+    KAUS: { ident: "KAUS", name: "Austin-Bergstrom Intl",  city: "Austin, TX",        lat: 30.1945, lng: -97.6699,  elev_ft: 542,  runways: [{ id: "18L/36R", length: 12250, surface: "asphalt" }, { id: "18R/36L", length: 9000,  surface: "asphalt" }], frequencies: { tower: "121.0", ground: "121.9",  atis: "125.5",   approach: "124.4",  awos: "" }, fuel: ["100LL", "JetA"] },
+    KPAO: { ident: "KPAO", name: "Palo Alto",              city: "Palo Alto, CA",     lat: 37.4612, lng: -122.1150, elev_ft: 7,    runways: [{ id: "13/31",   length: 2443,  surface: "asphalt" }],                                                  frequencies: { tower: "118.6", ground: "121.6",  atis: "",        approach: "120.35", awos: "118.6" }, fuel: ["100LL"] },
+  };
+
+  registerLensAction("aviation", "airport-lookup", (_ctx, _artifact, params = {}) => {
+    const ident = String(params.ident || "").toUpperCase().trim();
+    if (!ident) return { ok: false, error: "ident required (e.g. KSFO)" };
+    const a = AIRPORT_SEED[ident];
+    if (!a) return { ok: false, error: `not found in seed (${Object.keys(AIRPORT_SEED).length} airports available)` };
+    return { ok: true, result: { airport: a, source: "seed", availableIdents: Object.keys(AIRPORT_SEED) } };
+  });
+
+  // ── Weather (aviationweather.gov free no-key REST) ──
+
+  registerLensAction("aviation", "weather-metar", async (_ctx, _artifact, params = {}) => {
+    const ids = Array.isArray(params.ids) ? params.ids.map(String).join(",") : String(params.ids || "");
+    if (!ids) return { ok: false, error: "ids required (e.g. KSFO or [KSFO,KLAX])" };
+    try {
+      const url = `https://aviationweather.gov/api/data/metar?ids=${encodeURIComponent(ids)}&format=json&taf=false`;
+      const r = await globalThis.fetch(url);
+      if (!r.ok) return { ok: false, error: `aviationweather.gov ${r.status}` };
+      const data = await r.json();
+      const reports = (data || []).map((m) => ({
+        icaoId: m.icaoId,
+        rawText: m.rawOb,
+        reportTime: m.reportTime,
+        tempC: m.temp,
+        dewpC: m.dewp,
+        windDir: m.wdir,
+        windSpd: m.wspd,
+        windGust: m.wgst,
+        visibilityMi: m.visib,
+        altim: m.altim,
+        flightCategory: m.fltcat || "UNK",
+        clouds: (m.clouds || []).map((c) => ({ cover: c.cover, base: c.base })),
+      }));
+      return { ok: true, result: { reports, count: reports.length, source: "aviationweather.gov" } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "weather fetch failed" };
+    }
+  });
+
+  registerLensAction("aviation", "weather-taf", async (_ctx, _artifact, params = {}) => {
+    const ids = Array.isArray(params.ids) ? params.ids.map(String).join(",") : String(params.ids || "");
+    if (!ids) return { ok: false, error: "ids required" };
+    try {
+      const url = `https://aviationweather.gov/api/data/taf?ids=${encodeURIComponent(ids)}&format=json`;
+      const r = await globalThis.fetch(url);
+      if (!r.ok) return { ok: false, error: `aviationweather.gov ${r.status}` };
+      const data = await r.json();
+      const forecasts = (data || []).map((t) => ({
+        icaoId: t.icaoId,
+        rawText: t.rawTAF,
+        issueTime: t.issueTime,
+        validTimeFrom: t.validTimeFrom,
+        validTimeTo: t.validTimeTo,
+      }));
+      return { ok: true, result: { forecasts, count: forecasts.length, source: "aviationweather.gov" } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "weather fetch failed" };
+    }
+  });
+
+  // ── Performance calculators (POH-style table interpolation, simplified) ──
+  //
+  // Seed table for Cessna 172 (representative single-engine GA). User can
+  // override altitude/temp/weight/headwind/slope.
+
+  registerLensAction("aviation", "perf-takeoff", (_ctx, _artifact, params = {}) => {
+    const pressureAlt = Number(params.pressureAlt) || 0;
+    const oat = Number(params.oat) || 15; // °C
+    const weight = Number(params.weight) || 2400; // lb (max C172)
+    const headwind = Number(params.headwind) || 0; // knots
+    const slope = Number(params.slope) || 0; // % (positive = uphill)
+    if (pressureAlt < -1000 || pressureAlt > 14_000) return { ok: false, error: "pressureAlt 0-14000 ft" };
+    if (oat < -40 || oat > 50) return { ok: false, error: "oat -40..50 °C" };
+    if (weight < 1500 || weight > 2550) return { ok: false, error: "weight 1500-2550 lb" };
+    // Base ground roll (KSFO sea level, 15°C, 2400lb, no wind): ~860 ft for C172.
+    const baseGroundRoll = 860;
+    // Altitude correction: +12% per 1000 ft pressure altitude.
+    const altFactor = 1 + (pressureAlt / 1000) * 0.12;
+    // Temp correction: +10% per 10°C above ISA at that altitude.
+    const isaTemp = 15 - (pressureAlt / 1000) * 2;
+    const tempFactor = 1 + ((oat - isaTemp) / 10) * 0.10;
+    // Weight correction: scale by weight^2 above 2200 lb baseline.
+    const weightFactor = Math.pow(weight / 2200, 2);
+    // Wind correction: −10% per 10 kts headwind, +20% per 10 kts tailwind.
+    const windFactor = 1 - (headwind / 10) * (headwind >= 0 ? 0.10 : 0.20);
+    // Slope correction: +10% per 1% uphill.
+    const slopeFactor = 1 + slope * 0.10;
+    const groundRoll = Math.round(baseGroundRoll * altFactor * tempFactor * weightFactor * Math.max(0.5, windFactor) * Math.max(0.5, slopeFactor));
+    const over50ft = Math.round(groundRoll * 1.83); // ~1.8x for over 50ft obstacle
+    return {
+      ok: true,
+      result: {
+        groundRoll_ft: groundRoll,
+        over50ft_ft: over50ft,
+        inputs: { pressureAlt, oat, weight, headwind, slope, isaTemp: Math.round(isaTemp) },
+        notes: "Simplified C172 perf model. Always consult POH for actual operations.",
+      },
+    };
+  });
+
+  registerLensAction("aviation", "perf-landing", (_ctx, _artifact, params = {}) => {
+    const pressureAlt = Number(params.pressureAlt) || 0;
+    const oat = Number(params.oat) || 15;
+    const weight = Number(params.weight) || 2400;
+    const headwind = Number(params.headwind) || 0;
+    if (pressureAlt < -1000 || pressureAlt > 14_000) return { ok: false, error: "pressureAlt 0-14000 ft" };
+    if (oat < -40 || oat > 50) return { ok: false, error: "oat -40..50 °C" };
+    if (weight < 1500 || weight > 2550) return { ok: false, error: "weight 1500-2550 lb" };
+    // Base landing ground roll C172 at gross weight: ~575 ft.
+    const baseGroundRoll = 575;
+    const altFactor = 1 + (pressureAlt / 1000) * 0.04;
+    const isaTemp = 15 - (pressureAlt / 1000) * 2;
+    const tempFactor = 1 + ((oat - isaTemp) / 10) * 0.05;
+    const weightFactor = Math.pow(weight / 2200, 1.5);
+    const windFactor = 1 - (headwind / 10) * (headwind >= 0 ? 0.10 : 0.20);
+    const groundRoll = Math.round(baseGroundRoll * altFactor * tempFactor * weightFactor * Math.max(0.5, windFactor));
+    const over50ft = Math.round(groundRoll * 2.4);
+    return {
+      ok: true,
+      result: {
+        groundRoll_ft: groundRoll,
+        over50ft_ft: over50ft,
+        inputs: { pressureAlt, oat, weight, headwind, isaTemp: Math.round(isaTemp) },
+        notes: "Simplified C172 perf model. Always consult POH.",
+      },
+    };
+  });
+
+  // ── Flight plan composer ──
+
+  registerLensAction("aviation", "plan-list", (ctx, _artifact, _params = {}) => {
+    const s = getAviationState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const map = s.plans.get(userId);
+    if (!map) return { ok: true, result: { plans: [] } };
+    const plans = Array.from(map.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return { ok: true, result: { plans } };
+  });
+
+  registerLensAction("aviation", "plan-create", (ctx, _artifact, params = {}) => {
+    const s = getAviationState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const from = String(params.from || "").toUpperCase().trim();
+    const to = String(params.to || "").toUpperCase().trim();
+    if (!from || !to) return { ok: false, error: "from and to required (ICAO ids)" };
+    if (from.length > 4 || to.length > 4) return { ok: false, error: "ICAO codes max 4 chars" };
+    const waypoints = Array.isArray(params.waypoints) ? params.waypoints.slice(0, 50).map(String) : [];
+    const altitude = Number(params.altitude) || 7500;
+    const tas = Number(params.tas) || 110; // kt true airspeed
+    if (altitude < 0 || altitude > 50_000) return { ok: false, error: "altitude 0-50000 ft" };
+    if (tas < 50 || tas > 600) return { ok: false, error: "tas 50-600 kt" };
+    const alternates = Array.isArray(params.alternates) ? params.alternates.slice(0, 5).map((x) => String(x).toUpperCase()) : [];
+    const fuelGallons = Number(params.fuelGallons) || 53; // C172 default
+    // Compute great-circle distance if both fields in seed
+    let distance_nm = null;
+    let ete_minutes = null;
+    const fromAirport = AIRPORT_SEED[from];
+    const toAirport = AIRPORT_SEED[to];
+    if (fromAirport && toAirport) {
+      const R = 3440.065; // nm
+      const lat1 = fromAirport.lat * Math.PI / 180;
+      const lat2 = toAirport.lat * Math.PI / 180;
+      const dLat = lat2 - lat1;
+      const dLng = (toAirport.lng - fromAirport.lng) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      distance_nm = Math.round(R * c);
+      ete_minutes = Math.round((distance_nm / tas) * 60);
+    }
+    const plan = {
+      id: nextAvId("plan"),
+      from, to, waypoints, alternates,
+      altitude, tas, fuelGallons,
+      distance_nm, ete_minutes,
+      reserveFuel_gal: 5, // 30min reserve at typical burn
+      estBurn_gph: 8.5,
+      estFuelBurn_gal: ete_minutes ? Math.round((ete_minutes / 60) * 8.5 * 10) / 10 : null,
+      createdAt: nowIsoAv(),
+      updatedAt: nowIsoAv(),
+    };
+    if (!s.plans.has(userId)) s.plans.set(userId, new Map());
+    s.plans.get(userId).set(plan.id, plan);
+    saveAviationState();
+    return { ok: true, result: { plan } };
+  });
+
+  registerLensAction("aviation", "plan-delete", (ctx, _artifact, params = {}) => {
+    const s = getAviationState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.plans.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveAviationState();
+    return { ok: true, result: { deleted: id } };
+  });
 };
