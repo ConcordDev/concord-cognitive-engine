@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { SimRepos } from '@/components/sim/SimRepos';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1835,8 +1836,11 @@ export default function SimLensPage() {
           </div>
         </div>
       )}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <SimRepos />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#sim-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to sim content</a>
     </LensShell>
