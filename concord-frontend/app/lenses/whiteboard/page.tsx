@@ -48,6 +48,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { Zap } from 'lucide-react';
+import WhiteboardWorkbench from '@/components/whiteboard/WhiteboardWorkbench';
 
 /* ---------- types ---------- */
 type BoardMode = 'canvas' | 'moodboard' | 'arrangement';
@@ -153,6 +154,7 @@ export default function WhiteboardLensPage() {
 
   /* board list state */
   const [showCreate, setShowCreate] = useState(false);
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [selectedWbId, setSelectedWbId] = useState<string | null>(null);
   const [boardMode, setBoardMode] = useState<BoardMode>('canvas');
   const [showModeMenu, setShowModeMenu] = useState(false);
@@ -1662,6 +1664,16 @@ export default function WhiteboardLensPage() {
         />
       )}
     </div>
+    {/* 2026 parity workbench — boards, templates, voting */}
+    <button
+      type="button"
+      onClick={() => setWorkbenchOpen(true)}
+      className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-sky-500 hover:bg-sky-400 text-sky-50 shadow-2xl text-sm font-medium"
+      title="Whiteboard Workbench — boards, 6 templates (SWOT/retro/journey/mindmap/crazy8s/brainstorm), voting"
+    >
+      Whiteboard Workbench
+    </button>
+    <WhiteboardWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     </LensShell>
   );
 }

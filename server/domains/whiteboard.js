@@ -106,4 +106,182 @@ export default function registerWhiteboardActions(registerLensAction) {
     manifest.forEach(m => { byLayer[m.layer] = (byLayer[m.layer] || 0) + 1; });
     return { ok: true, result: { totalElements: elements.length, canvas: { x: minX, y: minY, width: Math.round(canvasWidth), height: Math.round(canvasHeight), aspectRatio: canvasHeight > 0 ? `${Math.round(canvasWidth / canvasHeight * 100) / 100}:1` : "N/A" }, layers: Object.entries(byLayer).map(([name, count]) => ({ name, elementCount: count })), exportFormats: ["PNG", "SVG", "PDF", "JSON"], manifest: manifest.slice(0, 50), recommendations: [canvasWidth > 4000 || canvasHeight > 4000 ? "Large canvas — consider splitting for high-res export" : null, elements.length > 200 ? "Many elements — SVG export recommended over raster" : null].filter(Boolean) } };
   });
+
+  // ─── 2026 parity — Miro/FigJam/Excalidraw/Mural ──
+
+  function getWhiteboardState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.whiteboardLens) {
+      STATE.whiteboardLens = {
+        boards: new Map(),       // userId -> Map<id, board>
+        votes:  new Map(),       // userId -> Map<boardId, Map<elementId, Map<voterId, true>>>
+      };
+    }
+    return STATE.whiteboardLens;
+  }
+  function saveWhiteboardState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function wbActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function nextWbId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function nowIsoWb() { return new Date().toISOString(); }
+
+  // ── Templates (6 starters) ──
+
+  const TEMPLATES = {
+    swot: {
+      name: "SWOT analysis",
+      elements: [
+        { kind: "frame", label: "Strengths",     x: 0,   y: 0,   w: 400, h: 300 },
+        { kind: "frame", label: "Weaknesses",    x: 400, y: 0,   w: 400, h: 300 },
+        { kind: "frame", label: "Opportunities", x: 0,   y: 300, w: 400, h: 300 },
+        { kind: "frame", label: "Threats",       x: 400, y: 300, w: 400, h: 300 },
+      ],
+    },
+    retro: {
+      name: "Sprint retrospective",
+      elements: [
+        { kind: "frame", label: "Start",    x: 0,   y: 0, w: 300, h: 500 },
+        { kind: "frame", label: "Stop",     x: 300, y: 0, w: 300, h: 500 },
+        { kind: "frame", label: "Continue", x: 600, y: 0, w: 300, h: 500 },
+      ],
+    },
+    journey: {
+      name: "Customer journey map",
+      elements: [
+        { kind: "frame", label: "Awareness",     x: 0,   y: 0, w: 240, h: 400 },
+        { kind: "frame", label: "Consideration", x: 240, y: 0, w: 240, h: 400 },
+        { kind: "frame", label: "Purchase",      x: 480, y: 0, w: 240, h: 400 },
+        { kind: "frame", label: "Retention",     x: 720, y: 0, w: 240, h: 400 },
+        { kind: "frame", label: "Advocacy",      x: 960, y: 0, w: 240, h: 400 },
+      ],
+    },
+    mindmap: {
+      name: "Mind map",
+      elements: [
+        { kind: "ellipse", label: "Central topic", x: 400, y: 200, w: 200, h: 100 },
+      ],
+    },
+    crazy8s: {
+      name: "Crazy 8s (8-cell sketch grid)",
+      elements: Array.from({ length: 8 }, (_, i) => ({
+        kind: "rectangle",
+        label: `Idea ${i + 1}`,
+        x: (i % 4) * 250,
+        y: Math.floor(i / 4) * 200,
+        w: 240,
+        h: 190,
+      })),
+    },
+    brainstorm: {
+      name: "Brainstorm cluster",
+      elements: [
+        { kind: "frame", label: "Ideas",     x: 0,   y: 0, w: 400, h: 600 },
+        { kind: "frame", label: "Themes",    x: 400, y: 0, w: 400, h: 600 },
+        { kind: "frame", label: "Next steps", x: 800, y: 0, w: 400, h: 600 },
+      ],
+    },
+  };
+
+  registerLensAction("whiteboard", "templates-list", (_ctx, _artifact, _params = {}) => {
+    return { ok: true, result: { templates: Object.entries(TEMPLATES).map(([id, t]) => ({ id, name: t.name, elementCount: t.elements.length })) } };
+  });
+
+  registerLensAction("whiteboard", "template-load", (_ctx, _artifact, params = {}) => {
+    const id = String(params.id || "");
+    const t = TEMPLATES[id];
+    if (!t) return { ok: false, error: `unknown template: ${id}` };
+    return { ok: true, result: { template: { id, ...t } } };
+  });
+
+  // ── Board snapshots (per-user persistence) ──
+
+  registerLensAction("whiteboard", "board-list", (ctx, _artifact, _params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const map = s.boards.get(userId);
+    if (!map) return { ok: true, result: { boards: [] } };
+    const boards = Array.from(map.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .map(({ scene, ...meta }) => ({ ...meta, elementCount: Array.isArray(scene?.elements) ? scene.elements.length : 0 }));
+    return { ok: true, result: { boards } };
+  });
+
+  registerLensAction("whiteboard", "board-save", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = params.id ? String(params.id) : nextWbId("board");
+    const title = String(params.title || "Untitled board").slice(0, 80);
+    const scene = params.scene && typeof params.scene === "object" ? params.scene : { elements: [], appState: {} };
+    if (!s.boards.has(userId)) s.boards.set(userId, new Map());
+    const existing = s.boards.get(userId).get(id);
+    const board = {
+      id, title, scene,
+      createdAt: existing?.createdAt || nowIsoWb(),
+      updatedAt: nowIsoWb(),
+    };
+    s.boards.get(userId).set(id, board);
+    saveWhiteboardState();
+    return { ok: true, result: { board } };
+  });
+
+  registerLensAction("whiteboard", "board-load", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const map = s.boards.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    return { ok: true, result: { board: map.get(id) } };
+  });
+
+  registerLensAction("whiteboard", "board-delete", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const id = String(params.id || "");
+    const map = s.boards.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveWhiteboardState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── Voting sessions ──
+
+  registerLensAction("whiteboard", "vote-cast", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const elementId = String(params.elementId || "");
+    if (!boardId || !elementId) return { ok: false, error: "boardId and elementId required" };
+    if (!s.votes.has(userId)) s.votes.set(userId, new Map());
+    const boardVotes = s.votes.get(userId);
+    if (!boardVotes.has(boardId)) boardVotes.set(boardId, new Map());
+    const elementVotes = boardVotes.get(boardId);
+    if (!elementVotes.has(elementId)) elementVotes.set(elementId, new Set());
+    elementVotes.get(elementId).add(userId);
+    saveWhiteboardState();
+    return { ok: true, result: { boardId, elementId, voteCount: elementVotes.get(elementId).size } };
+  });
+
+  registerLensAction("whiteboard", "vote-tally", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const boardVotes = s.votes.get(userId)?.get(boardId);
+    if (!boardVotes) return { ok: true, result: { tally: [], total: 0 } };
+    const tally = Array.from(boardVotes.entries())
+      .map(([elementId, voters]) => ({ elementId, count: voters.size }))
+      .sort((a, b) => b.count - a.count);
+    const total = tally.reduce((s2, t) => s2 + t.count, 0);
+    return { ok: true, result: { tally, total } };
+  });
 }
