@@ -23,6 +23,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { UpcomingLaunches } from '@/components/space/UpcomingLaunches';
 
 type ModeTab = 'Dashboard' | 'Missions' | 'Satellites' | 'LaunchOps' | 'Telemetry' | 'Crew' | 'Debris';
 
@@ -637,8 +638,11 @@ export default function SpaceLensPage() {
         </button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="space" /></div>}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <UpcomingLaunches />
+      </section>
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#space-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to space content</a>
     </LensShell>
