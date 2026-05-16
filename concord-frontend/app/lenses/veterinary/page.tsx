@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { VetFeed } from '@/components/veterinary/VetFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -441,6 +442,9 @@ export default function VeterinaryLensPage() {
       </div>
 
       <UniversalActions domain="veterinary" artifactId={items[0]?.id} />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <VetFeed />
+      </section>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
