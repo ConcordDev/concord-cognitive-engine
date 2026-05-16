@@ -32,6 +32,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { WorkoutFinishPanel } from '@/components/fitness/WorkoutFinishPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 
 /* ------------------------------------------------------------------ */
@@ -2216,6 +2217,11 @@ export default function FitnessLensPage() {
           </div>
         )}
       </div>
+      {/* Hevy + Strong-shape workout finisher: progression / HR zones / save / mint / DM / PR publish / next workout */}
+      <section className="mt-6">
+        <WorkoutFinishPanel />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <FitnessFeed />
       </section>
