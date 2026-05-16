@@ -13,6 +13,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { OpsRepos } from '@/components/ops/OpsRepos';
+import { OpsActionPanel } from '@/components/ops/OpsActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -241,6 +242,11 @@ export default function OpsLensPage() {
       </main>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <OpsRepos />
+      </section>
+
+      {/* PagerDuty-shape ops workbench: on-call / runbook / escalation / post-mortem + actions */}
+      <section className="mt-6 mx-4">
+        <OpsActionPanel />
       </section>
     </div>
 

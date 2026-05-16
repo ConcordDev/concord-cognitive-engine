@@ -16,6 +16,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ObservabilityRepos } from '@/components/observe/ObservabilityRepos';
+import { ObserveActionPanel } from '@/components/observe/ObserveActionPanel';
 
 interface Report {
   ok: boolean;
@@ -102,6 +103,11 @@ export default function ObservePage() {
         )}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <ObservabilityRepos />
+        </section>
+
+        {/* Datadog-shape observability workbench: serviceLog / alerts / SLO / incident + actions */}
+        <section className="mt-6">
+          <ObserveActionPanel />
         </section>
       </div>
 
