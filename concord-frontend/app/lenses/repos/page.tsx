@@ -43,6 +43,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { RepoBrowser } from '@/components/repos-explorer/RepoBrowser';
 
 interface Repository {
   id: string;
@@ -599,6 +600,11 @@ export default function ReposLensPage() {
           compact
         />
       )}
+
+      {/* Real GitHub data — bespoke browser */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <RepoBrowser />
+      </section>
 
       {/* Repos Domain Actions */}
       <div className="panel p-4 space-y-3">
