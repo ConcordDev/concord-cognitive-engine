@@ -11,6 +11,7 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LensPageShell } from '@/components/lens/LensPageShell';
+import { ConsultingFirmReference } from '@/components/consulting/ConsultingFirmReference';
 import {
   Lightbulb,
   Briefcase,
@@ -656,6 +657,9 @@ export default function ConsultingLensPage() {
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ConsultingFirmReference />
+      </section>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
