@@ -162,8 +162,12 @@ export type SocketEvent =
   | 'app:published'
   // Music / studio
   | 'music:toggle'
-  // Whiteboard
+  // Whiteboard (legacy)
   | 'whiteboard:updated'
+  // Whiteboard real-time multiplayer (server/domains/whiteboard.js broadcast-scene / broadcast-cursor / shared-vote-cast)
+  | 'whiteboard:scene-update'
+  | 'whiteboard:cursor'
+  | 'whiteboard:vote-cast'
   // Creative Registry & Royalties
   | 'creative_registry:update'
   | 'marketplace:purchase'

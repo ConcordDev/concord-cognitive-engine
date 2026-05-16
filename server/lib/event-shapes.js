@@ -222,6 +222,25 @@ export const EVENT_SHAPES = Object.freeze({
       "factionPhase",
     ],
   },
+
+  // ── Whiteboard realtime collaboration ─────────────────────────────
+  // Emitted by server/domains/whiteboard.js broadcast-scene /
+  // broadcast-cursor / shared-vote-cast macros. Scoped to
+  // socket.io room `whiteboard:${boardId}` so only participants
+  // receive events. Multi-cursor + last-write-wins scene sync
+  // makes the whiteboard lens true real-time multiplayer.
+  "whiteboard:scene-update": {
+    required: ["boardId", "userId", "elementCount"],
+    optional: [],
+  },
+  "whiteboard:cursor": {
+    required: ["boardId", "userId", "x", "y"],
+    optional: [],
+  },
+  "whiteboard:vote-cast": {
+    required: ["boardId", "elementId", "voterId", "voteCount"],
+    optional: [],
+  },
 });
 
 /**
