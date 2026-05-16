@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { MshaLookup } from '@/components/mining/MshaLookup';
+import { MiningActionPanel } from '@/components/mining/MiningActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -363,6 +364,11 @@ export default function MiningLensPage() {
       {/* Bespoke MSHA mine + violations lookup with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <MshaLookup />
+      </section>
+
+      {/* MSHA + USGS-shape mine workbench: grade / blast / safety / resource + actions */}
+      <section className="mt-6">
+        <MiningActionPanel />
       </section>
     </LensPageShell>
 
