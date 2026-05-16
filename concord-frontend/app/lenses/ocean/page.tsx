@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { TidePredictions } from '@/components/ocean/TidePredictions';
+import { WaveEcosystemPanel } from '@/components/ocean/WaveEcosystemPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -527,6 +528,10 @@ export default function OceanLensPage() {
       {/* Bespoke NOAA tide predictions with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TidePredictions />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <WaveEcosystemPanel />
       </section>
     </div>
 
