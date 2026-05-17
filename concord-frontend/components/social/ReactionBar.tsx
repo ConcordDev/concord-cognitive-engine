@@ -27,15 +27,18 @@ import { Heart, Lightbulb, Sparkles, ThumbsUp, HandMetal, Ban } from 'lucide-rea
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-type ReactionType = 'like' | 'love' | 'insight' | 'celebrate' | 'curious' | 'refuse';
+// Canonical backend reaction types — must match social-layer.js
+// VALID_REACTIONS exactly or POST /api/social/react returns
+// "Invalid reaction type".
+type ReactionType = 'like' | 'fire' | 'heart' | 'mind-blown' | 'useful' | 'disagree';
 
 const REACTIONS: { type: ReactionType; icon: typeof Heart; label: string; tint: string }[] = [
-  { type: 'like',      icon: ThumbsUp,  label: 'Like',     tint: 'text-cyan-300 hover:bg-cyan-500/10 border-cyan-500/30' },
-  { type: 'love',      icon: Heart,     label: 'Love',     tint: 'text-rose-300 hover:bg-rose-500/10 border-rose-500/30' },
-  { type: 'insight',   icon: Lightbulb, label: 'Insight',  tint: 'text-amber-300 hover:bg-amber-500/10 border-amber-500/30' },
-  { type: 'celebrate', icon: Sparkles,  label: 'Celebrate', tint: 'text-violet-300 hover:bg-violet-500/10 border-violet-500/30' },
-  { type: 'curious',   icon: HandMetal, label: 'Curious',  tint: 'text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30' },
-  { type: 'refuse',    icon: Ban,       label: 'Refuse',   tint: 'text-zinc-400 hover:bg-zinc-500/10 border-zinc-600' },
+  { type: 'like',        icon: ThumbsUp,  label: 'Like',        tint: 'text-cyan-300 hover:bg-cyan-500/10 border-cyan-500/30' },
+  { type: 'heart',       icon: Heart,     label: 'Heart',       tint: 'text-rose-300 hover:bg-rose-500/10 border-rose-500/30' },
+  { type: 'mind-blown',  icon: Sparkles,  label: 'Mind blown',  tint: 'text-violet-300 hover:bg-violet-500/10 border-violet-500/30' },
+  { type: 'useful',      icon: Lightbulb, label: 'Useful',      tint: 'text-amber-300 hover:bg-amber-500/10 border-amber-500/30' },
+  { type: 'fire',        icon: HandMetal, label: 'Fire',        tint: 'text-orange-300 hover:bg-orange-500/10 border-orange-500/30' },
+  { type: 'disagree',    icon: Ban,       label: 'Disagree',    tint: 'text-zinc-400 hover:bg-zinc-500/10 border-zinc-600' },
 ];
 
 interface ReactionsResponse {

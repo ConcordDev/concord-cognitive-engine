@@ -348,14 +348,20 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
   // ── POST /post — generic post endpoint (used by PostCompose component) ──────
   // Accepts { content, groupId } — creates a post in the specified group.
 
-  router.post("/post", requireAuth(), (req, res) => {
+  router.post("/post", requireAuth(), (req, res, next) => {
     try {
       const userId = resolveUserId(req);
       const displayName = resolveDisplayName(req);
       const { content, groupId, mediaType } = req.body || {};
 
+      // No groupId → this is a generic timeline post, not a group post.
+      // Fall through to the next matching route (server.js's
+      // app.post("/api/social/post") that calls socialCreatePost).
+      // Without this fall-through, every pan-social composer that
+      // doesn't target a group (QuickPostComposer, story create, etc.)
+      // returned 400 "groupId is required" and the post never landed.
       if (!groupId) {
-        return res.status(400).json({ ok: false, error: "groupId is required" });
+        return next();
       }
 
       const groupRow = stmts.getGroup.get(groupId);
