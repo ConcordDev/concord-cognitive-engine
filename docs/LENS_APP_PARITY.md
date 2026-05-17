@@ -246,6 +246,10 @@ data, all server macros via `apiHelpers.lens.runDomain`.
 | forum | ForumActionPanel | threadAnalysis · moderationQueue · communityHealth · topicClustering | ✅ shipped |
 | mentorship | MentorshipActionPanel | matchScore · progressTrack · feedbackSummary · developmentPlan | ✅ shipped |
 | society | SocietyActionPanel | wb-indicator · wb-country · wb-compare · wb-common-indicators | ✅ shipped |
+| creative | CreativeActionPanel | shotListGenerate · assetOrganize · budgetTrack · distributionChecklist | ✅ shipped |
+| accounting | AccountingActionPanel | trialBalance · profitLoss · invoiceAging · budgetVariance | ✅ shipped |
+| atlas | AtlasActionPanel | nominatim-geocode · nominatim-reverse · overpass-poi · distanceMatrix | ✅ shipped |
+| commonsense | CommonsenseActionPanel | conceptnet-edges · conceptnet-relatedness · plausibilityCheck · analogyMapping | ✅ shipped |
 | (plus the Tier-1/Tier-3/Tier-5/Tier-6 panels shipped earlier in the session — see git log on `claude/ship-trade-ui-widgets-hLpjG` for the full chain.) | | | |
 
 ## Progress tracking
@@ -258,7 +262,7 @@ data, all server macros via `apiHelpers.lens.runDomain`.
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
 | Tier 5 (session loops) | 5 | ~80% | 2026-05-16 |
 | Tier 6 (backend-creation) | 5 | ~80% | 2026-05-16 |
-| Tier 7 (Concord-native) | ~150 | ~36% authored (≥80% each) | 2026-05-17 |
+| Tier 7 (Concord-native) | ~150 | ~40% authored (≥80% each) | 2026-05-17 |
 
 **Close gate:** every Tier-1 to Tier-6 lens ≥ 80% (heavyweights ≥ 70%).
 Tier 7 lenses: target authored + ≥ 80% on the authored target.
