@@ -5801,3 +5801,6 @@
 {"generatedAt":"2026-05-17T14:16:05.546Z","key":"wrapper.run","total":1,"lastFiredAt":1779027357165,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
 {"generatedAt":"2026-05-17T14:16:05.546Z","key":"[object Object].dtu","total":2,"lastFiredAt":1779027363364,"sources":{"http":0,"heartbeat":0,"internal":0,"system":2}}
 {"generatedAt":"2026-05-17T14:16:05.546Z","key":"council.reviewGlobal","total":1,"lastFiredAt":1779027359624,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-17T18:02:13.478Z","key":"emergent.list","total":1,"lastFiredAt":1779040634784,"sources":{"http":0,"heartbeat":0,"internal":0,"system":1}}
+{"generatedAt":"2026-05-17T18:02:13.478Z","key":"emergent.register","total":6,"lastFiredAt":1779040634786,"sources":{"http":0,"heartbeat":0,"internal":0,"system":6}}
+{"generatedAt":"2026-05-17T18:02:13.478Z","key":"emergent.get","total":1,"lastFiredAt":1779040634786,"sources":{"http":0,"heartbeat":0,"internal":0,"system":1}}
