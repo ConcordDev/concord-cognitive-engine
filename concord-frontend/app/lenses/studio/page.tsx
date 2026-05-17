@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { StudioRepos } from '@/components/studio/StudioRepos';
@@ -2675,6 +2676,7 @@ export default function StudioLensPage() {
           <StudioActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="studio" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

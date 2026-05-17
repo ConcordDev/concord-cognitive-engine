@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConcordVitals } from '@/components/command-center/ConcordVitals';
@@ -2031,6 +2032,7 @@ export default function CommandCenterPage() {
         <ConcordVitals />
       </section>
     </div>
+          <RecentMineCard domain="command-center" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

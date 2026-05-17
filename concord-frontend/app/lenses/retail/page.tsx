@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useState, useMemo, useCallback, useRef } from 'react';
@@ -2031,6 +2032,7 @@ export default function RetailLensPage() {
           <RetailActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="retail" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

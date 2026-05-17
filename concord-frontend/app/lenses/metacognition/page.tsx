@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CogsciFeed } from '@/components/metacognition/CogsciFeed';
@@ -1470,6 +1471,7 @@ export default function MetacognitionLensPage() {
         <CogsciFeed />
       </section>
     </div>
+          <RecentMineCard domain="metacognition" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

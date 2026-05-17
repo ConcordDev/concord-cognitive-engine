@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BaseCampAlmanac } from '@/components/expedition-journal/BaseCampAlmanac';
@@ -104,6 +105,7 @@ export default function ExpeditionJournalPage() {
           <BaseCampAlmanac />
         </section>
       </div>
+          <RecentMineCard domain="expedition-journal" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

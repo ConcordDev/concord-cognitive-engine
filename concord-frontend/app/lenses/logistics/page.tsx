@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
@@ -2758,6 +2759,7 @@ export default function LogisticsLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#logistics-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to logistics content</a>
+          <RecentMineCard domain="logistics" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

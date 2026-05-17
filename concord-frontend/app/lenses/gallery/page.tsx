@@ -13,6 +13,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
@@ -126,6 +127,7 @@ export default function GalleryPage() {
         <Loader2 className="w-4 h-4 animate-spin" />
         Loading your gallery…
       </div>
+          <RecentMineCard domain="gallery" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 

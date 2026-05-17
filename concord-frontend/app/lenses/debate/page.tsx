@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CmvFeed } from '@/components/debate/CmvFeed';
@@ -1023,6 +1024,7 @@ export default function DebateLensPage() {
         <CmvFeed />
       </section>
     </div>
+          <RecentMineCard domain="debate" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

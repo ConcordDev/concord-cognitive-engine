@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
@@ -423,6 +424,7 @@ export default function AstronomyLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="astronomy" /></div>}
       </div>
     </div>
+          <RecentMineCard domain="astronomy" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

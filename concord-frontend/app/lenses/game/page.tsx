@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GameFeed } from '@/components/game/GameFeed';
@@ -1866,6 +1867,7 @@ export default function GameLensPage() {
         <GameFeed />
       </section>
     </div>
+          <RecentMineCard domain="game" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

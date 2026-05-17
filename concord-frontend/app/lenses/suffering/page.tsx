@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SufferingRef } from '@/components/suffering/SufferingRef';
@@ -358,6 +359,7 @@ export default function SufferingLensPage() {
         <SufferingRef />
       </section>
     </div>
+          <RecentMineCard domain="suffering" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

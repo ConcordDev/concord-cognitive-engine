@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ThreadFeed } from '@/components/thread/ThreadFeed';
@@ -816,6 +817,7 @@ export default function ThreadLensPage() {
         <ThreadFeed />
       </section>
     </div>
+          <RecentMineCard domain="thread" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

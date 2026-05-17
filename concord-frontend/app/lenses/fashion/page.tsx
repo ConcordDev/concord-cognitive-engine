@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FashionFeed } from '@/components/fashion/FashionFeed';
@@ -628,6 +629,7 @@ export default function FashionLensPage() {
         <FashionFeed />
       </section>
     </div>
+          <RecentMineCard domain="fashion" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

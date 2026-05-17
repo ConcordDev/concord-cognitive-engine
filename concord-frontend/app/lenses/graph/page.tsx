@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GraphRepos } from '@/components/graph/GraphRepos';
@@ -2015,6 +2016,7 @@ export default function GraphLensPage() {
         <GraphRepos />
       </section>
     </div>
+          <RecentMineCard domain="graph" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

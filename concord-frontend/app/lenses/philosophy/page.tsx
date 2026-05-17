@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhiloFeed } from '@/components/philosophy/PhiloFeed';
@@ -564,6 +565,7 @@ export default function PhilosophyLensPage() {
         <PhiloFeed />
       </section>
     </div>
+          <RecentMineCard domain="philosophy" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

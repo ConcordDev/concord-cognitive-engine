@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnFrontPage } from '@/components/feed/HnFrontPage';
@@ -2248,6 +2249,7 @@ export default function FeedLensPage() {
         <HnFrontPage />
       </section>
     </div>
+          <RecentMineCard domain="feed" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

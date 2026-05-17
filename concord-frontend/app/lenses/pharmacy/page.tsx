@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -643,6 +644,7 @@ export default function PharmacyLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="pharmacy" /></div>}
       </div>
     </div>
+          <RecentMineCard domain="pharmacy" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

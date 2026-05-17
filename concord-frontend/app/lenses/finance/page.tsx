@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MarketsPulse } from '@/components/finance/MarketsPulse';
@@ -2414,6 +2415,7 @@ export default function FinanceLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="finance" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

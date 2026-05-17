@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
@@ -686,6 +687,7 @@ export default function MentalHealthLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="mental-health" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

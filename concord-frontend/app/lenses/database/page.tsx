@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DbProjectExplorer } from '@/components/database/DbProjectExplorer';
@@ -1247,6 +1248,7 @@ export default function DatabaseLensPage() {
         <DbProjectExplorer />
       </section>
     </div>
+          <RecentMineCard domain="database" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

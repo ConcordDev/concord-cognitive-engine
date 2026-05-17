@@ -15,6 +15,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TimelineExport } from '@/components/cognitive-replay/TimelineExport';
@@ -82,7 +83,8 @@ export default function CognitiveReplayPage() {
           <Loader2 className="w-4 h-4 animate-spin focus:ring-2 focus:outline-none sm:text-base" />
           Loading your cognitive timeline…
         </div>
-      </LensShell>
+            <RecentMineCard domain="cognitive-replay" limit={10} hideWhenEmpty className="mt-4" />
+    </LensShell>
     );
   }
   if (events.length === 0) {

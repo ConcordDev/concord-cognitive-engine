@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RoboticsRepos } from '@/components/robotics/RoboticsRepos';
@@ -603,6 +604,7 @@ export default function RoboticsLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="robotics" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

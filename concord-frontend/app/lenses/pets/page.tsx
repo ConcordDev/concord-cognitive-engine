@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BreedExplorer } from '@/components/pets/BreedExplorer';
@@ -447,6 +448,7 @@ export default function PetsLensPage() {
           );
         })()}
       </AnimatePresence>
+          <RecentMineCard domain="pets" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

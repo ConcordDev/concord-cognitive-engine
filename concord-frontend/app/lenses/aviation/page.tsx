@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AirportBrief } from '@/components/aviation/AirportBrief';
@@ -2112,6 +2113,7 @@ export default function AviationLensPage() {
           <AviationActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="aviation" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

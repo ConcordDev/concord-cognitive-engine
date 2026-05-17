@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PeriodicTable } from '@/components/chem/PeriodicTable';
@@ -657,6 +658,7 @@ export default function ChemLensPage() {
           <ChemActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="chem" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

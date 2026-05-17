@@ -2,6 +2,7 @@
 
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GdeltHeadlines } from '@/components/news-explorer/GdeltHeadlines';
@@ -1036,6 +1037,7 @@ export default function NewsLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="news" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GutendexSearch } from '@/components/creative-writing/GutendexSearch';
@@ -848,6 +849,7 @@ export default function CreativeWritingPage() {
         <GutendexSearch />
       </section>
     </div>
+          <RecentMineCard domain="creative-writing" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

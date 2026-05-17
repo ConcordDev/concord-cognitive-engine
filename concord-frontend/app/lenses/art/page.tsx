@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -1290,6 +1291,7 @@ export default function ArtLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="art" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

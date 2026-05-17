@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { motion } from 'framer-motion';
@@ -1966,6 +1967,7 @@ export default function AgricultureLensPage() {
           <AgricultureActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="agriculture" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -1,0 +1,1169 @@
+{
+  "ranAt": "2026-05-17T04:06:42.053Z",
+  "applied": 226,
+  "skipped": {
+    "hero-lens-bespoke-recents": 6
+  },
+  "ledger": [
+    {
+      "lens": "accounting",
+      "status": "applied",
+      "loc": 3068
+    },
+    {
+      "lens": "admin",
+      "status": "applied",
+      "loc": 2664
+    },
+    {
+      "lens": "affect",
+      "status": "applied",
+      "loc": 2226
+    },
+    {
+      "lens": "agents",
+      "status": "applied",
+      "loc": 1177
+    },
+    {
+      "lens": "agriculture",
+      "status": "applied",
+      "loc": 1972
+    },
+    {
+      "lens": "all",
+      "status": "applied",
+      "loc": 122
+    },
+    {
+      "lens": "alliance",
+      "status": "applied",
+      "loc": 693
+    },
+    {
+      "lens": "analytics",
+      "status": "applied",
+      "loc": 1087
+    },
+    {
+      "lens": "animation",
+      "status": "applied",
+      "loc": 683
+    },
+    {
+      "lens": "anon",
+      "status": "applied",
+      "loc": 473
+    },
+    {
+      "lens": "answers",
+      "status": "applied",
+      "loc": 747
+    },
+    {
+      "lens": "app-maker",
+      "status": "applied",
+      "loc": 624
+    },
+    {
+      "lens": "ar",
+      "status": "applied",
+      "loc": 515
+    },
+    {
+      "lens": "art",
+      "status": "applied",
+      "loc": 1296
+    },
+    {
+      "lens": "artistry",
+      "status": "applied",
+      "loc": 468
+    },
+    {
+      "lens": "astronomy",
+      "status": "applied",
+      "loc": 429
+    },
+    {
+      "lens": "atlas",
+      "status": "applied",
+      "loc": 522
+    },
+    {
+      "lens": "attention",
+      "status": "applied",
+      "loc": 962
+    },
+    {
+      "lens": "audit",
+      "status": "applied",
+      "loc": 677
+    },
+    {
+      "lens": "automotive",
+      "status": "applied",
+      "loc": 742
+    },
+    {
+      "lens": "aviation",
+      "status": "applied",
+      "loc": 2118
+    },
+    {
+      "lens": "billing",
+      "status": "applied",
+      "loc": 1108
+    },
+    {
+      "lens": "bio",
+      "status": "applied",
+      "loc": 474
+    },
+    {
+      "lens": "black-market",
+      "status": "applied",
+      "loc": 304
+    },
+    {
+      "lens": "board",
+      "status": "applied",
+      "loc": 1987
+    },
+    {
+      "lens": "bounties",
+      "status": "applied",
+      "loc": 200
+    },
+    {
+      "lens": "bridge",
+      "status": "applied",
+      "loc": 781
+    },
+    {
+      "lens": "byo-keys",
+      "status": "applied",
+      "loc": 346
+    },
+    {
+      "lens": "calendar",
+      "status": "applied",
+      "loc": 2087
+    },
+    {
+      "lens": "carpentry",
+      "status": "applied",
+      "loc": 786
+    },
+    {
+      "lens": "chat",
+      "status": "skipped",
+      "reason": "hero-lens-bespoke-recents"
+    },
+    {
+      "lens": "chem",
+      "status": "applied",
+      "loc": 663
+    },
+    {
+      "lens": "classroom",
+      "status": "applied",
+      "loc": 197
+    },
+    {
+      "lens": "code",
+      "status": "applied",
+      "loc": 2570
+    },
+    {
+      "lens": "code-quality",
+      "status": "applied",
+      "loc": 352
+    },
+    {
+      "lens": "cognition",
+      "status": "applied",
+      "loc": 405
+    },
+    {
+      "lens": "cognitive-replay",
+      "status": "applied",
+      "loc": 165
+    },
+    {
+      "lens": "collab",
+      "status": "applied",
+      "loc": 2145
+    },
+    {
+      "lens": "command-center",
+      "status": "applied",
+      "loc": 2205
+    },
+    {
+      "lens": "commonsense",
+      "status": "applied",
+      "loc": 1021
+    },
+    {
+      "lens": "construction",
+      "status": "applied",
+      "loc": 812
+    },
+    {
+      "lens": "consulting",
+      "status": "applied",
+      "loc": 675
+    },
+    {
+      "lens": "cooking",
+      "status": "applied",
+      "loc": 682
+    },
+    {
+      "lens": "council",
+      "status": "applied",
+      "loc": 3463
+    },
+    {
+      "lens": "crafting",
+      "status": "applied",
+      "loc": 1308
+    },
+    {
+      "lens": "creative",
+      "status": "applied",
+      "loc": 1740
+    },
+    {
+      "lens": "creative-writing",
+      "status": "applied",
+      "loc": 854
+    },
+    {
+      "lens": "creator",
+      "status": "applied",
+      "loc": 1188
+    },
+    {
+      "lens": "cri",
+      "status": "applied",
+      "loc": 763
+    },
+    {
+      "lens": "crisis-ops",
+      "status": "applied",
+      "loc": 127
+    },
+    {
+      "lens": "crypto",
+      "status": "applied",
+      "loc": 1643
+    },
+    {
+      "lens": "custom",
+      "status": "applied",
+      "loc": 661
+    },
+    {
+      "lens": "daily",
+      "status": "applied",
+      "loc": 974
+    },
+    {
+      "lens": "database",
+      "status": "applied",
+      "loc": 1253
+    },
+    {
+      "lens": "death-insurance",
+      "status": "applied",
+      "loc": 185
+    },
+    {
+      "lens": "debate",
+      "status": "applied",
+      "loc": 1029
+    },
+    {
+      "lens": "debug",
+      "status": "applied",
+      "loc": 1479
+    },
+    {
+      "lens": "defense",
+      "status": "applied",
+      "loc": 398
+    },
+    {
+      "lens": "deities",
+      "status": "applied",
+      "loc": 194
+    },
+    {
+      "lens": "desert",
+      "status": "applied",
+      "loc": 383
+    },
+    {
+      "lens": "disputes",
+      "status": "applied",
+      "loc": 1041
+    },
+    {
+      "lens": "diy",
+      "status": "applied",
+      "loc": 848
+    },
+    {
+      "lens": "docs",
+      "status": "applied",
+      "loc": 996
+    },
+    {
+      "lens": "dreams",
+      "status": "applied",
+      "loc": 142
+    },
+    {
+      "lens": "dtus",
+      "status": "applied",
+      "loc": 685
+    },
+    {
+      "lens": "dx-platform",
+      "status": "applied",
+      "loc": 240
+    },
+    {
+      "lens": "eco",
+      "status": "applied",
+      "loc": 1284
+    },
+    {
+      "lens": "education",
+      "status": "skipped",
+      "reason": "hero-lens-bespoke-recents"
+    },
+    {
+      "lens": "electrical",
+      "status": "applied",
+      "loc": 741
+    },
+    {
+      "lens": "emergency-services",
+      "status": "applied",
+      "loc": 506
+    },
+    {
+      "lens": "energy",
+      "status": "applied",
+      "loc": 594
+    },
+    {
+      "lens": "engineering",
+      "status": "applied",
+      "loc": 838
+    },
+    {
+      "lens": "entity",
+      "status": "applied",
+      "loc": 1474
+    },
+    {
+      "lens": "environment",
+      "status": "skipped",
+      "reason": "hero-lens-bespoke-recents"
+    },
+    {
+      "lens": "ethics",
+      "status": "applied",
+      "loc": 874
+    },
+    {
+      "lens": "event-timeline",
+      "status": "applied",
+      "loc": 272
+    },
+    {
+      "lens": "events",
+      "status": "applied",
+      "loc": 2890
+    },
+    {
+      "lens": "expedition-journal",
+      "status": "applied",
+      "loc": 110
+    },
+    {
+      "lens": "experience",
+      "status": "applied",
+      "loc": 1615
+    },
+    {
+      "lens": "expert-mode",
+      "status": "applied",
+      "loc": 287
+    },
+    {
+      "lens": "export",
+      "status": "applied",
+      "loc": 670
+    },
+    {
+      "lens": "fashion",
+      "status": "applied",
+      "loc": 634
+    },
+    {
+      "lens": "federation",
+      "status": "applied",
+      "loc": 692
+    },
+    {
+      "lens": "feed",
+      "status": "applied",
+      "loc": 2307
+    },
+    {
+      "lens": "film-studios",
+      "status": "applied",
+      "loc": 847
+    },
+    {
+      "lens": "finance",
+      "status": "applied",
+      "loc": 2420
+    },
+    {
+      "lens": "fitness",
+      "status": "applied",
+      "loc": 2236
+    },
+    {
+      "lens": "food",
+      "status": "applied",
+      "loc": 2824
+    },
+    {
+      "lens": "forecast",
+      "status": "applied",
+      "loc": 152
+    },
+    {
+      "lens": "forestry",
+      "status": "applied",
+      "loc": 416
+    },
+    {
+      "lens": "forge",
+      "status": "applied",
+      "loc": 146
+    },
+    {
+      "lens": "fork",
+      "status": "applied",
+      "loc": 764
+    },
+    {
+      "lens": "forum",
+      "status": "applied",
+      "loc": 1187
+    },
+    {
+      "lens": "foundry",
+      "status": "applied",
+      "loc": 80
+    },
+    {
+      "lens": "fractal",
+      "status": "applied",
+      "loc": 474
+    },
+    {
+      "lens": "gallery",
+      "status": "applied",
+      "loc": 184
+    },
+    {
+      "lens": "game",
+      "status": "applied",
+      "loc": 1872
+    },
+    {
+      "lens": "game-design",
+      "status": "applied",
+      "loc": 748
+    },
+    {
+      "lens": "genesis",
+      "status": "applied",
+      "loc": 358
+    },
+    {
+      "lens": "geology",
+      "status": "applied",
+      "loc": 581
+    },
+    {
+      "lens": "ghost-tracker",
+      "status": "applied",
+      "loc": 109
+    },
+    {
+      "lens": "global",
+      "status": "applied",
+      "loc": 695
+    },
+    {
+      "lens": "goals",
+      "status": "applied",
+      "loc": 1234
+    },
+    {
+      "lens": "goddess",
+      "status": "applied",
+      "loc": 120
+    },
+    {
+      "lens": "government",
+      "status": "skipped",
+      "reason": "hero-lens-bespoke-recents"
+    },
+    {
+      "lens": "graph",
+      "status": "applied",
+      "loc": 2021
+    },
+    {
+      "lens": "grounding",
+      "status": "applied",
+      "loc": 645
+    },
+    {
+      "lens": "healthcare",
+      "status": "skipped",
+      "reason": "hero-lens-bespoke-recents"
+    },
+    {
+      "lens": "history",
+      "status": "applied",
+      "loc": 646
+    },
+    {
+      "lens": "home-improvement",
+      "status": "applied",
+      "loc": 725
+    },
+    {
+      "lens": "household",
+      "status": "applied",
+      "loc": 1872
+    },
+    {
+      "lens": "hr",
+      "status": "applied",
+      "loc": 438
+    },
+    {
+      "lens": "hvac",
+      "status": "applied",
+      "loc": 739
+    },
+    {
+      "lens": "hypothesis",
+      "status": "applied",
+      "loc": 686
+    },
+    {
+      "lens": "import",
+      "status": "applied",
+      "loc": 1029
+    },
+    {
+      "lens": "inference",
+      "status": "applied",
+      "loc": 810
+    },
+    {
+      "lens": "ingest",
+      "status": "applied",
+      "loc": 810
+    },
+    {
+      "lens": "inheritance",
+      "status": "applied",
+      "loc": 124
+    },
+    {
+      "lens": "insurance",
+      "status": "applied",
+      "loc": 1342
+    },
+    {
+      "lens": "integrations",
+      "status": "applied",
+      "loc": 776
+    },
+    {
+      "lens": "invariant",
+      "status": "applied",
+      "loc": 725
+    },
+    {
+      "lens": "kingdoms",
+      "status": "applied",
+      "loc": 427
+    },
+    {
+      "lens": "lab",
+      "status": "applied",
+      "loc": 513
+    },
+    {
+      "lens": "landscaping",
+      "status": "applied",
+      "loc": 734
+    },
+    {
+      "lens": "lattice",
+      "status": "applied",
+      "loc": 380
+    },
+    {
+      "lens": "law",
+      "status": "applied",
+      "loc": 804
+    },
+    {
+      "lens": "law-enforcement",
+      "status": "applied",
+      "loc": 400
+    },
+    {
+      "lens": "legacy",
+      "status": "applied",
+      "loc": 537
+    },
+    {
+      "lens": "legal",
+      "status": "applied",
+      "loc": 3387
+    },
+    {
+      "lens": "linguistics",
+      "status": "applied",
+      "loc": 689
+    },
+    {
+      "lens": "lock",
+      "status": "applied",
+      "loc": 842
+    },
+    {
+      "lens": "logistics",
+      "status": "applied",
+      "loc": 2764
+    },
+    {
+      "lens": "maker",
+      "status": "applied",
+      "loc": 320
+    },
+    {
+      "lens": "manufacturing",
+      "status": "applied",
+      "loc": 2722
+    },
+    {
+      "lens": "market",
+      "status": "applied",
+      "loc": 684
+    },
+    {
+      "lens": "marketing",
+      "status": "applied",
+      "loc": 531
+    },
+    {
+      "lens": "marketplace",
+      "status": "applied",
+      "loc": 2889
+    },
+    {
+      "lens": "markets",
+      "status": "applied",
+      "loc": 213
+    },
+    {
+      "lens": "masonry",
+      "status": "applied",
+      "loc": 730
+    },
+    {
+      "lens": "materials",
+      "status": "applied",
+      "loc": 382
+    },
+    {
+      "lens": "math",
+      "status": "applied",
+      "loc": 1173
+    },
+    {
+      "lens": "meditation",
+      "status": "applied",
+      "loc": 540
+    },
+    {
+      "lens": "mental-health",
+      "status": "applied",
+      "loc": 692
+    },
+    {
+      "lens": "mentorship",
+      "status": "applied",
+      "loc": 632
+    },
+    {
+      "lens": "mesh",
+      "status": "applied",
+      "loc": 279
+    },
+    {
+      "lens": "message",
+      "status": "applied",
+      "loc": 397
+    },
+    {
+      "lens": "meta",
+      "status": "applied",
+      "loc": 1229
+    },
+    {
+      "lens": "metacognition",
+      "status": "applied",
+      "loc": 1476
+    },
+    {
+      "lens": "metalearning",
+      "status": "applied",
+      "loc": 639
+    },
+    {
+      "lens": "mining",
+      "status": "applied",
+      "loc": 388
+    },
+    {
+      "lens": "ml",
+      "status": "applied",
+      "loc": 1439
+    },
+    {
+      "lens": "music",
+      "status": "applied",
+      "loc": 2350
+    },
+    {
+      "lens": "neuro",
+      "status": "applied",
+      "loc": 393
+    },
+    {
+      "lens": "news",
+      "status": "applied",
+      "loc": 1042
+    },
+    {
+      "lens": "nonprofit",
+      "status": "applied",
+      "loc": 1977
+    },
+    {
+      "lens": "observe",
+      "status": "applied",
+      "loc": 127
+    },
+    {
+      "lens": "ocean",
+      "status": "applied",
+      "loc": 553
+    },
+    {
+      "lens": "offline",
+      "status": "applied",
+      "loc": 527
+    },
+    {
+      "lens": "ops",
+      "status": "applied",
+      "loc": 288
+    },
+    {
+      "lens": "organ",
+      "status": "applied",
+      "loc": 726
+    },
+    {
+      "lens": "paper",
+      "status": "applied",
+      "loc": 2045
+    },
+    {
+      "lens": "parenting",
+      "status": "applied",
+      "loc": 392
+    },
+    {
+      "lens": "personas",
+      "status": "applied",
+      "loc": 173
+    },
+    {
+      "lens": "pets",
+      "status": "applied",
+      "loc": 453
+    },
+    {
+      "lens": "pharmacy",
+      "status": "applied",
+      "loc": 649
+    },
+    {
+      "lens": "philosophy",
+      "status": "applied",
+      "loc": 570
+    },
+    {
+      "lens": "photography",
+      "status": "applied",
+      "loc": 970
+    },
+    {
+      "lens": "physics",
+      "status": "applied",
+      "loc": 1754
+    },
+    {
+      "lens": "platform",
+      "status": "applied",
+      "loc": 571
+    },
+    {
+      "lens": "plumbing",
+      "status": "applied",
+      "loc": 778
+    },
+    {
+      "lens": "podcast",
+      "status": "applied",
+      "loc": 934
+    },
+    {
+      "lens": "poetry",
+      "status": "applied",
+      "loc": 685
+    },
+    {
+      "lens": "privacy",
+      "status": "applied",
+      "loc": 850
+    },
+    {
+      "lens": "productivity",
+      "status": "applied",
+      "loc": 317
+    },
+    {
+      "lens": "projects",
+      "status": "applied",
+      "loc": 513
+    },
+    {
+      "lens": "psyops",
+      "status": "applied",
+      "loc": 135
+    },
+    {
+      "lens": "quantum",
+      "status": "applied",
+      "loc": 500
+    },
+    {
+      "lens": "questmarket",
+      "status": "applied",
+      "loc": 830
+    },
+    {
+      "lens": "queue",
+      "status": "applied",
+      "loc": 640
+    },
+    {
+      "lens": "realestate",
+      "status": "applied",
+      "loc": 3373
+    },
+    {
+      "lens": "reasoning",
+      "status": "applied",
+      "loc": 2544
+    },
+    {
+      "lens": "reflection",
+      "status": "applied",
+      "loc": 602
+    },
+    {
+      "lens": "repos",
+      "status": "applied",
+      "loc": 675
+    },
+    {
+      "lens": "research",
+      "status": "applied",
+      "loc": 910
+    },
+    {
+      "lens": "resonance",
+      "status": "applied",
+      "loc": 1490
+    },
+    {
+      "lens": "retail",
+      "status": "applied",
+      "loc": 2037
+    },
+    {
+      "lens": "robotics",
+      "status": "applied",
+      "loc": 609
+    },
+    {
+      "lens": "root",
+      "status": "applied",
+      "loc": 342
+    },
+    {
+      "lens": "sandbox",
+      "status": "applied",
+      "loc": 303
+    },
+    {
+      "lens": "schema",
+      "status": "applied",
+      "loc": 490
+    },
+    {
+      "lens": "science",
+      "status": "applied",
+      "loc": 2212
+    },
+    {
+      "lens": "security",
+      "status": "applied",
+      "loc": 1291
+    },
+    {
+      "lens": "self",
+      "status": "applied",
+      "loc": 370
+    },
+    {
+      "lens": "sentinel",
+      "status": "applied",
+      "loc": 290
+    },
+    {
+      "lens": "services",
+      "status": "applied",
+      "loc": 1171
+    },
+    {
+      "lens": "settings",
+      "status": "applied",
+      "loc": 119
+    },
+    {
+      "lens": "sim",
+      "status": "applied",
+      "loc": 2671
+    },
+    {
+      "lens": "society",
+      "status": "applied",
+      "loc": 369
+    },
+    {
+      "lens": "space",
+      "status": "applied",
+      "loc": 655
+    },
+    {
+      "lens": "sponsorship",
+      "status": "applied",
+      "loc": 154
+    },
+    {
+      "lens": "sports",
+      "status": "applied",
+      "loc": 1038
+    },
+    {
+      "lens": "srs",
+      "status": "applied",
+      "loc": 1286
+    },
+    {
+      "lens": "staking",
+      "status": "applied",
+      "loc": 169
+    },
+    {
+      "lens": "studio",
+      "status": "applied",
+      "loc": 2681
+    },
+    {
+      "lens": "sub-worlds",
+      "status": "applied",
+      "loc": 139
+    },
+    {
+      "lens": "suffering",
+      "status": "applied",
+      "loc": 413
+    },
+    {
+      "lens": "supplychain",
+      "status": "applied",
+      "loc": 246
+    },
+    {
+      "lens": "sync",
+      "status": "applied",
+      "loc": 131
+    },
+    {
+      "lens": "system",
+      "status": "applied",
+      "loc": 759
+    },
+    {
+      "lens": "telecommunications",
+      "status": "applied",
+      "loc": 368
+    },
+    {
+      "lens": "temporal",
+      "status": "applied",
+      "loc": 853
+    },
+    {
+      "lens": "thread",
+      "status": "applied",
+      "loc": 822
+    },
+    {
+      "lens": "tick",
+      "status": "applied",
+      "loc": 1162
+    },
+    {
+      "lens": "timeline",
+      "status": "applied",
+      "loc": 1217
+    },
+    {
+      "lens": "tools",
+      "status": "applied",
+      "loc": 251
+    },
+    {
+      "lens": "tournaments",
+      "status": "applied",
+      "loc": 466
+    },
+    {
+      "lens": "trades",
+      "status": "applied",
+      "loc": 2524
+    },
+    {
+      "lens": "transfer",
+      "status": "applied",
+      "loc": 493
+    },
+    {
+      "lens": "travel",
+      "status": "applied",
+      "loc": 599
+    },
+    {
+      "lens": "understanding",
+      "status": "applied",
+      "loc": 970
+    },
+    {
+      "lens": "urban-planning",
+      "status": "applied",
+      "loc": 453
+    },
+    {
+      "lens": "ux-suite",
+      "status": "applied",
+      "loc": 157
+    },
+    {
+      "lens": "veterinary",
+      "status": "applied",
+      "loc": 460
+    },
+    {
+      "lens": "voice",
+      "status": "applied",
+      "loc": 1124
+    },
+    {
+      "lens": "vote",
+      "status": "applied",
+      "loc": 1094
+    },
+    {
+      "lens": "wallet",
+      "status": "applied",
+      "loc": 1743
+    },
+    {
+      "lens": "welding",
+      "status": "applied",
+      "loc": 728
+    },
+    {
+      "lens": "wellness",
+      "status": "applied",
+      "loc": 168
+    },
+    {
+      "lens": "whiteboard",
+      "status": "applied",
+      "loc": 1713
+    },
+    {
+      "lens": "world",
+      "status": "skipped",
+      "reason": "hero-lens-bespoke-recents"
+    },
+    {
+      "lens": "world-creator",
+      "status": "applied",
+      "loc": 254
+    },
+    {
+      "lens": "worldmodel",
+      "status": "applied",
+      "loc": 398
+    }
+  ]
+}

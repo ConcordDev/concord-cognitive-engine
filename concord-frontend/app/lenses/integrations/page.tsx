@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { IntegrationsRepos } from '@/components/integrations/IntegrationsRepos';
@@ -521,6 +522,7 @@ export default function IntegrationsLensPage() {
         <IntegrationsRepos />
       </section>
     </div>
+          <RecentMineCard domain="integrations" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

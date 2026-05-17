@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1577,6 +1578,7 @@ export default function BoardLensPage() {
         <BggHotList />
       </section>
     </div>
+          <RecentMineCard domain="board" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

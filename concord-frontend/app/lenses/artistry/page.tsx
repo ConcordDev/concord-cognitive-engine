@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -462,6 +463,7 @@ export default function ArtistryLensPage() {
         <WikimediaArt />
       </section>
     </div>
+          <RecentMineCard domain="artistry" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ForumChatter } from '@/components/forum/ForumChatter';
@@ -1181,6 +1182,7 @@ export default function ForumLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="forum" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

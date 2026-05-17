@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { IngestionRepos } from '@/components/ingest/IngestionRepos';
@@ -804,6 +805,7 @@ export default function IngestLensPage() {
         <IngestionRepos />
       </section>
     </div>
+          <RecentMineCard domain="ingest" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

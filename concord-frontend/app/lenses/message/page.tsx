@@ -18,6 +18,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MessagingRepos } from '@/components/message/MessagingRepos';
@@ -391,6 +392,7 @@ export default function MessageLensPage() {
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MessagingRepos />
       </section>
+          <RecentMineCard domain="message" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

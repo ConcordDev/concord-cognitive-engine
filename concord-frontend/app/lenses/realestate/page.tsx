@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NeighborhoodStats } from '@/components/realestate/NeighborhoodStats';
@@ -3367,6 +3368,7 @@ export default function RealEstateLensPage() {
           <RealEstateActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="realestate" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

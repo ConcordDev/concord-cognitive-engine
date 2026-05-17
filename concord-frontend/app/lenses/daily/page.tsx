@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DailyInspiration } from '@/components/daily/DailyInspiration';
@@ -968,6 +969,7 @@ export default function DailyLensPage() {
         </section>
       </main>
     </div>
+          <RecentMineCard domain="daily" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

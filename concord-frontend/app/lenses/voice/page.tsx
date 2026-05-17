@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VoiceRepos } from '@/components/voice/VoiceRepos';
@@ -1118,6 +1119,7 @@ export default function VoiceLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="voice" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

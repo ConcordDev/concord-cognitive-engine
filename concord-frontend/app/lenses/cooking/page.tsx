@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NutritionExplorer } from '@/components/cooking/NutritionExplorer';
@@ -676,6 +677,7 @@ export default function CookingLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="cooking" /></div>}
       </div>
     </div>
+          <RecentMineCard domain="cooking" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

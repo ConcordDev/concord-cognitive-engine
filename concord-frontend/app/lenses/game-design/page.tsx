@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GameDevRepos } from '@/components/game-design/GameDevRepos';
@@ -742,6 +743,7 @@ export default function GameDesignPage() {
         <GameDevRepos />
       </section>
     </div>
+          <RecentMineCard domain="game-design" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

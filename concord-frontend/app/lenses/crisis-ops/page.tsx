@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FemaDisasters } from '@/components/crisis-ops/FemaDisasters';
@@ -121,6 +122,7 @@ export default function CrisisOpsPage() {
           <FemaDisasters />
         </section>
       </div>
+          <RecentMineCard domain="crisis-ops" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

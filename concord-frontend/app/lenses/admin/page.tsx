@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useQuery } from '@tanstack/react-query';
@@ -1503,6 +1504,7 @@ export default function AdminDashboardPage() {
         <LiveSystemHealth />
       </section>
     </div>
+          <RecentMineCard domain="admin" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

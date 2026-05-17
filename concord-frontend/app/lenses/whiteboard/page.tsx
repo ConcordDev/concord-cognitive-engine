@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WhiteboardRepos } from '@/components/whiteboard/WhiteboardRepos';
@@ -1691,6 +1692,7 @@ export default function WhiteboardLensPage() {
         <WhiteboardActionPanel />
       </section>
     </PipingProvider>
+          <RecentMineCard domain="whiteboard" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

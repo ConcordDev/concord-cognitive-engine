@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -207,6 +208,7 @@ export default function MarketsPage() {
         Markets Workbench
       </button>
       <MarketsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+          <RecentMineCard domain="markets" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

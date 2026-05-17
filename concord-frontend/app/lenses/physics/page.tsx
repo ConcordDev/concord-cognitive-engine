@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhysicsArxiv } from '@/components/physics/PhysicsArxiv';
@@ -1744,6 +1745,7 @@ export default function PhysicsLensPage() {
         <PhysicsActionPanel />
       </section>
     </PipingProvider>
+          <RecentMineCard domain="physics" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 

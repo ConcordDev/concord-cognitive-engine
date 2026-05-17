@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FormalVerificationRepos } from '@/components/invariant/FormalVerificationRepos';
@@ -719,6 +720,7 @@ export default function InvariantLensPage() {
         <FormalVerificationRepos />
       </section>
     </div>
+          <RecentMineCard domain="invariant" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

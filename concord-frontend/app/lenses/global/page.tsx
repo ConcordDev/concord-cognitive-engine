@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
@@ -689,6 +690,7 @@ export default function GlobalLensPage() {
         <CountryAtlas />
       </section>
     </div>
+          <RecentMineCard domain="global" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

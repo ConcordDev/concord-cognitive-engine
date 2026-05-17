@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WeatherPanel } from '@/components/eco/WeatherPanel';
@@ -1278,6 +1279,7 @@ export default function EcoLensPage() {
         <WeatherPanel />
       </section>
     </div>
+          <RecentMineCard domain="eco" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

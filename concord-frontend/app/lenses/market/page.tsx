@@ -5,6 +5,7 @@ import MarketHeatmap from '@/components/market/MarketHeatmap';
 import Watchlist from '@/components/market/Watchlist';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SectorHeatmapPanel } from '@/components/market/SectorHeatmap';
@@ -650,6 +651,7 @@ export default function MarketLensPage() {
         <SectorHeatmapPanel />
       </section>
     </div>
+          <RecentMineCard domain="market" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LegacyChatter } from '@/components/legacy/LegacyChatter';
@@ -531,6 +532,7 @@ export default function LegacyLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#legacy-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legacy content</a>
+          <RecentMineCard domain="legacy" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

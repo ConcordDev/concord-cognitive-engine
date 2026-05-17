@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WordLookup } from '@/components/linguistics/WordLookup';
@@ -683,6 +684,7 @@ export default function LinguisticsLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="linguistics" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

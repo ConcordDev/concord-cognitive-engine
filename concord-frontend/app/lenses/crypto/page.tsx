@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CoinGeckoTicker } from '@/components/crypto/CoinGeckoTicker';
@@ -1637,6 +1638,7 @@ export default function CryptoLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="crypto" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

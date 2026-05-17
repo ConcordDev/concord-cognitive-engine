@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingRepos } from '@/components/repos/TrendingRepos';
@@ -668,6 +669,7 @@ export default function ReposLensPage() {
         <TrendingRepos />
       </section>
     </div>
+          <RecentMineCard domain="repos" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

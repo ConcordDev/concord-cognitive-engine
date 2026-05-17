@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ContractSearch } from '@/components/defense/ContractSearch';
@@ -382,6 +383,7 @@ export default function DefenseLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="defense" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

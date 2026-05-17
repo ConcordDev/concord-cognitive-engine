@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SrsRepos } from '@/components/srs/SrsRepos';
@@ -1280,6 +1281,7 @@ export default function SRSLensPage() {
         <SrsRepos />
       </section>
     </div>
+          <RecentMineCard domain="srs" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

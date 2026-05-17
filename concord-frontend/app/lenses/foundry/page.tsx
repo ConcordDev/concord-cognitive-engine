@@ -15,6 +15,7 @@
 
 import dynamic from 'next/dynamic';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
@@ -74,6 +75,7 @@ export default function FoundryLensPage() {
           </section>
         </PipingProvider>
       </main>
+          <RecentMineCard domain="foundry" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PexelsBrowser } from '@/components/photography/PexelsBrowser';
@@ -964,6 +965,7 @@ export default function PhotographyPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="photography" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

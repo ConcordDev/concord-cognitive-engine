@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MentorshipFeed } from '@/components/mentorship/MentorshipFeed';
@@ -626,6 +627,7 @@ export default function MentorshipLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="mentorship" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

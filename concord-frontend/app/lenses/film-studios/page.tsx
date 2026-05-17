@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FilmStackFeed } from '@/components/film-studios/FilmStackFeed';
@@ -841,6 +842,7 @@ export default function FilmStudiosPage() {
         <FilmStackFeed />
       </section>
     </div>
+          <RecentMineCard domain="film-studios" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

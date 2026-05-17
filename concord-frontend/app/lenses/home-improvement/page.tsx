@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HomeImprovementFeed } from '@/components/home-improvement/HomeImprovementFeed';
@@ -719,6 +720,7 @@ export default function HomeImprovementLensPage() {
         <HomeImprovementFeed />
       </section>
     </div>
+          <RecentMineCard domain="home-improvement" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

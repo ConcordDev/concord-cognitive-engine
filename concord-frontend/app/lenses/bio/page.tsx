@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -468,6 +469,7 @@ export default function BioLensPage() {
         <BioActionPanel />
       </section>
     </PipingProvider>
+          <RecentMineCard domain="bio" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }
