@@ -29,13 +29,16 @@ export const WORLD_HOSTILE_SEEDS = {
   fantasy: {
     factions: ["fantasy_obsidian_crown", "fantasy_goblin_warband_league"],
     hostiles: [
-      { archetype: "goblin",          level: 2, hp: 45,  damage: 6,  count: 4, faction: "fantasy_goblin_warband_league" },
-      { archetype: "orc_warrior",     level: 4, hp: 95,  damage: 12, count: 3, faction: "fantasy_obsidian_crown" },
-      { archetype: "dark_wizard",     level: 6, hp: 80,  damage: 18, count: 2, faction: "fantasy_obsidian_crown" },
-      { archetype: "undead",          level: 3, hp: 70,  damage: 9,  count: 4, faction: "undead" },
-      { archetype: "bandit",          level: 3, hp: 65,  damage: 8,  count: 3, faction: "outlaw" },
-      { archetype: "troll",           level: 8, hp: 220, damage: 24, count: 1, faction: "fantasy_obsidian_crown" },
-      { archetype: "dragon_cultist",  level: 7, hp: 110, damage: 16, count: 2, faction: "cult" },
+      // camp= field clusters hostiles AT their lore-correct camp so the
+      // quest objective "Clear the Goblin Warband" actually maps to four
+      // goblins at the goblin camp, not scattered across the map.
+      { archetype: "goblin",          level: 2, hp: 45,  damage: 6,  count: 4, faction: "fantasy_goblin_warband_league", camp: "fantasy_goblin_warband" },
+      { archetype: "orc_warrior",     level: 4, hp: 95,  damage: 12, count: 3, faction: "fantasy_obsidian_crown",        camp: "fantasy_orc_warcamp" },
+      { archetype: "dark_wizard",     level: 6, hp: 80,  damage: 18, count: 2, faction: "fantasy_obsidian_crown",        camp: "fantasy_orc_warcamp" },
+      { archetype: "troll",           level: 8, hp: 220, damage: 24, count: 1, faction: "fantasy_obsidian_crown",        camp: "fantasy_orc_warcamp" },
+      { archetype: "bandit",          level: 3, hp: 65,  damage: 8,  count: 3, faction: "outlaw",                        camp: "fantasy_bandit_outpost" },
+      { archetype: "undead",          level: 3, hp: 70,  damage: 9,  count: 4, faction: "undead",                        camp: "fantasy_undead_crypt" },
+      { archetype: "dragon_cultist",  level: 7, hp: 110, damage: 16, count: 2, faction: "cult",                          camp: "fantasy_dragon_cult_lair" },
     ],
     camps: [
       { id: "fantasy_goblin_warband",   name: "Goblin Warband Camp",    pos: { x: 800, z: 800 },   buildings: ["watchtower:wood", "house:wood", "house:wood"] },
@@ -345,20 +348,32 @@ export function seedHostilesForWorld(db, worldId) {
 
   let npcCount = 0, bldgCount = 0, questCount = 0;
 
-  // 1) NPCs — spread hostiles in clusters around their camp/dungeon coords
+  // 1) NPCs — clustered AT THEIR CAMP (not scattered across all camps).
+  // Each hostile spec can name a `camp` field that ties it to a specific
+  // camp/dungeon by id. If unset, defaults to the first camp+dungeon in
+  // order (back-compat with older configs). The clustering is what makes
+  // "clear the goblin warband" quests actually completable — pre-fix
+  // playtest found the goblins scattered across 4 unrelated camps.
   const allLocations = [...(config.camps || []), ...(config.dungeons || [])];
-  let locIndex = 0;
+  const locById = new Map(allLocations.map((l) => [l.id, l]));
+  let locFallbackIndex = 0;
   for (const spec of config.hostiles) {
+    const targetCamp = spec.camp
+      ? (locById.get(spec.camp) || allLocations[locFallbackIndex % Math.max(1, allLocations.length)])
+      : allLocations[locFallbackIndex % Math.max(1, allLocations.length)];
+    if (!spec.camp) locFallbackIndex++;
     for (let i = 0; i < spec.count; i++) {
       const npcId = `${worldId}_${spec.archetype}_${i + 1}_${shortHash(worldId + spec.archetype + i)}`;
       const exists = safeGet(db, "SELECT id FROM world_npcs WHERE id = ?", [npcId]);
       if (exists) continue;
-      // Distribute around one of the camp/dungeon centers
-      const center = allLocations[locIndex % Math.max(1, allLocations.length)] || { pos: { x: 1000, z: 1000 } };
+      const center = targetCamp || { pos: { x: 1000, z: 1000 } };
       const pos = {
-        x: center.pos.x + (Math.random() - 0.5) * 80,
+        // Tighter cluster radius — hostiles in one camp should be within
+        // ~40m of each other so the quest's "clear the camp" objective
+        // is geometrically meaningful.
+        x: center.pos.x + (Math.random() - 0.5) * 40,
         y: 20,
-        z: center.pos.z + (Math.random() - 0.5) * 80,
+        z: center.pos.z + (Math.random() - 0.5) * 40,
       };
       try {
         db.prepare(`INSERT INTO world_npcs

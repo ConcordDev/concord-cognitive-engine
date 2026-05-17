@@ -374,3 +374,59 @@ export function grantStarterInventoryToUser(db, userId) {
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
   return { ok: true, granted };
 }
+
+// ── Starter combat skill ─────────────────────────────────────────────────
+//
+// Every new player gets one. Combat anti-cheat requires a real skill DTU
+// with damage data, so without this a fresh user can't attack anything —
+// not even the level-2 goblin in the warband. The starter skill is
+// intentionally weak (basePower 6, max_damage 18) so it's enough to
+// engage the easiest hostiles but not enough to one-shot anything above
+// level 3. Players are expected to author / craft / learn better skills
+// as they progress (see the skill-evolution system + the "Forge Your First
+// Skill" tutorial quest).
+//
+// The skill is also a DTU under the player's creator_id — so they own it,
+// can cite it, can publish derivative skills under royalty cascade.
+
+const STARTER_COMBAT_SKILL = {
+  id_template: "skill_basic_strike",
+  title: "Basic Strike",
+  data: {
+    skill_type: "combat",
+    element: "physical",
+    basePower: 6,
+    max_damage: 18,           // _validateDamageCap respects this × 2.5 crit multiplier = 45 hard ceiling
+    range_m: 2,               // melee
+    bar_cost: 5,
+    resource_bar: "stamina",
+    description: "A simple unarmed strike. Issued by the Sovereign's quartermaster to every new arrival so they are not defenseless. Replace as soon as you can.",
+    tier: "starter",
+    learnable: true,          // other players can cite this for derivative skills
+  },
+};
+
+/**
+ * Grant the starter combat skill to a user. Idempotent — re-running
+ * returns the existing skill instead of creating a duplicate.
+ */
+export function grantStarterCombatSkill(db, userId) {
+  if (!db || !userId) return { ok: false, error: "user_id_required" };
+  const skillId = `${STARTER_COMBAT_SKILL.id_template}_${userId.slice(0, 8)}`;
+  try {
+    const existing = db.prepare(`SELECT id FROM dtus WHERE id = ?`).get(skillId);
+    if (existing) return { ok: true, skillId, deduped: true };
+    db.prepare(`INSERT INTO dtus (id, type, title, creator_id, data, created_at)
+                VALUES (?, 'skill', ?, ?, ?, ?)`)
+      .run(
+        skillId,
+        STARTER_COMBAT_SKILL.title,
+        userId,
+        JSON.stringify(STARTER_COMBAT_SKILL.data),
+        Math.floor(Date.now() / 1000),
+      );
+    return { ok: true, skillId, granted: true };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}

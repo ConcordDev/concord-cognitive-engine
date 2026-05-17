@@ -207,9 +207,14 @@ export default function createAuthRouter({
 
     // Grant starter inventory so the new user can immediately gather, craft,
     // and trade without spending the first 30 minutes empty-handed.
+    // Also grant the starter combat skill (Basic Strike) so they can engage
+    // hostiles from the start — combat anti-cheat requires a real skill DTU
+    // with damage data, so without this they couldn't even attack the easiest
+    // goblin in the warband. Per design intent: every noob needs a basic attack.
     try {
       import("../lib/starter-content.js").then((sc) => {
         sc.grantStarterInventoryToUser?.(db, userId);
+        sc.grantStarterCombatSkill?.(db, userId);
       }).catch(() => { /* starter grant best-effort */ });
     } catch { /* import silent */ }
 

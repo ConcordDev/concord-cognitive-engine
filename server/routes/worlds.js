@@ -435,11 +435,14 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
-  // GET /api/worlds/skills/legendary — Legendary+ skill holders across all worlds
+  // GET /api/worlds/skills/legendary — Legendary+ skill holders across all worlds.
+  // Pre-fix this referenced d.world_id which doesn't exist on the dtus table
+  // (worlds are tracked via meta_json / data, not as a top-level column).
+  // Found by playtest. Drop the missing column from the projection.
   router.get("/skills/legendary", async (req, res) => {
     try {
       const rows = db.prepare(`
-        SELECT d.id, d.title, d.skill_level, d.creator_id, u.username, d.world_id
+        SELECT d.id, d.title, d.skill_level, d.creator_id, u.username
         FROM dtus d LEFT JOIN users u ON u.id = d.creator_id
         WHERE d.type = 'skill' AND d.skill_level >= 500
         ORDER BY d.skill_level DESC LIMIT 20

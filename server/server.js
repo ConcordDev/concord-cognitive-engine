@@ -29786,6 +29786,37 @@ if (db) {
         ...totals,
       });
     } catch (e) { console.warn("[world-hostiles-seed]", e.message); }
+
+    // Phase 13 follow-on — backfill starter combat skill for any existing
+    // user who registered before the auto-grant was wired in. Found by
+    // playtest: a fresh player landing in a non-hub world cannot engage
+    // any hostile because the combat anti-cheat requires a real skill
+    // DTU with damage data. Idempotent — already-granted users skip.
+    try {
+      const sc = await import("./lib/starter-content.js");
+      const users = db.prepare("SELECT id FROM users").all();
+      let granted = 0;
+      for (const u of users) {
+        const r = sc.grantStarterCombatSkill?.(db, u.id);
+        if (r?.granted) granted++;
+      }
+      structuredLog("info", "starter_combat_skill_backfilled", { users: users.length, granted });
+    } catch (e) { console.warn("[starter-combat-backfill]", e.message); }
+
+    // Phase 13 follow-on — tutorial onboarding. Adds Arwen Firstteacher
+    // (Agent of the Sovereign, quest_giver) to concordia-hub at The
+    // Wanderer's Rest, plus 3 tutorial quests that teach the substrate's
+    // load-bearing primitives: authoring a skill, citing another's work,
+    // and earning the first CC. Found in playtest: nothing told a fresh
+    // arrival HOW to grow. Idempotent.
+    try {
+      const { seedTutorialContent } = await import("./lib/tutorial-quests-seed.js");
+      const r = seedTutorialContent(db);
+      structuredLog("info", "tutorial_content_seeded", {
+        npcs: r.npcInserted || 0,
+        quests: r.questsInserted || 0,
+      });
+    } catch (e) { console.warn("[tutorial-seed]", e.message); }
     // Start an NPC simulator for each seeded world
     const worldRows = db.prepare("SELECT id FROM worlds WHERE status = 'active'").all();
     for (const { id } of worldRows) {
