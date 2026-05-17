@@ -164,6 +164,16 @@ registerHeartbeat("corpse-cleanup", {
   },
 });
 
+// Phase 1 (UX completeness sprint) — lens_drafts GC. Hard-deletes draft
+// rows whose updated_at is older than CONCORD_DRAFT_TTL_DAYS (default 30).
+// Frequency 480 (~2h); cheap, bounded by idx_lens_drafts_updated_at.
+// Kill-switch: CONCORD_DRAFT_GC=0.
+import { runDraftGcCycle } from "./emergent/draft-gc-cycle.js";
+registerHeartbeat("draft-gc-cycle", {
+  frequency: 480,
+  handler: runDraftGcCycle,
+});
+
 // Presence stale-entry sweep. Socket disconnect handlers
 // (server.js:7112, 7120) prune `_userPositions` on the happy path, but
 // crash-recovery / never-cleanly-disconnected sockets leave entries
@@ -9631,6 +9641,11 @@ async function runMacro(domain, name, input, ctx) {
   const publicReadDomains = {
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
     dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
+    // Phase 1 (UX completeness sprint) — per-lens auto-save drafts.
+    // Handlers self-scope by ctx.actor.userId; anonymous callers return
+    // {ok:false,reason:'no_user'}. Listing here bypasses the heavy
+    // mutation gate for the high-frequency save/load path.
+    drafts: new Set(["save", "load", "list_mine", "delete"]),
     lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate", "spatial_at"]),
     system: new Set(["status", "getStatus", "health", "analogize"]),
     settings: new Set(["get", "status"]),
@@ -23161,6 +23176,14 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+
+// Phase 1 (UX completeness sprint) — per-lens auto-save drafts. Four
+// macros (save / load / list_mine / delete) powering the useLensDraft
+// hook and the LoadFromSubstrate "Reopen recent" panel that every lens
+// will mount in Phase 3. Self-scoped by ctx.actor.userId; anonymous
+// callers get {ok:false, reason:'no_user'}.
+import registerDraftsMacros from "./domains/drafts.js";
+registerDraftsMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";

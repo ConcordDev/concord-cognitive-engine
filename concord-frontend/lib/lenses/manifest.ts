@@ -21,6 +21,36 @@
 
 import { buildSubLensManifests } from './sub-lens-manifests';
 
+/**
+ * Phase 1 (UX completeness sprint) — data-tier vocabulary.
+ *
+ *   REAL_LIVE     — real external feed, polled live (Yahoo Finance, NOAA, NASA APOD)
+ *   REAL_FREE     — real but static / open-access (Wikipedia, OpenStreetMap, MET Museum)
+ *   SIM_GRADE_A   — high-fidelity LLM-grounded against a domain schema, NOT pretending to be real data
+ *   DEMO          — synthetic; the lens is a working surface but the domain requires paywalled data we haven't licensed
+ */
+export type DataTier = 'REAL_LIVE' | 'REAL_FREE' | 'SIM_GRADE_A' | 'DEMO';
+
+/** Phase 1 — copy + handlers for an empty-state CTA the lens mounts via EmptyStateCTA. */
+export interface LensEmptyState {
+  headline: string;
+  caption: string;
+  firstActionLabel: string;
+  /** Optional macro to fire when the CTA button is clicked. domain defaults to manifest.domain. */
+  firstActionMacro?: { domain?: string; name: string; input?: Record<string, unknown> };
+}
+
+/** Phase 1 — 30-second guided first-run mounted via FirstRunTour. */
+export interface LensFirstRunGuide {
+  steps: Array<{
+    caption: string;
+    /** CSS selector to spotlight (optional; if absent the step is text-only). */
+    selector?: string;
+    /** Optional macro to demonstrate / pre-fire during the step. */
+    macro?: string;
+  }>;
+}
+
 export interface LensManifest {
   /** Unique domain identifier (e.g. 'music', 'finance', 'studio') */
   domain: string;
@@ -45,6 +75,27 @@ export interface LensManifest {
   /** Category for grouping in UI */
   category: 'knowledge' | 'creative' | 'system' | 'social' | 'productivity' | 'finance'
           | 'healthcare' | 'trades' | 'operations' | 'agriculture' | 'government' | 'services' | 'lifestyle';
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Phase 1 (UX completeness sprint) — optional, additive fields.
+  // Existing lenses without these still work; the new primitives degrade
+  // gracefully when a field is absent.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Empty-state CTA copy + first-action handler. EmptyStateCTA reads this. */
+  emptyState?: LensEmptyState;
+
+  /** Step list for the 30-second guided tour. FirstRunTour reads this. */
+  firstRunGuide?: LensFirstRunGuide;
+
+  /** Data-tier label. DepthBadge renders the corresponding chip. */
+  dataTier?: DataTier;
+
+  /** Socket event names this lens listens to for live tile updates. useTilePush key list. */
+  realtimeEvents?: string[];
+
+  /** Backend table FK target for multi-step sessions (e.g. 'war_campaigns', 'reasoning_sessions'). */
+  sessionTable?: string;
 }
 
 // ---- Lens Manifests ----
