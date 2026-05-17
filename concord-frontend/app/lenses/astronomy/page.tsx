@@ -10,6 +10,7 @@ import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
 import { NasaLivePanel } from '@/components/astronomy/NasaLivePanel';
 import { SpaceflightNewsPanel } from '@/components/space/SpaceflightNewsPanel';
 import { UpcomingLaunchesPanel } from '@/components/space/UpcomingLaunchesPanel';
+import { IssPassPanel } from '@/components/astronomy/IssPassPanel';
 import { AstronomyActionPanel } from '@/components/astronomy/AstronomyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -228,6 +229,8 @@ export default function AstronomyLensPage() {
         <SpaceflightNewsPanel domain="astronomy" />
         <UpcomingLaunchesPanel domain="astronomy" />
       </div>
+      {/* Phase 4 (sixth wave) — REAL ISS pass times for your city. */}
+      <IssPassPanel domain="astronomy" />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Telescope className="w-8 h-8 text-indigo-400" />
