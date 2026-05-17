@@ -3,6 +3,8 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import { LayoutDashboard as MobileTabDash, Home as MobileTabHome, DollarSign as MobileTabDollar, Building as MobileTabBuilding, Calendar as MobileTabCal, Map as MobileTabMap } from 'lucide-react';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -3378,6 +3380,19 @@ export default function RealEstateLensPage() {
           <RecentMineCard domain="realestate" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="realestate" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="realestate" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 11 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'Dashboard',    label: 'Home',     icon: MobileTabDash },
+              { id: 'Listings',     label: 'Listings', icon: MobileTabHome },
+              { id: 'Transactions', label: 'Trans',    icon: MobileTabDollar },
+              { id: 'Rentals',      label: 'Rent',     icon: MobileTabBuilding },
+              { id: 'Showings',     label: 'Show',     icon: MobileTabCal },
+              { id: 'Map',          label: 'Map',      icon: MobileTabMap },
+            ]}
+            active={activeTab}
+            onSelect={(id) => setActiveTab(id as ModeTab)}
+          />
     </LensShell>
   );
 }
