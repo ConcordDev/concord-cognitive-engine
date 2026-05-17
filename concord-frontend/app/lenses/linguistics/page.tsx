@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { WordLookup } from '@/components/linguistics/WordLookup';
 import { LinguisticsActionPanel } from '@/components/linguistics/LinguisticsActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -672,9 +673,11 @@ export default function LinguisticsLensPage() {
         <WordLookup />
       </section>
 
-      <section className="mt-6">
-        <LinguisticsActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <LinguisticsActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );
