@@ -17,6 +17,7 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { FollowButton } from './FollowButton';
 
 export interface UserLinkProps {
   username?: string | null;
@@ -26,6 +27,10 @@ export interface UserLinkProps {
   prefix?: string;
   /** Visual tone. */
   tone?: 'default' | 'muted' | 'accent';
+  /** Render a compact FollowButton right next to the link. Default false. */
+  showFollow?: boolean;
+  /** Required for the follow button to know the viewer. */
+  currentUserId?: string | null;
   className?: string;
 }
 
@@ -35,6 +40,8 @@ export function UserLink({
   displayName,
   prefix = '',
   tone = 'default',
+  showFollow = false,
+  currentUserId,
   className,
 }: UserLinkProps) {
   const handle = username || userId;
@@ -55,7 +62,7 @@ export function UserLink({
     );
   }
 
-  return (
+  const link = (
     <Link
       href={`/profile/${encodeURIComponent(handle)}`}
       className={cn(
@@ -67,6 +74,14 @@ export function UserLink({
     >
       {prefix}{label}
     </Link>
+  );
+
+  if (!showFollow || !userId) return link;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {link}
+      <FollowButton targetUserId={userId} currentUserId={currentUserId} compact />
+    </span>
   );
 }
 

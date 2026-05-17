@@ -284,7 +284,13 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
           className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 hover:border-indigo-500/30 transition-colors"
         >
           <div className="flex items-baseline gap-2 mb-1">
-            <UserLink username={item.username} userId={item.userId} className="text-sm" />
+            <UserLink
+              username={item.username}
+              userId={item.userId}
+              className="text-sm"
+              showFollow
+              currentUserId={currentUserId}
+            />
             <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
               {item.kind}
             </span>

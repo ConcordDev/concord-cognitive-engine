@@ -26,6 +26,8 @@ import { FederationBadge, type FederationStatus } from '@/components/federation/
 import { DownstreamBadge } from './DownstreamBadge';
 import { ReactionBar } from '@/components/social/ReactionBar';
 import { CommentThread } from '@/components/social/CommentThread';
+import { ShareButton } from '@/components/social/ShareButton';
+import { BookmarkButton } from '@/components/social/BookmarkButton';
 import { useDtuSurface } from '@/hooks/useDtuSurface';
 // Phase P — surface the previously-orphan provenance/freshness badges.
 import { FreshnessBadge } from '@/components/common/FreshnessBadge';
@@ -228,8 +230,15 @@ export function DTUEmbed({ dtu, mode = 'card', onOpen, recordSurfaceFromLens, cl
             )}
             <DownstreamBadge dtuId={dtu.id} compact />
           </div>
-          {/* Phase 10 — pan-social reactions on every DTU embed. */}
-          <ReactionBar postId={dtu.id} compact hideWhenEmpty={!expanded} className="mt-1" />
+          {/* Phase 10 — pan-social interactions on every DTU embed.
+              Reactions inline; Share + Bookmark stay visible always so
+              users have a single-click save/repost path even when no
+              one's reacted yet. */}
+          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+            <ReactionBar postId={dtu.id} compact hideWhenEmpty={!expanded} />
+            <ShareButton postId={dtu.id} compact hideWhenEmpty={!expanded} />
+            <BookmarkButton postId={dtu.id} compact />
+          </div>
           {dtu.summary && (
             <p
               className={cn(
