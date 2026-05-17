@@ -6,6 +6,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -271,6 +272,9 @@ export default function SpaceLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="space" size="sm" className="ml-2" />
     <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>
+
+      {/* Phase 4 (fourth wave) — REAL Wikipedia search for missions, satellites, agencies. */}
+      <WikipediaSearchPanel domain="space" title="Wikipedia · space topics" />
 
       {/* ── Header with starfield gradient ── */}
       <header className="bg-gradient-to-r from-indigo-900/20 via-transparent to-purple-900/20 rounded-xl p-4 flex items-center justify-between">

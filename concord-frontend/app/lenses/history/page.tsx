@@ -7,6 +7,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WikipediaOnThisDayPanel } from '@/components/history/WikipediaOnThisDayPanel';
+import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -200,6 +201,8 @@ export default function HistoryLensPage() {
     <div data-lens-theme="history" className="p-6 space-y-6">
       {/* Phase 4 — REAL Wikipedia On This Day. Tier-1 honest free data. */}
       <WikipediaOnThisDayPanel />
+      {/* Phase 4 (fourth wave) — REAL Wikipedia search by topic / era / figure. */}
+      <WikipediaSearchPanel domain="history" title="Wikipedia · history search" />
       <header className="flex items-center gap-3">
         <Clock className="w-6 h-6 text-neon-cyan" />
         <div>

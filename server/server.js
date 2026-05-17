@@ -9656,8 +9656,8 @@ async function runMacro(domain, name, input, ctx) {
     // External fetches go through these macros; no user data leaves the
     // server, so anonymous reads are safe.
     astronomy: new Set(["live_apod", "live_iss", "live_neo"]),
-    geology: new Set(["live_quakes_today"]),
-    ocean: new Set(["live_tides"]),
+    geology: new Set(["live_quakes_today", "live_wiki_search", "live_wiki_summary"]),
+    ocean: new Set(["live_tides", "live_wiki_search", "live_wiki_summary"]),
     pharmacy: new Set(["live_label_lookup", "live_adverse_events", "live_recalls"]),
     cooking: new Set(["live_food_search"]),
     food: new Set(["live_food_search"]),
@@ -9668,7 +9668,7 @@ async function runMacro(domain, name, input, ctx) {
     quantum: new Set(["live_arxiv"]),
     robotics: new Set(["live_arxiv"]),
     // Phase 4 cont'd — bio + neuro also get PubMed; chem also gets PubChem.
-    neuro: new Set(["live_arxiv", "live_pubmed_neuro"]),
+    neuro: new Set(["live_arxiv", "live_pubmed_neuro", "live_wiki_search", "live_wiki_summary"]),
     bio: new Set(["live_arxiv", "live_pubmed"]),
     chem: new Set(["live_arxiv", "live_pubchem"]),
     ml: new Set(["live_arxiv"]),
@@ -9676,17 +9676,21 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 4 cont'd — additional REAL free-API wire-ups.
     "mental-health": new Set(["live_medlineplus"]),
     podcast: new Set(["live_itunes_search"]),
-    global: new Set(["live_countries"]),
+    global: new Set(["live_countries", "live_wiki_search", "live_wiki_summary"]),
     environment: new Set(["live_gbif"]),
     forestry: new Set(["live_gbif"]),
     agriculture: new Set(["live_gbif"]),
     paper: new Set(["live_openlibrary", "live_crossref", "live_openalex"]),
-    education: new Set(["live_openlibrary", "live_dictionary"]),
+    education: new Set(["live_openlibrary", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     // Phase 4 (third wave) — scholarly + language wires.
     research: new Set(["live_crossref", "live_openalex"]),
-    linguistics: new Set(["live_datamuse", "live_dictionary"]),
+    linguistics: new Set(["live_datamuse", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     "creative-writing": new Set(["live_datamuse"]),
     poetry: new Set(["live_datamuse"]),
+    // Phase 4 (fourth wave) — Wikipedia search + summary across reference lenses.
+    philosophy: new Set(["live_wiki_search", "live_wiki_summary"]),
+    desert: new Set(["live_wiki_search", "live_wiki_summary"]),
+    space: new Set(["live_wiki_search", "live_wiki_summary"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
@@ -9705,7 +9709,7 @@ async function runMacro(domain, name, input, ctx) {
     analytics: new Set(["dashboard", "growth", "density", "citations", "marketplace", "personal"]),
     atlas: new Set(["status", "get", "list", "scope", "config", "thresholds", "autogen", "chat", "contradictions", "score-explain", "submission", "search", "antigaming", "rights", "write-guard", "scope-metrics", "local-hints", "tile", "volume", "material", "subsurface", "change", "coverage", "live", "metrics", "live_geocode"]),
     // Phase 4 (UX completeness sprint) — history live wiki On This Day.
-    history: new Set(["live_wiki_otd"]),
+    history: new Set(["live_wiki_otd", "live_wiki_search", "live_wiki_summary"]),
     agents: new Set(["list", "get", "status"]),
     personas: new Set(["list", "get"]),
     affect: new Set(["state", "events", "health", "system", "policy"]),
@@ -23304,6 +23308,12 @@ registerMoreFreeApiMacros(register);
 // (linguistics/education).
 import registerScholarlyApiMacros from "./domains/scholarly-apis.js";
 registerScholarlyApiMacros(register);
+
+// Phase 4 (fourth wave) — Wikipedia REST search + summary REAL_FREE wires
+// for history / philosophy / linguistics / education / desert / ocean /
+// neuro / geology / space / global. Pairs two macros per lens.
+import registerWikipediaSearchMacros from "./domains/wikipedia-search.js";
+registerWikipediaSearchMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";

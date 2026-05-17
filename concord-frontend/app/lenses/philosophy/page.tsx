@@ -6,6 +6,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { PhiloFeed } from '@/components/philosophy/PhiloFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -185,6 +186,8 @@ export default function PhilosophyLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="philosophy" size="sm" className="ml-2" />
     <div data-lens-theme="philosophy" className="p-6 space-y-6">
+      {/* Phase 4 (fourth wave) — REAL Wikipedia concept lookup for philosophy. */}
+      <WikipediaSearchPanel domain="philosophy" title="Wikipedia · philosophy concepts" />
       <header className="flex items-center gap-3">
         <BookOpen className="w-6 h-6 text-neon-purple" />
         <div>
