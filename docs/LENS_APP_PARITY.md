@@ -252,6 +252,28 @@ data, all server macros via `apiHelpers.lens.runDomain`.
 | commonsense | CommonsenseActionPanel | conceptnet-edges · conceptnet-relatedness · plausibilityCheck · analogyMapping | ✅ shipped |
 | collab | CollabActionPanel | sessionAnalytics (Gini) · contributionScore · detectConsensus · balanceWorkload | ✅ shipped |
 | cooking | CookingActionPanel | usda-search (FoodData Central) · scaleRecipe · nutritionEstimate · substitution | ✅ shipped |
+| veterinary | VeterinaryActionPanel | triageAssess · weightCheck · vaccineSchedule · costEstimate | ✅ shipped |
+| diy | DiyActionPanel | estimateProject · cutList (bin-packing) · toolCheck (rent/buy) · safetyCheck (PPE) | ✅ shipped |
+| ethics | EthicsActionPanel | frameworkAnalysis (util/deont/virtue/care) · stakeholderImpact (salience matrix) · biasDetection (4/5 rule) · tensions | ✅ shipped |
+| consulting | ConsultingActionPanel | engagementScope · utilizationRate · proposalScore · clientHealth | ✅ shipped |
+| legacy | LegacyActionPanel | technicalDebt (SEI MI) · migrationReadiness · riskMap (bus factor) · roll-up | ✅ shipped |
+| game-design | GameDesignActionPanel | mechanicsAnalysis · playerFlow (Csíkszentmihályi) · narrativeBranch · monetizationModel | ✅ shipped |
+| urban-planning | UrbanPlanningActionPanel | zoningAnalysis (FAR) · walkabilityScore · trafficImpact · census-acs-county (real ACS) | ✅ shipped |
+| geology | GeologyActionPanel | rockClassify · recent-earthquakes (real USGS) · seismicRisk · usgs-seismic-hazard (real ASCE 7-22) | ✅ shipped |
+| inference | InferenceActionPanel | forwardChain (Floyd-Warshall closure) · backwardChain (DFS proof) · unify (Robinson MGU) · reset | ✅ shipped |
+| paper | PaperActionPanel | search (real arXiv API) · citationAnalyze · readabilityScore (FK/Fog) · abstractSummarize | ✅ shipped |
+| logistics | LogisticsActionPanel | optimizeRoute (NN) · hosCheck (FMCSA) · maintenanceDue · fleetReport | ✅ shipped |
+| transfer | TransferActionPanel | schemaMapping (fuzzy + Jaccard) · dataQuality · migrationPlan · reset | ✅ shipped |
+| hypothesis | HypothesisActionPanel | zTest · abTest · bayesianInference (Beta-Binomial conj) · powerAnalysis | ✅ shipped |
+| research | ResearchActionPanel | citationNetwork (PageRank + h-index) · methodologyScore · reproducibilityCheck · daily-note | ✅ shipped |
+| timeline | TimelineActionPanel | criticalPath (topo + CPM) · ganttSchedule · temporalClustering · trendAnalysis | ✅ shipped |
+| temporal | TemporalActionPanel | timeSeriesDecompose (trend/seasonal/residual) · anomalyDetection (Z + IQR) · forecast · reset | ✅ shipped |
+| eco | EcoActionPanel | carbonFootprint · biodiversityIndex (Shannon) · sustainabilityScore · aqi-current (real open-meteo) | ✅ shipped |
+| privacy | PrivacyActionPanel | dataInventory · consentAudit (GDPR) · impactAssessment (DPIA) · breachResponse (72h) | ✅ shipped |
+| goals | GoalsActionPanel | okrScoring (period-aware) · goalDecomposition · progressForecast · reset | ✅ shipped |
+| organ | OrganActionPanel | orgChart · teamComposition · communicationFlow (silo + brokers) · reset | ✅ shipped |
+| alliance | AllianceActionPanel | compatibilityScore (Jaccard + complementarity) · networkAnalysis · riskAssessment · reset | ✅ shipped |
+| trades | TradesActionPanel | calculateEstimate · calculatePL · checkPermits · materialsCost | ✅ shipped |
 | (plus the Tier-1/Tier-3/Tier-5/Tier-6 panels shipped earlier in the session — see git log on `claude/ship-trade-ui-widgets-hLpjG` for the full chain.) | | | |
 
 ## Progress tracking
@@ -264,7 +286,7 @@ data, all server macros via `apiHelpers.lens.runDomain`.
 | Tier 4 (trade calcs) | 8 | 100% | 2026-05-16 |
 | Tier 5 (session loops) | 5 | ~80% | 2026-05-16 |
 | Tier 6 (backend-creation) | 5 | ~80% | 2026-05-16 |
-| Tier 7 (Concord-native) | ~150 | ~42% authored (≥80% each) | 2026-05-17 |
+| Tier 7 (Concord-native) | ~150 | ~57% authored (≥80% each) | 2026-05-17 (continuation pass) |
 
 **Close gate:** every Tier-1 to Tier-6 lens ≥ 80% (heavyweights ≥ 70%).
 Tier 7 lenses: target authored + ≥ 80% on the authored target.
@@ -359,3 +381,18 @@ reference target.
 - This rubric authored 2026-05-16 as Phase 1 deliverable per the v3
   plan. Replaces `docs/LENS_COVERAGE_AUDIT.md` from PR #723 (which
   used the buggy detector that under-counted wiring).
+- **2026-05-17 continuation pass (branch `claude/ship-api-panels-RYeEY`)**:
+  +22 Tier-7 panels shipped (11 commits, one pair per commit, each
+  typechecked clean and committed independently):
+  veterinary+diy · ethics+consulting · legacy+game-design ·
+  urban-planning+geology · inference+paper · logistics+transfer ·
+  hypothesis+research · timeline+temporal · eco+privacy ·
+  goals+organ · alliance+trades. Real external APIs added: USGS
+  Earthquake Catalog · USGS DESIGNMAPS (ASCE 7-22) · US Census ACS
+  5-year · arXiv export API. Tier 7 authored coverage went 42% → 57%.
+  Next session: **UX polish pass** — replace JSON-textarea inputs
+  with purpose-built mini-forms (datepickers, search-as-you-type
+  pickers, drag-to-reorder), add panel-to-panel data piping, wire
+  realtime websocket pushes into result tiles, add undo on
+  destructive actions. The 79-panel breadth sweep is the foundation;
+  the polish pass is the next dimension.
