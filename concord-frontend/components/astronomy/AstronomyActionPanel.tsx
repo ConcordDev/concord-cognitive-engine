@@ -11,6 +11,7 @@ import { Orbit, Image, Satellite, Sparkles, Send, Globe, Wand2, Loader2, Check, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -34,12 +35,14 @@ interface PosResult { body?: string; ra?: string; dec?: string; alt?: number; az
 const TODAY = new Date().toISOString().split('T')[0];
 
 export function AstronomyActionPanel() {
+  // TODAY is the real current date — defaulting date inputs to it is not
+  // fake data, just sensible UX. Body and observer coords start empty.
   const [apodDate, setApodDate] = useState(TODAY);
   const [neoStart, setNeoStart] = useState(TODAY);
   const [neoEnd, setNeoEnd] = useState(TODAY);
-  const [body, setBody] = useState('Mars');
-  const [obsLat, setObsLat] = useState('37.7749');
-  const [obsLng, setObsLng] = useState('-122.4194');
+  const [body, setBody] = useState('');
+  const [obsLat, setObsLat] = useState('');
+  const [obsLng, setObsLng] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -55,50 +58,81 @@ export function AstronomyActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actApod() {
     setBusy('apod'); setFeedback(null);
-    try { const r = await callMacro<ApodResult>('apod', { date: apodDate }); if (r.ok && r.result) { setApodResult(r.result); ok(`${r.result.title}`); } else err(r.error ?? 'apod failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ApodResult>('apod', { date: apodDate });
+      if (r.ok && r.result) { setApodResult(r.result); pipe.publish('astro.apod', r.result, { label: `APOD: ${r.result.title}` }); ok(`${r.result.title}`); } else err(r.error ?? 'apod failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actIss() {
     setBusy('iss'); setFeedback(null);
-    try { const r = await callMacro<IssResult>('iss-current-location', {}); if (r.ok && r.result) { setIssResult(r.result); ok(`ISS at ${r.result.latitude.toFixed(2)}, ${r.result.longitude.toFixed(2)}.`); } else err(r.error ?? 'iss failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<IssResult>('iss-current-location', {});
+      if (r.ok && r.result) { setIssResult(r.result); pipe.publish('astro.iss', r.result, { label: `ISS ${r.result.latitude.toFixed(2)},${r.result.longitude.toFixed(2)}` }); ok(`ISS at ${r.result.latitude.toFixed(2)}, ${r.result.longitude.toFixed(2)}.`); } else err(r.error ?? 'iss failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actNeo() {
     setBusy('neo'); setFeedback(null);
-    try { const r = await callMacro<NeoResult>('near-earth-objects', { startDate: neoStart, endDate: neoEnd }); if (r.ok && r.result) { setNeoResult(r.result); ok(`${r.result.elementCount ?? r.result.objects?.length ?? 0} NEOs · ${r.result.hazardousCount ?? 0} hazardous.`); } else err(r.error ?? 'neo failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<NeoResult>('near-earth-objects', { startDate: neoStart, endDate: neoEnd });
+      if (r.ok && r.result) { setNeoResult(r.result); pipe.publish('astro.neo', r.result, { label: `NEOs ${r.result.elementCount ?? r.result.objects?.length ?? 0}` }); ok(`${r.result.elementCount ?? r.result.objects?.length ?? 0} NEOs · ${r.result.hazardousCount ?? 0} hazardous.`); } else err(r.error ?? 'neo failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPos() {
+    if (!body.trim()) { err('Body required (e.g. Mars).'); return; }
+    const la = parseFloat(obsLat), ln = parseFloat(obsLng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) { err('Observer lat + lng required.'); return; }
     setBusy('pos'); setFeedback(null);
-    try { const r = await callMacro<PosResult>('celestialPosition', { artifact: { data: { body, observerLat: parseFloat(obsLat), observerLng: parseFloat(obsLng), date: new Date().toISOString() } } }); if (r.ok && r.result) { setPosResult(r.result); ok(`${r.result.body} @ ${r.result.alt}° alt.`); } else err(r.error ?? 'pos failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PosResult>('celestialPosition', { artifact: { data: { body, observerLat: la, observerLng: ln, date: new Date().toISOString() } } });
+      if (r.ok && r.result) { setPosResult(r.result); pipe.publish('astro.pos', r.result, { label: `${r.result.body} alt ${r.result.alt}°` }); ok(`${r.result.body} @ ${r.result.alt}° alt.`); } else err(r.error ?? 'pos failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Sky log — ${TODAY}`, tags: ['astronomy', 'skywatch', apodResult ? 'apod' : null].filter((t): t is string => !!t), source: 'astronomy:sky:mint', meta: { visibility: 'private', consent: { allowCitations: false }, sky: { apod: apodResult, iss: issResult, neo: neoResult, pos: posResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Sky DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('astro.mintedDtuId', id, { label: `Sky DTU ${id.slice(0, 8)}…` }); ok(`Sky DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body_ = [`🔭 Sky log ${TODAY}`, '', apodResult ? `APOD: "${apodResult.title}"` : '', issResult ? `ISS: ${issResult.latitude.toFixed(2)}, ${issResult.longitude.toFixed(2)} @ ${Math.round(issResult.altitudeKm)}km · ${Math.round(issResult.velocityKmH)}km/h` : '', neoResult ? `NEOs: ${neoResult.elementCount ?? neoResult.objects?.length ?? 0} in window · ${neoResult.hazardousCount ?? 0} hazardous` : '', posResult ? `${posResult.body}: alt ${posResult.alt}° az ${posResult.az}° · ${posResult.visible ? '✓ visible' : '✗ below horizon'}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body_ }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body_ = [`🔭 Sky log ${TODAY}`, '',
+      apodResult ? `APOD: "${apodResult.title}"` : '',
+      issResult ? `ISS: ${issResult.latitude.toFixed(2)}, ${issResult.longitude.toFixed(2)} @ ${Math.round(issResult.altitudeKm)}km · ${Math.round(issResult.velocityKmH)}km/h` : '',
+      neoResult ? `NEOs: ${neoResult.elementCount ?? neoResult.objects?.length ?? 0} in window · ${neoResult.hazardousCount ?? 0} hazardous` : '',
+      posResult ? `${posResult.body}: alt ${posResult.alt}° az ${posResult.az}° · ${posResult.visible ? '✓ visible' : '✗ below horizon'}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body_ });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!apodResult && !neoResult) { err('Run APOD or NEO first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Sky card — ${TODAY}`, tags: ['astronomy', 'nasa', 'public'], source: 'astronomy:sky:publish', meta: { visibility: 'public', consent: { allowCitations: true }, apod: apodResult, neo: neoResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Sky card — ${TODAY}`, tags: ['astronomy', 'nasa', 'public'], source: 'astronomy:sky:publish', meta: { visibility: 'public', consent: { allowCitations: true }, apod: apodResult, neo: neoResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('astro.publishedDtuId', id, { label: `Public sky card ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -138,6 +172,10 @@ export function AstronomyActionPanel() {
         <input type="text" value={obsLat} onChange={(e) => setObsLat(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Obs lat" />
         <input type="text" value={obsLng} onChange={(e) => setObsLng(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Obs lng" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

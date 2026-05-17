@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
 import { AstronomyActionPanel } from '@/components/astronomy/AstronomyActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -403,9 +404,11 @@ export default function AstronomyLensPage() {
         <NasaExplorer />
       </section>
 
-      <section className="mt-6">
-        <AstronomyActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <AstronomyActionPanel />
+        </section>
+      </PipingProvider>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">
