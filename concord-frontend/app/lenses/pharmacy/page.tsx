@@ -22,6 +22,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { FdaDrugReference } from '@/components/pharmacy/FdaDrugReference';
 import { FdaLivePanel } from '@/components/pharmacy/FdaLivePanel';
 import { PharmacyActionPanel } from '@/components/pharmacy/PharmacyActionPanel';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { PipingProvider } from '@/components/panel-polish';
 
 interface Medication {
@@ -524,6 +525,17 @@ export default function PharmacyLensPage() {
                 <option value="as-needed">As Needed</option>
               </select>
               <button onClick={addMedication} className="px-4 py-2 bg-neon-green/20 text-neon-green rounded-lg text-sm hover:bg-neon-green/30 focus:outline-none focus:ring-2 focus:ring-amber-500">Add</button>
+            </div>
+            {/* Phase 1 — DraftedTextarea: server-side auto-save with offline mirror. */}
+            <div className="mt-3">
+              <label className="block text-xs text-gray-400 mb-1">Intake notes (auto-saved as you type)</label>
+              <DraftedTextarea
+                lensId="pharmacy"
+                draftKey="rxIntakeNotes"
+                placeholder="Patient notes, allergies, prior reactions, doctor's instructions…"
+                className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm h-24 resize-y"
+                wrapperClassName="w-full"
+              />
             </div>
           </div>
 
