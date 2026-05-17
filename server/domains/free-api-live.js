@@ -136,6 +136,56 @@ export default function registerFreeApiLiveMacros(register) {
   }, { note: "live NOAA tide predictions (next 24h)" });
 
   // ───────────────────────────────────────────────────────────────────
+  // COOKING / FOOD — USDA FoodData Central (free, optional API key)
+  // ───────────────────────────────────────────────────────────────────
+  const usdaFoodSearch = async (_ctx, input = {}) => {
+    const q = String(input.query || "").trim();
+    if (!q) return { ok: false, reason: "missing_query" };
+    if (q.length > 100) return { ok: false, reason: "query_too_long" };
+    const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 25);
+    const apiKey = process.env.USDA_API_KEY || "DEMO_KEY";
+    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(q)}&pageSize=${limit}&dataType=Survey%20%28FNDDS%29,SR%20Legacy`;
+    try {
+      const data = await fetchJsonWithTimeout(url);
+      const foods = (data.foods || []).map(f => {
+        const nutrients = (f.foodNutrients || []).reduce((acc, n) => {
+          // Common nutrient names. KCal=Energy, g for macros.
+          if (n.nutrientName === "Energy") acc.kcalPer100g = n.value;
+          else if (n.nutrientName === "Protein") acc.proteinG = n.value;
+          else if (n.nutrientName === "Total lipid (fat)") acc.fatG = n.value;
+          else if (n.nutrientName === "Carbohydrate, by difference") acc.carbsG = n.value;
+          else if (n.nutrientName === "Fiber, total dietary") acc.fiberG = n.value;
+          else if (n.nutrientName === "Sugars, total including NLEA") acc.sugarsG = n.value;
+          else if (n.nutrientName === "Sodium, Na") acc.sodiumMg = n.value;
+          return acc;
+        }, {});
+        return {
+          fdcId: f.fdcId,
+          description: f.description,
+          brandOwner: f.brandOwner || null,
+          dataType: f.dataType,
+          publishedDate: f.publishedDate,
+          servingSize: f.servingSize ? `${f.servingSize}${f.servingSizeUnit || ''}` : null,
+          ...nutrients,
+        };
+      });
+      return {
+        ok: true,
+        source: "USDA FoodData Central",
+        fetchedAt: Math.floor(Date.now() / 1000),
+        query: q,
+        total: data.totalHits || foods.length,
+        foods,
+        usingDemoKey: apiKey === "DEMO_KEY",
+      };
+    } catch (e) {
+      return { ok: false, reason: "usda_unreachable", error: String(e?.message || e) };
+    }
+  };
+  register("cooking", "live_food_search", usdaFoodSearch, { note: "live USDA FoodData Central food search" });
+  register("food", "live_food_search", usdaFoodSearch, { note: "live USDA FoodData Central food search" });
+
+  // ───────────────────────────────────────────────────────────────────
   // HISTORY — Wikipedia "On This Day" featured content (free REST API)
   // ───────────────────────────────────────────────────────────────────
   register("history", "live_wiki_otd", async (_ctx, input = {}) => {
