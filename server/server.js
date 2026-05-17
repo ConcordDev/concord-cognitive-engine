@@ -9701,6 +9701,8 @@ async function runMacro(domain, name, input, ctx) {
     logistics: new Set(["live_zippopotam"]),
     travel: new Set(["live_zippopotam"]),
     game: new Set(["live_trivia"]),
+    // Phase 4 (seventh wave) — CryptoCompare basic (no key).
+    crypto: new Set(["live_top", "live_price"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
@@ -23337,6 +23339,11 @@ registerCuratedFreeApiMacros(register);
 // Open Notify ISS pass times (astronomy/space).
 import registerCivicDataApiMacros from "./domains/civic-data-apis.js";
 registerCivicDataApiMacros(register);
+
+// Phase 4 (seventh wave) — CryptoCompare basic (no key): top coins by
+// 24h volume + multi-asset price quotes for the crypto lens.
+import registerCryptoLiveMacros from "./domains/crypto-live.js";
+registerCryptoLiveMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";
