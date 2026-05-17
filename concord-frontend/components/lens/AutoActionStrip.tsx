@@ -124,6 +124,10 @@ export function AutoActionStrip({
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [result, setResult] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
+  // Phase 8b: optional JSON input per action so callers can feed real
+  // params (not just defaults).  Stored as raw text; parsed on submit.
+  const [paramText, setParamText] = useState<string>('');
+  const [paramOpen, setParamOpen] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useQuery<ActionsResponse | null>({
     queryKey: ['lens-actions', domain],
@@ -154,7 +158,7 @@ export function AutoActionStrip({
     !compute.includes(a) && !analysis.includes(a) && !generative.includes(a) && !ai.includes(a),
   );
 
-  const onRun = async (name: string) => {
+  const onRun = async (name: string, extraInput?: Record<string, unknown>) => {
     setActiveAction(name);
     setResult(null);
     setError(null);
@@ -163,6 +167,7 @@ export function AutoActionStrip({
         id: artifactId || `${domain}-auto-${Date.now()}`,
         action: name,
         ...(params || {}),
+        ...(extraInput ? { input: extraInput, params: extraInput } : {}),
       });
       // Result shape: { ok, result: { ... } } OR { ok, ... }
       const envelope = (r as { ok: boolean; result?: unknown; error?: string } | undefined);
@@ -174,6 +179,19 @@ export function AutoActionStrip({
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  };
+
+  const onRunWithParams = async (name: string) => {
+    let parsed: Record<string, unknown> | undefined;
+    if (paramText.trim()) {
+      try { parsed = JSON.parse(paramText); }
+      catch (e) {
+        setError(`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
+        setActiveAction(name);
+        return;
+      }
+    }
+    await onRun(name, parsed);
   };
 
   if (isLoading) {
@@ -197,21 +215,35 @@ export function AutoActionStrip({
             const { icon: Icon, tint } = classifyAction(a);
             const isRunning = runAction.isPending && activeAction === a.action;
             return (
-              <button
-                key={a.action}
-                type="button"
-                onClick={() => void onRun(a.action)}
-                disabled={runAction.isPending}
-                title={a.desc || a.action}
-                className={cn(
-                  'inline-flex items-center gap-1 text-xs px-2 py-1 rounded border bg-zinc-900/40 transition-colors',
-                  tint,
-                  runAction.isPending && 'opacity-50 cursor-wait',
-                )}
-              >
-                {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Icon className="w-3 h-3" />}
-                <span>{prettyLabel(a.action)}</span>
-              </button>
+              <span key={a.action} className="inline-flex items-center">
+                <button
+                  type="button"
+                  onClick={() => void onRun(a.action)}
+                  disabled={runAction.isPending}
+                  title={a.desc || `Click to run ${a.action} (uses default params). Shift-click to open input field.`}
+                  className={cn(
+                    'inline-flex items-center gap-1 text-xs px-2 py-1 rounded-l border bg-zinc-900/40 transition-colors',
+                    tint,
+                    runAction.isPending && 'opacity-50 cursor-wait',
+                  )}
+                  onAuxClick={(e) => { e.preventDefault(); setParamOpen(a.action); setParamText('{\n  \n}'); }}
+                >
+                  {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Icon className="w-3 h-3" />}
+                  <span>{prettyLabel(a.action)}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setParamOpen(paramOpen === a.action ? null : a.action); if (paramOpen !== a.action) setParamText('{\n  \n}'); }}
+                  disabled={runAction.isPending}
+                  title="Edit input JSON"
+                  className={cn(
+                    'inline-flex items-center text-xs px-1 py-1 rounded-r border border-l-0 bg-zinc-900/40 transition-colors',
+                    tint,
+                  )}
+                >
+                  {'{}'}
+                </button>
+              </span>
             );
           })}
         </div>
@@ -252,6 +284,38 @@ export function AutoActionStrip({
         {renderRow(ai, 'AI')}
         {renderRow(other, 'Other')}
       </div>
+
+      {paramOpen && (
+        <div className="border-t border-zinc-800/40 px-3 py-2 bg-zinc-900/30">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">Input JSON for {paramOpen}</span>
+            <button
+              type="button"
+              onClick={() => { setParamOpen(null); setParamText(''); }}
+              className="ml-auto text-[10px] text-zinc-500 hover:text-zinc-200"
+            >close</button>
+          </div>
+          <textarea
+            value={paramText}
+            onChange={(e) => setParamText(e.target.value)}
+            spellCheck={false}
+            rows={4}
+            className="w-full text-[11px] bg-zinc-950/60 border border-zinc-800 rounded px-2 py-1 text-zinc-200 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+            placeholder='{"key": "value"}'
+          />
+          <div className="flex items-center gap-2 mt-1.5">
+            <button
+              type="button"
+              onClick={() => void onRunWithParams(paramOpen!)}
+              disabled={runAction.isPending}
+              className="text-xs px-2 py-1 rounded bg-indigo-700/40 hover:bg-indigo-700/60 text-indigo-100 border border-indigo-600/60 disabled:opacity-40"
+            >
+              {runAction.isPending && activeAction === paramOpen ? 'Running…' : `Run ${prettyLabel(paramOpen)}`}
+            </button>
+            <span className="text-[10px] text-zinc-500 italic">Edit JSON above, then submit. Empty JSON = same as click-the-button default.</span>
+          </div>
+        </div>
+      )}
 
       {(result !== null || error) && (
         <div className="border-t border-zinc-800/40 px-3 py-2 bg-zinc-900/30">

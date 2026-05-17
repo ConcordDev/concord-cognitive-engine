@@ -20,6 +20,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -284,6 +285,7 @@ export default function ExpertModeLens() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <RecentMineCard domain="expert-mode" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="expert-mode" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="expert-mode" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );

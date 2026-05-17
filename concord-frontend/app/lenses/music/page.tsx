@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -2349,6 +2350,7 @@ export default function MusicLensPage() {
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <SessionRail lensId="music" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="music" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="music" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="music" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
