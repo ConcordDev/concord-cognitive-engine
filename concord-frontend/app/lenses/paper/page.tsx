@@ -8,6 +8,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
 import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
+import { CrossRefPanel } from '@/components/research/CrossRefPanel';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import CitationSearch from '@/components/paper/CitationSearch';
 import PaperSummarizer from '@/components/paper/PaperSummarizer';
@@ -1130,6 +1131,10 @@ export default function PaperLensPage() {
     {/* Phase 4 — REAL Open Library book search. */}
     <section className="mt-4 mx-4">
       <OpenLibraryPanel domain="paper" />
+    </section>
+    {/* Phase 4 (third wave) — REAL CrossRef DOI metadata search. */}
+    <section className="mt-4 mx-4">
+      <CrossRefPanel domain="paper" />
     </section>
           <RecentMineCard domain="paper" limit={10} hideWhenEmpty className="mt-4" />
           <CrossLensRecentsPanel lensId="paper" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

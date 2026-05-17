@@ -9680,8 +9680,13 @@ async function runMacro(domain, name, input, ctx) {
     environment: new Set(["live_gbif"]),
     forestry: new Set(["live_gbif"]),
     agriculture: new Set(["live_gbif"]),
-    paper: new Set(["live_openlibrary"]),
-    education: new Set(["live_openlibrary"]),
+    paper: new Set(["live_openlibrary", "live_crossref", "live_openalex"]),
+    education: new Set(["live_openlibrary", "live_dictionary"]),
+    // Phase 4 (third wave) — scholarly + language wires.
+    research: new Set(["live_crossref", "live_openalex"]),
+    linguistics: new Set(["live_datamuse", "live_dictionary"]),
+    "creative-writing": new Set(["live_datamuse"]),
+    poetry: new Set(["live_datamuse"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
@@ -23292,6 +23297,13 @@ registerResearchLiveMacros(register);
 // (environment/forestry/agriculture), Open Library (paper + education).
 import registerMoreFreeApiMacros from "./domains/more-free-apis.js";
 registerMoreFreeApiMacros(register);
+
+// Phase 4 (third wave) — academic + language REAL_FREE wire-ups:
+// CrossRef (paper/research), OpenAlex (paper/research), Datamuse
+// (linguistics/creative-writing/poetry), Free Dictionary
+// (linguistics/education).
+import registerScholarlyApiMacros from "./domains/scholarly-apis.js";
+registerScholarlyApiMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";

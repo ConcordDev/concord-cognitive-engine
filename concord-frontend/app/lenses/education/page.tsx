@@ -6,6 +6,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GutenbergCurriculum } from '@/components/education/GutenbergCurriculum';
 import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
+import { DictionaryPanel } from '@/components/linguistics/DictionaryPanel';
 import { EducationActionPanel } from '@/components/education/EducationActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -3198,6 +3199,10 @@ export default function EducationLensPage() {
       {/* Phase 4 — REAL Open Library book search. */}
       <section className="mt-4">
         <OpenLibraryPanel domain="education" />
+      </section>
+      {/* Phase 4 (third wave) — REAL Free Dictionary lookup. */}
+      <section className="mt-4">
+        <DictionaryPanel domain="education" />
       </section>
 
       <PipingProvider>

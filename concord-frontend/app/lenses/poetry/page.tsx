@@ -6,6 +6,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -410,6 +411,8 @@ export default function PoetryPage() {
       </AnimatePresence>
 
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        {/* Phase 4 (third wave) — REAL Datamuse word-relationship panel: rhymes, near-rhymes, syllables. */}
+        <DatamusePanel domain="poetry" />
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
