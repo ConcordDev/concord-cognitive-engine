@@ -11,6 +11,7 @@ import { Film, FolderOpen, DollarSign, ListChecks, Sparkles, Send, Globe, Wand2,
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,57 +34,13 @@ interface BudgetLine { category?: string; budgeted: number; actual: number; vari
 interface BudgetResult { totalBudgeted: number; totalActual: number; totalVariance: number; overBudget?: boolean; lines: BudgetLine[] }
 interface DistResult { platform?: string; checklist: { item: string; ready: boolean; notes?: string }[]; readyCount: number; total: number; percent: number; deliveryDate?: string }
 
-const DEMO_SCENES = JSON.stringify({
-  scenes: [
-    { number: 1, description: 'Wide establishing — small town main street, dawn', type: 'EXT', mood: 'still' },
-    { number: 2, description: 'Close-up — coffee being poured', type: 'INT', mood: 'intimate' },
-    { number: 3, description: 'Two-shot — couple at table, dialogue', type: 'INT', mood: 'tense' },
-    { number: 4, description: 'Tracking — car drives away into distance', type: 'EXT', mood: 'melancholic' },
-  ],
-}, null, 2);
-
-const DEMO_ASSETS = JSON.stringify({
-  assets: [
-    { name: 'scene01_master.mov', type: 'video', status: 'ready', size: '4.2GB' },
-    { name: 'scene02_master.mov', type: 'video', status: 'ready', size: '2.1GB' },
-    { name: 'scene03_master.mov', type: 'video', status: 'pending', size: '0' },
-    { name: 'score_theme.wav', type: 'audio', status: 'ready', size: '85MB' },
-    { name: 'sfx_pour.wav', type: 'audio', status: 'ready', size: '2MB' },
-    { name: 'poster_v3.psd', type: 'graphic', status: 'review', size: '120MB' },
-  ],
-}, null, 2);
-
-const DEMO_BUDGET = JSON.stringify({
-  lines: [
-    { category: 'Crew', budgeted: 45000, actual: 42500 },
-    { category: 'Equipment', budgeted: 18000, actual: 22000 },
-    { category: 'Location', budgeted: 12000, actual: 11800 },
-    { category: 'Post-production', budgeted: 25000, actual: 18000 },
-    { category: 'Music + sound', budgeted: 8000, actual: 9500 },
-    { category: 'Marketing', budgeted: 15000, actual: 4200 },
-  ],
-}, null, 2);
-
-const DEMO_DIST = JSON.stringify({
-  platform: 'Netflix',
-  checklist: [
-    { item: '4K master (ProRes 422 HQ)', ready: true },
-    { item: 'Stereo + 5.1 mix', ready: true },
-    { item: 'Closed captions (SDH)', ready: false, notes: 'Awaiting review' },
-    { item: 'Subtitles (15 languages)', ready: false, notes: 'In translation' },
-    { item: 'Key art + poster (3 ratios)', ready: true },
-    { item: 'Trailer (90s + 30s + 15s)', ready: true },
-    { item: 'EPK + still gallery', ready: false },
-    { item: 'IMDb metadata sync', ready: true },
-  ],
-  deliveryDate: '2026-06-15',
-}, null, 2);
-
+// No seed data — every textarea starts empty. Paste real production data
+// or use the JSON sample syntax described in the lens manifest.
 export function CreativeActionPanel() {
-  const [scenesText, setScenesText] = useState(DEMO_SCENES);
-  const [assetsText, setAssetsText] = useState(DEMO_ASSETS);
-  const [budgetText, setBudgetText] = useState(DEMO_BUDGET);
-  const [distText, setDistText] = useState(DEMO_DIST);
+  const [scenesText, setScenesText] = useState('');
+  const [assetsText, setAssetsText] = useState('');
+  const [budgetText, setBudgetText] = useState('');
+  const [distText, setDistText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -99,24 +56,36 @@ export function CreativeActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actShots() {
+    if (!scenesText.trim()) { err('Paste scenes JSON first.'); return; }
     try { const parsed = JSON.parse(scenesText); setBusy('shots'); setFeedback(null);
-      const r = await callMacro<ShotsResult>('shotListGenerate', { artifact: { data: parsed } }); if (r.ok && r.result) { setShotsResult(r.result); ok(`${r.result.totalShots} shots · ${r.result.estimatedRuntime}min.`); } else err(r.error ?? 'shots failed');
+      const r = await callMacro<ShotsResult>('shotListGenerate', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setShotsResult(r.result); pipe.publish('creative.shots', r.result, { label: `${r.result.totalShots} shots` }); ok(`${r.result.totalShots} shots · ${r.result.estimatedRuntime}min.`); } else err(r.error ?? 'shots failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid scenes JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAssets() {
+    if (!assetsText.trim()) { err('Paste assets JSON first.'); return; }
     try { const parsed = JSON.parse(assetsText); setBusy('assets'); setFeedback(null);
-      const r = await callMacro<AssetsResult>('assetOrganize', { artifact: { data: parsed } }); if (r.ok && r.result) { setAssetsResult(r.result); ok(`${r.result.ready ?? '-'}/${r.result.totalAssets} ready.`); } else err(r.error ?? 'assets failed');
+      const r = await callMacro<AssetsResult>('assetOrganize', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setAssetsResult(r.result); pipe.publish('creative.assets', r.result, { label: `Assets ${r.result.ready ?? '-'}/${r.result.totalAssets}` }); ok(`${r.result.ready ?? '-'}/${r.result.totalAssets} ready.`); } else err(r.error ?? 'assets failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid assets JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBudget() {
+    if (!budgetText.trim()) { err('Paste budget JSON first.'); return; }
     try { const parsed = JSON.parse(budgetText); setBusy('budget'); setFeedback(null);
-      const r = await callMacro<BudgetResult>('budgetTrack', { artifact: { data: parsed } }); if (r.ok && r.result) { setBudgetResult(r.result); ok(`${r.result.overBudget ? '⚠' : '✓'} variance ${r.result.totalVariance >= 0 ? '+' : ''}${r.result.totalVariance.toLocaleString()}.`); } else err(r.error ?? 'budget failed');
+      const r = await callMacro<BudgetResult>('budgetTrack', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setBudgetResult(r.result); pipe.publish('creative.budget', r.result, { label: `Budget ${r.result.overBudget ? 'OVER' : 'OK'}` }); ok(`${r.result.overBudget ? '⚠' : '✓'} variance ${r.result.totalVariance >= 0 ? '+' : ''}${r.result.totalVariance.toLocaleString()}.`); } else err(r.error ?? 'budget failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid budget JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDist() {
+    if (!distText.trim()) { err('Paste delivery JSON first.'); return; }
     try { const parsed = JSON.parse(distText); setBusy('dist'); setFeedback(null);
-      const r = await callMacro<DistResult>('distributionChecklist', { artifact: { data: parsed }, platform: parsed.platform }); if (r.ok && r.result) { setDistResult(r.result); ok(`${r.result.readyCount}/${r.result.total} ready (${r.result.percent}%).`); } else err(r.error ?? 'dist failed');
+      const r = await callMacro<DistResult>('distributionChecklist', { artifact: { data: parsed }, platform: parsed.platform });
+      if (r.ok && r.result) { setDistResult(r.result); pipe.publish('creative.dist', r.result, { label: `${r.result.platform}: ${r.result.percent}%` }); ok(`${r.result.readyCount}/${r.result.total} ready (${r.result.percent}%).`); } else err(r.error ?? 'dist failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid dist JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -124,25 +93,41 @@ export function CreativeActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Production pkg`, tags: ['creative', 'production'], source: 'creative:pkg:mint', meta: { visibility: 'private', consent: { allowCitations: false }, prod: { shots: shotsResult, assets: assetsResult, budget: budgetResult, dist: distResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Pkg DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id.slice(0, 8)}…` }); ok(`Pkg DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🎬 Production status`, '', shotsResult ? `Shots: ${shotsResult.totalShots} · ~${shotsResult.estimatedRuntime}min runtime` : '', assetsResult ? `Assets: ${assetsResult.ready ?? '-'}/${assetsResult.totalAssets} ready · ${assetsResult.missing?.length ?? 0} missing` : '', budgetResult ? `Budget: $${budgetResult.totalActual.toLocaleString()} / $${budgetResult.totalBudgeted.toLocaleString()} · ${budgetResult.overBudget ? 'OVER' : 'within'}` : '', distResult ? `${distResult.platform}: ${distResult.percent}% ready (${distResult.readyCount}/${distResult.total}) · deliver ${distResult.deliveryDate}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🎬 Production status`, '',
+      shotsResult ? `Shots: ${shotsResult.totalShots} · ~${shotsResult.estimatedRuntime}min runtime` : '',
+      assetsResult ? `Assets: ${assetsResult.ready ?? '-'}/${assetsResult.totalAssets} ready · ${assetsResult.missing?.length ?? 0} missing` : '',
+      budgetResult ? `Budget: $${budgetResult.totalActual.toLocaleString()} / $${budgetResult.totalBudgeted.toLocaleString()} · ${budgetResult.overBudget ? 'OVER' : 'within'}` : '',
+      distResult ? `${distResult.platform}: ${distResult.percent}% ready (${distResult.readyCount}/${distResult.total}) · deliver ${distResult.deliveryDate}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!shotsResult && !distResult) { err('Run shots or dist first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Production handoff`, tags: ['creative', 'handoff', 'public'], source: 'creative:handoff:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, shots: shotsResult, dist: distResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Production handoff`, tags: ['creative', 'handoff', 'public'], source: 'creative:handoff:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, shots: shotsResult, dist: distResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('creative.publishedDtuId', id, { label: `Public handoff ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -191,7 +176,11 @@ export function CreativeActionPanel() {
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Delivery JSON</label>
           <textarea value={distText} onChange={(e) => setDistText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

@@ -30,6 +30,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import IndicatorChart, { type IndicatorPayload } from '@/components/lens/IndicatorChart';
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
 import { AccountingActionPanel } from '@/components/accounting/AccountingActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { StripeInvoicePanel } from '@/components/accounting/StripeInvoicePanel';
 
 /* ------------------------------------------------------------------ */
@@ -3052,9 +3053,11 @@ export default function AccountingLensPage() {
     {/* 2026 parity workbench — live CoA / journal / ledger / balance sheet / AR aging */}
     <AccountingWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
-    <section className="mt-6 max-w-7xl mx-auto px-4">
-      <AccountingActionPanel />
-    </section>
+    <PipingProvider>
+      <section className="mt-6 max-w-7xl mx-auto px-4">
+        <AccountingActionPanel />
+      </section>
+    </PipingProvider>
     </LensShell>
   );
 }
