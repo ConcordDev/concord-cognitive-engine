@@ -17,6 +17,7 @@ import dynamic from 'next/dynamic';
 import { LensShell } from '@/components/lens/LensShell';
 import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
 import { FoundryActionPanel } from '@/components/foundry/FoundryActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Boxes, Loader2 } from 'lucide-react';
 
@@ -63,9 +64,11 @@ export default function FoundryLensPage() {
         </section>
 
         {/* Unity + Roblox Studio-shape foundry workbench: list / create / validate / preview / publish + actions */}
-        <section className="mx-auto mt-6 max-w-screen-2xl">
-          <FoundryActionPanel />
-        </section>
+        <PipingProvider>
+          <section className="mx-auto mt-6 max-w-screen-2xl">
+            <FoundryActionPanel />
+          </section>
+        </PipingProvider>
       </main>
     </LensShell>
   );
