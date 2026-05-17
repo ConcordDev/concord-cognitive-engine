@@ -24,6 +24,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { BrainPoolStatus } from '@/components/expert-mode/BrainPoolStatus';
 import { AnswerActionPanel } from '@/components/expert-mode/AnswerActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -148,6 +149,7 @@ export default function ExpertModeLens() {
     <LensShell lensId="expert-mode">
       <FirstRunTour lensId="expert-mode" />
       <DepthBadge lensId="expert-mode" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="expert-mode" className="mx-6 mt-4" />
     <div className="min-h-screen bg-zinc-950 text-zinc-100 px-4 sm:px-6 py-8">
       <div className="mx-auto max-w-3xl">
         {busy && (

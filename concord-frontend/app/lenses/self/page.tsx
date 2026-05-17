@@ -16,6 +16,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SelfFeed } from '@/components/self/SelfFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -202,6 +203,7 @@ export default function UnifiedSelfLensPage() {
       <FirstRunTour lensId="self" />
       <ManifestActionBar />
       <DepthBadge lensId="self" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="self" className="mx-6 mt-4" />
     <div className="min-h-screen bg-black pb-12 text-rose-50">
       <header className="sticky top-0 z-10 border-b border-rose-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">

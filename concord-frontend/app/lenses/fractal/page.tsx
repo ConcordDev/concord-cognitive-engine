@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { FractalRepos } from '@/components/fractal/FractalRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -410,6 +411,7 @@ export default function FractalLensPage() {
       <FirstRunTour lensId="fractal" />
       <ManifestActionBar />
       <DepthBadge lensId="fractal" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="fractal" className="mx-6 mt-4" />
     <div data-lens-theme="fractal" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

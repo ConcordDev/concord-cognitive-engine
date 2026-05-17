@@ -25,6 +25,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WorldModelArxiv } from '@/components/worldmodel/WorldModelArxiv';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -160,6 +161,7 @@ export default function WorldmodelLensPage() {
       <FirstRunTour lensId="worldmodel" />
       <ManifestActionBar />
       <DepthBadge lensId="worldmodel" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="worldmodel" className="mx-6 mt-4" />
     <div className="min-h-screen bg-black pb-12 text-emerald-50">
       <header className="sticky top-0 z-10 border-b border-emerald-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">

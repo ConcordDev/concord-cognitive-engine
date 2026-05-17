@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ArxivLabFeed } from '@/components/lab/ArxivLabFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
@@ -113,6 +114,7 @@ export default function LabLensPage() {
       <FirstRunTour lensId="lab" />
       <ManifestActionBar />
       <DepthBadge lensId="lab" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="lab" className="mx-6 mt-4" />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

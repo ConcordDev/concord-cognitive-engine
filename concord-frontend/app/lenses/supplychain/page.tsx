@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SupplyChainFeed } from '@/components/supplychain/SupplyChainFeed';
 import { SupplyChainActionPanel } from '@/components/supplychain/SupplyChainActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -203,6 +204,7 @@ export default function SupplyChainLensPage() {
       <FirstRunTour lensId="supplychain" />
       <ManifestActionBar />
       <DepthBadge lensId="supplychain" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="supplychain" className="mx-6 mt-4" />
     <div data-lens-theme="supplychain" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

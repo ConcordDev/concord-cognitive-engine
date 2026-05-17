@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OfflineRepos } from '@/components/offline/OfflineRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback } from 'react';
@@ -213,6 +214,7 @@ export default function OfflineLensPage() {
       <FirstRunTour lensId="offline" />
       <ManifestActionBar />
       <DepthBadge lensId="offline" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="offline" className="mx-6 mt-4" />
     <div data-lens-theme="offline" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

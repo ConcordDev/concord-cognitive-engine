@@ -21,6 +21,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { EsportsFeed } from '@/components/tournaments/EsportsFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Trophy, Users, Coins, Plus, Play, ChevronRight } from 'lucide-react';
@@ -111,6 +112,7 @@ export default function TournamentsPage() {
       <FirstRunTour lensId="tournaments" />
       <ManifestActionBar />
       <DepthBadge lensId="tournaments" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="tournaments" className="mx-6 mt-4" />
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 flex items-center justify-between">

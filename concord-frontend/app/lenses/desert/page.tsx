@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { DesertWeatherWatch } from '@/components/desert/DesertWeatherWatch';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -183,6 +184,7 @@ export default function DesertLensPage() {
       <FirstRunTour lensId="desert" />
       <ManifestActionBar />
       <DepthBadge lensId="desert" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="desert" className="mx-6 mt-4" />
     <LensPageShell
       domain="desert"
       title="Desert Operations"

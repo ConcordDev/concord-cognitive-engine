@@ -21,6 +21,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -165,6 +166,7 @@ export default function BlackMarketPage() {
       <FirstRunTour lensId="black-market" />
       <ManifestActionBar />
       <DepthBadge lensId="black-market" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="black-market" className="mx-6 mt-4" />
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-4xl px-4 py-8">
         <header className="mb-6 border-b border-rose-500/30 pb-4">

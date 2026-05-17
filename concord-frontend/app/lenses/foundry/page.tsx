@@ -21,6 +21,7 @@ import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
 import { FoundryActionPanel } from '@/components/foundry/FoundryActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -43,6 +44,7 @@ export default function FoundryLensPage() {
       <FirstRunTour lensId="foundry" />
       <ManifestActionBar />
       <DepthBadge lensId="foundry" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="foundry" className="mx-6 mt-4" />
       <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-950 to-sky-950/10 text-slate-100">
         <header className="border-b border-sky-500/20 bg-slate-950/70 px-4 py-2.5 backdrop-blur sm:px-6">
           <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
