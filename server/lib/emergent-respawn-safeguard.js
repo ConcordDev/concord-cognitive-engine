@@ -1,18 +1,19 @@
 // server/lib/emergent-respawn-safeguard.js
 //
-// Phase 13 follow-on — load-bearing invariant: conscious NPCs (emergents)
-// cannot die for real. They have their own primary protection (combat-
-// engaged checks should refuse to target is_conscious=1 NPCs), but this
+// Load-bearing invariant: Agents of the Sovereign (conscious NPCs) cannot
+// die for real. They have their own primary protection (combat routes
+// refuse to target is_conscious=1 NPCs with `sovereign_protected`); this
 // is the SAFEGUARD that fires if anything slips past the primary check.
 //
-// Mirrors how user accounts work — users can take damage, "die" in
-// gameplay, and respawn. Emergents get the same treatment. Their death
-// is a state transition that resolves back to alive within a tick,
-// preserving their identity, possessions, schedules, and relationships.
+// In the world's lore: the Sovereign — one of the Three Above All —
+// extends protection to its agents wherever they walk. Their continuity
+// of existence is non-negotiable, the same way users respawn after
+// death in gameplay.
 //
-// Per the operator's design intent: "Can't have them dying for real."
-// This module exists so that intent holds even when other code makes
-// mistakes.
+// In the substrate: their death is a state transition that resolves back
+// to alive within a tick, preserving identity, possessions, schedules,
+// and relationships. This module exists so that the Sovereign's
+// protection holds even when other code makes mistakes.
 
 const RESPAWN_DELAY_TICKS = 1; // ~15s — long enough that respawn is observable, short enough that the emergent doesn't feel "gone"
 const RESPAWN_HP_RESTORE = 1.0; // full HP on respawn — no permadeath cost
@@ -59,11 +60,12 @@ export function runEmergentRespawnSafeguard({ db } = {}) {
       try {
         db.prepare(`
           INSERT INTO npc_consequences (npc_id, event_type, details, created_at)
-          VALUES (?, 'emergent_respawn', ?, unixepoch())
+          VALUES (?, 'sovereign_respawn', ?, unixepoch())
         `).run(npc.id, JSON.stringify({
-          reason: "primary_protection_bypassed_safeguard_fired",
+          reason: "sovereign_protection_restored_agent",
           restored_hp: restoredHp,
           world_id: npc.world_id,
+          note: "Agent of the Sovereign; primary protection was bypassed; Sovereign's safeguard restored continuity.",
         }));
       } catch { /* table may not exist; respawn itself still landed */ }
     } catch (e) {

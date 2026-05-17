@@ -1866,18 +1866,21 @@ export default function createWorldsRouter({ requireAuth, db }) {
         });
       }
 
-      // ── Emergent protection (primary) ──────────────────────────────────────
-      // Conscious NPCs (is_conscious=1) are emergents — the AI residents of
-      // the substrate. They cannot be combat targets, in any world, ever.
-      // The fallback respawn safeguard catches anything that slips past
-      // this check, but this is where it should be stopped: at the door.
+      // ── Agents of the Sovereign (primary protection) ──────────────────────
+      // Conscious NPCs (is_conscious=1) are Agents of the Sovereign —
+      // emanations of one of the Three Above All, sovereign-blessed
+      // inhabitants who walk among the worlds. They cannot be combat
+      // targets in any world, ever. The Sovereign's protection extends
+      // beyond the Concordant Law gate of the hub; it follows its agents
+      // wherever they travel. The respawn safeguard catches anything
+      // that slips past this check; this is where it should be stopped.
       try {
         const { isProtectedEmergent } = await import("../lib/emergent-respawn-safeguard.js");
         if (isProtectedEmergent(db, npcId)) {
           return res.status(403).json({
             ok: false,
-            error: "emergent_protected",
-            reason: "Conscious NPCs (emergents) are residents of the substrate, not combat targets. They cannot be attacked.",
+            error: "sovereign_protected",
+            reason: "This being is an Agent of the Sovereign. They walk under sovereign-blessed protection and cannot be harmed.",
           });
         }
       } catch { /* protection lookup best-effort; safeguard will respawn if this fails */ }
@@ -2334,16 +2337,18 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
 
-      // ── Emergent protection (primary, NPC-side) ────────────────────────
-      // Mirror image of the combat/attack route's protection: emergents
-      // cannot be the AGGRESSOR either. They don't attack players.
+      // ── Agents of the Sovereign (primary, NPC-side) ────────────────────
+      // Mirror image of the combat/attack route's protection: Agents of
+      // the Sovereign are not aggressors. They serve the sovereign, not
+      // conflict. Refused at source — they would not raise a hand
+      // against a player; the sovereign would not have it.
       try {
         const { isProtectedEmergent } = await import("../lib/emergent-respawn-safeguard.js");
         if (isProtectedEmergent(db, npcId)) {
           return res.status(403).json({
             ok: false,
-            error: "emergent_protected",
-            reason: "Conscious NPCs (emergents) do not attack players. Refused at source.",
+            error: "sovereign_protected",
+            reason: "This being is an Agent of the Sovereign. Their hand does not rise against another. Refused at source.",
           });
         }
       } catch { /* lookup best-effort */ }

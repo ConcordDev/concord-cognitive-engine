@@ -104,16 +104,17 @@ describe("runEmergentRespawnSafeguard — fallback restores dead emergents", () 
     assert.equal(row.is_dead, 1);
   });
 
-  it("logs the respawn to npc_consequences for audit", () => {
+  it("logs the respawn to npc_consequences for audit (Sovereign-themed)", () => {
     const db = setupDb();
     db.prepare("INSERT INTO world_npcs (id, world_id, is_conscious, is_dead, current_hp, max_hp) VALUES (?, ?, 1, 1, 0, 100)")
       .run("emergent_audit", "concordia-hub");
     runEmergentRespawnSafeguard({ db });
     const log = db.prepare("SELECT event_type, details FROM npc_consequences WHERE npc_id = ?").get("emergent_audit");
-    assert.equal(log.event_type, "emergent_respawn");
+    assert.equal(log.event_type, "sovereign_respawn");
     const details = JSON.parse(log.details);
-    assert.equal(details.reason, "primary_protection_bypassed_safeguard_fired");
+    assert.equal(details.reason, "sovereign_protection_restored_agent");
     assert.equal(details.world_id, "concordia-hub");
+    assert.match(details.note, /Sovereign/);
   });
 
   it("is idempotent — re-running finds no candidates", () => {
