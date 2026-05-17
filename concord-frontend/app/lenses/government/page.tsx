@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { BillsList } from '@/components/government/BillsList';
 import { GovernmentActionPanel } from '@/components/government/GovernmentActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import RepresentativeFinder from '@/components/government/RepresentativeFinder';
 import BillTracker from '@/components/government/BillTracker';
 import CivicAlerts from '@/components/government/CivicAlerts';
@@ -3542,9 +3543,11 @@ export default function GovernmentLensPage() {
       </section>
 
       {/* GovTrack + USAspending-shape civic workbench: reps / bills / permit / violation + actions */}
-      <section className="mt-6">
-        <GovernmentActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <GovernmentActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
