@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -668,9 +669,11 @@ export default function PoetryPage() {
       </section>
 
       {/* Poetry Foundation + Poets.org-shape workbench: meter / rhyme / form / frequency + actions */}
-      <section className="mt-6">
-        <PoetryActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <PoetryActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

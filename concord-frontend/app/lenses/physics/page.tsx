@@ -39,6 +39,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import PhysicsWorkbench from '@/components/physics/PhysicsWorkbench';
 import { PhysicsActionPanel } from '@/components/physics/PhysicsActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 // Physics body types
 interface Vector2D {
@@ -1734,9 +1735,11 @@ export default function PhysicsLensPage() {
       <PhysicsArxiv />
     </section>
 
-    <section className="mt-6 mx-auto max-w-7xl">
-      <PhysicsActionPanel />
-    </section>
+    <PipingProvider>
+      <section className="mt-6 mx-auto max-w-7xl">
+        <PhysicsActionPanel />
+      </section>
+    </PipingProvider>
     </LensShell>
   );
 

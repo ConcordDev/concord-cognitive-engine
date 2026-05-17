@@ -11,6 +11,7 @@ import { Rocket, Crosshair, Ruler, Atom, Sparkles, Send, Globe, Wand2, Loader2, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,16 +43,16 @@ const UNIT_KINDS: Record<string, string[]> = {
 };
 
 export function PhysicsActionPanel() {
-  const [v0, setV0] = useState('20');
+  const [v0, setV0] = useState('');
   const [v, setV] = useState('');
-  const [a, setA] = useState('-9.81');
-  const [t, setT] = useState('2');
+  const [a, setA] = useState('');
+  const [t, setT] = useState('');
   const [x, setX] = useState('');
-  const [projV0, setProjV0] = useState('30');
-  const [projAngle, setProjAngle] = useState('45');
-  const [projH0, setProjH0] = useState('0');
+  const [projV0, setProjV0] = useState('');
+  const [projAngle, setProjAngle] = useState('');
+  const [projH0, setProjH0] = useState('');
   const [unitKind, setUnitKind] = useState<keyof typeof UNIT_KINDS>('length');
-  const [unitValue, setUnitValue] = useState('100');
+  const [unitValue, setUnitValue] = useState('');
   const [unitFrom, setUnitFrom] = useState('m');
   const [unitTo, setUnitTo] = useState('ft');
   const [recipient, setRecipient] = useState('');
@@ -69,6 +70,21 @@ export function PhysicsActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actKin() {
     setBusy('kin'); setFeedback(null);
     const input: Record<string, number> = {};
@@ -77,22 +93,22 @@ export function PhysicsActionPanel() {
     if (a) input.a = parseFloat(a);
     if (t) input.t = parseFloat(t);
     if (x) input.x = parseFloat(x);
-    try { const r = await callMacro<KinResult>('kinematics-1d', input); if (r.ok && r.result) { setKinResult(r.result); ok(`Kinematics solved.`); } else err(r.error ?? 'kin failed'); }
+    try { const r = await callMacro<KinResult>('kinematics-1d', input); if (r.ok && r.result) { setKinResult(r.result); pipe.publish('physics.kinematics', r.result, { label: 'kinematics solved' }); ok(`Kinematics solved.`); } else err(r.error ?? 'kin failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actProj() {
     setBusy('proj'); setFeedback(null);
-    try { const r = await callMacro<ProjResult>('projectile', { v0: parseFloat(projV0), angleDeg: parseFloat(projAngle), h0: parseFloat(projH0 || '0'), g: 9.81 }); if (r.ok && r.result) { setProjResult(r.result); ok(`Range ${r.result.range_m} m.`); } else err(r.error ?? 'proj failed'); }
+    try { const r = await callMacro<ProjResult>('projectile', { v0: parseFloat(projV0), angleDeg: parseFloat(projAngle), h0: parseFloat(projH0 || '0'), g: 9.81 }); if (r.ok && r.result) { setProjResult(r.result); pipe.publish('physics.projectile', r.result, { label: `range ${r.result.range_m}m` }); ok(`Range ${r.result.range_m} m.`); } else err(r.error ?? 'proj failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actUnit() {
     setBusy('unit'); setFeedback(null);
-    try { const r = await callMacro<UnitResult>('convert-units', { value: parseFloat(unitValue), from: unitFrom, to: unitTo, kind: unitKind }); if (r.ok && r.result) { setUnitResult(r.result); ok(`${r.result.value} ${r.result.from} = ${r.result.result} ${r.result.to}.`); } else err(r.error ?? 'unit failed'); }
+    try { const r = await callMacro<UnitResult>('convert-units', { value: parseFloat(unitValue), from: unitFrom, to: unitTo, kind: unitKind }); if (r.ok && r.result) { setUnitResult(r.result); pipe.publish('physics.unit', r.result, { label: `${r.result.result} ${r.result.to}` }); ok(`${r.result.value} ${r.result.from} = ${r.result.result} ${r.result.to}.`); } else err(r.error ?? 'unit failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actConst() {
     setBusy('const'); setFeedback(null);
-    try { const r = await callMacro<ConstantsResult>('constants', {}); if (r.ok && r.result) { setConstantsResult(r.result); ok(`${Object.keys(r.result.constants).length} constants loaded.`); } else err(r.error ?? 'constants failed'); }
+    try { const r = await callMacro<ConstantsResult>('constants', {}); if (r.ok && r.result) { setConstantsResult(r.result); pipe.publish('physics.constants', r.result, { label: `${Object.keys(r.result.constants).length} constants` }); ok(`${Object.keys(r.result.constants).length} constants loaded.`); } else err(r.error ?? 'constants failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -100,25 +116,35 @@ export function PhysicsActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Physics — ${kinResult ? 'kinematics' : projResult ? 'projectile' : 'calc'}`, tags: ['physics', 'mechanics'], source: 'physics:calc:mint', meta: { visibility: 'private', consent: { allowCitations: false }, physics: { kin: kinResult, proj: projResult, unit: unitResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Calc DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('physics.mintedDtuId', id, { label: `calc ${id.slice(0, 8)}` }); ok(`Calc DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`⚛ Physics bench`, '', kinResult ? `Kinematics → v=${kinResult.solved.v ?? '-'} m/s, x=${kinResult.solved.x ?? '-'} m, t=${kinResult.solved.t ?? '-'} s` : '', projResult ? `Projectile → range ${projResult.range_m} m, apex ${projResult.maxHeight_m} m, ToF ${projResult.timeOfFlight_s} s` : '', unitResult ? `${unitResult.value} ${unitResult.from} = ${unitResult.result} ${unitResult.to}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!projResult && !kinResult) { err('Solve a scenario first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Mechanics problem`, tags: ['physics', 'mechanics', 'public'], source: 'physics:problem:publish', meta: { visibility: 'public', consent: { allowCitations: true }, kin: kinResult, proj: projResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Mechanics problem`, tags: ['physics', 'mechanics', 'public'], source: 'physics:problem:publish', meta: { visibility: 'public', consent: { allowCitations: true }, kin: kinResult, proj: projResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('physics.publishedDtuId', id, { label: `problem ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -190,6 +216,11 @@ export function PhysicsActionPanel() {
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">DM</div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="recipient" />
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

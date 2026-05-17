@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -65,6 +66,21 @@ export function ProductivityActionPanel() {
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actCreate() {
     if (!taskTitle.trim()) { err('Task title required.'); return; }
     setBusy('create'); setFeedback(null);
@@ -80,6 +96,7 @@ export function ProductivityActionPanel() {
     };
     setTasks(prev => [...prev, newTask]);
     setTaskTitle(''); setTaskDue('');
+    pipe.publish('productivity.task', newTask, { label: `P${taskPriority} · ${newTask.title}` });
     ok(`Task created (P${taskPriority}).`);
     setBusy(null);
   }
@@ -104,7 +121,9 @@ export function ProductivityActionPanel() {
         });
         const byPriority: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0 };
         for (const t of matches) byPriority[String(t.priority || 4)]++;
-        setFilterResult({ project: filterProject, status: filterStatus, count: matches.length, tasks: matches.slice(0, 50), byPriority });
+        const next: FilterResult = { project: filterProject, status: filterStatus, count: matches.length, tasks: matches.slice(0, 50), byPriority };
+        setFilterResult(next);
+        pipe.publish('productivity.filter', next, { label: `${matches.length} match` });
         ok(`${matches.length} task${matches.length === 1 ? '' : 's'} match.`);
       } else err(r.error ?? 'filter failed');
     } catch (e) { err(pickMessage(e)); }
@@ -121,14 +140,16 @@ export function ProductivityActionPanel() {
       if (energy === 'low') return (b.priority || 4) - (a.priority || 4);
       return ((a.priority || 4) + (b.id.length % 3)) - ((b.priority || 4) + (a.id.length % 3));
     });
-    setFocusResult({
+    const next: FocusResult = {
       energy,
       candidate: sorted[0],
       durationMin: 25,
       breakAfterMin: 5,
       nextUp: sorted.slice(1, 4).map(t => ({ id: t.id, title: t.title, priority: t.priority })),
       rationale: energy === 'high' ? "Highest-priority task first — your energy can carry it." : energy === 'low' ? "Quick wins first — momentum > intensity." : "Mixed priority — alternate hard and easy.",
-    });
+    };
+    setFocusResult(next);
+    pipe.publish('productivity.focus', next, { label: `focus · ${next.candidate?.title ?? ''}` });
     ok('Focus block ready.');
     setBusy(null);
   }
@@ -142,7 +163,7 @@ export function ProductivityActionPanel() {
     const overdue = stillOpen.filter(t => t.dueDate && t.dueDate < date);
     const byProject: Record<string, number> = {};
     for (const t of completed) byProject[t.project || 'Inbox'] = (byProject[t.project || 'Inbox'] || 0) + 1;
-    setSummaryResult({
+    const next: SummaryResult = {
       date,
       createdToday: created.length,
       completedToday: completed.length,
@@ -150,7 +171,9 @@ export function ProductivityActionPanel() {
       overdueCount: overdue.length,
       throughput: completed.length > 0 && created.length > 0 ? Math.round((completed.length / created.length) * 100) + '%' : '—',
       completedByProject: byProject,
-    });
+    };
+    setSummaryResult(next);
+    pipe.publish('productivity.summary', next, { label: `${next.completedToday}/${next.createdToday} done` });
     ok('Summary ready.');
     setBusy(null);
   }
@@ -169,7 +192,7 @@ export function ProductivityActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Snapshot DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('productivity.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`Snapshot DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -187,9 +210,12 @@ export function ProductivityActionPanel() {
       open.slice(0, 10).map(t => `  [P${t.priority}] ${t.title}${t.dueDate ? ` (due ${t.dueDate})` : ''}`).join('\n'),
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -198,21 +224,24 @@ export function ProductivityActionPanel() {
     if (!summaryResult) { err('Run a summary first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Daily throughput — ${summaryResult.date}`,
-          tags: ['productivity', 'public', 'throughput'],
-          source: 'productivity:throughput:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, summary: { date: summaryResult.date, completedToday: summaryResult.completedToday, throughput: summaryResult.throughput } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Daily throughput — ${summaryResult.date}`,
+            tags: ['productivity', 'public', 'throughput'],
+            source: 'productivity:throughput:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, summary: { date: summaryResult.date, completedToday: summaryResult.completedToday, throughput: summaryResult.throughput } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Throughput published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('productivity.publishedDtuId', id, { label: `throughput ${id.slice(0, 8)}` }); ok(`Throughput published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -276,6 +305,11 @@ export function ProductivityActionPanel() {
           <option value="high">⚡ High energy</option><option value="medium">⚖️ Medium</option><option value="low">😴 Low</option>
         </select>
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

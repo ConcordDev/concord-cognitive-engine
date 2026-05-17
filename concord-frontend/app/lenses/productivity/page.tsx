@@ -17,6 +17,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { ProductivityRepos } from '@/components/productivity/ProductivityRepos';
 import { ProductivityActionPanel } from '@/components/productivity/ProductivityActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState } from 'react';
@@ -245,9 +246,11 @@ export default function ProductivityLensPage() {
       </section>
 
       {/* Todoist + Things-shape task workbench: create / filter / focus / summary + actions */}
-      <section className="mt-6 mx-4">
-        <ProductivityActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 mx-4">
+          <ProductivityActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
