@@ -12,6 +12,7 @@ import { Car, AlertOctagon, Wrench, Search, Sparkles, Send, Globe, Wand2, Loader
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -34,12 +35,12 @@ interface MaintResult { items?: MaintItem[]; nextService?: string; overdueCount?
 interface DiagResult { code?: string; description?: string; category?: string; severity?: string; commonCauses?: string[]; estimatedCost?: string }
 
 export function AutomotiveActionPanel() {
-  const [vin, setVin] = useState('1HGBH41JXMN109186');
-  const [make, setMake] = useState('Toyota');
-  const [model, setModel] = useState('Camry');
-  const [year, setYear] = useState('2020');
-  const [currentMiles, setCurrentMiles] = useState('45000');
-  const [obdCode, setObdCode] = useState('P0420');
+  const [vin, setVin] = useState('');
+  const [make, setMake] = useState('');
+  const [model, setModel] = useState('');
+  const [year, setYear] = useState('');
+  const [currentMiles, setCurrentMiles] = useState('');
+  const [obdCode, setObdCode] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -55,53 +56,83 @@ export function AutomotiveActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actVin() {
     if (vin.trim().length !== 17) { err('VIN must be 17 chars.'); return; }
     setBusy('vin'); setFeedback(null);
-    try { const r = await callMacro<VinResult>('vin-decode', { vin: vin.trim() }); if (r.ok && r.result) { setVinResult(r.result); ok(`${r.result.year} ${r.result.make} ${r.result.model}.`); if (r.result.make) { setMake(r.result.make); setModel(r.result.model ?? model); setYear(r.result.year ?? year); } } else err(r.error ?? 'vin failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<VinResult>('vin-decode', { vin: vin.trim() });
+      if (r.ok && r.result) { setVinResult(r.result); pipe.publish('auto.vin', r.result, { label: `${r.result.year} ${r.result.make} ${r.result.model}` }); ok(`${r.result.year} ${r.result.make} ${r.result.model}.`); if (r.result.make) { setMake(r.result.make); setModel(r.result.model ?? model); setYear(r.result.year ?? year); } } else err(r.error ?? 'vin failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRecall() {
     if (!make.trim() || !model.trim() || !year.trim()) { err('Make, model, year required.'); return; }
     setBusy('recall'); setFeedback(null);
-    try { const r = await callMacro<RecallResult>('recall-lookup', { make: make.trim(), model: model.trim(), year: parseInt(year, 10) }); if (r.ok && r.result) { setRecallResult(r.result); ok(`${r.result.count ?? r.result.recalls?.length ?? 0} recalls.`); } else err(r.error ?? 'recall failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<RecallResult>('recall-lookup', { make: make.trim(), model: model.trim(), year: parseInt(year, 10) });
+      if (r.ok && r.result) { setRecallResult(r.result); pipe.publish('auto.recall', r.result, { label: `${r.result.count ?? r.result.recalls?.length ?? 0} recalls` }); ok(`${r.result.count ?? r.result.recalls?.length ?? 0} recalls.`); } else err(r.error ?? 'recall failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMaint() {
+    const m = parseInt(currentMiles, 10);
+    if (!Number.isFinite(m) || !make.trim() || !model.trim() || !year.trim()) { err('Current miles + make/model/year required.'); return; }
     setBusy('maint'); setFeedback(null);
-    try { const r = await callMacro<MaintResult>('maintenanceSchedule', { artifact: { data: { currentMileage: parseInt(currentMiles, 10), vehicleAgeMonths: 24, make, model, year: parseInt(year, 10) } } }); if (r.ok && r.result) { setMaintResult(r.result); ok(`${r.result.overdueCount ?? 0} overdue items.`); } else err(r.error ?? 'maint failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<MaintResult>('maintenanceSchedule', { artifact: { data: { currentMileage: m, vehicleAgeMonths: 24, make, model, year: parseInt(year, 10) } } });
+      if (r.ok && r.result) { setMaintResult(r.result); pipe.publish('auto.maint', r.result, { label: `Maint ${r.result.overdueCount ?? 0} overdue` }); ok(`${r.result.overdueCount ?? 0} overdue items.`); } else err(r.error ?? 'maint failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDiag() {
-    if (!obdCode.trim()) { err('OBD code required.'); return; }
+    if (!obdCode.trim()) { err('OBD code required (e.g. P0420).'); return; }
     setBusy('diag'); setFeedback(null);
-    try { const r = await callMacro<DiagResult>('diagnosticLookup', { code: obdCode.trim().toUpperCase() }); if (r.ok && r.result) { setDiagResult(r.result); ok(`${r.result.code}: ${r.result.severity}.`); } else err(r.error ?? 'diag failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<DiagResult>('diagnosticLookup', { code: obdCode.trim().toUpperCase() });
+      if (r.ok && r.result) { setDiagResult(r.result); pipe.publish('auto.diag', r.result, { label: `${r.result.code}: ${r.result.severity}` }); ok(`${r.result.code}: ${r.result.severity}.`); } else err(r.error ?? 'diag failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Vehicle — ${year} ${make} ${model}`, tags: ['automotive', 'vehicle', make.toLowerCase()], source: 'automotive:vehicle:mint', meta: { visibility: 'private', consent: { allowCitations: false }, auto: { vin: vinResult, recalls: recallResult, maint: maintResult, diag: diagResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Vehicle DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('auto.mintedDtuId', id, { label: `Vehicle DTU ${id.slice(0, 8)}…` }); ok(`Vehicle DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🚗 Vehicle brief`, '', vinResult ? `${vinResult.year} ${vinResult.make} ${vinResult.model} ${vinResult.trim ?? ''} · ${vinResult.engineDisplacementL ?? '?'}L ${vinResult.engineCylinders ?? '?'}-cyl ${vinResult.fuelType ?? ''}` : '', recallResult ? `Recalls: ${recallResult.count ?? recallResult.recalls?.length ?? 0}${(recallResult.recalls?.[0]?.component) ? ` · "${recallResult.recalls[0].component}"` : ''}` : '', maintResult ? `Maintenance: ${maintResult.overdueCount ?? 0} overdue · next ${maintResult.nextService ?? '-'}` : '', diagResult ? `OBD ${diagResult.code}: ${diagResult.description} (${diagResult.severity})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🚗 Vehicle brief`, '',
+      vinResult ? `${vinResult.year} ${vinResult.make} ${vinResult.model} ${vinResult.trim ?? ''} · ${vinResult.engineDisplacementL ?? '?'}L ${vinResult.engineCylinders ?? '?'}-cyl ${vinResult.fuelType ?? ''}` : '',
+      recallResult ? `Recalls: ${recallResult.count ?? recallResult.recalls?.length ?? 0}${(recallResult.recalls?.[0]?.component) ? ` · "${recallResult.recalls[0].component}"` : ''}` : '',
+      maintResult ? `Maintenance: ${maintResult.overdueCount ?? 0} overdue · next ${maintResult.nextService ?? '-'}` : '',
+      diagResult ? `OBD ${diagResult.code}: ${diagResult.description} (${diagResult.severity})` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!recallResult && !vinResult) { err('Run VIN or recall lookup first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `${year} ${make} ${model} reference`, tags: ['automotive', 'vehicle', 'public', make.toLowerCase()], source: 'automotive:reference:publish', meta: { visibility: 'public', consent: { allowCitations: true }, vin: vinResult, recalls: recallResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `${year} ${make} ${model} reference`, tags: ['automotive', 'vehicle', 'public', make.toLowerCase()], source: 'automotive:reference:publish', meta: { visibility: 'public', consent: { allowCitations: true }, vin: vinResult, recalls: recallResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('auto.publishedDtuId', id, { label: `Public ref ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -142,7 +173,11 @@ export function AutomotiveActionPanel() {
         <input type="text" value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Year" />
         <input type="text" value={currentMiles} onChange={(e) => setCurrentMiles(e.target.value.replace(/\D/g, '') || '0')} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Miles" />
         <input type="text" value={obdCode} onChange={(e) => setObdCode(e.target.value.toUpperCase())} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="OBD (P0420)" />
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-7 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-7 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

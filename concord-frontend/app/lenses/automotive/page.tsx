@@ -6,6 +6,7 @@ import { VinDecoder } from '@/components/automotive/VinDecoder';
 import { FuelRepairPanel } from '@/components/automotive/FuelRepairPanel';
 import { VehicleHistory } from '@/components/automotive/VehicleHistory';
 import { AutomotiveActionPanel } from '@/components/automotive/AutomotiveActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -713,9 +714,11 @@ export default function AutomotiveLensPage() {
         <VinDecoder />
       </section>
 
-      <section className="mt-6">
-        <AutomotiveActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <AutomotiveActionPanel />
+        </section>
+      </PipingProvider>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <FuelRepairPanel />
