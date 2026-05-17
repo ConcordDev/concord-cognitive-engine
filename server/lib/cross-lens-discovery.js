@@ -31,15 +31,19 @@ export function searchDtus(db, query, opts = {}) {
   const limit = Math.min(MAX_RESULTS, Math.max(1, Number(opts.limit) || 30));
   const requesterId = opts.requesterId || null;
 
-  // Build the LIKE pattern. Escape SQL wildcards in the user input.
-  const safeQ = q.replace(/[%_\\]/g, "\\$&");
+  // Build the LIKE pattern. Escape SQL LIKE wildcards in the user input.
+  // SQLite requires the ESCAPE clause to be exactly one character; the
+  // previous '\\\\' (which produces the SQL string '\\' = two characters)
+  // fails with "ESCAPE expression must be a single character". Use '!'
+  // as the escape char — it's not a LIKE metacharacter so no conflict.
+  const safeQ = q.replace(/[%_!]/g, "!$&");
   const likePattern = `%${safeQ}%`;
 
   const where = [];
   const params = [];
 
   // Always: title or meta contains the query.
-  where.push(`(d.title LIKE ? ESCAPE '\\\\' OR d.meta_json LIKE ? ESCAPE '\\\\')`);
+  where.push(`(d.title LIKE ? ESCAPE '!' OR d.meta_json LIKE ? ESCAPE '!')`);
   params.push(likePattern, likePattern);
 
   if (opts.kind) {

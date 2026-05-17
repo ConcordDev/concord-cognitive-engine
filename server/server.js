@@ -31114,7 +31114,9 @@ import createMediaRouter from "./routes/media.js";
 try { app.use("/api/media", createMediaRouter({ STATE })); } catch (e) { structuredLog("warn", "media_routes_skip", { error: e.message }); }
 
 import { createModerationRouter } from "./routes/moderation.js";
-try { app.use("/api/moderation", createModerationRouter({ db, requireAuth, requireRole, structuredLog, asyncHandler })); } catch (e) { structuredLog("warn", "moderation_routes_skip", { error: e.message }); }
+// STATE is required by content-moderation.js; passing only db caused
+// public-report to fail with "Cannot read properties of undefined (reading '_moderation')".
+try { app.use("/api/moderation", createModerationRouter({ STATE, db, requireAuth, requireRole, structuredLog, asyncHandler })); } catch (e) { structuredLog("warn", "moderation_routes_skip", { error: e.message }); }
 
 import createSocialGroupRoutes from "./routes/social-groups.js";
 try { app.use("/api/social", createSocialGroupRoutes({ db, requireAuth })); } catch (e) { structuredLog("warn", "social_groups_routes_skip", { error: e.message }); }
