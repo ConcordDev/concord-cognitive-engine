@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { WhiteboardRepos } from '@/components/whiteboard/WhiteboardRepos';
 import { WhiteboardActionPanel } from '@/components/whiteboard/WhiteboardActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1681,9 +1682,11 @@ export default function WhiteboardLensPage() {
     </section>
 
     {/* Excalidraw + Miro-shape session workbench: template / save / vote / share + actions */}
-    <section className="mt-6 mx-auto max-w-7xl">
-      <WhiteboardActionPanel />
-    </section>
+    <PipingProvider>
+      <section className="mt-6 mx-auto max-w-7xl">
+        <WhiteboardActionPanel />
+      </section>
+    </PipingProvider>
     </LensShell>
   );
 }
