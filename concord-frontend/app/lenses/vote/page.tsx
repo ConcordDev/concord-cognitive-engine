@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { SessionRail } from '@/components/lens/SessionRail';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -534,6 +535,7 @@ export default function VoteLensPage() {
         <VoteFeed />
       </section>
     </div>
+          <SessionRail lensId="vote" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="vote" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="vote" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="vote" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
