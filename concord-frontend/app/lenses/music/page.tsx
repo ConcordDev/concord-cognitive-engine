@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { SessionView } from '@/components/music/SessionView';
 import { MusicArtistExplorer } from '@/components/music/MusicArtistExplorer';
+import { MusicActionPanel } from '@/components/music/MusicActionPanel';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -2078,6 +2079,11 @@ export default function MusicLensPage() {
         {/* Bespoke MusicBrainz artist + discography explorer with Save-as-DTU */}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <MusicArtistExplorer />
+        </section>
+
+        {/* Spotify + Ableton-shape music workbench: BPM / key / chords / setlist + actions */}
+        <section className="mt-6">
+          <MusicActionPanel />
         </section>
       </main>
 

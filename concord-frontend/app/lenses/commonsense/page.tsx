@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
 import { ConceptExplorer } from '@/components/commonsense/ConceptExplorer';
+import { CommonsenseActionPanel } from '@/components/commonsense/CommonsenseActionPanel';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -998,6 +999,10 @@ export default function CommonsenseLensPage() {
       {/* Bespoke ConceptNet concept graph explorer with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ConceptExplorer />
+      </section>
+
+      <section className="mt-6">
+        <CommonsenseActionPanel />
       </section>
     </div>
 

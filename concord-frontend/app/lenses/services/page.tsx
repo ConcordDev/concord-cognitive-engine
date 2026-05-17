@@ -7,7 +7,7 @@ import { RevenueRetentionPanel } from '@/components/services/RevenueRetentionPan
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -56,6 +56,8 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { BookingActionDock, EndOfDayClose } from '@/components/services/BookingActionDock';
+import { Zap } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -221,6 +223,8 @@ export default function ServicesLensPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
+  const [dockAppointmentId, setDockAppointmentId] = useState<string | null>(null);
+  const [showCloseDayModal, setShowCloseDayModal] = useState(false);
 
   const [formTitle, setFormTitle] = useState('');
   const [formStatus, setFormStatus] = useState<string>('booked');
@@ -537,6 +541,13 @@ export default function ServicesLensPage() {
               {Boolean(d.recurring) && <span className={ds.badge('neon-cyan')}><Repeat className="w-3 h-3" /> {d.recurringFrequency as string}</span>}
               {Boolean(d.reminderSent) && <span className={ds.badge('blue-400')}><Bell className="w-3 h-3" /> Sent</span>}
               {(d.noShowCount as number) > 0 && <span className={ds.badge('red-400')}>No-shows: {d.noShowCount as number}</span>}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setDockAppointmentId(item.id); }}
+                className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-pink-500/15 text-pink-300 hover:bg-pink-500/25 transition-colors"
+              >
+                <Zap className="w-3 h-3" /> Actions
+              </button>
             </>
           )}
 
@@ -796,6 +807,14 @@ export default function ServicesLensPage() {
       </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowCloseDayModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors text-sm font-semibold"
+            title="End of day close — Square-style register close"
+          >
+            <Receipt className="w-4 h-4" /> Close day
+          </button>
           {mode !== 'Dashboard' && (
             <button onClick={openNew} className={ds.btnPrimary}>
               <Plus className="w-4 h-4" /> New {currentType}
@@ -1093,6 +1112,55 @@ export default function ServicesLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#services-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to services content</a>
+
+      {/* Per-appointment action dock (Booksy-style) */}
+      <AnimatePresence>
+        {dockAppointmentId && (() => {
+          const appt = appointments.find(a => a.id === dockAppointmentId);
+          if (!appt) return null;
+          return (
+            <BookingActionDock
+              appointment={{
+                id: appt.id,
+                title: appt.title,
+                meta: appt.meta as { status: string; [k: string]: unknown },
+                data: appt.data as unknown as Record<string, unknown>,
+              }}
+              onClose={() => setDockAppointmentId(null)}
+            />
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* End-of-day close modal (Square-style) */}
+      <AnimatePresence>
+        {showCloseDayModal && (() => {
+          const today = new Date().toISOString().slice(0, 10);
+          const tomorrowDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+          const todaysAppts = appointments.filter(a => {
+            const d = (a.data as unknown as AppointmentData).date;
+            return typeof d === 'string' && d.startsWith(today);
+          });
+          const tomorrowAppts = appointments
+            .filter(a => {
+              const d = (a.data as unknown as AppointmentData).date;
+              return typeof d === 'string' && d.startsWith(tomorrowDate);
+            })
+            .map(a => ({
+              id: a.id,
+              title: a.title,
+              meta: a.meta as { status: string; [k: string]: unknown },
+              data: a.data as unknown as Record<string, unknown>,
+            }));
+          return (
+            <EndOfDayClose
+              representativeAppointmentId={todaysAppts[0]?.id ?? appointments[0]?.id ?? null}
+              tomorrowAppointments={tomorrowAppts}
+              onClose={() => setShowCloseDayModal(false)}
+            />
+          );
+        })()}
+      </AnimatePresence>
     </LensShell>
   );
 }

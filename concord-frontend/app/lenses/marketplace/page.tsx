@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { TrendingListings } from '@/components/marketplace/TrendingListings';
+import { MarketplaceActionPanel } from '@/components/marketplace/MarketplaceActionPanel';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { BandcampGrid } from '@/components/marketplace/BandcampGrid';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -2869,6 +2870,11 @@ export default function MarketplaceLensPage() {
     />
     <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
       <TrendingListings />
+    </section>
+
+    {/* Bandcamp + Gumroad-shape listing workbench: score / price / metrics + actions */}
+    <section className="mt-6 mx-auto max-w-7xl">
+      <MarketplaceActionPanel />
     </section>
     </LensShell>
   );

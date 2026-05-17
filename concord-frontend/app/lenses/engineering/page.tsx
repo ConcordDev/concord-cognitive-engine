@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { HnEngineeringFeed } from '@/components/engineering/HnEngineeringFeed';
+import { EngineeringActionPanel } from '@/components/engineering/EngineeringActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -815,6 +816,10 @@ export default function EngineeringPage() {
       )}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <HnEngineeringFeed />
+      </section>
+
+      <section className="mt-6">
+        <EngineeringActionPanel />
       </section>
     </div>
 

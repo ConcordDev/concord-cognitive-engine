@@ -24,6 +24,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { TripPlannerPanel } from '@/components/travel/TripPlannerPanel';
+import { TravelActionPanel } from '@/components/travel/TravelActionPanel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -578,6 +579,11 @@ export default function TravelLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TripPlannerPanel />
+      </section>
+
+      {/* TripIt + Google Travel-shape workbench: budget / packing / jetlag / visa + actions */}
+      <section className="mt-6">
+        <TravelActionPanel />
       </section>
     </div>
     </LensShell>

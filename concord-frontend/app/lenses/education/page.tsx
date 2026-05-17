@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { GutenbergCurriculum } from '@/components/education/GutenbergCurriculum';
+import { EducationActionPanel } from '@/components/education/EducationActionPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -3187,6 +3188,10 @@ export default function EducationLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <GutenbergCurriculum />
+      </section>
+
+      <section className="mt-6">
+        <EducationActionPanel />
       </section>
     </div>
     </LensShell>

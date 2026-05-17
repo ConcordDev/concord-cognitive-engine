@@ -42,6 +42,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { ThreadNodeActions } from '@/components/thread/ThreadNodeActions';
 
 interface ThreadNode {
   id: string;
@@ -635,7 +636,7 @@ export default function ThreadLensPage() {
                   </div>
                 </div>
 
-                <div className="p-4 border-t border-lattice-border">
+                <div className="p-4 border-t border-lattice-border space-y-3">
                   <div className="grid grid-cols-4 gap-2">
                     <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Forking node...' })} className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white flex flex-col items-center gap-1">
                       <GitFork className="w-4 h-4" />
@@ -654,6 +655,31 @@ export default function ThreadLensPage() {
                       <span className="text-xs">Delete</span>
                     </button>
                   </div>
+
+                  {selectedThread && selectedNode && (() => {
+                    // Flatten the thread for publish + synthesize
+                    const flat: Array<{ id: string; author: 'user' | 'ai'; content: string }> = [];
+                    const walk = (n: ThreadNode) => {
+                      flat.push({ id: n.id, author: n.author, content: n.content });
+                      n.children?.forEach(walk);
+                    };
+                    walk(selectedThread.rootNode);
+                    return (
+                      <ThreadNodeActions
+                        node={{
+                          id: selectedNode.id,
+                          parentId: selectedNode.parentId,
+                          content: selectedNode.content,
+                          author: selectedNode.author,
+                          depth: selectedNode.depth,
+                          branchName: selectedNode.branchName,
+                        }}
+                        threadName={selectedThread.name}
+                        threadId={selectedThread.id}
+                        threadFullContent={flat}
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             </motion.aside>

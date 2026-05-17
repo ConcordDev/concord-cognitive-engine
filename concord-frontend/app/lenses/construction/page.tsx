@@ -34,6 +34,7 @@ import {
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { OshaIncidentSearch } from '@/components/construction/OshaIncidentSearch';
 import { ProcorePanel } from '@/components/construction/ProcorePanel';
+import { ConstructionActionPanel } from '@/components/construction/ConstructionActionPanel';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -788,6 +789,10 @@ export default function ConstructionLensPage() {
 
       <section className="mt-6">
         <ProcorePanel />
+      </section>
+
+      <section className="mt-6 max-w-7xl mx-auto px-4">
+        <ConstructionActionPanel />
       </section>
     </LensPageShell>
     

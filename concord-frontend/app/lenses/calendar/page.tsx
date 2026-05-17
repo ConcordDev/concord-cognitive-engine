@@ -5,6 +5,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { TimezoneTools } from '@/components/calendar/TimezoneTools';
 import { ScheduleAnalyzer } from '@/components/calendar/ScheduleAnalyzer';
+import { CalendarActionPanel } from '@/components/calendar/CalendarActionPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,6 +25,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { EventActionRail } from '@/components/calendar/EventActionRail';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1489,9 +1491,10 @@ export default function CalendarLensPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-lattice-surface border border-lattice-border rounded-xl p-6 max-w-lg w-full"
+              className="bg-lattice-surface border border-lattice-border rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden grid grid-cols-1 md:grid-cols-[1fr_320px]"
               onClick={(e) => e.stopPropagation()}
             >
+              <div className="p-6 overflow-y-auto">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div
@@ -1620,6 +1623,10 @@ export default function CalendarLensPage() {
                   </div>
                 )}
               </div>
+              </div>
+              <aside className="border-t md:border-t-0 md:border-l border-lattice-border bg-lattice-bg/40 p-4 overflow-y-auto">
+                <EventActionRail event={selectedEvent} />
+              </aside>
             </motion.div>
           </motion.div>
         )}
@@ -2061,6 +2068,10 @@ export default function CalendarLensPage() {
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ScheduleAnalyzer />
+      </section>
+
+      <section className="mt-6">
+        <CalendarActionPanel />
       </section>
     </div>
     </LensShell>

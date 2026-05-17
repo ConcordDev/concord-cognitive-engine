@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { EiaPanel } from '@/components/energy/EiaPanel';
 import { SolarCarbonPanel } from '@/components/energy/SolarCarbonPanel';
+import { EnergyActionStack } from '@/components/energy/EnergyActionStack';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback } from 'react';
@@ -569,6 +570,11 @@ export default function EnergyLensPage() {
       {/* Bespoke EIA electricity rates + generation mix with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <EiaPanel />
+      </section>
+
+      {/* EIA-shape action surface: mint / DM household / publish / agent / CSV */}
+      <section className="mt-6">
+        <EnergyActionStack />
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

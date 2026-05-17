@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { FireIncidents } from '@/components/forestry/FireIncidents';
+import { ForestryActionPanel } from '@/components/forestry/ForestryActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -391,6 +392,11 @@ export default function ForestryLensPage() {
       {/* Bespoke InciWeb + NIFC active wildfires with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <FireIncidents />
+      </section>
+
+      {/* USDA + InciWeb-shape forestry workbench: volume / fire-risk / harvest / carbon + actions */}
+      <section className="mt-6">
+        <ForestryActionPanel />
       </section>
     </LensPageShell>
 

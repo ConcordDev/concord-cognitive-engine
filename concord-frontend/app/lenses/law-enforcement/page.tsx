@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { PoliceFeed } from '@/components/law-enforcement/PoliceFeed';
+import { LawEnforcementActionPanel } from '@/components/law-enforcement/LawEnforcementActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -376,6 +377,10 @@ export default function LawEnforcementLensPage() {
       <UniversalActions domain="law-enforcement" artifactId={items[0]?.id} />
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PoliceFeed />
+      </section>
+
+      <section className="mt-6 max-w-7xl mx-auto px-4">
+        <LawEnforcementActionPanel />
       </section>
     </LensPageShell>
     

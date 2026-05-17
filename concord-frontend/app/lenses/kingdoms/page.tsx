@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
+import { RealmActionPanel } from '@/components/kingdoms/RealmActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
 
@@ -126,6 +127,11 @@ export default function KingdomsPage() {
         {view === 'create' && <KingdomCreate onCreated={(id) => { setActiveId(id); setView('detail'); fetchList(); }} />}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <HistoryExplorer />
+        </section>
+
+        {/* Crusader Kings III-shape realm command: list / decree / loyalty / takeover + actions */}
+        <section className="mt-6">
+          <RealmActionPanel />
         </section>
       </div>
     </div>

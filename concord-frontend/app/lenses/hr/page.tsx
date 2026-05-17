@@ -25,6 +25,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { BlsSeriesExplorer } from '@/components/hr/BlsSeriesExplorer';
+import { HrActionPanel } from '@/components/hr/HrActionPanel';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -414,6 +415,11 @@ export default function HRLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <BlsSeriesExplorer />
+      </section>
+
+      {/* BambooHR + Gusto-shape people-ops workbench: comp / turnover / interview / pto + actions */}
+      <section className="mt-6">
+        <HrActionPanel />
       </section>
     </div>
 

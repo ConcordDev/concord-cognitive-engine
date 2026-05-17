@@ -12,6 +12,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
+import { ClassroomActionPanel } from '@/components/classroom/ClassroomActionPanel';
 
 interface Cohort {
   id: number;
@@ -174,6 +175,10 @@ export default function ClassroomPage() {
       {/* Bespoke Open Library book search + detail with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <OpenLibrarySearch />
+      </section>
+
+      <section className="mt-6">
+        <ClassroomActionPanel />
       </section>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

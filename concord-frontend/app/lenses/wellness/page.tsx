@@ -12,6 +12,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { WellnessFeed } from '@/components/wellness/WellnessFeed';
+import { WellnessActionPanel } from '@/components/wellness/WellnessActionPanel';
 
 interface Field {
   id: number;
@@ -143,6 +144,11 @@ export default function WellnessPage() {
         )}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <WellnessFeed />
+        </section>
+
+        {/* Whoop-shape wellness workbench: sleep / strain / recovery / HRV + actions */}
+        <section className="mt-6">
+          <WellnessActionPanel />
         </section>
       </div>
 

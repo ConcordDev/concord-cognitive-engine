@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { QualityDistribution } from '@/components/cri/QualityDistribution';
+import { CrisisActionPanel } from '@/components/cri/CrisisActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -739,6 +740,11 @@ export default function CRILensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <QualityDistribution />
+      </section>
+
+      {/* Crisis-response workbench: severity / timeline / impact + actions */}
+      <section className="mt-6">
+        <CrisisActionPanel />
       </section>
     </div>
 

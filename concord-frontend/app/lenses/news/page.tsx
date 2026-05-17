@@ -3,6 +3,7 @@
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { LensShell } from '@/components/lens/LensShell';
 import { GdeltHeadlines } from '@/components/news-explorer/GdeltHeadlines';
+import { NewsActionPanel } from '@/components/news/NewsActionPanel';
 import HeadlineFeed from '@/components/news/HeadlineFeed';
 import NewsBriefing from '@/components/news/NewsBriefing';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -1021,6 +1022,11 @@ export default function NewsLensPage() {
       {/* Bespoke GDELT global news headlines with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <GdeltHeadlines />
+      </section>
+
+      {/* Ground News + AllSides-shape literacy workbench: bias / events / narrative / briefing + actions */}
+      <section className="mt-6 mx-4">
+        <NewsActionPanel />
       </section>
     </div>
     </LensShell>

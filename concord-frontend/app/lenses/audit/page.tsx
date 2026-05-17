@@ -13,6 +13,7 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { CveSearch } from '@/components/audit/CveSearch';
+import { AuditActionPanel } from '@/components/audit/AuditActionPanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -654,6 +655,10 @@ export default function AuditLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CveSearch />
+      </section>
+
+      <section className="mt-6">
+        <AuditActionPanel />
       </section>
     </div>
 

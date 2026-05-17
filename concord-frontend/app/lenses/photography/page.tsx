@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { PexelsBrowser } from '@/components/photography/PexelsBrowser';
+import { PhotographyActionPanel } from '@/components/photography/PhotographyActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -950,6 +951,10 @@ export default function PhotographyPage() {
       {/* Bespoke Pexels stock-photo browser with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PexelsBrowser />
+      </section>
+
+      <section className="mt-6">
+        <PhotographyActionPanel />
       </section>
     </div>
     </LensShell>

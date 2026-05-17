@@ -8,6 +8,7 @@ import PatientChart from '@/components/healthcare/PatientChart';
 import AppointmentScheduler from '@/components/healthcare/AppointmentScheduler';
 import RxPriceCompare from '@/components/healthcare/RxPriceCompare';
 import { ProviderDirectory } from '@/components/healthcare/ProviderDirectory';
+import { HealthcareActionPanel } from '@/components/healthcare/HealthcareActionPanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -3984,6 +3985,10 @@ export default function HealthcareLensPage() {
           advice, diagnosis, or treatment.
         </p>
       </div>
+
+      <section className="mt-6">
+        <HealthcareActionPanel />
+      </section>
     </div>
     </LensShell>
   );

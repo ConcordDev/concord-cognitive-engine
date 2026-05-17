@@ -10,6 +10,7 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import BioWorkbench from '@/components/bio/BioWorkbench';
 import { SequenceAnalyzer } from '@/components/bio/SequenceAnalyzer';
+import { BioActionPanel } from '@/components/bio/BioActionPanel';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -455,6 +456,10 @@ export default function BioLensPage() {
     {/* Bespoke sequence analyzer + primer + pairwise alignment with Save-as-DTU */}
     <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
       <SequenceAnalyzer />
+    </section>
+
+    <section className="mx-auto mt-6 max-w-6xl">
+      <BioActionPanel />
     </section>
     </LensShell>
   );

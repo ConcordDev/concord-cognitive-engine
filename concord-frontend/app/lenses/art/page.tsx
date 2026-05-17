@@ -61,6 +61,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ArtExplorer } from '@/components/art/ArtExplorer';
 import { PaletteWorkshop } from '@/components/art/PaletteWorkshop';
+import { ArtActionPanel } from '@/components/art/ArtActionPanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
 import { FeedBanner } from '@/components/lens/FeedBanner';
@@ -1275,6 +1276,11 @@ export default function ArtLensPage() {
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PaletteWorkshop />
+      </section>
+
+      {/* Met + Art Institute + Adobe Color-shape art workbench: harmony / composition / palette / style + actions */}
+      <section className="mt-6">
+        <ArtActionPanel />
       </section>
     </div>
     </LensShell>

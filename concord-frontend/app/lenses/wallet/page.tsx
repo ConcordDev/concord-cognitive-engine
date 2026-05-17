@@ -15,6 +15,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { WalletMarkets } from '@/components/wallet/WalletMarkets';
+import { WalletActionPanel } from '@/components/wallet/WalletActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -1148,6 +1149,11 @@ export default function WalletPage() {
     </Suspense>
     <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
       <WalletMarkets />
+    </section>
+
+    {/* Coinbase + Mint-shape wallet workbench: balance / categorize / budget / trend + actions */}
+    <section className="mt-6 mx-auto max-w-7xl">
+      <WalletActionPanel />
     </section>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

@@ -39,6 +39,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { ClaimVerificationPanel } from '@/components/grounding/ClaimVerificationPanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 
 export default function GroundingLensPage() {
@@ -466,6 +467,11 @@ export default function GroundingLensPage() {
           </div>
         )}
       </div>
+
+      {/* Fact-check / source / decompose workbench */}
+      <section className="mt-6">
+        <ClaimVerificationPanel />
+      </section>
 
       {/* ---- Grounding Domain Actions ---- */}
       <div className="panel p-4 space-y-4">

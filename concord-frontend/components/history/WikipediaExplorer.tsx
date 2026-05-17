@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { HistoryArticleActions } from '@/components/history/HistoryArticleActions';
 
 interface SearchHit { title: string; description: string | null; url: string | null }
 
@@ -279,6 +280,7 @@ function ArticleReader({ article }: { article: ArticleSummary }) {
               Read on Wikipedia
             </a>
           )}
+          <HistoryArticleActions article={article} />
         </div>
       </aside>
     </motion.article>

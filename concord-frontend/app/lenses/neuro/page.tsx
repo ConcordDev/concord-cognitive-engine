@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NeuroFeed } from '@/components/neuro/NeuroFeed';
+import { NeuroActionPanel } from '@/components/neuro/NeuroActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -370,6 +371,10 @@ export default function NeuroLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <NeuroFeed />
+      </section>
+
+      <section className="mt-6">
+        <NeuroActionPanel />
       </section>
     </div>
 

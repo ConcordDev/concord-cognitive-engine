@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { QuakeFeed } from '@/components/emergency-services/QuakeFeed';
+import { EmergencyServicesActionPanel } from '@/components/emergency-services/EmergencyServicesActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -482,6 +483,10 @@ export default function EmergencyServicesLensPage() {
       <UniversalActions domain="emergency-services" artifactId={items[0]?.id} />
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <QuakeFeed />
+      </section>
+
+      <section className="mt-6 max-w-7xl mx-auto px-4">
+        <EmergencyServicesActionPanel />
       </section>
     </LensPageShell>
     

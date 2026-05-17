@@ -26,6 +26,9 @@ import {
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { PlaceShareSheet } from '@/components/atlas/PlaceShareSheet';
+import { Share2 } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 
 interface Place {
   osmType?: string; osmId?: number; placeId?: number;
@@ -72,6 +75,7 @@ const CATEGORIES = [
 export function PlaceFinder() {
   const [queryInput, setQueryInput] = useState('');
   const [places, setPlaces] = useState<Place[]>([]);
+  const [showShareSheet, setShowShareSheet] = useState(false);
   const [activeAmenity, setActiveAmenity] = useState<string | null>(null);
   const [pois, setPois] = useState<Poi[]>([]);
   const [focusPlace, setFocusPlace] = useState<Place | null>(null);
@@ -178,23 +182,33 @@ export function PlaceFinder() {
                 <div className="text-xs text-zinc-500">Focused place</div>
                 <div className="text-sm font-semibold text-white">{focusPlace.displayName}</div>
               </div>
-              <SaveAsDtuButton
-                compact
-                apiSource="openstreetmap"
-                apiUrl={`https://www.openstreetmap.org/${focusPlace.osmType}/${focusPlace.osmId}`}
-                title={focusPlace.displayName.split(',').slice(0, 2).join(',')}
-                content={[
-                  `Place: ${focusPlace.displayName}`,
-                  `Category: ${focusPlace.category || '—'}`,
-                  `Type: ${focusPlace.type || '—'}`,
-                  `Coordinates: ${focusPlace.latitude}, ${focusPlace.longitude}`,
-                  focusPlace.address ? `Country: ${focusPlace.address.country || '—'}` : '',
-                  focusPlace.address ? `Region: ${focusPlace.address.state || focusPlace.address.region || '—'}` : '',
-                  `OSM: ${focusPlace.osmType}/${focusPlace.osmId}`,
-                ].filter(Boolean).join('\n')}
-                extraTags={['atlas', 'place', focusPlace.category || 'osm', focusPlace.type || '']}
-                rawData={focusPlace}
-              />
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <SaveAsDtuButton
+                  compact
+                  apiSource="openstreetmap"
+                  apiUrl={`https://www.openstreetmap.org/${focusPlace.osmType}/${focusPlace.osmId}`}
+                  title={focusPlace.displayName.split(',').slice(0, 2).join(',')}
+                  content={[
+                    `Place: ${focusPlace.displayName}`,
+                    `Category: ${focusPlace.category || '—'}`,
+                    `Type: ${focusPlace.type || '—'}`,
+                    `Coordinates: ${focusPlace.latitude}, ${focusPlace.longitude}`,
+                    focusPlace.address ? `Country: ${focusPlace.address.country || '—'}` : '',
+                    focusPlace.address ? `Region: ${focusPlace.address.state || focusPlace.address.region || '—'}` : '',
+                    `OSM: ${focusPlace.osmType}/${focusPlace.osmId}`,
+                  ].filter(Boolean).join('\n')}
+                  extraTags={['atlas', 'place', focusPlace.category || 'osm', focusPlace.type || '']}
+                  rawData={focusPlace}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowShareSheet(true)}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25 transition-colors"
+                  title="Share / act on this place"
+                >
+                  <Share2 className="w-3 h-3" /> Share / act
+                </button>
+              </div>
             </div>
             {/* Category chip strip */}
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -252,6 +266,15 @@ export function PlaceFinder() {
           </div>
         </>
       )}
+
+      <AnimatePresence>
+        {showShareSheet && focusPlace && (
+          <PlaceShareSheet
+            place={focusPlace}
+            onClose={() => setShowShareSheet(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

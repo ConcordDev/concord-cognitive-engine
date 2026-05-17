@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import { Atom, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Atom, Loader2, Zap } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { MaterialActionMenu } from '@/components/materials/MaterialActionMenu';
 
 interface Material {
   materialId: string; formula: string; elementCount?: number;
@@ -31,6 +32,7 @@ export function MpSearch() {
   const [formula, setFormula] = useState('');
   const [materials, setMaterials] = useState<Material[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [actMaterial, setActMaterial] = useState<Material | null>(null);
 
   const search = useMutation({
     mutationFn: async () => callMacro<{ materials: Material[] }>('mp-search', { formula: formula.trim() }),
@@ -74,19 +76,35 @@ export function MpSearch() {
                   {m.energyAboveHullEv != null && <Cell label="Above hull" value={`${m.energyAboveHullEv.toFixed(3)} eV`} />}
                 </div>
               </div>
-              <SaveAsDtuButton
-                compact
-                apiSource="materials-project"
-                apiUrl={`https://next-gen.materialsproject.org/materials/${m.materialId}`}
-                title={`${m.formula} — ${m.materialId}`}
-                content={JSON.stringify(m, null, 2)}
-                extraTags={['materials', 'mp', m.formula.toLowerCase(), m.crystalSystem || 'unknown']}
-                rawData={m}
-              />
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <SaveAsDtuButton
+                  compact
+                  apiSource="materials-project"
+                  apiUrl={`https://next-gen.materialsproject.org/materials/${m.materialId}`}
+                  title={`${m.formula} — ${m.materialId}`}
+                  content={JSON.stringify(m, null, 2)}
+                  extraTags={['materials', 'mp', m.formula.toLowerCase(), m.crystalSystem || 'unknown']}
+                  rawData={m}
+                />
+                <button
+                  type="button"
+                  onClick={() => setActMaterial(m)}
+                  className="inline-flex items-center gap-1 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/20 transition-colors"
+                  title="Spec / quote / compare / publish / agent"
+                >
+                  <Zap className="h-3 w-3" /> Actions
+                </button>
+              </div>
             </div>
           </motion.div>
         ))}
       </div>
+
+      <AnimatePresence>
+        {actMaterial && (
+          <MaterialActionMenu material={actMaterial} onClose={() => setActMaterial(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

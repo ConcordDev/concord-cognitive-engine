@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RedditCreative } from '@/components/creative/RedditCreative';
+import { CreativeActionPanel } from '@/components/creative/CreativeActionPanel';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1717,6 +1718,10 @@ export default function CreativeLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <RedditCreative />
+      </section>
+
+      <section className="mt-6">
+        <CreativeActionPanel />
       </section>
     </div>
 
