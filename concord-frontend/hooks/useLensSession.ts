@@ -163,14 +163,15 @@ export function useLensSession<T = Record<string, unknown>>(opts: UseLensSession
     });
     setLoading(false);
     if (r?.ok && r.session) {
-      setSession(r.session);
+      const next = r.session;
+      setSession(next);
       // Optimistically prepend event; refresh() will reconcile.
       setEvents(prev => [{
         id: -1, kind: 'advanced', fromStep: session.currentStep, toStep: input.toStep,
-        note: input.note || null, payload: input.stateMerge || null, createdAt: r.session.updatedAt,
+        note: input.note || null, payload: input.stateMerge || null, createdAt: next.updatedAt,
       }, ...prev]);
-      notify(r.session);
-      return r.session;
+      notify(next);
+      return next;
     }
     setError(r?.reason || 'advance_failed');
     return null;
