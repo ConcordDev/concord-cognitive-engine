@@ -42,6 +42,7 @@ import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 import { StoriesBar } from '@/components/social/StoriesBar';
+import { QuickPostComposer } from '@/components/social/QuickPostComposer';
 import { Discovery } from '@/components/social/Discovery';
 import { NotificationCenter } from '@/components/social/NotificationCenter';
 import { UserProfile } from '@/components/social/UserProfile';
@@ -139,6 +140,9 @@ export default function SocialHubPage() {
 
           {/* MAIN COLUMN */}
           <main className="min-w-0 space-y-4">
+            {/* Phase 10d — top-of-feed composer (post + 24h story modes) */}
+            <QuickPostComposer currentUserId={currentUserId} />
+
             {/* Tab nav */}
             <nav className="flex items-center gap-1 border-b border-zinc-800 overflow-x-auto" role="tablist">
               {TABS.map(t => {

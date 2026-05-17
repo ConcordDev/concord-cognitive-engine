@@ -25,6 +25,7 @@ import { FederationBadge, type FederationStatus } from '@/components/federation/
 // Phase 7 — cross-lens narrative: small chip showing "used in N lenses".
 import { DownstreamBadge } from './DownstreamBadge';
 import { ReactionBar } from '@/components/social/ReactionBar';
+import { CommentThread } from '@/components/social/CommentThread';
 import { useDtuSurface } from '@/hooks/useDtuSurface';
 // Phase P — surface the previously-orphan provenance/freshness badges.
 import { FreshnessBadge } from '@/components/common/FreshnessBadge';
@@ -292,6 +293,8 @@ export function DTUEmbed({ dtu, mode = 'card', onOpen, recordSurfaceFromLens, cl
               )}
             </div>
           )}
+          {/* Phase 10c — collapsed comment thread; expands on user click. */}
+          <CommentThread postId={dtu.id} collapsed maxDepth={2} />
         </div>
       )}
     </article>
