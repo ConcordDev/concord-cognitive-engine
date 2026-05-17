@@ -370,6 +370,11 @@ export const REGISTRY = Object.freeze({
   // Allow registry hits for the few additional manifest entries that surfaced
   // late and don't fit cleanly anywhere.
   cri_3:         { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real cri" },
+
+  // Manifest entries discovered post-write that need an honest tier.
+  law:          { tier: TIER.DEMO, paywallReason: "Westlaw / LexisNexis case-law APIs are paid (~$200/user/mo)" },
+  services:     { tier: TIER.SIM_GRADE_A, groundedSchema: "services/listing" },
+  society:      { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real society/faction substrate" },
 });
 
 /**

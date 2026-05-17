@@ -116,6 +116,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'glb', 'gltf'],
     actions: ['explore', 'create_city', 'customize_character', 'stream', 'teleport', 'build', 'browse_assets'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -130,6 +131,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'txt', 'pdf'],
     actions: ['send', 'summarize', 'branch', 'export_transcript', 'search_history', 'merge_threads'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'code',
@@ -139,6 +141,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'zip', 'tar', 'patch'],
     actions: ['execute', 'lint', 'format', 'refactor', 'diff', 'review', 'test', 'package'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'paper',
@@ -148,6 +151,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf', 'bibtex'],
     actions: ['validate', 'synthesize', 'detect-contradictions', 'trace-lineage', 'claim-evidence-consistency', 'hypothesis-mutation-retest'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'reasoning',
@@ -157,6 +161,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'svg'],
     actions: ['validate', 'trace', 'conclude', 'fork', 'detect-fallacy', 'strength-score', 'visualize-chain'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'graph',
@@ -166,6 +171,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'graphml', 'rdf', 'cypher'],
     actions: ['query', 'cluster', 'analyze', 'merge', 'conflict-resolution', 'entity-resolution', 'confidence-scoring', 'shortest-path'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'council',
@@ -175,6 +181,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['debate', 'vote', 'simulate-budget', 'audit', 'quorum-check', 'impact-analysis', 'generate-minutes'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'agents',
@@ -184,6 +191,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'yaml', 'csv'],
     actions: ['start', 'stop', 'reset', 'configure', 'deliberate', 'arbitrate', 'orchestrate', 'evaluate-performance'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'sim',
@@ -193,6 +201,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'png'],
     actions: ['simulate', 'analyze', 'compare', 'archive', 'monte-carlo', 'sensitivity-analysis', 'regime-detection'],
     category: 'system',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -207,6 +216,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'm3u', 'wav', 'midi'],
     actions: ['analyze', 'render', 'publish', 'export_stems', 'generate_arrangement', 'timeline_render', 'stem_split', 'project_package'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'studio',
@@ -216,6 +226,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'wav', 'mp3', 'midi', 'pdf'],
     actions: ['mix', 'master', 'bounce', 'render', 'apply_effect', 'normalize', 'session_snapshot'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'voice',
@@ -225,6 +236,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'txt', 'srt', 'wav'],
     actions: ['transcribe', 'process', 'analyze', 'summarize', 'extract_tasks', 'detect_speaker', 'generate_subtitles'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'art',
@@ -234,6 +246,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'png', 'svg', 'pdf'],
     actions: ['generate', 'remix', 'analyze', 'curate', 'style_transfer', 'publish_gallery'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'ar',
@@ -243,6 +256,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'gltf', 'usdz', 'png'],
     actions: ['place_anchor', 'render_scene', 'capture', 'export_3d', 'collision_detect', 'lighting_estimate'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'fractal',
@@ -252,6 +266,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'png', 'svg', 'mp4'],
     actions: ['generate', 'animate', 'explore', 'export_render', 'parameter_sweep', 'dimension_morph'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -266,6 +281,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'ics', 'csv', 'pdf'],
     actions: ['schedule', 'remind', 'plan_day', 'plan_week', 'resolve_conflicts', 'availability_search', 'recurrence_expand', 'block_time'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'daily',
@@ -275,6 +291,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'md', 'pdf'],
     actions: ['summarize', 'analyze', 'detect_patterns', 'generate_insights', 'weekly_review', 'mood_trend'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'goals',
@@ -284,6 +301,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['evaluate', 'activate', 'complete', 'milestone_check', 'dependency_analysis', 'progress_report'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'srs',
@@ -293,6 +311,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'anki', 'pdf'],
     actions: ['review', 'schedule', 'optimize_intervals', 'generate_cards_from_dtus', 'retention_report', 'difficulty_calibrate'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -307,6 +326,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'rss'],
     actions: ['vote', 'pin', 'moderate', 'rank_posts', 'extract_thesis', 'generate_summary_dtu'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'collab',
@@ -316,6 +336,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'md'],
     actions: ['merge', 'lock', 'unlock', 'summarize_thread', 'run_council', 'extract_actions', 'resolve_conflict', 'version_diff'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'feed',
@@ -325,6 +346,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'rss'],
     actions: ['like', 'repost', 'bookmark', 'rank', 'personalize', 'cluster_topics'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'experience',
@@ -334,6 +356,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['endorse', 'analyze', 'generate_resume', 'compare_versions', 'validate_claims'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -348,6 +371,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ofx'],
     actions: ['trade', 'analyze', 'alert', 'simulate', 'generate_report', 'portfolio_rebalance', 'risk_assessment'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'marketplace',
@@ -357,6 +381,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['buy', 'sell', 'review', 'verify_artifact_hash', 'issue_license', 'distribute_royalties', 'validate_listing', 'provenance_check'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'market',
@@ -366,6 +391,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['place_bid', 'accept_offer', 'settle', 'price_history', 'volume_analysis', 'liquidity_check'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'questmarket',
@@ -375,6 +401,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['post_bounty', 'submit_work', 'verify_submission', 'release_payout', 'reputation_score', 'dispute_resolve'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -389,6 +416,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'onnx', 'pkl'],
     actions: ['train', 'infer', 'deploy', 'evaluate', 'run_experiment', 'compare_runs', 'generate_report', 'hyperparameter_search', 'model_explain'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'thread',
@@ -398,6 +426,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'md'],
     actions: ['branch', 'merge', 'summarize', 'detect_consensus', 'extract_decisions'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'law',
@@ -407,6 +436,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf', 'docx'],
     actions: ['check-compliance', 'analyze', 'draft', 'cite', 'clause_compare', 'precedent_search', 'risk_flag'],
     category: 'social',
+    dataTier: 'DEMO',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -421,6 +451,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['cast_ballot', 'tally_votes', 'verify_quorum', 'audit_results', 'ranked_choice_resolve', 'generate_report'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'ethics',
@@ -430,6 +461,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf'],
     actions: ['evaluate_case', 'apply_framework', 'check_alignment', 'generate_report', 'stakeholder_analysis', 'risk_assessment'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'alliance',
@@ -439,6 +471,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['propose_alliance', 'ratify_charter', 'add_member', 'vote_on_governance', 'compliance_check', 'dissolve'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -453,6 +486,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'png', 'svg', 'pdf'],
     actions: ['render', 'layout', 'collaborate', 'snapshot', 'auto_arrange', 'extract_decisions', 'version_diff'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'board',
@@ -462,6 +496,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['move_card', 'assign', 'set_wip_limit', 'burndown', 'velocity_calc', 'sprint_review', 'archive_done'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'timeline',
@@ -471,6 +506,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'svg', 'ics'],
     actions: ['replay', 'diff_timelines', 'annotate', 'cluster_events', 'gap_analysis', 'causality_trace'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'anon',
@@ -480,6 +516,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['create_room', 'post_anonymous', 'verify_provenance', 'rotate_identity', 'export_sanitized', 'moderate'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -494,6 +531,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'sql', 'parquet'],
     actions: ['query', 'analyze', 'optimize', 'schema-inspect', 'migration_generate', 'index_suggest', 'explain_plan'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'game',
@@ -503,6 +541,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['complete', 'claim', 'levelup', 'simulate', 'resolve_turn', 'balance', 'leaderboard_update'],
     category: 'system',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'resonance',
@@ -520,6 +559,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['acknowledge', 'dismiss', 'snooze', 'escalate'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -534,6 +574,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'graphml'],
     actions: ['resolve_entity', 'link_evidence', 'merge_duplicates', 'relationship_map', 'confidence_score', 'provenance_trace'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'lab',
@@ -543,6 +584,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['run_protocol', 'record_result', 'compare_runs', 'statistical_analysis', 'equipment_calibrate', 'generate_report'],
     category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'repos',
@@ -552,6 +594,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'patch', 'tar'],
     actions: ['ingest_metadata', 'diff_view', 'release_package', 'issue_triage', 'contributor_stats', 'dependency_audit'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -567,6 +610,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['check_all', 'add_invariant', 'monitor_start', 'violation_report', 'trend_analysis', 'auto_repair_suggest'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'meta',
@@ -576,6 +620,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'md'],
     actions: ['score_lenses', 'policy_check', 'capability_audit', 'generate_status_report', 'cross_lens_analysis'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'eco',
@@ -585,6 +630,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'svg', 'graphml'],
     actions: ['map_dependencies', 'flow_analysis', 'health_check', 'bottleneck_detect', 'impact_simulation'],
     category: 'system',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'temporal',
@@ -594,6 +640,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'svg'],
     actions: ['replay', 'diff', 'causality_trace', 'temporal_query', 'truth_at_time', 'version_compare'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -610,6 +657,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'hl7', 'fhir'],
     actions: ['checkInteractions', 'protocolMatch', 'generateSummary', 'intakeWorkflow', 'riskFlagging', 'carePlanGenerate', 'labImport', 'dischargePackage'],
     category: 'healthcare',
+    dataTier: 'DEMO',
   },
 
   // === TRADES ===
@@ -621,6 +669,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['calculateEstimate', 'scheduleInspection', 'materialsCost', 'codeComplianceCheck', 'changeOrderGenerate', 'progressPhotoLog', 'safetyChecklist'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === FOOD ===
@@ -632,6 +681,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['scaleRecipe', 'costPlate', 'spoilageCheck', 'pourCost', 'menuEngineer', 'allergenValidate', 'shiftScheduleOptimize', 'supplierCompare'],
     category: 'operations',
+    dataTier: 'REAL_FREE',
   },
 
   // === RETAIL ===
@@ -643,6 +693,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['reorderCheck', 'pipelineValue', 'customerLTV', 'slaStatus', 'inventoryForecast', 'priceOptimize', 'promotionROI', 'churnPredict'],
     category: 'operations',
+    dataTier: 'REAL_FREE',
   },
 
   // === HOUSEHOLD ===
@@ -654,6 +705,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ics'],
     actions: ['generateGroceryList', 'maintenanceDue', 'choreRotation', 'mealPlanGenerate', 'budgetCheck', 'seasonalChecklist', 'emergencyContacts'],
     category: 'productivity',
+    dataTier: 'REAL_FREE',
   },
 
   // === ACCOUNTING ===
@@ -665,6 +717,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'qbo', 'xlsx'],
     actions: ['trialBalance', 'profitLoss', 'invoiceAging', 'budgetVariance', 'rentRoll', 'reconcile', 'categorize', 'taxEstimate', 'auditReport'],
     category: 'finance',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === AGRICULTURE ===
@@ -676,6 +729,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'geojson'],
     actions: ['rotationPlan', 'yieldAnalysis', 'equipmentDue', 'waterSchedule', 'soilHealthScore', 'pestPressureAlert', 'harvestForecast', 'certificationAudit'],
     category: 'agriculture',
+    dataTier: 'REAL_FREE',
   },
 
   // === LOGISTICS ===
@@ -687,6 +741,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'edi'],
     actions: ['optimizeRoute', 'hosCheck', 'maintenanceDue', 'inventoryAudit', 'etaCalculate', 'loadOptimize', 'complianceReport', 'warehouseSlotting'],
     category: 'operations',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === EDUCATION ===
@@ -698,6 +753,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'lti'],
     actions: ['gradeCalculation', 'attendanceReport', 'progressTrack', 'scheduleConflict', 'rubricGenerate', 'differentiate', 'parentReport', 'certificationCheck'],
     category: 'services',
+    dataTier: 'REAL_FREE',
   },
 
   // === LEGAL ===
@@ -709,6 +765,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'docx'],
     actions: ['deadlineCheck', 'contractRenewal', 'conflictCheck', 'complianceScore', 'clauseChecker', 'citationPackager', 'caseTimelineBuilder', 'briefExport'],
     category: 'services',
+    dataTier: 'DEMO',
   },
 
   // === NONPROFIT ===
@@ -720,6 +777,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['donorRetention', 'grantReporting', 'volunteerMatch', 'campaignProgress', 'impactReport', 'taxReceipt', 'eventROI', 'memberEngagement'],
     category: 'social',
+    dataTier: 'REAL_FREE',
   },
 
   // === REALESTATE ===
@@ -731,6 +789,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['capRate', 'cashFlow', 'closingTimeline', 'vacancyRate', 'comparableAnalysis', 'mortgageCalc', 'inspectionChecklist', 'netOperatingIncome'],
     category: 'finance',
+    dataTier: 'DEMO',
   },
 
   // === FITNESS ===
@@ -742,6 +801,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['progressionCalc', 'classUtilization', 'periodization', 'recruitProfile', 'bodyCompAnalysis', 'programGenerate', 'injuryRiskScreen', 'nutritionPlan'],
     category: 'services',
+    dataTier: 'REAL_FREE',
   },
 
   // === CREATIVE PRODUCTION ===
@@ -753,6 +813,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'zip'],
     actions: ['shotListGenerate', 'assetOrganize', 'budgetTrack', 'distributionChecklist', 'proofGenerate', 'metadataEmbed', 'deliverablePackage', 'clientReviewFlow'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === MANUFACTURING ===
@@ -764,6 +825,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['scheduleOptimize', 'bomCost', 'oeeCalculate', 'safetyRate', 'defectTrend', 'maintenancePredict', 'batchTrace', 'capacityPlan'],
     category: 'operations',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === ENVIRONMENT ===
@@ -775,6 +837,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'geojson', 'kml'],
     actions: ['populationTrend', 'complianceCheck', 'trailCondition', 'diversionRate', 'sampleChainOfCustody', 'emissionsCalc', 'habitatAssess', 'impactForecast'],
     category: 'government',
+    dataTier: 'REAL_FREE',
   },
 
   // === GOVERNMENT ===
@@ -786,6 +849,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xml'],
     actions: ['permitTimeline', 'violationEscalation', 'resourceStaging', 'retentionCheck', 'budgetImpact', 'publicNoticeGenerate', 'ordinancePackage', 'foiaProcess'],
     category: 'government',
+    dataTier: 'REAL_FREE',
   },
 
   // === AVIATION ===
@@ -797,6 +861,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'kml'],
     actions: ['currencyCheck', 'maintenanceDue', 'hobbsLog', 'slipUtilization', 'weightBalance', 'flightPlan', 'crewSchedule', 'regulatoryCompliance'],
     category: 'operations',
+    dataTier: 'DEMO',
   },
 
   // === EVENTS ===
@@ -808,6 +873,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ics'],
     actions: ['budgetReconcile', 'advanceSheet', 'techRiderMatch', 'settlementCalc', 'ticketForecast', 'vendorCompare', 'runOfShow', 'postEventReport'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
 
   // === SCIENCE ===
@@ -819,6 +885,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'geojson', 'netcdf'],
     actions: ['chainOfCustody', 'calibrationCheck', 'dataExport', 'spatialCluster', 'statisticalTest', 'peerReviewPackage', 'replicationCheck', 'dataQuality'],
     category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === SECURITY ===
@@ -830,6 +897,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'stix'],
     actions: ['incidentTrend', 'patrolCoverage', 'threatMatrix', 'evidenceChain', 'complianceCheck', 'hardeningChecklist', 'incidentReport', 'vulnerabilityScan'],
     category: 'operations',
+    dataTier: 'REAL_LIVE',
   },
 
   // === SERVICES ===
@@ -841,6 +909,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ics'],
     actions: ['scheduleOptimize', 'reminderGenerate', 'revenueByProvider', 'supplyCheck', 'clientRetention', 'waitlistManage', 'bookingConfirm', 'feedbackCollect'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === INSURANCE ===
@@ -852,6 +921,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'acord'],
     actions: ['coverageGap', 'premiumHistory', 'claimStatus', 'riskScore', 'renewalForecast', 'benefitComparison', 'fraudIndicator', 'lossRunReport'],
     category: 'finance',
+    dataTier: 'DEMO',
   },
 
   // === TRAVEL (Lens 61) ===
@@ -863,6 +933,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ical'],
     actions: ['planItinerary', 'budgetEstimate', 'packingChecklist', 'flightSearch', 'hotelCompare', 'travelAdvisory'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
   },
 
   // === FASHION (Lens 62) ===
@@ -874,6 +945,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['outfitSuggest', 'seasonalRotation', 'donateList', 'styleAnalysis', 'wardrobeValue', 'colorPalette'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
   },
 
   // === COOKING (Lens 63) ===
@@ -885,6 +957,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['scaleRecipe', 'mealPlan', 'shoppingList', 'nutritionCalc', 'substitutions', 'pairings'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
   },
 
   // === HOME IMPROVEMENT (Lens 64) ===
@@ -896,6 +969,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['costEstimate', 'permitCheck', 'contractorCompare', 'timeline', 'materialsCalc', 'beforeAfter'],
     category: 'lifestyle',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === PARENTING (Lens 65) ===
@@ -907,6 +981,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['milestoneTracker', 'growthChart', 'vaccineSchedule', 'sleepAnalysis', 'developmentTips', 'schoolReadiness'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
   },
 
   // === PETS (Lens 66) ===
@@ -918,6 +993,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['vetReminder', 'feedingPlan', 'medicationTracker', 'weightTrend', 'groomingSchedule', 'emergencyInfo'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
   },
 
   // === SPORTS (Lens 67) ===
@@ -929,6 +1005,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['seasonStats', 'playerCompare', 'trainingPlan', 'matchPreview', 'standingsCalc', 'injuryTracker'],
     category: 'lifestyle',
+    dataTier: 'REAL_LIVE',
   },
 
   // === DIY (Lens 68) ===
@@ -940,6 +1017,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['materialsList', 'costEstimate', 'stepByStep', 'toolSuggestion', 'difficultyAssess', 'timeEstimate'],
     category: 'lifestyle',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === DEBATE (Lens 76) ===
@@ -951,6 +1029,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['factCheck', 'counterArgument', 'logicAnalysis', 'biasDetect', 'summarize', 'moderateDebate'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === MENTORSHIP (Lens 77) ===
@@ -962,6 +1041,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['matchMentor', 'progressReport', 'goalSetting', 'sessionPrep', 'feedbackSummary', 'skillGapAnalysis'],
     category: 'social',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'podcast',
@@ -971,6 +1051,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'rss', 'mp3'],
     actions: ['publish', 'schedule', 'generateRSS', 'analyzeListeners', 'transcribe', 'distributeFeed'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'admin',
@@ -980,6 +1061,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'affect',
@@ -989,6 +1071,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'all',
@@ -998,6 +1081,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'analytics',
@@ -1007,6 +1091,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'animation',
@@ -1016,6 +1101,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'answers',
@@ -1025,6 +1111,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf'],
     actions: ['browse', 'ask_oracle', 'expand', 'link_implementation', 'export'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'app-maker',
@@ -1034,6 +1121,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'artistry',
@@ -1043,6 +1131,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'astronomy',
@@ -1052,6 +1141,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'atlas',
@@ -1061,6 +1151,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'attention',
@@ -1070,6 +1161,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'audit',
@@ -1079,6 +1171,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'automotive',
@@ -1088,6 +1181,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'DEMO',
   },
   {
     domain: 'billing',
@@ -1097,6 +1191,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'bio',
@@ -1106,6 +1201,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'bridge',
@@ -1115,6 +1211,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'carpentry',
@@ -1124,6 +1221,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'chem',
@@ -1133,6 +1231,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'command-center',
@@ -1142,6 +1241,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'commonsense',
@@ -1151,6 +1251,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'construction',
@@ -1160,6 +1261,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'consulting',
@@ -1169,6 +1271,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'creative-writing',
@@ -1178,6 +1281,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'cri',
@@ -1187,6 +1291,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'crypto',
@@ -1196,6 +1301,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'custom',
@@ -1205,6 +1311,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'debug',
@@ -1214,6 +1321,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'defense',
@@ -1223,6 +1331,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'DEMO',
   },
   {
     domain: 'desert',
@@ -1232,6 +1341,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'disputes',
@@ -1241,6 +1351,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'docs',
@@ -1250,6 +1361,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'dtus',
@@ -1259,6 +1371,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'electrical',
@@ -1268,6 +1381,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'emergency-services',
@@ -1277,6 +1391,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'energy',
@@ -1286,6 +1401,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'engineering',
@@ -1295,6 +1411,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'export',
@@ -1304,6 +1421,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'film-studios',
@@ -1313,6 +1431,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'forestry',
@@ -1322,6 +1441,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'agriculture',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'fork',
@@ -1331,6 +1451,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'game-design',
@@ -1340,6 +1461,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'geology',
@@ -1349,6 +1471,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'global',
@@ -1358,6 +1481,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'grounding',
@@ -1367,6 +1491,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'history',
@@ -1376,6 +1501,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'hr',
@@ -1385,6 +1511,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'hvac',
@@ -1394,6 +1521,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'hypothesis',
@@ -1403,6 +1531,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'import',
@@ -1412,6 +1541,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'inference',
@@ -1421,6 +1551,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'ingest',
@@ -1430,6 +1561,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'integrations',
@@ -1439,6 +1571,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'landscaping',
@@ -1448,6 +1581,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'law-enforcement',
@@ -1457,6 +1591,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'legacy',
@@ -1466,6 +1601,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'linguistics',
@@ -1475,6 +1611,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'lock',
@@ -1484,6 +1621,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'marketing',
@@ -1493,6 +1631,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'masonry',
@@ -1502,6 +1641,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'materials',
@@ -1511,6 +1651,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'math',
@@ -1520,6 +1661,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'mental-health',
@@ -1529,6 +1671,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'metacognition',
@@ -1538,6 +1681,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'metalearning',
@@ -1547,6 +1691,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'mining',
@@ -1556,6 +1701,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'neuro',
@@ -1565,6 +1711,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'news',
@@ -1574,6 +1721,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'ocean',
@@ -1583,6 +1731,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'offline',
@@ -1592,6 +1741,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'organ',
@@ -1601,6 +1751,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'pharmacy',
@@ -1610,6 +1761,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'philosophy',
@@ -1619,6 +1771,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'photography',
@@ -1628,6 +1781,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'physics',
@@ -1637,6 +1791,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'platform',
@@ -1646,6 +1801,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'plumbing',
@@ -1655,6 +1811,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'poetry',
@@ -1664,6 +1821,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'privacy',
@@ -1673,6 +1831,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'projects',
@@ -1682,6 +1841,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'quantum',
@@ -1691,6 +1851,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'queue',
@@ -1700,6 +1861,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'reflection',
@@ -1709,6 +1871,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'research',
@@ -1718,6 +1881,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'robotics',
@@ -1727,6 +1891,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'schema',
@@ -1736,6 +1901,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'space',
@@ -1745,6 +1911,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'suffering',
@@ -1754,6 +1921,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'supplychain',
@@ -1763,6 +1931,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'telecommunications',
@@ -1772,6 +1941,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
+    dataTier: 'DEMO',
   },
   {
     domain: 'tick',
@@ -1781,6 +1951,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'transfer',
@@ -1790,6 +1961,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'urban-planning',
@@ -1799,6 +1971,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'veterinary',
@@ -1808,6 +1981,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'wallet',
@@ -1817,6 +1991,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'welding',
@@ -1826,6 +2001,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // ── Manifests added to bring failing lenses to ≥5/7 score ──
@@ -1838,6 +2014,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'pdf'],
     actions: ['cook', 'brew', 'forge', 'list_for_marketplace', 'set_tier_pricing', 'apply_recipe'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'understanding',
@@ -1855,6 +2032,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['parse', 'compose', 'recompose', 'record_evidence', 'evaluate_promotion', 'apply_promotion', 'consolidate', 'lineage', 'evolution_tick', 'sweep'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'creator',
@@ -1864,6 +2042,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'federation',
@@ -1873,6 +2052,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['export_shadows', 'import_shadows', 'verify_token', 'list_remote_nodes', 'sync'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'genesis',
@@ -1882,6 +2062,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_emergents', 'recent_feed', 'legendary_skills', 'subscribe_activity', 'name_emergent'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'black-market',
@@ -1891,6 +2072,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['list_gray', 'place_anon_offer', 'verify_reputation', 'release_escrow', 'audit'],
     category: 'finance',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'world-creator',
@@ -1900,6 +2082,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['scaffold_world', 'seed_lore', 'spawn_faction', 'register_anomaly', 'preview'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'root',
@@ -1909,6 +2092,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['convert_to_base6', 'convert_to_decimal', 'glyph_add', 'glyph_multiply', 'compose'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'settings',
@@ -1918,6 +2102,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'hub',
@@ -1927,6 +2112,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['browse_lenses', 'pin_lens', 'unpin_lens', 'recent', 'recommend'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'world-creator/anomalies',
@@ -1936,6 +2122,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['list_public_stats', 'list_for_creator', 'resolve', 'dismiss', 'audit'],
     category: 'system',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -1950,6 +2137,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['list_detectors', 'run_detector', 'run_all', 'baseline_diff', 'load_budget', 'history'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'cognition',
@@ -1959,6 +2147,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['run_hlr', 'show_hlm', 'list_clusters', 'list_drift_alerts', 'forgetting_status'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'forge',
@@ -1968,6 +2157,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['ts', 'zip', 'dockerfile'],
     actions: ['list_templates', 'list_sections', 'validate', 'generate', 'export_app', 'check_avoidance', 'repair_log'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'foundry',
@@ -1977,6 +2167,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: [],
     actions: ['systems', 'system_schema', 'validate_systems', 'create', 'update', 'get', 'list', 'delete', 'validate', 'publish', 'unpublish'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'kingdoms',
@@ -1986,6 +2177,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_kingdoms', 'view_kingdom', 'compose_decree', 'contest_decree', 'view_minimap'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'lattice',
@@ -1995,6 +2187,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['training_status', 'grant_consent', 'revoke_consent', 'run_pipeline', 'view_drift'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'maker',
@@ -2004,6 +2197,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'zip'],
     actions: ['build_app', 'compose_quest', 'creative_generate'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'mesh',
@@ -2013,6 +2207,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_transports', 'route_status', 'send_frame', 'peer_discovery'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'message',
@@ -2022,6 +2217,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['send_dm', 'list_threads', 'mark_read', 'archive', 'search_messages'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'ops',
@@ -2031,6 +2227,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['dtu_metrics', 'attention_status', 'repair_recent', 'physical_status', 'explore_recent', 'forge_recent', 'cortex_recent', 'lattice_recent'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'productivity',
@@ -2040,6 +2237,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf', 'svg'],
     actions: ['create_notebook', 'create_sheet', 'render_diagram', 'create_mindmap', 'create_outline', 'create_slides'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'sandbox',
@@ -2049,6 +2247,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['spawn_dummies', 'reset_arena', 'record_run', 'replay_run'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'self',
@@ -2058,6 +2257,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['log_fitness', 'log_sleep', 'log_mood', 'add_journal_entry', 'log_meditation', 'view_trends'],
     category: 'lifestyle',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'sentinel',
@@ -2067,6 +2267,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['intel_status', 'shield_status', 'semantic_status', 'list_alerts'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'society',
@@ -2076,6 +2277,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['culture_metrics', 'entity_economy_status', 'autonomy_recent', 'conflict_status', 'teaching_status', 'list_personas'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'system',
@@ -2085,6 +2287,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['cartograph', 'list_nodes', 'show_cross_refs', 'health_status'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'tools',
@@ -2094,6 +2297,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'pdf'],
     actions: ['web_research', 'compile_build', 'request_signature'],
     category: 'productivity',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'tournaments',
@@ -2103,6 +2307,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_tournaments', 'view_bracket', 'register_player', 'submit_result', 'organize_tournament'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'ux-suite',
@@ -2120,6 +2325,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_components', 'render_demo', 'apply_preset', 'record_visit'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'worldmodel',
@@ -2129,6 +2335,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['create_scenario', 'run_simulation', 'view_forecast', 'compare_counterfactuals'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'dx-platform',
@@ -2138,6 +2345,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['register_codebase', 'run_detectors', 'view_billing', 'top_up_wallet', 'web_editor_demo', 'record_fix_decision'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════

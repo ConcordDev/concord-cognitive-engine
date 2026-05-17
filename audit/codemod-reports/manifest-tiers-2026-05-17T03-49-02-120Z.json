@@ -1,0 +1,1047 @@
+{
+  "ranAt": "2026-05-17T03:49:02.120Z",
+  "injected": 208,
+  "skipped": 0,
+  "ledger": [
+    {
+      "domain": "world",
+      "tier": "REAL_LIVE",
+      "line": 118
+    },
+    {
+      "domain": "chat",
+      "tier": "REAL_LIVE",
+      "line": 132
+    },
+    {
+      "domain": "code",
+      "tier": "REAL_LIVE",
+      "line": 141
+    },
+    {
+      "domain": "paper",
+      "tier": "REAL_LIVE",
+      "line": 150
+    },
+    {
+      "domain": "reasoning",
+      "tier": "REAL_LIVE",
+      "line": 159
+    },
+    {
+      "domain": "graph",
+      "tier": "REAL_LIVE",
+      "line": 168
+    },
+    {
+      "domain": "council",
+      "tier": "REAL_LIVE",
+      "line": 177
+    },
+    {
+      "domain": "agents",
+      "tier": "REAL_LIVE",
+      "line": 186
+    },
+    {
+      "domain": "sim",
+      "tier": "SIM_GRADE_A",
+      "line": 195
+    },
+    {
+      "domain": "music",
+      "tier": "REAL_FREE",
+      "line": 209
+    },
+    {
+      "domain": "studio",
+      "tier": "REAL_LIVE",
+      "line": 218
+    },
+    {
+      "domain": "voice",
+      "tier": "REAL_LIVE",
+      "line": 227
+    },
+    {
+      "domain": "art",
+      "tier": "REAL_FREE",
+      "line": 236
+    },
+    {
+      "domain": "ar",
+      "tier": "REAL_FREE",
+      "line": 245
+    },
+    {
+      "domain": "fractal",
+      "tier": "SIM_GRADE_A",
+      "line": 254
+    },
+    {
+      "domain": "calendar",
+      "tier": "REAL_LIVE",
+      "line": 268
+    },
+    {
+      "domain": "daily",
+      "tier": "REAL_LIVE",
+      "line": 277
+    },
+    {
+      "domain": "goals",
+      "tier": "REAL_LIVE",
+      "line": 286
+    },
+    {
+      "domain": "srs",
+      "tier": "REAL_LIVE",
+      "line": 295
+    },
+    {
+      "domain": "forum",
+      "tier": "REAL_LIVE",
+      "line": 309
+    },
+    {
+      "domain": "collab",
+      "tier": "REAL_LIVE",
+      "line": 318
+    },
+    {
+      "domain": "feed",
+      "tier": "REAL_LIVE",
+      "line": 327
+    },
+    {
+      "domain": "experience",
+      "tier": "REAL_LIVE",
+      "line": 336
+    },
+    {
+      "domain": "finance",
+      "tier": "REAL_LIVE",
+      "line": 350
+    },
+    {
+      "domain": "marketplace",
+      "tier": "REAL_LIVE",
+      "line": 359
+    },
+    {
+      "domain": "market",
+      "tier": "REAL_LIVE",
+      "line": 368
+    },
+    {
+      "domain": "questmarket",
+      "tier": "REAL_LIVE",
+      "line": 377
+    },
+    {
+      "domain": "ml",
+      "tier": "REAL_LIVE",
+      "line": 391
+    },
+    {
+      "domain": "thread",
+      "tier": "REAL_LIVE",
+      "line": 400
+    },
+    {
+      "domain": "law",
+      "tier": "DEMO",
+      "line": 409
+    },
+    {
+      "domain": "vote",
+      "tier": "REAL_LIVE",
+      "line": 423
+    },
+    {
+      "domain": "ethics",
+      "tier": "SIM_GRADE_A",
+      "line": 432
+    },
+    {
+      "domain": "alliance",
+      "tier": "REAL_LIVE",
+      "line": 441
+    },
+    {
+      "domain": "whiteboard",
+      "tier": "REAL_LIVE",
+      "line": 455
+    },
+    {
+      "domain": "board",
+      "tier": "REAL_LIVE",
+      "line": 464
+    },
+    {
+      "domain": "timeline",
+      "tier": "REAL_LIVE",
+      "line": 473
+    },
+    {
+      "domain": "anon",
+      "tier": "REAL_LIVE",
+      "line": 482
+    },
+    {
+      "domain": "database",
+      "tier": "REAL_LIVE",
+      "line": 496
+    },
+    {
+      "domain": "game",
+      "tier": "SIM_GRADE_A",
+      "line": 505
+    },
+    {
+      "domain": "resonance",
+      "tier": "REAL_LIVE",
+      "line": 522
+    },
+    {
+      "domain": "entity",
+      "tier": "REAL_LIVE",
+      "line": 536
+    },
+    {
+      "domain": "lab",
+      "tier": "SIM_GRADE_A",
+      "line": 545
+    },
+    {
+      "domain": "repos",
+      "tier": "REAL_LIVE",
+      "line": 554
+    },
+    {
+      "domain": "invariant",
+      "tier": "REAL_LIVE",
+      "line": 569
+    },
+    {
+      "domain": "meta",
+      "tier": "REAL_LIVE",
+      "line": 578
+    },
+    {
+      "domain": "eco",
+      "tier": "REAL_FREE",
+      "line": 587
+    },
+    {
+      "domain": "temporal",
+      "tier": "REAL_LIVE",
+      "line": 596
+    },
+    {
+      "domain": "healthcare",
+      "tier": "DEMO",
+      "line": 612
+    },
+    {
+      "domain": "trades",
+      "tier": "SIM_GRADE_A",
+      "line": 623
+    },
+    {
+      "domain": "food",
+      "tier": "REAL_FREE",
+      "line": 634
+    },
+    {
+      "domain": "retail",
+      "tier": "REAL_FREE",
+      "line": 645
+    },
+    {
+      "domain": "household",
+      "tier": "REAL_FREE",
+      "line": 656
+    },
+    {
+      "domain": "accounting",
+      "tier": "SIM_GRADE_A",
+      "line": 667
+    },
+    {
+      "domain": "agriculture",
+      "tier": "REAL_FREE",
+      "line": 678
+    },
+    {
+      "domain": "logistics",
+      "tier": "SIM_GRADE_A",
+      "line": 689
+    },
+    {
+      "domain": "education",
+      "tier": "REAL_FREE",
+      "line": 700
+    },
+    {
+      "domain": "legal",
+      "tier": "DEMO",
+      "line": 711
+    },
+    {
+      "domain": "nonprofit",
+      "tier": "REAL_FREE",
+      "line": 722
+    },
+    {
+      "domain": "realestate",
+      "tier": "DEMO",
+      "line": 733
+    },
+    {
+      "domain": "fitness",
+      "tier": "REAL_FREE",
+      "line": 744
+    },
+    {
+      "domain": "creative",
+      "tier": "SIM_GRADE_A",
+      "line": 755
+    },
+    {
+      "domain": "manufacturing",
+      "tier": "SIM_GRADE_A",
+      "line": 766
+    },
+    {
+      "domain": "environment",
+      "tier": "REAL_FREE",
+      "line": 777
+    },
+    {
+      "domain": "government",
+      "tier": "REAL_FREE",
+      "line": 788
+    },
+    {
+      "domain": "aviation",
+      "tier": "DEMO",
+      "line": 799
+    },
+    {
+      "domain": "events",
+      "tier": "REAL_LIVE",
+      "line": 810
+    },
+    {
+      "domain": "science",
+      "tier": "SIM_GRADE_A",
+      "line": 821
+    },
+    {
+      "domain": "security",
+      "tier": "REAL_LIVE",
+      "line": 832
+    },
+    {
+      "domain": "services",
+      "tier": "SIM_GRADE_A",
+      "line": 843
+    },
+    {
+      "domain": "insurance",
+      "tier": "DEMO",
+      "line": 854
+    },
+    {
+      "domain": "travel",
+      "tier": "REAL_FREE",
+      "line": 865
+    },
+    {
+      "domain": "fashion",
+      "tier": "REAL_FREE",
+      "line": 876
+    },
+    {
+      "domain": "cooking",
+      "tier": "REAL_FREE",
+      "line": 887
+    },
+    {
+      "domain": "home-improvement",
+      "tier": "SIM_GRADE_A",
+      "line": 898
+    },
+    {
+      "domain": "parenting",
+      "tier": "REAL_FREE",
+      "line": 909
+    },
+    {
+      "domain": "pets",
+      "tier": "REAL_FREE",
+      "line": 920
+    },
+    {
+      "domain": "sports",
+      "tier": "REAL_LIVE",
+      "line": 931
+    },
+    {
+      "domain": "diy",
+      "tier": "SIM_GRADE_A",
+      "line": 942
+    },
+    {
+      "domain": "debate",
+      "tier": "SIM_GRADE_A",
+      "line": 953
+    },
+    {
+      "domain": "mentorship",
+      "tier": "REAL_FREE",
+      "line": 964
+    },
+    {
+      "domain": "podcast",
+      "tier": "REAL_FREE",
+      "line": 973
+    },
+    {
+      "domain": "admin",
+      "tier": "REAL_LIVE",
+      "line": 982
+    },
+    {
+      "domain": "affect",
+      "tier": "REAL_LIVE",
+      "line": 991
+    },
+    {
+      "domain": "all",
+      "tier": "REAL_LIVE",
+      "line": 1000
+    },
+    {
+      "domain": "analytics",
+      "tier": "REAL_LIVE",
+      "line": 1009
+    },
+    {
+      "domain": "animation",
+      "tier": "SIM_GRADE_A",
+      "line": 1018
+    },
+    {
+      "domain": "answers",
+      "tier": "REAL_LIVE",
+      "line": 1027
+    },
+    {
+      "domain": "app-maker",
+      "tier": "REAL_LIVE",
+      "line": 1036
+    },
+    {
+      "domain": "artistry",
+      "tier": "SIM_GRADE_A",
+      "line": 1045
+    },
+    {
+      "domain": "astronomy",
+      "tier": "REAL_FREE",
+      "line": 1054
+    },
+    {
+      "domain": "atlas",
+      "tier": "REAL_LIVE",
+      "line": 1063
+    },
+    {
+      "domain": "attention",
+      "tier": "REAL_LIVE",
+      "line": 1072
+    },
+    {
+      "domain": "audit",
+      "tier": "REAL_LIVE",
+      "line": 1081
+    },
+    {
+      "domain": "automotive",
+      "tier": "DEMO",
+      "line": 1090
+    },
+    {
+      "domain": "billing",
+      "tier": "SIM_GRADE_A",
+      "line": 1099
+    },
+    {
+      "domain": "bio",
+      "tier": "REAL_FREE",
+      "line": 1108
+    },
+    {
+      "domain": "bridge",
+      "tier": "REAL_LIVE",
+      "line": 1117
+    },
+    {
+      "domain": "carpentry",
+      "tier": "SIM_GRADE_A",
+      "line": 1126
+    },
+    {
+      "domain": "chem",
+      "tier": "REAL_FREE",
+      "line": 1135
+    },
+    {
+      "domain": "command-center",
+      "tier": "REAL_LIVE",
+      "line": 1144
+    },
+    {
+      "domain": "commonsense",
+      "tier": "REAL_LIVE",
+      "line": 1153
+    },
+    {
+      "domain": "construction",
+      "tier": "SIM_GRADE_A",
+      "line": 1162
+    },
+    {
+      "domain": "consulting",
+      "tier": "SIM_GRADE_A",
+      "line": 1171
+    },
+    {
+      "domain": "creative-writing",
+      "tier": "SIM_GRADE_A",
+      "line": 1180
+    },
+    {
+      "domain": "cri",
+      "tier": "REAL_LIVE",
+      "line": 1189
+    },
+    {
+      "domain": "crypto",
+      "tier": "REAL_LIVE",
+      "line": 1198
+    },
+    {
+      "domain": "custom",
+      "tier": "REAL_LIVE",
+      "line": 1207
+    },
+    {
+      "domain": "debug",
+      "tier": "REAL_LIVE",
+      "line": 1216
+    },
+    {
+      "domain": "defense",
+      "tier": "DEMO",
+      "line": 1225
+    },
+    {
+      "domain": "desert",
+      "tier": "REAL_FREE",
+      "line": 1234
+    },
+    {
+      "domain": "disputes",
+      "tier": "SIM_GRADE_A",
+      "line": 1243
+    },
+    {
+      "domain": "docs",
+      "tier": "REAL_LIVE",
+      "line": 1252
+    },
+    {
+      "domain": "dtus",
+      "tier": "REAL_LIVE",
+      "line": 1261
+    },
+    {
+      "domain": "electrical",
+      "tier": "SIM_GRADE_A",
+      "line": 1270
+    },
+    {
+      "domain": "emergency-services",
+      "tier": "REAL_FREE",
+      "line": 1279
+    },
+    {
+      "domain": "energy",
+      "tier": "REAL_FREE",
+      "line": 1288
+    },
+    {
+      "domain": "engineering",
+      "tier": "SIM_GRADE_A",
+      "line": 1297
+    },
+    {
+      "domain": "export",
+      "tier": "REAL_LIVE",
+      "line": 1306
+    },
+    {
+      "domain": "film-studios",
+      "tier": "REAL_FREE",
+      "line": 1315
+    },
+    {
+      "domain": "forestry",
+      "tier": "REAL_FREE",
+      "line": 1324
+    },
+    {
+      "domain": "fork",
+      "tier": "SIM_GRADE_A",
+      "line": 1333
+    },
+    {
+      "domain": "game-design",
+      "tier": "SIM_GRADE_A",
+      "line": 1342
+    },
+    {
+      "domain": "geology",
+      "tier": "REAL_FREE",
+      "line": 1351
+    },
+    {
+      "domain": "global",
+      "tier": "REAL_FREE",
+      "line": 1360
+    },
+    {
+      "domain": "grounding",
+      "tier": "REAL_LIVE",
+      "line": 1369
+    },
+    {
+      "domain": "history",
+      "tier": "REAL_FREE",
+      "line": 1378
+    },
+    {
+      "domain": "hr",
+      "tier": "SIM_GRADE_A",
+      "line": 1387
+    },
+    {
+      "domain": "hvac",
+      "tier": "SIM_GRADE_A",
+      "line": 1396
+    },
+    {
+      "domain": "hypothesis",
+      "tier": "REAL_LIVE",
+      "line": 1405
+    },
+    {
+      "domain": "import",
+      "tier": "REAL_LIVE",
+      "line": 1414
+    },
+    {
+      "domain": "inference",
+      "tier": "REAL_LIVE",
+      "line": 1423
+    },
+    {
+      "domain": "ingest",
+      "tier": "REAL_LIVE",
+      "line": 1432
+    },
+    {
+      "domain": "integrations",
+      "tier": "REAL_LIVE",
+      "line": 1441
+    },
+    {
+      "domain": "landscaping",
+      "tier": "SIM_GRADE_A",
+      "line": 1450
+    },
+    {
+      "domain": "law-enforcement",
+      "tier": "REAL_FREE",
+      "line": 1459
+    },
+    {
+      "domain": "legacy",
+      "tier": "REAL_LIVE",
+      "line": 1468
+    },
+    {
+      "domain": "linguistics",
+      "tier": "REAL_FREE",
+      "line": 1477
+    },
+    {
+      "domain": "lock",
+      "tier": "REAL_LIVE",
+      "line": 1486
+    },
+    {
+      "domain": "marketing",
+      "tier": "SIM_GRADE_A",
+      "line": 1495
+    },
+    {
+      "domain": "masonry",
+      "tier": "SIM_GRADE_A",
+      "line": 1504
+    },
+    {
+      "domain": "materials",
+      "tier": "SIM_GRADE_A",
+      "line": 1513
+    },
+    {
+      "domain": "math",
+      "tier": "REAL_FREE",
+      "line": 1522
+    },
+    {
+      "domain": "mental-health",
+      "tier": "REAL_FREE",
+      "line": 1531
+    },
+    {
+      "domain": "metacognition",
+      "tier": "REAL_LIVE",
+      "line": 1540
+    },
+    {
+      "domain": "metalearning",
+      "tier": "REAL_LIVE",
+      "line": 1549
+    },
+    {
+      "domain": "mining",
+      "tier": "SIM_GRADE_A",
+      "line": 1558
+    },
+    {
+      "domain": "neuro",
+      "tier": "REAL_FREE",
+      "line": 1567
+    },
+    {
+      "domain": "news",
+      "tier": "REAL_LIVE",
+      "line": 1576
+    },
+    {
+      "domain": "ocean",
+      "tier": "REAL_FREE",
+      "line": 1585
+    },
+    {
+      "domain": "offline",
+      "tier": "REAL_LIVE",
+      "line": 1594
+    },
+    {
+      "domain": "organ",
+      "tier": "SIM_GRADE_A",
+      "line": 1603
+    },
+    {
+      "domain": "pharmacy",
+      "tier": "REAL_FREE",
+      "line": 1612
+    },
+    {
+      "domain": "philosophy",
+      "tier": "SIM_GRADE_A",
+      "line": 1621
+    },
+    {
+      "domain": "photography",
+      "tier": "REAL_FREE",
+      "line": 1630
+    },
+    {
+      "domain": "physics",
+      "tier": "REAL_FREE",
+      "line": 1639
+    },
+    {
+      "domain": "platform",
+      "tier": "REAL_LIVE",
+      "line": 1648
+    },
+    {
+      "domain": "plumbing",
+      "tier": "SIM_GRADE_A",
+      "line": 1657
+    },
+    {
+      "domain": "poetry",
+      "tier": "SIM_GRADE_A",
+      "line": 1666
+    },
+    {
+      "domain": "privacy",
+      "tier": "REAL_LIVE",
+      "line": 1675
+    },
+    {
+      "domain": "projects",
+      "tier": "REAL_LIVE",
+      "line": 1684
+    },
+    {
+      "domain": "quantum",
+      "tier": "REAL_FREE",
+      "line": 1693
+    },
+    {
+      "domain": "queue",
+      "tier": "REAL_LIVE",
+      "line": 1702
+    },
+    {
+      "domain": "reflection",
+      "tier": "REAL_LIVE",
+      "line": 1711
+    },
+    {
+      "domain": "research",
+      "tier": "REAL_LIVE",
+      "line": 1720
+    },
+    {
+      "domain": "robotics",
+      "tier": "REAL_FREE",
+      "line": 1729
+    },
+    {
+      "domain": "schema",
+      "tier": "REAL_LIVE",
+      "line": 1738
+    },
+    {
+      "domain": "space",
+      "tier": "REAL_FREE",
+      "line": 1747
+    },
+    {
+      "domain": "suffering",
+      "tier": "SIM_GRADE_A",
+      "line": 1756
+    },
+    {
+      "domain": "supplychain",
+      "tier": "SIM_GRADE_A",
+      "line": 1765
+    },
+    {
+      "domain": "telecommunications",
+      "tier": "DEMO",
+      "line": 1774
+    },
+    {
+      "domain": "tick",
+      "tier": "REAL_LIVE",
+      "line": 1783
+    },
+    {
+      "domain": "transfer",
+      "tier": "REAL_LIVE",
+      "line": 1792
+    },
+    {
+      "domain": "urban-planning",
+      "tier": "SIM_GRADE_A",
+      "line": 1801
+    },
+    {
+      "domain": "veterinary",
+      "tier": "REAL_FREE",
+      "line": 1810
+    },
+    {
+      "domain": "wallet",
+      "tier": "REAL_LIVE",
+      "line": 1819
+    },
+    {
+      "domain": "welding",
+      "tier": "SIM_GRADE_A",
+      "line": 1828
+    },
+    {
+      "domain": "crafting",
+      "tier": "REAL_LIVE",
+      "line": 1840
+    },
+    {
+      "domain": "understanding",
+      "tier": "REAL_LIVE",
+      "line": 1857
+    },
+    {
+      "domain": "creator",
+      "tier": "SIM_GRADE_A",
+      "line": 1866
+    },
+    {
+      "domain": "federation",
+      "tier": "REAL_LIVE",
+      "line": 1875
+    },
+    {
+      "domain": "genesis",
+      "tier": "SIM_GRADE_A",
+      "line": 1884
+    },
+    {
+      "domain": "black-market",
+      "tier": "SIM_GRADE_A",
+      "line": 1893
+    },
+    {
+      "domain": "world-creator",
+      "tier": "SIM_GRADE_A",
+      "line": 1902
+    },
+    {
+      "domain": "root",
+      "tier": "REAL_LIVE",
+      "line": 1911
+    },
+    {
+      "domain": "settings",
+      "tier": "REAL_LIVE",
+      "line": 1920
+    },
+    {
+      "domain": "hub",
+      "tier": "REAL_LIVE",
+      "line": 1929
+    },
+    {
+      "domain": "world-creator/anomalies",
+      "tier": "SIM_GRADE_A",
+      "line": 1938
+    },
+    {
+      "domain": "code-quality",
+      "tier": "REAL_LIVE",
+      "line": 1952
+    },
+    {
+      "domain": "cognition",
+      "tier": "REAL_LIVE",
+      "line": 1961
+    },
+    {
+      "domain": "forge",
+      "tier": "REAL_LIVE",
+      "line": 1970
+    },
+    {
+      "domain": "foundry",
+      "tier": "REAL_LIVE",
+      "line": 1979
+    },
+    {
+      "domain": "kingdoms",
+      "tier": "REAL_LIVE",
+      "line": 1988
+    },
+    {
+      "domain": "lattice",
+      "tier": "REAL_LIVE",
+      "line": 1997
+    },
+    {
+      "domain": "maker",
+      "tier": "SIM_GRADE_A",
+      "line": 2006
+    },
+    {
+      "domain": "mesh",
+      "tier": "REAL_LIVE",
+      "line": 2015
+    },
+    {
+      "domain": "message",
+      "tier": "REAL_LIVE",
+      "line": 2024
+    },
+    {
+      "domain": "ops",
+      "tier": "REAL_LIVE",
+      "line": 2033
+    },
+    {
+      "domain": "productivity",
+      "tier": "REAL_LIVE",
+      "line": 2042
+    },
+    {
+      "domain": "sandbox",
+      "tier": "SIM_GRADE_A",
+      "line": 2051
+    },
+    {
+      "domain": "self",
+      "tier": "REAL_LIVE",
+      "line": 2060
+    },
+    {
+      "domain": "sentinel",
+      "tier": "REAL_LIVE",
+      "line": 2069
+    },
+    {
+      "domain": "society",
+      "tier": "REAL_LIVE",
+      "line": 2078
+    },
+    {
+      "domain": "system",
+      "tier": "REAL_LIVE",
+      "line": 2087
+    },
+    {
+      "domain": "tools",
+      "tier": "SIM_GRADE_A",
+      "line": 2096
+    },
+    {
+      "domain": "tournaments",
+      "tier": "SIM_GRADE_A",
+      "line": 2105
+    },
+    {
+      "domain": "ux-suite",
+      "tier": "REAL_LIVE",
+      "line": 2122
+    },
+    {
+      "domain": "worldmodel",
+      "tier": "REAL_LIVE",
+      "line": 2131
+    },
+    {
+      "domain": "dx-platform",
+      "tier": "REAL_LIVE",
+      "line": 2140
+    }
+  ]
+}
