@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Clock, GitBranch, Zap, Crown, Ghost, ExternalLink } from 'lucide-react';
 import { ProvenanceBadge } from './ProvenanceBadge';
 import { TierBadge } from './TierBadge';
 import { ScopeBadge } from '@/components/platform/ScopeControls';
+import { useDtuSurface } from '@/hooks/useDtuSurface';
+import { DownstreamBadge } from './DownstreamBadge';
 
 interface DTU {
   id: string;
@@ -81,6 +83,17 @@ function DTUEmpireCardInner({
   const config = tierConfig[dtu.tier];
   const TierIcon = config.icon;
   const scopeDisplay = getDtuScopeDisplay(dtu);
+
+  // Phase 7 — populate the cross-lens surface log so the user can see
+  // "this DTU was rendered in home" via DownstreamBadge. Mount-once
+  // dedup via ref so re-renders don't double-count.
+  const { record } = useDtuSurface();
+  const recordedRef = useRef(false);
+  useEffect(() => {
+    if (!dtu.id || recordedRef.current) return;
+    recordedRef.current = true;
+    void record({ dtuId: dtu.id, lensId: 'home', surfaceKind: 'recent_card', meta: { tier: dtu.tier } });
+  }, [dtu.id, dtu.tier, record]);
 
   const formattedTime = useMemo(() => {
     const date = new Date(dtu.timestamp);

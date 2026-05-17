@@ -2475,7 +2475,7 @@ export default function CodeLensPage() {
                     </div>
                   ))}
                   {!isUser && m.dtuRefs && m.dtuRefs.length > 0 && (
-                    <CitationChips dtuRefs={m.dtuRefs} />
+                    <CitationChips dtuRefs={m.dtuRefs} surfaceFromLens="code" />
                   )}
                 </div>
               );

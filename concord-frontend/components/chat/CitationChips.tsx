@@ -10,12 +10,19 @@
 // least one DTU was actually grounded a claim.
 //
 // Click → fires the existing /lenses/atlas?dtu=… deep link convention.
+//
+// Phase 7 — every chip mount fires dtu_surface.record so the cross-lens
+// narrative substrate populates as the brain cites DTUs in chat.
 
+import { useEffect, useRef } from 'react';
 import { Link2 } from 'lucide-react';
 import Link from 'next/link';
+import { useDtuSurface } from '@/hooks/useDtuSurface';
 
 interface CitationChipsProps {
   dtuRefs: Array<{ id: string; title: string | null; tier: string | null }> | undefined | null;
+  /** Lens this chip strip appears in. Default 'chat'. */
+  surfaceFromLens?: string;
 }
 
 const TIER_COLOR: Record<string, string> = {
@@ -24,7 +31,27 @@ const TIER_COLOR: Record<string, string> = {
   regular: 'border-cyan-400/30 text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/15',
 };
 
-export default function CitationChips({ dtuRefs }: CitationChipsProps) {
+export default function CitationChips({ dtuRefs, surfaceFromLens = 'chat' }: CitationChipsProps) {
+  const { record } = useDtuSurface();
+  const recordedRef = useRef<Set<string>>(new Set());
+
+  // Fire-and-forget surface record for each unique DTU id we render.
+  // De-dup via ref so re-renders don't double-record. No effect on
+  // user; populates dtu_surface_log → DownstreamBadge counts.
+  useEffect(() => {
+    if (!dtuRefs || dtuRefs.length === 0) return;
+    for (const ref of dtuRefs) {
+      if (!ref.id || recordedRef.current.has(ref.id)) continue;
+      recordedRef.current.add(ref.id);
+      void record({
+        dtuId: ref.id,
+        lensId: surfaceFromLens,
+        surfaceKind: 'citation_chip',
+        meta: { tier: ref.tier },
+      });
+    }
+  }, [dtuRefs, surfaceFromLens, record]);
+
   if (!dtuRefs || dtuRefs.length === 0) return null;
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
