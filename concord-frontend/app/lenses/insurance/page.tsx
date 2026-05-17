@@ -4,6 +4,7 @@ import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { InsurancePolicyTalk } from '@/components/insurance/InsurancePolicyTalk';
 import { InsuranceActionPanel } from '@/components/insurance/InsuranceActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import PolicyVault from '@/components/insurance/PolicyVault';
 import ClaimTracker from '@/components/insurance/ClaimTracker';
 import QuoteCompare from '@/components/insurance/QuoteCompare';
@@ -1322,9 +1323,11 @@ export default function InsuranceLensPage() {
         <InsurancePolicyTalk />
       </section>
 
-      <section className="mt-6">
-        <InsuranceActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <InsuranceActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
