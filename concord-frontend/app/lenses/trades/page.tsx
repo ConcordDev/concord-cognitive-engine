@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { TradesFeed } from '@/components/trades/TradesFeed';
+import { TradesActionPanel } from '@/components/trades/TradesActionPanel';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -2513,6 +2514,9 @@ export default function TradesLensPage() {
       <TradesWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
       <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TradesFeed />
+      </section>
+      <section className="mt-6 mx-auto max-w-7xl">
+        <TradesActionPanel />
       </section>
     </LensShell>
   );
