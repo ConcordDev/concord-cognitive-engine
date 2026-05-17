@@ -69,7 +69,10 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
   const [error, setError]   = useState<string | null>(null);
   const [muted, setMuted]   = useState(true);
   const [handRaised, setHandRaised] = useState(false);
-  const [peerIds, setPeerIds]       = useState<string[]>([]);
+  // _peerIds is the React-state mirror of peersRef.current — its only
+  // job is to trigger a render whenever a peer joins/leaves so the
+  // "X peer mesh connections" footer is fresh. Read via peersRef.size.
+  const [, setPeerIds] = useState<string[]>([]);
   const [, forceTick] = useState(0);
 
   const audioCtxRef    = useRef<AudioContext | null>(null);
