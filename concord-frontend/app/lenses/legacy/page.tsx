@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LegacyChatter } from '@/components/legacy/LegacyChatter';
+import { LegacyActionPanel } from '@/components/legacy/LegacyActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -522,6 +523,9 @@ export default function LegacyLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <LegacyChatter />
+      </section>
+      <section className="mt-6">
+        <LegacyActionPanel />
       </section>
     </div>
 
