@@ -29,6 +29,7 @@ import {
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { CountyDataPanel } from '@/components/urban-planning/CountyDataPanel';
+import { UrbanPlanningActionPanel } from '@/components/urban-planning/UrbanPlanningActionPanel';
 
 type ModeTab =
   | 'Dashboard'
@@ -437,6 +438,9 @@ export default function UrbanPlanningLensPage() {
       <UniversalActions domain="urban-planning" artifactId={items[0]?.id} />
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CountyDataPanel />
+      </section>
+      <section className="mt-6">
+        <UrbanPlanningActionPanel />
       </section>
     </LensPageShell>
     
