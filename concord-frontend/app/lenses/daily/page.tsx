@@ -6,6 +6,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { DailyInspiration } from '@/components/daily/DailyInspiration';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -506,28 +507,28 @@ export default function DailyLensPage() {
             </h2>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider">Daily Notes</label>
-              <textarea value={journalNotes} onChange={(e) => setJournalNotes(e.target.value)}
+              <DraftedTextarea lensId="daily" draftKey="journalNotes" initial="" onValueChange={setJournalNotes}
                 placeholder="How did your day go?" rows={3} className="input-lattice w-full text-sm resize-none" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                 <CheckSquare className="w-3 h-3" /> What I worked on today
               </label>
-              <textarea value={workedOn} onChange={(e) => setWorkedOn(e.target.value)}
+              <DraftedTextarea lensId="daily" draftKey="workedOn" initial="" onValueChange={setWorkedOn}
                 placeholder="Production log..." rows={2} className="input-lattice w-full text-sm resize-none" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                 <BookOpen className="w-3 h-3" /> What I learned
               </label>
-              <textarea value={learned} onChange={(e) => setLearned(e.target.value)}
+              <DraftedTextarea lensId="daily" draftKey="learned" initial="" onValueChange={setLearned}
                 placeholder="Key takeaways..." rows={2} className="input-lattice w-full text-sm resize-none" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                 <Target className="w-3 h-3" /> Goals for tomorrow
               </label>
-              <textarea value={goals} onChange={(e) => setGoals(e.target.value)}
+              <DraftedTextarea lensId="daily" draftKey="goalsTomorrow" initial="" onValueChange={setGoals}
                 placeholder="What do you want to accomplish?" rows={2} className="input-lattice w-full text-sm resize-none" />
             </div>
             <button

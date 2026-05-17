@@ -6,6 +6,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { ProductivityFeed } from '@/components/goals/ProductivityFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -581,7 +582,7 @@ export default function GoalsLensPage() {
             <div className="panel p-5 space-y-4">
               <h2 className="font-semibold text-white flex items-center gap-2"><Plus className="w-4 h-4 text-purple-400" /> Create New Goal</h2>
               <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Goal title..." className="input-lattice w-full" />
-              <textarea value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Describe your goal and what success looks like..." className="input-lattice w-full h-16 resize-none" />
+              <DraftedTextarea lensId="goals" draftKey="newDescription" initial="" onValueChange={setNewDescription} placeholder="Describe your goal and what success looks like..." className="input-lattice w-full h-16 resize-none" />
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <select value={newCategory} onChange={(e) => setNewCategory(e.target.value as Goal['category'])} className="input-lattice">
                   {['Production', 'Mixing', 'Release', 'Learning', 'Collaboration'].map((c) => <option key={c} value={c}>{c}</option>)}
@@ -598,7 +599,7 @@ export default function GoalsLensPage() {
                 </div>
                 <button onClick={handleCreateGoal} disabled={!newTitle || createGoalMutation.isPending} className="btn-neon purple disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-amber-500">{createGoalMutation.isPending ? 'Creating...' : 'Create Goal'}</button>
               </div>
-              <textarea value={newSubtasks} onChange={(e) => setNewSubtasks(e.target.value)} placeholder="Subtasks (one per line)..." className="input-lattice w-full h-16 resize-none text-sm" />
+              <DraftedTextarea lensId="goals" draftKey="newSubtasks" initial="" onValueChange={setNewSubtasks} placeholder="Subtasks (one per line)..." className="input-lattice w-full h-16 resize-none text-sm" />
             </div>
           </motion.div>
         )}

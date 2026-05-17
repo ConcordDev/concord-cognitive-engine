@@ -7,6 +7,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
 import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import CitationSearch from '@/components/paper/CitationSearch';
 import PaperSummarizer from '@/components/paper/PaperSummarizer';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -914,7 +915,14 @@ export default function PaperLensPage() {
                 {activeTab === 'hypotheses' && (
                   <div>
                     <label className={ds.label}>Hypothesis Statement</label>
-                    <textarea value={newStatement} onChange={e => setNewStatement(e.target.value)} className={cn(ds.textarea, 'min-h-[80px]')} placeholder="State your hypothesis..." />
+                    <DraftedTextarea
+                      lensId="paper"
+                      draftKey="newHypothesisStatement"
+                      initial=""
+                      onValueChange={setNewStatement}
+                      className={cn(ds.textarea, 'min-h-[80px]')}
+                      placeholder="State your hypothesis..."
+                    />
                   </div>
                 )}
 
@@ -944,7 +952,14 @@ export default function PaperLensPage() {
                 {activeTab === 'experiments' && (
                   <div>
                     <label className={ds.label}>Methodology</label>
-                    <textarea value={newMethodology} onChange={e => setNewMethodology(e.target.value)} className={cn(ds.textarea, 'min-h-[80px]')} placeholder="Describe methodology..." />
+                    <DraftedTextarea
+                      lensId="paper"
+                      draftKey="newExperimentMethodology"
+                      initial=""
+                      onValueChange={setNewMethodology}
+                      className={cn(ds.textarea, 'min-h-[80px]')}
+                      placeholder="Describe methodology..."
+                    />
                   </div>
                 )}
 

@@ -8,6 +8,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
 import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealthActionPanel';
 import { MedlinePlusPanel } from '@/components/health/MedlinePlusPanel';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -544,9 +545,11 @@ export default function MentalHealthLensPage() {
                 );
               })}
             </div>
-            <textarea
-              value={newNotes}
-              onChange={e => setNewNotes(e.target.value)}
+            <DraftedTextarea
+              lensId="mental-health"
+              draftKey="moodNotes"
+              initial=""
+              onValueChange={setNewNotes}
               placeholder="How are you feeling? (optional)"
               className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm resize-none h-20"
             />
@@ -587,9 +590,11 @@ export default function MentalHealthLensPage() {
         <div className="space-y-4">
           <div className="panel p-4">
             <h3 className="font-semibold mb-3">New Journal Entry</h3>
-            <textarea
-              value={journalText}
-              onChange={e => setJournalText(e.target.value)}
+            <DraftedTextarea
+              lensId="mental-health"
+              draftKey="journalEntry"
+              initial=""
+              onValueChange={setJournalText}
               placeholder="Write your thoughts..."
               className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm resize-none h-32"
             />

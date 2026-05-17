@@ -14,6 +14,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { SessionRail } from '@/components/lens/SessionRail';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
@@ -409,9 +410,11 @@ function KingdomCreate({ onCreated }: { onCreated: (id: string) => void }) {
         </div>
         <div>
           <label className="mb-1 block text-[11px] uppercase tracking-wider text-slate-400">Region polygon (JSON [[x,z], …])</label>
-          <textarea
-            value={polygon}
-            onChange={(e) => setPolygon(e.target.value)}
+          <DraftedTextarea
+            lensId="kingdoms"
+            draftKey="newKingdomPolygon"
+            initial=""
+            onValueChange={setPolygon}
             rows={4}
             className="w-full rounded bg-slate-800 px-2 py-1 font-mono text-xs"
           />
