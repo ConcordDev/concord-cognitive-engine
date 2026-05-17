@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { BrainPoolStatus } from '@/components/expert-mode/BrainPoolStatus';
 import { AnswerActionPanel } from '@/components/expert-mode/AnswerActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { Loader2 } from 'lucide-react';
 
 interface Source {
@@ -241,13 +242,15 @@ export default function ExpertModeLens() {
               </div>
             )}
 
-            <AnswerActionPanel
-              query={query}
-              answer={result.answer ?? ''}
-              sources={result.sources ?? []}
-              provider={result.provider}
-              model={result.model}
-            />
+            <PipingProvider>
+              <AnswerActionPanel
+                query={query}
+                answer={result.answer ?? ''}
+                sources={result.sources ?? []}
+                provider={result.provider}
+                model={result.model}
+              />
+            </PipingProvider>
           </article>
         )}
 
