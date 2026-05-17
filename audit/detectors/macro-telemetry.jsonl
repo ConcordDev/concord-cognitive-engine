@@ -6028,3 +6028,20 @@
 {"generatedAt":"2026-05-17T23:07:20.318Z","key":"emergent.bridge.heartbeatTick","total":2,"lastFiredAt":1779059059311,"sources":{"http":0,"heartbeat":0,"internal":2,"system":0}}
 {"generatedAt":"2026-05-17T23:07:20.318Z","key":"emergent.scope.globalTick","total":1,"lastFiredAt":1779059034481,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
 {"generatedAt":"2026-05-17T23:07:20.318Z","key":"system.analogize","total":1,"lastFiredAt":1779059059315,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"dtu.create","total":25,"lastFiredAt":1779059527922,"sources":{"http":0,"heartbeat":0,"internal":25,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"system.autogen","total":20,"lastFiredAt":1779059539081,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"emergent.pipeline.run","total":60,"lastFiredAt":1779059539248,"sources":{"http":0,"heartbeat":0,"internal":60,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"system.dream","total":20,"lastFiredAt":1779059539183,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"system.evolution","total":20,"lastFiredAt":1779059539248,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"ingest.processQueueOnce","total":19,"lastFiredAt":1779059525231,"sources":{"http":0,"heartbeat":0,"internal":19,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"system.synth","total":20,"lastFiredAt":1779059539318,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"jobs.tick","total":20,"lastFiredAt":1779059539318,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"queue.tick","total":20,"lastFiredAt":1779059539318,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"ingest.tick","total":20,"lastFiredAt":1779059539318,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"crawl.tick","total":20,"lastFiredAt":1779059539318,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"emergent.bridge.heartbeatTick","total":4,"lastFiredAt":1779059527763,"sources":{"http":0,"heartbeat":0,"internal":4,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"emergent.repair.agent.tick","total":1,"lastFiredAt":1779059255150,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"dtu.cluster","total":2,"lastFiredAt":1779059270151,"sources":{"http":0,"heartbeat":0,"internal":2,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"dtu.gapPromote","total":12,"lastFiredAt":1779059271022,"sources":{"http":0,"heartbeat":0,"internal":12,"system":0}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"[object Object].dtu","total":12,"lastFiredAt":1779059271022,"sources":{"http":0,"heartbeat":0,"internal":0,"system":12}}
+{"generatedAt":"2026-05-17T23:12:19.993Z","key":"system.analogize","total":1,"lastFiredAt":1779059435268,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
