@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -325,6 +326,8 @@ export default function ResearchLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="research" size="sm" className="ml-2" />
     <div data-lens-theme="research" className="p-6 space-y-6">
+      {/* Phase 5 — open research-arc sessions for this lens. */}
+      <SessionRail lensId="research" hideWhenEmpty />
       {/* Phase 4 (third wave) — REAL CrossRef DOI metadata search. */}
       <CrossRefPanel domain="research" />
       <header className="flex items-center gap-3">

@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -1135,6 +1136,10 @@ export default function PaperLensPage() {
     {/* Phase 4 (third wave) — REAL CrossRef DOI metadata search. */}
     <section className="mt-4 mx-4">
       <CrossRefPanel domain="paper" />
+    </section>
+    {/* Phase 5 — open research-arc sessions for this lens. */}
+    <section className="mt-3 mx-4">
+      <SessionRail lensId="paper" hideWhenEmpty />
     </section>
           <RecentMineCard domain="paper" limit={10} hideWhenEmpty className="mt-4" />
           <CrossLensRecentsPanel lensId="paper" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
