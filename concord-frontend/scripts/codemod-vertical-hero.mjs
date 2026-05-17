@@ -23,7 +23,9 @@ const FRONTEND = path.resolve(__dirname, "..");
 const REPORT_DIR = path.resolve(FRONTEND, "..", "audit", "codemod-reports");
 const DRY = process.argv.includes("--dry");
 
-// 38 light-vertical lenses from the audit.
+// 38 light-vertical lenses from the audit + 3 borderline scaffolds
+// (forge / personas / deities) that have a workspace but no hero +
+// no actions yet — promote them too.  41 total.
 const TARGETS = [
   "anon", "ar", "black-market", "byo-keys", "classroom", "code-quality",
   "cognition", "desert", "expert-mode", "foundry", "fractal", "gallery",
@@ -32,6 +34,8 @@ const TARGETS = [
   "sandbox", "schema", "self", "settings", "suffering", "supplychain",
   "tournaments", "transfer", "understanding", "urban-planning",
   "veterinary", "wellness", "worldmodel",
+  // Phase 9b — borderline scaffolds that benefit from the hero too.
+  "forge", "personas", "deities",
 ];
 
 function ensureImport(src) {

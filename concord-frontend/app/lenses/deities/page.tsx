@@ -18,6 +18,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { PantheonExplorer } from '@/components/deities/PantheonExplorer';
 
 interface Deity {
@@ -84,6 +85,7 @@ export default function DeitiesPage() {
         <LensShell lensId="deities">
       <FirstRunTour lensId="deities" />
       <DepthBadge lensId="deities" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="deities" className="mx-6 mt-4" />
   <div className="p-6 max-w-3xl mx-auto">
         <header className="mb-6 flex items-center justify-between">
           <div>
