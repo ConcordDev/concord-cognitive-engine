@@ -573,6 +573,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['train', 'infer', 'deploy', 'evaluate', 'run_experiment', 'compare_runs', 'generate_report', 'hyperparameter_search', 'model_explain'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No experiments yet.',
+      caption: 'Start an experiment with a dataset + model class. Live arXiv cs.LG feed at the top surfaces relevant new papers.',
+      firstActionLabel: 'Start an experiment',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv cs.LG panel up top streams new papers daily — REAL data from arXiv.' },
+        { caption: 'Experiments hold model + dataset + hyperparams + run log. compare_runs surfaces deltas across two experiments.' },
+        { caption: 'model_explain runs the Subconscious brain over a model summary to draft a plain-language explanation suitable for the docs lens.' },
+      ],
+    },
   },
   {
     domain: 'thread',
@@ -643,6 +655,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['render', 'layout', 'collaborate', 'snapshot', 'auto_arrange', 'extract_decisions', 'version_diff'],
     category: 'creative',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Blank canvas.',
+      caption: 'Drag shapes, connect them, comment. The tldraw-shape silhouette opens by default. extract_decisions distills any board into a DTU.',
+      firstActionLabel: 'Drop a shape',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Toolbar at the bottom (rect / sticky / pen). Click and drag on the canvas to draw.' },
+        { caption: 'auto_arrange lays out connections with force-directed graph algorithm; snapshot freezes a version.' },
+        { caption: 'extract_decisions runs the Subconscious brain over your board to distill action items — useful after team sessions.' },
+      ],
+    },
   },
   {
     domain: 'board',
@@ -1054,6 +1078,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['chainOfCustody', 'calibrationCheck', 'dataExport', 'spatialCluster', 'statisticalTest', 'peerReviewPackage', 'replicationCheck', 'dataQuality'],
     category: 'knowledge',
     dataTier: 'SIM_GRADE_A',
+    emptyState: {
+      headline: 'No expeditions logged.',
+      caption: 'Log expeditions with samples + protocols + equipment. Chain-of-custody + replication checks pin scientific integrity.',
+      firstActionLabel: 'Log an expedition',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Expeditions hold samples + lab protocols + equipment. Each sample carries a chain-of-custody trail.' },
+        { caption: 'spatialCluster runs DBSCAN over geo-tagged samples; statisticalTest applies t-test / chi-square / ANOVA.' },
+        { caption: 'peerReviewPackage exports your expedition as a reviewer-ready bundle (data + protocols + analysis).' },
+      ],
+    },
   },
 
   // === SECURITY ===
@@ -1406,6 +1442,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No organisms tracked.',
+      caption: 'Add organisms / genes / proteins; pull arXiv q-bio papers up top. NCBI lookups are honest live data.',
+      firstActionLabel: 'Add an organism',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv q-bio panel up top streams new biology papers — REAL data, daily.' },
+        { caption: 'Organisms link to genes link to proteins via the substrate; pathway browsing follows the citation chain.' },
+        { caption: 'analyze runs sequence-similarity against your tracked corpus; validate flags annotation inconsistencies.' },
+      ],
+    },
   },
   {
     domain: 'bridge',
@@ -1436,6 +1484,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No compounds tracked.',
+      caption: 'Add compounds / reactions / molecules. arXiv chemistry feed up top streams new papers.',
+      firstActionLabel: 'Add a compound',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv physics.chem-ph feed up top — REAL daily papers in chemical physics.' },
+        { caption: 'Compounds carry formula + properties; reactions reference reactants + products.' },
+        { caption: 'validate flags stoichiometric inconsistencies; analyze runs simple equilibrium / kinetic estimates.' },
+      ],
+    },
   },
   {
     domain: 'command-center',
@@ -2055,6 +2115,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    emptyState: {
+      headline: 'Lab notebook empty.',
+      caption: 'Open with an arXiv physics feed; log experiments / models / measurements. Constants ship pre-seeded.',
+      firstActionLabel: 'Log an experiment',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv physics panel up top — REAL data; search filters within category.', selector: '[aria-label*="arXiv"]' },
+        { caption: 'Experiments hold observation / measurement / units; the analyzer flags dimensional inconsistencies.' },
+        { caption: 'Citations chain through the lattice — see which experiments stand on which models.' },
+      ],
+    },
     dataTier: 'REAL_FREE',
   },
   {
@@ -2116,6 +2188,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'Circuit lab clean.',
+      caption: 'Compose a quantum circuit; track measurements; the arXiv quant-ph feed up top surfaces the latest papers in real time.',
+      firstActionLabel: 'New circuit',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv quant-ph panel up top — daily firehose of papers in your field.' },
+        { caption: 'Circuits compose qubit by qubit; measurements record collapse outcomes.' },
+        { caption: 'Simulation runs against a deterministic backend — useful for teaching, not for replacing real hardware.' },
+      ],
+    },
   },
   {
     domain: 'queue',
