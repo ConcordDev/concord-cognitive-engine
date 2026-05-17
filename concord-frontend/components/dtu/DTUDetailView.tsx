@@ -19,6 +19,9 @@ import type { DTU } from '@/lib/api/generated-types';
 import { useOfflineFirstDTU } from '@/hooks/useOfflineFirst';
 import { DTUIntegrityBadge } from './DTUIntegrityBadge';
 import { ProvenanceBadge } from './ProvenanceBadge';
+// Phase 7 — cross-lens narrative trail.
+import { ProvenanceTrail } from './ProvenanceTrail';
+import { DownstreamBadge } from './DownstreamBadge';
 import {
   X,
   Clock,
@@ -553,13 +556,19 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
 
                   {/* Full content */}
                   <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-2">Full Content</h3>
+                    <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                      Full Content
+                      <DownstreamBadge dtuId={dtu.id} compact />
+                    </h3>
                     <div className="bg-lattice-deep p-4 rounded-lg">
                       <p className="text-gray-200 whitespace-pre-wrap text-sm">
                         {dtu.content || '(No content)'}
                       </p>
                     </div>
                   </div>
+
+                  {/* Phase 7 — provenance trail (walks citation graph upstream). */}
+                  <ProvenanceTrail dtuId={dtu.id} maxDepth={6} />
 
                   {/* Artifact preview — based on primaryType */}
                   {primaryType && (
