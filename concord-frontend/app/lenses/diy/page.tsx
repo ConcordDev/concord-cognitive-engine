@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DiyShowcase } from '@/components/diy/DiyShowcase';
+import { DiyActionPanel } from '@/components/diy/DiyActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -832,6 +833,9 @@ export default function DIYLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <DiyShowcase />
+      </section>
+      <section className="mt-6">
+        <DiyActionPanel />
       </section>
     </LensPageShell>
     
