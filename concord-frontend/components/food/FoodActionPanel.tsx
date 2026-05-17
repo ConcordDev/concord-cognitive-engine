@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,10 +43,10 @@ interface WasteResult { weeklyWasteKg?: number; topWasted?: string[]; suggestion
 
 export function FoodActionPanel() {
   const [recipeName, setRecipeName] = useState('');
-  const [recipeIngredients, setRecipeIngredients] = useState('flour 500 g\negg 4 each\nmilk 250 ml\nsugar 100 g\nbutter 50 g');
-  const [recipeServings, setRecipeServings] = useState('8');
-  const [scaleTo, setScaleTo] = useState('12');
-  const [pantry, setPantry] = useState('flour\negg\nbutter\nsalt\noil\ngarlic\nonion\ntomato');
+  const [recipeIngredients, setRecipeIngredients] = useState('');
+  const [recipeServings, setRecipeServings] = useState('');
+  const [scaleTo, setScaleTo] = useState('');
+  const [pantry, setPantry] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -61,6 +62,10 @@ export function FoodActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   function parseIngredients() {
     return recipeIngredients.split('\n').map(l => {
       const m = l.trim().match(/^(.+?)\s+([\d.]+)\s+(\S+)$/);
@@ -74,7 +79,7 @@ export function FoodActionPanel() {
     setBusy('scale'); setFeedback(null);
     try {
       const r = await callMacro<ScaleResult>('scaleRecipe', { ingredients: ing, originalServings: parseInt(recipeServings, 10), targetServings: parseInt(scaleTo, 10) });
-      if (r.ok && r.result) { setScaleResult(r.result); ok(`Scaled to ${scaleTo} servings.`); } else err(r.error ?? 'scale failed');
+      if (r.ok && r.result) { setScaleResult(r.result); pipe.publish('food.scale', r.result, { label: `Scaled to ${scaleTo}` }); ok(`Scaled to ${scaleTo} servings.`); } else err(r.error ?? 'scale failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCost() {
@@ -83,7 +88,7 @@ export function FoodActionPanel() {
     setBusy('cost'); setFeedback(null);
     try {
       const r = await callMacro<CostResult>('costPlate', { ingredients: ing, servings: parseInt(recipeServings, 10) });
-      if (r.ok && r.result) { setCostResult(r.result); ok(`Per plate: $${r.result.perPlate?.toFixed(2)}.`); } else err(r.error ?? 'cost failed');
+      if (r.ok && r.result) { setCostResult(r.result); pipe.publish('food.cost', r.result, { label: `$${r.result.perPlate?.toFixed(2)}/plate` }); ok(`Per plate: $${r.result.perPlate?.toFixed(2)}.`); } else err(r.error ?? 'cost failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSuggest() {
@@ -92,14 +97,14 @@ export function FoodActionPanel() {
     setBusy('suggest'); setFeedback(null);
     try {
       const r = await callMacro<SuggestResult>('suggestMeals', { pantry: items.map(name => ({ name })) });
-      if (r.ok && r.result) { setSuggestResult(r.result); ok(`${r.result.meals?.length ?? 0} meals suggested.`); } else err(r.error ?? 'suggest failed');
+      if (r.ok && r.result) { setSuggestResult(r.result); pipe.publish('food.suggest', r.result, { label: `${r.result.meals?.length ?? 0} meals` }); ok(`${r.result.meals?.length ?? 0} meals suggested.`); } else err(r.error ?? 'suggest failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actWaste() {
     setBusy('waste'); setFeedback(null);
     try {
       const r = await callMacro<WasteResult>('wasteReport', { window: 'week' });
-      if (r.ok && r.result) { setWasteResult(r.result); ok(`Waste: ${r.result.weeklyWasteKg}kg.`); } else err(r.error ?? 'waste failed');
+      if (r.ok && r.result) { setWasteResult(r.result); pipe.publish('food.waste', r.result, { label: `Waste ${r.result.weeklyWasteKg}kg` }); ok(`Waste: ${r.result.weeklyWasteKg}kg.`); } else err(r.error ?? 'waste failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -107,24 +112,34 @@ export function FoodActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Recipe — ${recipeName.trim() || 'untitled'}`, tags: ['food', 'recipe', `servings:${recipeServings}`], source: 'food:recipe:mint', meta: { visibility: 'private', consent: { allowCitations: false }, recipe: { name: recipeName, ingredients: parseIngredients(), servings: parseInt(recipeServings, 10), scaled: scaleResult, costed: costResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Recipe DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('food.mintedDtuId', id, { label: `Recipe DTU ${id.slice(0, 8)}…` }); ok(`Recipe DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🍳 Recipe: ${recipeName || 'untitled'}`, `Servings: ${recipeServings}`, '', ...parseIngredients().map(i => `  ${i.name} ${i.quantity} ${i.unit}`), '', costResult ? `Per plate: $${costResult.perPlate?.toFixed(2)}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public recipe — ${recipeName.trim() || 'untitled'}`, tags: ['food', 'recipe', 'public'], source: 'food:recipe:publish', meta: { visibility: 'public', consent: { allowCitations: true }, recipe: { name: recipeName, ingredients: parseIngredients(), servings: parseInt(recipeServings, 10) } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public recipe — ${recipeName.trim() || 'untitled'}`, tags: ['food', 'recipe', 'public'], source: 'food:recipe:publish', meta: { visibility: 'public', consent: { allowCitations: true }, recipe: { name: recipeName, ingredients: parseIngredients(), servings: parseInt(recipeServings, 10) } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('food.publishedDtuId', id, { label: `Public recipe ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -161,6 +176,10 @@ export function FoodActionPanel() {
         <input type="text" value={recipeServings} onChange={(e) => setRecipeServings(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Servings" />
         <input type="text" value={scaleTo} onChange={(e) => setScaleTo(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Scale to" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
