@@ -11,6 +11,7 @@ import { Shield, MapPin, FileText, BarChart3, Sparkles, Send, Globe, Wand2, Load
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -31,43 +32,14 @@ interface PatrolResult { zones: ZoneRec[]; totalUnitsNeeded: number; totalCurren
 interface ReportResult { reportId: string; complete: boolean; missingFields: string[]; type: string; date: string; location: string; severity: string; status: string }
 interface CrimeStatsResult { totalIncidents: number; byType: { type: string; count: number }[]; clearanceRate: number; mostCommon: string; trend: string }
 
-const DEMO_CASE = JSON.stringify({
-  caseId: 'CR-2026-0418',
-  evidence: [
-    { type: 'fingerprint', location: 'doorknob' },
-    { type: 'video', source: 'cctv-04' },
-    { type: 'dna', sample: 'cig-butt-01' },
-    { type: 'phone-records', subject: 'S1' },
-  ],
-  witnesses: [{ name: 'W1' }, { name: 'W2' }, { name: 'W3' }],
-  suspects: [{ name: 'S1', evidenceLinks: ['fingerprint', 'video'] }, { name: 'S2', evidenceLinks: [] }],
-}, null, 2);
-
-const DEMO_ZONES = JSON.stringify({
-  zones: [
-    { name: 'Sector A', crimeRate: 65, population: 12000, currentPatrols: 3 },
-    { name: 'Sector B', crimeRate: 18, population: 8500, currentPatrols: 2 },
-    { name: 'Sector C', crimeRate: 52, population: 15000, currentPatrols: 2 },
-    { name: 'Sector D', crimeRate: 12, population: 6800, currentPatrols: 1 },
-  ],
-}, null, 2);
-
-const DEMO_CRIME_LOG = JSON.stringify({
-  incidents: [
-    { type: 'theft', resolved: true }, { type: 'theft', resolved: false }, { type: 'theft', resolved: true },
-    { type: 'assault', resolved: false }, { type: 'vandalism', resolved: true }, { type: 'vandalism', resolved: true },
-    { type: 'burglary', resolved: false }, { type: 'theft', resolved: true }, { type: 'fraud', resolved: false },
-    { type: 'assault', resolved: true }, { type: 'theft', resolved: true }, { type: 'vandalism', resolved: false },
-  ],
-}, null, 2);
-
+// No seeded case/zones/log — paste real data.
 export function LawEnforcementActionPanel() {
-  const [caseText, setCaseText] = useState(DEMO_CASE);
-  const [zonesText, setZonesText] = useState(DEMO_ZONES);
-  const [crimeLogText, setCrimeLogText] = useState(DEMO_CRIME_LOG);
-  const [incidentType, setIncidentType] = useState('domestic disturbance');
-  const [incidentLoc, setIncidentLoc] = useState('1234 Pine St');
-  const [incidentDesc, setIncidentDesc] = useState('Loud verbal altercation; no weapons reported.');
+  const [caseText, setCaseText] = useState('');
+  const [zonesText, setZonesText] = useState('');
+  const [crimeLogText, setCrimeLogText] = useState('');
+  const [incidentType, setIncidentType] = useState('');
+  const [incidentLoc, setIncidentLoc] = useState('');
+  const [incidentDesc, setIncidentDesc] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -83,24 +55,37 @@ export function LawEnforcementActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actCase() {
+    if (!caseText.trim()) { err('Paste case JSON first.'); return; }
     try { const parsed = JSON.parse(caseText); setBusy('case'); setFeedback(null);
-      const r = await callMacro<CaseResult>('caseAnalysis', { artifact: { data: parsed, title: parsed.caseId } }); if (r.ok && r.result) { setCaseResult(r.result); ok(`Strength ${r.result.caseStrength} · ${r.result.status}.`); } else err(r.error ?? 'case failed');
+      const r = await callMacro<CaseResult>('caseAnalysis', { artifact: { data: parsed, title: parsed.caseId } });
+      if (r.ok && r.result) { setCaseResult(r.result); pipe.publish('le.case', r.result, { label: `Case ${r.result.caseStrength}/100` }); ok(`Strength ${r.result.caseStrength} · ${r.result.status}.`); } else err(r.error ?? 'case failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid case JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPatrol() {
+    if (!zonesText.trim()) { err('Paste zones JSON first.'); return; }
     try { const parsed = JSON.parse(zonesText); setBusy('patrol'); setFeedback(null);
-      const r = await callMacro<PatrolResult>('patrolOptimize', { artifact: { data: parsed } }); if (r.ok && r.result) { setPatrolResult(r.result); ok(`${r.result.hotspots.length} hotspots · need ${r.result.totalUnitsNeeded} units.`); } else err(r.error ?? 'patrol failed');
+      const r = await callMacro<PatrolResult>('patrolOptimize', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setPatrolResult(r.result); pipe.publish('le.patrol', r.result, { label: `Patrol ${r.result.hotspots.length} hotspots` }); ok(`${r.result.hotspots.length} hotspots · need ${r.result.totalUnitsNeeded} units.`); } else err(r.error ?? 'patrol failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid zones JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actReport() {
+    if (!incidentType.trim() || !incidentLoc.trim()) { err('Incident type + location required.'); return; }
     setBusy('report'); setFeedback(null);
-    try { const r = await callMacro<ReportResult>('incidentReport', { artifact: { data: { type: incidentType, date: new Date().toISOString(), location: incidentLoc, description: incidentDesc, officer: 'badge-1138' } } }); if (r.ok && r.result) { setReportResult(r.result); ok(`Filed ${r.result.reportId}.`); } else err(r.error ?? 'report failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ReportResult>('incidentReport', { artifact: { data: { type: incidentType, date: new Date().toISOString(), location: incidentLoc, description: incidentDesc, officer: 'badge-1138' } } });
+      if (r.ok && r.result) { setReportResult(r.result); pipe.publish('le.report', r.result, { label: `IR ${r.result.reportId}` }); ok(`Filed ${r.result.reportId}.`); } else err(r.error ?? 'report failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actStats() {
+    if (!crimeLogText.trim()) { err('Paste crime log JSON first.'); return; }
     try { const parsed = JSON.parse(crimeLogText); setBusy('stats'); setFeedback(null);
-      const r = await callMacro<CrimeStatsResult>('crimeStats', { artifact: { data: parsed } }); if (r.ok && r.result) { setStatsResult(r.result); ok(`${r.result.totalIncidents} incidents · ${r.result.clearanceRate}% cleared.`); } else err(r.error ?? 'stats failed');
+      const r = await callMacro<CrimeStatsResult>('crimeStats', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('le.stats', r.result, { label: `Stats ${r.result.totalIncidents}, ${r.result.clearanceRate}% cleared` }); ok(`${r.result.totalIncidents} incidents · ${r.result.clearanceRate}% cleared.`); } else err(r.error ?? 'stats failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid log JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -108,25 +93,41 @@ export function LawEnforcementActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Beat report`, tags: ['law-enforcement', 'beat'], source: 'le:beat:mint', meta: { visibility: 'private', consent: { allowCitations: false }, le: { case: caseResult, patrol: patrolResult, report: reportResult, stats: statsResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Beat DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('le.mintedDtuId', id, { label: `Beat DTU ${id.slice(0, 8)}…` }); ok(`Beat DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🚓 Beat report`, '', caseResult ? `Case: strength ${caseResult.caseStrength}/100 · ${caseResult.status} · ${caseResult.prosecutable ? '✓ prosecutable' : '✗ insufficient'}` : '', patrolResult ? `Patrol: ${patrolResult.totalCurrentUnits}/${patrolResult.totalUnitsNeeded} units · hotspots: ${patrolResult.hotspots.join(', ')}` : '', reportResult ? `IR ${reportResult.reportId}: ${reportResult.type} @ ${reportResult.location}${reportResult.complete ? '' : ` (missing: ${reportResult.missingFields.join(', ')})`}` : '', statsResult ? `Stats: ${statsResult.totalIncidents} incidents · ${statsResult.clearanceRate}% cleared · top: ${statsResult.mostCommon}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🚓 Beat report`, '',
+      caseResult ? `Case: strength ${caseResult.caseStrength}/100 · ${caseResult.status} · ${caseResult.prosecutable ? '✓ prosecutable' : '✗ insufficient'}` : '',
+      patrolResult ? `Patrol: ${patrolResult.totalCurrentUnits}/${patrolResult.totalUnitsNeeded} units · hotspots: ${patrolResult.hotspots.join(', ')}` : '',
+      reportResult ? `IR ${reportResult.reportId}: ${reportResult.type} @ ${reportResult.location}${reportResult.complete ? '' : ` (missing: ${reportResult.missingFields.join(', ')})`}` : '',
+      statsResult ? `Stats: ${statsResult.totalIncidents} incidents · ${statsResult.clearanceRate}% cleared · top: ${statsResult.mostCommon}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!statsResult) { err('Run crime stats first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Crime stats (anon)`, tags: ['law-enforcement', 'stats', 'public'], source: 'le:stats:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, stats: statsResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Crime stats (anon)`, tags: ['law-enforcement', 'stats', 'public'], source: 'le:stats:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, stats: statsResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('le.publishedDtuId', id, { label: `Public stats ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -177,6 +178,10 @@ export function LawEnforcementActionPanel() {
           <input type="text" value={incidentLoc} onChange={(e) => setIncidentLoc(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Location" />
           <textarea value={incidentDesc} onChange={(e) => setIncidentDesc(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" />
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

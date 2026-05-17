@@ -11,6 +11,7 @@ import { Dna, Scissors, GitMerge, Microscope, Sparkles, Send, Globe, Wand2, Load
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -31,13 +32,12 @@ interface PrimerResult { forward: PrimerInfo; reverse: PrimerInfo; productSize: 
 interface AlignResult { score: number; alignA: string; alignB: string; alignBars: string; matches: number; identity: number; alignmentLength: number }
 interface RestrictResult { enzyme?: string; sites?: number[]; fragments?: { start: number; end: number; length: number }[] }
 
-const DEMO_DNA = 'ATGGCGCCAGTGTACAAGATTGCAGGCCTGGTCAACGGTACGTACCTGCCTTAAGCATTACGCAGGCAGCAGCAGCGAGCGCCAGATCGAGCACTGGTACCTGGAGGGCATCGCCAACATGATCAAGAGTGACGGCAGCTACTAAGCATTACG';
-
+// No seed sequences — paste real DNA / RNA / protein strings.
 export function BioActionPanel() {
-  const [sequence, setSequence] = useState(DEMO_DNA);
+  const [sequence, setSequence] = useState('');
   const [seqKind, setSeqKind] = useState<'dna' | 'rna' | 'protein'>('dna');
-  const [seqB, setSeqB] = useState('ATGGCGCCAGTGTACAAGATTGCAGGCCTGGTCAATGGTACGTACCTGCCT');
-  const [enzyme, setEnzyme] = useState('EcoRI');
+  const [seqB, setSeqB] = useState('');
+  const [enzyme, setEnzyme] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -53,54 +53,83 @@ export function BioActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actAnalyze() {
     if (!sequence.trim()) { err('Sequence required.'); return; }
     setBusy('analyze'); setFeedback(null);
-    try { const r = await callMacro<SeqResult>('sequence-analyze', { sequence: sequence.trim(), kind: seqKind }); if (r.ok && r.result) { setSeqResult(r.result); ok(`${r.result.length} bp · GC ${r.result.gcPercent ?? '-'}%.`); } else err(r.error ?? 'analyze failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SeqResult>('sequence-analyze', { sequence: sequence.trim(), kind: seqKind });
+      if (r.ok && r.result) { setSeqResult(r.result); pipe.publish('bio.analyze', r.result, { label: `${r.result.length}bp GC${r.result.gcPercent}%` }); ok(`${r.result.length} bp · GC ${r.result.gcPercent ?? '-'}%.`); } else err(r.error ?? 'analyze failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPrimer() {
     if (sequence.trim().length < 100) { err('Need ≥100 bp for primer design.'); return; }
     setBusy('primer'); setFeedback(null);
-    try { const r = await callMacro<PrimerResult>('primer-design', { sequence: sequence.trim(), targetTm: 60, targetLength: 20 }); if (r.ok && r.result) { setPrimerResult(r.result); ok(`Primer pair → ${r.result.productSize} bp amplicon.`); } else err(r.error ?? 'primer failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PrimerResult>('primer-design', { sequence: sequence.trim(), targetTm: 60, targetLength: 20 });
+      if (r.ok && r.result) { setPrimerResult(r.result); pipe.publish('bio.primer', r.result, { label: `Primers ${r.result.productSize}bp` }); ok(`Primer pair → ${r.result.productSize} bp amplicon.`); } else err(r.error ?? 'primer failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAlign() {
-    if (!seqB.trim()) { err('Sequence B required.'); return; }
+    if (!sequence.trim() || !seqB.trim()) { err('Both sequence A and B required.'); return; }
     setBusy('align'); setFeedback(null);
-    try { const r = await callMacro<AlignResult>('align-pairwise', { seqA: sequence.trim(), seqB: seqB.trim(), match: 2, mismatch: -1, gap: -2 }); if (r.ok && r.result) { setAlignResult(r.result); ok(`Identity ${r.result.identity}%.`); } else err(r.error ?? 'align failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<AlignResult>('align-pairwise', { seqA: sequence.trim(), seqB: seqB.trim(), match: 2, mismatch: -1, gap: -2 });
+      if (r.ok && r.result) { setAlignResult(r.result); pipe.publish('bio.align', r.result, { label: `Align ${r.result.identity}%` }); ok(`Identity ${r.result.identity}%.`); } else err(r.error ?? 'align failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRestrict() {
     if (!sequence.trim()) { err('Sequence required.'); return; }
+    if (!enzyme.trim()) { err('Enzyme required (e.g. EcoRI, BamHI, HindIII).'); return; }
     setBusy('restrict'); setFeedback(null);
-    try { const r = await callMacro<RestrictResult>('restriction-map', { sequence: sequence.trim(), enzyme: enzyme.trim() || 'EcoRI' }); if (r.ok && r.result) { setRestrictResult(r.result); ok(`${r.result.sites?.length ?? 0} cut sites.`); } else err(r.error ?? 'restrict failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<RestrictResult>('restriction-map', { sequence: sequence.trim(), enzyme: enzyme.trim() });
+      if (r.ok && r.result) { setRestrictResult(r.result); pipe.publish('bio.restrict', r.result, { label: `${enzyme}: ${r.result.sites?.length ?? 0} sites` }); ok(`${r.result.sites?.length ?? 0} cut sites.`); } else err(r.error ?? 'restrict failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `${seqKind.toUpperCase()} — ${seqResult?.length ?? sequence.length} ${seqKind === 'protein' ? 'aa' : 'bp'}`, tags: ['bio', seqKind, 'sequence'], source: 'bio:seq:mint', meta: { visibility: 'private', consent: { allowCitations: false }, bio: { sequence: sequence.slice(0, 1000), kind: seqKind, analyze: seqResult, primers: primerResult, align: alignResult, restrict: restrictResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Seq DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('bio.mintedDtuId', id, { label: `Seq DTU ${id.slice(0, 8)}…` }); ok(`Seq DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🧬 Bio bench`, '', seqResult ? `${seqResult.length} ${seqKind === 'protein' ? 'aa' : 'bp'} ${seqKind.toUpperCase()} · GC ${seqResult.gcPercent ?? '-'}% · Tm ${seqResult.tm ?? '-'}°C` : '', primerResult ? `Primers: F=${primerResult.forward.sequence} / R=${primerResult.reverse.sequence} → ${primerResult.productSize} bp` : '', alignResult ? `Alignment identity: ${alignResult.identity}% over ${alignResult.alignmentLength} bp` : '', restrictResult ? `${enzyme}: ${restrictResult.sites?.length ?? 0} sites` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🧬 Bio bench`, '',
+      seqResult ? `${seqResult.length} ${seqKind === 'protein' ? 'aa' : 'bp'} ${seqKind.toUpperCase()} · GC ${seqResult.gcPercent ?? '-'}% · Tm ${seqResult.tm ?? '-'}°C` : '',
+      primerResult ? `Primers: F=${primerResult.forward.sequence} / R=${primerResult.reverse.sequence} → ${primerResult.productSize} bp` : '',
+      alignResult ? `Alignment identity: ${alignResult.identity}% over ${alignResult.alignmentLength} bp` : '',
+      restrictResult ? `${enzyme}: ${restrictResult.sites?.length ?? 0} sites` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!seqResult) { err('Run analyze first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public ${seqKind.toUpperCase()} profile`, tags: ['bio', seqKind, 'public'], source: 'bio:seq:publish', meta: { visibility: 'public', consent: { allowCitations: true }, kind: seqKind, analyze: seqResult, primers: primerResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public ${seqKind.toUpperCase()} profile`, tags: ['bio', seqKind, 'public'], source: 'bio:seq:publish', meta: { visibility: 'public', consent: { allowCitations: true }, kind: seqKind, analyze: seqResult, primers: primerResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('bio.publishedDtuId', id, { label: `Public bio ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -145,6 +174,10 @@ export function BioActionPanel() {
           </select>
           <input type="text" value={enzyme} onChange={(e) => setEnzyme(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Enzyme (EcoRI...)" />
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
         <div className="md:col-span-3">
           <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Sequence B (for alignment)</label>

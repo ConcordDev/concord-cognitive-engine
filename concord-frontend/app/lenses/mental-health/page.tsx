@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
 import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealthActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -675,9 +676,11 @@ export default function MentalHealthLensPage() {
         <CrisisPanel />
       </section>
 
-      <section className="mt-6">
-        <MentalHealthActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <MentalHealthActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

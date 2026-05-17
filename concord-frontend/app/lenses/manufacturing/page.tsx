@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
 import { ManufacturingActionPanel } from '@/components/manufacturing/ManufacturingActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import OEEDashboard from '@/components/manufacturing/OEEDashboard';
 import WorkOrderBoard from '@/components/manufacturing/WorkOrderBoard';
 import QualitySPC from '@/components/manufacturing/QualitySPC';
@@ -2701,9 +2702,11 @@ export default function ManufacturingLensPage() {
         <ManufacturingFeed />
       </section>
 
-      <section className="mt-6 max-w-7xl mx-auto px-4">
-        <ManufacturingActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 max-w-7xl mx-auto px-4">
+          <ManufacturingActionPanel />
+        </section>
+      </PipingProvider>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

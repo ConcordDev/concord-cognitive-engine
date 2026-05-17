@@ -14,6 +14,7 @@ import { Heart, Phone, BarChart3, BookOpen, Sparkles, Send, Globe, Wand2, Loader
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -36,14 +37,13 @@ interface MoodEntryIn { mood: number; date?: string }
 interface MoodResult { entries: number; avgMood: number; trend: string; lowest: number; highest: number; variance: number }
 interface PromptResult { mood: string; prompts: string[]; instruction: string; reminder?: string }
 
-const DEMO_MOOD = '7,6,8,5,7,4,6,8,7,9';
-
+// No seeded mood csv — enter real values.
 export function MentalHealthActionPanel() {
   const [country, setCountry] = useState<'US' | 'UK' | 'CA' | 'AU'>('US');
-  const [stateAbbr, setStateAbbr] = useState('US');
-  const [year, setYear] = useState('2022');
-  const [moodCsv, setMoodCsv] = useState(DEMO_MOOD);
-  const [currentMood, setCurrentMood] = useState<'happy' | 'sad' | 'anxious' | 'neutral' | 'angry'>('anxious');
+  const [stateAbbr, setStateAbbr] = useState('');
+  const [year, setYear] = useState('');
+  const [moodCsv, setMoodCsv] = useState('');
+  const [currentMood, setCurrentMood] = useState<'happy' | 'sad' | 'anxious' | 'neutral' | 'angry'>('neutral');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -59,53 +59,84 @@ export function MentalHealthActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actHotline() {
     setBusy('hotline'); setFeedback(null);
-    try { const r = await callMacro<HotlineResult>('crisis-hotlines', { country }); if (r.ok && r.result) { setHotlineResult(r.result); ok(`${country} hotlines loaded.`); } else err(r.error ?? 'hotline failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<HotlineResult>('crisis-hotlines', { country });
+      if (r.ok && r.result) { setHotlineResult(r.result); pipe.publish('mh.hotline', r.result, { label: `Hotlines ${country}` }); ok(`${country} hotlines loaded.`); } else err(r.error ?? 'hotline failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actStats() {
+    const y = parseInt(year, 10);
+    if (!Number.isFinite(y) || !stateAbbr.trim()) { err('Year + state abbr required.'); return; }
     setBusy('stats'); setFeedback(null);
-    try { const r = await callMacro<StatsResult>('cdc-mental-health-stats', { year: parseInt(year, 10), locationAbbr: stateAbbr.toUpperCase() }); if (r.ok && r.result) { setStatsResult(r.result); ok(`${r.result.count} measures.`); } else err(r.error ?? 'stats failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<StatsResult>('cdc-mental-health-stats', { year: y, locationAbbr: stateAbbr.toUpperCase() });
+      if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('mh.stats', r.result, { label: `CDC ${r.result.stateAbbr} ${r.result.year}` }); ok(`${r.result.count} measures.`); } else err(r.error ?? 'stats failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMood() {
+    if (!moodCsv.trim()) { err('Mood csv required.'); return; }
     const entries: MoodEntryIn[] = moodCsv.split(',').map(s => s.trim()).filter(Boolean).map((m, i) => ({ mood: parseInt(m, 10), date: new Date(Date.now() - (10 - i) * 86400000).toISOString().split('T')[0] }));
     if (entries.length === 0) { err('Mood entries required.'); return; }
     setBusy('mood'); setFeedback(null);
-    try { const r = await callMacro<MoodResult>('moodTracker', { artifact: { data: { entries } } }); if (r.ok && r.result) { setMoodResult(r.result); ok(`Avg ${r.result.avgMood} (${r.result.trend}).`); } else err(r.error ?? 'mood failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<MoodResult>('moodTracker', { artifact: { data: { entries } } });
+      if (r.ok && r.result) { setMoodResult(r.result); pipe.publish('mh.mood', r.result, { label: `Mood ${r.result.avgMood} (${r.result.trend})` }); ok(`Avg ${r.result.avgMood} (${r.result.trend}).`); } else err(r.error ?? 'mood failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPrompt() {
     setBusy('prompt'); setFeedback(null);
-    try { const r = await callMacro<PromptResult>('journalPrompt', { artifact: { data: { currentMood } } }); if (r.ok && r.result) { setPromptResult(r.result); ok(`${r.result.prompts.length} prompts for ${currentMood}.`); } else err(r.error ?? 'prompt failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PromptResult>('journalPrompt', { artifact: { data: { currentMood } } });
+      if (r.ok && r.result) { setPromptResult(r.result); pipe.publish('mh.prompt', r.result, { label: `Prompts (${currentMood})` }); ok(`${r.result.prompts.length} prompts for ${currentMood}.`); } else err(r.error ?? 'prompt failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Wellness — ${currentMood}`, tags: ['mentalhealth', 'wellness', currentMood], source: 'mentalhealth:wellness:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mh: { country, mood: moodResult, prompt: promptResult, currentMood } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Wellness DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('mh.mintedDtuId', id, { label: `Wellness DTU ${id.slice(0, 8)}…` }); ok(`Wellness DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const primary = hotlineResult?.hotlines?.primary;
-    const body = [`💗 Wellness check`, '', primary ? `If you need help: ${primary.name} — ${primary.phone}${primary.text ? ` (text: ${primary.text})` : ''}` : '', moodResult ? `Mood trend: ${moodResult.trend} (avg ${moodResult.avgMood}/10)` : '', promptResult ? `Prompt: ${promptResult.prompts[0]}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '', '\nThis is not medical advice.'].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`💗 Wellness check`, '',
+      primary ? `If you need help: ${primary.name} — ${primary.phone}${primary.text ? ` (text: ${primary.text})` : ''}` : '',
+      moodResult ? `Mood trend: ${moodResult.trend} (avg ${moodResult.avgMood}/10)` : '',
+      promptResult ? `Prompt: ${promptResult.prompts[0]}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+      '\nThis is not medical advice.',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!statsResult) { err('Load CDC stats first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Mental health stats — ${statsResult.stateAbbr} ${statsResult.year}`, tags: ['mentalhealth', 'cdc', 'stats', 'public'], source: 'mentalhealth:stats:publish', meta: { visibility: 'public', consent: { allowCitations: true }, stats: statsResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Mental health stats — ${statsResult.stateAbbr} ${statsResult.year}`, tags: ['mentalhealth', 'cdc', 'stats', 'public'], source: 'mentalhealth:stats:publish', meta: { visibility: 'public', consent: { allowCitations: true }, stats: statsResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('mh.publishedDtuId', id, { label: `Public CDC stats ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -151,6 +182,10 @@ export function MentalHealthActionPanel() {
         </select>
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
         <input type="text" value={moodCsv} onChange={(e) => setMoodCsv(e.target.value)} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Mood 1-10 csv (10 days)" />
+        <div className="md:col-span-5 flex items-center gap-2 flex-wrap">
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

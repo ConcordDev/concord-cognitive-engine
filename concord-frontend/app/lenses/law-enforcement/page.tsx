@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { PoliceFeed } from '@/components/law-enforcement/PoliceFeed';
 import { LawEnforcementActionPanel } from '@/components/law-enforcement/LawEnforcementActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -379,9 +380,11 @@ export default function LawEnforcementLensPage() {
         <PoliceFeed />
       </section>
 
-      <section className="mt-6 max-w-7xl mx-auto px-4">
-        <LawEnforcementActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 max-w-7xl mx-auto px-4">
+          <LawEnforcementActionPanel />
+        </section>
+      </PipingProvider>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
