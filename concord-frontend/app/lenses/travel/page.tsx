@@ -25,6 +25,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { TripPlannerPanel } from '@/components/travel/TripPlannerPanel';
 import { TravelActionPanel } from '@/components/travel/TravelActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -582,9 +583,11 @@ export default function TravelLensPage() {
       </section>
 
       {/* TripIt + Google Travel-shape workbench: budget / packing / jetlag / visa + actions */}
-      <section className="mt-6">
-        <TravelActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <TravelActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );
