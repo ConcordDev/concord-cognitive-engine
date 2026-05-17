@@ -7,6 +7,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CatFactsPanel } from '@/components/pets/CatFactsPanel';
+import { DogPanel } from '@/components/pets/DogPanel';
 import { BreedExplorer } from '@/components/pets/BreedExplorer';
 import { PetCarePlanner } from '@/components/pets/PetCarePlanner';
 import { ActivityWeightDashboard } from '@/components/pets/ActivityWeightDashboard';
@@ -389,8 +390,11 @@ export default function PetsLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="pets" size="sm" className="ml-2" />
     <div data-lens-theme="pets" className="space-y-6 p-6">
-      {/* Phase 4 (fifth wave) — REAL Cat Facts content from catfact.ninja. */}
-      <CatFactsPanel />
+      {/* Phase 4 (fifth+sixth wave) — REAL Cat Facts + Dog CEO panels side-by-side. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <CatFactsPanel />
+        <DogPanel />
+      </div>
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center"><PawPrint className="w-5 h-5 text-white" /></div>

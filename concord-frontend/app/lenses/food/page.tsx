@@ -7,6 +7,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
+import { BreweryPanel } from '@/components/food/BreweryPanel';
 import { UsdaFoodSearch } from '@/components/cooking/UsdaFoodSearch';
 import { FoodActionPanel } from '@/components/food/FoodActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -2663,6 +2664,8 @@ export default function FoodLensPage() {
     <div data-lens-theme="food" className={ds.pageContainer}>
       {/* Phase 4 — REAL USDA FoodData Central search. */}
       <UsdaFoodSearch domain="food" className="mb-4" />
+      {/* Phase 4 (sixth wave) — REAL Open Brewery DB. */}
+      <BreweryPanel domain="food" className="mb-4" />
       {/* Nutrition Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />

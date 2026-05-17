@@ -9658,8 +9658,8 @@ async function runMacro(domain, name, input, ctx) {
     geology: new Set(["live_quakes_today", "live_wiki_search", "live_wiki_summary"]),
     ocean: new Set(["live_tides", "live_wiki_search", "live_wiki_summary"]),
     pharmacy: new Set(["live_label_lookup", "live_adverse_events", "live_recalls"]),
-    cooking: new Set(["live_food_search"]),
-    food: new Set(["live_food_search"]),
+    cooking: new Set(["live_food_search", "live_breweries"]),
+    food: new Set(["live_food_search", "live_breweries"]),
     art: new Set(["live_met_search"]),
     gallery: new Set(["live_met_search"]),
     // arXiv wire-up — one macro per domain pre-filtered to that arXiv category.
@@ -9675,7 +9675,7 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 4 cont'd — additional REAL free-API wire-ups.
     "mental-health": new Set(["live_medlineplus"]),
     podcast: new Set(["live_itunes_search"]),
-    global: new Set(["live_countries", "live_wiki_search", "live_wiki_summary"]),
+    global: new Set(["live_countries", "live_wiki_search", "live_wiki_summary", "live_worldbank"]),
     environment: new Set(["live_gbif"]),
     forestry: new Set(["live_gbif"]),
     agriculture: new Set(["live_gbif"]),
@@ -9689,12 +9689,17 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 4 (fourth wave) — Wikipedia search + summary across reference lenses.
     philosophy: new Set(["live_wiki_search", "live_wiki_summary"]),
     desert: new Set(["live_wiki_search", "live_wiki_summary"]),
-    space: new Set(["live_wiki_search", "live_wiki_summary", "live_spaceflight_news", "live_launches_upcoming"]),
+    space: new Set(["live_wiki_search", "live_wiki_summary", "live_spaceflight_news", "live_launches_upcoming", "live_iss_pass"]),
     // Phase 4 (fifth wave) — curated content APIs.
-    astronomy: new Set(["live_apod", "live_iss", "live_neo", "live_spaceflight_news", "live_launches_upcoming"]),
+    astronomy: new Set(["live_apod", "live_iss", "live_neo", "live_spaceflight_news", "live_launches_upcoming", "live_iss_pass"]),
     daily: new Set(["live_quote"]),
     reflection: new Set(["live_quote"]),
-    pets: new Set(["live_catfact"]),
+    pets: new Set(["live_catfact", "live_dog"]),
+    // Phase 4 (sixth wave) — civic / postal / finance reference wires.
+    finance: new Set(["live_worldbank"]),
+    retail: new Set(["live_zippopotam"]),
+    logistics: new Set(["live_zippopotam"]),
+    travel: new Set(["live_zippopotam"]),
     game: new Set(["live_trivia"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
@@ -23325,6 +23330,13 @@ registerWikipediaSearchMacros(register);
 // Trivia DB (game), Quotable (daily/reflection), Cat Facts (pets).
 import registerCuratedFreeApiMacros from "./domains/curated-free-apis.js";
 registerCuratedFreeApiMacros(register);
+
+// Phase 4 (sixth wave) — civic / reference REAL_FREE APIs: World Bank
+// indicators (global/finance), Open Brewery DB (food/cooking), Dog CEO
+// images (pets), Zippopotam postal lookup (retail/logistics/travel),
+// Open Notify ISS pass times (astronomy/space).
+import registerCivicDataApiMacros from "./domains/civic-data-apis.js";
+registerCivicDataApiMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";
