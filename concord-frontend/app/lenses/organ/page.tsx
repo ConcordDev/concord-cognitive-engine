@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
 import { AnatomyExplorer } from '@/components/organ/AnatomyExplorer';
+import { OrganActionPanel } from '@/components/organ/OrganActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -692,6 +693,9 @@ export default function OrganLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <AnatomyExplorer />
+      </section>
+      <section className="mt-6">
+        <OrganActionPanel />
       </section>
     </div>
     </LensShell>
