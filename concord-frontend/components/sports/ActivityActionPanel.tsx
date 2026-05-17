@@ -25,6 +25,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -56,12 +57,12 @@ const LEVELS = ['beginner', 'intermediate', 'advanced', 'elite'];
 export function ActivityActionPanel() {
   const [sport, setSport] = useState('running');
   const [level, setLevel] = useState('intermediate');
-  const [daysPerWeek, setDaysPerWeek] = useState('5');
+  const [daysPerWeek, setDaysPerWeek] = useState('');
   const [statsText, setStatsText] = useState('');
-  const [weeklyHours, setWeeklyHours] = useState('8');
-  const [restDays, setRestDays] = useState('2');
-  const [age, setAge] = useState('30');
-  const [sleepHours, setSleepHours] = useState('7');
+  const [weeklyHours, setWeeklyHours] = useState('');
+  const [restDays, setRestDays] = useState('');
+  const [age, setAge] = useState('');
+  const [sleepHours, setSleepHours] = useState('');
   const [coachId, setCoachId] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -78,6 +79,21 @@ export function ActivityActionPanel() {
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   const statsArray = statsText.split('\n').map(s => s.trim()).filter(Boolean).map(v => ({ metric: 'value', value: parseFloat(v) || 0 }));
 
   async function actStats() {
@@ -85,7 +101,7 @@ export function ActivityActionPanel() {
     setBusy('stats'); setFeedback(null);
     try {
       const r = await callMacro<StatsResult>('performanceStats', { stats: statsArray });
-      if (r.ok && r.result) { setStatsResult(r.result); ok('Stats analyzed.'); }
+      if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('sports.performance', r.result, { label: `${r.result.trend ?? 'trend'}` }); ok('Stats analyzed.'); }
       else err(r.error ?? 'stats failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -95,7 +111,7 @@ export function ActivityActionPanel() {
     setBusy('plan'); setFeedback(null);
     try {
       const r = await callMacro<PlanResult>('trainingPlan', { sport, level, daysPerWeek: parseInt(daysPerWeek, 10) });
-      if (r.ok && r.result) { setPlanResult(r.result); ok('Plan ready.'); }
+      if (r.ok && r.result) { setPlanResult(r.result); pipe.publish('sports.plan', r.result, { label: `${r.result.sport ?? sport} plan` }); ok('Plan ready.'); }
       else err(r.error ?? 'plan failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -111,7 +127,7 @@ export function ActivityActionPanel() {
         sleepHours: parseFloat(sleepHours),
         previousInjuries: 0,
       });
-      if (r.ok && r.result) { setRiskResult(r.result); ok(`Risk: ${r.result.riskLevel}.`); }
+      if (r.ok && r.result) { setRiskResult(r.result); pipe.publish('sports.risk', r.result, { label: `risk ${r.result.riskLevel}` }); ok(`Risk: ${r.result.riskLevel}.`); }
       else err(r.error ?? 'risk failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -141,7 +157,7 @@ export function ActivityActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('sports.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -159,9 +175,12 @@ export function ActivityActionPanel() {
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: coachId.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${coachId.trim()}.`); setCoachId(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: coachId.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setCoachId(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -169,21 +188,24 @@ export function ActivityActionPanel() {
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `${sport} race report — ${new Date().toISOString().slice(0, 10)}`,
-          tags: ['sports', sport, 'race-report', 'public'],
-          source: 'sports:report:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, race: { sport, level, stats: statsArray, trend: statsResult?.trend, plan: planResult } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `${sport} race report — ${new Date().toISOString().slice(0, 10)}`,
+            tags: ['sports', sport, 'race-report', 'public'],
+            source: 'sports:report:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, race: { sport, level, stats: statsArray, trend: statsResult?.trend, plan: planResult } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Race report published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('sports.publishedDtuId', id, { label: `report ${id.slice(0, 8)}` }); ok(`Race report published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -266,6 +288,11 @@ export function ActivityActionPanel() {
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Coach (for DM)</label>
           <input type="text" value={coachId} onChange={(e) => setCoachId(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="coach user id" />
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div>

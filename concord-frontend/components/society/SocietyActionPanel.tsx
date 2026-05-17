@@ -11,6 +11,7 @@ import { Globe2, BarChart3, GitCompareArrows, BookOpen, Sparkles, Send, Globe, W
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,9 +34,9 @@ interface CompareResult { indicator: string; countries: string[]; points: Compar
 interface CatalogResult { indicators: Record<string, string>; count: number; note?: string }
 
 export function SocietyActionPanel() {
-  const [country, setCountry] = useState('USA');
-  const [indicator, setIndicator] = useState('population');
-  const [compareCountries, setCompareCountries] = useState('USA,GBR,JPN,DEU,CHN');
+  const [country, setCountry] = useState('');
+  const [indicator, setIndicator] = useState('');
+  const [compareCountries, setCompareCountries] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -51,28 +52,43 @@ export function SocietyActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actIndicator() {
     if (!country.trim() || !indicator.trim()) { err('Country + indicator required.'); return; }
     setBusy('indicator'); setFeedback(null);
-    try { const r = await callMacro<IndicatorResult>('wb-indicator', { country: country.trim().toUpperCase(), indicator: indicator.trim() }); if (r.ok && r.result) { setIndicatorResult(r.result); ok(`${r.result.count} data points · latest ${r.result.latest?.value.toLocaleString()} (${r.result.latest?.year}).`); } else err(r.error ?? 'indicator failed'); }
+    try { const r = await callMacro<IndicatorResult>('wb-indicator', { country: country.trim().toUpperCase(), indicator: indicator.trim() }); if (r.ok && r.result) { setIndicatorResult(r.result); pipe.publish('society.indicator', r.result, { label: `${r.result.country} ${r.result.indicator}` }); ok(`${r.result.count} data points · latest ${r.result.latest?.value.toLocaleString()} (${r.result.latest?.year}).`); } else err(r.error ?? 'indicator failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCountry() {
     if (!country.trim()) { err('Country required.'); return; }
     setBusy('country'); setFeedback(null);
-    try { const r = await callMacro<CountryResult>('wb-country', { country: country.trim().toUpperCase() }); if (r.ok && r.result) { setCountryResult(r.result); ok(`${r.result.name} loaded.`); } else err(r.error ?? 'country failed'); }
+    try { const r = await callMacro<CountryResult>('wb-country', { country: country.trim().toUpperCase() }); if (r.ok && r.result) { setCountryResult(r.result); pipe.publish('society.country', r.result, { label: r.result.name }); ok(`${r.result.name} loaded.`); } else err(r.error ?? 'country failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCompare() {
     const countries = compareCountries.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
     if (countries.length < 2) { err('Need 2+ countries.'); return; }
     setBusy('compare'); setFeedback(null);
-    try { const r = await callMacro<CompareResult>('wb-compare', { countries, indicator: indicator.trim() }); if (r.ok && r.result) { setCompareResult(r.result); ok(`${r.result.points.length} data points across ${countries.length} countries.`); } else err(r.error ?? 'compare failed'); }
+    try { const r = await callMacro<CompareResult>('wb-compare', { countries, indicator: indicator.trim() }); if (r.ok && r.result) { setCompareResult(r.result); pipe.publish('society.compare', r.result, { label: `${countries.length} countries` }); ok(`${r.result.points.length} data points across ${countries.length} countries.`); } else err(r.error ?? 'compare failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCatalog() {
     setBusy('catalog'); setFeedback(null);
-    try { const r = await callMacro<CatalogResult>('wb-common-indicators', {}); if (r.ok && r.result) { setCatalogResult(r.result); ok(`${r.result.count} indicator aliases.`); } else err(r.error ?? 'catalog failed'); }
+    try { const r = await callMacro<CatalogResult>('wb-common-indicators', {}); if (r.ok && r.result) { setCatalogResult(r.result); pipe.publish('society.catalog', r.result, { label: `${r.result.count} aliases` }); ok(`${r.result.count} indicator aliases.`); } else err(r.error ?? 'catalog failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -80,25 +96,35 @@ export function SocietyActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `WB data — ${country} ${indicator}`, tags: ['society', 'worldbank', country], source: 'society:wb:mint', meta: { visibility: 'private', consent: { allowCitations: false }, wb: { indicator: indicatorResult, country: countryResult, compare: compareResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`WB DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('society.mintedDtuId', id, { label: `wb ${id.slice(0, 8)}` }); ok(`WB DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🌎 World Bank data`, '', indicatorResult ? `${indicatorResult.countryName} · ${indicatorResult.indicator}: ${indicatorResult.latest?.value.toLocaleString()} (${indicatorResult.latest?.year})` : '', countryResult ? `${countryResult.name} (${countryResult.iso3}) · ${countryResult.region} · ${countryResult.incomeLevel}` : '', compareResult ? `Compare ${indicator}: ${compareResult.points.slice(0, 5).map(p => `${p.country} ${p.value.toLocaleString()}`).join(' · ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!compareResult && !indicatorResult) { err('Run a query first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `WB data viz — ${indicator}`, tags: ['society', 'worldbank', 'public'], source: 'society:wb:publish', meta: { visibility: 'public', consent: { allowCitations: true }, indicator: indicatorResult, compare: compareResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `WB data viz — ${indicator}`, tags: ['society', 'worldbank', 'public'], source: 'society:wb:publish', meta: { visibility: 'public', consent: { allowCitations: true }, indicator: indicatorResult, compare: compareResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('society.publishedDtuId', id, { label: `viz ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -135,6 +161,11 @@ export function SocietyActionPanel() {
         <input type="text" value={indicator} onChange={(e) => setIndicator(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="indicator (population / SP.POP.TOTL)" />
         <input type="text" value={compareCountries} onChange={(e) => setCompareCountries(e.target.value.toUpperCase())} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Compare csv" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
