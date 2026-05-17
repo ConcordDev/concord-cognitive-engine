@@ -39,6 +39,7 @@ import { SLODashboard } from '@/components/debug/SLODashboard';
 import { ProvenanceDashboard } from '@/components/debug/ProvenanceDashboard';
 import { ComputePanel } from '@/components/platform/ComputePanel';
 import { NvdCveFeed } from '@/components/debug/NvdCveFeed';
+import { DebugActionPanel } from '@/components/debug/DebugActionPanel';
 import { LensTemplateGenerator } from '@/components/lens/LensTemplateGenerator';
 
 type LogLevel = 'all' | 'info' | 'warn' | 'error' | 'debug';
@@ -1222,6 +1223,9 @@ export default function DebugLensPage() {
       )}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <NvdCveFeed />
+      </section>
+      <section className="mt-6">
+        <DebugActionPanel />
       </section>
     </div>
     </LensShell>
