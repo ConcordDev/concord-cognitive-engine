@@ -9914,7 +9914,15 @@ async function runMacro(domain, name, input, ctx) {
     therapy: new Set(["active_fields"]),
   };
   const _domainSet = publicReadDomains[domain];
-  const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
+  let _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
+  // Phase 2 (UX completeness sprint) — every bulk-registered domain has
+  // a recent_mine + list_mine macro. Self-scoped by ctx.actor.userId, so
+  // anonymous reads get rejected by the handler with no_user; the gate
+  // bypass only lets authenticated cookie callers skip the heavy
+  // mutation gate.
+  if (!_domainNameAllowed && (name === "recent_mine" || name === "list_mine")) {
+    _domainNameAllowed = true;
+  }
 
   // safeReadBypass: comprehensive path check for ALL frontend GET routes (Gate 3 of 3, outer)
   const _safeReadPaths = [
@@ -23184,6 +23192,15 @@ registerBeatsMacros(register);
 // callers get {ok:false, reason:'no_user'}.
 import registerDraftsMacros from "./domains/drafts.js";
 registerDraftsMacros(register);
+
+// Phase 2 (UX completeness sprint) — bulk-register <domain>.recent_mine
+// + <domain>.list_mine for every lens whose primary artifact is a DTU.
+// Mounts a uniform standard-shape recent-list for ~150 domains in one
+// call. Per-domain bespoke overrides (e.g. pharmacy reading its own
+// pharmacy_artifacts table) MUST register after this line so the
+// last-registration-wins semantics route to the bespoke version.
+import registerBulkRecentMine from "./domains/_recent-mine-bulk.js";
+registerBulkRecentMine(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";
