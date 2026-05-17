@@ -26,6 +26,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { BlsSeriesExplorer } from '@/components/hr/BlsSeriesExplorer';
 import { HrActionPanel } from '@/components/hr/HrActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -418,9 +419,11 @@ export default function HRLensPage() {
       </section>
 
       {/* BambooHR + Gusto-shape people-ops workbench: comp / turnover / interview / pto + actions */}
-      <section className="mt-6">
-        <HrActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <HrActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
