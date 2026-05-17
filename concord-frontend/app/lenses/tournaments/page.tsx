@@ -16,6 +16,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EsportsFeed } from '@/components/tournaments/EsportsFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Trophy, Users, Coins, Plus, Play, ChevronRight } from 'lucide-react';
@@ -104,6 +105,7 @@ export default function TournamentsPage() {
   return (
     <LensShell lensId="tournaments" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="tournaments" size="sm" className="ml-2" />
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 flex items-center justify-between">

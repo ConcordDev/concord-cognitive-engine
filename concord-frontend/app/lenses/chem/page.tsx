@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PeriodicTable } from '@/components/chem/PeriodicTable';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -119,6 +120,7 @@ export default function ChemLensPage() {
   return (
     <LensShell lensId="chem" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="chem" size="sm" className="ml-2" />
     <div data-lens-theme="chem" className="p-6 space-y-6">
       {/* Sub-Lenses */}
       <SubLensQuickNav lensId="chem" />

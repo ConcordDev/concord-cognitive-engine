@@ -22,6 +22,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SandboxRepos } from '@/components/sandbox/SandboxRepos';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -282,6 +283,7 @@ export default function CombatSandboxPage() {
   return (
     <LensShell lensId="sandbox" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="sandbox" size="sm" className="ml-2" />
     <Suspense fallback={<div className="h-screen w-screen bg-slate-900" />}>
       <CombatSandboxInner />
     </Suspense>

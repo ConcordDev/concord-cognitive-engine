@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -676,6 +677,7 @@ export default function ConstructionLensPage() {
   return (
     <LensShell lensId="construction" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="construction" size="sm" className="ml-2" />
     <LensPageShell
       domain="construction"
       title="Construction"

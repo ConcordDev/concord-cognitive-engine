@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MlRepos } from '@/components/ml/MlRepos';
 import { MlActionPanel } from '@/components/ml/MlActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -413,6 +414,7 @@ export default function MLLensPage() {
   return (
     <LensShell lensId="ml" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="ml" size="sm" className="ml-2" />
     <div data-lens-theme="ml" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">

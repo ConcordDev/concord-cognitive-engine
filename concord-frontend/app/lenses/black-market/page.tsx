@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState, useMemo } from 'react';
 import { } from 'lucide-react';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -158,6 +159,7 @@ export default function BlackMarketPage() {
   return (
     <LensShell lensId="black-market" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="black-market" size="sm" className="ml-2" />
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-4xl px-4 py-8">
         <header className="mb-6 border-b border-rose-500/30 pb-4">

@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ProductivityFeed } from '@/components/goals/ProductivityFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -443,6 +444,7 @@ export default function GoalsLensPage() {
   return (
     <LensShell lensId="goals" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="goals" size="sm" className="ml-2" />
     <div data-lens-theme="goals" className="p-6 space-y-6 max-w-5xl mx-auto">
       {/* ---- Header ---- */}
       <header className="flex items-center justify-between flex-wrap gap-3">

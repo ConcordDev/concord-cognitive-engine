@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhiloFeed } from '@/components/philosophy/PhiloFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -178,6 +179,7 @@ export default function PhilosophyLensPage() {
   return (
     <LensShell lensId="philosophy" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="philosophy" size="sm" className="ml-2" />
     <div data-lens-theme="philosophy" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <BookOpen className="w-6 h-6 text-neon-purple" />

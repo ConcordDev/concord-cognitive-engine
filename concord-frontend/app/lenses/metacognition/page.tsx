@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CogsciFeed } from '@/components/metacognition/CogsciFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -389,6 +390,7 @@ export default function MetacognitionLensPage() {
   return (
     <LensShell lensId="metacognition" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="metacognition" size="sm" className="ml-2" />
     <div data-lens-theme="metacognition" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center gap-3">

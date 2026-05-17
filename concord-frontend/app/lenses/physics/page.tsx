@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhysicsArxiv } from '@/components/physics/PhysicsArxiv';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
@@ -1037,6 +1038,7 @@ export default function PhysicsLensPage() {
   }
   return (
     <LensShell lensId="physics" asMain={false}>
+      <DepthBadge lensId="physics" size="sm" className="ml-2" />
     <div data-lens-theme="physics" className="p-6 space-y-6">
       {/* Sub-Lenses */}
       <SubLensQuickNav lensId="physics" />

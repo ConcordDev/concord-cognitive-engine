@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlumbingFeed } from '@/components/plumbing/PlumbingFeed';
 import { PlumbCalc } from '@/components/plumbing/PlumbCalc';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -641,6 +642,7 @@ export default function PlumbingLensPage() {
   return (
     <LensShell lensId="plumbing" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="plumbing" size="sm" className="ml-2" />
     <LensPageShell
       domain="plumbing"
       title="Plumbing"

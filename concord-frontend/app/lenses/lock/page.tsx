@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SecurityRepos } from '@/components/lock/SecurityRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { use70Lock } from '@/hooks/use70Lock';
@@ -164,6 +165,7 @@ export default function LockLensPage() {
   return (
     <LensShell lensId="lock" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="lock" size="sm" className="ml-2" />
     <div data-lens-theme="lock" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

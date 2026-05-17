@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
 import CitationSearch from '@/components/paper/CitationSearch';
 import PaperSummarizer from '@/components/paper/PaperSummarizer';
@@ -520,6 +521,7 @@ export default function PaperLensPage() {
 
   return (
     <LensShell lensId="paper" asMain={false}>
+      <DepthBadge lensId="paper" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* ---- Header ---- */}
       <header className={ds.sectionHeader}>

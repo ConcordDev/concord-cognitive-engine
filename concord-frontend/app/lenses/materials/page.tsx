@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MpSearch } from '@/components/materials/MpSearch';
 import { CorrosionThermalPanel } from '@/components/materials/CorrosionThermalPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -332,6 +333,7 @@ export default function MaterialsLensPage() {
   return (
     <LensShell lensId="materials" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="materials" size="sm" className="ml-2" />
     <div data-lens-theme="materials" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OnThisDay } from '@/components/event-timeline/OnThisDay';
 import { Loader2 } from 'lucide-react';
 
@@ -155,6 +156,7 @@ export default function EventTimelineLens() {
 
   return (
     <LensShell lensId="event-timeline">
+      <DepthBadge lensId="event-timeline" size="sm" className="ml-2" />
     <div className="min-h-screen bg-zinc-950 text-zinc-100 px-4 sm:px-6 py-8">
       <div className="mx-auto max-w-5xl">
         {/* Loading indicator (intentional minimal — feed updates inline) */}

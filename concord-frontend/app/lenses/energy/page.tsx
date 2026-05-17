@@ -3,6 +3,7 @@
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EiaPanel } from '@/components/energy/EiaPanel';
 import { SolarCarbonPanel } from '@/components/energy/SolarCarbonPanel';
 import { EnergyActionStack } from '@/components/energy/EnergyActionStack';
@@ -166,6 +167,7 @@ export default function EnergyLensPage() {
   return (
     <LensShell lensId="energy" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="energy" size="sm" className="ml-2" />
     <LensPageShell
       domain="energy"
       title="Energy Lens"

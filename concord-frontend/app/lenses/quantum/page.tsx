@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QuantumArxiv } from '@/components/quantum/QuantumArxiv';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
@@ -159,6 +160,7 @@ export default function QuantumLensPage() {
   return (
     <LensShell lensId="quantum" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="quantum" size="sm" className="ml-2" />
     <div data-lens-theme="quantum" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">\u269B\uFE0F</span>

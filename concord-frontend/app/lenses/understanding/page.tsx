@@ -24,6 +24,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { api } from '@/lib/api/client';
@@ -134,6 +135,7 @@ export default function UnderstandingPage() {
   return (
     <LensShell lensId="understanding" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="understanding" size="sm" className="ml-2" />
       <main className="min-h-screen p-6 max-w-6xl mx-auto text-white">
         <header className="flex items-start justify-between gap-3 mb-5 flex-wrap">
           <div>

@@ -27,6 +27,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TemplateCatalogue } from '@/components/forge/TemplateCatalogue';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Hammer, Sparkles, Loader2, AlertTriangle, HelpCircle } from 'lucide-react';
@@ -57,6 +58,7 @@ export default function ForgeLensPage() {
   return (
     <LensShell lensId="forge" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="forge" size="sm" className="ml-2" />
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-amber-950/10 text-slate-100">
       <motion.header
         initial={{ opacity: 0, y: -8 }}

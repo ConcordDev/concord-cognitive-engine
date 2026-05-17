@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DocsToolingGallery } from '@/components/docs/DocsToolingGallery';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -292,6 +293,7 @@ export default function DocsLensPage() {
   return (
     <LensShell lensId="docs" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="docs" size="sm" className="ml-2" />
     <div data-lens-theme="docs" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

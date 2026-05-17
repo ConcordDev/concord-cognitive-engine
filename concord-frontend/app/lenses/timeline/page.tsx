@@ -5,6 +5,7 @@ import { useState, useCallback, useRef, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TimelineWiki } from '@/components/timeline/TimelineWiki';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -394,6 +395,7 @@ export default function TimelineLensPage() {
   return (
     <LensShell lensId="timeline" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="timeline" size="sm" className="ml-2" />
     <div data-lens-theme="timeline" className="min-h-full bg-[#18191a]">
       <div className="max-w-7xl mx-auto px-4 pt-4">
         <div className="bg-[#242526] rounded-lg p-3 flex items-center justify-between text-sm">

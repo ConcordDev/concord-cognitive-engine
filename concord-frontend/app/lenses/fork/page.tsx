@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -216,6 +217,7 @@ export default function ForkLensPage() {
   return (
     <LensShell lensId="fork" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="fork" size="sm" className="ml-2" />
     <div data-lens-theme="fork" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

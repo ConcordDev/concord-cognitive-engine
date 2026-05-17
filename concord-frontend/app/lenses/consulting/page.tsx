@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -515,6 +516,7 @@ export default function ConsultingLensPage() {
   return (
     <LensShell lensId="consulting" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="consulting" size="sm" className="ml-2" />
     <LensPageShell
       domain="consulting"
       title="Consulting"

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TemporalRepos } from '@/components/temporal/TemporalRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -756,6 +757,7 @@ export default function TemporalLensPage() {
   return (
     <LensShell lensId="temporal" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="temporal" size="sm" className="ml-2" />
     <LensPageShell
       domain="temporal"
       title="Temporal"

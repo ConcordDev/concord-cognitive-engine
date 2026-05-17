@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { BggHotList } from '@/components/board/BggHotList';
@@ -596,6 +597,7 @@ export default function BoardLensPage() {
 
   return (
     <LensShell lensId="board" asMain={false}>
+      <DepthBadge lensId="board" size="sm" className="ml-2" />
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex flex-1 overflow-hidden">
         {/* Main content area */}

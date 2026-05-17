@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WeatherPanel } from '@/components/eco/WeatherPanel';
 import { WeatherRadar } from '@/components/eco/WeatherRadar';
 import { AQIPanel } from '@/components/eco/AQIPanel';
@@ -963,6 +964,7 @@ export default function EcoLensPage() {
   return (
     <LensShell lensId="eco" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="eco" size="sm" className="ml-2" />
     <div data-lens-theme="eco" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

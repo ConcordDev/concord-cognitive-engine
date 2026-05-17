@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BarcodeLookup } from '@/components/household/BarcodeLookup';
 import { HouseholdActionPanel } from '@/components/household/HouseholdActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1631,6 +1632,7 @@ export default function HouseholdLensPage() {
 
   return (
     <LensShell lensId="household" asMain={false}>
+      <DepthBadge lensId="household" size="sm" className="ml-2" />
     <div data-lens-theme="household" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

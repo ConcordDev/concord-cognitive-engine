@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -164,6 +165,7 @@ export default function GlobalLensPage() {
   return (
     <LensShell lensId="global" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="global" size="sm" className="ml-2" />
     <div data-lens-theme="global" className="p-6 space-y-5">
       <motion.header
         initial={{ opacity: 0, y: -10 }}

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PexelsBrowser } from '@/components/photography/PexelsBrowser';
 import { PhotographyActionPanel } from '@/components/photography/PhotographyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -385,6 +386,7 @@ export default function PhotographyPage() {
   return (
     <LensShell lensId="photography" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="photography" size="sm" className="ml-2" />
     <div data-lens-theme="photography" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}

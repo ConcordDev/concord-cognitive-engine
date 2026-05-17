@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1863,6 +1864,7 @@ export default function RetailLensPage() {
 
   return (
     <LensShell lensId="retail" asMain={false}>
+      <DepthBadge lensId="retail" size="sm" className="ml-2" />
     <div data-lens-theme="retail" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

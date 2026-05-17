@@ -4,6 +4,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HackerNewsReference } from '@/components/chat/HackerNewsReference';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -2458,6 +2459,7 @@ export default function ChatLensPage() {
 
   return (
     <LensShell lensId="chat" asMain={false} disableAgentFab={true}>
+      <DepthBadge lensId="chat" size="sm" className="ml-2" />
     <div data-lens-theme="chat" className="h-full flex flex-col bg-lattice-bg">
       {/* Real-time Enhancement Toolbar */}
       <div className="flex items-center gap-2 px-4 py-1 border-b border-lattice-border/30 flex-wrap">

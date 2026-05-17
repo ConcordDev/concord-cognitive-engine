@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import SymptomChecker from '@/components/healthcare/SymptomChecker';
 import MedicationTracker from '@/components/healthcare/MedicationTracker';
 import PatientChart from '@/components/healthcare/PatientChart';
@@ -1491,6 +1492,7 @@ export default function HealthcareLensPage() {
 
   return (
     <LensShell lensId="healthcare" asMain={false}>
+      <DepthBadge lensId="healthcare" size="sm" className="ml-2" />
       <RivalShapePreview lensId="healthcare" />
     <div
       data-lens-theme="healthcare"

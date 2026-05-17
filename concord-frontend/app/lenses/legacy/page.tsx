@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LegacyChatter } from '@/components/legacy/LegacyChatter';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -101,6 +102,7 @@ export default function LegacyLensPage() {
   return (
     <LensShell lensId="legacy" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="legacy" size="sm" className="ml-2" />
     <div data-lens-theme="legacy" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🏛️</span>

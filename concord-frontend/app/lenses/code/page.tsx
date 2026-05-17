@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { SafeCard } from '@/components/common/SafeCard';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -1294,6 +1295,7 @@ export default function CodeLensPage() {
   return (
     <LensShell lensId="code" asMain={false} disableAgentFab={true}>
       <ManifestActionBar />
+      <DepthBadge lensId="code" size="sm" className="ml-2" />
       <RivalShapePreview lensId="code" />
     <div data-lens-theme="code" className={`flex flex-col font-mono ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'h-full bg-[#0d1117]'}`}>
       {/* Header */}

@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MetalearningFeed } from '@/components/metalearning/MetalearningFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -162,6 +163,7 @@ export default function MetalearningLensPage() {
   return (
     <LensShell lensId="metalearning" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="metalearning" size="sm" className="ml-2" />
     <div data-lens-theme="metalearning" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🎓</span>

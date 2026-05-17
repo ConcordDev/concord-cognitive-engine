@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PublicGistGallery } from '@/components/custom/PublicGistGallery';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
@@ -153,6 +154,7 @@ export default function CustomLensPage() {
   return (
     <LensShell lensId="custom" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="custom" size="sm" className="ml-2" />
     <div data-lens-theme="custom" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

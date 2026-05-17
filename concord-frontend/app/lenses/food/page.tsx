@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
 import { FoodActionPanel } from '@/components/food/FoodActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -2653,6 +2654,7 @@ export default function FoodLensPage() {
 
   return (
     <LensShell lensId="food" asMain={false}>
+      <DepthBadge lensId="food" size="sm" className="ml-2" />
     <div data-lens-theme="food" className={ds.pageContainer}>
       {/* Nutrition Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">

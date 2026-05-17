@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { InferenceFrameworks } from '@/components/inference/InferenceFrameworks';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -263,6 +264,7 @@ export default function InferenceLensPage() {
   return (
     <LensShell lensId="inference" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="inference" size="sm" className="ml-2" />
     <div data-lens-theme="inference" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DiyShowcase } from '@/components/diy/DiyShowcase';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -752,6 +753,7 @@ export default function DIYLensPage() {
   return (
     <LensShell lensId="diy" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="diy" size="sm" className="ml-2" />
     <LensPageShell
       domain="diy"
       title="DIY"

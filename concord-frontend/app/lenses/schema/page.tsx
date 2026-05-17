@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
@@ -121,6 +122,7 @@ export default function SchemaLensPage() {
   return (
     <LensShell lensId="schema" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="schema" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

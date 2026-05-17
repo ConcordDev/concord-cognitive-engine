@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ContractSearch } from '@/components/defense/ContractSearch';
 import { DefenseActionPanel } from '@/components/defense/DefenseActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -213,6 +214,7 @@ export default function DefenseLensPage() {
   return (
     <LensShell lensId="defense" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="defense" size="sm" className="ml-2" />
     <div className={cn(ds.pageContainer, 'space-y-4')}>
       {/* Header */}
       <header className="flex items-center justify-between">

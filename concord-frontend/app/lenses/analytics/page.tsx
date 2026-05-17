@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { AnalyticsActionPanel } from '@/components/analytics/AnalyticsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -267,6 +268,7 @@ export default function AnalyticsPage() {
   return (
     <LensShell lensId="analytics" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="analytics" size="sm" className="ml-2" />
     <div className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="bg-lattice-surface border-b border-lattice-border">

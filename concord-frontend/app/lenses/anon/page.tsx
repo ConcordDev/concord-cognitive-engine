@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation } from '@tanstack/react-query';
@@ -127,6 +128,7 @@ export default function AnonLensPage() {
   return (
     <LensShell lensId="anon" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="anon" size="sm" className="ml-2" />
     <div data-lens-theme="anon" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

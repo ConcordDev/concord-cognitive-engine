@@ -15,6 +15,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ProductivityRepos } from '@/components/productivity/ProductivityRepos';
 import { ProductivityActionPanel } from '@/components/productivity/ProductivityActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -82,6 +83,7 @@ export default function ProductivityLensPage() {
   return (
     <LensShell lensId="productivity" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="productivity" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-indigo-50">
       <header className="sticky top-0 z-10 border-b border-indigo-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">

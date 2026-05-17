@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VinDecoder } from '@/components/automotive/VinDecoder';
 import { FuelRepairPanel } from '@/components/automotive/FuelRepairPanel';
 import { VehicleHistory } from '@/components/automotive/VehicleHistory';
@@ -630,6 +631,7 @@ export default function AutomotiveLensPage() {
   return (
     <LensShell lensId="automotive" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="automotive" size="sm" className="ml-2" />
     <LensPageShell
       domain="automotive"
       title="Automotive"

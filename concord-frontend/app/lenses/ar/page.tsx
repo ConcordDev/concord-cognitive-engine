@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -464,6 +465,7 @@ export default function ARLensPage() {
   return (
     <LensShell lensId="ar" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="ar" size="sm" className="ml-2" />
     <div data-lens-theme="ar" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

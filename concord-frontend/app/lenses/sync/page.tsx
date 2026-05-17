@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SyncRepos } from '@/components/sync/SyncRepos';
 
 interface Device {
@@ -63,6 +64,7 @@ export default function SyncPage() {
 
   return (
         <LensShell lensId="sync">
+      <DepthBadge lensId="sync" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-100">DTU Sync</h1>

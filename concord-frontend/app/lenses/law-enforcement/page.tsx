@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PoliceFeed } from '@/components/law-enforcement/PoliceFeed';
 import { LawEnforcementActionPanel } from '@/components/law-enforcement/LawEnforcementActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -199,6 +200,7 @@ export default function LawEnforcementLensPage() {
   return (
     <LensShell lensId="law-enforcement" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="law-enforcement" size="sm" className="ml-2" />
     <LensPageShell
       domain="law-enforcement"
       title="Law Enforcement"

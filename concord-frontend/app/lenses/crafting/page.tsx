@@ -25,6 +25,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RecipeLedger } from '@/components/crafting/RecipeLedger';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import {
@@ -220,6 +221,7 @@ export default function CraftingPage() {
   return (
     <LensShell lensId="crafting" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="crafting" size="sm" className="ml-2" />
       <main className="min-h-screen p-6 max-w-6xl mx-auto text-white">
         <header className="flex items-start justify-between gap-3 mb-5 flex-wrap">
           <div>

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NeuroFeed } from '@/components/neuro/NeuroFeed';
 import { NeuroActionPanel } from '@/components/neuro/NeuroActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -343,6 +344,7 @@ export default function NeuroLensPage() {
   return (
     <LensShell lensId="neuro" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="neuro" size="sm" className="ml-2" />
     <div data-lens-theme="neuro" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

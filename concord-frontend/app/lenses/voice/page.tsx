@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VoiceRepos } from '@/components/voice/VoiceRepos';
 import { VoiceActionPanel } from '@/components/voice/VoiceActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -488,6 +489,7 @@ export default function VoiceLensPage() {
   return (
     <LensShell lensId="voice" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="voice" size="sm" className="ml-2" />
     <div data-lens-theme="voice" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-purple-900/10 to-black">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-lattice-border bg-black/40">

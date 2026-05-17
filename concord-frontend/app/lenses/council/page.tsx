@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CouncilVoices } from '@/components/council/CouncilVoices';
 import { CouncilActionPanel } from '@/components/council/CouncilActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -2501,6 +2502,7 @@ export default function CouncilLensPage() {
   // ===== MAIN RENDER =====
   return (
     <LensShell lensId="council" asMain={false}>
+      <DepthBadge lensId="council" size="sm" className="ml-2" />
     <div data-lens-theme="council" className={ds.pageContainer}>
       {/* Header */}
       <header>

@@ -15,6 +15,7 @@
  */
 
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UxRepos } from '@/components/ux-suite/UxRepos';
 import Link from 'next/link';
@@ -81,6 +82,7 @@ export default function UxSuiteLensPage() {
   return (
     <LensShell lensId="ux-suite" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="ux-suite" size="sm" className="ml-2" />
       <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-fuchsia-950/10 text-slate-100">
         <header className="border-b border-fuchsia-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
           <div className="mx-auto flex max-w-screen-2xl items-center gap-3">

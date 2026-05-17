@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RedditCreative } from '@/components/creative/RedditCreative';
 import { CreativeActionPanel } from '@/components/creative/CreativeActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1415,6 +1416,7 @@ export default function CreativeLensPage() {
   // ---------------------------------------------------------------------------
   return (
     <LensShell lensId="creative" asMain={false}>
+      <DepthBadge lensId="creative" size="sm" className="ml-2" />
     <div data-lens-theme="creative" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RootMetrics } from '@/components/root/RootMetrics';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -166,6 +167,7 @@ export default function RootLens() {
   return (
     <LensShell lensId="root" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="root" size="sm" className="ml-2" />
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6 sm:p-8 font-mono">
       <div className="max-w-3xl mx-auto space-y-8">
 

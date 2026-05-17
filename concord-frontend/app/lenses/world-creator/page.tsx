@@ -22,6 +22,7 @@ import { } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldBuilderInspo } from '@/components/world-creator/WorldBuilderInspo';
 
 const UNIVERSE_TYPES = [
@@ -105,6 +106,7 @@ export default function WorldCreatorPage() {
 
   return (
     <LensShell lensId="world-creator">
+      <DepthBadge lensId="world-creator" size="sm" className="ml-2" />
       <div className="mx-auto max-w-3xl px-6 py-8 text-stone-100">
         <header className="mb-8">
           <h1 className="text-3xl font-semibold tracking-tight">Create a sub-world</h1>

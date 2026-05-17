@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FractalRepos } from '@/components/fractal/FractalRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -403,6 +404,7 @@ export default function FractalLensPage() {
   return (
     <LensShell lensId="fractal" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="fractal" size="sm" className="ml-2" />
     <div data-lens-theme="fractal" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

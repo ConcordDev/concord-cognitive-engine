@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingListings } from '@/components/marketplace/TrendingListings';
 import { MarketplaceActionPanel } from '@/components/marketplace/MarketplaceActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1285,6 +1286,7 @@ export default function MarketplaceLensPage() {
   }
   return (
     <LensShell lensId="marketplace" asMain={false} disableAgentFab={true}>
+      <DepthBadge lensId="marketplace" size="sm" className="ml-2" />
     <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
       {/* ---- Header ---- */}
       <div className="flex items-center justify-between">

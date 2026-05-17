@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import ContractAnalyzer from '@/components/legal/ContractAnalyzer';
 import { LegalActionPanel } from '@/components/legal/LegalActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -3057,6 +3058,7 @@ export default function LegalLensPage() {
 
   return (
     <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
+      <DepthBadge lensId="legal" size="sm" className="ml-2" />
       <RivalShapePreview lensId="legal" />
     <div data-lens-theme="legal" className={ds.pageContainer}>
       {/* Legal Disclaimer */}

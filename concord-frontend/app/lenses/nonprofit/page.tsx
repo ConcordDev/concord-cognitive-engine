@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PropublicaSearch } from '@/components/nonprofit/PropublicaSearch';
 import { NonprofitActionPanel } from '@/components/nonprofit/NonprofitActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1404,6 +1405,7 @@ export default function NonprofitLensPage() {
   // ---------------------------------------------------------------------------
   return (
     <LensShell lensId="nonprofit" asMain={false}>
+      <DepthBadge lensId="nonprofit" size="sm" className="ml-2" />
     <div data-lens-theme="nonprofit" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

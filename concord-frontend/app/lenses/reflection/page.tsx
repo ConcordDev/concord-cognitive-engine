@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ReflectionFeed } from '@/components/reflection/ReflectionFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -150,6 +151,7 @@ export default function ReflectionLensPage() {
   return (
     <LensShell lensId="reflection" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="reflection" size="sm" className="ml-2" />
     <div data-lens-theme="reflection" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🪞</span>

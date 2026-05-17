@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SponsorRepos } from '@/components/sponsorship/SponsorRepos';
 
 interface Sponsorship {
@@ -69,6 +70,7 @@ export default function SponsorshipPage() {
 
   return (
         <LensShell lensId="sponsorship">
+      <DepthBadge lensId="sponsorship" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-100">Sponsor an NPC</h1>

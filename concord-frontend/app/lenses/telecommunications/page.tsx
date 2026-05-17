@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TelcoRepos } from '@/components/telecommunications/TelcoRepos';
 import { TelecommunicationsActionPanel } from '@/components/telecommunications/TelecommunicationsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -169,6 +170,7 @@ export default function TelecommunicationsLensPage() {
   return (
     <LensShell lensId="telecommunications" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="telecommunications" size="sm" className="ml-2" />
     <LensPageShell
       domain="telecommunications"
       title="Telecommunications"

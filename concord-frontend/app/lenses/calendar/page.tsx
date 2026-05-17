@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TimezoneTools } from '@/components/calendar/TimezoneTools';
 import { ScheduleAnalyzer } from '@/components/calendar/ScheduleAnalyzer';
 import { CalendarActionPanel } from '@/components/calendar/CalendarActionPanel';
@@ -1192,6 +1193,7 @@ export default function CalendarLensPage() {
   }
   return (
     <LensShell lensId="calendar" asMain={false}>
+      <DepthBadge lensId="calendar" size="sm" className="ml-2" />
     <div data-lens-theme="calendar" className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">

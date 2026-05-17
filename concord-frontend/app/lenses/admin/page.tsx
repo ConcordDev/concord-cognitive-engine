@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useState, useMemo, useCallback } from 'react';
@@ -573,6 +574,7 @@ export default function AdminDashboardPage() {
   }
   return (
     <LensShell lensId="admin" asMain={false}>
+      <DepthBadge lensId="admin" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">

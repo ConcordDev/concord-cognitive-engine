@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
 import { ManufacturingActionPanel } from '@/components/manufacturing/ManufacturingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -2326,6 +2327,7 @@ export default function ManufacturingLensPage() {
 
   return (
     <LensShell lensId="manufacturing" asMain={false}>
+      <DepthBadge lensId="manufacturing" size="sm" className="ml-2" />
     <LensPageShell
       domain="manufacturing"
       title="Manufacturing"

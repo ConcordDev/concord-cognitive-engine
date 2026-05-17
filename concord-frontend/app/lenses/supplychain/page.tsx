@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SupplyChainFeed } from '@/components/supplychain/SupplyChainFeed';
 import { SupplyChainActionPanel } from '@/components/supplychain/SupplyChainActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -196,6 +197,7 @@ export default function SupplyChainLensPage() {
   return (
     <LensShell lensId="supplychain" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="supplychain" size="sm" className="ml-2" />
     <div data-lens-theme="supplychain" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

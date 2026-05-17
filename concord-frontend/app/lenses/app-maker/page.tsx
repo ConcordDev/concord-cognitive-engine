@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
@@ -190,6 +191,7 @@ export default function AppMakerLens() {
   return (
     <LensShell lensId="app-maker" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="app-maker" size="sm" className="ml-2" />
     <div data-lens-theme="app-maker" className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Boxes className="w-6 h-6 text-neon-cyan" />

@@ -18,6 +18,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MessagingRepos } from '@/components/message/MessagingRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -226,6 +227,7 @@ export default function MessageLensPage() {
   return (
     <LensShell lensId="message" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="message" size="sm" className="ml-2" />
       <div className="h-[calc(100vh-6rem)]">
         <InboxShell
           labels={[

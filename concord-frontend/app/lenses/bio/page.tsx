@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -127,6 +128,7 @@ export default function BioLensPage() {
   return (
     <LensShell lensId="bio" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="bio" size="sm" className="ml-2" />
     <div data-lens-theme="bio" className="p-6 space-y-6">
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">

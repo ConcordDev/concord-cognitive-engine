@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -335,6 +336,7 @@ export default function HRLensPage() {
   return (
     <LensShell lensId="hr" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="hr" size="sm" className="ml-2" />
     <div data-lens-theme="hr" className="space-y-6 p-6">
       <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between">
         <div className="flex items-center gap-4">

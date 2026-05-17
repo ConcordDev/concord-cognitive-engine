@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DbProjectExplorer } from '@/components/database/DbProjectExplorer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -428,6 +429,7 @@ export default function DatabaseLensPage() {
   return (
     <LensShell lensId="database" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="database" size="sm" className="ml-2" />
     <div data-lens-theme="database" className="p-6 space-y-6 bg-lattice-bg min-h-screen">
       {/* Header */}
       <header className="flex items-center justify-between">

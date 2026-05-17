@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WeldingFeed } from '@/components/welding/WeldingFeed';
 import { WelderProcedures } from '@/components/welding/WelderProcedures';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -627,6 +628,7 @@ export default function WeldingLensPage() {
   return (
     <LensShell lensId="welding" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="welding" size="sm" className="ml-2" />
     <LensPageShell
       domain="welding"
       title="Welding"

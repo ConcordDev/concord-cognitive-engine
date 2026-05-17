@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GraphRepos } from '@/components/graph/GraphRepos';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1108,6 +1109,7 @@ export default function GraphLensPage() {
   }
   return (
     <LensShell lensId="graph" asMain={false}>
+      <DepthBadge lensId="graph" size="sm" className="ml-2" />
     <div data-lens-theme="graph" className="h-full flex flex-col bg-[#0a0e14]">
       {/* Stat Cards Row */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-cyan-900/20 bg-[#0a0e14]/90 backdrop-blur-sm flex-wrap">

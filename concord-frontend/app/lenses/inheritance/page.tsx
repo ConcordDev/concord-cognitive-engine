@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EstateChatter } from '@/components/inheritance/EstateChatter';
 
 interface Listing {
@@ -66,6 +67,7 @@ export default function InheritancePage() {
 
   return (
         <LensShell lensId="inheritance">
+      <DepthBadge lensId="inheritance" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-100">Inheritance Market</h1>

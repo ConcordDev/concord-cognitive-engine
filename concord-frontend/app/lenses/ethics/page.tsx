@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhilosophyStack } from '@/components/ethics/PhilosophyStack';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -779,6 +780,7 @@ export default function EthicsLensPage() {
   return (
     <LensShell lensId="ethics" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="ethics" size="sm" className="ml-2" />
     <LensPageShell
       domain="ethics"
       title="Ethics"

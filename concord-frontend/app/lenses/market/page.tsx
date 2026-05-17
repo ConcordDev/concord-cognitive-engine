@@ -5,6 +5,7 @@ import MarketHeatmap from '@/components/market/MarketHeatmap';
 import Watchlist from '@/components/market/Watchlist';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SectorHeatmapPanel } from '@/components/market/SectorHeatmap';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -205,6 +206,7 @@ export default function MarketLensPage() {
   return (
     <LensShell lensId="market" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="market" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

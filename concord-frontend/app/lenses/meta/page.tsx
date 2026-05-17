@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SystemHealth } from '@/components/meta/SystemHealth';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -1152,6 +1153,7 @@ export default function MetaLensPage() {
   return (
     <LensShell lensId="meta" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="meta" size="sm" className="ml-2" />
     <div data-lens-theme="meta" className="p-6 space-y-6">
       {/* Header */}
       <motion.header

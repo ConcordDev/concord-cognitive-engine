@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1050,6 +1051,7 @@ export default function ArtLensPage() {
   return (
     <LensShell lensId="art" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="art" size="sm" className="ml-2" />
     <div data-lens-theme="art" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-rose-950/10 via-neutral-950 to-black">
       {renderNav()}
       <div className="flex-1 overflow-hidden flex">

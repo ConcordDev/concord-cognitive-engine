@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { StakingMarkets } from '@/components/staking/StakingMarkets';
 
 interface Stake {
@@ -77,6 +78,7 @@ export default function StakingPage() {
 
   return (
         <LensShell lensId="staking">
+      <DepthBadge lensId="staking" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-100">CC Staking</h1>

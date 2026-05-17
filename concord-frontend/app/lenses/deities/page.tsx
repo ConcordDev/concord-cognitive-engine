@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PantheonExplorer } from '@/components/deities/PantheonExplorer';
 
 interface Deity {
@@ -77,6 +78,7 @@ export default function DeitiesPage() {
 
   return (
         <LensShell lensId="deities">
+      <DepthBadge lensId="deities" size="sm" className="ml-2" />
   <div className="p-6 max-w-3xl mx-auto">
         <header className="mb-6 flex items-center justify-between">
           <div>

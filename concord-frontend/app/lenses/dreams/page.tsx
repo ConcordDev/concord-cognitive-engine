@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DreamConvergences } from '@/components/dreams/DreamConvergences';
 
 interface Dream {
@@ -74,6 +75,7 @@ export default function DreamsPage() {
 
   return (
         <LensShell lensId="dreams">
+      <DepthBadge lensId="dreams" size="sm" className="ml-2" />
   <div className="p-6 max-w-3xl mx-auto">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-100">Dreams</h1>

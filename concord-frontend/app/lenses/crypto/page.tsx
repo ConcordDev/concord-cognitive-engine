@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CoinGeckoTicker } from '@/components/crypto/CoinGeckoTicker';
 import { CryptoActionPanel } from '@/components/crypto/CryptoActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -545,6 +546,7 @@ export default function CryptoLensPage() {
   return (
     <LensShell lensId="crypto" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="crypto" size="sm" className="ml-2" />
       <RivalShapePreview lensId="crypto" />
     <div data-lens-theme="crypto" className="p-6 space-y-6">
       <header className="flex items-center justify-between">

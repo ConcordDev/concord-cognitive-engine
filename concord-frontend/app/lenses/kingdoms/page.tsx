@@ -12,6 +12,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
 import { RealmActionPanel } from '@/components/kingdoms/RealmActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -100,6 +101,7 @@ export default function KingdomsPage() {
   return (
     <LensShell lensId="kingdoms" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="kingdoms" size="sm" className="ml-2" />
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 flex items-center justify-between">

@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PrivacyFeed } from '@/components/privacy/PrivacyFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useEffect } from 'react';
@@ -559,6 +560,7 @@ export default function PrivacySharingPage() {
   return (
     <LensShell lensId="privacy" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="privacy" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* Header */}
       <div className="flex items-center justify-between">

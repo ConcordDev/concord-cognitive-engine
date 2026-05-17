@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -150,6 +151,7 @@ export default function AtlasLensPage() {
   return (
     <LensShell lensId="atlas" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="atlas" size="sm" className="ml-2" />
     <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
       {/* Error banner */}
       {(coverageError || anomalyError) && (

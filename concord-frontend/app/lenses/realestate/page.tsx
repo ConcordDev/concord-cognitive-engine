@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NeighborhoodStats } from '@/components/realestate/NeighborhoodStats';
 import { RealEstateActionPanel } from '@/components/realestate/RealEstateActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -908,6 +909,7 @@ export default function RealEstateLensPage() {
 
   return (
     <LensShell lensId="realestate" asMain={false}>
+      <DepthBadge lensId="realestate" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

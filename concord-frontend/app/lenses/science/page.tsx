@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ScienceArxiv } from '@/components/science/ScienceArxiv';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
@@ -1762,6 +1763,7 @@ export default function ScienceLensPage() {
 
   return (
     <LensShell lensId="science" asMain={false}>
+      <DepthBadge lensId="science" size="sm" className="ml-2" />
     <div data-lens-theme="science" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

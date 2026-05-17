@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMemo, useRef, useState } from 'react';
@@ -51,6 +52,7 @@ export default function AllLensesPage() {
   return (
     <LensShell lensId="all" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="all" size="sm" className="ml-2" />
     <div data-lens-theme="all" className="p-6 space-y-5">
       <header>
         <p className="text-xs uppercase text-gray-400 tracking-wider">Lens Hub</p>

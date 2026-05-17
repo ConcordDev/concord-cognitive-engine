@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GameDevRepos } from '@/components/game-design/GameDevRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -228,6 +229,7 @@ export default function GameDesignPage() {
   return (
     <LensShell lensId="game-design" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="game-design" size="sm" className="ml-2" />
     <div data-lens-theme="game-design" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}

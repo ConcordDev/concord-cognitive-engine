@@ -13,6 +13,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
 import { GalleryActionPanel } from '@/components/gallery/GalleryActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -118,6 +119,7 @@ export default function GalleryPage() {
 
   if (loading) return (
     <LensShell lensId="gallery">
+      <DepthBadge lensId="gallery" size="sm" className="ml-2" />
       <div className="p-8 text-zinc-400 flex items-center gap-2 focus:ring-2">
         <Loader2 className="w-4 h-4 animate-spin" />
         Loading your gallery…

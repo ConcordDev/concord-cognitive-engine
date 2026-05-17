@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ThreadFeed } from '@/components/thread/ThreadFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -332,6 +333,7 @@ export default function ThreadLensPage() {
   return (
     <LensShell lensId="thread" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="thread" size="sm" className="ml-2" />
     <div data-lens-theme="thread" className="h-[calc(100vh-4rem)] flex flex-col">
       <header className="flex items-center justify-between p-4 border-b border-lattice-border">
         <div className="flex items-center gap-3">

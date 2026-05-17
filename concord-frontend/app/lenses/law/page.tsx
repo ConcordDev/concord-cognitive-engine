@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LawFeed } from '@/components/law/LawFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -182,6 +183,7 @@ export default function LawLensPage() {
   return (
     <LensShell lensId="law" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="law" size="sm" className="ml-2" />
     <div data-lens-theme="law" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">⚖️</span>

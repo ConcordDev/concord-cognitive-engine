@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VoteFeed } from '@/components/vote/VoteFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -196,6 +197,7 @@ export default function VoteLensPage() {
   return (
     <LensShell lensId="vote" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="vote" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MasonryFeed } from '@/components/masonry/MasonryFeed';
 import { MasonStuff } from '@/components/masonry/MasonStuff';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -627,6 +628,7 @@ export default function MasonryLensPage() {
   return (
     <LensShell lensId="masonry" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="masonry" size="sm" className="ml-2" />
     <LensPageShell
       domain="masonry"
       title="Masonry"

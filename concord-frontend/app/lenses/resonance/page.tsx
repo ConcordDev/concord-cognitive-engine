@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ResonanceArxiv } from '@/components/resonance/ResonanceArxiv';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1024,6 +1025,7 @@ export default function ResonanceBoundaryPage() {
   return (
     <LensShell lensId="resonance" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="resonance" size="sm" className="ml-2" />
     <div data-lens-theme="resonance" className="h-[calc(100vh-4rem)] flex flex-col" style={{ background: '#050510' }}>
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-white/5"

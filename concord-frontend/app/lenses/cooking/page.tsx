@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NutritionExplorer } from '@/components/cooking/NutritionExplorer';
 import { CookingActionPanel } from '@/components/cooking/CookingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -303,6 +304,7 @@ export default function CookingLensPage() {
   return (
     <LensShell lensId="cooking" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="cooking" size="sm" className="ml-2" />
     <div data-lens-theme="cooking" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

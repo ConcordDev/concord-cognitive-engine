@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GutendexSearch } from '@/components/creative-writing/GutendexSearch';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -287,6 +288,7 @@ export default function CreativeWritingPage() {
   return (
     <LensShell lensId="creative-writing" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="creative-writing" size="sm" className="ml-2" />
     <div data-lens-theme="creative-writing" className="min-h-screen">
       {/* Focus mode exit button */}
       <AnimatePresence>

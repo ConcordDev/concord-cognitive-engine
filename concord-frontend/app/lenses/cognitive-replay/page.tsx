@@ -15,6 +15,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TimelineExport } from '@/components/cognitive-replay/TimelineExport';
 import { Loader2, BookOpen } from 'lucide-react';
 
@@ -74,6 +75,7 @@ export default function CognitiveReplayPage() {
   if (loading) {
     return (
       <LensShell lensId="cognitive-replay">
+      <DepthBadge lensId="cognitive-replay" size="sm" className="ml-2" />
         <div className="p-8 text-zinc-400 flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin focus:ring-2 focus:outline-none sm:text-base" />
           Loading your cognitive timeline…

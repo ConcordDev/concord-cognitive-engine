@@ -14,6 +14,7 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WalletMarkets } from '@/components/wallet/WalletMarkets';
 import { WalletActionPanel } from '@/components/wallet/WalletActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1135,6 +1136,7 @@ export default function WalletPage() {
   return (
     <LensShell lensId="wallet" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="wallet" size="sm" className="ml-2" />
     <Suspense
       fallback={
         <div className={cn(ds.pageContainer, 'max-w-6xl mx-auto')}>

@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
 import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealthActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -154,6 +155,7 @@ export default function MentalHealthLensPage() {
   return (
     <LensShell lensId="mental-health" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
     <div data-lens-theme="mental-health" className="p-6 space-y-6">
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">

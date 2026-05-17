@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AirportBrief } from '@/components/aviation/AirportBrief';
 import { AviationActionPanel } from '@/components/aviation/AviationActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1657,6 +1658,7 @@ export default function AviationLensPage() {
   // -----------------------------------------------------------------------
   return (
     <LensShell lensId="aviation" asMain={false}>
+      <DepthBadge lensId="aviation" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

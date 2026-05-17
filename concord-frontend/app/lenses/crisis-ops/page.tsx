@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FemaDisasters } from '@/components/crisis-ops/FemaDisasters';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -67,6 +68,7 @@ export default function CrisisOpsPage() {
   return (
     <LensShell lensId="crisis-ops" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="crisis-ops" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5">
           <h1 className="text-3xl font-semibold text-rose-300">Crisis Ops</h1>

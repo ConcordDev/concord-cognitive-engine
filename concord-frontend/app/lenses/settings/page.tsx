@@ -2,6 +2,7 @@
 
 import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SettingsHealth } from '@/components/settings/SettingsHealth';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { MouseSensitivitySlider } from '@/components/settings/MouseSensitivitySlider';
@@ -59,6 +60,7 @@ export default function SettingsPage() {
   return (
     <LensShell lensId="settings" asMain={false}>
       <ManifestActionBar />
+      <DepthBadge lensId="settings" size="sm" className="ml-2" />
     <main className="min-h-screen p-6 sm:p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Settings</h1>
       <section className="space-y-4">

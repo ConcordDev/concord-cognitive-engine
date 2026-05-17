@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { KPIStrip } from '@/components/accounting/KPIStrip';
 import { motion } from 'framer-motion';
@@ -2659,6 +2660,7 @@ export default function AccountingLensPage() {
 
   return (
     <LensShell lensId="accounting" asMain={false}>
+      <DepthBadge lensId="accounting" size="sm" className="ml-2" />
     <div data-lens-theme="accounting" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
