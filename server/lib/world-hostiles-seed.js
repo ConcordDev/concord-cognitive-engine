@@ -50,10 +50,10 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "fantasy_dragon_cult_lair", name: "Cultist Vault of Embers", pos: { x: 2000, z: -1200 }, buildings: ["altar:stone", "altar:stone", "tower:stone"] },
     ],
     quests: [
-      { id: "fantasy_q_clear_goblins",  giver: "kael_torchlight",    title: "Clear the Goblin Warband",     target: "fantasy_goblin_warband",   reward_cc: 25 },
-      { id: "fantasy_q_orc_warcamp",    giver: "captain_rael",       title: "Strike the Obsidian Warcamp",  target: "fantasy_orc_warcamp",      reward_cc: 60 },
-      { id: "fantasy_q_undead_crypt",   giver: "wanderer_kael",      title: "Cleanse the Lit Veil Crypt",   target: "fantasy_undead_crypt",     reward_cc: 80 },
-      { id: "fantasy_q_dragon_cult",    giver: "blackroot_thorne",   title: "Stop the Cultist Vault Ritual", target: "fantasy_dragon_cult_lair", reward_cc: 120 },
+      { id: "fantasy_q_clear_goblins",  giver: "kael_torchlight",    title: "Clear the Goblin Warband",     target: "fantasy_goblin_warband",   reward_sparks: 25 },
+      { id: "fantasy_q_orc_warcamp",    giver: "captain_rael",       title: "Strike the Obsidian Warcamp",  target: "fantasy_orc_warcamp",      reward_sparks: 60 },
+      { id: "fantasy_q_undead_crypt",   giver: "wanderer_kael",      title: "Cleanse the Lit Veil Crypt",   target: "fantasy_undead_crypt",     reward_sparks: 80 },
+      { id: "fantasy_q_dragon_cult",    giver: "blackroot_thorne",   title: "Stop the Cultist Vault Ritual", target: "fantasy_dragon_cult_lair", reward_sparks: 120 },
     ],
   },
 
@@ -76,9 +76,9 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "cyber_ai_core_vault",      name: "Rogue AI Core Vault",       pos: { x: 1800, z: 1800 },  buildings: ["tower:steel", "tower:steel", "altar:steel"] },
     ],
     quests: [
-      { id: "cyber_q_corp_strike",      giver: "nakamura_zero",   title: "Disrupt the Zenith Strike Zone",  target: "cyber_corp_strike_zone", reward_cc: 50 },
-      { id: "cyber_q_server_farm",      giver: "torres_blackout", title: "Loot the Abandoned Server Farm",  target: "cyber_server_farm",      reward_cc: 35 },
-      { id: "cyber_q_ai_vault",         giver: "nakamura_zero",   title: "Shut Down the AI Core",           target: "cyber_ai_core_vault",    reward_cc: 200 },
+      { id: "cyber_q_corp_strike",      giver: "nakamura_zero",   title: "Disrupt the Zenith Strike Zone",  target: "cyber_corp_strike_zone", reward_sparks: 50 },
+      { id: "cyber_q_server_farm",      giver: "torres_blackout", title: "Loot the Abandoned Server Farm",  target: "cyber_server_farm",      reward_sparks: 35 },
+      { id: "cyber_q_ai_vault",         giver: "nakamura_zero",   title: "Shut Down the AI Core",           target: "cyber_ai_core_vault",    reward_sparks: 200 },
     ],
   },
 
@@ -101,9 +101,9 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "crime_underground_bunker", name: "Underground Crime Bunker",  pos: { x: 1400, z: -1400 }, buildings: ["tomb:stone", "tomb:stone", "altar:stone"] },
     ],
     quests: [
-      { id: "crime_q_iron_rose",        giver: "rivera_jax",        title: "Hit the Iron Rose Hideout",        target: "crime_syndicate_hideout", reward_cc: 45 },
-      { id: "crime_q_dragon_triad",     giver: "rivera_jax",        title: "Burn the Dragon Triad Compound",   target: "crime_triad_compound",    reward_cc: 65 },
-      { id: "crime_q_bunker",           giver: "delgado_iron_rose", title: "Raid the Crime Bunker",            target: "crime_underground_bunker",reward_cc: 150 },
+      { id: "crime_q_iron_rose",        giver: "rivera_jax",        title: "Hit the Iron Rose Hideout",        target: "crime_syndicate_hideout", reward_sparks: 45 },
+      { id: "crime_q_dragon_triad",     giver: "rivera_jax",        title: "Burn the Dragon Triad Compound",   target: "crime_triad_compound",    reward_sparks: 65 },
+      { id: "crime_q_bunker",           giver: "delgado_iron_rose", title: "Raid the Crime Bunker",            target: "crime_underground_bunker",reward_sparks: 150 },
     ],
   },
 
@@ -126,9 +126,9 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "sov_refusal_crypt",        name: "The Refusal Crypt",         pos: { x: -2000, z: -2000 }, buildings: ["tomb:stone", "tomb:stone", "tomb:stone", "altar:stone"] },
     ],
     quests: [
-      { id: "sov_q_cultist_camp",       giver: "weaver_of_echoes",     title: "Disperse the Refusal Cult",      target: "sov_cultist_camp",  reward_cc: 50 },
-      { id: "sov_q_plague_ground",      giver: "sovereign_first_refusal", title: "Burn the Plague Ground",      target: "sov_plague_ground", reward_cc: 75 },
-      { id: "sov_q_refusal_crypt",      giver: "sovereign_first_refusal", title: "Sound the Refusal Crypt",     target: "sov_refusal_crypt", reward_cc: 200 },
+      { id: "sov_q_cultist_camp",       giver: "weaver_of_echoes",     title: "Disperse the Refusal Cult",      target: "sov_cultist_camp",  reward_sparks: 50 },
+      { id: "sov_q_plague_ground",      giver: "sovereign_first_refusal", title: "Burn the Plague Ground",      target: "sov_plague_ground", reward_sparks: 75 },
+      { id: "sov_q_refusal_crypt",      giver: "sovereign_first_refusal", title: "Sound the Refusal Crypt",     target: "sov_refusal_crypt", reward_sparks: 200 },
     ],
   },
 
@@ -150,9 +150,9 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "lat_paradox_vault",        name: "The Paradox Vault",         pos: { x: 2500, z: -2500 },  buildings: ["tower:stone", "tower:stone", "tower:stone", "altar:stone"] },
     ],
     quests: [
-      { id: "lat_q_drift_site",         giver: "concord_first_thought", title: "Investigate the Drift Site",      target: "lat_drift_site",     reward_cc: 60 },
-      { id: "lat_q_paradox_camp",       giver: "concord_first_thought", title: "Disperse the Paradox-Spawn Camp", target: "lat_paradox_camp",   reward_cc: 90 },
-      { id: "lat_q_paradox_vault",      giver: "concord_first_thought", title: "Seal the Paradox Vault",          target: "lat_paradox_vault",  reward_cc: 250 },
+      { id: "lat_q_drift_site",         giver: "concord_first_thought", title: "Investigate the Drift Site",      target: "lat_drift_site",     reward_sparks: 60 },
+      { id: "lat_q_paradox_camp",       giver: "concord_first_thought", title: "Disperse the Paradox-Spawn Camp", target: "lat_paradox_camp",   reward_sparks: 90 },
+      { id: "lat_q_paradox_vault",      giver: "concord_first_thought", title: "Seal the Paradox Vault",          target: "lat_paradox_vault",  reward_sparks: 250 },
     ],
   },
 
@@ -175,9 +175,9 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "hero_alien_hive",          name: "Alien Invader Hive",        pos: { x: 1800, z: -1500 },  buildings: ["altar:stone", "altar:stone", "tower:steel"] },
     ],
     quests: [
-      { id: "hero_q_henchman_outpost",  giver: "coalition_luminary", title: "Bust the Henchman Outpost",       target: "hero_henchman_outpost", reward_cc: 40 },
-      { id: "hero_q_villain_lair",      giver: "coalition_luminary", title: "Storm the Villain Lair",          target: "hero_villain_lair",     reward_cc: 90 },
-      { id: "hero_q_alien_hive",        giver: "coalition_luminary", title: "Purge the Alien Invader Hive",    target: "hero_alien_hive",       reward_cc: 180 },
+      { id: "hero_q_henchman_outpost",  giver: "coalition_luminary", title: "Bust the Henchman Outpost",       target: "hero_henchman_outpost", reward_sparks: 40 },
+      { id: "hero_q_villain_lair",      giver: "coalition_luminary", title: "Storm the Villain Lair",          target: "hero_villain_lair",     reward_sparks: 90 },
+      { id: "hero_q_alien_hive",        giver: "coalition_luminary", title: "Purge the Alien Invader Hive",    target: "hero_alien_hive",       reward_sparks: 180 },
     ],
   },
 
@@ -199,9 +199,9 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "frontier_train_tunnels",   name: "Robber-Baron Train Tunnels",pos: { x: 1500, z: 1500 },   buildings: ["warehouse:steel", "tower:steel", "tower:steel"] },
     ],
     quests: [
-      { id: "frontier_q_outpost",       giver: "frontier_sheriff",   title: "Clear the Outlaw Outpost",        target: "frontier_outlaw_outpost", reward_cc: 35 },
-      { id: "frontier_q_hideout",       giver: "frontier_sheriff",   title: "Smoke Out the Bandit Hideout",    target: "frontier_bandit_hideout", reward_cc: 55 },
-      { id: "frontier_q_train_tunnels", giver: "frontier_sheriff",   title: "Stop the Railroad Baron",         target: "frontier_train_tunnels",  reward_cc: 160 },
+      { id: "frontier_q_outpost",       giver: "frontier_sheriff",   title: "Clear the Outlaw Outpost",        target: "frontier_outlaw_outpost", reward_sparks: 35 },
+      { id: "frontier_q_hideout",       giver: "frontier_sheriff",   title: "Smoke Out the Bandit Hideout",    target: "frontier_bandit_hideout", reward_sparks: 55 },
+      { id: "frontier_q_train_tunnels", giver: "frontier_sheriff",   title: "Stop the Railroad Baron",         target: "frontier_train_tunnels",  reward_sparks: 160 },
     ],
   },
 
@@ -220,8 +220,8 @@ export const WORLD_HOSTILE_SEEDS = {
     ],
     dungeons: [],
     quests: [
-      { id: "tunya_q_gang_camp",        giver: "tunya_elder",        title: "Disperse the Gang Camp",         target: "tunya_gang_camp",     reward_cc: 30 },
-      { id: "tunya_q_cultist_grove",    giver: "tunya_elder",        title: "Cleanse the Cultist Grove",      target: "tunya_cultist_grove", reward_cc: 100 },
+      { id: "tunya_q_gang_camp",        giver: "tunya_elder",        title: "Disperse the Gang Camp",         target: "tunya_gang_camp",     reward_sparks: 30 },
+      { id: "tunya_q_cultist_grove",    giver: "tunya_elder",        title: "Cleanse the Cultist Grove",      target: "tunya_cultist_grove", reward_sparks: 100 },
     ],
   },
 
@@ -243,9 +243,9 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "war_intel_bunker",         name: "Enemy Intel Bunker",        pos: { x: 1800, z: -1800 },  buildings: ["tower:steel", "tower:steel", "warehouse:steel"] },
     ],
     quests: [
-      { id: "war_q_fob",                giver: "war_commander",      title: "Take the Enemy FOB",              target: "war_enemy_fob",     reward_cc: 70 },
-      { id: "war_q_merc_camp",          giver: "war_commander",      title: "Sweep the Mercenary Camp",        target: "war_merc_camp",     reward_cc: 55 },
-      { id: "war_q_intel_bunker",       giver: "war_commander",      title: "Breach the Intel Bunker",         target: "war_intel_bunker",  reward_cc: 180 },
+      { id: "war_q_fob",                giver: "war_commander",      title: "Take the Enemy FOB",              target: "war_enemy_fob",     reward_sparks: 70 },
+      { id: "war_q_merc_camp",          giver: "war_commander",      title: "Sweep the Mercenary Camp",        target: "war_merc_camp",     reward_sparks: 55 },
+      { id: "war_q_intel_bunker",       giver: "war_commander",      title: "Breach the Intel Bunker",         target: "war_intel_bunker",  reward_sparks: 180 },
     ],
   },
 
@@ -266,9 +266,9 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "waste_raider_fortress",    name: "Raider King Fortress",      pos: { x: 1800, z: 1800 },   buildings: ["tower:steel", "barracks:steel", "warehouse:steel"] },
     ],
     quests: [
-      { id: "waste_q_raider_camp",      giver: "waste_survivor",     title: "Burn the Raider Camp",           target: "waste_raider_camp",     reward_cc: 40 },
-      { id: "waste_q_mutant_warren",    giver: "waste_survivor",     title: "Clear the Mutant Warren",        target: "waste_mutant_warren",   reward_cc: 70 },
-      { id: "waste_q_raider_fortress",  giver: "waste_survivor",     title: "Topple the Raider King",         target: "waste_raider_fortress", reward_cc: 200 },
+      { id: "waste_q_raider_camp",      giver: "waste_survivor",     title: "Burn the Raider Camp",           target: "waste_raider_camp",     reward_sparks: 40 },
+      { id: "waste_q_mutant_warren",    giver: "waste_survivor",     title: "Clear the Mutant Warren",        target: "waste_mutant_warren",   reward_sparks: 70 },
+      { id: "waste_q_raider_fortress",  giver: "waste_survivor",     title: "Topple the Raider King",         target: "waste_raider_fortress", reward_sparks: 200 },
     ],
   },
 
@@ -288,8 +288,8 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "cc_kingpin_penthouse",     name: "Kingpin Penthouse",         pos: { x: 1500, z: 1500 },   buildings: ["tower:steel", "tower:steel"] },
     ],
     quests: [
-      { id: "cc_q_gang_hideout",        giver: "cc_detective",       title: "Bust the City Gang Hideout",     target: "cc_gang_hideout",       reward_cc: 45 },
-      { id: "cc_q_kingpin",             giver: "cc_detective",       title: "Take Down the Kingpin",          target: "cc_kingpin_penthouse",  reward_cc: 220 },
+      { id: "cc_q_gang_hideout",        giver: "cc_detective",       title: "Bust the City Gang Hideout",     target: "cc_gang_hideout",       reward_sparks: 45 },
+      { id: "cc_q_kingpin",             giver: "cc_detective",       title: "Take Down the Kingpin",          target: "cc_kingpin_penthouse",  reward_sparks: 220 },
     ],
   },
 
@@ -308,8 +308,8 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "sw_dimension_rift",        name: "Dimensional Rift",          pos: { x: 1800, z: -1800 },  buildings: ["altar:stone", "altar:stone"] },
     ],
     quests: [
-      { id: "sw_q_villain_lair",        giver: "sw_hero_council",    title: "Storm the Coalition Lair",       target: "sw_villain_lair",    reward_cc: 80 },
-      { id: "sw_q_dimension_rift",      giver: "sw_hero_council",    title: "Close the Dimensional Rift",     target: "sw_dimension_rift",  reward_cc: 250 },
+      { id: "sw_q_villain_lair",        giver: "sw_hero_council",    title: "Storm the Coalition Lair",       target: "sw_villain_lair",    reward_sparks: 80 },
+      { id: "sw_q_dimension_rift",      giver: "sw_hero_council",    title: "Close the Dimensional Rift",     target: "sw_dimension_rift",  reward_sparks: 250 },
     ],
   },
 
@@ -328,8 +328,8 @@ export const WORLD_HOSTILE_SEEDS = {
       { id: "fable_dragon_lair",        name: "Dragon Lord's Lair",        pos: { x: 2000, z: 2000 },   buildings: ["tower:stone", "tower:stone", "altar:stone"] },
     ],
     quests: [
-      { id: "fable_q_goblin_camp",      giver: "fable_king",         title: "Rout the Goblin Camp",           target: "fable_goblin_camp",  reward_cc: 30 },
-      { id: "fable_q_dragon_lair",      giver: "fable_king",         title: "Slay the Dragon Lord",           target: "fable_dragon_lair",  reward_cc: 300 },
+      { id: "fable_q_goblin_camp",      giver: "fable_king",         title: "Rout the Goblin Camp",           target: "fable_goblin_camp",  reward_sparks: 30 },
+      { id: "fable_q_dragon_lair",      giver: "fable_king",         title: "Slay the Dragon Lord",           target: "fable_dragon_lair",  reward_sparks: 300 },
     ],
   },
 };
@@ -441,7 +441,11 @@ export function seedHostilesForWorld(db, worldId) {
             { kind: "clear_camp", target: q.target, description: `Eliminate all hostile NPCs in ${q.target}` },
             { kind: "return", target: q.giver, description: `Report to ${q.giver}` },
           ]),
-          JSON.stringify({ cc: q.reward_cc, xp: q.reward_cc * 10 }),
+          // Sparks not CC — CC is real money (1:1 USD-pegged, must be
+          // backed by deposited USD). Quest completion grants sparks +
+          // xp; CC is only earned through marketplace sales to real
+          // depositing buyers per the treasury invariant.
+          JSON.stringify({ sparks: q.reward_sparks, xp: q.reward_sparks * 10 }),
           "available",
         );
       questCount++;

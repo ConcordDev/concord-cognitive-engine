@@ -40,6 +40,12 @@ const TUTOR_NPC = {
   },
 };
 
+// Tutorial rewards are SPARKS, never CC. Concord Coin is real money
+// (1:1 USD-pegged, must be backed by deposited USD per the treasury
+// invariant) and cannot be granted for free without breaking the
+// closed-loop economy. Sparks are the in-game reward currency — earned
+// from XP-style activities, used for in-platform bonuses, never
+// convertible to fiat.
 const TUTORIAL_QUESTS = [
   {
     id: "tutorial_forge_first_skill",
@@ -50,7 +56,7 @@ const TUTORIAL_QUESTS = [
       { kind: "macro_invoke", target: "skill_evolution.preview", description: "Preview a variant of your Basic Strike" },
       { kind: "macro_invoke", target: "skill_evolution.commit", description: "Commit your first authored skill" },
     ],
-    reward: { cc: 5, xp: 100 },
+    reward: { sparks: 50, xp: 100 },
   },
   {
     id: "tutorial_cite_another",
@@ -60,17 +66,17 @@ const TUTORIAL_QUESTS = [
       { kind: "talk_to", target: "first_teacher_arwen", description: "Return to Arwen for the next lesson" },
       { kind: "macro_invoke", target: "dtu.cite", description: "Cite a public DTU created by someone else" },
     ],
-    reward: { cc: 5, xp: 100 },
+    reward: { sparks: 50, xp: 100 },
   },
   {
-    id: "tutorial_first_payout",
-    title: "Earn Your First Concord Coin",
-    description: "Your work has value in Concordia from the moment it lands. Publish a DTU you authored — a thought, a recipe, a small skill, anything — and list it on the marketplace at any price. When someone cites or buys it, you earn. Even an NPC might find it useful. The platform takes 5%, you keep the rest, and royalties flow to you across generations.",
+    id: "tutorial_first_listing",
+    title: "List Your First DTU on the Marketplace",
+    description: "Your work has value in Concordia from the moment it lands. Publish a DTU you authored — a thought, a recipe, a small skill, anything — and list it on the marketplace. When someone cites or buys it, you earn real Concord Coin (which only enters the system through real deposits by real buyers — your earnings here are the real thing). The platform takes 5%, you keep the rest, and royalties flow to you across generations.",
     objectives: [
       { kind: "talk_to", target: "first_teacher_arwen", description: "Tell Arwen you are ready to publish" },
       { kind: "macro_invoke", target: "marketplace.list", description: "List one of your DTUs on the marketplace" },
     ],
-    reward: { cc: 10, xp: 200 },
+    reward: { sparks: 100, xp: 200 },
   },
 ];
 
