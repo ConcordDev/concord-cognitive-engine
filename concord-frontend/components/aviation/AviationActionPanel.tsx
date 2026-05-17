@@ -11,6 +11,7 @@ import { Plane, Cloud, MapPin, ArrowDown, Sparkles, Send, Globe, Wand2, Loader2,
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -34,13 +35,13 @@ interface MetarResult { reports: MetarReport[]; count: number; source?: string }
 interface PerfResult { groundRoll_ft: number; over50ft_ft: number; inputs: Record<string, number>; notes?: string }
 
 export function AviationActionPanel() {
-  const [ident, setIdent] = useState('KSFO');
-  const [metarIds, setMetarIds] = useState('KSFO,KOAK,KSJC');
-  const [pressureAlt, setPressureAlt] = useState('0');
-  const [oat, setOat] = useState('25');
-  const [weight, setWeight] = useState('2400');
-  const [headwind, setHeadwind] = useState('10');
-  const [slope, setSlope] = useState('0');
+  const [ident, setIdent] = useState('');
+  const [metarIds, setMetarIds] = useState('');
+  const [pressureAlt, setPressureAlt] = useState('');
+  const [oat, setOat] = useState('');
+  const [weight, setWeight] = useState('');
+  const [headwind, setHeadwind] = useState('');
+  const [slope, setSlope] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -56,53 +57,85 @@ export function AviationActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actApt() {
-    if (!ident.trim()) { err('Ident required.'); return; }
+    if (!ident.trim()) { err('Ident required (e.g. KSFO).'); return; }
     setBusy('apt'); setFeedback(null);
-    try { const r = await callMacro<AirportResult>('airport-lookup', { ident: ident.trim().toUpperCase() }); if (r.ok && r.result) { setAptResult(r.result); ok(`${r.result.airport.name} — elev ${r.result.airport.elev_ft} ft.`); } else err(r.error ?? 'lookup failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<AirportResult>('airport-lookup', { ident: ident.trim().toUpperCase() });
+      if (r.ok && r.result) { setAptResult(r.result); pipe.publish('av.apt', r.result, { label: `${r.result.airport.ident}` }); ok(`${r.result.airport.name} — elev ${r.result.airport.elev_ft} ft.`); } else err(r.error ?? 'lookup failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actWx() {
-    if (!metarIds.trim()) { err('METAR ids required.'); return; }
+    if (!metarIds.trim()) { err('METAR ids required (csv of ICAO codes).'); return; }
     setBusy('wx'); setFeedback(null);
-    try { const r = await callMacro<MetarResult>('weather-metar', { ids: metarIds.split(',').map(s => s.trim()).filter(Boolean) }); if (r.ok && r.result) { setWxResult(r.result); ok(`${r.result.count} METARs.`); } else err(r.error ?? 'wx failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<MetarResult>('weather-metar', { ids: metarIds.split(',').map(s => s.trim()).filter(Boolean) });
+      if (r.ok && r.result) { setWxResult(r.result); pipe.publish('av.wx', r.result, { label: `${r.result.count} METARs` }); ok(`${r.result.count} METARs.`); } else err(r.error ?? 'wx failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actTo() {
+    const pa = parseFloat(pressureAlt), t = parseFloat(oat), w = parseFloat(weight), hw = parseFloat(headwind), sl = parseFloat(slope);
+    if (![pa, t, w, hw, sl].every(Number.isFinite)) { err('All 5 takeoff inputs required.'); return; }
     setBusy('to'); setFeedback(null);
-    try { const r = await callMacro<PerfResult>('perf-takeoff', { pressureAlt: parseFloat(pressureAlt), oat: parseFloat(oat), weight: parseFloat(weight), headwind: parseFloat(headwind), slope: parseFloat(slope) }); if (r.ok && r.result) { setToResult(r.result); ok(`Ground roll ${r.result.groundRoll_ft} ft.`); } else err(r.error ?? 'takeoff failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PerfResult>('perf-takeoff', { pressureAlt: pa, oat: t, weight: w, headwind: hw, slope: sl });
+      if (r.ok && r.result) { setToResult(r.result); pipe.publish('av.to', r.result, { label: `TO ${r.result.groundRoll_ft}ft` }); ok(`Ground roll ${r.result.groundRoll_ft} ft.`); } else err(r.error ?? 'takeoff failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actLdg() {
+    const pa = parseFloat(pressureAlt), t = parseFloat(oat), w = parseFloat(weight), hw = parseFloat(headwind);
+    if (![pa, t, w, hw].every(Number.isFinite)) { err('Pressure alt + OAT + weight + headwind required.'); return; }
     setBusy('ldg'); setFeedback(null);
-    try { const r = await callMacro<PerfResult>('perf-landing', { pressureAlt: parseFloat(pressureAlt), oat: parseFloat(oat), weight: parseFloat(weight), headwind: parseFloat(headwind) }); if (r.ok && r.result) { setLdgResult(r.result); ok(`Ground roll ${r.result.groundRoll_ft} ft.`); } else err(r.error ?? 'landing failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PerfResult>('perf-landing', { pressureAlt: pa, oat: t, weight: w, headwind: hw });
+      if (r.ok && r.result) { setLdgResult(r.result); pipe.publish('av.ldg', r.result, { label: `LDG ${r.result.groundRoll_ft}ft` }); ok(`Ground roll ${r.result.groundRoll_ft} ft.`); } else err(r.error ?? 'landing failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Flight prep — ${aptResult?.airport?.ident ?? ident}`, tags: ['aviation', 'preflight', aptResult?.airport?.ident].filter((t): t is string => !!t), source: 'aviation:preflight:mint', meta: { visibility: 'private', consent: { allowCitations: false }, aviation: { airport: aptResult, wx: wxResult, takeoff: toResult, landing: ldgResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Prep DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('av.mintedDtuId', id, { label: `Prep DTU ${id.slice(0, 8)}…` }); ok(`Prep DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const m = wxResult?.reports?.[0];
-    const body = [`✈ Pre-flight brief`, '', aptResult ? `${aptResult.airport.ident} (${aptResult.airport.name}) · elev ${aptResult.airport.elev_ft} ft${aptResult.airport.runways[0] ? ` · RW ${aptResult.airport.runways[0].id} ${aptResult.airport.runways[0].length} ft` : ''}` : '', m ? `WX ${m.icaoId}: ${m.flightCategory} · ${m.tempC}°C · wind ${m.windDir}@${m.windSpd}${m.windGust ? `G${m.windGust}` : ''}kt · vis ${m.visibilityMi}sm` : '', toResult ? `Takeoff: ${toResult.groundRoll_ft} ft / over50 ${toResult.over50ft_ft} ft` : '', ldgResult ? `Landing: ${ldgResult.groundRoll_ft} ft / over50 ${ldgResult.over50ft_ft} ft` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`✈ Pre-flight brief`, '',
+      aptResult ? `${aptResult.airport.ident} (${aptResult.airport.name}) · elev ${aptResult.airport.elev_ft} ft${aptResult.airport.runways[0] ? ` · RW ${aptResult.airport.runways[0].id} ${aptResult.airport.runways[0].length} ft` : ''}` : '',
+      m ? `WX ${m.icaoId}: ${m.flightCategory} · ${m.tempC}°C · wind ${m.windDir}@${m.windSpd}${m.windGust ? `G${m.windGust}` : ''}kt · vis ${m.visibilityMi}sm` : '',
+      toResult ? `Takeoff: ${toResult.groundRoll_ft} ft / over50 ${toResult.over50ft_ft} ft` : '',
+      ldgResult ? `Landing: ${ldgResult.groundRoll_ft} ft / over50 ${ldgResult.over50ft_ft} ft` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!aptResult) { err('Run airport lookup first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Airport profile — ${aptResult.airport.ident}`, tags: ['aviation', 'airport', 'public'], source: 'aviation:airport:publish', meta: { visibility: 'public', consent: { allowCitations: true }, airport: aptResult.airport } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Airport profile — ${aptResult.airport.ident}`, tags: ['aviation', 'airport', 'public'], source: 'aviation:airport:publish', meta: { visibility: 'public', consent: { allowCitations: true }, airport: aptResult.airport } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('av.publishedDtuId', id, { label: `Public apt ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -141,6 +174,10 @@ export function AviationActionPanel() {
         <input type="text" value={ident} onChange={(e) => setIdent(e.target.value.toUpperCase())} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="ICAO (KSFO)" />
         <input type="text" value={metarIds} onChange={(e) => setMetarIds(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="METAR ids csv" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <div className="flex items-center gap-2 flex-wrap col-span-2">
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
         <div className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-zinc-400 font-mono">C172 POH</div>
         <input type="text" value={pressureAlt} onChange={(e) => setPressureAlt(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Press alt ft" />
         <input type="text" value={oat} onChange={(e) => setOat(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="OAT °C" />
