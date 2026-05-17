@@ -10306,6 +10306,10 @@ async function runMacro(domain, name, input, ctx) {
     "/api/world/weather", "/api/world/bazaar", "/api/world/perf-telemetry",
     "/api/combat/state",
     "/api/concord-link", "/api/black-market", "/api/creature", "/api/emergent-skills",
+    // Phase 13 (Stage D + launch-prep) — NodeInfo for Fediverse peer discovery
+    // and the moderation contact directory. All three are public-readable so
+    // peers and crawlers can resolve them pre-handshake.
+    "/.well-known/nodeinfo", "/api/nodeinfo", "/api/moderation/contact",
   ];
   // Safe POST paths: chat and brain endpoints that must bypass Chicken2 for unauthenticated users
   const _safePostPaths = ["/api/chat", "/api/brain/conscious", "/api/repair", "/api/creative/registry", "/api/lens", "/api/forge", "/api/ask", "/api/dtus", "/api/social", "/api/economy", "/api/marketplace", "/api/collab", "/api/goals", "/api/media",
