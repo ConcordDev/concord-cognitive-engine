@@ -191,12 +191,15 @@ describe("sendMessage atomic sparks debit", () => {
   it("emits realtime to recipient when delivered + online", (t) => {
     const calls = [];
     const emitToUser = (uid, event, payload) => calls.push({ uid, event, payload });
+    // corruptionRng: () => 0.99 forces no corruption so status="delivered" deterministically.
+    // Without this the 4% basic-encryption corruption chance leaks RNG state from
+    // earlier tests in the suite and the emit gets skipped intermittently.
     sendMessage(db, {
       senderId: "alice", senderKind: "user",
       receiverId: "bob", receiverKind: "user",
       sourceWorld: "fantasy", destWorld: "cyber",
       messageType: "text", payload: "hello", encryption: "basic",
-    }, { emitToUser });
+    }, { emitToUser, corruptionRng: () => 0.99 });
     assert.equal(calls.length, 1);
     assert.equal(calls[0].uid, "bob");
     assert.equal(calls[0].event, "concord-link:message");
