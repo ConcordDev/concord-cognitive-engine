@@ -7,6 +7,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QuantumArxiv } from '@/components/quantum/QuantumArxiv';
+import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -165,6 +166,8 @@ export default function QuantumLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="quantum" size="sm" className="ml-2" />
     <div data-lens-theme="quantum" className="p-6 space-y-6">
+      {/* Phase 4 — REAL arXiv quant-ph feed. */}
+      <ArxivPanel domain="quantum" title="arXiv · Quantum Physics (quant-ph)" />
       <header className="flex items-center gap-3">
         <span className="text-2xl">\u269B\uFE0F</span>
         <div>

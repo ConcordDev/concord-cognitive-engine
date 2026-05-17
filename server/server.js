@@ -9653,6 +9653,15 @@ async function runMacro(domain, name, input, ctx) {
     geology: new Set(["live_quakes_today"]),
     ocean: new Set(["live_tides"]),
     pharmacy: new Set(["live_label_lookup", "live_adverse_events", "live_recalls"]),
+    // arXiv wire-up — one macro per domain pre-filtered to that arXiv category.
+    physics: new Set(["live_arxiv"]),
+    quantum: new Set(["live_arxiv"]),
+    robotics: new Set(["live_arxiv"]),
+    neuro: new Set(["live_arxiv"]),
+    bio: new Set(["live_arxiv"]),
+    chem: new Set(["live_arxiv"]),
+    ml: new Set(["live_arxiv"]),
+    math: new Set(["live_arxiv"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
@@ -9788,7 +9797,7 @@ async function runMacro(domain, name, input, ctx) {
     // Each admin macro now enforces requireAdmin() itself.
     admin: new Set(),
     heartbeat: new Set(["status", "history", "metrics"]),
-    ai: new Set(["search", "gaps", "embeddings"]),
+    ai: new Set(["search", "gaps", "embeddings", "live_arxiv"]),
     feedback: new Set(["aggregate"]),
     artifact: new Set(["info", "thumbnail"]),
     // Missing frontend domains (three-gate audit scan)
@@ -23233,6 +23242,12 @@ registerFreeApiLiveMacros(register);
 // paid feeds.
 import registerPharmacyLiveMacros from "./domains/pharmacy-live.js";
 registerPharmacyLiveMacros(register);
+
+// Phase 4 cont'd — arXiv wire-up for science/physics/quantum/robotics/
+// neuro/bio/chem/math/ml/ai lenses. One macro per domain (live_arxiv)
+// each pre-filtered by the right arXiv category. Free, no key.
+import registerResearchLiveMacros from "./domains/research-live.js";
+registerResearchLiveMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";
