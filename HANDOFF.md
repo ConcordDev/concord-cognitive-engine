@@ -2,7 +2,7 @@
 
 Branch: `claude/audit-app-completeness-GwBlp` (pushed to origin)
 Plan: `/root/.claude/plans/what-s-missing-to-be-humble-scott.md`
-Last update: 2026-05-17 (session 2 final)
+Last update: 2026-05-17 (session 2 final — 25 commits, 9 REAL_FREE wires, 43 hero scripts)
 
 ---
 
@@ -49,7 +49,7 @@ Test totals: **117 passing / 0 failing** across the new Phase 1+2+4 contract tes
 | 6 | **Multi-step workflows** | NOT started | useLensSession hook + per-domain session_* macros pending. |
 | 7 | **Mobile responsiveness** | NOT started | BottomSheet + SwipeNav primitives pending. |
 | 8 | **Onboarding per lens** | ✅ 43 hero scripts | FirstRunTour mounted in all 232 lenses. **43 hero scripts authored** (~21% coverage). The tour fires automatically on first visit for scripted lenses; safe no-op on the rest. |
-| 9 | **Depth bar (real data)** | ✅ infra + 7 live wires | IntegrationRegistry, DepthBadge visible everywhere. **7 REAL_FREE wire-ups landed**: NASA (astronomy), USGS (geology), Wikipedia (history), OSM (atlas), NOAA tides (ocean), FDA OpenFDA (pharmacy), arXiv (9 science domains — physics/quantum/robotics/bio/chem/math/ml/neuro all have visible panels). |
+| 9 | **Depth bar (real data)** | ✅ infra + 9 live wires | IntegrationRegistry, DepthBadge visible everywhere. **9 REAL_FREE wire-ups landed**: NASA (astronomy), USGS (geology), Wikipedia (history), OSM (atlas), NOAA tides (ocean), FDA OpenFDA (pharmacy), arXiv (9 science domains — physics/quantum/robotics/bio/chem/math/ml/neuro all have visible panels), USDA FoodData (cooking + food), MET Museum Open Access (art + gallery). 13 lens pages now show "REAL data" chips on dedicated panels above their bespoke UI. |
 | 10 | **Cross-lens narrative** | NOT started | Migration 195 + ProvenanceTrail / LensFlowMap / DownstreamBadge pending. |
 
 ### Authored hero onboarding lenses (43)
