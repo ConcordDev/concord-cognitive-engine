@@ -9774,6 +9774,8 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 11 (Item 6) — Reels feed reads. record_view is a write
     // but tolerated as anonymous (viewer_user_id can be null).
     reels: new Set(["list_for_you", "list_by_user", "record_view"]),
+    // Phase 11 (Item 7) — Spaces list + room read are public.
+    spaces: new Set(["list_active", "get"]),
     paper: new Set(["live_openlibrary", "live_crossref", "live_openalex"]),
     education: new Set(["live_openlibrary", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     // Phase 4 (third wave) — scholarly + language wires.
@@ -23403,6 +23405,15 @@ registerKeyRequiredLiveMacros(register);
 // + per-viewer watch analytics.
 import registerReelsMacros from "./domains/reels.js";
 registerReelsMacros(register);
+
+// Phase 11 (Item 7) — Spaces (live audio rooms). Macros:
+// spaces.{list_active, get, create, join_listener, leave, raise_hand,
+// promote, end, set_recording}. Substrate-only; the WebRTC
+// signaling layer is a separate Socket.io event channel
+// ('audio-room:*'). No TURN server ships — strict-NAT clients see
+// an honest "needs TURN" message in the UI.
+import registerSpacesMacros from "./domains/audio-rooms.js";
+registerSpacesMacros(register);
 
 // Phase 4 cont'd — FDA OpenFDA wire-up for the pharmacy lens. Drug
 // labels, adverse-event reports, recent recalls. No key (rate-limited
