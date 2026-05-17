@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { ConsultingFirmReference } from '@/components/consulting/ConsultingFirmReference';
+import { ConsultingActionPanel } from '@/components/consulting/ConsultingActionPanel';
 import {
   Lightbulb,
   Briefcase,
@@ -659,6 +660,9 @@ export default function ConsultingLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ConsultingFirmReference />
+      </section>
+      <section className="mt-6">
+        <ConsultingActionPanel />
       </section>
     </LensPageShell>
     
