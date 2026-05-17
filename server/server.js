@@ -6277,6 +6277,13 @@ async function initMetrics() {
     METRICS.registry = new prom.Registry();
     prom.collectDefaultMetrics({ register: METRICS.registry });
 
+    // Phase 12 audit fix — expose the registry so routes/system.js can
+    // scrape it from the public /metrics endpoint (was previously
+    // declared but never reached from the public scrape path, so
+    // heartbeat counters / module-error counter / block-latency
+    // histogram were all invisible to Prometheus).
+    globalThis._concordMETRICS = METRICS;
+
     // Custom counters
     METRICS.counters.httpRequests = new prom.Counter({
       name: "concord_http_requests_total",
@@ -29101,6 +29108,24 @@ function startHeartbeat() {
 }
 // Stagger: heartbeat starts at T+45s (LLM-heavy, needs breathing room)
 setTimeout(() => startHeartbeat(), 45_000);
+
+// Phase 12 audit fix — wire the registry-pattern heartbeat dispatcher.
+// `_startGovernorHeartbeat()` schedules `governorTick()` on a setInterval;
+// `governorTick()` is the only caller of `tickAllRegistered()`, which
+// dispatches every module registered via `registerHeartbeat()`. Without
+// this call the 68+ registry-style heartbeats (signal-propagation,
+// npc-conversation-initiator, faction-strategy-cycle, forward-sim-cycle,
+// embodied-dream-cycle, repair-cycle, environment-sensor, etc.)
+// silently never fire. Started at T+50s so registrations from the
+// late-loading ghost-fleet modules land first.
+setTimeout(() => {
+  try {
+    const result = _startGovernorHeartbeat();
+    structuredLog("info", "governor_heartbeat_boot", result || { ok: false });
+  } catch (e) {
+    structuredLog("warn", "governor_heartbeat_boot_failed", { error: String(e?.message || e) });
+  }
+}, 50_000);
 
 // ---- Operations Endpoints (extracted to routes/operations.js) ----
 registerOperationRoutes(app, {

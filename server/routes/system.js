@@ -258,11 +258,36 @@ export default function registerSystemRoutes(app, {
         }
       }
 
-      // Heartbeat metrics
+      // Heartbeat metrics. Name is `concord_heartbeat_ticks_total` (plural)
+      // to match monitoring/prometheus/alerts.yml's `ConcordHeartbeatStopped`
+      // alert rule. Phase 12 audit found the old singular form
+      // (`concord_heartbeat_tick_total`) didn't match the alert, so a frozen
+      // tick loop would not have paged. The legacy singular name is still
+      // emitted for one release as an alias so existing Grafana dashboards
+      // don't blank out — remove once dashboards are updated.
       const tickCount = STATE.__bgTickCounter || 0;
-      lines.push(`# HELP concord_heartbeat_tick_total Total heartbeat ticks`);
+      lines.push(`# HELP concord_heartbeat_ticks_total Total heartbeat ticks`);
+      lines.push(`# TYPE concord_heartbeat_ticks_total counter`);
+      lines.push(`concord_heartbeat_ticks_total ${tickCount}`);
+      lines.push(`# HELP concord_heartbeat_tick_total DEPRECATED alias for concord_heartbeat_ticks_total — remove in next minor release`);
       lines.push(`# TYPE concord_heartbeat_tick_total counter`);
       lines.push(`concord_heartbeat_tick_total ${tickCount}`);
+
+      // Heartbeat skipped + module errors + per-block latency live on the
+      // prom-client registry inside server.js. Expose them here so a
+      // single /metrics scrape covers the whole picture without needing
+      // to also configure a second endpoint.
+      try {
+        const promRegistry = globalThis._concordMETRICS?.registry;
+        if (promRegistry) {
+          const promText = await promRegistry.metrics();
+          // Strip the top "# HELP / TYPE" headers from prom-client output
+          // for metrics whose name we've already declared above to avoid
+          // duplicate `# HELP` lines (Prometheus parsers tolerate, but
+          // some scrapers warn).
+          lines.push(promText.replace(/(^|\n)#[^\n]*concord_heartbeat_ticks_total[^\n]*/g, ""));
+        }
+      } catch { /* metrics best-effort */ }
 
       // Session metrics
       lines.push(`# HELP concord_sessions_total Total active sessions`);
