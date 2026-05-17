@@ -6987,8 +6987,31 @@ function emitToUser(userId, event, payload) {
 // in-memory ledger write. The frontend useSocialNotificationToast
 // hook subscribes and renders a toast instead of waiting on the 60s
 // poll.
-try { setSocialEmitter((uid, evt, payload) => emitToUser(uid, evt, payload)); }
-catch (_e) { /* non-fatal at boot */ }
+try {
+  setSocialEmitter(async (uid, evt, payload) => {
+    // 1) Real-time socket fan-out (always).
+    emitToUser(uid, evt, payload);
+    // 2) Phase 11 (Item 13): push notification fan-out for the
+    //    'social:notification' channel only. Best-effort; no throw.
+    if (evt === 'social:notification' && payload?.notification) {
+      try {
+        const { sendPush } = await import('./lib/push.js');
+        const n = payload.notification;
+        await sendPush(db, {
+          userId: uid,
+          title: n.type === 'mention' ? 'You were mentioned' :
+                 n.type === 'comment' ? 'New comment' :
+                 n.type === 'share'   ? 'Your post was shared' :
+                 n.type === 'like'    ? 'New reaction' :
+                 n.type === 'dm'      ? 'New message' :
+                 'Concord notification',
+          body: String(n.content || '').slice(0, 120),
+          data: { type: n.type, postId: n.postId, notificationId: n.id, fromUserId: n.fromUserId },
+        });
+      } catch (_e) { /* push deps optional */ }
+    }
+  });
+} catch (_e) { /* non-fatal at boot */ }
 
 /**
  * Sprint B Phase 11.3 helper — broadcast to every client subscribed to
@@ -49489,6 +49512,44 @@ app.get("/api/social/mention-search", (req, res) => {
     const q = String(req.query.q || "");
     const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 10));
     res.json(socialSearchUsersByPrefix(STATE, q, viewerId, limit));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---- Push notification registration (Phase 11 Item 13) ----
+// Devices register their token here so createNotification can fan out
+// real OS-level pushes to iOS / Android / browser. Web tokens are the
+// JSON-stringified PushSubscription; Expo tokens are the raw
+// ExponentPushToken[...] string.
+
+app.get("/api/push/vapid-public-key", (_req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || null;
+  res.json({
+    ok: !!key,
+    publicKey: key,
+    reason: key ? undefined : 'vapid_not_configured',
+    hint: key ? undefined : 'Generate keys via `npx web-push generate-vapid-keys` and set VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY in .env',
+  });
+});
+
+app.post("/api/push/register", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { registerToken } = await import('./lib/push.js');
+    res.json(registerToken(db, {
+      userId,
+      token: String(req.body?.token || ''),
+      platform: String(req.body?.platform || ''),
+      deviceLabel: req.body?.deviceLabel || null,
+      expiresAt: Number(req.body?.expiresAt) || null,
+    }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/push/unregister", requireAuth(), async (req, res) => {
+  try {
+    const { removeToken } = await import('./lib/push.js');
+    res.json(removeToken(db, { token: String(req.body?.token || '') }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
