@@ -8,6 +8,11 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaEarthEvents } from '@/components/events/NasaEarthEvents';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  LayoutDashboard as MTabDash, CalendarDays as MTabCal, MapPin as MTabPin,
+  Truck as MTabTruck, Users as MTabUsers, PiggyBank as MTabBudget,
+} from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -2890,6 +2895,19 @@ export default function EventsLensPage() {
           <RecentMineCard domain="events" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="events" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="events" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'dashboard', label: 'Dash',    icon: MTabDash },
+              { id: 'events',    label: 'Events',  icon: MTabCal },
+              { id: 'venues',    label: 'Venues',  icon: MTabPin },
+              { id: 'vendors',   label: 'Vendors', icon: MTabTruck },
+              { id: 'guests',    label: 'Guests',  icon: MTabUsers },
+              { id: 'budget',    label: 'Budget',  icon: MTabBudget },
+            ]}
+            active={mode}
+            onSelect={(id) => setMode(id as ModeTab)}
+          />
     </LensShell>
   );
 }

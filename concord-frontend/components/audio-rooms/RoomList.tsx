@@ -43,14 +43,24 @@ async function runMacro<T>(domain: string, name: string, input: Record<string, u
   catch { return null; }
 }
 
-export interface RoomListProps { className?: string; currentUserId?: string | null; }
+export interface RoomListProps {
+  className?: string;
+  currentUserId?: string | null;
+  /**
+   * Optional — when set, clicking Join calls join_listener AND notifies
+   * the caller with the roomId so it can mount the WebRTC RoomStage.
+   * Without this callback, Join only marks the user as a listener in
+   * the DB (silent listener — no audio).
+   */
+  onJoin?: (roomId: string) => void;
+}
 
-export function RoomList({ className, currentUserId }: RoomListProps) {
+export function RoomList({ className, currentUserId, onJoin }: RoomListProps) {
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
 
-  const { data, isLoading, refetch } = useQuery<ListResponse | null>({
+  const { data, isLoading, refetch: _refetch } = useQuery<ListResponse | null>({
     queryKey: ['spaces-active'],
     queryFn: async () => runMacro<ListResponse>('spaces', 'list_active', { limit: 50 }),
     staleTime: 15_000,
@@ -60,17 +70,28 @@ export function RoomList({ className, currentUserId }: RoomListProps) {
   const rooms = data?.rooms ?? [];
 
   const createMut = useMutation({
-    mutationFn: async () => runMacro<{ ok: boolean }>('spaces', 'create', { title: title.trim() }),
-    onSuccess: () => {
+    mutationFn: async () => {
+      const res = await runMacro<{ ok: boolean; roomId?: string }>('spaces', 'create', { title: title.trim() });
+      return res;
+    },
+    onSuccess: (res) => {
       setTitle('');
       setCreating(false);
       qc.invalidateQueries({ queryKey: ['spaces-active'] });
+      // The host auto-enters the stage they just opened.
+      if (res?.ok && res.roomId && onJoin) onJoin(res.roomId);
     },
   });
 
   const joinMut = useMutation({
-    mutationFn: async (roomId: string) => runMacro<{ ok: boolean }>('spaces', 'join_listener', { roomId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['spaces-active'] }),
+    mutationFn: async (roomId: string) => {
+      const res = await runMacro<{ ok: boolean }>('spaces', 'join_listener', { roomId });
+      return { res, roomId };
+    },
+    onSuccess: ({ res, roomId }) => {
+      qc.invalidateQueries({ queryKey: ['spaces-active'] });
+      if (res?.ok && onJoin) onJoin(roomId);
+    },
   });
 
   return (

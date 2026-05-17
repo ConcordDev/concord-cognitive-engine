@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Search, X, Loader2, MessageSquare, Clock } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useViewport } from '@/hooks/useViewport';
 
 export interface ThreadHit {
   threadId: string;
@@ -46,6 +47,9 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Phase 12 (Item C5) — collapse to a bottom sheet on touch viewports.
+  const { isMobile, isTouch } = useViewport();
+  const useSheet = isMobile || isTouch;
 
   useEffect(() => {
     if (open) {
@@ -110,13 +114,22 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
 
   if (!open) return null;
 
+  // Mobile: render as a bottom sheet (full-width, ~85vh, swipeable).
+  // Desktop: keep the centered overlay with click-outside dismiss.
+  const containerClasses = useSheet
+    ? 'fixed inset-x-0 bottom-0 z-50 px-0 bg-black/60 backdrop-blur-sm flex items-end'
+    : 'fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4 bg-black/60 backdrop-blur-sm';
+  const panelClasses = useSheet
+    ? 'w-full max-h-[85vh] bg-[#0d1117] border-t border-cyan-500/30 rounded-t-2xl shadow-2xl overflow-hidden flex flex-col'
+    : 'w-full max-w-[640px] bg-[#0d1117] border border-cyan-500/30 rounded-xl shadow-2xl overflow-hidden flex flex-col';
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4 bg-black/60 backdrop-blur-sm"
+      className={containerClasses}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[640px] bg-[#0d1117] border border-cyan-500/30 rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        className={panelClasses}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onKey}
       >

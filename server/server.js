@@ -8247,16 +8247,63 @@ async function tryInitWebSockets(server) {
       }
     });
 
+    // Phase 12 (Item 7) — Spaces audio-room signaling. Per-room WebRTC
+    // signaling (multiple rooms can coexist; namespaced 'audio-room:*'
+    // to keep separate from the in-world voice mesh above).
+    // The roomId comes from `spaces.create` / `spaces.list_active`;
+    // the room key joined here is `audio-room:${roomId}`.
+    socket.on("audio-room:join", (msg) => {
+      const roomId = msg && typeof msg.roomId === "string" ? msg.roomId : null;
+      if (!roomId) return;
+      const room = `audio-room:${roomId}`;
+      socket.join(room);
+      socket.to(room).emit("audio-room:peer-joined", { peerId: socket.id, roomId });
+      const peers = [...(io.sockets.adapter.rooms.get(room) || [])].filter((id) => id !== socket.id);
+      socket.emit("audio-room:room-state", { roomId, peers });
+    });
+    socket.on("audio-room:offer", (msg) => {
+      const { to, sdp, roomId } = msg || {};
+      if (to && sdp) io.to(to).emit("audio-room:offer", { from: socket.id, sdp, roomId });
+    });
+    socket.on("audio-room:answer", (msg) => {
+      const { to, sdp, roomId } = msg || {};
+      if (to && sdp) io.to(to).emit("audio-room:answer", { from: socket.id, sdp, roomId });
+    });
+    socket.on("audio-room:ice-candidate", (msg) => {
+      const { to, candidate, roomId } = msg || {};
+      if (to && candidate) io.to(to).emit("audio-room:ice-candidate", { from: socket.id, candidate, roomId });
+    });
+    socket.on("audio-room:leave", (msg) => {
+      const roomId = msg && typeof msg.roomId === "string" ? msg.roomId : null;
+      if (!roomId) return;
+      const room = `audio-room:${roomId}`;
+      if (socket.rooms.has(room)) {
+        socket.to(room).emit("audio-room:peer-left", { peerId: socket.id, roomId });
+        socket.leave(room);
+      }
+    });
+
+    // Common cleanup: emit peer-left to any voice or audio-room rooms
+    // the socket is in. Disconnect + error both run this.
+    const broadcastDeparture = () => {
+      try {
+        for (const r of socket.rooms || []) {
+          if (r === "voice") {
+            socket.to(r).emit("voice:peer-left", { peerId: socket.id });
+          } else if (typeof r === "string" && r.startsWith("audio-room:")) {
+            const roomId = r.slice("audio-room:".length);
+            socket.to(r).emit("audio-room:peer-left", { peerId: socket.id, roomId });
+          }
+        }
+      } catch (_e) { /* ignore */ }
+    };
+
     socket.on("disconnect", () => {
       const userId = socket.data?.userId;
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
       }
-      // Voice room cleanup so peers don't keep stale ICE candidates
-      // and peer-list broadcasts.
-      if (socket.rooms?.has?.("voice")) {
-        try { socket.to("voice").emit("voice:peer-left", { peerId: socket.id }); } catch (_e) { /* ignore */ }
-      }
+      broadcastDeparture();
       REALTIME.clients.delete(clientId);
     });
 
@@ -8265,9 +8312,7 @@ async function tryInitWebSockets(server) {
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
       }
-      if (socket.rooms?.has?.("voice")) {
-        try { socket.to("voice").emit("voice:peer-left", { peerId: socket.id }); } catch (_e) { /* ignore */ }
-      }
+      broadcastDeparture();
       REALTIME.clients.delete(clientId);
     });
   });

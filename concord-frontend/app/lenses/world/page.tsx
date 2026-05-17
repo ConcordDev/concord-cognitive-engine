@@ -8,6 +8,7 @@ import { EarthEventsLive } from '@/components/world/EarthEventsLive';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useTilePush } from '@/hooks/useTilePush';
 import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
 import { useConsolePing } from '@/hooks/useConsolePing';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -1329,6 +1330,10 @@ const DISTRICT_TOOLS: {
 
 export default function WorldLensPage() {
   useLensNav('world');
+  // Phase 12 (Item 8 cont.) — surface a flash whenever any world
+  // simulation event (building state, refusal field, sign placed,
+  // weather, combat hit/stagger, season transition) lands.
+  useTilePush({ lensId: 'world' });
 
   // Fullscreen + pointer-lock for the explore mode. When active,
   // ConcordiaScene takes the whole viewport; HUD overlays stay

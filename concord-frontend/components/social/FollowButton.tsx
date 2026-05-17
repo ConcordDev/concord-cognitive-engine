@@ -57,12 +57,15 @@ export function FollowButton({ targetUserId, currentUserId, compact = false, cla
   }, [data, optimistic, targetUserId]);
 
   const mut = useMutation({
-    mutationFn: async () => {
-      const path = isFollowing ? '/api/social/unfollow' : '/api/social/follow';
+    // `variables.wantsFollow` captures the user's intent at click time
+    // so the mutationFn doesn't read isFollowing — that flips during
+    // onMutate's optimistic update and would invert the request.
+    mutationFn: async ({ wantsFollow }: { wantsFollow: boolean }) => {
+      const path = wantsFollow ? '/api/social/follow' : '/api/social/unfollow';
       const r = await api.post(path, { followedId: targetUserId });
       return r?.data;
     },
-    onMutate: () => { setOptimistic(!isFollowing); },
+    onMutate: ({ wantsFollow }) => { setOptimistic(wantsFollow); },
     onError: () => { setOptimistic(null); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social-following', currentUserId] });
@@ -73,8 +76,8 @@ export function FollowButton({ targetUserId, currentUserId, compact = false, cla
 
   const onClick = useCallback(() => {
     if (mut.isPending || isSelf) return;
-    mut.mutate();
-  }, [mut, isSelf]);
+    mut.mutate({ wantsFollow: !isFollowing });
+  }, [mut, isSelf, isFollowing]);
 
   if (isSelf) return null;
   if (!currentUserId) return null; // hide for anonymous

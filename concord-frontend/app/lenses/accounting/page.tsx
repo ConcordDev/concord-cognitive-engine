@@ -34,6 +34,11 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import IndicatorChart, { type IndicatorPayload } from '@/components/lens/IndicatorChart';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  BookOpen as MTabBook, Receipt as MTabReceipt, Wallet as MTabWallet,
+  PiggyBank as MTabPig, Building2 as MTabBldg, Calculator as MTabCalc,
+} from 'lucide-react';
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
 import { AccountingActionPanel } from '@/components/accounting/AccountingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -3077,6 +3082,19 @@ export default function AccountingLensPage() {
           <RecentMineCard domain="accounting" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="accounting" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="accounting" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'Ledger',     label: 'Ledger',  icon: MTabBook },
+              { id: 'Invoicing',  label: 'Invoice', icon: MTabReceipt },
+              { id: 'Payroll',    label: 'Payroll', icon: MTabWallet },
+              { id: 'Budget',     label: 'Budget',  icon: MTabPig },
+              { id: 'Properties', label: 'Props',   icon: MTabBldg },
+              { id: 'Tax',        label: 'Tax',     icon: MTabCalc },
+            ]}
+            active={mode}
+            onSelect={(id) => setMode(id as ModeTab)}
+          />
     </LensShell>
   );
 }

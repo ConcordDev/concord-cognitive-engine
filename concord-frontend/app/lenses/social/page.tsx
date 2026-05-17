@@ -30,7 +30,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Globe2, Users, Bell, TrendingUp, BarChart3,
-  Sparkles, Hash, Activity, Loader2, Bookmark, Play,
+  Sparkles, Hash, Activity, Loader2, Bookmark, Play, Radio,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -56,8 +56,10 @@ import { CreatorAnalytics } from '@/components/social/CreatorAnalytics';
 import { UserLink } from '@/components/social/UserLink';
 import { BookmarksList } from '@/components/social/BookmarksList';
 import { ReelsFeed } from '@/components/reels/ReelsFeed';
+import { RoomList } from '@/components/audio-rooms/RoomList';
+import RoomStage from '@/components/audio-rooms/RoomStage';
 
-type TabId = 'discover' | 'reels' | 'following' | 'notifications' | 'analytics' | 'saved';
+type TabId = 'discover' | 'reels' | 'spaces' | 'following' | 'notifications' | 'analytics' | 'saved';
 
 interface MeResponse {
   ok: boolean;
@@ -77,6 +79,10 @@ interface FollowingActivityItem {
 export default function SocialHubPage() {
   const [activeTab, setActiveTab] = useState<TabId>('discover');
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  // Phase 12 — Spaces stage modal target. RoomList sets this when the
+  // user clicks Join; the modal mounts <RoomStage> which owns the
+  // WebRTC mesh (mic, hand, leave).
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
 
   const { data: me } = useQuery<MeResponse | null>({
     queryKey: ['me'],
@@ -97,6 +103,7 @@ export default function SocialHubPage() {
   const TABS: { id: TabId; label: string; icon: typeof Globe2; badge?: number }[] = [
     { id: 'discover',      label: 'For You',       icon: Sparkles },
     { id: 'reels',         label: 'Reels',         icon: Play },
+    { id: 'spaces',        label: 'Spaces',        icon: Radio },
     { id: 'following',     label: 'Following',     icon: Users },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'saved',         label: 'Saved',         icon: Bookmark },
@@ -191,6 +198,13 @@ export default function SocialHubPage() {
               <ReelsFeed />
             )}
 
+            {activeTab === 'spaces' && (
+              <RoomList
+                currentUserId={me?.user?.id || null}
+                onJoin={(roomId) => setActiveRoomId(roomId)}
+              />
+            )}
+
             {activeTab === 'saved' && (
               <BookmarksList currentUserId={currentUserId} />
             )}
@@ -231,14 +245,23 @@ export default function SocialHubPage() {
         tabs={[
           { id: 'discover',      label: 'For You',  icon: Sparkles },
           { id: 'reels',         label: 'Reels',    icon: Play },
+          { id: 'spaces',        label: 'Spaces',   icon: Radio },
           { id: 'following',     label: 'Follow',   icon: Users },
           { id: 'notifications', label: 'Alerts',   icon: Bell },
           { id: 'saved',         label: 'Saved',    icon: Bookmark },
-          { id: 'analytics',     label: 'Stats',    icon: BarChart3 },
         ]}
         active={activeTab}
         onSelect={(id) => setActiveTab(id as TabId)}
       />
+
+      {/* Spaces — WebRTC room stage modal */}
+      {activeRoomId && me?.user?.id && (
+        <RoomStage
+          roomId={activeRoomId}
+          selfUserId={me.user.id}
+          onClose={() => setActiveRoomId(null)}
+        />
+      )}
     </LensShell>
   );
 }

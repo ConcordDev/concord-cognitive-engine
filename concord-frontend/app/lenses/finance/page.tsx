@@ -19,6 +19,7 @@ import RetirementSimulator from '@/components/finance/RetirementSimulator';
 import SubscriptionDetector from '@/components/finance/SubscriptionDetector';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
+import { useTilePush } from '@/hooks/useTilePush';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useUIStore } from '@/store/ui';
@@ -183,6 +184,9 @@ export default function FinanceLensPage() {
   );
 
   useLensNav('finance');
+  // Phase 12 (Item 8 cont.) — flash + invalidate on finance realtime
+  // ticks (finance:ticker / market_update / alert / economy:update).
+  useTilePush({ lensId: 'finance' });
   const {
     isError: isError,
     error: error,

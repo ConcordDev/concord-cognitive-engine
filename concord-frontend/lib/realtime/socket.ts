@@ -177,6 +177,13 @@ export type SocketEvent =
   | 'voice:peer-joined'
   | 'voice:peer-left'
   | 'voice:signal'
+  // Spaces (live audio rooms) WebRTC signaling (server.js, rooms audio-room:${roomId})
+  | 'audio-room:peer-joined'
+  | 'audio-room:peer-left'
+  | 'audio-room:room-state'
+  | 'audio-room:offer'
+  | 'audio-room:answer'
+  | 'audio-room:ice-candidate'
   // Creative Registry & Royalties
   | 'creative_registry:update'
   | 'marketplace:purchase'

@@ -9,6 +9,11 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ReasoningArxiv } from '@/components/reasoning/ReasoningArxiv';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  MessageSquare as MTabArg, ListChecks as MTabPrem, FileSearch as MTabEvid,
+  AlertTriangle as MTabFall, BookOpen as MTabTpl, BarChart3 as MTabAnal,
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -2544,6 +2549,19 @@ export default function ReasoningLensPage() {
           <RecentMineCard domain="reasoning" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="reasoning" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="reasoning" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'arguments',  label: 'Args',     icon: MTabArg },
+              { id: 'premises',   label: 'Prem',     icon: MTabPrem },
+              { id: 'evidence',   label: 'Evid',     icon: MTabEvid },
+              { id: 'fallacies',  label: 'Fall',     icon: MTabFall },
+              { id: 'templates',  label: 'Templates',icon: MTabTpl },
+              { id: 'analysis',   label: 'Anal',     icon: MTabAnal },
+            ]}
+            active={mode}
+            onSelect={(id) => setMode(id as ModeTab)}
+          />
     </LensShell>
   );
 }

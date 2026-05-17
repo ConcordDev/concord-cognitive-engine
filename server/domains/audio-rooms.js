@@ -33,13 +33,15 @@ export default function registerSpacesMacros(register) {
   register('spaces', 'create', async (ctx, input = {}) => {
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, error: 'auth_required' };
-    return createRoom(ctx?.db || ctx?.STATE?.db, {
-      roomId: newRoomId(),
+    const roomId = newRoomId();
+    const res = createRoom(ctx?.db || ctx?.STATE?.db, {
+      roomId,
       hostUserId: userId,
       title: String(input.title || '').slice(0, 200),
       description: input.description ? String(input.description).slice(0, 600) : null,
       maxListeners: Math.min(1000, Math.max(2, Number(input.maxListeners) || 200)),
     });
+    return res?.ok ? { ...res, roomId } : res;
   }, { note: 'Host opens a room' });
 
   register('spaces', 'join_listener', async (ctx, input = {}) => {

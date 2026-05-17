@@ -8,6 +8,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HackerNewsReference } from '@/components/chat/HackerNewsReference';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useTilePush } from '@/hooks/useTilePush';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -461,6 +462,10 @@ function fileToBase64(file: File): Promise<string> {
 
 export default function ChatLensPage() {
   useLensNav('chat');
+  // Phase 12 (Item 8 cont.) — flash on chat completion + multi-device
+  // message saves. Excludes chat:token / chat:status because those fire
+  // once per streamed token and would strobe the surface.
+  useTilePush({ lensId: 'chat', events: ['chat:complete', 'message:saved'] });
   const {
     latestData: realtimeData,
     alerts: realtimeAlerts,

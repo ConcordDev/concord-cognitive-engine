@@ -14,6 +14,7 @@ import { SwapRoutePanel } from '@/components/crypto-explorer/SwapRoutePanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useTilePush } from '@/hooks/useTilePush';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
@@ -125,6 +126,8 @@ type CryptoTab = 'portfolio' | 'transactions' | 'wallets' | 'chart' | 'swap' | '
 
 export default function CryptoLensPage() {
   useLensNav('crypto');
+  // Phase 12 (Item 8 cont.) — flash + invalidate on crypto:ticker.
+  useTilePush({ lensId: 'crypto' });
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('crypto');
 
   const [activeTab, setActiveTab] = useState<CryptoTab>('portfolio');

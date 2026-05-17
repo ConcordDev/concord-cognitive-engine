@@ -12,6 +12,11 @@ import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
 import ShipmentTracker from '@/components/logistics/ShipmentTracker';
 import RouteOptimizer from '@/components/logistics/RouteOptimizer';
 import WarehouseInventory from '@/components/logistics/WarehouseInventory';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  Truck as MTabTruck, Users as MTabDriver, Package as MTabShip,
+  Warehouse as MTabWh, MapPin as MTabRoute, Boxes as MTabInv,
+} from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { LensPageShell } from '@/components/lens/LensPageShell';
@@ -2764,6 +2769,19 @@ export default function LogisticsLensPage() {
           <RecentMineCard domain="logistics" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="logistics" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="logistics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'fleet',     label: 'Fleet',  icon: MTabTruck },
+              { id: 'drivers',   label: 'Drivers',icon: MTabDriver },
+              { id: 'shipments', label: 'Ship',   icon: MTabShip },
+              { id: 'warehouse', label: 'WH',     icon: MTabWh },
+              { id: 'routes',    label: 'Routes', icon: MTabRoute },
+              { id: 'inventory', label: 'Inv',    icon: MTabInv },
+            ]}
+            active={mode}
+            onSelect={(id) => setMode(id as ModeTab)}
+          />
     </LensShell>
   );
 }
