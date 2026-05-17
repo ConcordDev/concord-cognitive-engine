@@ -9652,6 +9652,7 @@ async function runMacro(domain, name, input, ctx) {
     astronomy: new Set(["live_apod", "live_iss", "live_neo"]),
     geology: new Set(["live_quakes_today"]),
     ocean: new Set(["live_tides"]),
+    pharmacy: new Set(["live_label_lookup", "live_adverse_events", "live_recalls"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
@@ -23225,6 +23226,13 @@ registerAstronomyLiveMacros(register);
 // publicReadDomains entries below.
 import registerFreeApiLiveMacros from "./domains/free-api-live.js";
 registerFreeApiLiveMacros(register);
+
+// Phase 4 cont'd — FDA OpenFDA wire-up for the pharmacy lens. Drug
+// labels, adverse-event reports, recent recalls. No key (rate-limited
+// 240/min unauthenticated). REAL_FREE — fuller formulary still requires
+// paid feeds.
+import registerPharmacyLiveMacros from "./domains/pharmacy-live.js";
+registerPharmacyLiveMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";

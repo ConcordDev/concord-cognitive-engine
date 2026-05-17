@@ -20,6 +20,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { FdaDrugReference } from '@/components/pharmacy/FdaDrugReference';
+import { FdaLivePanel } from '@/components/pharmacy/FdaLivePanel';
 import { PharmacyActionPanel } from '@/components/pharmacy/PharmacyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -621,8 +622,12 @@ export default function PharmacyLensPage() {
 
       {/* FDA Reference Tab — real OpenFDA-backed drug reference */}
       {activeTab === 'fda' && (
-        <div className="panel p-4">
-          <FdaDrugReference />
+        <div className="space-y-4">
+          {/* Phase 4 — REAL FDA OpenFDA data (labels / adverse events / recalls). */}
+          <FdaLivePanel />
+          <div className="panel p-4">
+            <FdaDrugReference />
+          </div>
         </div>
       )}
 
