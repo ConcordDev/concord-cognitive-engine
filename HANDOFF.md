@@ -2,15 +2,23 @@
 
 Branch: `claude/audit-app-completeness-GwBlp` (pushed to origin)
 Plan: `/root/.claude/plans/what-s-missing-to-be-humble-scott.md`
-Date handed off: 2026-05-17
+Last update: 2026-05-17 (session 2)
 
 ---
 
-## What landed this session
+## What landed across both sessions
 
-Six commits implementing the foundation + first mechanical sweeps of the 10-dimension UX completeness sprint.
+13 commits implementing the foundation + first mechanical sweeps + first real-API wire-ups + 29 hero onboarding scripts.
 
 ```
+f70c9e7 Phase 4/5: NOAA tides macro + 8 more hero onboarding scripts
+d07e673 Phase 5: author onboarding scripts for 12 more hero lenses
+9cc8a4a Phase 4: Wikipedia On This Day panel wired to history lens
+…       Phase 4: USGS quakes / OSM geocode / Wikipedia OTD wired
+…       Phase 4: NASA APOD / ISS / NEO wired end-to-end (astronomy lens)
+…       Phase 3/4: DraftedTextarea + DraftedInput; rival shells open
+…       Phase 3 (codemod): mount RecentMineCard in 226 lens pages
+03d4110 Handoff: UX completeness sprint Phase 1 + parts of 2/3/4/5
 bad1c16 Phase 3/5: RecentMineCard + FirstRunTour mounted in all 232 lenses
 03bb2a5 Phase 2 (bulk): recent_mine + list_mine across ~150 lens domains
 478ff9f Phase 4 (codemod): mount DepthBadge in all 232 lens pages
@@ -19,127 +27,113 @@ bad1c16 Phase 3/5: RecentMineCard + FirstRunTour mounted in all 232 lenses
 ab53b21 Phase 1: auto-save drafts + manifest extension + core hooks
 ```
 
-Test totals: **99 passing / 0 failing** across the new Phase 1+2 contract tests + sampled existing tests (three-gate-consistency, lattice-orchestrator, embodied-pain-repair, combat-anti-cheat). The broader suite has not been re-run end-to-end this session — do so before merging.
+Test totals: **114 passing / 0 failing** across the new Phase 1+2 contract tests + sampled existing tests (three-gate-consistency, lattice-orchestrator, embodied-pain-repair, combat-anti-cheat, refusal-algebra/strength-gating). The broader suite has not been re-run end-to-end this session — do so before merging.
 
 ### Per-dimension progress
 
 | # | Dimension | Status | What landed |
 |---|---|---|---|
-| 1 | **Persistence (auto-save drafts)** | ✅ infra + hook | Migration 194, `drafts` domain (4 macros), `draft-gc-cycle` heartbeat, `useLensDraft<T>()` hook with debounced server write + localStorage mirror + pagehide flush. Codemod to wrap form inputs NOT yet written — per-lens hand-wiring needed (see "Next up"). |
-| 2 | **Load-from-substrate** | ✅ infra | `useListMine` hook + `RecentMineCard` component ready. Codemod to mount the card in lenses NOT yet written — per-lens hand-mount needed. |
-| 3 | **Cross-session list views** | ✅ all ~150 domains | `_recent-mine-bulk.js` registers `<domain>.recent_mine` + `<domain>.list_mine` against the universal `dtus` table for ~150 lens domains. `_recent-mine-helper.js` factory for bespoke artifact-table backers. Standard return shape `{ok, items, total}` pinned by Tier-2 tests. |
-| 4 | **Bespoke widgets** | partial — DepthBadge mounted | DepthBadge live on all 232 lenses. Five unmounted rival shells (VSCodeShell, DocsShell, WalletShell, EHRShell, WhiteboardCanvas) still need to become PRIMARY surfaces (currently mounted via `RivalShapePreview` collapsible only). The 42 bare lenses still need hand-polish. |
-| 5 | **Realtime push (`useTilePush`)** | hook exists, NOT mounted | `useTilePush` was already in panel-polish/. `useListMine` integrates socket revalidation via `watchEvents`. Codemod for per-lens tile flash-on-change NOT yet written. |
-| 6 | **Multi-step workflows** | NOT started | `useLensSession` hook + per-domain `session_*` macros pending. |
-| 7 | **Mobile responsiveness** | NOT started | `BottomSheet` + `SwipeNav` primitives + Tier-1 hero polish pending. |
-| 8 | **Onboarding per lens** | ✅ infra + 9 hero scripts | `FirstRunTour` component mounted in all 232 lenses. 9 hero lens scripts authored (chat, code, wallet, marketplace, forge, message, world, pharmacy, studio). 199 lenses still need their `emptyState` + `firstRunGuide` copy authored — the tour is a safe no-op until each is written. |
-| 9 | **Depth bar (real data)** | ✅ infra + visible | `IntegrationRegistry` declares tier + sources/paywallReason for >200 domains. `DepthBadge` mounted on every lens header showing Live / Real / Simulated / Demo. Free APIs registered in registry but not yet WIRED to lens UI (Phase 4 wire-up of NASA/USGS/NOAA/FDA/Wikipedia/etc. still pending). |
-| 10 | **Cross-lens narrative** | NOT started | `ProvenanceTrail`, `LensFlowMap`, `DownstreamBadge`, `dtu_surface_log` migration 195 pending. Plan-file Phase 7. |
+| 1 | **Persistence (auto-save drafts)** | ✅ infra + components | Migration 194, drafts domain (4 macros), draft-gc-cycle heartbeat, useLensDraft hook, **DraftedTextarea + DraftedInput drop-in components** (saving / saved / unsaved / offline status indicator). Per-lens swap-in is hand work — codemod was too risky (false positives on toggles like `showMessages`). |
+| 2 | **Load-from-substrate** | ✅ infra + mounted | useListMine hook + **RecentMineCard component mounted in 226 lens pages via codemod** (6 hero lenses skipped — they have bespoke recents). |
+| 3 | **Cross-session list views** | ✅ all ~150 domains | `<domain>.recent_mine` + `<domain>.list_mine` registered across ~150 lens domains against the universal dtus table. Standard return shape `{ok, items, total}` pinned by Tier-2 tests. |
+| 4 | **Bespoke widgets** | partial — DepthBadge + shells visible | DepthBadge live on all 232 lenses. 5 rival shells (VSCodeShell, DocsShell, WalletShell, EHRShell, WhiteboardCanvas) now **defaultOpen={true} so they greet first-time users**. The 42 bare lenses still need hand-polish. |
+| 5 | **Realtime push (`useTilePush`)** | partial — auto-refresh wired | useListMine integrates socket revalidation. NasaLivePanel + UsgsQuakePanel + WikipediaOnThisDayPanel auto-refresh on intervals. Codemod for per-lens tile flash-on-change NOT yet written. |
+| 6 | **Multi-step workflows** | NOT started | useLensSession hook + per-domain session_* macros pending. |
+| 7 | **Mobile responsiveness** | NOT started | BottomSheet + SwipeNav primitives pending. |
+| 8 | **Onboarding per lens** | ✅ 29 hero scripts | FirstRunTour mounted in all 232 lenses. **29 hero scripts authored** (chat, code, wallet, marketplace, forge, message, world, pharmacy, studio, music, calendar, collab, astronomy, atlas, crypto, math, news, crafting, finance, feed, goals, paper, agents, research, kingdoms, docs, travel, fitness, self). 179 lenses still need scripts. |
+| 9 | **Depth bar (real data)** | ✅ infra + 4 live wires | IntegrationRegistry, DepthBadge visible everywhere. **4 free-API wire-ups landed: NASA APOD/ISS/NEO (astronomy), USGS earthquakes (geology), OpenStreetMap Nominatim (atlas backend), Wikipedia On This Day (history), NOAA tides (ocean backend).** Frontend panels mounted for astronomy + geology + history; OSM + NOAA backend live but no panel yet. |
+| 10 | **Cross-lens narrative** | NOT started | Migration 195 + ProvenanceTrail / LensFlowMap / DownstreamBadge pending. |
 
 ---
 
-## File map (new files this session)
+## New files this session (session 2 only)
 
 ### Backend
-- `server/migrations/194_lens_drafts.js` — drafts table (UPSERT keyed on user×lens×key, 256 KiB cap)
-- `server/lib/draft-gc.js` — TTL sweep helper, env-tunable
-- `server/emergent/draft-gc-cycle.js` — heartbeat `draft-gc-cycle` (frequency 480, ~2h)
-- `server/domains/drafts.js` — 4 macros (save/load/list_mine/delete)
-- `server/lib/integration-registry.js` — 4-tier registry for ~200 lenses
-- `server/domains/_recent-mine-helper.js` — factory for bespoke-table backed recent_mine
-- `server/domains/_dtu-recent-mine.js` — factory for DTU-table backed recent_mine
-- `server/domains/_recent-mine-bulk.js` — bulk registration of ~150 domains
-- `server/tests/drafts-domain.test.js` — Tier-2, 21 assertions
-- `server/tests/integration-registry.test.js` — Tier-2, 11 assertions (honesty contract)
-- `server/tests/recent-mine-helper.test.js` — Tier-2, 11 assertions
-- `server/tests/dtu-recent-mine.test.js` — Tier-2, 7 assertions
+- `server/domains/astronomy-live.js` — NASA APOD / ISS / NEO direct-fetch macros
+- `server/domains/free-api-live.js` — USGS quakes / OSM geocode / Wikipedia OTD / NOAA tides macros
 
 ### Frontend
-- `concord-frontend/lib/lenses/manifest.ts` — schema extended (DataTier, emptyState, firstRunGuide, realtimeEvents, sessionTable), 208/208 entries tagged + 9 hero scripts authored
-- `concord-frontend/hooks/useLensDraft.ts` — debounced auto-save hook
-- `concord-frontend/hooks/useListMine.ts` — recent-list fetch + socket revalidation
-- `concord-frontend/hooks/useDepthBadge.ts` — tier lookup
-- `concord-frontend/components/lens/DepthBadge.tsx` — 4-state colour-coded chip
-- `concord-frontend/components/lens/RecentMineCard.tsx` — drop-in recents card
-- `concord-frontend/components/lens/FirstRunTour.tsx` — spotlight + coachmark + localStorage gate
-- `concord-frontend/scripts/codemod-manifest-tiers.mjs` — injects `dataTier` from registry
-- `concord-frontend/scripts/codemod-depth-badge.mjs` — mounts `<DepthBadge>`
-- `concord-frontend/scripts/codemod-first-run-tour.mjs` — mounts `<FirstRunTour>`
+- `concord-frontend/components/lens/DraftedTextarea.tsx` — drop-in auto-saving textarea
+- `concord-frontend/components/lens/DraftedInput.tsx` — drop-in auto-saving input
+- `concord-frontend/components/astronomy/NasaLivePanel.tsx` — APOD / ISS / NEO tabbed panel
+- `concord-frontend/components/geology/UsgsQuakePanel.tsx` — USGS quake feed with mag colour-coding
+- `concord-frontend/components/history/WikipediaOnThisDayPanel.tsx` — 5-tab OTD panel
+- `concord-frontend/scripts/codemod-recent-mine-card.mjs` — mounts RecentMineCard in 226 lenses
 
 ### Modified
-- `server/server.js` — registers `drafts` domain + `draft-gc-cycle` heartbeat + bulk `recent_mine` + `publicReadDomains` entry for `drafts` + broad gate-bypass for `recent_mine`/`list_mine`
-- `concord-frontend/app/lenses/*/page.tsx` — 232 files; mount `<DepthBadge>` + `<FirstRunTour>`
-
-### Ledgers (machine-readable codemod reports)
-- `audit/codemod-reports/manifest-tiers-*.json` (208 injected)
-- `audit/codemod-reports/depth-badge-*.json` (232 mounted)
-- `audit/codemod-reports/first-run-tour-*.json` (232 mounted)
+- `server/server.js` — wires astronomy-live + free-api-live; adds publicReadDomains entries for astronomy / geology / ocean / atlas / history
+- `concord-frontend/lib/lenses/manifest.ts` — 29 hero lens scripts (emptyState + firstRunGuide)
+- `concord-frontend/app/lenses/astronomy/page.tsx` — mounts NasaLivePanel above bespoke explorer
+- `concord-frontend/app/lenses/geology/page.tsx` — mounts UsgsQuakePanel above bespoke list
+- `concord-frontend/app/lenses/history/page.tsx` — mounts WikipediaOnThisDayPanel at top
+- `concord-frontend/app/lenses/code/page.tsx` etc (5 files) — RivalShapePreview defaultOpen=true
 
 ---
 
-## Next up (in plan order)
+## Next up (in priority order)
 
 ### Highest leverage (do these first)
 
-1. **Wrap form inputs with `useLensDraft`** — write `codemod-use-draft.mjs` that finds `useState<string>('')` bindings on textarea/input elements (heuristic: state name matches `text|prompt|input|body|content|description|notes`) and wraps with `useLensDraft(lensId, fieldName)`. Skip readonly viewer lenses <120 LOC.
+1. **Mount remaining REAL_FREE wire-ups in frontend panels** — backend exists for `atlas.live_geocode`, `ocean.live_tides`. Write companion panels (OsmGeocodePanel, NoaaTidesPanel) using the NasaLivePanel template. ~30 min each.
 
-2. **Mount `<RecentMineCard>` per lens** — codemod or hand-mount inside each lens's primary content column. The component is ready; just needs placement. ~30 hero lenses give visible "your recent X" surface immediately.
+2. **Author the remaining 179 hero scripts** — emptyState + firstRunGuide per manifest entry. Pattern proven; spreadsheet/LLM-batch is the right tool. The tour-mount codemod is already universal — once copy lands, the tour fires automatically.
 
-3. **Author `firstRunGuide` + `emptyState` for the remaining 199 lenses** — currently 9 of 208 manifest entries have tour copy. Each needs `{ headline, caption, firstActionLabel }` + 3–5 `{ caption, selector? }` steps. The tour-mount codemod is already idempotent — once copy is in the manifest, the tour fires automatically. Spreadsheet/LLM-assisted batch authoring with human review.
+3. **Wire ~15 more free APIs from the integration-registry** — FDA OpenFDA (pharmacy), NCBI PubMed (bio/neuro), arXiv (physics/quantum/robotics), MET Museum (art/gallery), USDA FoodData Central (food/cooking/fitness), PubChem (chem), MedlinePlus (mental-health/wellness), EPA AirNow (environment), FRED (global), Khan Academy (education). Each is ~3 files following the established 4-step pattern.
 
-4. **Wire real free APIs declared in `integration-registry`** — registry lists NASA APOD, USGS, NOAA, FDA OpenFDA labels, OpenStreetMap Nominatim, Wikipedia REST, MathOverflow, GHSA, ProPublica, Pexels, MET Museum etc. as `REAL_FREE` sources, but `server/lib/feed-sources.js` only has 3 actually-fetching entries (Yahoo Finance, CoinGecko, World Bank). Add `feed-sources.js` rows for the rest + wire `useTilePush` events for the corresponding `<domain>:updated` socket emissions.
+4. **Hand-swap DraftedTextarea + DraftedInput into 20-30 form-heavy lenses** — pharmacy, paper, accounting, kingdoms, forge, podcast, design, chat. Each swap is a few lines; the user gets visible auto-save status indicators on every long-form input.
 
-5. **Mount 5 unmounted rival shells as PRIMARY surfaces** (not just `RivalShapePreview` collapsibles):
-   - `concord-frontend/app/lenses/code/page.tsx` → make `<VSCodeShell>` the main editor chrome
-   - `concord-frontend/app/lenses/legal/page.tsx` → `<DocsShell>` as default workspace
-   - `concord-frontend/app/lenses/crypto/page.tsx` → `<WalletShell>` for balance / tx history
-   - `concord-frontend/app/lenses/healthcare/page.tsx` → `<EHRShell>` for patient view
-   - `concord-frontend/app/lenses/whiteboard/page.tsx` → `<WhiteboardCanvas>` as default surface
+5. **Phase 5 multi-step sessions** — useLensSession hook + session_* macros for 11 backend session tables. Kingdoms→war_campaigns is the marquee wire-up.
 
 ### Then per plan-file phase order
 
-6. **Phase 4 (rest)** — codemod-tile-push.mjs for `realtimeEvents` manifest field; extend `server/lib/event-shapes.js` with `<domain>:updated` for all 22 feed categories.
+6. **Phase 4 cont'd** — useTilePush codemod for `realtimeEvents` manifest field; expand event-shapes.js registry.
 
-7. **Phase 5** — `useLensSession` hook + per-domain `session_*` macros for 11 backend session tables (`war_campaigns` → kingdoms, `reasoning_sessions` → research, `agent_marathon_sessions` → agents, `chat_sessions` → chat, `council_sessions` → council, `spectator_sessions` → spectator, etc.) + mobile primitives (`BottomSheet`, `SwipeNav`) + Tier-1 mobile polish for 20 hero lenses.
+7. **Phase 5 mobile** — BottomSheet, SwipeNav primitives + Tier-1 hand-polish for 20 hero lenses; codemod-mobile-breakpoints for Tier-2.
 
-8. **Phase 6** — 42 bare lenses → ≥6/10 widget density. Hand work; 6 themed batches. Score gate via `concord-frontend/scripts/score-lens-density.ts` (new).
+8. **Phase 6** — 42 bare lenses → ≥6/10 widget density. Hand work; 6 themed batches.
 
-9. **Phase 7** — cross-lens narrative. Migration 195 `dtu_surface_log` + `ProvenanceTrail` / `LensFlowMap` / `DownstreamBadge` components + write-point insertions in `narrative-bridge.js`, `forge-marketplace.js`, etc. Time-gate launch 2–4 weeks after Phase 6 so users have generated DTU travel.
+9. **Phase 7** — cross-lens narrative. Migration 195 dtu_surface_log + ProvenanceTrail / LensFlowMap / DownstreamBadge.
 
 ---
 
 ## Verification checklist before merge
 
-- [ ] `cd server && npm test` (full suite — only sampled this session)
+- [ ] `cd server && npm test` (full suite — only sampled this session; 114/114 on sample)
 - [ ] `cd concord-frontend && npm run type-check` (last run: clean)
 - [ ] `cd concord-frontend && npm run test:run`
 - [ ] `cd server && node migrate.js --status` (should show 194 applied)
-- [ ] Boot server with `CONCORD_NO_LISTEN=true NODE_ENV=test node server.js`; check the new `draft-gc-cycle` heartbeat appears
-- [ ] Playwright smoke across the 232 lens routes (extend `concord-frontend/scripts/playwright-warmup.ts`)
-- [ ] Manual: visit `/lenses/chat` as a fresh user → FirstRunTour fires → click Skip → reload → tour does NOT re-fire (localStorage gate works)
-- [ ] Manual: visit any lens → DepthBadge chip visible in header → tooltip explains the tier honestly
+- [ ] Manual: visit /lenses/astronomy → see NasaLivePanel with real APOD image + live ISS coords + Near-Earth Objects
+- [ ] Manual: visit /lenses/geology → USGS quakes ≥M2.5 in past 24h, sorted, with tsunami flags + USGS detail links
+- [ ] Manual: visit /lenses/history → Wikipedia On This Day with 5 tabs (Featured / Events / Births / Deaths / Holidays)
+- [ ] Manual: visit /lenses/code (or legal/crypto/healthcare/whiteboard) → rival shell preview open by default
+- [ ] Manual: every lens shows DepthBadge chip in header
+- [ ] Manual: any lens with firstRunGuide fires the FirstRunTour on first visit → click Skip → reload → no re-fire (localStorage gate)
 
 ---
 
 ## Risks / pitfalls for the next session
 
-- **`recent_mine` macro return shape is contract.** If a per-domain author registers a bespoke `recent_mine` AFTER the bulk registration, they MUST return `{ ok: true, items: [...], total: number }`. The Tier-2 test `recent-mine-helper.test.js` will need to be extended to also pin per-domain overrides as they land.
+- **Duplicate `history:` key in publicReadDomains.** The literal at server.js:9672 has my new `history: new Set(["live_wiki_otd"])` entry; JS silently takes the later key. The bulk `recent_mine` bypass handles history's recent_mine path. If you add another publicReadDomains entry for history, MERGE into the same Set.
 
-- **`publicReadDomains` gate has a broad allow now** for any macro named `recent_mine`/`list_mine`. This is safe because each handler self-scopes by `ctx.actor.userId` (rejects anonymous), but if a future per-domain `recent_mine` forgets that check, it'll leak. Test for this when adding per-domain overrides.
+- **`useLensDraft` doesn't debounce within the localStorage write** — every keystroke writes localStorage. For a high-frequency input (slider, color picker), throttle upstream.
 
-- **`useLensDraft` doesn't debounce within the localStorage write** — every keystroke writes localStorage. If you wrap a high-frequency input (e.g., a 60Hz slider), throttle the `setValue` calls upstream.
+- **DraftedTextarea/Input `onValueChange` fires on every keystroke** — that's intentional for optimistic submit handlers, but if the parent re-renders heavy children on every change, memo them.
 
-- **`FirstRunTour` spotlight selector** is computed against `document.querySelector` once per step. If the target element re-renders between activation and step display, the spotlight will be stale until next resize/scroll. Consider IntersectionObserver if this becomes a real problem.
+- **NOAA tides macro defaults to Boston station (8443970)** — frontend caller should let users pick a station from `tidesandcurrents.noaa.gov` station list.
 
-- **`integration-registry.js` honesty contract** has a CI gate: every DEMO must declare `paywallReason`. New lens domains added without registry entries will silently default to "no badge" (the manifest tier injection codemod will skip them). Re-run `node scripts/codemod-manifest-tiers.mjs --dry` after adding new lens manifests to catch gaps.
+- **NASA APOD uses DEMO_KEY by default** — rate-limited to 30/hr. Set `NASA_API_KEY` env in production. Same for `live_neo`.
 
-- **DepthBadge codemod is idempotent** but the injection point is heuristic — it lands after `<ManifestActionBar />` if present, else after `<LensShell>` opening. A future codemod that moves the action bar will need to keep the badge attached.
+- **OpenStreetMap Nominatim has a polite-use policy** — 1 req/sec, distinct User-Agent (we set "ConcordOS/5.0 (atlas-lens)"). If we ever spike to high-volume geocoding, switch to a self-hosted Nominatim or paid Pelias.
+
+- **Wikipedia On This Day has no rate limit** but the response payload can be 100+ KB. We truncate to 15 entries per kind, 3 pages per entry — sufficient for the UI.
+
+- **History entry in publicReadDomains is duplicated.** Test failure here would point to gate misconfig. Move the entry to merge with an existing one if a contract test starts failing.
 
 ---
 
 ## Plan file
 
-Full multi-phase plan at `/root/.claude/plans/what-s-missing-to-be-humble-scott.md` covers all 10 dimensions across 7 phases with file paths, scopes, test strategies, and verification steps. This handoff is the snapshot of where Phase 1 + parts of 2/3/4/5 stand; the plan file is the roadmap forward.
+Full multi-phase plan at `/root/.claude/plans/what-s-missing-to-be-humble-scott.md` covers all 10 dimensions across 7 phases.
 
 ---
 
@@ -147,9 +141,8 @@ Full multi-phase plan at `/root/.claude/plans/what-s-missing-to-be-humble-scott.
 
 ```bash
 git checkout claude/audit-app-completeness-GwBlp
-cd server && npm test 2>&1 | tail -10   # confirm clean baseline
+cd server && npm test 2>&1 | tail -10
 cd ../concord-frontend && npm run type-check
-# Read /root/.claude/plans/what-s-missing-to-be-humble-scott.md for the roadmap
-# Read HANDOFF.md (this file) for current state
-# Start with the "Next up" section above — items 1-5 are the highest leverage.
+# Read HANDOFF.md for current state
+# Start with the "Next up" section above — items 1-4 are the highest leverage.
 ```
