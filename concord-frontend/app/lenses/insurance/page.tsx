@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -651,7 +652,7 @@ export default function InsuranceLensPage() {
               <div><label className={ds.label}>Expiry Date</label><input type="date" className={ds.input} value={(formData.expiryDate as string) || ''} onChange={e => setFormData({ ...formData, expiryDate: e.target.value })} /></div>
             </div>
             <div><label className={ds.label}>File Name</label><input className={ds.input} value={(formData.fileName as string) || ''} onChange={e => setFormData({ ...formData, fileName: e.target.value })} placeholder="document.pdf" /></div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={3} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Additional notes about this document..." /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="insurance" draftKey="document-notes" className={ds.textarea} rows={3} initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} placeholder="Additional notes about this document..." /></div>
           </>
         );
       default:

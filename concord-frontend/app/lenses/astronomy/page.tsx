@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -345,7 +346,14 @@ export default function AstronomyLensPage() {
               <input value={obsForm.target} onChange={e => setObsForm({ ...obsForm, target: e.target.value })} placeholder="Target object" className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm" />
               <input value={obsForm.telescope} onChange={e => setObsForm({ ...obsForm, telescope: e.target.value })} placeholder="Telescope/equipment" className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm" />
             </div>
-            <textarea value={obsForm.notes} onChange={e => setObsForm({ ...obsForm, notes: e.target.value })} placeholder="Observation notes..." className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm resize-none h-20" />
+            <DraftedTextarea
+              lensId="astronomy"
+              draftKey="observation-notes"
+              initial={obsForm.notes}
+              onValueChange={(v) => setObsForm({ ...obsForm, notes: v })}
+              placeholder="Observation notes..."
+              className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm resize-none h-20"
+            />
             <button onClick={logObservation} className="mt-2 px-4 py-2 bg-indigo-400/20 text-indigo-400 rounded-lg text-sm hover:bg-indigo-400/30">Log</button>
           </div>
 

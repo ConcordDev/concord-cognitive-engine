@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EnviroPanel } from '@/components/environment/EnviroPanel';
@@ -1183,11 +1184,13 @@ export default function EnvironmentLensPage() {
             </div>
             <div>
               <label className={ds.label}>Notes</label>
-              <textarea
+              <DraftedTextarea
+                lensId="environment"
+                draftKey="observation-notes"
                 className={ds.textarea}
                 rows={3}
-                value={(formData.notes as string) || ''}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                initial={(formData.notes as string) || ''}
+                onValueChange={(v) => setFormData({ ...formData, notes: v })}
                 placeholder="Additional observation notes..."
               />
             </div>

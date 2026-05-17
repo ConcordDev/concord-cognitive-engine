@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -653,7 +654,15 @@ export default function GameDesignPage() {
                         <option value="boss">Boss</option>
                       </select>
                     </div>
-                    <textarea value={levelDesc} onChange={e => setLevelDesc(e.target.value)} placeholder="Level description, objectives, layout notes..." rows={2} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none focus:outline-none focus:border-emerald-500/30" />
+                    <DraftedTextarea
+                      lensId="game-design"
+                      draftKey="level-desc"
+                      initial={levelDesc}
+                      onValueChange={setLevelDesc}
+                      placeholder="Level description, objectives, layout notes..."
+                      rows={2}
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none focus:outline-none focus:border-emerald-500/30"
+                    />
                     <div className="flex gap-2">
                       <button onClick={handleAddLevel} disabled={!levelName.trim()} className="px-4 py-2 bg-emerald-500/20 rounded-lg text-sm hover:bg-emerald-500/30 disabled:opacity-50">Add Level</button>
                       <button onClick={() => setShowLevelForm(false)} className="px-4 py-2 bg-white/5 rounded-lg text-sm hover:bg-white/10">Cancel</button>
