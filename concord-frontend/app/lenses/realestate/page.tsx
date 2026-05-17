@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -3247,9 +3248,11 @@ export default function RealEstateLensPage() {
                 {/* Description & notes - always shown */}
                 <div>
                   <label className={ds.label}>Description</label>
-                  <textarea
-                    value={formDesc}
-                    onChange={(e) => setFormDesc(e.target.value)}
+                  <DraftedTextarea
+                    lensId="realestate"
+                    draftKey="property-description"
+                    initial={formDesc}
+                    onValueChange={setFormDesc}
                     className={ds.textarea}
                     rows={3}
                     placeholder="Property or record description..."
@@ -3257,9 +3260,11 @@ export default function RealEstateLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Notes</label>
-                  <textarea
-                    value={formNotes}
-                    onChange={(e) => setFormNotes(e.target.value)}
+                  <DraftedTextarea
+                    lensId="realestate"
+                    draftKey="internal-notes"
+                    initial={formNotes}
+                    onValueChange={setFormNotes}
                     className={ds.textarea}
                     rows={2}
                     placeholder="Internal notes..."

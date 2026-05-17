@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import { ChefHat as MobileTabChef, Calendar as MobileTabCal, ShoppingCart as MobileTabCart, Apple as MobileTabApple, Package as MobileTabPkg, Menu as MobileTabMenu } from 'lucide-react';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -2830,6 +2832,19 @@ export default function FoodLensPage() {
           <RecentMineCard domain="food" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="food" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="food" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 11 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'recipes',  label: 'Recipes', icon: MobileTabChef },
+              { id: 'mealplan', label: 'Plan',    icon: MobileTabCal },
+              { id: 'shopping', label: 'Shop',    icon: MobileTabCart },
+              { id: 'nutrition',label: 'Nutri',   icon: MobileTabApple },
+              { id: 'pantry',   label: 'Pantry',  icon: MobileTabPkg },
+              { id: 'menu',     label: 'Menu',    icon: MobileTabMenu },
+            ]}
+            active={activeTab}
+            onSelect={(id) => setActiveTab(id as ModeTab)}
+          />
     </LensShell>
   );
 }

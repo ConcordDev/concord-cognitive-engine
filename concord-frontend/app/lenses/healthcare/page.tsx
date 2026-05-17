@@ -2,6 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import { Users as MobileTabUsers, ClipboardList as MobileTabClip, Pill as MobileTabPill, Calendar as MobileTabCal, Activity as MobileTabActivity, HeartPulse as MobileTabHeart } from 'lucide-react';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import SymptomChecker from '@/components/healthcare/SymptomChecker';
@@ -3900,9 +3903,11 @@ export default function HealthcareLensPage() {
                 {/* Notes (always shown) */}
                 <div>
                   <label className={ds.label}>Notes</label>
-                  <textarea
-                    value={formNotes}
-                    onChange={(e) => setFormNotes(e.target.value)}
+                  <DraftedTextarea
+                    lensId="healthcare"
+                    draftKey="encounter-notes"
+                    initial={formNotes}
+                    onValueChange={setFormNotes}
                     className={ds.textarea}
                     rows={3}
                     placeholder="Additional notes..."
@@ -3997,6 +4002,19 @@ export default function HealthcareLensPage() {
         </section>
       </PipingProvider>
     </div>
+    {/* Phase 11 (Item 5) — mobile thumb-reachable tab bar. */}
+    <MobileTabBar
+      tabs={[
+        { id: 'Patients',     label: 'Pts',     icon: MobileTabUsers },
+        { id: 'Encounters',   label: 'Visits',  icon: MobileTabClip },
+        { id: 'Pharmacy',     label: 'Meds',    icon: MobileTabPill },
+        { id: 'Appointments', label: 'Appts',   icon: MobileTabCal },
+        { id: 'Lab',          label: 'Labs',    icon: MobileTabActivity },
+        { id: 'MyChart',      label: 'Chart',   icon: MobileTabHeart },
+      ]}
+      active={activeTab}
+      onSelect={(id) => setActiveTab(id as ModeTab)}
+    />
     </LensShell>
   );
 }

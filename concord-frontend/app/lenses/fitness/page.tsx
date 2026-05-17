@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -1743,7 +1744,7 @@ export default function FitnessLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Notes</label>
-                  <textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} className={ds.textarea} rows={2} placeholder="Additional notes..." />
+                  <DraftedTextarea lensId="fitness" draftKey="form-notes" className={ds.textarea} rows={2} initial={formNotes} onValueChange={setFormNotes} placeholder="Additional notes..." />
                 </div>
 
                 {/* ========== Workout Builder (Workouts tab) ========== */}

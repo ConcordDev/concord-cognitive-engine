@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -1882,9 +1883,11 @@ export default function CalendarLensPage() {
                 {/* Description */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Description (optional)</label>
-                  <textarea
-                    value={newEvent.description || ''}
-                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  <DraftedTextarea
+                    lensId="calendar"
+                    draftKey="event-description"
+                    initial={newEvent.description || ''}
+                    onValueChange={(v) => setNewEvent({ ...newEvent, description: v })}
                     placeholder="Add notes, details, links..."
                     rows={3}
                     className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan resize-none"
