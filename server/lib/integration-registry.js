@@ -74,6 +74,7 @@ export const REGISTRY = Object.freeze({
   feed:          { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real timeline aggregator" },
   dtus:          { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "the user's actual DTU substrate" },
   sessions:      { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "the user's multi-step sessions" },
+  social:        { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real social graph + activity + presence" },
   code:          { tier: TIER.REAL_LIVE, liveFromSubstrate: true, sources: ["github.api"], note: "GitHub repo fetch + own code DTUs" },
   studio:        { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real DAW sessions + soundscape" },
   world:         { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "live Concordia simulation state" },

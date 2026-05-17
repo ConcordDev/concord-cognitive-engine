@@ -4822,6 +4822,28 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    domain: 'social',
+    label: 'Social',
+    artifacts: ['post', 'story', 'reaction', 'notification', 'follow', 'profile'],
+    macros: { list: 'lens.social.list', get: 'lens.social.get', create: 'lens.social.create', update: 'lens.social.update', delete: 'lens.social.delete', run: 'lens.social.run', export: 'lens.social.export' },
+    exports: ['json'],
+    actions: ['follow', 'unfollow', 'react', 'comment', 'share', 'post', 'story_create', 'discover', 'notifications', 'trending'],
+    category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: "Your pan-social hub.",
+      caption: "Stories, discovery, notifications, presence, trending — every Concord-native social primitive in one place. Real activity from real follows.",
+      firstActionLabel: "Open social hub",
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: "The Stories bar at the top shows 24h ephemeral updates from people you follow. Tap to view full-screen." },
+        { caption: "For You is your algorithmic discover feed (cross-domain). Following is reverse-chrono activity from your follow graph." },
+        { caption: "Right rail surfaces your profile, trending topics + domains, suggested follows, and live presence — all from the same substrate as chat / feed." },
+      ],
+    },
+  },
+  {
     domain: 'sessions',
     label: 'Sessions',
     artifacts: ['session', 'session_event'],
