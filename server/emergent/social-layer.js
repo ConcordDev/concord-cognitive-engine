@@ -507,13 +507,18 @@ export function getSocialMetrics(STATE) {
 
 // ── Posts ────────────────────────────────────────────────────────────────
 
-export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs }) {
+export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs, federationVisibility }) {
   const social = getSocialState(STATE);
   if (!userId) return { ok: false, error: "userId required" };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
 
   const id = nextId("post");
   const now = new Date().toISOString();
+  // Phase 11 (Item 12) — federation visibility lives on the post.
+  // Defaults to 'local'. Server-side fanout to the federation outbox
+  // only happens when visibility !== 'local' AND the federation
+  // dispatcher is wired (CONCORD_ACTIVITYPUB=true).
+  const visibility = ['local', 'followers', 'public'].includes(federationVisibility) ? federationVisibility : 'local';
   const post = {
     id,
     userId,
@@ -523,9 +528,9 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
     mediaUrl: mediaUrl || null,
     tags: tags || [],
     mentionedUsers: mentionedUsers || [],
-    taggedProducts: taggedProducts || [],  // Array of { listingId, title, price, imageUrl, sellerId }
-    linkedDTUs: linkedDTUs || [],          // Array of { dtuId, title, type }
-    reactions: new Map(),  // type → Set<userId>
+    taggedProducts: taggedProducts || [],
+    linkedDTUs: linkedDTUs || [],
+    reactions: new Map(),
     comments: [],
     shares: [],
     bookmarks: new Set(),
@@ -538,6 +543,8 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
     threadParentId: null,
     threadPosition: 0,
     groupId: null,
+    federationVisibility: visibility,
+    apActivityId: visibility !== 'local' ? `concord:post:${id}` : null,
   };
 
   social.posts.set(id, post);
@@ -549,10 +556,26 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
     }
   }
 
+  // Federation outbox fanout (best-effort). Caller in server.js sets
+  // _federationDispatcher with (post) → enqueue rows. Wrapped in
+  // try/catch so an outbox-write failure never breaks createPost.
+  if (visibility !== 'local' && typeof _federationDispatcher === 'function') {
+    try { _federationDispatcher(post); }
+    catch (_e) { /* substrate stays consistent */ }
+  }
+
   // Update streak
   updateStreak(STATE, userId);
 
   return { ok: true, post: serializePost(post) };
+}
+
+// Phase 11 (Item 12) — federation dispatcher hook. server.js wires
+// this once at boot to fan visibility-non-local posts into the
+// federation_outbox table via federation-outbox.js#enqueueOutbound.
+let _federationDispatcher = null;
+export function setFederationDispatcher(fn) {
+  _federationDispatcher = typeof fn === 'function' ? fn : null;
 }
 
 function serializePost(post) {
@@ -586,6 +609,8 @@ function serializePost(post) {
     threadParentId: post.threadParentId,
     threadPosition: post.threadPosition,
     groupId: post.groupId,
+    federationVisibility: post.federationVisibility || 'local',
+    apActivityId: post.apActivityId || null,
   };
 }
 

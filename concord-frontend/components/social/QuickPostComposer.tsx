@@ -39,7 +39,14 @@ interface PostMutationInput {
   isStory?: boolean;
   expiresAt?: string;
   mentionedUsers?: string[];
+  federationVisibility?: FederationVisibility;
 }
+
+// Phase 11 (Item 12) — federation visibility.
+// 'local'     → never leaves this instance (default — opt-in to leave)
+// 'followers' → fans out to followers on federated peers
+// 'public'    → world-readable; appears in federated public timelines
+type FederationVisibility = 'local' | 'followers' | 'public';
 
 export interface QuickPostComposerProps {
   currentUserId: string;
@@ -54,6 +61,9 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
   const [mode, setMode] = useState<'post' | 'story'>('post');
   const [showSuccess, setShowSuccess] = useState(false);
   const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
+  // Federation visibility — defaults to 'local' so users opt in to
+  // federation explicitly. No surprise outbound fanout.
+  const [federationVisibility, setFederationVisibility] = useState<FederationVisibility>('local');
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -61,6 +71,9 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
       const body: Record<string, unknown> = { content: input.content };
       if (input.tags && input.tags.length > 0) body.tags = input.tags;
       if (input.mentionedUsers && input.mentionedUsers.length > 0) body.mentionedUsers = input.mentionedUsers;
+      if (input.federationVisibility && input.federationVisibility !== 'local') {
+        body.federationVisibility = input.federationVisibility;
+      }
       if (input.isStory) {
         body.isStory = true;
         body.expiresAt = input.expiresAt || new Date(Date.now() + 86400000).toISOString();
@@ -110,8 +123,9 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
       tags,
       isStory: mode === 'story',
       mentionedUsers: liveMentionedUsers(text, mentionedUsers),
+      federationVisibility,
     });
-  }, [content, tagsRaw, mode, mutation, mentionedUsers, liveMentionedUsers]);
+  }, [content, tagsRaw, mode, mutation, mentionedUsers, liveMentionedUsers, federationVisibility]);
 
   const remaining = MAX_LEN - content.length;
   const overLimit = remaining < 0;
@@ -183,6 +197,19 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
           placeholder="tags, comma-separated"
           className="flex-1 text-[11px] bg-transparent text-zinc-300 placeholder-zinc-600 focus:outline-none"
         />
+        {/* Phase 11 (Item 12) — federation visibility. Defaults to
+            'local' so posts never leave the instance unless the
+            user explicitly opts in. */}
+        <select
+          value={federationVisibility}
+          onChange={(e) => setFederationVisibility(e.target.value as FederationVisibility)}
+          className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400 hover:text-zinc-200"
+          title="Federation visibility"
+        >
+          <option value="local">🏠 This server</option>
+          <option value="followers">👥 Followers (federated)</option>
+          <option value="public">🌐 Public (federated)</option>
+        </select>
         <span className={cn('text-[10px] font-mono tabular-nums', overLimit ? 'text-rose-400' : 'text-zinc-500')}>
           {remaining}
         </span>

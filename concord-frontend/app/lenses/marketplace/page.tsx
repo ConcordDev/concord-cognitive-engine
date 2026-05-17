@@ -67,6 +67,7 @@ import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
+import { useTilePush } from '@/hooks/useTilePush';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -673,6 +674,20 @@ export default function MarketplaceLensPage() {
   } = useRealtimeLens('marketplace');
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Phase 11 (Item 8) — useTilePush invalidates the browse query
+  // and pulses the flash highlight when any marketplace realtime
+  // event fires (purchase, new listing, trade, registry update).
+  useTilePush({
+    lensId: 'marketplace',
+    queryKeys: [
+      ['marketplace-browse'],
+      ['marketplace-templates'],
+      ['marketplace-components'],
+      ['marketplace-datasets'],
+      ['marketplace-art'],
+    ],
+  });
 
   // State
   const [tab, setTab] = useState<Tab>('browse');

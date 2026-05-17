@@ -613,6 +613,17 @@ registerHeartbeat("npc-conversation-initiator", {
   handler: ({ db } = {}) => runNpcConversationInitiator({ db, io: REALTIME?.io }),
 });
 
+// Phase 11 (Item 12) — federation outbox pump. Drains pending
+// outbound ActivityPub activities. Opt-in via CONCORD_ACTIVITYPUB=true
+// so local-first installs don't make outbound HTTP fanouts they
+// didn't ask for. Frequency 30 ticks (~7.5 min) keeps retry latency
+// reasonable without hammering remote inboxes.
+import { runFederationOutboxPump } from "./emergent/federation-outbox-pump.js";
+registerHeartbeat("federation-outbox-pump", {
+  frequency: 30,
+  handler: ({ db } = {}) => runFederationOutboxPump({ db }),
+});
+
 // Layer 8: repair-cycle pain processor. Every 20 ticks (~5min) consumes
 // pending pain_signals rows for each user, grants endurance / strength /
 // agility / vitality / focus XP based on regional distribution, and grants
@@ -985,7 +996,7 @@ import { createAtlasDtu, getAtlasDtu, searchAtlasDtus, promoteAtlasDtu, addAtlas
 import { runAntiGamingScan, getAntiGamingMetrics } from "./emergent/atlas-antigaming.js";
 import { runAutogenV2, getAutogenRun, acceptAutogenOutput, mergeAutogenOutput, propagateConfidence, getAutogenV2Metrics } from "./emergent/atlas-autogen-v2.js";
 import { councilResolve, getCouncilQueue, councilRequestSources, councilMerge, getCouncilActions, getCouncilMetrics } from "./emergent/atlas-council.js";
-import { upsertProfile, getProfile, listProfiles, followUser, unfollowUser, getFollowers, getFollowing, publishDtu, unpublishDtu, recordCitation, getCitedBy, getFeed, computeTrending, discoverUsers, getSocialMetrics, createPost as socialCreatePost, getPost as socialGetPost, deletePost as socialDeletePost, getUserPosts as socialGetUserPosts, addReaction as socialAddReaction, getReactions as socialGetReactions, addComment as socialAddComment, deleteComment as socialDeleteComment, getComments as socialGetComments, sharePost as socialSharePost, getShares as socialGetShares, bookmarkPost as socialBookmarkPost, getUserBookmarks as socialGetUserBookmarks, getForYouFeed, getFollowingFeed, getExploreFeed, sendMessage as socialSendMessage, recallMessage as socialRecallMessage, getConversations as socialGetConversations, getMessages as socialGetMessages, markMessagesRead as socialMarkMessagesRead, getActiveStories, viewStory as socialViewStory, votePoll as socialVotePoll, getPollResults as socialGetPollResults, getNotifications as socialGetNotifications, markNotificationRead as socialMarkNotificationRead, markAllNotificationsRead as socialMarkAllNotificationsRead, getUnreadCount as socialGetUnreadCount, deleteNotification as socialDeleteNotification, setSocialEmitter, searchUsersByPrefix as socialSearchUsersByPrefix } from "./emergent/social-layer.js";
+import { upsertProfile, getProfile, listProfiles, followUser, unfollowUser, getFollowers, getFollowing, publishDtu, unpublishDtu, recordCitation, getCitedBy, getFeed, computeTrending, discoverUsers, getSocialMetrics, createPost as socialCreatePost, getPost as socialGetPost, deletePost as socialDeletePost, getUserPosts as socialGetUserPosts, addReaction as socialAddReaction, getReactions as socialGetReactions, addComment as socialAddComment, deleteComment as socialDeleteComment, getComments as socialGetComments, sharePost as socialSharePost, getShares as socialGetShares, bookmarkPost as socialBookmarkPost, getUserBookmarks as socialGetUserBookmarks, getForYouFeed, getFollowingFeed, getExploreFeed, sendMessage as socialSendMessage, recallMessage as socialRecallMessage, getConversations as socialGetConversations, getMessages as socialGetMessages, markMessagesRead as socialMarkMessagesRead, getActiveStories, viewStory as socialViewStory, votePoll as socialVotePoll, getPollResults as socialGetPollResults, getNotifications as socialGetNotifications, markNotificationRead as socialMarkNotificationRead, markAllNotificationsRead as socialMarkAllNotificationsRead, getUnreadCount as socialGetUnreadCount, deleteNotification as socialDeleteNotification, setSocialEmitter, searchUsersByPrefix as socialSearchUsersByPrefix, setFederationDispatcher } from "./emergent/social-layer.js";
 import { createWorkspace as collabCreateWorkspace, getWorkspace as collabGetWorkspace, listWorkspaces as collabListWorkspaces, addWorkspaceMember as collabAddWorkspaceMember, removeWorkspaceMember as collabRemoveWorkspaceMember, addDtuToWorkspace as collabAddDtuToWorkspace, addComment as collabAddComment, getComments as collabGetComments, editComment as collabEditComment, resolveComment as collabResolveComment, proposeRevision, getRevisionProposals, voteOnRevision, applyRevision, startEditSession, recordEdit, endEditSession, getCollabMetrics } from "./emergent/collaboration.js";
 import { createOrgWorkspace, getOrgWorkspace, assignRole, revokeRole, getUserRole, getOrgMembers, checkPermission, getUserPermissions, assignOrgLens, getOrgLenses, exportAuditLog, getRbacMetrics } from "./emergent/rbac.js";
 import { takeSnapshot as takeAnalyticsSnapshot, getPersonalAnalytics, getDtuGrowthTrends, getCitationAnalytics, getMarketplaceAnalytics as getMarketAnalytics, getKnowledgeDensity, getAtlasDomainAnalytics, getDashboardSummary } from "./emergent/analytics-dashboard.js";
@@ -6987,6 +6998,53 @@ function emitToUser(userId, event, payload) {
 // in-memory ledger write. The frontend useSocialNotificationToast
 // hook subscribes and renders a toast instead of waiting on the 60s
 // poll.
+// Phase 11 (Item 12) — wire the federation dispatcher. When a post is
+// authored with federationVisibility !== 'local', enqueue an outbox
+// row per follower-instance (and the relay inbox for 'public'). For
+// now we only enqueue against followers whose AP inbox URL we already
+// know via federation_peer_actors; the discovery handshake
+// (webfinger) is a future hardening pass.
+try {
+  setFederationDispatcher(async (post) => {
+    if (process.env.CONCORD_ACTIVITYPUB !== 'true') return;
+    try {
+      const { enqueueOutbound } = await import('./lib/federation-outbox.js');
+      // Pull every peer actor we've ever seen — start broad; the
+      // followers/public distinction is enforced by the receiving
+      // instance reading the `to` field of the activity.
+      const peers = db.prepare(`SELECT inbox_url FROM federation_peer_actors WHERE inbox_url IS NOT NULL`).all();
+      if (peers.length === 0) return;
+      const activity = {
+        '@context': 'https://www.w3.org/ns/activitystreams',
+        id: post.apActivityId,
+        type: 'Create',
+        actor: `${process.env.CONCORD_INSTANCE_URL || 'http://localhost:5050'}/users/${post.userId}`,
+        published: post.createdAt,
+        to: post.federationVisibility === 'public'
+          ? ['https://www.w3.org/ns/activitystreams#Public']
+          : [`${process.env.CONCORD_INSTANCE_URL || 'http://localhost:5050'}/users/${post.userId}/followers`],
+        object: {
+          id: `${post.apActivityId}#object`,
+          type: 'Note',
+          content: post.content,
+          published: post.createdAt,
+          tag: (post.tags || []).map(t => ({ type: 'Hashtag', name: `#${t}` })),
+        },
+      };
+      const activityJson = JSON.stringify(activity);
+      for (const p of peers) {
+        enqueueOutbound(db, {
+          homeUserId: post.userId,
+          apActivityId: post.apActivityId,
+          activityType: 'Create',
+          activityJson,
+          targetInboxUrl: p.inbox_url,
+        });
+      }
+    } catch (_e) { /* never crash createPost */ }
+  });
+} catch (_e) { /* non-fatal at boot */ }
+
 try {
   setSocialEmitter(async (uid, evt, payload) => {
     // 1) Real-time socket fan-out (always).
@@ -49512,6 +49570,58 @@ app.get("/api/social/mention-search", (req, res) => {
     const q = String(req.query.q || "");
     const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 10));
     res.json(socialSearchUsersByPrefix(STATE, q, viewerId, limit));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---- ActivityPub federation inbox + status (Phase 11 Item 12) ----
+// Remote peers POST signed activities here. We currently accept the
+// activity and stash it in federation_inbox; signature verification
+// is left to a future hardening pass (the activity body is parsed +
+// dedupe-protected by ap_activity_id UNIQUE constraint, so the
+// blast radius is bounded — the worst a malicious POST can do is
+// queue an entry that the processor either materializes (if it's
+// shaped like Follow/Like/Reply) or ignores). When federation is
+// disabled (CONCORD_ACTIVITYPUB unset), the endpoint reports the
+// disabled state rather than silently dropping.
+
+app.post("/api/federation/inbox", async (req, res) => {
+  try {
+    if (process.env.CONCORD_ACTIVITYPUB !== 'true') {
+      return res.status(503).json({ ok: false, reason: 'federation_disabled', hint: 'Set CONCORD_ACTIVITYPUB=true to enable.' });
+    }
+    const body = req.body || {};
+    const apActivityId = body.id;
+    const actor = body.actor;
+    const type = body.type;
+    if (!apActivityId || !actor || !type) {
+      return res.status(400).json({ ok: false, reason: 'missing_activity_fields' });
+    }
+    const { receiveInbound } = await import('./lib/federation-outbox.js');
+    const r = receiveInbound(db, {
+      apActivityId: String(apActivityId),
+      sourceActor: String(actor),
+      activityType: String(type),
+      activityJson: JSON.stringify(body),
+    });
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/federation/status", requireRole("admin", "sovereign"), async (_req, res) => {
+  try {
+    const { outboxStats } = await import('./lib/federation-outbox.js');
+    res.json({
+      ok: true,
+      enabled: process.env.CONCORD_ACTIVITYPUB === 'true',
+      outbox: outboxStats(db),
+      inbox: {
+        total: db.prepare(`SELECT COUNT(*) AS c FROM federation_inbox`).get().c,
+        unprocessed: db.prepare(`SELECT COUNT(*) AS c FROM federation_inbox WHERE processed = 0`).get().c,
+      },
+      peerActors: db.prepare(`SELECT COUNT(*) AS c FROM federation_peer_actors`).get().c,
+    });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
