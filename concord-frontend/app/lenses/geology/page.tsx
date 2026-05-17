@@ -7,6 +7,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EarthquakeList } from '@/components/geology/EarthquakeList';
+import { UsgsQuakePanel } from '@/components/geology/UsgsQuakePanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -568,6 +569,11 @@ export default function GeologyLensPage() {
       <div className="px-4 mb-2">
         <LensFeedPanel lensId="geology" />
       </div>
+      {/* Phase 4 — REAL USGS earthquake feed (24h, ≥M2.5). Tier-1 honest live data. */}
+      <section className="mt-6 mx-4">
+        <UsgsQuakePanel />
+      </section>
+
       {/* Bespoke USGS earthquake feed with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <EarthquakeList />

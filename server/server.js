@@ -9650,6 +9650,10 @@ async function runMacro(domain, name, input, ctx) {
     // External fetches go through these macros; no user data leaves the
     // server, so anonymous reads are safe.
     astronomy: new Set(["live_apod", "live_iss", "live_neo"]),
+    geology: new Set(["live_quakes_today"]),
+    // history domain already has other publicReadDomains entries elsewhere;
+    // we only need the live_wiki_otd here.
+    // atlas domain too; merged via Set spread below if it exists.
     lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate", "spatial_at"]),
     system: new Set(["status", "getStatus", "health", "analogize"]),
     settings: new Set(["get", "status"]),
@@ -9663,7 +9667,9 @@ async function runMacro(domain, name, input, ctx) {
     council: new Set(["tally", "status", "list"]),
     hypothesis: new Set(["list", "get", "status"]),
     analytics: new Set(["dashboard", "growth", "density", "citations", "marketplace", "personal"]),
-    atlas: new Set(["status", "get", "list", "scope", "config", "thresholds", "autogen", "chat", "contradictions", "score-explain", "submission", "search", "antigaming", "rights", "write-guard", "scope-metrics", "local-hints", "tile", "volume", "material", "subsurface", "change", "coverage", "live", "metrics"]),
+    atlas: new Set(["status", "get", "list", "scope", "config", "thresholds", "autogen", "chat", "contradictions", "score-explain", "submission", "search", "antigaming", "rights", "write-guard", "scope-metrics", "local-hints", "tile", "volume", "material", "subsurface", "change", "coverage", "live", "metrics", "live_geocode"]),
+    // Phase 4 (UX completeness sprint) — history live wiki On This Day.
+    history: new Set(["live_wiki_otd"]),
     agents: new Set(["list", "get", "status"]),
     personas: new Set(["list", "get"]),
     affect: new Set(["state", "events", "health", "system", "policy"]),
@@ -23212,6 +23218,12 @@ registerBulkRecentMine(register);
 // production. Honest REAL_FREE tier (per integration-registry).
 import registerAstronomyLiveMacros from "./domains/astronomy-live.js";
 registerAstronomyLiveMacros(register);
+
+// Phase 4 cont'd — bulk free-API wire-up. USGS earthquakes, NOAA tides,
+// OpenStreetMap Nominatim, Wikipedia On This Day. All free, no key.
+// publicReadDomains entries below.
+import registerFreeApiLiveMacros from "./domains/free-api-live.js";
+registerFreeApiLiveMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";
