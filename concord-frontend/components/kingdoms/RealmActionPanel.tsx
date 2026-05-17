@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface Realm { id: string; name: string; rulerUserId?: string; capital?: string; loyalty?: number; size?: number }
 interface DecreeResult { decreeId?: string; region?: string; effect?: string }
@@ -45,7 +46,7 @@ export function RealmActionPanel() {
   const [targetRealmId, setTargetRealmId] = useState('');
   const [decreeKind, setDecreeKind] = useState<'tax' | 'levy' | 'mercy' | 'crackdown' | 'border-watch'>('tax');
   const [decreeRegion, setDecreeRegion] = useState('');
-  const [decreeMagnitude, setDecreeMagnitude] = useState('5');
+  const [decreeMagnitude, setDecreeMagnitude] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -60,6 +61,21 @@ export function RealmActionPanel() {
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
+
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
 
   // Auto-load realm list + my realm on mount
   useEffect(() => {
@@ -78,14 +94,22 @@ export function RealmActionPanel() {
   async function actList() {
     setBusy('list'); setFeedback(null);
     const r = await callKingdoms<{ realms: Realm[] }>('list', {});
-    if (r.ok && r.result?.realms) { setRealmList(r.result.realms); ok(`${r.result.realms.length} realms.`); }
+    if (r.ok && r.result?.realms) {
+      setRealmList(r.result.realms);
+      pipe.publish('kingdoms.realmList', r.result.realms, { label: `${r.result.realms.length} realms` });
+      ok(`${r.result.realms.length} realms.`);
+    }
     else err(r.error ?? r.reason ?? 'list failed');
     setBusy(null);
   }
   async function actMine() {
     setBusy('mine'); setFeedback(null);
     const r = await callKingdoms<{ realm: Realm }>('my_realm', {});
-    if (r.ok && r.result?.realm) { setMyRealm(r.result.realm); ok(`My realm: ${r.result.realm.name}.`); }
+    if (r.ok && r.result?.realm) {
+      setMyRealm(r.result.realm);
+      pipe.publish('kingdoms.myRealm', r.result.realm, { label: r.result.realm.name });
+      ok(`My realm: ${r.result.realm.name}.`);
+    }
     else err(r.error ?? r.reason ?? 'no realm');
     setBusy(null);
   }
@@ -95,7 +119,11 @@ export function RealmActionPanel() {
     const r = await callKingdoms<DecreeResult>('propose_decree', {
       region: decreeRegion.trim(), kind: decreeKind, magnitude: parseFloat(decreeMagnitude),
     });
-    if (r.ok && r.result) { setDecreeResult(r.result); ok(`Decree proposed: ${r.result.decreeId ?? r.result.effect}.`); }
+    if (r.ok && r.result) {
+      setDecreeResult(r.result);
+      pipe.publish('kingdoms.decree', r.result, { label: `${decreeKind} · ${r.result.region ?? decreeRegion}` });
+      ok(`Decree proposed: ${r.result.decreeId ?? r.result.effect}.`);
+    }
     else err(r.error ?? r.reason ?? 'decree failed');
     setBusy(null);
   }
@@ -104,7 +132,11 @@ export function RealmActionPanel() {
     setBusy('loyalty'); setFeedback(null);
     const realmId = targetRealmId.trim() || myRealm?.id;
     const r = await callKingdoms<LoyaltyResult>('recompute_loyalty', { realmId });
-    if (r.ok && r.result) { setLoyaltyResult(r.result); ok(`Loyalty ${r.result.loyalty}${r.result.delta != null ? ` (Δ ${r.result.delta})` : ''}.`); }
+    if (r.ok && r.result) {
+      setLoyaltyResult(r.result);
+      pipe.publish('kingdoms.loyalty', r.result, { label: `loyalty ${r.result.loyalty}` });
+      ok(`Loyalty ${r.result.loyalty}${r.result.delta != null ? ` (Δ ${r.result.delta})` : ''}.`);
+    }
     else err(r.error ?? r.reason ?? 'loyalty failed');
     setBusy(null);
   }
@@ -113,7 +145,12 @@ export function RealmActionPanel() {
     setBusy(method); setFeedback(null);
     const macroName = method === 'conquest' ? 'takeover_conquest' : method === 'inheritance' ? 'takeover_inheritance' : 'takeover_election';
     const r = await callKingdoms<TakeoverResult>(macroName, { realmId: targetRealmId.trim() });
-    if (r.ok) { setTakeoverResult({ ...r.result, method }); ok(`${method}: ${r.result?.ok ? 'success' : 'failed'}.`); }
+    if (r.ok) {
+      const next = { ...r.result, method };
+      setTakeoverResult(next);
+      pipe.publish('kingdoms.takeover', next, { label: `${method} · ${next.ok ? 'success' : 'failed'}` });
+      ok(`${method}: ${r.result?.ok ? 'success' : 'failed'}.`);
+    }
     else err(r.error ?? r.reason ?? `${method} failed`);
     setBusy(null);
   }
@@ -132,7 +169,11 @@ export function RealmActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Realm DTU ${id.slice(0, 8)}…`); }
+      if (id) {
+        setMintedDtuId(id);
+        pipe.publish('kingdoms.mintedDtuId', id, { label: `realm DTU ${id.slice(0, 8)}` });
+        ok(`Realm DTU ${id.slice(0, 8)}…`);
+      }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -149,9 +190,12 @@ export function RealmActionPanel() {
       mintedDtuId ? `\n[Realm DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Dispatch sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Dispatch sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -159,21 +203,28 @@ export function RealmActionPanel() {
     if (!decreeResult) { err('Issue a decree first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Public decree — ${decreeResult.region}`,
-          tags: ['kingdoms', 'decree', 'public', decreeKind],
-          source: 'kingdoms:decree:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, decree: { region: decreeResult.region, kind: decreeKind, magnitude: parseFloat(decreeMagnitude), effect: decreeResult.effect } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Public decree — ${decreeResult.region}`,
+            tags: ['kingdoms', 'decree', 'public', decreeKind],
+            source: 'kingdoms:decree:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, decree: { region: decreeResult.region, kind: decreeKind, magnitude: parseFloat(decreeMagnitude), effect: decreeResult.effect } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Decree published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) {
+        setPublishedDtuId(id);
+        pipe.publish('kingdoms.publishedDtuId', id, { label: `decree ${id.slice(0, 8)}` });
+        ok(`Decree published ${id.slice(0, 8)}… · 30s to recall.`);
+      }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -227,6 +278,11 @@ export function RealmActionPanel() {
         <input type="text" value={decreeRegion} onChange={(e) => setDecreeRegion(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Decree region" />
         <input type="text" value={decreeMagnitude} onChange={(e) => setDecreeMagnitude(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="magnitude (1-10)" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-4 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM ally user id" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-11 gap-2">
