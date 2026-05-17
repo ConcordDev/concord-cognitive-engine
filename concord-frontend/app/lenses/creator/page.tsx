@@ -22,6 +22,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -861,7 +862,7 @@ function ProfileTab({
             className="w-full bg-black/60 border border-white/10 rounded px-3 py-2 text-sm" />
         </Field>
         <Field label="Bio" className="md:col-span-2">
-          <textarea value={bio} onChange={(e) => setBio(e.target.value)}
+          <DraftedTextarea lensId="creator" draftKey="bio" initial={bio} onValueChange={setBio}
             rows={3} placeholder="One paragraph followers will see."
             className="w-full bg-black/60 border border-white/10 rounded px-3 py-2 text-sm" />
         </Field>

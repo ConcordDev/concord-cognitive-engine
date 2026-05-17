@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -891,7 +892,7 @@ export default function ForumLensPage() {
                 {/* Content */}
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1">Content</label>
-                  <textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)} rows={6} placeholder="Share your thoughts, tips, questions..." className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
+                  <DraftedTextarea lensId="forum" draftKey="new-post" initial={newPostContent} onValueChange={setNewPostContent} rows={6} placeholder="Share your thoughts, tips, questions..." className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
                 </div>
                 {/* Tags */}
                 <div>
@@ -935,7 +936,7 @@ export default function ForumLensPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1">Description</label>
-                  <textarea value={newCommDesc} onChange={e => setNewCommDesc(e.target.value)} rows={3} placeholder="What is this community about?" className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
+                  <DraftedTextarea lensId="forum" draftKey="new-community-desc" initial={newCommDesc} onValueChange={setNewCommDesc} rows={3} placeholder="What is this community about?" className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
                 </div>
               </div>
               <div className="flex justify-end gap-3 px-5 py-4 border-t border-lattice-border">

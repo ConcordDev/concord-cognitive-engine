@@ -68,6 +68,8 @@ import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
 import { useTilePush } from '@/hooks/useTilePush';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import { ShoppingBag as MobileTabBag, Store as MobileTabStore, ShoppingCart as MobileTabCart, Package as MobileTabPkg, BarChart3 as MobileTabAnal, Heart as MobileTabHeart } from 'lucide-react';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -2906,6 +2908,19 @@ export default function MarketplaceLensPage() {
           <RecentMineCard domain="marketplace" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="marketplace" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="marketplace" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 11 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'browse',     label: 'Browse',  icon: MobileTabBag },
+              { id: 'myshop',     label: 'Shop',    icon: MobileTabStore },
+              { id: 'cart',       label: 'Cart',    icon: MobileTabCart },
+              { id: 'purchases',  label: 'Orders',  icon: MobileTabPkg },
+              { id: 'watchlist',  label: 'Watch',   icon: MobileTabHeart },
+              { id: 'analytics',  label: 'Stats',   icon: MobileTabAnal },
+            ]}
+            active={tab}
+            onSelect={(id) => setTab(id as Tab)}
+          />
     </LensShell>
   );
 }

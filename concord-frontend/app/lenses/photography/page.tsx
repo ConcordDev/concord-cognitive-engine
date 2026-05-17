@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -670,7 +671,7 @@ export default function PhotographyPage() {
               <p className="text-xs text-gray-500">{uploadFile ? uploadFile.name : 'Drag & drop or click to upload'}</p>
             </div>
             <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Photo title" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
-            <textarea value={uploadDesc} onChange={e => setUploadDesc(e.target.value)} placeholder="Description" rows={2} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none" />
+            <DraftedTextarea lensId="photography" draftKey="upload-description" initial={uploadDesc} onValueChange={setUploadDesc} placeholder="Description" rows={2} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none" />
             <input value={uploadCamera} onChange={e => setUploadCamera(e.target.value)} placeholder="Camera / lens info" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
             <input value={uploadTags} onChange={e => setUploadTags(e.target.value)} placeholder="Tags (comma separated)" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
             <button onClick={handleUpload} disabled={uploadMutation.isPending} className="w-full py-2 bg-sky-500/20 border border-sky-500/30 rounded-lg text-sm hover:bg-sky-500/30 disabled:opacity-50">

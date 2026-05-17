@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -1791,7 +1792,7 @@ export default function TradesLensPage() {
               </div>
               <div>
                 <label className={ds.label}>Description</label>
-                <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={3} className={ds.textarea} placeholder="Details..." />
+                <DraftedTextarea lensId="trades" draftKey="job-details" initial={formDescription} onValueChange={setFormDescription} rows={3} className={ds.textarea} placeholder="Details..." />
               </div>
               <div className={ds.grid2}>
                 <div>
@@ -1849,7 +1850,7 @@ export default function TradesLensPage() {
               </div>
               <div>
                 <label className={ds.label}>Notes</label>
-                <textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={3} className={ds.textarea} placeholder="Additional notes..." />
+                <DraftedTextarea lensId="trades" draftKey="job-notes" initial={formNotes} onValueChange={setFormNotes} rows={3} className={ds.textarea} placeholder="Additional notes..." />
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 p-6 border-t border-lattice-border">
