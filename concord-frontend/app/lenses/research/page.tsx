@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ResearchArxiv } from '@/components/research/ResearchArxiv';
+import { ResearchActionPanel } from '@/components/research/ResearchActionPanel';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -899,6 +900,9 @@ export default function ResearchLensPage() {
     <ResearchWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
     <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
       <ResearchArxiv />
+    </section>
+    <section className="mt-6 mx-auto max-w-7xl">
+      <ResearchActionPanel />
     </section>
     </LensShell>
   );
