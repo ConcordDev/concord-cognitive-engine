@@ -9649,6 +9649,9 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 5 — multi-step workflow sessions. Handlers self-scope by
     // ctx.actor.userId; anonymous callers return {ok:false, reason:'no_user'}.
     sessions: new Set(["start", "advance", "update_state", "get", "list_mine", "close"]),
+    // Phase 7 — cross-lens DTU surface log. record + 3 read macros for
+    // ProvenanceTrail / DownstreamBadge / cross-lens recents.
+    dtu_surface: new Set(["record", "where_used", "surfaced_from", "provenance_trail"]),
     // Phase 4 (UX completeness sprint) — real free-API wire-up.
     // External fetches go through these macros; no user data leaves the
     // server, so anonymous reads are safe.
@@ -23238,6 +23241,15 @@ registerDraftsMacros(register);
 // transition appends to lens_session_events for the timeline UI.
 import registerSessionsMacros from "./domains/sessions.js";
 registerSessionsMacros(register);
+
+// Phase 7 (UX completeness sprint) — cross-lens narrative substrate.
+// Four macros (record / where_used / surfaced_from / provenance_trail)
+// powering the ProvenanceTrail + DownstreamBadge + cross-lens recents
+// tile. Append-only dtu_surface_log table records every time a downstream
+// lens renders a DTU, so the upstream lens can show "your DTU is being
+// used here." Migration 196.
+import registerDtuSurfaceMacros from "./domains/dtu-surface.js";
+registerDtuSurfaceMacros(register);
 
 // Phase 2 (UX completeness sprint) — bulk-register <domain>.recent_mine
 // + <domain>.list_mine for every lens whose primary artifact is a DTU.
