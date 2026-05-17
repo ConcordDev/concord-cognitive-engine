@@ -9646,6 +9646,10 @@ async function runMacro(domain, name, input, ctx) {
     // {ok:false,reason:'no_user'}. Listing here bypasses the heavy
     // mutation gate for the high-frequency save/load path.
     drafts: new Set(["save", "load", "list_mine", "delete"]),
+    // Phase 4 (UX completeness sprint) — real free-API wire-up.
+    // External fetches go through these macros; no user data leaves the
+    // server, so anonymous reads are safe.
+    astronomy: new Set(["live_apod", "live_iss", "live_neo"]),
     lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate", "spatial_at"]),
     system: new Set(["status", "getStatus", "health", "analogize"]),
     settings: new Set(["get", "status"]),
@@ -23201,6 +23205,13 @@ registerDraftsMacros(register);
 // last-registration-wins semantics route to the bespoke version.
 import registerBulkRecentMine from "./domains/_recent-mine-bulk.js";
 registerBulkRecentMine(register);
+
+// Phase 4 (UX completeness sprint) — real free-API wiring for the
+// astronomy lens. Direct-fetch macros (NASA APOD, ISS, Near-Earth
+// Objects). DEMO_KEY rate-limited to 30/hr; set NASA_API_KEY env for
+// production. Honest REAL_FREE tier (per integration-registry).
+import registerAstronomyLiveMacros from "./domains/astronomy-live.js";
+registerAstronomyLiveMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";

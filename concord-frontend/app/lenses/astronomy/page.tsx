@@ -6,6 +6,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
+import { NasaLivePanel } from '@/components/astronomy/NasaLivePanel';
 import { AstronomyActionPanel } from '@/components/astronomy/AstronomyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -403,6 +404,11 @@ export default function AstronomyLensPage() {
           )}
         </div>
       )}
+
+      {/* Phase 4 — REAL NASA live data (APOD / ISS / NEO). Lens-grade "this is real, not synthetic" proof. */}
+      <section className="rounded-xl">
+        <NasaLivePanel />
+      </section>
 
       {/* Bespoke NASA APOD + ISS + NEO explorer with shared DateScrubber + Save-as-DTU */}
       <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
