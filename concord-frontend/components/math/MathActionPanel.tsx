@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,12 +43,12 @@ interface RegressResult { coefficients?: number[]; rSquared?: number; equation?:
 
 export function MathActionPanel() {
   const [problem, setProblem] = useState('');
-  const [dataset, setDataset] = useState('1, 2, 3, 4, 5, 6, 7, 8, 9, 10');
-  const [matrixA, setMatrixA] = useState('1,2,3\n4,5,6\n7,8,10');
+  const [dataset, setDataset] = useState('');
+  const [matrixA, setMatrixA] = useState('');
   const [matrixOp, setMatrixOp] = useState<'determinant' | 'transpose' | 'inverse'>('determinant');
-  const [polyCoef, setPolyCoef] = useState('1, -3, 2');
-  const [regressX, setRegressX] = useState('1, 2, 3, 4, 5');
-  const [regressY, setRegressY] = useState('2.1, 3.9, 6.2, 8.1, 10.3');
+  const [polyCoef, setPolyCoef] = useState('');
+  const [regressX, setRegressX] = useState('');
+  const [regressY, setRegressY] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -63,32 +64,47 @@ export function MathActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   function parseList(s: string) { return s.split(/[,\s]+/).map(x => parseFloat(x)).filter(x => !isNaN(x)); }
   function parseMatrix(s: string) { return s.split('\n').map(l => l.split(',').map(x => parseFloat(x.trim())).filter(x => !isNaN(x))); }
 
   async function actStats() {
     const data = parseList(dataset); if (!data.length) { err('Add numeric dataset.'); return; }
     setBusy('stats'); setFeedback(null);
-    try { const r = await callMacro<StatsResult>('statisticalAnalysis', { data }); if (r.ok && r.result) { setStatsResult(r.result); ok(`μ=${r.result.mean?.toFixed(2)}, σ=${r.result.stdDev?.toFixed(2)}.`); } else err(r.error ?? 'stats failed'); }
+    try { const r = await callMacro<StatsResult>('statisticalAnalysis', { data }); if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('math.stats', r.result, { label: `n=${r.result.count} μ=${r.result.mean?.toFixed(2)}` }); ok(`μ=${r.result.mean?.toFixed(2)}, σ=${r.result.stdDev?.toFixed(2)}.`); } else err(r.error ?? 'stats failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMatrix() {
     const m = parseMatrix(matrixA); if (!m.length) { err('Add matrix rows.'); return; }
     setBusy('matrix'); setFeedback(null);
-    try { const r = await callMacro<MatrixResult>('matrixOperations', { matrix: m, operation: matrixOp }); if (r.ok && r.result) { setMatrixResult(r.result); ok(`${matrixOp} computed.`); } else err(r.error ?? 'matrix failed'); }
+    try { const r = await callMacro<MatrixResult>('matrixOperations', { matrix: m, operation: matrixOp }); if (r.ok && r.result) { setMatrixResult(r.result); pipe.publish('math.matrix', r.result, { label: matrixOp }); ok(`${matrixOp} computed.`); } else err(r.error ?? 'matrix failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPoly() {
     const c = parseList(polyCoef); if (c.length < 2) { err('Add polynomial coefficients (highest power first).'); return; }
     setBusy('poly'); setFeedback(null);
-    try { const r = await callMacro<PolyResult>('polynomialAnalysis', { coefficients: c }); if (r.ok && r.result) { setPolyResult(r.result); ok(`Degree ${r.result.degree}, ${r.result.roots?.length ?? 0} roots.`); } else err(r.error ?? 'poly failed'); }
+    try { const r = await callMacro<PolyResult>('polynomialAnalysis', { coefficients: c }); if (r.ok && r.result) { setPolyResult(r.result); pipe.publish('math.poly', r.result, { label: `deg ${r.result.degree}` }); ok(`Degree ${r.result.degree}, ${r.result.roots?.length ?? 0} roots.`); } else err(r.error ?? 'poly failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRegress() {
     const x = parseList(regressX); const y = parseList(regressY);
     if (x.length !== y.length || x.length < 2) { err('X and Y must be same length, ≥2 points.'); return; }
     setBusy('regress'); setFeedback(null);
-    try { const r = await callMacro<RegressResult>('regressionFit', { x, y, type: 'linear' }); if (r.ok && r.result) { setRegressResult(r.result); ok(`R² = ${r.result.rSquared?.toFixed(4)}.`); } else err(r.error ?? 'regression failed'); }
+    try { const r = await callMacro<RegressResult>('regressionFit', { x, y, type: 'linear' }); if (r.ok && r.result) { setRegressResult(r.result); pipe.publish('math.regression', r.result, { label: `R²=${r.result.rSquared?.toFixed(3)}` }); ok(`R² = ${r.result.rSquared?.toFixed(4)}.`); } else err(r.error ?? 'regression failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -96,24 +112,34 @@ export function MathActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Math — ${problem.trim() || 'analysis'}`, tags: ['math', 'analysis'], source: 'math:analysis:mint', meta: { visibility: 'private', consent: { allowCitations: false }, math: { problem, stats: statsResult, matrix: matrixResult, poly: polyResult, regress: regressResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Math DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('math.mintedDtuId', id, { label: `analysis ${id.slice(0, 8)}` }); ok(`Math DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`Σ Math brief: ${problem || 'analysis'}`, '', statsResult ? `Stats: μ=${statsResult.mean?.toFixed(2)} σ=${statsResult.stdDev?.toFixed(2)} (n=${statsResult.count})` : '', regressResult ? `Regression: ${regressResult.equation} (R²=${regressResult.rSquared?.toFixed(4)})` : '', polyResult ? `Polynomial: deg ${polyResult.degree}, roots ${polyResult.roots?.map(r => r.toFixed(3)).join(', ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public derivation — ${problem.trim() || 'analysis'}`, tags: ['math', 'public', 'derivation'], source: 'math:derivation:publish', meta: { visibility: 'public', consent: { allowCitations: true }, derivation: { problem, stats: statsResult, regression: regressResult, poly: polyResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Derivation published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public derivation — ${problem.trim() || 'analysis'}`, tags: ['math', 'public', 'derivation'], source: 'math:derivation:publish', meta: { visibility: 'public', consent: { allowCitations: true }, derivation: { problem, stats: statsResult, regression: regressResult, poly: polyResult } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('math.publishedDtuId', id, { label: `derivation ${id.slice(0, 8)}` }); ok(`Derivation published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -163,6 +189,11 @@ export function MathActionPanel() {
       </div>
 
       <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {

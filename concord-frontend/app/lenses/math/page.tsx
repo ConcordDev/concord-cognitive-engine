@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { MathStackFeed } from '@/components/math/MathStackFeed';
 import { MathActionPanel } from '@/components/math/MathActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -1156,9 +1157,11 @@ export default function MathLensPage() {
       </section>
 
       {/* Wolfram + Desmos-shape math workbench: stats / matrix / polynomial / regression + actions */}
-      <section className="mt-6">
-        <MathActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <MathActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );
