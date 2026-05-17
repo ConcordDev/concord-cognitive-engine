@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -41,11 +42,11 @@ interface SwapResult { fromAmount?: number; toAmount?: number; priceImpact?: num
 interface GasResult { gwei?: number; usdCost?: number; congestion?: string }
 
 export function CryptoActionPanel() {
-  const [holdings, setHoldings] = useState('BTC 0.5 65000\nETH 3 3200\nSOL 50 180\nUSDC 5000 1');
-  const [searchQuery, setSearchQuery] = useState('pepe');
-  const [fromToken, setFromToken] = useState('ETH');
-  const [toToken, setToToken] = useState('USDC');
-  const [fromAmount, setFromAmount] = useState('1');
+  const [holdings, setHoldings] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [fromToken, setFromToken] = useState('');
+  const [toToken, setToToken] = useState('');
+  const [fromAmount, setFromAmount] = useState('');
   const [gasNetwork, setGasNetwork] = useState<'ethereum' | 'polygon' | 'arbitrum' | 'base'>('ethereum');
   const [recipient, setRecipient] = useState('');
 
@@ -62,57 +63,85 @@ export function CryptoActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   function parseHoldings() {
     return holdings.split('\n').map(l => { const m = l.trim().match(/^(\S+)\s+([\d.]+)\s+([\d.]+)$/); return m ? { symbol: m[1], amount: parseFloat(m[2]), priceUsd: parseFloat(m[3]) } : null; }).filter(Boolean);
   }
 
   async function actPortfolio() {
-    const h = parseHoldings(); if (!h.length) { err('Add holdings.'); return; }
+    const h = parseHoldings(); if (!h.length) { err('Add holdings (one per line: SYMBOL amount priceUsd).'); return; }
     setBusy('portfolio'); setFeedback(null);
-    try { const r = await callMacro<PortfolioResult>('portfolioAnalysis', { holdings: h }); if (r.ok && r.result) { setPortfolioResult(r.result); ok(`$${r.result.totalUsd?.toLocaleString()} portfolio.`); } else err(r.error ?? 'portfolio failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PortfolioResult>('portfolioAnalysis', { holdings: h });
+      if (r.ok && r.result) { setPortfolioResult(r.result); pipe.publish('crypto.portfolio', r.result, { label: `Portfolio $${r.result.totalUsd?.toLocaleString()}` }); ok(`$${r.result.totalUsd?.toLocaleString()} portfolio.`); } else err(r.error ?? 'portfolio failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSearch() {
     if (!searchQuery.trim()) { err('Token query required.'); return; }
     setBusy('search'); setFeedback(null);
-    try { const r = await callMacro<{ tokens?: Token[] }>('search-tokens', { query: searchQuery.trim() }); if (r.ok && r.result?.tokens) { setTokens(r.result.tokens); ok(`${r.result.tokens.length} tokens.`); } else err(r.error ?? 'search failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<{ tokens?: Token[] }>('search-tokens', { query: searchQuery.trim() });
+      if (r.ok && r.result?.tokens) { setTokens(r.result.tokens); pipe.publish('crypto.search', r.result, { label: `${r.result.tokens.length} tokens` }); ok(`${r.result.tokens.length} tokens.`); } else err(r.error ?? 'search failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSwap() {
-    if (!fromAmount || !fromToken.trim() || !toToken.trim()) { err('From/to/amount required.'); return; }
+    const amt = parseFloat(fromAmount);
+    if (!Number.isFinite(amt) || !fromToken.trim() || !toToken.trim()) { err('From + to + numeric amount required.'); return; }
     setBusy('swap'); setFeedback(null);
-    try { const r = await callMacro<SwapResult>('swap-quote', { fromSymbol: fromToken, toSymbol: toToken, fromAmount: parseFloat(fromAmount) }); if (r.ok && r.result) { setSwapResult(r.result); ok(`${r.result.fromAmount} ${fromToken} → ${r.result.toAmount} ${toToken}.`); } else err(r.error ?? 'swap failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SwapResult>('swap-quote', { fromSymbol: fromToken, toSymbol: toToken, fromAmount: amt });
+      if (r.ok && r.result) { setSwapResult(r.result); pipe.publish('crypto.swap', r.result, { label: `${r.result.fromAmount} ${fromToken} → ${r.result.toAmount} ${toToken}` }); ok(`${r.result.fromAmount} ${fromToken} → ${r.result.toAmount} ${toToken}.`); } else err(r.error ?? 'swap failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actGas() {
     setBusy('gas'); setFeedback(null);
-    try { const r = await callMacro<GasResult>('estimateGas', { network: gasNetwork, operation: 'swap' }); if (r.ok && r.result) { setGasResult(r.result); ok(`Gas: ${r.result.gwei} gwei.`); } else err(r.error ?? 'gas failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<GasResult>('estimateGas', { network: gasNetwork, operation: 'swap' });
+      if (r.ok && r.result) { setGasResult(r.result); pipe.publish('crypto.gas', r.result, { label: `Gas ${r.result.gwei} gwei` }); ok(`Gas: ${r.result.gwei} gwei.`); } else err(r.error ?? 'gas failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Crypto snapshot — ${new Date().toISOString().slice(0, 10)}`, tags: ['crypto', 'snapshot'], source: 'crypto:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, crypto: { holdings: parseHoldings(), portfolio: portfolioResult, swap: swapResult, gas: gasResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Crypto DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('crypto.mintedDtuId', id, { label: `Crypto DTU ${id.slice(0, 8)}…` }); ok(`Crypto DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🪙 Crypto snapshot`, '', portfolioResult ? `Portfolio: $${portfolioResult.totalUsd?.toLocaleString()} (top: ${portfolioResult.topAllocation})` : '', swapResult ? `Swap: ${swapResult.fromAmount} ${fromToken} → ${swapResult.toAmount} ${toToken}` : '', gasResult ? `Gas: ${gasResult.gwei} gwei (${gasResult.congestion})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🪙 Crypto snapshot`, '',
+      portfolioResult ? `Portfolio: $${portfolioResult.totalUsd?.toLocaleString()} (top: ${portfolioResult.topAllocation})` : '',
+      swapResult ? `Swap: ${swapResult.fromAmount} ${fromToken} → ${swapResult.toAmount} ${toToken}` : '',
+      gasResult ? `Gas: ${gasResult.gwei} gwei (${gasResult.congestion})` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!portfolioResult) { err('Run portfolio analysis first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Portfolio allocation — ${portfolioResult.topAllocation}`, tags: ['crypto', 'allocation', 'public'], source: 'crypto:allocation:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, allocation: { topAllocation: portfolioResult.topAllocation, diversification: portfolioResult.diversificationScore, concentrationRisk: portfolioResult.concentrationRisk } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Portfolio allocation — ${portfolioResult.topAllocation}`, tags: ['crypto', 'allocation', 'public'], source: 'crypto:allocation:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, allocation: { topAllocation: portfolioResult.topAllocation, diversification: portfolioResult.diversificationScore, concentrationRisk: portfolioResult.concentrationRisk } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('crypto.publishedDtuId', id, { label: `Public alloc ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -157,7 +186,11 @@ export function CryptoActionPanel() {
         <select value={gasNetwork} onChange={(e) => setGasNetwork(e.target.value as typeof gasNetwork)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
           {(['ethereum', 'polygon', 'arbitrum', 'base'] as const).map(n => <option key={n} value={n}>{n}</option>)}
         </select>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-6 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-6 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
