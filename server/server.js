@@ -35974,7 +35974,35 @@ app.post("/api/artifact/upload", async (req, res) => {
     // Record byte delta for the user. Best-effort — counter drift won't
     // crash the upload pipeline if it happens.
     recordStorageDelta(db, userId, artifactRef.sizeBytes || buffer.length, STORAGE_REASONS.UPLOAD, dtuId);
-    res.json({ ok: true, dtuId, artifact: { type: artifactRef.type, sizeBytes: artifactRef.sizeBytes } });
+    // Surface thumbnail URL when one was synchronously generated
+    // (currently: video → ffmpeg frame extraction; falsy otherwise).
+    const hasThumb = !!artifactRef.thumbnail && typeof artifactRef.thumbnail === "string" && contentType.startsWith("video/");
+    res.json({
+      ok: true,
+      dtuId,
+      artifact: { type: artifactRef.type, sizeBytes: artifactRef.sizeBytes },
+      thumbnailUrl: hasThumb ? `/api/artifact/${dtuId}/thumbnail` : null,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
+
+// Thumbnail/poster bytes for an artifact. Currently populated for
+// video uploads (Reels, studio clips) via ffmpeg frame extraction.
+// Returns 404 when no thumbnail exists (rather than a stock placeholder),
+// so the UI can fall back to <video poster=""> first-frame decoding.
+app.get("/api/artifact/:dtuId/thumbnail", async (req, res) => {
+  try {
+    const dtu = STATE.dtus.get(req.params.dtuId);
+    if (!dtu?.artifact?.thumbnail) return res.status(404).json({ ok: false, error: "no_thumbnail" });
+    const thumbPath = dtu.artifact.thumbnail;
+    const fs = await import("fs");
+    if (!fs.existsSync(thumbPath)) return res.status(404).json({ ok: false, error: "thumbnail_missing" });
+    // Cache for an hour — thumbnails are immutable.
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    fs.createReadStream(thumbPath).pipe(res);
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
@@ -69863,22 +69891,26 @@ register("federation", "inbox", async (ctx, input = {}) => {
 // Public inbox endpoint — federated peers POST activities here.
 // W3C ActivityPub §7: respond 202 Accepted on receipt, even if processing
 // fails downstream. Idempotent on activity.id so dupe deliveries are safe.
+//
+// Phase 12 — wires real HTTP-Signature verification: req.rawBody is
+// captured by the express.json verify hook so we can prove the body
+// hashes to the digest header the actor signed.
 app.post("/api/federation/users/:userId/inbox", asyncHandler(async (req, res) => {
   const recipientUserId = req.params.userId;
   const activity = req.body || {};
-  const headers = {
-    signature: req.headers["signature"],
-    Signature: req.headers["Signature"],
-    digest: req.headers["digest"],
-  };
   let ap;
   try { ap = await import("./lib/activitypub-bridge.js"); }
   catch { return res.status(503).json({ ok: false, reason: "ap_unavailable" }); }
-  const r = await ap.receiveActivity(db, recipientUserId, activity, headers);
-  // 202 even on signature_required so the peer doesn't infinite-retry —
-  // the spec is permissive about silent rejection at the inbox boundary.
+  const r = await ap.receiveActivity(db, recipientUserId, activity, req.headers, req.rawBody, {
+    method: "POST",
+    path: req.originalUrl || req.url,
+  });
   if (r?.ok && r.accepted) return res.status(202).json({ ok: true, deduped: !!r.deduped });
-  return res.status(r?.reason === "signature_required" ? 401 : 400).json(r);
+  if (r?.reason === "signature_required") return res.status(401).json(r);
+  if (r?.reason === "signature_invalid" || r?.reason === "actor_signature_mismatch") {
+    return res.status(401).json(r);
+  }
+  return res.status(400).json(r);
 }));
 
 // Public actor descriptor — federated peers GET this to discover the
@@ -69907,6 +69939,45 @@ app.get("/api/federation/users/:userId/outbox", asyncHandler(async (req, res) =>
 structuredLog("info", "phase8_2_ap_inbox_init", {
   detail: "Phase 8.2 — ActivityPub inbox endpoint + federation.{inbox,inbox_receive} macros wired",
 });
+
+// ── Phase 12: Webfinger discovery (RFC 7033) ────────────────────────────
+// Required for Mastodon-class peers to resolve "@user@host" handles to an
+// ActivityPub actor URL. Without this, our outbound posts can be
+// received by peers but peers can't discover us by username.
+app.get("/.well-known/webfinger", asyncHandler(async (req, res) => {
+  const resource = String(req.query.resource || "");
+  // Accepted forms: `acct:user@host` and (Mastodon admin form) `https://host/users/user`.
+  let username = null;
+  if (resource.startsWith("acct:")) {
+    const handle = resource.slice(5);
+    const at = handle.indexOf("@");
+    if (at < 0) return res.status(400).json({ ok: false, error: "malformed_acct" });
+    username = handle.slice(0, at);
+  } else if (resource.startsWith("https://") || resource.startsWith("http://")) {
+    const m = resource.match(/\/users\/([^/?#]+)/);
+    if (m) username = decodeURIComponent(m[1]);
+  }
+  if (!username) return res.status(400).json({ ok: false, error: "unsupported_resource" });
+
+  // Look up the local user; 404 if they don't exist so a probe doesn't
+  // confirm/deny arbitrary handles silently.
+  let userRow = null;
+  try {
+    userRow = db.prepare(`SELECT id, username FROM users WHERE username = ? OR id = ?`).get(username, username);
+  } catch { /* users table may be absent in some test envs */ }
+  if (!userRow) return res.status(404).json({ ok: false, error: "user_not_found" });
+
+  const base = process.env.CONCORD_BASE_URL || process.env.CONCORD_INSTANCE_URL || "https://concord-os.org";
+  const actorUrl = `${base}/api/federation/users/${encodeURIComponent(userRow.username || userRow.id)}`;
+  res.type("application/jrd+json").json({
+    subject: `acct:${userRow.username || userRow.id}@${new URL(base).host}`,
+    aliases: [actorUrl],
+    links: [
+      { rel: "self", type: "application/activity+json", href: actorUrl },
+      { rel: "http://webfinger.net/rel/profile-page", type: "text/html", href: `${base}/users/${encodeURIComponent(userRow.username || userRow.id)}` },
+    ],
+  });
+}));
 
 // ── Phase 8.5: Self-improving PR loop — reflex → forge → GitHub PR ──────────
 //

@@ -23,9 +23,15 @@
 //   - ActivityStreams 2.0: https://www.w3.org/TR/activitystreams-vocabulary/
 
 import crypto from "node:crypto";
+import { verifySignature, makeInMemoryKeyCache } from "./ap-signature.js";
 
 const ENABLED = process.env.CONCORD_ACTIVITYPUB === "true";
 const BASE_URL = process.env.CONCORD_BASE_URL || "https://concord-os.org";
+
+// Per-process cache for resolved actor keys. Survives the lifetime of
+// the node process; DB-backed cache (federation_peer_keys) is a future
+// optimisation if memory churn matters.
+const _keyCache = makeInMemoryKeyCache();
 
 /**
  * Build the actor object for a Concord user — the federation-visible
@@ -189,7 +195,7 @@ const SIGNATURE_REQUIRED = process.env.CONCORD_AP_REQUIRE_SIGNATURE === "true";
  * @param {object} activity — parsed JSON-LD activity
  * @param {object} headers — request headers (for signature verification)
  */
-export async function receiveActivity(db, recipientUserId, activity, headers = {}) {
+export async function receiveActivity(db, recipientUserId, activity, headers = {}, rawBody = null, opts = {}) {
   if (!ENABLED) return { ok: false, reason: "disabled" };
   if (!db || !recipientUserId || !activity) return { ok: false, reason: "missing_inputs" };
   if (!activity.id || !activity.type) return { ok: false, reason: "missing_activity_fields" };
@@ -205,19 +211,47 @@ export async function receiveActivity(db, recipientUserId, activity, headers = {
         actor_url TEXT,
         activity_json TEXT NOT NULL,
         received_at INTEGER NOT NULL DEFAULT (unixepoch()),
-        processed INTEGER NOT NULL DEFAULT 0
+        processed INTEGER NOT NULL DEFAULT 0,
+        signature_actor_id TEXT
       )
     `);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_inbox_recipient ON activitypub_inbox(recipient_user_id, received_at DESC)`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_inbox_type ON activitypub_inbox(activity_type)`);
+    // Soft migration for pre-existing tables that lack the column.
+    try {
+      const cols = db.prepare(`PRAGMA table_info(activitypub_inbox)`).all().map(c => c.name);
+      if (!cols.includes("signature_actor_id")) {
+        db.exec(`ALTER TABLE activitypub_inbox ADD COLUMN signature_actor_id TEXT`);
+      }
+    } catch { /* sqlite older / non-better-sqlite — skip */ }
   } catch { /* lazy-create best-effort */ }
 
-  // Optional HTTP signature verification. Real implementation would verify
-  // the Signature header against the actor's publicKey via the http-signature
-  // module. For Phase 8.2 scaffold we record the signature presence so the
-  // flag is surfaceable without blocking unsigned local-dev posts.
+  // HTTP signature verification (RFC draft-cavage-http-signatures-10).
+  // Always attempted when a Signature header is present; only HARD-fails
+  // when CONCORD_AP_REQUIRE_SIGNATURE=true or activity.actor differs from
+  // the signature actor (impersonation defence).
   const hasSignature = !!(headers.signature || headers.Signature);
-  if (SIGNATURE_REQUIRED && !hasSignature) {
+  let signatureResult = null;
+  if (hasSignature) {
+    signatureResult = await verifySignature({
+      headers,
+      method: opts.method || "POST",
+      path: opts.path || `/users/${encodeURIComponent(recipientUserId)}/inbox`,
+      body: rawBody,
+      cacheGet: _keyCache.get,
+      cacheSet: _keyCache.set,
+      fetcher: opts.fetcher,
+    });
+    if (!signatureResult.ok) {
+      return { ok: false, reason: "signature_invalid", error: signatureResult.error };
+    }
+    // Impersonation guard: keyId actor must match the activity actor
+    // so a peer can't forward someone else's activity under their key.
+    const claimedActor = typeof activity.actor === "string" ? activity.actor : activity.actor?.id;
+    if (claimedActor && signatureResult.actorId && claimedActor !== signatureResult.actorId) {
+      return { ok: false, reason: "actor_signature_mismatch", claimedActor, signatureActor: signatureResult.actorId };
+    }
+  } else if (SIGNATURE_REQUIRED) {
     return { ok: false, reason: "signature_required" };
   }
 
@@ -226,14 +260,15 @@ export async function receiveActivity(db, recipientUserId, activity, headers = {
   try {
     const r = db.prepare(`
       INSERT OR IGNORE INTO activitypub_inbox
-        (recipient_user_id, activity_id, activity_type, actor_url, activity_json)
-      VALUES (?, ?, ?, ?, ?)
+        (recipient_user_id, activity_id, activity_type, actor_url, activity_json, signature_actor_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `).run(
       recipientUserId,
       activity.id,
       activity.type,
       activity.actor || null,
       JSON.stringify(activity),
+      signatureResult?.actorId || null,
     );
     inserted = r.changes > 0;
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }

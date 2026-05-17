@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Play, Volume2, VolumeX } from 'lucide-react';
+import { Loader2, Play, Volume2, VolumeX, Camera } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ReactionBar } from '@/components/social/ReactionBar';
@@ -22,6 +22,7 @@ import { BookmarkButton } from '@/components/social/BookmarkButton';
 import { ShareButton } from '@/components/social/ShareButton';
 import { CommentThread } from '@/components/social/CommentThread';
 import { UserLink } from '@/components/social/UserLink';
+import { ReelRecorder } from '@/components/reels/ReelRecorder';
 
 interface Reel {
   id: string;
@@ -50,6 +51,7 @@ async function runMacro<T>(domain: string, name: string, input: Record<string, u
 export interface ReelsFeedProps { className?: string; }
 
 export function ReelsFeed({ className }: ReelsFeedProps) {
+  const [recorderOpen, setRecorderOpen] = useState(false);
   const { data, isLoading, refetch } = useQuery<ListResponse | null>({
     queryKey: ['reels-for-you'],
     queryFn: async () => runMacro<ListResponse>('reels', 'list_for_you', { limit: 20 }),
@@ -57,6 +59,18 @@ export function ReelsFeed({ className }: ReelsFeedProps) {
   });
 
   const reels = data?.results ?? [];
+
+  const RecordFab = (
+    <button
+      type="button"
+      onClick={() => setRecorderOpen(true)}
+      className="fixed bottom-20 right-5 sm:bottom-6 sm:right-6 z-30 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium shadow-2xl shadow-rose-900/30"
+      aria-label="Record a reel"
+    >
+      <Camera className="w-4 h-4" />
+      Record
+    </button>
+  );
 
   if (isLoading) {
     return (
@@ -68,20 +82,28 @@ export function ReelsFeed({ className }: ReelsFeedProps) {
 
   if (reels.length === 0) {
     return (
-      <div className={cn('text-center py-12 text-zinc-400', className)}>
-        <Play className="w-6 h-6 mx-auto mb-2 text-zinc-500" />
-        <div className="font-medium text-zinc-200">No reels yet</div>
-        <div className="text-sm mt-1">Be the first to post a reel.</div>
-      </div>
+      <>
+        <div className={cn('text-center py-12 text-zinc-400', className)}>
+          <Play className="w-6 h-6 mx-auto mb-2 text-zinc-500" />
+          <div className="font-medium text-zinc-200">No reels yet</div>
+          <div className="text-sm mt-1">Be the first to post a reel.</div>
+        </div>
+        {RecordFab}
+        {recorderOpen && <ReelRecorder onClose={() => setRecorderOpen(false)} onPosted={() => refetch()} />}
+      </>
     );
   }
 
   return (
-    <div className={cn('space-y-6 snap-y snap-mandatory max-h-[calc(100vh-12rem)] overflow-y-auto', className)}>
-      {reels.map(r => (
-        <ReelCard key={r.id} reel={r} onWatched={() => refetch()} />
-      ))}
-    </div>
+    <>
+      <div className={cn('space-y-6 snap-y snap-mandatory max-h-[calc(100vh-12rem)] overflow-y-auto', className)}>
+        {reels.map(r => (
+          <ReelCard key={r.id} reel={r} onWatched={() => refetch()} />
+        ))}
+      </div>
+      {RecordFab}
+      {recorderOpen && <ReelRecorder onClose={() => setRecorderOpen(false)} onPosted={() => refetch()} />}
+    </>
   );
 }
 

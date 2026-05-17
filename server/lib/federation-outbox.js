@@ -10,9 +10,30 @@
 // No fake "delivered" — every status transition reflects what the
 // remote inbox actually returned.
 
+import { signRequest } from './ap-signature.js';
+
 const MAX_ATTEMPTS = 6;
 const RETRY_BACKOFF_S = [60, 300, 900, 3600, 14400, 86400]; // 1m, 5m, 15m, 1h, 4h, 1d
 const FETCH_TIMEOUT_MS = 8000;
+
+const BASE_URL = process.env.CONCORD_BASE_URL || "https://concord-os.org";
+
+/**
+ * Build the per-user signing inputs (privateKeyPem + keyId) from env.
+ * Returns null when signing is not configured — the outbox falls back
+ * to unsigned POSTs in that case (which Mastodon will reject in
+ * Authorized Fetch mode but pre-AF instances accept).
+ *
+ * In production CONCORD_AP_PRIVATE_KEY_PEM is the server-wide key and
+ * CONCORD_AP_PUBLIC_KEY_PEM the matching public PEM exposed on every
+ * actor's publicKey field. Future enhancement: per-user keypairs.
+ */
+function signingInputsFor(homeUserId) {
+  const privateKeyPem = process.env.CONCORD_AP_PRIVATE_KEY_PEM;
+  if (!privateKeyPem) return null;
+  const actorId = `${BASE_URL}/users/${encodeURIComponent(homeUserId)}`;
+  return { privateKeyPem, keyId: `${actorId}#main-key` };
+}
 
 function nextAttemptDueAt(attempts) {
   const idx = Math.min(attempts, RETRY_BACKOFF_S.length - 1);
@@ -57,7 +78,7 @@ export async function drainOutbox(db, { limit = 25 } = {}) {
   // 'pending' rows that have never been attempted, or whose backoff
   // window has elapsed.
   const rows = db.prepare(`
-    SELECT id, ap_activity_id, activity_type, activity_json, target_inbox_url, attempts, last_attempted_at
+    SELECT id, home_user_id, ap_activity_id, activity_type, activity_json, target_inbox_url, attempts, last_attempted_at
     FROM federation_outbox
     WHERE status IN ('pending', 'in_flight', 'failed')
       AND (last_attempted_at IS NULL OR last_attempted_at < ?)
@@ -82,13 +103,30 @@ export async function drainOutbox(db, { limit = 25 } = {}) {
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     let httpOk = false, httpStatus = null, errMsg = null;
     try {
+      // Build base + (optional) HTTP-Signature headers. Outbound POSTs
+      // are signed whenever CONCORD_AP_PRIVATE_KEY_PEM is set; otherwise
+      // we ship unsigned, which Mastodon Authorized-Fetch mode will
+      // reject (the row will fail and back off normally).
+      const baseHeaders = {
+        'Content-Type': 'application/activity+json',
+        'Accept': 'application/activity+json',
+        'User-Agent': 'Concord-Federation/1.0',
+      };
+      const sigInputs = signingInputsFor(row.home_user_id);
+      const headers = sigInputs
+        ? signRequest({
+            privateKeyPem: sigInputs.privateKeyPem,
+            keyId: sigInputs.keyId,
+            method: 'POST',
+            url: row.target_inbox_url,
+            body: row.activity_json,
+            extraHeaders: baseHeaders,
+          })
+        : baseHeaders;
+
       const resp = await fetch(row.target_inbox_url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/activity+json',
-          'Accept': 'application/activity+json',
-          'User-Agent': 'Concord-Federation/1.0',
-        },
+        headers,
         body: row.activity_json,
         signal: ctrl.signal,
       });
@@ -189,4 +227,61 @@ export function outboxStats(db) {
   const out = { total: 0 };
   for (const r of rows) { out[r.status] = r.c; out.total += r.c; }
   return out;
+}
+
+/**
+ * Phase 12 — Discover a remote ActivityPub actor via webfinger (RFC 7033)
+ * + actor JSON-LD. Caches the resolved `(actorId, inboxUrl)` into
+ * federation_peer_actors so subsequent posts skip the network roundtrip.
+ *
+ * @param {object} db
+ * @param {string} handle — `user@host` form
+ * @param {object=} opts
+ * @param {(url:string, init?:object) => Promise<Response>=} opts.fetcher
+ * @returns {Promise<{ ok:boolean, actorId?:string, inboxUrl?:string, error?:string }>}
+ */
+export async function discoverPeerByWebfinger(db, handle, { fetcher = globalThis.fetch, timeoutMs = 6000 } = {}) {
+  if (!handle || typeof handle !== 'string') return { ok: false, error: 'bad_handle' };
+  const m = handle.match(/^([^@\s]+)@([a-z0-9.-]+(?::\d+)?)$/i);
+  if (!m) return { ok: false, error: 'malformed_handle' };
+  const [, user, host] = m;
+
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    // 1. Webfinger lookup.
+    const wfUrl = `https://${host}/.well-known/webfinger?resource=acct:${encodeURIComponent(user + '@' + host)}`;
+    const wfRes = await fetcher(wfUrl, { headers: { Accept: 'application/jrd+json' }, signal: ctrl.signal });
+    if (!wfRes.ok) return { ok: false, error: `webfinger_${wfRes.status}` };
+    const wf = await wfRes.json();
+    const apLink = Array.isArray(wf?.links) ? wf.links.find(l => l?.rel === 'self' && l?.type === 'application/activity+json') : null;
+    const actorUrl = apLink?.href;
+    if (!actorUrl) return { ok: false, error: 'no_activitypub_link' };
+
+    // 2. Fetch the actor JSON-LD for the inbox URL.
+    const actorRes = await fetcher(actorUrl, { headers: { Accept: 'application/activity+json' }, signal: ctrl.signal });
+    if (!actorRes.ok) return { ok: false, error: `actor_${actorRes.status}` };
+    const actor = await actorRes.json();
+    if (!actor?.id || !actor?.inbox) return { ok: false, error: 'malformed_actor' };
+
+    // 3. Cache.
+    if (db) {
+      try {
+        upsertPeerActor(db, {
+          actorId: actor.id,
+          handle: `${user}@${host}`,
+          displayName: actor.name || actor.preferredUsername || user,
+          avatarUrl: actor.icon?.url || actor.icon?.[0]?.url || null,
+          inboxUrl: actor.inbox,
+          instanceUrl: `https://${host}`,
+        });
+      } catch { /* cache write failure is non-fatal */ }
+    }
+
+    return { ok: true, actorId: actor.id, inboxUrl: actor.inbox };
+  } catch (err) {
+    return { ok: false, error: String(err?.message || err) };
+  } finally {
+    clearTimeout(t);
+  }
 }

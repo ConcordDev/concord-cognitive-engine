@@ -126,6 +126,9 @@ export default function configureMiddleware(app, deps) {
     const limit = matchedLimit ? matchedLimit[1] : '10mb';
     express.json({ limit, verify: (innerReq, _res, buf) => {
       if (innerReq.url === '/api/economy/webhook') innerReq.rawBody = buf;
+      // ActivityPub inbox needs the unparsed body so HTTP-Signature
+      // digest verification can prove the body wasn't tampered with.
+      if (/^\/api\/federation\/users\/[^/]+\/inbox\b/.test(innerReq.url)) innerReq.rawBody = buf;
     } })(req, res, next);
   });
   app.use(express.urlencoded({ extended: true, limit: "10mb" }));
