@@ -21,6 +21,7 @@ import {
   AlertTriangle, Clock, ArrowRight, Sparkles,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -250,6 +251,17 @@ export default function SessionsLensPage() {
           )}
         </div>
       </div>
+      {/* Phase 5 mobile — thumb-friendly status filter bar; hides on desktop. */}
+      <MobileTabBar
+        tabs={[
+          { id: 'all',       label: 'All',       icon: GitBranch,   badgeCount: counts.all       || 0 },
+          { id: 'open',      label: 'Open',      icon: Play,        badgeCount: counts.open      || 0 },
+          { id: 'paused',    label: 'Paused',    icon: Pause,       badgeCount: counts.paused    || 0 },
+          { id: 'completed', label: 'Done',      icon: CheckCircle2 },
+        ]}
+        active={activeFilter}
+        onSelect={(id) => setActiveFilter(id as typeof activeFilter)}
+      />
     </LensShell>
   );
 }

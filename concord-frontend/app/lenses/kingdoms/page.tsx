@@ -21,9 +21,10 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
 import { RealmActionPanel } from '@/components/kingdoms/RealmActionPanel';
 import { WarCampaignSession } from '@/components/kingdoms/WarCampaignSession';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { PipingProvider } from '@/components/panel-polish';
-import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle, List, Eye } from 'lucide-react';
 
 interface Kingdom {
   id: string;
@@ -155,6 +156,16 @@ export default function KingdomsPage() {
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
           <RecentMineCard domain="kingdoms" limit={10} hideWhenEmpty className="mt-4" />
           <CrossLensRecentsPanel lensId="kingdoms" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      {/* Phase 5 mobile — thumb-friendly bottom tab bar; hides on desktop. */}
+      <MobileTabBar
+        tabs={[
+          { id: 'list', label: 'Browse', icon: List },
+          { id: 'create', label: 'Found', icon: Plus },
+          { id: 'detail', label: 'Detail', icon: Eye },
+        ]}
+        active={view}
+        onSelect={(id) => setView(id as 'list' | 'create' | 'detail')}
+      />
     </LensShell>
   );
 }
