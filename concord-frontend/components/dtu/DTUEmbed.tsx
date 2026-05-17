@@ -24,6 +24,7 @@ import { TierBadge, type DTUTier } from './TierBadge';
 import { FederationBadge, type FederationStatus } from '@/components/federation/FederationBadge';
 // Phase 7 — cross-lens narrative: small chip showing "used in N lenses".
 import { DownstreamBadge } from './DownstreamBadge';
+import { ReactionBar } from '@/components/social/ReactionBar';
 import { useDtuSurface } from '@/hooks/useDtuSurface';
 // Phase P — surface the previously-orphan provenance/freshness badges.
 import { FreshnessBadge } from '@/components/common/FreshnessBadge';
@@ -226,6 +227,8 @@ export function DTUEmbed({ dtu, mode = 'card', onOpen, recordSurfaceFromLens, cl
             )}
             <DownstreamBadge dtuId={dtu.id} compact />
           </div>
+          {/* Phase 10 — pan-social reactions on every DTU embed. */}
+          <ReactionBar postId={dtu.id} compact hideWhenEmpty={!expanded} className="mt-1" />
           {dtu.summary && (
             <p
               className={cn(

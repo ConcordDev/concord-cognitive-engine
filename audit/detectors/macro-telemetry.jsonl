@@ -3588,3 +3588,8 @@
 {"generatedAt":"2026-05-17T07:07:56.578Z","key":"dtu.create","total":10,"lastFiredAt":1779001676577,"sources":{"http":0,"heartbeat":0,"internal":10,"system":0}}
 {"generatedAt":"2026-05-17T07:07:56.578Z","key":"emergent.bridge.heartbeatTick","total":3,"lastFiredAt":1779001614447,"sources":{"http":0,"heartbeat":0,"internal":3,"system":0}}
 {"generatedAt":"2026-05-17T07:07:56.578Z","key":"system.analogize","total":1,"lastFiredAt":1779001614457,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-17T07:27:56.554Z","key":"ingest.processQueueOnce","total":19,"lastFiredAt":1779002875117,"sources":{"http":0,"heartbeat":0,"internal":19,"system":0}}
+{"generatedAt":"2026-05-17T07:27:56.554Z","key":"dtu.create","total":9,"lastFiredAt":1779002875488,"sources":{"http":0,"heartbeat":0,"internal":9,"system":0}}
+{"generatedAt":"2026-05-17T07:27:56.554Z","key":"emergent.bridge.heartbeatTick","total":3,"lastFiredAt":1779002860362,"sources":{"http":0,"heartbeat":0,"internal":3,"system":0}}
+{"generatedAt":"2026-05-17T07:27:56.554Z","key":"emergent.repair.agent.tick","total":1,"lastFiredAt":1779002860399,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-17T07:27:56.554Z","key":"system.analogize","total":1,"lastFiredAt":1779002860401,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
