@@ -49,13 +49,43 @@ describe("astronomy-live macro registration", () => {
 });
 
 describe("free-api-live macro registration", () => {
-  it("registers geology.live_quakes_today, atlas.live_geocode, ocean.live_tides, history.live_wiki_otd", () => {
+  it("registers all 6 free-API macros across 5 domains", () => {
     const r = makeRegistry();
     registerFreeApiLiveMacros(r.register);
     assert.ok(r.map.has("geology.live_quakes_today"));
     assert.ok(r.map.has("atlas.live_geocode"));
     assert.ok(r.map.has("ocean.live_tides"));
     assert.ok(r.map.has("history.live_wiki_otd"));
+    assert.ok(r.map.has("cooking.live_food_search"));
+    assert.ok(r.map.has("food.live_food_search"));
+  });
+});
+
+describe("cooking.live_food_search input validation", () => {
+  it("rejects missing query", async () => {
+    const r = makeRegistry();
+    registerFreeApiLiveMacros(r.register);
+    const handler = r.map.get("cooking.live_food_search").handler;
+    const res = await handler({}, {});
+    assert.equal(res.ok, false);
+    assert.equal(res.reason, "missing_query");
+  });
+
+  it("rejects overlong query", async () => {
+    const r = makeRegistry();
+    registerFreeApiLiveMacros(r.register);
+    const handler = r.map.get("cooking.live_food_search").handler;
+    const res = await handler({}, { query: "x".repeat(200) });
+    assert.equal(res.ok, false);
+    assert.equal(res.reason, "query_too_long");
+  });
+
+  it("cooking and food share the same handler instance", () => {
+    const r = makeRegistry();
+    registerFreeApiLiveMacros(r.register);
+    const cookingHandler = r.map.get("cooking.live_food_search").handler;
+    const foodHandler = r.map.get("food.live_food_search").handler;
+    assert.equal(cookingHandler, foodHandler);
   });
 });
 
