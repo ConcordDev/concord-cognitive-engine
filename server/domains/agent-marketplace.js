@@ -81,9 +81,20 @@ export default function registerAgentMarketplaceMacros(register) {
     const db = ctx?.db || ctx?.STATE?.db;
     const loaded = loadAgent(db, String(input.dtuId || ""));
     if (!loaded.ok) return loaded;
+    // The macro ctx the dispatcher hands us doesn't expose runMacro
+    // directly (it's the top-level function in server.js). Pull it from
+    // the privileged global the server stashes at boot so the sandbox
+    // has something to proxy. Without this, sandbox.runMacro throws
+    // "baseCtx.runMacro is not a function".
+    const baseCtx = {
+      ...ctx,
+      runMacro: globalThis._concordRunMacro
+        ? (d, n, i) => globalThis._concordRunMacro(d, n, i, ctx)
+        : (() => { throw new Error("runMacro_not_initialized"); }),
+    };
     let sandbox;
     try {
-      sandbox = makeSandboxedCtx(ctx, loaded.manifest);
+      sandbox = makeSandboxedCtx(baseCtx, loaded.manifest);
     } catch (err) {
       return { ok: false, reason: "sandbox_setup_failed", error: err?.message };
     }

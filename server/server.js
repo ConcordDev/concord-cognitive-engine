@@ -624,6 +624,18 @@ registerHeartbeat("federation-outbox-pump", {
   handler: ({ db } = {}) => runFederationOutboxPump({ db }),
 });
 
+// Phase 13 follow-on — emergent respawn safeguard. The primary protection
+// (combat/attack route refusing to target is_conscious=1 NPCs) is in
+// routes/worlds.js. This is the FALLBACK that catches anything that
+// slips past — if a conscious NPC ever lands in is_dead=1, the next tick
+// of this heartbeat restores them. Per operator design intent:
+// "Can't have them dying for real."
+import { runEmergentRespawnSafeguard } from "./lib/emergent-respawn-safeguard.js";
+registerHeartbeat("emergent-respawn-safeguard", {
+  frequency: 1,
+  handler: ({ db } = {}) => runEmergentRespawnSafeguard({ db }),
+});
+
 // Phase 13 (Stage D) — federation-instance-probe. Every 240 ticks (~60 min)
 // re-probes each known peer instance via NodeInfo 2.1 and flips status to
 // 'unreachable' when probes fail. Without it, federation_peer_instances
@@ -14944,6 +14956,11 @@ globalThis._concordMACROS = MACROS;
 globalThis._concordBRAIN = BRAIN;
 globalThis._concordSTATE = STATE;
 globalThis._repairObserve = observe;
+// Phase 13 follow-on — expose runMacro to globalThis so agent.run can
+// recursively dispatch macros through its capability sandbox. The sandbox
+// wraps this in a permission-checking proxy; the global is the privileged
+// reference. Direct callers must always go through makeSandboxedCtx.
+globalThis._concordRunMacro = runMacro;
 // Stagger: repair loop at T+180s ±30s jitter (avoids deterministic alignment with other 900s tasks)
 setTimeout(() => startRepairLoop(), 180_000 + Math.floor(Math.random() * 60_000) - 30_000);
 
@@ -29753,6 +29770,22 @@ if (db) {
       const r2 = starter.seedStarterHostiles(db, "concordia-hub");
       structuredLog("info", "starter_content_seeded", { recipes: r1.count, hostiles: r2.count });
     } catch (e) { console.warn("[starter-content]", e.message); }
+
+    // Phase 13 follow-on — lore-appropriate hostiles + camps + dungeons +
+    // quests for every non-hub world. Pre-this, all 13 sub-worlds had zero
+    // hostile NPCs and no combat-mission quests. Idempotent per (world, id).
+    try {
+      const { seedAllWorldHostiles } = await import("./lib/world-hostiles-seed.js");
+      const r = seedAllWorldHostiles(db);
+      const totals = Object.values(r.summary || {}).reduce(
+        (a, w) => ({ npcs: a.npcs + (w.npcs || 0), bldgs: a.bldgs + (w.buildings || 0), quests: a.quests + (w.quests || 0) }),
+        { npcs: 0, bldgs: 0, quests: 0 },
+      );
+      structuredLog("info", "world_hostiles_seeded", {
+        worlds: Object.keys(r.summary || {}).length,
+        ...totals,
+      });
+    } catch (e) { console.warn("[world-hostiles-seed]", e.message); }
     // Start an NPC simulator for each seeded world
     const worldRows = db.prepare("SELECT id FROM worlds WHERE status = 'active'").all();
     for (const { id } of worldRows) {

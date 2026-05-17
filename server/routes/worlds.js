@@ -1866,6 +1866,22 @@ export default function createWorldsRouter({ requireAuth, db }) {
         });
       }
 
+      // ── Emergent protection (primary) ──────────────────────────────────────
+      // Conscious NPCs (is_conscious=1) are emergents — the AI residents of
+      // the substrate. They cannot be combat targets, in any world, ever.
+      // The fallback respawn safeguard catches anything that slips past
+      // this check, but this is where it should be stopped: at the door.
+      try {
+        const { isProtectedEmergent } = await import("../lib/emergent-respawn-safeguard.js");
+        if (isProtectedEmergent(db, npcId)) {
+          return res.status(403).json({
+            ok: false,
+            error: "emergent_protected",
+            reason: "Conscious NPCs (emergents) are residents of the substrate, not combat targets. They cannot be attacked.",
+          });
+        }
+      } catch { /* protection lookup best-effort; safeguard will respawn if this fails */ }
+
       const {
         computeDamage,
         applyDamageToNPC,
@@ -2317,6 +2333,20 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { npcId } = req.body;
 
       if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
+
+      // ── Emergent protection (primary, NPC-side) ────────────────────────
+      // Mirror image of the combat/attack route's protection: emergents
+      // cannot be the AGGRESSOR either. They don't attack players.
+      try {
+        const { isProtectedEmergent } = await import("../lib/emergent-respawn-safeguard.js");
+        if (isProtectedEmergent(db, npcId)) {
+          return res.status(403).json({
+            ok: false,
+            error: "emergent_protected",
+            reason: "Conscious NPCs (emergents) do not attack players. Refused at source.",
+          });
+        }
+      } catch { /* lookup best-effort */ }
 
       // Concordant Law: NPCs cannot harm players inside the hub. Mirror the
       // player→NPC gate above.
