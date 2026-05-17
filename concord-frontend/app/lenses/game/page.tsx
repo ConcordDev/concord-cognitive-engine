@@ -6,6 +6,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { TriviaPanel } from '@/components/game/TriviaPanel';
 import { GameFeed } from '@/components/game/GameFeed';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -936,6 +937,8 @@ export default function GameLensPage() {
       <FirstRunTour lensId="game" />
       <DepthBadge lensId="game" size="sm" className="ml-2" />
     <div className="p-6 space-y-6 min-h-screen">
+      {/* Phase 4 (fifth wave) — REAL Open Trivia DB question batch. */}
+      <TriviaPanel />
       {/* Header */}
       <header className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
