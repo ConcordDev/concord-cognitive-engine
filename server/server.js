@@ -9651,6 +9651,7 @@ async function runMacro(domain, name, input, ctx) {
     // server, so anonymous reads are safe.
     astronomy: new Set(["live_apod", "live_iss", "live_neo"]),
     geology: new Set(["live_quakes_today"]),
+    ocean: new Set(["live_tides"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.

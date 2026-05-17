@@ -188,6 +188,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['validate', 'synthesize', 'detect-contradictions', 'trace-lineage', 'claim-evidence-consistency', 'hypothesis-mutation-retest'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No papers yet.',
+      caption: 'Start a project, capture claims with evidence, run validate / synthesize over the corpus. Export to bibtex or PDF.',
+      firstActionLabel: 'Start a paper project',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Projects hold claims + evidence; detect-contradictions runs the lattice drift scan against your corpus.' },
+        { caption: 'trace-lineage walks the DTU citation graph — see exactly which evidence chains your synthesis stands on.' },
+        { caption: 'hypothesis-mutation-retest variations and runs the reasoning_session loop to flag weakness.' },
+      ],
+    },
   },
   {
     domain: 'reasoning',
@@ -228,6 +240,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['start', 'stop', 'reset', 'configure', 'deliberate', 'arbitrate', 'orchestrate', 'evaluate-performance'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No agents configured.',
+      caption: 'Build an agent from a role + task + brain assignment. Marathon sessions persist across restarts.',
+      firstActionLabel: 'Configure an agent',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Each agent gets a brain (conscious / subconscious / utility / repair) + a role + a tool whitelist.' },
+        { caption: 'Marathon sessions checkpoint state every node — close the tab, resume later, agent picks up where it left off.' },
+        { caption: 'deliberate spawns a council; arbitrate resolves conflicts between agents working the same problem.' },
+      ],
+    },
   },
   {
     domain: 'sim',
@@ -934,6 +958,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['progressionCalc', 'classUtilization', 'periodization', 'recruitProfile', 'bodyCompAnalysis', 'programGenerate', 'injuryRiskScreen', 'nutritionPlan'],
     category: 'services',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No clients or programs yet.',
+      caption: 'Build a program, track workouts, score assessments. USDA macros + ACSM-style formulas wire up real numbers.',
+      firstActionLabel: 'Add a client',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Programs hold workouts; periodization runs the macrocycle planner against the client\'s training age.' },
+        { caption: 'injuryRiskScreen scores common red flags from intake; nutritionPlan uses USDA FoodData Central for real macros.' },
+        { caption: 'Class utilization rolls up across cohorts — useful for studios + teams managing many athletes.' },
+      ],
+    },
   },
 
   // === CREATIVE PRODUCTION ===
@@ -1066,6 +1102,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['planItinerary', 'budgetEstimate', 'packingChecklist', 'flightSearch', 'hotelCompare', 'travelAdvisory'],
     category: 'lifestyle',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No trips planned.',
+      caption: 'Draft an itinerary; the planner uses OpenStreetMap + Wikipedia for real geo + lore. Pack lists generate from trip context.',
+      firstActionLabel: 'Plan a trip',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'planItinerary takes destination + dates + interests, produces a multi-day plan with real POIs.' },
+        { caption: 'travelAdvisory pulls relevant safety + visa notes; budgetEstimate uses regional cost benchmarks.' },
+        { caption: 'Itineraries export as iCal so they slot into any external calendar.' },
+      ],
+    },
   },
 
   // === FASHION (Lens 62) ===
@@ -1530,6 +1578,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'productivity',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No docs yet.',
+      caption: 'Author a document — Notion-shape sidebar tree + page editor. Every save is a DTU; versions are immutable.',
+      firstActionLabel: 'Create a doc',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sidebar tree on the left; nested docs by drag-and-drop. Templates accelerate common doc shapes.' },
+        { caption: 'Each save creates a new version under the doc. Rollback via the history panel.' },
+        { caption: 'Export to PDF (paged), JSON (machine), or CSV (tabular sections only).' },
+      ],
+    },
   },
   {
     domain: 'dtus',
@@ -2086,6 +2146,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No research sessions yet.',
+      caption: 'Spin up a reasoning_session: claim, evidence, contradiction-check, citation. Backed by the lattice substrate.',
+      firstActionLabel: 'Start a session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sessions are multi-step. The lattice drift scan flags contradictions across your corpus as you add evidence.' },
+        { caption: 'Evidence pulls from any DTU in your substrate — past chats, papers, even Concordia NPC dialogue.' },
+        { caption: 'analyze runs ghost-fleet reasoning modes (deductive / abductive / constraint_check / counterfactual). Pick the right mode for the question.' },
+      ],
+    },
   },
   {
     domain: 'robotics',
@@ -2418,6 +2490,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['list_kingdoms', 'view_kingdom', 'compose_decree', 'contest_decree', 'view_minimap'],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No kingdoms yet.',
+      caption: 'Found a realm, issue decrees, rally war campaigns. The CK3-port substrate runs strategy cycles every ~50 minutes.',
+      firstActionLabel: 'Found a kingdom',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Decrees affect loyalty + tax + military across citizens. The kingdom-decree-cycle heartbeat enforces effects every 16 ticks.' },
+        { caption: 'War campaigns persist server-side via war_campaigns table — they survive restarts and run their own resolution cycle.' },
+        { caption: 'view_minimap renders territory polygons; contest_decree lets rivals challenge through the faction-strategy cycle.' },
+      ],
+    },
   },
   {
     domain: 'lattice',
@@ -2510,6 +2594,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['log_fitness', 'log_sleep', 'log_mood', 'add_journal_entry', 'log_meditation', 'view_trends'],
     category: 'lifestyle',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Your self log is empty.',
+      caption: 'Log fitness, sleep, mood, journal entries, meditation. The trends view rolls up across all five streams to surface patterns.',
+      firstActionLabel: 'Add your first entry',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Five log kinds (fitness / sleep / mood / journal / meditation). Each is a private DTU you own.' },
+        { caption: 'view_trends rolls weeks of data into a single mood vs. sleep vs. workout overlay.' },
+        { caption: 'Journal entries can cite DTUs from any other lens — your self-reflection lives in the same substrate as your work.' },
+      ],
+    },
   },
   {
     domain: 'sentinel',

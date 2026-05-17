@@ -105,6 +105,37 @@ export default function registerFreeApiLiveMacros(register) {
   }, { note: "live OSM Nominatim geocode" });
 
   // ───────────────────────────────────────────────────────────────────
+  // OCEAN — NOAA CO-OPS tide predictions (free, no key)
+  // ───────────────────────────────────────────────────────────────────
+  register("ocean", "live_tides", async (_ctx, input = {}) => {
+    // Defaults to Boston (NOAA station 8443970).
+    const station = String(input.station || "8443970");
+    if (!/^\d{7}$/.test(station)) return { ok: false, reason: "invalid_station" };
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?` +
+      `product=predictions&application=ConcordOS_ocean_lens&begin_date=${today}` +
+      `&range=24&datum=MLLW&station=${station}&time_zone=lst_ldt&units=metric&interval=hilo&format=json`;
+    try {
+      const data = await fetchJsonWithTimeout(url);
+      const predictions = (data.predictions || []).map(p => ({
+        time: p.t,
+        heightMeters: parseFloat(p.v),
+        type: p.type === "H" ? "high" : "low",
+      }));
+      return {
+        ok: true,
+        source: "NOAA CO-OPS Tides & Currents",
+        fetchedAt: Math.floor(Date.now() / 1000),
+        station,
+        window: "next 24h",
+        predictions,
+      };
+    } catch (e) {
+      return { ok: false, reason: "noaa_unreachable", error: String(e?.message || e) };
+    }
+  }, { note: "live NOAA tide predictions (next 24h)" });
+
+  // ───────────────────────────────────────────────────────────────────
   // HISTORY — Wikipedia "On This Day" featured content (free REST API)
   // ───────────────────────────────────────────────────────────────────
   register("history", "live_wiki_otd", async (_ctx, input = {}) => {
