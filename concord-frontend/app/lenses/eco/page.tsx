@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { WeatherPanel } from '@/components/eco/WeatherPanel';
+import { EcoActionPanel } from '@/components/eco/EcoActionPanel';
 import { WeatherRadar } from '@/components/eco/WeatherRadar';
 import { AQIPanel } from '@/components/eco/AQIPanel';
 import { ClimateActions } from '@/components/eco/ClimateActions';
@@ -1272,6 +1273,9 @@ export default function EcoLensPage() {
       {/* Bespoke Open-Meteo weather + AQI with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <WeatherPanel />
+      </section>
+      <section className="mt-6">
+        <EcoActionPanel />
       </section>
     </div>
     </LensShell>

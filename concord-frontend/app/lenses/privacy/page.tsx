@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { PrivacyFeed } from '@/components/privacy/PrivacyFeed';
+import { PrivacyActionPanel } from '@/components/privacy/PrivacyActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -835,6 +836,9 @@ export default function PrivacySharingPage() {
       </AnimatePresence>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PrivacyFeed />
+      </section>
+      <section className="mt-6">
+        <PrivacyActionPanel />
       </section>
     </div>
 
