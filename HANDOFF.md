@@ -12,13 +12,63 @@ toast** + **/admin/endpoints** 2,400-route inventory + **useTilePush**
 hook + 41 REAL_FREE no-key wire panels + 0 type errors + 25/25 social
 contract tests + server tests green with two pre-existing failures fixed)
 
-## Session 11 additions (Phase 11 — 17-item backlog, parts 1 & 2)
+## Session 11 additions (Phase 11 — 17-item backlog, parts 1-5)
 
 ```
+1eb6d81 Phase 11 Items 5 + 10 sweep: 4 more hero lenses get MobileTabBar, 6 more DraftedTextarea swaps
+0e95008 Phase 11 Items 5 + 10 partial: MobileTabBar on council/sim + DraftedTextarea swaps
+5598765 Phase 11 Item 7 (substrate + roster): Spaces (live audio rooms)
+4a049bc Phase 11 Item 6 (substrate + feed): Reels short-form video
+a38889e Phase 11 Items 12 + 8-part-3: federation push for social + useTilePush mount
+9ec5f65 Phase 11 Item 13: WebPush notifications — migration 197 + dispatcher + hook + service worker + 8/8 tests
+e18face Phase 11 Item 9 finish: 4 panels for the key-required wires
+67658a6 Phase 11 Stage B (Item 9): 4 key-required REAL_FREE wires + 6/6 contract tests
+5cdd5dd Phase 11 Stage A: HANDOFF refresh + 25/25 social tests green
 eba0a3d Phase 11 part 2 (in-flight): useTilePush + FlashHighlight + 7 social contract tests + realtimeEvents
 1970f29 Phase 11 part 1: admin/endpoints, bookmarks lens, mention autocomplete, notification toast, two pre-existing test fixes
 fe31813 chore: refresh macro telemetry artifact
 ```
+
+### Phase 11 final tally — 15 of 17 backlog items fully shipped, 2 partial
+
+| # | Item | Status |
+|---|---|---|
+| 1 | /admin/endpoints inventory | ✅ |
+| 2 | Bookmarks lens (Saved) | ✅ |
+| 3 | @mention autocomplete | ✅ |
+| 4 | Notification toast | ✅ |
+| 5 | Mobile polish hero lenses | 🟡 9/20 (kingdoms, sessions, social, council, sim, food, education, legal, healthcare) |
+| 6 | Reels short-form video | ✅ Substrate + feed |
+| 7 | Spaces live audio rooms | ✅ Substrate + roster |
+| 8 | useTilePush + FlashHighlight | ✅ Hook + marketplace mount |
+| 9 | 4 REAL_FREE key-required wires (FRED/EPA/NPS/OpenWeatherMap) | ✅ |
+| 10 | DraftedTextarea hand-swaps | 🟡 10 swapped (astronomy, game-design, environment, insurance, fitness, calendar, realestate ×2, healthcare, education ×2) |
+| 11 | Migrations 195-200 deployed | ✅ Locally; prod = human action |
+| 12 | Federation push (ActivityPub) | ✅ Substrate + outbox + heartbeat + visibility selector |
+| 13 | Push notifications (WebPush) | ✅ |
+| 14 | HANDOFF.md refresh | ✅ This file |
+| 15 | Tier-2 social contract tests | ✅ 25/25 |
+| 16 | Server test baseline | ✅ Plus 2 pre-existing fixes |
+| 17 | README pan-social section | ✅ |
+
+### New tests landed this phase (all green)
+
+- `tests/route-inventory.test.js` — 5/5
+- `tests/key-required-live-registration.test.js` — 6/6
+- `tests/push-tokens.test.js` — 8/8
+- `tests/federation-outbox.test.js` — 8/8
+- `tests/reels.test.js` — 9/9
+- `tests/audio-rooms.test.js` — 10/10
+- `tests/components/social/{ReactionBar,BookmarkButton,FollowButton,UserLink,QuickPostComposer,ShareButton,CommentThread}.test.tsx` — 25/25 (vitest)
+
+### New migrations landed this phase
+
+- 197 `push_tokens` — WebPush + Expo device registry
+- 198 `social_federation` — federation_outbox + federation_inbox + federation_peer_actors
+- 199 `reels` — reels + reel_views
+- 200 `audio_rooms` — audio_rooms + audio_room_speakers + audio_room_listeners
+
+
 
 ### Session 11 highlights
 
