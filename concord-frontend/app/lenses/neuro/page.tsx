@@ -9,6 +9,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NeuroFeed } from '@/components/neuro/NeuroFeed';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { PubMedPanel } from '@/components/research/PubMedPanel';
+import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { NeuroActionPanel } from '@/components/neuro/NeuroActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -356,6 +357,8 @@ export default function NeuroLensPage() {
       <ArxivPanel domain="neuro" title="arXiv · Neuroscience (q-bio.NC)" />
       {/* Phase 4 — REAL PubMed (neuroscience-filtered). */}
       <PubMedPanel domain="neuro" macro="live_pubmed_neuro" title="PubMed · neuroscience" initialQuery="brain plasticity" />
+      {/* Phase 4 (fourth wave) — REAL Wikipedia neuroscience reference. */}
+      <WikipediaSearchPanel domain="neuro" title="Wikipedia · neuroscience" />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center"><Brain className="w-5 h-5 text-white" /></div>

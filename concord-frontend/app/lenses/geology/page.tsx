@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EarthquakeList } from '@/components/geology/EarthquakeList';
 import { UsgsQuakePanel } from '@/components/geology/UsgsQuakePanel';
+import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -573,6 +574,10 @@ export default function GeologyLensPage() {
       {/* Phase 4 — REAL USGS earthquake feed (24h, ≥M2.5). Tier-1 honest live data. */}
       <section className="mt-6 mx-4">
         <UsgsQuakePanel />
+      </section>
+      {/* Phase 4 (fourth wave) — REAL Wikipedia geology reference. */}
+      <section className="mt-4 mx-4">
+        <WikipediaSearchPanel domain="geology" title="Wikipedia · geology" />
       </section>
 
       {/* Bespoke USGS earthquake feed with Save-as-DTU */}

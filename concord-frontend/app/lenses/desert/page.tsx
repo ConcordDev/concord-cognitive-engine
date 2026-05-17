@@ -7,6 +7,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { DesertWeatherWatch } from '@/components/desert/DesertWeatherWatch';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -196,6 +197,8 @@ export default function DesertLensPage() {
         ) : undefined
       }
     >
+      {/* Phase 4 (fourth wave) — REAL Wikipedia desert-ecology reference. */}
+      <WikipediaSearchPanel domain="desert" title="Wikipedia · desert ecology" />
       <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
         {MODE_TABS.map(({ key, label, icon: Icon }) => (
           <button
