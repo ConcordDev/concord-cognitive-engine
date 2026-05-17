@@ -253,6 +253,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'render', 'publish', 'export_stems', 'generate_arrangement', 'timeline_render', 'stem_split', 'project_package'],
     category: 'creative',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No tracks yet.',
+      caption: 'Upload audio, generate stems, or compose in Studio. Soundscapes you mix here can stream into Concordia districts.',
+      firstActionLabel: 'Add your first track',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Tracks list in the main column. Click any to open arrangement / mix.' },
+        { caption: 'Render exports stems as WAV; full mixdowns as MP3. Both mint as DTUs.' },
+        { caption: 'Published tracks attach to Concordia districts as ambient soundscape — your music becomes the world\'s background.' },
+      ],
+    },
   },
   {
     domain: 'studio',
@@ -330,6 +342,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['schedule', 'remind', 'plan_day', 'plan_week', 'resolve_conflicts', 'availability_search', 'recurrence_expand', 'block_time'],
     category: 'productivity',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No events scheduled.',
+      caption: 'Block time, add reminders, plan day/week. The conflict resolver scans for overlap before commit.',
+      firstActionLabel: 'Schedule your first event',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Switch view via tabs (Day / Week / Month). Recurrence expands inline.' },
+        { caption: 'The plan_week action drafts a balanced schedule from your goals + recurring blocks.' },
+        { caption: 'Export to .ics for any external calendar, or keep it Concord-native to flow into the world simulator timeline.' },
+      ],
+    },
   },
   {
     domain: 'daily',
@@ -350,6 +374,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['evaluate', 'activate', 'complete', 'milestone_check', 'dependency_analysis', 'progress_report'],
     category: 'productivity',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No goals set.',
+      caption: 'Add a goal with milestones. The dependency analyzer flags blockers; the progress reporter rolls up activity from other lenses.',
+      firstActionLabel: 'Set your first goal',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Goals can have child milestones + dependencies on other goals.' },
+        { caption: 'evaluate pulls activity signals from calendar / chat / paper / projects to gauge progress.' },
+        { caption: 'Completed goals mint as achievement DTUs you can cite from your profile / personas.' },
+      ],
+    },
   },
   {
     domain: 'srs',
@@ -385,6 +421,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['merge', 'lock', 'unlock', 'summarize_thread', 'run_council', 'extract_actions', 'resolve_conflict', 'version_diff'],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No collab sessions yet.',
+      caption: 'Start a session to co-author with another user. Locks, version diffs, and conflict resolution are first-class.',
+      firstActionLabel: 'Start a session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sessions list with status (active / closed / archived). Click any to enter the live room.' },
+        { caption: 'Lock a section to claim it; unlock to release. Version diffs show every change with author attribution.' },
+        { caption: 'run_council escalates a contested decision to formal vote via the council substrate.' },
+      ],
+    },
   },
   {
     domain: 'feed',
@@ -395,6 +443,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['like', 'repost', 'bookmark', 'rank', 'personalize', 'cluster_topics'],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Feed empty for now.',
+      caption: 'Follow creators, subscribe to topics, or post. The federation bridge surfaces DTUs from peer instances too.',
+      firstActionLabel: 'Post or follow',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Posts can cite DTUs you minted in any lens. The Subconscious brain ranks by your past interactions + topic clusters.' },
+        { caption: 'personalize toggles personalization on/off; bookmark saves to a per-user cache surfaced in dailyhub.' },
+        { caption: 'Cross-lens flow: a marketplace listing appears in your feed when its creator publishes; clicking opens the marketplace lens with the DTU pre-selected.' },
+      ],
+    },
   },
   {
     domain: 'experience',
@@ -420,6 +480,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['trade', 'analyze', 'alert', 'simulate', 'generate_report', 'portfolio_rebalance', 'risk_assessment'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No tracked assets.',
+      caption: 'Track stocks (S&P 500 / NASDAQ / DOW), crypto (CoinGecko top 10), or set rate alerts (FRED). Live ticker updates every 60s.',
+      firstActionLabel: 'Add an asset',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Tickers stream live from Yahoo Finance + CoinGecko + World Bank — real prices, no synthetic.' },
+        { caption: 'Simulate runs a portfolio against historical data via the Subconscious brain.' },
+        { caption: 'risk_assessment pulls volatility + drawdown + correlation across your portfolio — also wired to real series.' },
+      ],
+    },
   },
   {
     domain: 'marketplace',
@@ -1202,6 +1274,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'Observation log empty.',
+      caption: 'Save targets, plan observations, run light-travel calcs. NASA APOD + ISS + Near-Earth Objects load live up top.',
+      firstActionLabel: 'Save an observation',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'NASA panel up top shows today\'s APOD + ISS live position + Near-Earth Objects — all real data, no synthetic.', selector: '[aria-label*="NASA"]' },
+        { caption: 'Use the action panel to compute celestial position (RA/Dec → altitude/azimuth) or plan a night\'s observation with moon-phase awareness.' },
+        { caption: 'Saved observations mint as DTUs; reference them from chat or research later.' },
+      ],
+    },
   },
   {
     domain: 'atlas',
@@ -1212,6 +1296,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No regions explored yet.',
+      caption: 'Search any place via OpenStreetMap; drop annotations; layer real signal data over the map.',
+      firstActionLabel: 'Search a location',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Search uses OpenStreetMap Nominatim — real geocoding, free, no key.' },
+        { caption: 'Drop annotations and create regions of interest. Each becomes a DTU you can cite.' },
+        { caption: 'The graph view shows DTU citation lineage — your atlas becomes a map of your knowledge.' },
+      ],
+    },
   },
   {
     domain: 'attention',
@@ -1362,6 +1458,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No tracked tokens.',
+      caption: 'Add a token to track price + balance via CoinGecko. The Coinbase-shape wallet silhouette opens by default so you read the lens immediately.',
+      firstActionLabel: 'Track a token',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'The wallet silhouette at the top is the rival shape — Coinbase / Phantom feel without leaving the substrate.' },
+        { caption: 'Live prices via CoinGecko (no key). Tokens you track are persisted server-side; the list survives reload.' },
+        { caption: 'Send / receive / swap actions remain stubs unless you wire an actual chain integration — the panel is honest about its DEMO status for those flows.' },
+      ],
+    },
   },
   {
     domain: 'custom',
@@ -1722,6 +1830,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'Workbench is clean.',
+      caption: 'Type an equation, drop a proof outline, or browse the MathOverflow feed. Wolfram Alpha is wired for symbolic ops.',
+      firstActionLabel: 'Compose your first equation',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'The MathStackFeed shows top MathOverflow questions in real time.' },
+        { caption: 'Proofs and equations mint as DTUs with LaTeX preserved. Other lenses can cite them.' },
+        { caption: 'analyze / validate actions route through the Subconscious brain for symbolic checking against Wolfram.' },
+      ],
+    },
   },
   {
     domain: 'mental-health',
@@ -1782,6 +1902,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Inbox is quiet.',
+      caption: 'Reuters / BBC / NPR / TechCrunch / Ars Technica / Hacker News all poll live. Pick sources and topics; the feed populates within a minute.',
+      firstActionLabel: 'Subscribe to topics',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sources poll on a 15-minute cadence; new articles surface as cards in the feed.' },
+        { caption: 'analyze runs the Subconscious brain over a thread to extract a thesis or summarize a beat.' },
+        { caption: 'Subscribe to topics with the action bar — the engine matches incoming articles by tag.' },
+      ],
+    },
   },
   {
     domain: 'ocean',
@@ -2099,6 +2231,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['cook', 'brew', 'forge', 'list_for_marketplace', 'set_tier_pricing', 'apply_recipe'],
     category: 'creative',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No recipes minted yet.',
+      caption: 'Author a recipe — cook, brew, forge, fighting style, or spell. Mint as a recipe DTU; list to your marketplace stall with tier pricing.',
+      firstActionLabel: 'Mine / Browse / Author',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Three modes: Mine (your recipes), Browse Marketplace (others\'), Author (compose new).' },
+        { caption: 'Recipes are first-class DTUs — fighting styles use the v2.0 recipe substrate; spells fold base-6 glyph algebra.' },
+        { caption: 'list_for_marketplace + set_tier_pricing publishes for sale; the royalty cascade pays you on every cite.' },
+      ],
+    },
   },
   {
     domain: 'understanding',
