@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NutritionExplorer } from '@/components/cooking/NutritionExplorer';
+import { CookingActionPanel } from '@/components/cooking/CookingActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -654,6 +655,10 @@ export default function CookingLensPage() {
       {/* Bespoke USDA FDC nutrition explorer with 3-tier collapsible card + Save-as-DTU */}
       <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <NutritionExplorer />
+      </section>
+
+      <section className="mt-6">
+        <CookingActionPanel />
       </section>
 
       <div className="border-t border-white/10">

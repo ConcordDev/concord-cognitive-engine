@@ -51,6 +51,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SharedSessionChat } from '@/components/social/SharedSessionChat';
 import { SharedSessionInvite } from '@/components/social/SharedSessionInvite';
 import { WorkspaceRoster } from '@/components/collab/WorkspaceRoster';
+import { CollabActionPanel } from '@/components/collab/CollabActionPanel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1019,6 +1020,10 @@ export default function CollabLensPage() {
         )}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <WorkspaceRoster />
+        </section>
+
+        <section className="mt-6">
+          <CollabActionPanel />
         </section>
       </div>
     </div>
