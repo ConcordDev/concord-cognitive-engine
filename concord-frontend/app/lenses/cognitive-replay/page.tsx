@@ -16,6 +16,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -85,6 +86,7 @@ export default function CognitiveReplayPage() {
           Loading your cognitive timeline…
         </div>
             <RecentMineCard domain="cognitive-replay" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="cognitive-replay" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="cognitive-replay" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
     );

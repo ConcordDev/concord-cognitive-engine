@@ -16,6 +16,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -537,6 +538,7 @@ export default function MeditationLensPage() {
         </div>
       </div>
           <RecentMineCard domain="meditation" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="meditation" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="meditation" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );

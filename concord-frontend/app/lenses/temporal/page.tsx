@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -850,6 +851,7 @@ export default function TemporalLensPage() {
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#temporal-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to temporal content</a>
           <RecentMineCard domain="temporal" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="temporal" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="temporal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );

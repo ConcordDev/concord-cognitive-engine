@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -1176,6 +1177,7 @@ export default function AgentsLensPage() {
     </div>
           <SessionRail lensId="agents" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="agents" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="agents" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="agents" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );

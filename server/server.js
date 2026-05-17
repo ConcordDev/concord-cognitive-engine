@@ -5607,7 +5607,7 @@ function authMiddleware(req, res, next) {
   // CRITICAL: Every frontend GET route must be listed here (Gate 1 of 3)
   const publicReadPaths = [
     // Core data
-    "/api/dtus", "/api/dtu", "/api/lenses", "/api/lens", "/api/emergent", "/api/knowledge",
+    "/api/dtus", "/api/dtu", "/api/lenses", "/api/lens", "/api/lens-actions", "/api/emergent", "/api/knowledge",
     "/api/search", "/api/species", "/api/events", "/api/schema",
     // Settings, metrics & context
     "/api/settings", "/api/growth", "/api/metrics", "/api/context",
@@ -40112,6 +40112,46 @@ app.get("/api/entity/:entityId/profile", asyncHandler(async (req, res) => {
 }));
 
 // Lens manifest endpoint — exposes action manifest per domain
+// ── Auto-discovery: every action actually registered for a domain ──────
+// Returns the union of LENS_ACTIONS (legacy registerLensAction) + MACROS
+// (canonical macro registry). Used by the AutoActionStrip to render a
+// button per compute call on every lens — closes the "registered but
+// never wired into UI" gap that left ~250 compute actions unreachable.
+app.get("/api/lens-actions/:domain", (req, res) => {
+  const domain = String(req.params.domain || "");
+  if (!domain || !/^[a-z0-9_-]+$/i.test(domain)) {
+    return res.status(400).json({ ok: false, error: "invalid_domain" });
+  }
+  // Pull every LENS_ACTIONS key that prefixes with this domain.
+  const lensActions = [];
+  for (const key of LENS_ACTIONS.keys()) {
+    const [d, ...rest] = key.split(".");
+    if (d === domain) lensActions.push(rest.join("."));
+  }
+  // Pull every macro registered for this domain.
+  const macroSubmap = MACROS.get(domain);
+  const macros = macroSubmap ? Array.from(macroSubmap.keys()) : [];
+  // Merge + dedupe.
+  const all = Array.from(new Set([...lensActions, ...macros])).sort();
+  // Annotate from DOMAIN_ACTION_MANIFEST where available.
+  const aiManifest = DOMAIN_ACTION_MANIFEST[domain] || [];
+  const aiMeta = new Map(aiManifest.map(a => [a.action, a]));
+  const actions = all.map(name => {
+    const ai = aiMeta.get(name);
+    return {
+      action: name,
+      desc: ai?.desc || null,
+      brain: ai?.brain || null,
+      isAi: !!ai,
+      isGenerative: /^(generate|build|suggest|create|compile|plan|design|compose)/i.test(name),
+      isAnalysis: /^(analyze|detect|validate|check|assess|compare|score|audit)/i.test(name),
+      isLive: /^live_/.test(name),
+      isCompute: !ai && !/^live_/.test(name),
+    };
+  });
+  res.json({ ok: true, domain, total: actions.length, actions });
+});
+
 app.get("/api/lens/manifest/:domain", (req, res) => {
   const domain = req.params.domain;
   const actions = DOMAIN_ACTION_MANIFEST[domain];

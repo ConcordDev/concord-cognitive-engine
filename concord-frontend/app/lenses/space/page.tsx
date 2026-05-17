@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -663,6 +664,7 @@ export default function SpaceLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#space-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to space content</a>
           <RecentMineCard domain="space" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="space" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="space" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );

@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -913,6 +914,7 @@ export default function ResearchLensPage() {
       <ResearchArxiv />
     </section>
           <RecentMineCard domain="research" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="research" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="research" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
