@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { OsmGeocodePanel } from '@/components/atlas/OsmGeocodePanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -156,6 +157,8 @@ export default function AtlasLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="atlas" size="sm" className="ml-2" />
     <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
+      {/* Phase 4 — REAL OpenStreetMap Nominatim search. Tier-1 honest live geocode. */}
+      <OsmGeocodePanel />
       {/* Error banner */}
       {(coverageError || anomalyError) && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-between">
