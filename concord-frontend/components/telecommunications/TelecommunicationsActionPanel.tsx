@@ -11,6 +11,7 @@ import { Radio, Signal, Map, DollarSign, Sparkles, Send, Globe, Wand2, Loader2, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -30,26 +31,20 @@ interface SigResult { snr: string; bitErrorRate: number; latencyMs: number; jitt
 interface CovResult { towers: number; activeTowers: number; totalCoverageKm2: number; technologies: string[] }
 interface CostResult { subscribers: number; arpu: number; costPerSubscriber: number; margin: number; marginPercent: number; profitable: boolean; breakeven: string }
 
-const DEMO_TOWERS = JSON.stringify([
-  { id: 'T-01', name: 'Downtown', lat: 37.7749, lon: -122.4194, rangeKm: 3, technology: '5G', status: 'active' },
-  { id: 'T-02', name: 'Mission', lat: 37.7599, lon: -122.4148, rangeKm: 4, technology: '5G', status: 'active' },
-  { id: 'T-03', name: 'Sunset', lat: 37.7600, lon: -122.4900, rangeKm: 6, technology: '4G', status: 'active' },
-  { id: 'T-04', name: 'Mt Davidson', lat: 37.7378, lon: -122.4541, rangeKm: 8, technology: '4G', status: 'maintenance' },
-], null, 2);
-
+// No seeded data — every input starts empty.
 export function TelecommunicationsActionPanel() {
-  const [bandwidth, setBandwidth] = useState('100');
-  const [utilization, setUtilization] = useState('72');
-  const [users, setUsers] = useState('25000');
-  const [snr, setSnr] = useState('18');
-  const [ber, setBer] = useState('0.00001');
-  const [latency, setLatency] = useState('38');
-  const [jitter, setJitter] = useState('8');
-  const [towersText, setTowersText] = useState(DEMO_TOWERS);
-  const [infraCost, setInfraCost] = useState('2500000');
-  const [opsCost, setOpsCost] = useState('180000');
-  const [subscribers, setSubscribers] = useState('40000');
-  const [arpu, setArpu] = useState('45');
+  const [bandwidth, setBandwidth] = useState('');
+  const [utilization, setUtilization] = useState('');
+  const [users, setUsers] = useState('');
+  const [snr, setSnr] = useState('');
+  const [ber, setBer] = useState('');
+  const [latency, setLatency] = useState('');
+  const [jitter, setJitter] = useState('');
+  const [towersText, setTowersText] = useState('');
+  const [infraCost, setInfraCost] = useState('');
+  const [opsCost, setOpsCost] = useState('');
+  const [subscribers, setSubscribers] = useState('');
+  const [arpu, setArpu] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -65,50 +60,84 @@ export function TelecommunicationsActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actCap() {
+    const b = parseFloat(bandwidth), u = parseFloat(utilization), n = parseInt(users, 10);
+    if (![b, u, n].every(Number.isFinite)) { err('Bandwidth + util % + active users required.'); return; }
     setBusy('cap'); setFeedback(null);
-    try { const r = await callMacro<CapResult>('networkCapacity', { artifact: { data: { bandwidthGbps: parseFloat(bandwidth), utilizationPercent: parseFloat(utilization), activeUsers: parseInt(users, 10) } } }); if (r.ok && r.result) { setCapResult(r.result); ok(`${r.result.availablePerUser}/user · ${r.result.status}.`); } else err(r.error ?? 'cap failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<CapResult>('networkCapacity', { artifact: { data: { bandwidthGbps: b, utilizationPercent: u, activeUsers: n } } });
+      if (r.ok && r.result) { setCapResult(r.result); pipe.publish('telecom.cap', r.result, { label: `Cap ${r.result.utilization}` }); ok(`${r.result.availablePerUser}/user · ${r.result.status}.`); } else err(r.error ?? 'cap failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSig() {
+    const s = parseFloat(snr), b = parseFloat(ber), l = parseFloat(latency), j = parseFloat(jitter);
+    if (![s, b, l, j].every(Number.isFinite)) { err('SNR + BER + latency + jitter required.'); return; }
     setBusy('sig'); setFeedback(null);
-    try { const r = await callMacro<SigResult>('signalQuality', { artifact: { data: { snrDb: parseFloat(snr), bitErrorRate: parseFloat(ber), latencyMs: parseFloat(latency), jitterMs: parseFloat(jitter) } } }); if (r.ok && r.result) { setSigResult(r.result); ok(`MOS ${r.result.mosScore} (${r.result.voiceQuality}).`); } else err(r.error ?? 'sig failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SigResult>('signalQuality', { artifact: { data: { snrDb: s, bitErrorRate: b, latencyMs: l, jitterMs: j } } });
+      if (r.ok && r.result) { setSigResult(r.result); pipe.publish('telecom.sig', r.result, { label: `Signal MOS ${r.result.mosScore}` }); ok(`MOS ${r.result.mosScore} (${r.result.voiceQuality}).`); } else err(r.error ?? 'sig failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCov() {
+    if (!towersText.trim()) { err('Paste towers JSON first.'); return; }
     try { const towers = JSON.parse(towersText); setBusy('cov'); setFeedback(null);
-      const r = await callMacro<CovResult>('coverageMap', { artifact: { data: { towers } } }); if (r.ok && r.result) { setCovResult(r.result); ok(`${r.result.activeTowers}/${r.result.towers} active · ${r.result.totalCoverageKm2} km².`); } else err(r.error ?? 'cov failed');
+      const r = await callMacro<CovResult>('coverageMap', { artifact: { data: { towers } } });
+      if (r.ok && r.result) { setCovResult(r.result); pipe.publish('telecom.cov', r.result, { label: `Cov ${r.result.activeTowers}/${r.result.towers}` }); ok(`${r.result.activeTowers}/${r.result.towers} active · ${r.result.totalCoverageKm2} km².`); } else err(r.error ?? 'cov failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid towers JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCost() {
+    const i = parseFloat(infraCost), o = parseFloat(opsCost), s = parseInt(subscribers, 10), a = parseFloat(arpu);
+    if (![i, o, s, a].every(Number.isFinite)) { err('Infra + ops + subs + ARPU required.'); return; }
     setBusy('cost'); setFeedback(null);
-    try { const r = await callMacro<CostResult>('costPerLine', { artifact: { data: { infrastructureCost: parseFloat(infraCost), monthlyOpsCost: parseFloat(opsCost), subscribers: parseInt(subscribers, 10), arpu: parseFloat(arpu) } } }); if (r.ok && r.result) { setCostResult(r.result); ok(`Margin $${r.result.margin} (${r.result.marginPercent}%).`); } else err(r.error ?? 'cost failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<CostResult>('costPerLine', { artifact: { data: { infrastructureCost: i, monthlyOpsCost: o, subscribers: s, arpu: a } } });
+      if (r.ok && r.result) { setCostResult(r.result); pipe.publish('telecom.cost', r.result, { label: `Margin ${r.result.marginPercent}%` }); ok(`Margin $${r.result.margin} (${r.result.marginPercent}%).`); } else err(r.error ?? 'cost failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Network — ${capResult?.status ?? 'ops'}`, tags: ['telecom', 'network', capResult?.status].filter((t): t is string => !!t), source: 'telecom:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, telecom: { cap: capResult, sig: sigResult, cov: covResult, cost: costResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Network DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('telecom.mintedDtuId', id, { label: `Network DTU ${id.slice(0, 8)}…` }); ok(`Network DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`📡 NOC brief`, '', capResult ? `Capacity: ${capResult.totalBandwidth} · ${capResult.utilization} util · ${capResult.availablePerUser}/user · ${capResult.status}` : '', sigResult ? `Signal: MOS ${sigResult.mosScore} (${sigResult.voiceQuality}) · latency ${sigResult.latencyMs}ms · video ${sigResult.videoCapable ? '✓' : '✗'}` : '', covResult ? `Coverage: ${covResult.activeTowers}/${covResult.towers} towers · ${covResult.totalCoverageKm2} km² · ${covResult.technologies.join(', ')}` : '', costResult ? `Unit econ: ARPU $${costResult.arpu} · cost $${costResult.costPerSubscriber} · margin ${costResult.marginPercent}%` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`📡 NOC brief`, '',
+      capResult ? `Capacity: ${capResult.totalBandwidth} · ${capResult.utilization} util · ${capResult.availablePerUser}/user · ${capResult.status}` : '',
+      sigResult ? `Signal: MOS ${sigResult.mosScore} (${sigResult.voiceQuality}) · latency ${sigResult.latencyMs}ms · video ${sigResult.videoCapable ? '✓' : '✗'}` : '',
+      covResult ? `Coverage: ${covResult.activeTowers}/${covResult.towers} towers · ${covResult.totalCoverageKm2} km² · ${covResult.technologies.join(', ')}` : '',
+      costResult ? `Unit econ: ARPU $${costResult.arpu} · cost $${costResult.costPerSubscriber} · margin ${costResult.marginPercent}%` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!sigResult && !capResult) { err('Run cap/sig first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Network performance card`, tags: ['telecom', 'performance', 'public'], source: 'telecom:perf:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, cap: capResult, sig: sigResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Network performance card`, tags: ['telecom', 'performance', 'public'], source: 'telecom:perf:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, cap: capResult, sig: sigResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('telecom.publishedDtuId', id, { label: `Public perf card ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -172,6 +201,10 @@ export function TelecommunicationsActionPanel() {
             <input type="text" value={arpu} onChange={(e) => setArpu(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="ARPU $" />
           </div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 
