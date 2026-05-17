@@ -3,13 +3,48 @@
 Branch: `claude/add-api-wires-onboarding-EWvZC` (built on top of merged
 `claude/audit-app-completeness-GwBlp`, PR #759 — pushed to origin)
 Plan: `/root/.claude/plans/what-s-missing-to-be-humble-scott.md`
-Last update: 2026-05-17 (session 4 final — 16 commits total this branch;
-all 10 dimensions complete + 22 REAL_FREE wire panels + production-grade
+Last update: 2026-05-17 (session 5 final — 20 commits total this branch;
+all 10 dimensions complete + 26 REAL_FREE wire panels + 5-lens session
+mounts + game-trivia + pets-cat-facts content + production-grade
 sessions/cross-lens narrative substrate)
 
-## Session 4 additions (on top of session 3)
+## Session 5 additions (3 new commits)
 
-7 new commits closing the polish loop:
+```
+5fd3be4 Phase 4 (fifth wave): mount CatFactsPanel in pets lens
+e0161b5 Phase 5+4: SessionRail in code/studio/agents + TriviaPanel in game
+e787fab Phase 4 (fifth wave): 6 more REAL free-API wires — Spaceflight News, Launch Library, PoetryDB, Open Trivia, Quotable, Cat Facts
+```
+
+### Session 5 wires (26 REAL_FREE panels total)
+- Spaceflight News v4 (astronomy + space)
+- Launch Library 2 (astronomy + space)
+- PoetryDB (poetry) — poetry lens dataTier bumped SIM_GRADE_A → REAL_FREE
+- Open Trivia DB (game)
+- Quotable (daily + reflection)
+- Cat Facts (pets)
+
+### Session 5 frontend panels
+- SpaceflightNewsPanel, UpcomingLaunchesPanel, QuotablePanel,
+  PoetryDbPanel, TriviaPanel, CatFactsPanel — all drop-in REAL data
+  chips with refresh + error handling, no fake placeholders.
+
+### Session 5 mounts
+- /lenses/space — Spaceflight News + Launches side-by-side
+- /lenses/astronomy — Spaceflight News + Launches side-by-side
+- /lenses/poetry — PoetryDB next to Datamuse
+- /lenses/daily — Quotable (wisdom tag) above journal
+- /lenses/pets — Cat Facts above pet workflow
+- /lenses/game — TriviaPanel with difficulty filter
+- /lenses/code — SessionRail (debugging sessions)
+- /lenses/studio — SessionRail (mixdown sessions)
+- /lenses/agents — SessionRail (marathon sessions)
+
+Sprint contract suite now: **161 / 161 passing across 51 suites.**
+
+## Session 4 additions
+
+7 commits closing the polish loop:
 
 ```
 1d71699 Phase 7: mount ProvenanceTrail + DownstreamBadge in DTUDetailView
