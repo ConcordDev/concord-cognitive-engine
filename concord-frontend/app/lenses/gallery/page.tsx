@@ -15,6 +15,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
 import { GalleryActionPanel } from '@/components/gallery/GalleryActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { Loader2, Image as ImageIcon } from 'lucide-react';
 
 interface Sigil {
@@ -162,9 +163,11 @@ export default function GalleryPage() {
       </section>
 
       {/* CMA + Smithsonian + AIC-shape gallery workbench: search / artwork / depts + actions */}
-      <section className="mt-6">
-        <GalleryActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <GalleryActionPanel />
+        </section>
+      </PipingProvider>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>

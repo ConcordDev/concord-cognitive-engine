@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -39,7 +40,7 @@ function pickMessage(e: unknown): string {
 }
 
 export function GalleryActionPanel() {
-  const [query, setQuery] = useState('impressionism');
+  const [query, setQuery] = useState('');
   const [artworkId, setArtworkId] = useState('');
   const [recipient, setRecipient] = useState('');
 
@@ -56,6 +57,10 @@ export function GalleryActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   useEffect(() => {
     (async () => {
       try { const r = await callMacro<{ departments: Department[] }>('cma-departments', {}); if (r.ok && r.result?.departments) setDepartments(r.result.departments); } catch {/* dormant */}
@@ -65,19 +70,19 @@ export function GalleryActionPanel() {
   async function actCmaSearch() {
     if (!query.trim()) { err('Query required.'); return; }
     setBusy('cmaSearch'); setFeedback(null);
-    try { const r = await callMacro<{ artworks?: Artwork[] }>('cma-search', { query: query.trim(), limit: 12 }); if (r.ok && r.result?.artworks) { setCmaResults(r.result.artworks); ok(`${r.result.artworks.length} CMA results.`); } else err(r.error ?? 'CMA search failed'); }
+    try { const r = await callMacro<{ artworks?: Artwork[] }>('cma-search', { query: query.trim(), limit: 12 }); if (r.ok && r.result?.artworks) { setCmaResults(r.result.artworks); pipe.publish('gallery.cma', r.result, { label: `CMA ${r.result.artworks.length}` }); ok(`${r.result.artworks.length} CMA results.`); } else err(r.error ?? 'CMA search failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCmaArt() {
     if (!artworkId.trim()) { err('Artwork id required.'); return; }
     setBusy('cmaArt'); setFeedback(null);
-    try { const r = await callMacro<{ artwork?: Artwork }>('cma-artwork', { id: artworkId.trim() }); if (r.ok && r.result?.artwork) { setSelectedArt(r.result.artwork); ok(`${r.result.artwork.title}.`); } else err(r.error ?? 'CMA artwork failed'); }
+    try { const r = await callMacro<{ artwork?: Artwork }>('cma-artwork', { id: artworkId.trim() }); if (r.ok && r.result?.artwork) { setSelectedArt(r.result.artwork); pipe.publish('gallery.artwork', r.result.artwork, { label: r.result.artwork.title }); ok(`${r.result.artwork.title}.`); } else err(r.error ?? 'CMA artwork failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSiSearch() {
     if (!query.trim()) { err('Query required.'); return; }
     setBusy('siSearch'); setFeedback(null);
-    try { const r = await callMacro<{ artworks?: Artwork[] }>('si-search', { query: query.trim(), limit: 12 }); if (r.ok && r.result?.artworks) { setSiResults(r.result.artworks); ok(`${r.result.artworks.length} Smithsonian results.`); } else err(r.error ?? 'SI search failed'); }
+    try { const r = await callMacro<{ artworks?: Artwork[] }>('si-search', { query: query.trim(), limit: 12 }); if (r.ok && r.result?.artworks) { setSiResults(r.result.artworks); pipe.publish('gallery.si', r.result, { label: `SI ${r.result.artworks.length}` }); ok(`${r.result.artworks.length} Smithsonian results.`); } else err(r.error ?? 'SI search failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDepts() {
@@ -91,25 +96,35 @@ export function GalleryActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Gallery — ${selectedArt?.title ?? query}`, tags: ['gallery', 'artwork', selectedArt?.artist ?? 'collection'], source: 'gallery:artwork:mint', meta: { visibility: 'private', consent: { allowCitations: false }, gallery: { query, selected: selectedArt, cmaResults: cmaResults.slice(0, 12), siResults: siResults.slice(0, 12) } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Gallery DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('gallery.mintedDtuId', id, { label: `Gallery DTU ${id.slice(0, 8)}…` }); ok(`Gallery DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🖼 Gallery: ${selectedArt?.title ?? query}`, '', selectedArt ? `Artist: ${selectedArt.artist}\nDate: ${selectedArt.date}\nMedium: ${selectedArt.medium ?? '—'}\n${selectedArt.url ?? ''}` : `${cmaResults.length} CMA + ${siResults.length} SI results for "${query}"`, mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!selectedArt && !cmaResults.length) { err('Search or select first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Curated gallery — ${query}`, tags: ['gallery', 'curated', 'public'], source: 'gallery:curated:publish', meta: { visibility: 'public', consent: { allowCitations: true }, curated: { query, featured: selectedArt, picks: cmaResults.slice(0, 6).concat(siResults.slice(0, 6)) } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Curation published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Curated gallery — ${query}`, tags: ['gallery', 'curated', 'public'], source: 'gallery:curated:publish', meta: { visibility: 'public', consent: { allowCitations: true }, curated: { query, featured: selectedArt, picks: cmaResults.slice(0, 6).concat(siResults.slice(0, 6)) } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('gallery.publishedDtuId', id, { label: `Public curation ${id.slice(0, 8)}…` }); ok(`Curation published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -147,7 +162,11 @@ export function GalleryActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Search query (artist, movement, theme)" />
         <input type="text" value={artworkId} onChange={(e) => setArtworkId(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="CMA artwork id" />
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-3 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-3 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
