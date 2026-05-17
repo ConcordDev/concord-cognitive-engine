@@ -3,12 +3,51 @@
 Branch: `claude/add-api-wires-onboarding-EWvZC` (built on top of merged
 `claude/audit-app-completeness-GwBlp`, PR #759 — pushed to origin)
 Plan: `/root/.claude/plans/what-s-missing-to-be-humble-scott.md`
-Last update: 2026-05-17 (session 7 final — 30 commits total this branch;
+Last update: 2026-05-17 (session 8 final — 35 commits total this branch;
 all 10 dimensions complete + 37 REAL_FREE wire panels + 13-lens
-SessionRail coverage + **AutoActionStrip mounted in 151 lenses to
-surface ALL 251 previously-orphan compute actions** + 2 pre-existing
-test failures fixed + 0 type errors + 191 sprint contract tests
-passing)
+SessionRail coverage + **AutoActionStrip mounted in 226 of 234 lenses
+(96.5%) with JSON-param input mode** + **/admin/wires status dashboard
+auto-tests every live_*** + **dtu_surface.record lifted into 3 hot DTU
+renderers** + 2 pre-existing test failures fixed + 0 type errors +
+201 sprint contract tests passing)
+
+## Session 8 additions (3 new commits)
+
+```
+83a0a1b Phase 8: contract test for /api/lens-actions classifier + dedup logic
+366f3fc Phase 7: lift dtu_surface.record into 3 hot DTU rendering callsites
+51f447e Phase 8c: /admin/wires — REAL wires status dashboard
+2934013 Phase 8b: AutoActionStrip in 75 more lenses (bespoke ActionPanel companions) + JSON-param input mode
+```
+
+### Session 8 highlights
+
+**AutoActionStrip coverage rose 151 → 226 lenses (96.5%)**: additive
+codemod mounted `<AutoActionStrip title="More actions" />` BELOW the
+bespoke `<XActionPanel/>` in 75 lenses so the highlight computes stay
+in their custom forms but the long tail (typically 20-40 additional
+registered actions per lens) becomes clickable.
+
+**JSON-param input mode**: every action button now has a `{}` sibling
+that opens an inline JSON editor. User edits input, clicks Run, sees
+the real result envelope. Default click still fires with empty input
+(most engineering computes return useful default-driven output).
+
+**`/admin/wires` status dashboard**: top-level page that auto-discovers
+every `live_*` macro across 39 known live-wire domains via parallel
+`/api/lens-actions/<domain>` fetches, then fires each with curated
+sample inputs and renders per-row status + latency + expandable raw
+envelope. Counters at top: total / ok / failed / running / untested.
+
+**dtu_surface.record lifted into 3 callsites**:
+  - CitationChips (chat + code) — citation_chip surface per dtuId
+  - OracleResponse DtuChip — same
+  - DTUEmpireCard (home) — recent_card surface
+
+DownstreamBadge counts will populate as users browse.
+
+**Contract test**: tests/lens-actions-endpoint.test.js pins classifier
+logic (10/10). Sprint total: 191 → 201 / 57 suites / 0 failures.
 
 ## Session 7 additions (4 new commits — close the depth gap)
 
