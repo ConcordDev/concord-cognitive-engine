@@ -24,6 +24,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MessageSquare, Loader2, AlertTriangle, Send, Trash2, CornerDownRight } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { UserLink } from './UserLink';
 
 interface Comment {
   id: string;
@@ -129,9 +130,12 @@ export function CommentThread({
     return (
       <li key={c.id} className={cn('py-2', depth > 0 && 'pl-4 border-l border-zinc-800 ml-2')}>
         <div className="flex items-baseline gap-2 mb-0.5">
-          <span className="text-xs font-medium text-zinc-200">
-            {c.displayName || c.username || c.userId.slice(0, 12)}
-          </span>
+          <UserLink
+            username={c.username}
+            userId={c.userId}
+            displayName={c.displayName}
+            className="text-xs"
+          />
           <span className="text-[10px] text-zinc-500 font-mono">{timeAgo(c.createdAt)}</span>
           {canDelete && (
             <button

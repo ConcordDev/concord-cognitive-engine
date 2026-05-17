@@ -53,6 +53,7 @@ import { PresenceIndicator } from '@/components/social/PresenceIndicator';
 import { DMIndicator } from '@/components/social/DMIndicator';
 import { StreakIndicator } from '@/components/social/StreakIndicator';
 import { CreatorAnalytics } from '@/components/social/CreatorAnalytics';
+import { UserLink } from '@/components/social/UserLink';
 
 type TabId = 'discover' | 'following' | 'notifications' | 'analytics';
 
@@ -283,7 +284,7 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
           className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 hover:border-indigo-500/30 transition-colors"
         >
           <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-sm font-medium text-zinc-100">{item.username}</span>
+            <UserLink username={item.username} userId={item.userId} className="text-sm" />
             <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
               {item.kind}
             </span>
