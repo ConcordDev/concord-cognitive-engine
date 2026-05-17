@@ -28,11 +28,21 @@ const BASE_URL = process.env.CONCORD_BASE_URL || "https://concord-os.org";
  * CONCORD_AP_PUBLIC_KEY_PEM the matching public PEM exposed on every
  * actor's publicKey field. Future enhancement: per-user keypairs.
  */
+// Same PEM unescape rule activitypub-bridge.js uses for the public
+// key. We compute once at module-load so callers don't pay the regex
+// on every outbox drain.
+const _PRIVATE_KEY_PEM = (() => {
+  const raw = process.env.CONCORD_AP_PRIVATE_KEY_PEM || "";
+  return raw.includes("\\n") ? raw.replace(/\\n/g, "\n") : raw;
+})();
+
 function signingInputsFor(homeUserId) {
-  const privateKeyPem = process.env.CONCORD_AP_PRIVATE_KEY_PEM;
-  if (!privateKeyPem) return null;
-  const actorId = `${BASE_URL}/users/${encodeURIComponent(homeUserId)}`;
-  return { privateKeyPem, keyId: `${actorId}#main-key` };
+  if (!_PRIVATE_KEY_PEM) return null;
+  // Must match buildActor() — the keyId fragment is the actor URL plus
+  // #main-key, and peers will re-fetch publicKey.publicKeyPem from
+  // there to verify our signature.
+  const actorId = `${BASE_URL}/api/federation/users/${encodeURIComponent(homeUserId)}`;
+  return { privateKeyPem: _PRIVATE_KEY_PEM, keyId: `${actorId}#main-key` };
 }
 
 function nextAttemptDueAt(attempts) {

@@ -28,6 +28,14 @@ import { verifySignature, makeInMemoryKeyCache } from "./ap-signature.js";
 const ENABLED = process.env.CONCORD_ACTIVITYPUB === "true";
 const BASE_URL = process.env.CONCORD_BASE_URL || "https://concord-os.org";
 
+// PEMs stored in .env have their line breaks escaped as the two-char
+// sequence `\n` so the file stays one-line-per-key. Unescape on read.
+function unescapePem(s) {
+  if (!s) return "";
+  return s.includes("\\n") ? s.replace(/\\n/g, "\n") : s;
+}
+const _PUB_KEY_PEM = unescapePem(process.env.CONCORD_AP_PUBLIC_KEY_PEM || "");
+
 // Per-process cache for resolved actor keys. Survives the lifetime of
 // the node process; DB-backed cache (federation_peer_keys) is a future
 // optimisation if memory churn matters.
@@ -40,7 +48,12 @@ const _keyCache = makeInMemoryKeyCache();
  */
 export function buildActor(userId, { displayName, summary, iconUrl } = {}) {
   if (!userId) return null;
-  const id = `${BASE_URL}/users/${encodeURIComponent(userId)}`;
+  // Actor `id` MUST match the URL where a federated peer can re-fetch
+  // the descriptor (RFC 7033 + AP spec). Our route is mounted under
+  // /api/federation/users/:userId so the inbox/outbox/followers links
+  // derive from the same prefix; webfinger discovery returns this same
+  // href as its `self+application/activity+json` link.
+  const id = `${BASE_URL}/api/federation/users/${encodeURIComponent(userId)}`;
   return {
     "@context": ["https://www.w3.org/ns/activitystreams", "https://w3id.org/security/v1"],
     type: "Person",
@@ -55,7 +68,7 @@ export function buildActor(userId, { displayName, summary, iconUrl } = {}) {
     publicKey: {
       id: `${id}#main-key`,
       owner: id,
-      publicKeyPem: process.env.CONCORD_AP_PUBLIC_KEY_PEM || "",
+      publicKeyPem: _PUB_KEY_PEM,
     },
     icon: iconUrl ? { type: "Image", mediaType: "image/png", url: iconUrl } : undefined,
   };
@@ -69,7 +82,7 @@ export function buildActor(userId, { displayName, summary, iconUrl } = {}) {
  */
 export function composeDtuCreateActivity(dtu, actorUserId) {
   if (!dtu?.id) return null;
-  const actorId = `${BASE_URL}/users/${encodeURIComponent(actorUserId)}`;
+  const actorId = `${BASE_URL}/api/federation/users/${encodeURIComponent(actorUserId)}`;
   const noteId = `${BASE_URL}/dtus/${encodeURIComponent(dtu.id)}/note`;
   const summary = (dtu.summary || dtu.title || "").slice(0, 280);
 
@@ -242,6 +255,19 @@ export async function receiveActivity(db, recipientUserId, activity, headers = {
       cacheSet: _keyCache.set,
       fetcher: opts.fetcher,
     });
+    // CONCORD_AP_DEBUG=true → console.warn the reason + headers so an
+    // operator running a peer-handshake smoke test can diff client vs
+    // server context without sprinkling fresh log lines.
+    if (!signatureResult.ok && process.env.CONCORD_AP_DEBUG === "true") {
+      console.warn("[ap-bridge] signature verify FAILED", {
+        reason: signatureResult.error,
+        path: opts.path,
+        host: headers.host || headers.Host,
+        date: headers.date || headers.Date,
+        digestHeader: headers.digest || headers.Digest,
+        rawBodyLen: rawBody ? (Buffer.isBuffer(rawBody) ? rawBody.length : String(rawBody).length) : 0,
+      });
+    }
     if (!signatureResult.ok) {
       return { ok: false, reason: "signature_invalid", error: signatureResult.error };
     }

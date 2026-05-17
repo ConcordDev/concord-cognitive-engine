@@ -124,12 +124,21 @@ export default function configureMiddleware(app, deps) {
     // Find most specific matching route prefix
     const matchedLimit = Object.entries(BODY_LIMITS).find(([prefix]) => req.url.startsWith(prefix));
     const limit = matchedLimit ? matchedLimit[1] : '10mb';
-    express.json({ limit, verify: (innerReq, _res, buf) => {
-      if (innerReq.url === '/api/economy/webhook') innerReq.rawBody = buf;
-      // ActivityPub inbox needs the unparsed body so HTTP-Signature
-      // digest verification can prove the body wasn't tampered with.
-      if (/^\/api\/federation\/users\/[^/]+\/inbox\b/.test(innerReq.url)) innerReq.rawBody = buf;
-    } })(req, res, next);
+    // Accept the Fediverse Content-Type for federation inbox POSTs.
+    // Default express.json() only parses application/json; Mastodon &
+    // friends send application/activity+json (and the historical
+    // application/ld+json variant). Without this extra type list the
+    // inbox handler sees an empty body and returns missing_activity_fields.
+    express.json({
+      limit,
+      type: ['application/json', 'application/activity+json', 'application/ld+json'],
+      verify: (innerReq, _res, buf) => {
+        if (innerReq.url === '/api/economy/webhook') innerReq.rawBody = buf;
+        // ActivityPub inbox needs the unparsed body so HTTP-Signature
+        // digest verification can prove the body wasn't tampered with.
+        if (/^\/api\/federation\/users\/[^/]+\/inbox\b/.test(innerReq.url)) innerReq.rawBody = buf;
+      },
+    })(req, res, next);
   });
   app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 

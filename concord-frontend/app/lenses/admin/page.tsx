@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { MobileSectionJump } from '@/components/mobile/MobileSectionJump';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -749,7 +750,7 @@ export default function AdminDashboardPage() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="panel p-6"
         >
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <h2 id="admin-section-reality-guard" className="font-semibold mb-4 flex items-center gap-2 scroll-mt-20">
             <Activity className="w-5 h-5 text-neon-cyan" />
             Reality Guard (Chicken2)
           </h2>
@@ -788,7 +789,7 @@ export default function AdminDashboardPage() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="panel p-6"
         >
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <h2 id="admin-section-growth" className="font-semibold mb-4 flex items-center gap-2 scroll-mt-20">
             <TrendingUp className="w-5 h-5 text-neon-green" />
             Growth OS
           </h2>
@@ -837,7 +838,7 @@ export default function AdminDashboardPage() {
           transition={{ delay: 0.35 }}
           className="panel p-6"
         >
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <h2 id="admin-section-memory" className="font-semibold mb-4 flex items-center gap-2 scroll-mt-20">
             <Cpu className="w-5 h-5 text-neon-blue" />
             Memory
           </h2>
@@ -863,7 +864,7 @@ export default function AdminDashboardPage() {
           transition={{ delay: 0.4 }}
           className="panel p-6"
         >
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <h2 id="admin-section-llm" className="font-semibold mb-4 flex items-center gap-2 scroll-mt-20">
             <HardDrive className="w-5 h-5 text-neon-purple" />
             LLM Status
           </h2>
@@ -891,7 +892,7 @@ export default function AdminDashboardPage() {
           transition={{ delay: 0.45 }}
           className="panel p-6"
         >
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <h2 id="admin-section-queues" className="font-semibold mb-4 flex items-center gap-2 scroll-mt-20">
             <Clock className="w-5 h-5 text-neon-green" />
             Queues
           </h2>
@@ -914,7 +915,7 @@ export default function AdminDashboardPage() {
 
       {/* Recent Logs */}
       <div className="panel p-6">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
+        <h2 id="admin-section-activity" className="font-semibold mb-4 flex items-center gap-2 scroll-mt-20">
           <Activity className="w-5 h-5 text-neon-cyan" />
           Recent Activity
         </h2>
@@ -1509,6 +1510,19 @@ export default function AdminDashboardPage() {
           <RecentMineCard domain="admin" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="admin" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="admin" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 12 (C4) — mobile section-jump nav. Admin is a long
+              vertical scroll; on touch viewports we surface a one-tap
+              jump to each major section. */}
+          <MobileSectionJump
+            sections={[
+              { id: 'admin-section-reality-guard', label: 'Guard',  icon: Activity },
+              { id: 'admin-section-growth',        label: 'Growth', icon: TrendingUp },
+              { id: 'admin-section-memory',        label: 'Mem',    icon: Cpu },
+              { id: 'admin-section-llm',           label: 'LLM',    icon: HardDrive },
+              { id: 'admin-section-queues',        label: 'Queues', icon: Clock },
+              { id: 'admin-section-activity',      label: 'Activity', icon: Activity },
+            ]}
+          />
     </LensShell>
   );
 }

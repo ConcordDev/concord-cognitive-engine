@@ -5736,6 +5736,10 @@ function authMiddleware(req, res, next) {
     "/api/foundation",
     // Foundation Atlas signal tomography
     "/api/atlas",
+    // Phase 12 — RFC 7033 webfinger. Per spec the well-known endpoint
+    // must be publicly resolvable so federated peers (Mastodon, etc.)
+    // can discover Concord actors before any authenticated handshake.
+    "/.well-known/webfinger",
   ];
   // Public-read bypass: anon GETs to whitelisted paths skip auth. But if the
   // caller sent an Authorization header or auth cookie, run the full auth
@@ -5751,6 +5755,11 @@ function authMiddleware(req, res, next) {
   // Gate 1 POST bypass: anonymous client telemetry pings (perf, error reports).
   if (req.method === "POST" && req.path === "/api/world/perf-telemetry") return next();
   if (req.method === "POST" && req.path === "/api/client-error") return next();
+  // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
+  // POST activities here without any local auth — authentication is the
+  // HTTP-Signature on the request, verified by the inbox handler itself
+  // via lib/ap-signature.js + activitypub-bridge.js#receiveActivity.
+  if (req.method === "POST" && /^\/api\/federation\/users\/[^/]+\/inbox$/.test(req.path)) return next();
   // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
@@ -6674,10 +6683,16 @@ if (rateLimit) {
 // Health probes are always exempt — orchestrators (k8s, load balancers,
 // monitoring) and CI wait-loops legitimately hit them with curl/wget UAs.
 const _BOT_UA_RE = /\b(bot|crawler|spider|scraper|python-requests|aiohttp|httpx|go-http-client|java\/|libwww|wget|curl\/)\b/i;
+// ActivityPub federation endpoints are always fetched by automated
+// clients (Mastodon's HTTP fetcher, Pleroma, etc.) — exempting them
+// from the bot guard is the only way the public actor + inbox + outbox
+// can interop with the wider Fediverse.
+const _AP_PUBLIC_RE = /^\/api\/federation\/users\/[^/]+(?:\/(inbox|outbox|followers|following))?$/;
 function botGuardMiddleware(req, res, next) {
   if (req.user?.id) return next(); // authenticated — pass
   if (!req.path.startsWith("/api/")) return next(); // non-API — pass
   if (_HEALTH_PROBE_RE.test(req.path)) return next(); // health probes — pass
+  if (_AP_PUBLIC_RE.test(req.path)) return next(); // federation discovery — pass
   const ua = req.headers["user-agent"] || "";
   if (!ua || _BOT_UA_RE.test(ua)) {
     return res.status(403).json({
@@ -7014,15 +7029,21 @@ try {
       // instance reading the `to` field of the activity.
       const peers = db.prepare(`SELECT inbox_url FROM federation_peer_actors WHERE inbox_url IS NOT NULL`).all();
       if (peers.length === 0) return;
+      // actor URLs must match the federation actor route mount (see
+      // lib/activitypub-bridge.js#buildActor + federation-outbox.js#
+      // signingInputsFor — the keyId fragment, signing identity, and
+      // actor link all share this prefix).
+      const _instanceBase = process.env.CONCORD_BASE_URL || process.env.CONCORD_INSTANCE_URL || 'http://localhost:5050';
+      const _actorUrl = `${_instanceBase}/api/federation/users/${encodeURIComponent(post.userId)}`;
       const activity = {
         '@context': 'https://www.w3.org/ns/activitystreams',
         id: post.apActivityId,
         type: 'Create',
-        actor: `${process.env.CONCORD_INSTANCE_URL || 'http://localhost:5050'}/users/${post.userId}`,
+        actor: _actorUrl,
         published: post.createdAt,
         to: post.federationVisibility === 'public'
           ? ['https://www.w3.org/ns/activitystreams#Public']
-          : [`${process.env.CONCORD_INSTANCE_URL || 'http://localhost:5050'}/users/${post.userId}/followers`],
+          : [`${_actorUrl}/followers`],
         object: {
           id: `${post.apActivityId}#object`,
           type: 'Note',

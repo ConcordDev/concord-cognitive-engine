@@ -9,6 +9,11 @@ import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useTilePush } from '@/hooks/useTilePush';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  Globe2 as MTabConcordia, Grid3x3 as MTabDistrict, Compass as MTabExplore,
+  Radio as MTabStreams,
+} from 'lucide-react';
 import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
 import { useConsolePing } from '@/hooks/useConsolePing';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -5869,6 +5874,19 @@ export default function WorldLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+      {/* Phase 12 (C4) — mobile mode switcher for World's four core views.
+          The 3D scene + HUD overlays use the full viewport, so the bottom
+          tab bar is the thumb-reachable way to switch modes on mobile. */}
+      <MobileTabBar
+        tabs={[
+          { id: 'concordia', label: 'Hub',      icon: MTabConcordia },
+          { id: 'district',  label: 'District', icon: MTabDistrict },
+          { id: 'explore',   label: 'Explore',  icon: MTabExplore },
+          { id: 'streams',   label: 'Streams',  icon: MTabStreams },
+        ]}
+        active={viewMode}
+        onSelect={(id) => setViewMode(id as ViewMode)}
+      />
     </LensShell>
   );
 }

@@ -7,6 +7,7 @@ import { AppNavigator } from './src/surface/navigation/AppNavigator';
 import { useIdentityStore } from './src/store/identity-store';
 import { useMeshStore } from './src/store/mesh-store';
 import { useEconomyStore } from './src/store/economy-store';
+import { usePushNotifications } from './src/hooks/usePushNotifications';
 import { detectHardwareCapabilities, getGracefulDegradation } from './src/utils/hardware-detect';
 import { createIdentityManager } from './src/identity/identity-manager';
 import { createSecureStorageForPlatform, createInMemorySecureStorage } from './src/identity/secure-storage-expo';
@@ -226,6 +227,33 @@ export default function App() {
 
     initialize();
   }, []);
+
+  // ── Push notifications ────────────────────────────────────────────────
+  // Registers the Expo push token with the Concord server once the boot
+  // sequence reaches 'ready'. Gated on `enabled` so we don't ask for
+  // notification permission before identity exists. The hook itself
+  // handles graceful degradation when the user denies permission and
+  // when expo-notifications hasn't been installed yet.
+  const apiBase = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5050').replace(/\/+$/, '');
+  usePushNotifications({
+    enabled: isReady,
+    registerEndpoint: `${apiBase}/api/push/register`,
+    unregisterEndpoint: `${apiBase}/api/push/unregister`,
+    // Auth token plumbing is layered on top of identity once the
+    // bearer-token store lands. For now the server treats absence of a
+    // bearer as anonymous; deviceLabel is still useful telemetry.
+    getAuthToken: () => null,
+    onTap: (resp) => {
+      // Push payload `data.deepLink` mirrors the universal-link router.
+      // The actual data accessor depends on the Expo notification shape;
+      // we read defensively to avoid a typecheck dependency on the SDK.
+      const data = (resp as { notification?: { request?: { content?: { data?: { deepLink?: string } } } } })
+        ?.notification?.request?.content?.data;
+      if (data?.deepLink) {
+        try { Linking.openURL(data.deepLink); } catch { /* swallow */ }
+      }
+    },
+  });
 
   if (!isReady) {
     return <LoadingScreen phase={bootPhase} />;

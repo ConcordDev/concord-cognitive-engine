@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -1457,7 +1458,7 @@ export default function HouseholdLensPage() {
             <div><label className={ds.label}>Allergies (comma-separated)</label><input className={ds.input} value={((formData.allergies as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, allergies: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
             <div><label className={ds.label}>Medications (comma-separated)</label><input className={ds.input} value={((formData.medications as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, medications: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
             <div><label className={ds.label}>Dietary Preferences (comma-separated)</label><input className={ds.input} value={((formData.dietaryPrefs as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, dietaryPrefs: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Vegetarian, Gluten-free, etc." /></div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={3} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="household" draftKey="family_member_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={3} /></div>
           </>
         );
       case 'MealPlan':
@@ -1475,8 +1476,8 @@ export default function HouseholdLensPage() {
             <div><label className={ds.label}>Recipe Link/Name</label><input className={ds.input} value={(formData.recipe as string) || ''} onChange={e => setFormData({ ...formData, recipe: e.target.value })} /></div>
             <div><label className={ds.label}>Assigned Cook</label><input className={ds.input} value={(formData.assignedCook as string) || ''} onChange={e => setFormData({ ...formData, assignedCook: e.target.value })} /></div>
             <div><label className={ds.label}>Dietary Tags (comma-separated)</label><input className={ds.input} value={((formData.dietaryTags as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, dietaryTags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Vegetarian, Gluten-free, etc." /></div>
-            <div><label className={ds.label}>Ingredients (comma-separated)</label><textarea className={ds.textarea} rows={3} value={((formData.ingredients as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, ingredients: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Ingredients (comma-separated)</label><DraftedTextarea lensId="household" draftKey="meal_ingredients" initial={((formData.ingredients as string[]) || []).join(', ')} onValueChange={(v) => setFormData({ ...formData, ingredients: v.split(',').map(s => s.trim()).filter(Boolean) })} className={ds.textarea} rows={3} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="household" draftKey="meal_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'Chore':
@@ -1497,7 +1498,7 @@ export default function HouseholdLensPage() {
               <input type="checkbox" id="isRecurring" checked={(formData.isRecurring as boolean) || false} onChange={e => setFormData({ ...formData, isRecurring: e.target.checked })} />
               <label htmlFor="isRecurring" className={ds.label}>Recurring chore</label>
             </div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="household" draftKey="chore_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'MaintenanceItem':
@@ -1521,7 +1522,7 @@ export default function HouseholdLensPage() {
               <div><label className={ds.label}>Vendor Phone</label><input className={ds.input} value={(formData.vendorPhone as string) || ''} onChange={e => setFormData({ ...formData, vendorPhone: e.target.value })} /></div>
             </div>
             <div><label className={ds.label}>Service History (comma-separated dates/notes)</label><input className={ds.input} value={((formData.serviceHistory as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, serviceHistory: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="household" draftKey="maintenance_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'CalendarEvent':
@@ -1543,7 +1544,7 @@ export default function HouseholdLensPage() {
               <div className="flex items-center gap-2"><input type="checkbox" id="isRecurringEv" checked={(formData.isRecurring as boolean) || false} onChange={e => setFormData({ ...formData, isRecurring: e.target.checked })} /><label htmlFor="isRecurringEv" className={ds.label}>Recurring</label></div>
             </div>
             {formData.isRecurring && <div><label className={ds.label}>Recurrence Rule</label><select className={ds.select} value={(formData.recurrenceRule as string) || ''} onChange={e => setFormData({ ...formData, recurrenceRule: e.target.value })}><option value="">Select...</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="biweekly">Bi-weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></div>}
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="household" draftKey="calendar_event_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'BudgetEntry':
@@ -1563,7 +1564,7 @@ export default function HouseholdLensPage() {
               <div className="flex items-center gap-2"><input type="checkbox" id="isRecurringBudget" checked={(formData.isRecurring as boolean) || false} onChange={e => setFormData({ ...formData, isRecurring: e.target.checked })} /><label htmlFor="isRecurringBudget" className={ds.label}>Recurring</label></div>
               <div className="flex items-center gap-2"><input type="checkbox" id="isPaid" checked={(formData.isPaid as boolean) || false} onChange={e => setFormData({ ...formData, isPaid: e.target.checked })} /><label htmlFor="isPaid" className={ds.label}>Paid</label></div>
             </div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="household" draftKey="budget_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'EmergencyContact':
@@ -1582,7 +1583,7 @@ export default function HouseholdLensPage() {
               <div><label className={ds.label}>Policy / Account Number</label><input className={ds.input} value={(formData.policyNumber as string) || ''} onChange={e => setFormData({ ...formData, policyNumber: e.target.value })} /></div>
               <div><label className={ds.label}>Account Number</label><input className={ds.input} value={(formData.accountNumber as string) || ''} onChange={e => setFormData({ ...formData, accountNumber: e.target.value })} /></div>
             </div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="household" draftKey="emergency_contact_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'Pet':
@@ -1603,7 +1604,7 @@ export default function HouseholdLensPage() {
             </div>
             <div><label className={ds.label}>Next Vet Date</label><input type="date" className={ds.input} value={(formData.vetDate as string) || ''} onChange={e => setFormData({ ...formData, vetDate: e.target.value })} /></div>
             <div><label className={ds.label}>Medications (comma-separated)</label><input className={ds.input} value={((formData.medications as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, medications: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={3} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="household" draftKey="pet_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={3} /></div>
           </>
         );
       default:
