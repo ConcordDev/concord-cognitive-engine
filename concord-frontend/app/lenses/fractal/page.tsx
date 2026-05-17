@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -310,7 +311,7 @@ export default function FractalLensPage() {
           <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button></div>
           <div className="space-y-3">
             <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={2} value={formDescription} onChange={e => setFormDescription(e.target.value)} /></div>
+            <div><label className={ds.label}>Description</label><DraftedTextarea lensId="fractal" draftKey="artifact_description" initial={formDescription} onValueChange={setFormDescription} className={ds.textarea} rows={2} /></div>
             <div><label className={ds.label}>Status</label><select className={ds.select} value={formStatus} onChange={e => setFormStatus(e.target.value as Status)}>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
 
             {(activeArtifactType === 'Pattern' || activeArtifactType === 'Generator') && (<>
@@ -329,7 +330,7 @@ export default function FractalLensPage() {
               </div>
               <div><label className={ds.label}>Formula</label><input className={ds.input} value={formFormula} onChange={e => setFormFormula(e.target.value)} placeholder="z = z^2 + c" /></div>
               <div><label className={ds.label}>Seed Value</label><input className={ds.input} value={formSeed} onChange={e => setFormSeed(e.target.value)} /></div>
-              <div><label className={ds.label}>Parameters (JSON)</label><textarea className={ds.textarea} rows={2} value={formParameters} onChange={e => setFormParameters(e.target.value)} placeholder='{"re": -0.7, "im": 0.27}' /></div>
+              <div><label className={ds.label}>Parameters (JSON)</label><DraftedTextarea lensId="fractal" draftKey="fractal_parameters" initial={formParameters} onValueChange={setFormParameters} className={ds.textarea} rows={2} placeholder='{"re": -0.7, "im": 0.27}' /></div>
             </>)}
 
             {activeArtifactType === 'Node' && (<>
@@ -358,7 +359,7 @@ export default function FractalLensPage() {
               </div>
             </>)}
 
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="fractal" draftKey="artifact_notes" initial={formNotes} onValueChange={setFormNotes} className={ds.textarea} rows={2} /></div>
           </div>
           <div className="flex justify-end gap-2 mt-4"><button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>Cancel</button><button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>Save</button></div>
         </div>

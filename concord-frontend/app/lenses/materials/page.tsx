@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -222,7 +223,7 @@ export default function MaterialsLensPage() {
           <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button></div>
           <div className="space-y-3">
             <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={2} value={formDescription} onChange={e => setFormDescription(e.target.value)} /></div>
+            <div><label className={ds.label}>Description</label><DraftedTextarea lensId="materials" draftKey="material_description" initial={formDescription} onValueChange={setFormDescription} className={ds.textarea} rows={2} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className={ds.label}>Status</label><select className={ds.select} value={formStatus} onChange={e => setFormStatus(e.target.value as Status)}>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
               <div><label className={ds.label}>Category</label><select className={ds.select} value={formCategory} onChange={e => setFormCategory(e.target.value)}>{MATERIAL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
@@ -250,7 +251,7 @@ export default function MaterialsLensPage() {
                 <div><label className={ds.label}>Date</label><input type="date" className={ds.input} value={formTestDate} onChange={e => setFormTestDate(e.target.value)} /></div>
               </div>
               <div><label className={ds.label}>Specimen</label><input className={ds.input} value={formSpecimen} onChange={e => setFormSpecimen(e.target.value)} /></div>
-              <div><label className={ds.label}>Result</label><textarea className={ds.textarea} rows={2} value={formTestResult} onChange={e => setFormTestResult(e.target.value)} /></div>
+              <div><label className={ds.label}>Result</label><DraftedTextarea lensId="materials" draftKey="test_result" initial={formTestResult} onValueChange={setFormTestResult} className={ds.textarea} rows={2} /></div>
             </>)}
 
             {activeArtifactType === 'Comparison' && (<>
@@ -281,10 +282,10 @@ export default function MaterialsLensPage() {
                 <div><label className={ds.label}>Body</label><select className={ds.select} value={formStandardBody} onChange={e => setFormStandardBody(e.target.value)}>{STANDARD_BODIES.map(b => <option key={b} value={b}>{b}</option>)}</select></div>
                 <div><label className={ds.label}>Standard ID</label><input className={ds.input} value={formStandardId} onChange={e => setFormStandardId(e.target.value)} placeholder="ASTM A36" /></div>
               </div>
-              <div><label className={ds.label}>Scope</label><textarea className={ds.textarea} rows={2} value={formScope} onChange={e => setFormScope(e.target.value)} /></div>
+              <div><label className={ds.label}>Scope</label><DraftedTextarea lensId="materials" draftKey="proj_scope" initial={formScope} onValueChange={setFormScope} className={ds.textarea} rows={2} /></div>
             </>)}
 
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="materials" draftKey="proj_notes" initial={formNotes} onValueChange={setFormNotes} className={ds.textarea} rows={2} /></div>
           </div>
           <div className="flex justify-end gap-2 mt-4"><button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>Cancel</button><button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>Save</button></div>
         </div>

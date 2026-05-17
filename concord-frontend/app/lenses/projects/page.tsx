@@ -189,7 +189,7 @@ export default function ProjectsLensPage() {
             </div>
             <div><label className={ds.label}>Methodology</label><select className={ds.select} value={formMethodology} onChange={e => setFormMethodology(e.target.value)}>{METHODOLOGIES.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
             <div><label className={ds.label}>Client</label><input className={ds.input} value={formClient} onChange={e => setFormClient(e.target.value)} /></div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="projects" draftKey="project_notes" initial={formNotes} onValueChange={setFormNotes} className={ds.textarea} rows={2} /></div>
           </div>
           <div className="flex justify-end gap-2 mt-4"><button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>Cancel</button><button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>Save</button></div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -411,7 +412,7 @@ export default function SecurityLensPage() {
             </div>
             <div>
               <label className={ds.label}>Description</label>
-              <textarea className={ds.textarea} rows={3} value={(formData.description as string) || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Detailed incident description..." />
+              <DraftedTextarea lensId="security" draftKey="incident_description" initial={(formData.description as string) || ''} onValueChange={(v) => setFormData({ ...formData, description: v })} className={ds.textarea} rows={3} placeholder="Detailed incident description..." />
             </div>
             <div className={ds.grid2}>
               <div><label className={ds.label}>Assignee</label><input className={ds.input} value={(formData.assignee as string) || ''} onChange={e => setFormData({ ...formData, assignee: e.target.value })} /></div>
@@ -427,8 +428,8 @@ export default function SecurityLensPage() {
               <div><label className={ds.label}>Closed At</label><input type="datetime-local" className={ds.input} value={(formData.closedAt as string) || ''} onChange={e => setFormData({ ...formData, closedAt: e.target.value })} /></div>
             </div>
             <div><label className={ds.label}>Affected Assets (comma-separated)</label><input className={ds.input} value={((formData.affectedAssets as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, affectedAssets: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
-            <div><label className={ds.label}>Root Cause</label><textarea className={ds.textarea} rows={2} value={(formData.rootCause as string) || ''} onChange={e => setFormData({ ...formData, rootCause: e.target.value })} /></div>
-            <div><label className={ds.label}>Lessons Learned</label><textarea className={ds.textarea} rows={2} value={(formData.lessonsLearned as string) || ''} onChange={e => setFormData({ ...formData, lessonsLearned: e.target.value })} /></div>
+            <div><label className={ds.label}>Root Cause</label><DraftedTextarea lensId="security" draftKey="incident_root_cause" initial={(formData.rootCause as string) || ''} onValueChange={(v) => setFormData({ ...formData, rootCause: v })} className={ds.textarea} rows={2} /></div>
+            <div><label className={ds.label}>Lessons Learned</label><DraftedTextarea lensId="security" draftKey="incident_lessons_learned" initial={(formData.lessonsLearned as string) || ''} onValueChange={(v) => setFormData({ ...formData, lessonsLearned: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'Asset':
@@ -489,7 +490,7 @@ export default function SecurityLensPage() {
               <div><label className={ds.label}>Avg Response Time (min)</label><input type="number" className={ds.input} value={(formData.responseTime as number) || ''} onChange={e => setFormData({ ...formData, responseTime: parseInt(e.target.value) || 0 })} /></div>
               <div><label className={ds.label}>Completion Rate (%)</label><input type="number" className={ds.input} value={(formData.completionRate as number) || ''} onChange={e => setFormData({ ...formData, completionRate: parseInt(e.target.value) || 0 })} /></div>
             </div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="security" draftKey="patrol_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'Surveillance':
@@ -562,7 +563,7 @@ export default function SecurityLensPage() {
                 Escort Required
               </label>
             </div>
-            <div><label className={ds.label}>Restrictions</label><textarea className={ds.textarea} rows={2} value={(formData.restrictions as string) || ''} onChange={e => setFormData({ ...formData, restrictions: e.target.value })} /></div>
+            <div><label className={ds.label}>Restrictions</label><DraftedTextarea lensId="security" draftKey="access_restrictions" initial={(formData.restrictions as string) || ''} onValueChange={(v) => setFormData({ ...formData, restrictions: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'ThreatIntel':
@@ -593,7 +594,7 @@ export default function SecurityLensPage() {
               <div><label className={ds.label}>First Seen</label><input type="date" className={ds.input} value={(formData.firstSeen as string) || ''} onChange={e => setFormData({ ...formData, firstSeen: e.target.value })} /></div>
               <div><label className={ds.label}>Last Seen</label><input type="date" className={ds.input} value={(formData.lastSeen as string) || ''} onChange={e => setFormData({ ...formData, lastSeen: e.target.value })} /></div>
             </div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={3} value={(formData.description as string) || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} /></div>
+            <div><label className={ds.label}>Description</label><DraftedTextarea lensId="security" draftKey="threat_description" initial={(formData.description as string) || ''} onValueChange={(v) => setFormData({ ...formData, description: v })} className={ds.textarea} rows={3} /></div>
             <div><label className={ds.label}>Affected Assets (comma-separated)</label><input className={ds.input} value={((formData.affectedAssets as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, affectedAssets: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
             <div><label className={ds.label}>Mitigations (comma-separated)</label><input className={ds.input} value={((formData.mitigations as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, mitigations: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
             <div><label className={ds.label}>Tags (comma-separated)</label><input className={ds.input} value={((formData.tags as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
