@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Users, X } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
+import { usePipe } from '@/components/panel-polish';
 
 interface NearbyPlayer {
   id: string;
@@ -32,6 +33,7 @@ export function SocialActionPanel({ myUserId, nearbyPlayers }: SocialActionPanel
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [hasParty, setHasParty] = useState<boolean | null>(null);
+  const pipe = usePipe();
 
   const filteredPlayers = nearbyPlayers.filter((p) => p.id !== myUserId);
 
@@ -67,6 +69,7 @@ export function SocialActionPanel({ myUserId, nearbyPlayers }: SocialActionPanel
           duration: 4000,
         });
       } else {
+        pipe.publish('world.tradeRequestSent', { recipientId }, { label: `trade → ${recipientId.slice(0, 8)}` });
         addToast({
           type: 'info',
           message: `Trade request sent — waiting for ${recipientId.slice(0, 8)} to accept`,
@@ -78,7 +81,7 @@ export function SocialActionPanel({ myUserId, nearbyPlayers }: SocialActionPanel
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [pipe]);
 
   const createParty = useCallback(async () => {
     const addToast = useUIStore.getState().addToast;
@@ -94,6 +97,7 @@ export function SocialActionPanel({ myUserId, nearbyPlayers }: SocialActionPanel
       if (!json?.ok) {
         addToast({ type: 'error', message: json?.error || 'Could not create party', duration: 4000 });
       } else {
+        pipe.publish('world.partyCreated', json?.party ?? { ok: true }, { label: 'party created' });
         addToast({ type: 'success', message: 'Party created — invite players from this panel', duration: 5000 });
         setHasParty(true);
       }
@@ -102,7 +106,7 @@ export function SocialActionPanel({ myUserId, nearbyPlayers }: SocialActionPanel
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [pipe]);
 
   const inviteToParty = useCallback(async (invitedId: string) => {
     const addToast = useUIStore.getState().addToast;
@@ -129,6 +133,7 @@ export function SocialActionPanel({ myUserId, nearbyPlayers }: SocialActionPanel
       if (!json?.ok) {
         addToast({ type: 'error', message: json?.error || 'Invite failed', duration: 4000 });
       } else {
+        pipe.publish('world.partyInviteSent', { partyId, invitedId }, { label: `invite → ${invitedId.slice(0, 8)}` });
         addToast({ type: 'info', message: `Invite sent to ${invitedId.slice(0, 8)}`, duration: 4000 });
       }
     } catch {
@@ -136,7 +141,7 @@ export function SocialActionPanel({ myUserId, nearbyPlayers }: SocialActionPanel
     } finally {
       setBusy(null);
     }
-  }, [hasParty]);
+  }, [hasParty, pipe]);
 
   return (
     <>
