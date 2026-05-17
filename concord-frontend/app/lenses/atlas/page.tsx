@@ -8,6 +8,7 @@ import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { GraphView } from '@/components/atlas/GraphView';
+import { AtlasActionPanel } from '@/components/atlas/AtlasActionPanel';
 import { SafeCard } from '@/components/common/SafeCard';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -498,6 +499,10 @@ export default function AtlasLensPage() {
 
       <section className="mt-6">
         <SavedPlaces />
+      </section>
+
+      <section className="mt-6">
+        <AtlasActionPanel />
       </section>
     </div>
 
