@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -1125,8 +1126,8 @@ export default function AviationLensPage() {
         <div><label className={ds.label}>Vis Min (SM)</label><input type="number" step="0.5" className={ds.input} value={(form.visibilityReq as number) || ''} onChange={e => setField('visibilityReq', parseFloat(e.target.value) || 0)} /></div>
       </div>
       <div><label className={ds.label}>Weather Minimums Notes</label><input className={ds.input} value={(form.weatherMins as string) || ''} onChange={e => setField('weatherMins', e.target.value)} placeholder="IFR alternate required, 1-2-3 rule..." /></div>
-      <div><label className={ds.label}>Squawks</label><textarea className={cn(ds.textarea, 'h-16')} value={(form.squawks as string) || ''} onChange={e => setField('squawks', e.target.value)} placeholder="Post-flight squawks..." /></div>
-      <div><label className={ds.label}>Remarks</label><textarea className={cn(ds.textarea, 'h-20')} value={(form.remarks as string) || ''} onChange={e => setField('remarks', e.target.value)} placeholder="Flight remarks..." /></div>
+      <div><label className={ds.label}>Squawks</label><DraftedTextarea lensId="aviation" draftKey="flight_squawks" initial={(form.squawks as string) || ''} onValueChange={(v) => setField('squawks', v)} className={cn(ds.textarea, 'h-16')} placeholder="Post-flight squawks..." /></div>
+      <div><label className={ds.label}>Remarks</label><DraftedTextarea lensId="aviation" draftKey="flight_remarks" initial={(form.remarks as string) || ''} onValueChange={(v) => setField('remarks', v)} className={cn(ds.textarea, 'h-20')} placeholder="Flight remarks..." /></div>
     </div>
   );
 
@@ -1252,8 +1253,8 @@ export default function AviationLensPage() {
           <div><label className={ds.label}>Loading Stations</label><input className={ds.input} value={(form.stations as string) || ''} onChange={e => setField('stations', e.target.value)} placeholder="Pilot:37, Rear:73, Baggage:95" /></div>
         </div>
       </div>
-      <div><label className={ds.label}>AD Compliance (comma-separated)</label><textarea className={cn(ds.textarea, 'h-16')} value={((form.adCompliance as string[]) || []).join(', ')} onChange={e => setField('adCompliance', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} placeholder="AD 2020-10-15, AD 2019-25-51..." /></div>
-      <div><label className={ds.label}>Open Squawks (comma-separated)</label><textarea className={cn(ds.textarea, 'h-16')} value={((form.squawks as string[]) || []).join(', ')} onChange={e => setField('squawks', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} placeholder="Loose trim tab, Oil leak..." /></div>
+      <div><label className={ds.label}>AD Compliance (comma-separated)</label><DraftedTextarea lensId="aviation" draftKey="maint_ad_compliance" initial={((form.adCompliance as string[]) || []).join(', ')} onValueChange={(v) => setField('adCompliance', v.split(',').map(s => s.trim()).filter(Boolean))} className={cn(ds.textarea, 'h-16')} placeholder="AD 2020-10-15, AD 2019-25-51..." /></div>
+      <div><label className={ds.label}>Open Squawks (comma-separated)</label><DraftedTextarea lensId="aviation" draftKey="maint_open_squawks" initial={((form.squawks as string[]) || []).join(', ')} onValueChange={(v) => setField('squawks', v.split(',').map(s => s.trim()).filter(Boolean))} className={cn(ds.textarea, 'h-16')} placeholder="Loose trim tab, Oil leak..." /></div>
       <div className={ds.grid2}>
         <div><label className={ds.label}>Insurance Expiry</label><input type="date" className={ds.input} value={(form.insuranceExpiry as string) || ''} onChange={e => setField('insuranceExpiry', e.target.value)} /></div>
         <div><label className={ds.label}>Registration Expiry</label><input type="date" className={ds.input} value={(form.registrationExpiry as string) || ''} onChange={e => setField('registrationExpiry', e.target.value)} /></div>
@@ -1276,7 +1277,7 @@ export default function AviationLensPage() {
           </select>
         </div>
       </div>
-      <div><label className={ds.label}>Discrepancy</label><textarea className={cn(ds.textarea, 'h-20')} value={(form.discrepancy as string) || ''} onChange={e => setField('discrepancy', e.target.value)} placeholder="Describe the discrepancy..." /></div>
+      <div><label className={ds.label}>Discrepancy</label><DraftedTextarea lensId="aviation" draftKey="maint_discrepancy" initial={(form.discrepancy as string) || ''} onValueChange={(v) => setField('discrepancy', v)} className={cn(ds.textarea, 'h-20')} placeholder="Describe the discrepancy..." /></div>
       <div className={ds.grid3}>
         <div><label className={ds.label}>MEL Reference</label><input className={ds.input} value={(form.melReference as string) || ''} onChange={e => setField('melReference', e.target.value)} placeholder="MEL 32-1" /></div>
         <div><label className={ds.label}>AD Reference</label><input className={ds.input} value={(form.adReference as string) || ''} onChange={e => setField('adReference', e.target.value)} placeholder="AD 2024-10-15" /></div>
@@ -1290,7 +1291,7 @@ export default function AviationLensPage() {
         </div>
         <div><label className={ds.label}>Labor Hours</label><input type="number" step="0.1" className={ds.input} value={(form.laborHours as number) || ''} onChange={e => setField('laborHours', parseFloat(e.target.value) || 0)} /></div>
       </div>
-      <div><label className={ds.label}>Parts Used</label><textarea className={cn(ds.textarea, 'h-16')} value={(form.partsUsed as string) || ''} onChange={e => setField('partsUsed', e.target.value)} placeholder="Part number, description, qty..." /></div>
+      <div><label className={ds.label}>Parts Used</label><DraftedTextarea lensId="aviation" draftKey="maint_parts_used" initial={(form.partsUsed as string) || ''} onValueChange={(v) => setField('partsUsed', v)} className={cn(ds.textarea, 'h-16')} placeholder="Part number, description, qty..." /></div>
       <div className="border-t border-lattice-border pt-4">
         <h4 className={cn(ds.heading3, 'text-sm mb-3')}>Sign-Off</h4>
         <div className={ds.grid2}>
@@ -1380,7 +1381,7 @@ export default function AviationLensPage() {
           </div>
         </div>
       </div>
-      <div><label className={ds.label}>Special Requests</label><textarea className={cn(ds.textarea, 'h-16')} value={(form.specialRequests as string) || ''} onChange={e => setField('specialRequests', e.target.value)} /></div>
+      <div><label className={ds.label}>Special Requests</label><DraftedTextarea lensId="aviation" draftKey="pax_special_requests" initial={(form.specialRequests as string) || ''} onValueChange={(v) => setField('specialRequests', v)} className={cn(ds.textarea, 'h-16')} /></div>
     </div>
   );
 
@@ -1552,7 +1553,7 @@ export default function AviationLensPage() {
       </div>
       <div>
         <label className={ds.label}>Raw METAR</label>
-        <textarea className={cn(ds.textarea, 'font-mono text-xs h-16')} value={(form.rawMetar as string) || ''} onChange={e => setField('rawMetar', e.target.value)} placeholder="KJFK 221456Z 27015G25KT 10SM FEW250 08/M04 A3012 RMK AO2..." />
+        <DraftedTextarea lensId="aviation" draftKey="wx_raw_metar" initial={(form.rawMetar as string) || ''} onValueChange={(v) => setField('rawMetar', v)} className={cn(ds.textarea, 'font-mono text-xs h-16')} placeholder="KJFK 221456Z 27015G25KT 10SM FEW250 08/M04 A3012 RMK AO2..." />
       </div>
       <div><label className={ds.label}>Observation Time (UTC)</label><input type="datetime-local" className={ds.input} value={(form.observationTime as string) || ''} onChange={e => setField('observationTime', e.target.value)} /></div>
       <div className="border-t border-lattice-border pt-4">
@@ -1581,15 +1582,15 @@ export default function AviationLensPage() {
       </div>
       <div className="border-t border-lattice-border pt-4">
         <h4 className={cn(ds.heading3, 'text-sm mb-3')}>Forecast & Advisories</h4>
-        <div><label className={ds.label}>TAF (Terminal Forecast)</label><textarea className={cn(ds.textarea, 'font-mono text-xs h-20')} value={(form.taf as string) || ''} onChange={e => setField('taf', e.target.value)} placeholder="TAF KJFK 221130Z..." /></div>
-        <div><label className={ds.label}>NOTAMs</label><textarea className={cn(ds.textarea, 'h-16')} value={(form.notams as string) || ''} onChange={e => setField('notams', e.target.value)} placeholder="Active NOTAMs for this station..." /></div>
-        <div><label className={ds.label}>PIREPs</label><textarea className={cn(ds.textarea, 'h-16')} value={(form.pirepSummary as string) || ''} onChange={e => setField('pirepSummary', e.target.value)} placeholder="Pilot reports of turbulence, icing..." /></div>
+        <div><label className={ds.label}>TAF (Terminal Forecast)</label><DraftedTextarea lensId="aviation" draftKey="wx_taf" initial={(form.taf as string) || ''} onValueChange={(v) => setField('taf', v)} className={cn(ds.textarea, 'font-mono text-xs h-20')} placeholder="TAF KJFK 221130Z..." /></div>
+        <div><label className={ds.label}>NOTAMs</label><DraftedTextarea lensId="aviation" draftKey="wx_notams" initial={(form.notams as string) || ''} onValueChange={(v) => setField('notams', v)} className={cn(ds.textarea, 'h-16')} placeholder="Active NOTAMs for this station..." /></div>
+        <div><label className={ds.label}>PIREPs</label><DraftedTextarea lensId="aviation" draftKey="wx_pireps" initial={(form.pirepSummary as string) || ''} onValueChange={(v) => setField('pirepSummary', v)} className={cn(ds.textarea, 'h-16')} placeholder="Pilot reports of turbulence, icing..." /></div>
         <div className={ds.grid2}>
-          <div><label className={ds.label}>AIRMETs</label><textarea className={cn(ds.textarea, 'h-12')} value={(form.airmets as string) || ''} onChange={e => setField('airmets', e.target.value)} placeholder="Active AIRMETs..." /></div>
-          <div><label className={ds.label}>SIGMETs</label><textarea className={cn(ds.textarea, 'h-12')} value={(form.sigmets as string) || ''} onChange={e => setField('sigmets', e.target.value)} placeholder="Active SIGMETs..." /></div>
+          <div><label className={ds.label}>AIRMETs</label><DraftedTextarea lensId="aviation" draftKey="wx_airmets" initial={(form.airmets as string) || ''} onValueChange={(v) => setField('airmets', v)} className={cn(ds.textarea, 'h-12')} placeholder="Active AIRMETs..." /></div>
+          <div><label className={ds.label}>SIGMETs</label><DraftedTextarea lensId="aviation" draftKey="wx_sigmets" initial={(form.sigmets as string) || ''} onValueChange={(v) => setField('sigmets', v)} className={cn(ds.textarea, 'h-12')} placeholder="Active SIGMETs..." /></div>
         </div>
       </div>
-      <div><label className={ds.label}>Remarks</label><textarea className={cn(ds.textarea, 'h-12')} value={(form.remarks as string) || ''} onChange={e => setField('remarks', e.target.value)} placeholder="Additional remarks..." /></div>
+      <div><label className={ds.label}>Remarks</label><DraftedTextarea lensId="aviation" draftKey="wx_remarks" initial={(form.remarks as string) || ''} onValueChange={(v) => setField('remarks', v)} className={cn(ds.textarea, 'h-12')} placeholder="Additional remarks..." /></div>
     </div>
   );
 
