@@ -1209,6 +1209,10 @@ await tryLoadDotenv();
 // ---- Environment Validation ----
 const REQUIRED_ENV_PRODUCTION = ["JWT_SECRET", "ADMIN_PASSWORD"];
 const RECOMMENDED_ENV = ["ALLOWED_ORIGINS"];
+// Phase 13 launch-prep — abuse contact paths surface via /api/moderation/contact
+// and the Community Standards doc. If unset, the public-report endpoint still
+// works but external observers can't reach a human.
+const MODERATION_CONTACT_ENV = ["ABUSE_EMAIL", "DMCA_EMAIL", "SECURITY_EMAIL"];
 
 function validateEnvironment() {
   const errors = [];
@@ -1247,6 +1251,18 @@ function validateEnvironment() {
   for (const envVar of RECOMMENDED_ENV) {
     if (!process.env[envVar]) {
       warnings.push(`Missing recommended environment variable: ${envVar}`);
+    }
+  }
+
+  // Moderation contact paths (Phase 13 launch-prep). Warn loud in production
+  // if these aren't set — the Community Standards doc + /api/moderation/contact
+  // both fall back to defaults pointing at concord-os.org, which is fine for
+  // that deploy but wrong for any forked instance.
+  if (isProduction) {
+    for (const envVar of MODERATION_CONTACT_ENV) {
+      if (!process.env[envVar]) {
+        warnings.push(`Moderation contact env var ${envVar} unset — /api/moderation/contact will return the concord-os.org default. Set it to your actual abuse inbox.`);
+      }
     }
   }
 
@@ -5775,6 +5791,11 @@ function authMiddleware(req, res, next) {
     // peer runs. MUST be public so peers can probe pre-handshake.
     "/.well-known/nodeinfo",
     "/api/nodeinfo",
+    // Phase 13 launch-prep — the canonical contact-info endpoint. Lists
+    // moderation / DMCA / legal / security / support emails so crawlers,
+    // automated abuse-reporting tools, and external observers can find
+    // the right channel without an account.
+    "/api/moderation/contact",
   ];
   // Public-read bypass: anon GETs to whitelisted paths skip auth. But if the
   // caller sent an Authorization header or auth cookie, run the full auth
@@ -5799,6 +5820,11 @@ function authMiddleware(req, res, next) {
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
   if (req.method === "POST" && req.path === "/api/quality-pipeline/preview") return next();
+  // Gate 1 POST bypass: anonymous abuse reports. Banned users, non-users,
+  // and external observers (researchers, mandatory reporters, law enforcement)
+  // need a path to flag content without holding an account. The endpoint
+  // requires a reporter email so we can respond + audit trail.
+  if (req.method === "POST" && req.path === "/api/moderation/public-report") return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";

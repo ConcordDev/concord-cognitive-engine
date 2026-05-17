@@ -217,12 +217,25 @@ export function readOutbox(db, userId, { limit = 20, before = null } = {}) {
 //   4. Dispatch to type-specific handler
 //   5. Return 202 Accepted before async processing completes
 //
-// HTTP signature verification is intentionally pluggable — the spec
-// requires it for Mastodon/Pleroma interop, but local development +
-// trusted-peer setups can run without signatures by leaving the env
-// flag unset. This matches the dariusk/express-activitypub reference.
-
-const SIGNATURE_REQUIRED = process.env.CONCORD_AP_REQUIRE_SIGNATURE === "true";
+// HTTP signature verification is required in production by default —
+// without it, a malicious peer can submit unsigned activities and bypass
+// the actor-impersonation guard. Local dev defaults to permissive so
+// trusted-peer integration tests don't need keypairs.
+//
+// Resolution: explicit env wins. Otherwise true when NODE_ENV=production,
+// false otherwise. Production deployments that intentionally want to
+// accept unsigned activities must opt in via CONCORD_AP_REQUIRE_SIGNATURE=false.
+//
+// Exposed as a function so tests can flip env vars between cases. The
+// existing const consumer reads its value once at module load — that's
+// fine because in real deploys env doesn't change at runtime.
+export function resolveSignatureRequired(env = process.env) {
+  const v = env.CONCORD_AP_REQUIRE_SIGNATURE;
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return env.NODE_ENV === "production";
+}
+const SIGNATURE_REQUIRED = resolveSignatureRequired();
 
 /**
  * Receive an activity into the local inbox. Idempotent on activity.id.
