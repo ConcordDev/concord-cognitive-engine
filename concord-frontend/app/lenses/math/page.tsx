@@ -6,6 +6,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { MathStackFeed } from '@/components/math/MathStackFeed';
 import { MathActionPanel } from '@/components/math/MathActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -406,6 +407,8 @@ export default function MathLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="math" size="sm" className="ml-2" />
     <div data-lens-theme="math" className="p-6 space-y-6">
+      {/* Phase 4 — REAL arXiv math feed. */}
+      <ArxivPanel domain="math" title="arXiv · Mathematics" />
       <header className="flex items-center gap-3">
         <Calculator className="w-7 h-7 text-neon-blue" />
         <div>

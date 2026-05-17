@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -133,6 +134,8 @@ export default function BioLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="bio" size="sm" className="ml-2" />
     <div data-lens-theme="bio" className="p-6 space-y-6">
+      {/* Phase 4 — REAL arXiv q-bio feed. */}
+      <ArxivPanel domain="bio" title="arXiv · Quantitative Biology" />
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
