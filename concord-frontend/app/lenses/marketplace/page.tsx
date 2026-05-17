@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -2885,6 +2886,7 @@ export default function MarketplaceLensPage() {
         <MarketplaceActionPanel />
       </section>
     </PipingProvider>
+          <SessionRail lensId="marketplace" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="marketplace" limit={10} hideWhenEmpty className="mt-4" />
           <CrossLensRecentsPanel lensId="marketplace" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
