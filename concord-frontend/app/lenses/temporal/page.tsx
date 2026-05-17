@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { TemporalRepos } from '@/components/temporal/TemporalRepos';
+import { TemporalActionPanel } from '@/components/temporal/TemporalActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -837,6 +838,9 @@ export default function TemporalLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TemporalRepos />
+      </section>
+      <section className="mt-6">
+        <TemporalActionPanel />
       </section>
     </LensPageShell>
     

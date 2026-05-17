@@ -6,6 +6,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { TimelineWiki } from '@/components/timeline/TimelineWiki';
+import { TimelineActionPanel } from '@/components/timeline/TimelineActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -1205,6 +1206,9 @@ export default function TimelineLensPage() {
       </AnimatePresence>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TimelineWiki />
+      </section>
+      <section className="mt-6">
+        <TimelineActionPanel />
       </section>
     </div>
     </LensShell>
