@@ -49,6 +49,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ExperimentActionPanel } from '@/components/science/ExperimentActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import ScienceWorkbench from '@/components/science/ScienceWorkbench';
@@ -2192,9 +2193,11 @@ export default function ScienceLensPage() {
       </button>
       <ScienceWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
       {/* Quartzy + Benchling-shape experiment workbench: calibration / protocol / quality / custody + actions */}
-      <section className="mt-6 mx-auto max-w-7xl">
-        <ExperimentActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 mx-auto max-w-7xl">
+          <ExperimentActionPanel />
+        </section>
+      </PipingProvider>
 
       <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ScienceArxiv />
