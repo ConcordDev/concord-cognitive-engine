@@ -5,6 +5,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { VoiceRepos } from '@/components/voice/VoiceRepos';
 import { VoiceActionPanel } from '@/components/voice/VoiceActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1107,9 +1108,11 @@ export default function VoiceLensPage() {
         <VoiceRepos />
       </section>
 
-      <section className="mt-6">
-        <VoiceActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <VoiceActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

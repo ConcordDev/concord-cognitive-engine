@@ -11,6 +11,7 @@ import { Mic, Users, Smile, Search, Sparkles, Send, Globe, Wand2, Loader2, Check
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,17 +34,11 @@ interface SentimentResult { overallScore: number; overallLabel: string; segmentB
 interface KeywordHit { keyword: string; count: number; occurrences: { position: number; snippet: string }[] }
 interface KeywordResult { keywordsSearched: number; totalOccurrences: number; keywordDensity: string; wordCount: number; topKeywords: KeywordHit[]; notFound: string[] }
 
-const DEMO_TRANSCRIPT = `[Speaker A]: So basically, you know, we wanted to launch the product by Q3, but actually the testing took longer than expected.
-[Speaker B]: Right, and the customer feedback was, um, very positive overall.
-[Speaker A]: That is fantastic. I think we should accelerate the rollout.
-[Speaker B]: I disagree slightly. We need more data, basically.
-[Speaker A]: OK fair point. Let us run another two weeks of beta and then ship.
-[Speaker B]: Great plan. The team will be delighted.`;
-
+// No seed transcript — paste a real transcript using "[Speaker X]:" markers.
 export function VoiceActionPanel() {
-  const [transcript, setTranscript] = useState(DEMO_TRANSCRIPT);
-  const [duration, setDuration] = useState('5');
-  const [keywords, setKeywords] = useState('product, launch, customer, data, ship');
+  const [transcript, setTranscript] = useState('');
+  const [duration, setDuration] = useState('');
+  const [keywords, setKeywords] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -59,55 +54,84 @@ export function VoiceActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actAnalyze() {
     if (!transcript.trim()) { err('Transcript required.'); return; }
     setBusy('analyze'); setFeedback(null);
-    try { const r = await callMacro<AnalyzeResult>('transcriptAnalyze', { artifact: { data: { transcript, durationMinutes: parseFloat(duration) || null } } }); if (r.ok && r.result) { setAnalyzeResult(r.result); ok(`${r.result.wordCount}w · ${r.result.fillerRate} fillers.`); } else err(r.error ?? 'analyze failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<AnalyzeResult>('transcriptAnalyze', { artifact: { data: { transcript, durationMinutes: parseFloat(duration) || null } } });
+      if (r.ok && r.result) { setAnalyzeResult(r.result); pipe.publish('voice.analyze', r.result, { label: `${r.result.wordCount}w · ${r.result.complexityRating}` }); ok(`${r.result.wordCount}w · ${r.result.fillerRate} fillers.`); } else err(r.error ?? 'analyze failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDiarize() {
     if (!transcript.trim()) { err('Transcript required.'); return; }
     setBusy('diarize'); setFeedback(null);
-    try { const r = await callMacro<DiarizeResult>('speakerDiarize', { artifact: { data: { transcript } } }); if (r.ok && r.result) { setDiarizeResult(r.result); ok(`${r.result.speakerCount} speakers · dominant: ${r.result.dominantSpeaker}.`); } else err(r.error ?? 'diarize failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<DiarizeResult>('speakerDiarize', { artifact: { data: { transcript } } });
+      if (r.ok && r.result) { setDiarizeResult(r.result); pipe.publish('voice.diarize', r.result, { label: `${r.result.speakerCount} speakers` }); ok(`${r.result.speakerCount} speakers · dominant: ${r.result.dominantSpeaker}.`); } else err(r.error ?? 'diarize failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSentiment() {
     if (!transcript.trim()) { err('Transcript required.'); return; }
     setBusy('sentiment'); setFeedback(null);
-    try { const r = await callMacro<SentimentResult>('sentimentScore', { artifact: { data: { transcript } } }); if (r.ok && r.result) { setSentimentResult(r.result); ok(`${r.result.overallLabel} (${r.result.overallScore}).`); } else err(r.error ?? 'sentiment failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SentimentResult>('sentimentScore', { artifact: { data: { transcript } } });
+      if (r.ok && r.result) { setSentimentResult(r.result); pipe.publish('voice.sentiment', r.result, { label: `Sent ${r.result.overallLabel}` }); ok(`${r.result.overallLabel} (${r.result.overallScore}).`); } else err(r.error ?? 'sentiment failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actKeyword() {
+    if (!transcript.trim()) { err('Transcript required.'); return; }
     const kws = keywords.split(',').map(s => s.trim()).filter(Boolean);
     if (kws.length === 0) { err('Keywords required.'); return; }
     setBusy('keyword'); setFeedback(null);
-    try { const r = await callMacro<KeywordResult>('keywordSpot', { artifact: { data: { transcript, keywords: kws, contextRadius: 50 } } }); if (r.ok && r.result) { setKeywordResult(r.result); ok(`${r.result.totalOccurrences} hits · density ${r.result.keywordDensity}.`); } else err(r.error ?? 'keyword failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<KeywordResult>('keywordSpot', { artifact: { data: { transcript, keywords: kws, contextRadius: 50 } } });
+      if (r.ok && r.result) { setKeywordResult(r.result); pipe.publish('voice.keyword', r.result, { label: `${r.result.totalOccurrences} hits` }); ok(`${r.result.totalOccurrences} hits · density ${r.result.keywordDensity}.`); } else err(r.error ?? 'keyword failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Transcript analysis`, tags: ['voice', 'transcript', sentimentResult?.overallLabel].filter((t): t is string => !!t), source: 'voice:transcript:mint', meta: { visibility: 'private', consent: { allowCitations: false }, voice: { analyze: analyzeResult, diarize: diarizeResult, sentiment: sentimentResult, keyword: keywordResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Transcript DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('voice.mintedDtuId', id, { label: `Transcript DTU ${id.slice(0, 8)}…` }); ok(`Transcript DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🎙 Transcript brief`, '', analyzeResult ? `${analyzeResult.wordCount}w / ${analyzeResult.sentenceCount}s · ${analyzeResult.speakingRate} · ${analyzeResult.fillerRate} fillers · ${analyzeResult.complexityRating}` : '', diarizeResult ? `${diarizeResult.speakerCount} speakers · ${diarizeResult.dominantSpeaker} dominant (balance ${diarizeResult.balanceRatio}%)` : '', sentimentResult ? `Sentiment: ${sentimentResult.overallLabel} (${sentimentResult.overallScore}) · arc ${sentimentResult.sentimentArc}` : '', keywordResult ? `Keywords: ${keywordResult.totalOccurrences} hits · top: ${keywordResult.topKeywords.slice(0, 3).map(k => `${k.keyword}(${k.count})`).join(', ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🎙 Transcript brief`, '',
+      analyzeResult ? `${analyzeResult.wordCount}w / ${analyzeResult.sentenceCount}s · ${analyzeResult.speakingRate} · ${analyzeResult.fillerRate} fillers · ${analyzeResult.complexityRating}` : '',
+      diarizeResult ? `${diarizeResult.speakerCount} speakers · ${diarizeResult.dominantSpeaker} dominant (balance ${diarizeResult.balanceRatio}%)` : '',
+      sentimentResult ? `Sentiment: ${sentimentResult.overallLabel} (${sentimentResult.overallScore}) · arc ${sentimentResult.sentimentArc}` : '',
+      keywordResult ? `Keywords: ${keywordResult.totalOccurrences} hits · top: ${keywordResult.topKeywords.slice(0, 3).map(k => `${k.keyword}(${k.count})`).join(', ')}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!analyzeResult && !sentimentResult) { err('Run analyze/sentiment first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Speech metrics report`, tags: ['voice', 'speech', 'public'], source: 'voice:report:publish', meta: { visibility: 'public', consent: { allowCitations: true }, analyze: analyzeResult, sentiment: sentimentResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Speech metrics report`, tags: ['voice', 'speech', 'public'], source: 'voice:report:publish', meta: { visibility: 'public', consent: { allowCitations: true }, analyze: analyzeResult, sentiment: sentimentResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('voice.publishedDtuId', id, { label: `Public speech report ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -150,6 +174,10 @@ export function VoiceActionPanel() {
           <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Duration min" />
           <input type="text" value={keywords} onChange={(e) => setKeywords(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Keywords csv" />
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

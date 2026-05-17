@@ -6,6 +6,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { TimezoneTools } from '@/components/calendar/TimezoneTools';
 import { ScheduleAnalyzer } from '@/components/calendar/ScheduleAnalyzer';
 import { CalendarActionPanel } from '@/components/calendar/CalendarActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -2070,9 +2071,11 @@ export default function CalendarLensPage() {
         <ScheduleAnalyzer />
       </section>
 
-      <section className="mt-6">
-        <CalendarActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <CalendarActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

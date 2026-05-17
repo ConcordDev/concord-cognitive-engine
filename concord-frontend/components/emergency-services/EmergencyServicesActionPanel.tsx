@@ -11,6 +11,7 @@ import { Truck, Radio, Activity, ListChecks, Sparkles, Send, Globe, Wand2, Loade
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -31,42 +32,19 @@ interface DispResult { totalUnits: number; available: number; activeIncidents: n
 interface LogResult { total24h: number; totalAllTime: number; byType: Record<string, number>; mostCommon: string; avgResponseMinutes: number; trend: string }
 interface ReadyResult { vehicleReadiness: number; personnelReadiness: number; suppliesLevel: number; overallReadiness: number; status: string; shortages: string[] }
 
-const DEMO_DISPATCH = JSON.stringify({
-  units: [
-    { name: 'M1', status: 'available', distanceKm: 1.8 },
-    { name: 'M2', status: 'available', distanceKm: 4.2 },
-    { name: 'M3', status: 'on-call', distanceKm: 0 },
-    { name: 'E5', status: 'available', distanceKm: 3.1 },
-  ],
-  incidents: [
-    { description: 'Cardiac arrest — Pine St', priority: 1 },
-    { description: 'MVA — Hwy 101 N', priority: 2 },
-    { description: 'Structure fire — Oak & 3rd', priority: 1 },
-  ],
-}, null, 2);
-
-const DEMO_LOG = JSON.stringify({
-  incidents: [
-    { type: 'medical', timestamp: new Date(Date.now() - 3600000).toISOString(), responseMinutes: 7 },
-    { type: 'medical', timestamp: new Date(Date.now() - 7200000).toISOString(), responseMinutes: 9 },
-    { type: 'mva', timestamp: new Date(Date.now() - 14400000).toISOString(), responseMinutes: 12 },
-    { type: 'fire', timestamp: new Date(Date.now() - 18000000).toISOString(), responseMinutes: 8 },
-    { type: 'medical', timestamp: new Date(Date.now() - 28800000).toISOString(), responseMinutes: 6 },
-  ],
-}, null, 2);
-
+// No seeded data — every input starts empty.
 export function EmergencyServicesActionPanel() {
-  const [severity, setSeverity] = useState('2');
+  const [severity, setSeverity] = useState('');
   const [breathing, setBreathing] = useState(true);
   const [conscious, setConscious] = useState(true);
-  const [pulse, setPulse] = useState('118');
-  const [dispText, setDispText] = useState(DEMO_DISPATCH);
-  const [logText, setLogText] = useState(DEMO_LOG);
-  const [vehicles, setVehicles] = useState('12');
-  const [vehiclesReady, setVehiclesReady] = useState('9');
-  const [personnel, setPersonnel] = useState('48');
-  const [personnelOnDuty, setPersonnelOnDuty] = useState('38');
-  const [suppliesPercent, setSuppliesPercent] = useState('72');
+  const [pulse, setPulse] = useState('');
+  const [dispText, setDispText] = useState('');
+  const [logText, setLogText] = useState('');
+  const [vehicles, setVehicles] = useState('');
+  const [vehiclesReady, setVehiclesReady] = useState('');
+  const [personnel, setPersonnel] = useState('');
+  const [personnelOnDuty, setPersonnelOnDuty] = useState('');
+  const [suppliesPercent, setSuppliesPercent] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -82,50 +60,82 @@ export function EmergencyServicesActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actTriage() {
+    const s = parseInt(severity, 10), p = parseInt(pulse, 10);
+    if (!Number.isFinite(s) || !Number.isFinite(p)) { err('Severity (0-4) + pulse required.'); return; }
     setBusy('triage'); setFeedback(null);
-    try { const r = await callMacro<TriageResult>('triageAssess', { artifact: { data: { severity: parseInt(severity, 10), vitals: { breathing, conscious, pulse: parseInt(pulse, 10) } } } }); if (r.ok && r.result) { setTriageResult(r.result); ok(r.result.triageColor); } else err(r.error ?? 'triage failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<TriageResult>('triageAssess', { artifact: { data: { severity: s, vitals: { breathing, conscious, pulse: p } } } });
+      if (r.ok && r.result) { setTriageResult(r.result); pipe.publish('ems.triage', r.result, { label: `Triage: ${r.result.triageColor}` }); ok(r.result.triageColor); } else err(r.error ?? 'triage failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDisp() {
+    if (!dispText.trim()) { err('Paste dispatch JSON first.'); return; }
     try { const parsed = JSON.parse(dispText); setBusy('disp'); setFeedback(null);
-      const r = await callMacro<DispResult>('dispatchOptimize', { artifact: { data: parsed } }); if (r.ok && r.result) { setDispResult(r.result); ok(`${r.result.activeIncidents} incidents · ${r.result.available} units${r.result.coverageGap ? ' (gap!)' : ''}.`); } else err(r.error ?? 'disp failed');
+      const r = await callMacro<DispResult>('dispatchOptimize', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setDispResult(r.result); pipe.publish('ems.disp', r.result, { label: `Disp ${r.result.activeIncidents}/${r.result.available}` }); ok(`${r.result.activeIncidents} incidents · ${r.result.available} units${r.result.coverageGap ? ' (gap!)' : ''}.`); } else err(r.error ?? 'disp failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid dispatch JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actLog() {
+    if (!logText.trim()) { err('Paste incident log JSON first.'); return; }
     try { const parsed = JSON.parse(logText); setBusy('log'); setFeedback(null);
-      const r = await callMacro<LogResult>('incidentLog', { artifact: { data: parsed } }); if (r.ok && r.result) { setLogResult(r.result); ok(`${r.result.total24h} in 24h · avg ${r.result.avgResponseMinutes}min.`); } else err(r.error ?? 'log failed');
+      const r = await callMacro<LogResult>('incidentLog', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setLogResult(r.result); pipe.publish('ems.log', r.result, { label: `Log ${r.result.total24h}/24h` }); ok(`${r.result.total24h} in 24h · avg ${r.result.avgResponseMinutes}min.`); } else err(r.error ?? 'log failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid log JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actReady() {
+    const v = parseInt(vehicles, 10), vr = parseInt(vehiclesReady, 10), p = parseInt(personnel, 10), pd = parseInt(personnelOnDuty, 10), s = parseFloat(suppliesPercent);
+    if (![v, vr, p, pd, s].every(Number.isFinite)) { err('All 5 readiness metrics required.'); return; }
     setBusy('ready'); setFeedback(null);
-    try { const r = await callMacro<ReadyResult>('resourceReadiness', { artifact: { data: { resources: { vehicles: parseInt(vehicles, 10), vehiclesReady: parseInt(vehiclesReady, 10), personnel: parseInt(personnel, 10), personnelOnDuty: parseInt(personnelOnDuty, 10), suppliesPercent: parseFloat(suppliesPercent) } } } }); if (r.ok && r.result) { setReadyResult(r.result); ok(`${r.result.overallReadiness}% · ${r.result.status}.`); } else err(r.error ?? 'ready failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ReadyResult>('resourceReadiness', { artifact: { data: { resources: { vehicles: v, vehiclesReady: vr, personnel: p, personnelOnDuty: pd, suppliesPercent: s } } } });
+      if (r.ok && r.result) { setReadyResult(r.result); pipe.publish('ems.ready', r.result, { label: `Ready ${r.result.overallReadiness}%` }); ok(`${r.result.overallReadiness}% · ${r.result.status}.`); } else err(r.error ?? 'ready failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EMS shift report`, tags: ['ems', 'dispatch', readyResult?.status].filter((t): t is string => !!t), source: 'ems:shift:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ems: { triage: triageResult, disp: dispResult, log: logResult, ready: readyResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Shift DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('ems.mintedDtuId', id, { label: `Shift DTU ${id.slice(0, 8)}…` }); ok(`Shift DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🚑 EMS shift`, '', triageResult ? `Triage: ${triageResult.triageColor} · response ${triageResult.responseTime}` : '', dispResult ? `Dispatch: ${dispResult.activeIncidents} incidents / ${dispResult.available} units${dispResult.coverageGap ? ' (COVERAGE GAP)' : ''}` : '', logResult ? `Volume: ${logResult.total24h} in 24h (${logResult.trend}) · avg ${logResult.avgResponseMinutes}min · top: ${logResult.mostCommon}` : '', readyResult ? `Readiness: ${readyResult.overallReadiness}% (${readyResult.status})${readyResult.shortages.length ? ` · short: ${readyResult.shortages.join(', ')}` : ''}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🚑 EMS shift`, '',
+      triageResult ? `Triage: ${triageResult.triageColor} · response ${triageResult.responseTime}` : '',
+      dispResult ? `Dispatch: ${dispResult.activeIncidents} incidents / ${dispResult.available} units${dispResult.coverageGap ? ' (COVERAGE GAP)' : ''}` : '',
+      logResult ? `Volume: ${logResult.total24h} in 24h (${logResult.trend}) · avg ${logResult.avgResponseMinutes}min · top: ${logResult.mostCommon}` : '',
+      readyResult ? `Readiness: ${readyResult.overallReadiness}% (${readyResult.status})${readyResult.shortages.length ? ` · short: ${readyResult.shortages.join(', ')}` : ''}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!logResult) { err('Run log first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EMS volume report (anon)`, tags: ['ems', 'volume', 'public'], source: 'ems:volume:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, log: logResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EMS volume report (anon)`, tags: ['ems', 'volume', 'public'], source: 'ems:volume:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, log: logResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('ems.publishedDtuId', id, { label: `Public EMS report ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -179,6 +189,10 @@ export function EmergencyServicesActionPanel() {
             <input type="text" value={suppliesPercent} onChange={(e) => setSuppliesPercent(e.target.value)} className="col-span-2 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Supplies %" />
           </div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Dispatch JSON</label>

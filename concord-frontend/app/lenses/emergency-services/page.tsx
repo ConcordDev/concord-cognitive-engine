@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { QuakeFeed } from '@/components/emergency-services/QuakeFeed';
 import { EmergencyServicesActionPanel } from '@/components/emergency-services/EmergencyServicesActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -485,9 +486,11 @@ export default function EmergencyServicesLensPage() {
         <QuakeFeed />
       </section>
 
-      <section className="mt-6 max-w-7xl mx-auto px-4">
-        <EmergencyServicesActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 max-w-7xl mx-auto px-4">
+          <EmergencyServicesActionPanel />
+        </section>
+      </PipingProvider>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
