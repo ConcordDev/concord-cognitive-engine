@@ -9655,6 +9655,8 @@ async function runMacro(domain, name, input, ctx) {
     pharmacy: new Set(["live_label_lookup", "live_adverse_events", "live_recalls"]),
     cooking: new Set(["live_food_search"]),
     food: new Set(["live_food_search"]),
+    art: new Set(["live_met_search"]),
+    gallery: new Set(["live_met_search"]),
     // arXiv wire-up — one macro per domain pre-filtered to that arXiv category.
     physics: new Set(["live_arxiv"]),
     quantum: new Set(["live_arxiv"]),

@@ -16,6 +16,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { MetMuseumPanel } from '@/components/art/MetMuseumPanel';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
 import { GalleryActionPanel } from '@/components/gallery/GalleryActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -134,6 +135,8 @@ export default function GalleryPage() {
   return (
     <LensShell lensId="gallery">
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
+      {/* Phase 4 — REAL MET Museum Open Access (CC0). */}
+      <MetMuseumPanel domain="gallery" className="mb-6" />
       <header className="mb-6 flex items-center gap-2">
         <ImageIcon className="w-5 h-5 text-amber-400" />
         <h1 className="text-2xl font-bold text-zinc-100">Sigil Gallery</h1>

@@ -186,6 +186,57 @@ export default function registerFreeApiLiveMacros(register) {
   register("food", "live_food_search", usdaFoodSearch, { note: "live USDA FoodData Central food search" });
 
   // ───────────────────────────────────────────────────────────────────
+  // ART / GALLERY — MET Museum Open Access (free, no key)
+  // ───────────────────────────────────────────────────────────────────
+  const metMuseumSearch = async (_ctx, input = {}) => {
+    const q = String(input.query || "").trim();
+    if (!q) return { ok: false, reason: "missing_query" };
+    if (q.length > 100) return { ok: false, reason: "query_too_long" };
+    const limit = Math.min(Math.max(Number(input.limit) || 12, 1), 30);
+    // Search → object IDs.
+    try {
+      const searchUrl = `https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&q=${encodeURIComponent(q)}`;
+      const searchData = await fetchJsonWithTimeout(searchUrl);
+      const objectIds = (searchData.objectIDs || []).slice(0, limit);
+      if (objectIds.length === 0) {
+        return { ok: true, source: "MET Museum", fetchedAt: Math.floor(Date.now() / 1000), query: q, total: 0, works: [] };
+      }
+      // Fetch detail for each (parallel; cap at limit so we don't hammer the API).
+      const works = (await Promise.all(objectIds.map(async (id) => {
+        try {
+          const o = await fetchJsonWithTimeout(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`);
+          return {
+            objectId: o.objectID,
+            title: o.title,
+            artist: o.artistDisplayName || null,
+            artistBio: o.artistDisplayBio || null,
+            objectDate: o.objectDate || null,
+            medium: o.medium || null,
+            culture: o.culture || null,
+            primaryImage: o.primaryImageSmall || o.primaryImage || null,
+            objectUrl: o.objectURL || null,
+            isPublicDomain: !!o.isPublicDomain,
+            department: o.department || null,
+            classification: o.classification || null,
+          };
+        } catch { return null; }
+      }))).filter(Boolean);
+      return {
+        ok: true,
+        source: "MET Museum Open Access",
+        fetchedAt: Math.floor(Date.now() / 1000),
+        query: q,
+        total: searchData.total || works.length,
+        works,
+      };
+    } catch (e) {
+      return { ok: false, reason: "met_unreachable", error: String(e?.message || e) };
+    }
+  };
+  register("art", "live_met_search", metMuseumSearch, { note: "live MET Museum Open Access search" });
+  register("gallery", "live_met_search", metMuseumSearch, { note: "live MET Museum Open Access search" });
+
+  // ───────────────────────────────────────────────────────────────────
   // HISTORY — Wikipedia "On This Day" featured content (free REST API)
   // ───────────────────────────────────────────────────────────────────
   register("history", "live_wiki_otd", async (_ctx, input = {}) => {
