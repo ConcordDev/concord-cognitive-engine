@@ -37,6 +37,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { WorldBankExplorer } from '@/components/society/WorldBankExplorer';
+import { SocietyActionPanel } from '@/components/society/SocietyActionPanel';
 
 type TabKey = 'culture' | 'economy' | 'autonomy' | 'conflict' | 'teaching' | 'persona';
 
@@ -175,6 +176,10 @@ export default function SocietyLensPage() {
       </main>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <WorldBankExplorer />
+      </section>
+
+      <section className="mt-6">
+        <SocietyActionPanel />
       </section>
     </div>
 
