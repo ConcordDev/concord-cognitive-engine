@@ -2,6 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
 import CitationSearch from '@/components/paper/CitationSearch';
 import PaperSummarizer from '@/components/paper/PaperSummarizer';
@@ -520,6 +523,8 @@ export default function PaperLensPage() {
 
   return (
     <LensShell lensId="paper" asMain={false}>
+      <FirstRunTour lensId="paper" />
+      <DepthBadge lensId="paper" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* ---- Header ---- */}
       <header className={ds.sectionHeader}>
@@ -1105,6 +1110,7 @@ export default function PaperLensPage() {
     <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
       <ArxivSearch />
     </section>
+          <RecentMineCard domain="paper" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

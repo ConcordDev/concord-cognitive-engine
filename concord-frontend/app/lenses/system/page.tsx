@@ -17,6 +17,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SystemHealthPanel } from '@/components/system/SystemHealthPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -352,7 +355,9 @@ export default function SystemLensPage() {
 
   return (
     <LensShell lensId="system" asMain={false}>
+      <FirstRunTour lensId="system" />
       <ManifestActionBar />
+      <DepthBadge lensId="system" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-cyan-50">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-cyan-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
@@ -670,6 +675,7 @@ export default function SystemLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="system" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

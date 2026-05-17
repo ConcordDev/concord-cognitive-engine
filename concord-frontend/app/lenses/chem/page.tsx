@@ -2,6 +2,10 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { PeriodicTable } from '@/components/chem/PeriodicTable';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -118,8 +122,12 @@ export default function ChemLensPage() {
   }
   return (
     <LensShell lensId="chem" asMain={false}>
+      <FirstRunTour lensId="chem" />
       <ManifestActionBar />
+      <DepthBadge lensId="chem" size="sm" className="ml-2" />
     <div data-lens-theme="chem" className="p-6 space-y-6">
+      {/* Phase 4 — REAL arXiv chemistry feed (physics.chem-ph). */}
+      <ArxivPanel domain="chem" title="arXiv · Chemical Physics" />
       {/* Sub-Lenses */}
       <SubLensQuickNav lensId="chem" />
 
@@ -653,6 +661,7 @@ export default function ChemLensPage() {
           <ChemActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="chem" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

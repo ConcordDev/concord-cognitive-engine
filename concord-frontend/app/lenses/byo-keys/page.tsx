@@ -24,6 +24,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
 
 interface OverrideRow {
@@ -154,6 +157,8 @@ export default function ByoKeysLens() {
 
   return (
         <LensShell lensId="byo-keys">
+      <FirstRunTour lensId="byo-keys" />
+      <DepthBadge lensId="byo-keys" size="sm" className="ml-2" />
   <div className="min-h-screen bg-zinc-950 text-zinc-100 px-6 py-8">
         <div className="mx-auto max-w-4xl">
           <header className="mb-8">
@@ -336,6 +341,7 @@ export default function ByoKeysLens() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
+          <RecentMineCard domain="byo-keys" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

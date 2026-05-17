@@ -25,6 +25,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RecipeLedger } from '@/components/crafting/RecipeLedger';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import {
@@ -219,7 +222,9 @@ export default function CraftingPage() {
 
   return (
     <LensShell lensId="crafting" asMain={false}>
+      <FirstRunTour lensId="crafting" />
       <ManifestActionBar />
+      <DepthBadge lensId="crafting" size="sm" className="ml-2" />
       <main className="min-h-screen p-6 max-w-6xl mx-auto text-white">
         <header className="flex items-start justify-between gap-3 mb-5 flex-wrap">
           <div>
@@ -281,6 +286,7 @@ export default function CraftingPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="crafting" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

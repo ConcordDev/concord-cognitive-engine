@@ -2,6 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import ContractAnalyzer from '@/components/legal/ContractAnalyzer';
 import { LegalActionPanel } from '@/components/legal/LegalActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -3057,7 +3060,9 @@ export default function LegalLensPage() {
 
   return (
     <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
-      <RivalShapePreview lensId="legal" />
+      <FirstRunTour lensId="legal" />
+      <DepthBadge lensId="legal" size="sm" className="ml-2" />
+      <RivalShapePreview lensId="legal" defaultOpen={true} />
     <div data-lens-theme="legal" className={ds.pageContainer}>
       {/* Legal Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -3377,6 +3382,7 @@ export default function LegalLensPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#legal-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legal content</a>
+          <RecentMineCard domain="legal" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

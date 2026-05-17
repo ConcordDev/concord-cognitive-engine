@@ -164,6 +164,16 @@ registerHeartbeat("corpse-cleanup", {
   },
 });
 
+// Phase 1 (UX completeness sprint) — lens_drafts GC. Hard-deletes draft
+// rows whose updated_at is older than CONCORD_DRAFT_TTL_DAYS (default 30).
+// Frequency 480 (~2h); cheap, bounded by idx_lens_drafts_updated_at.
+// Kill-switch: CONCORD_DRAFT_GC=0.
+import { runDraftGcCycle } from "./emergent/draft-gc-cycle.js";
+registerHeartbeat("draft-gc-cycle", {
+  frequency: 480,
+  handler: runDraftGcCycle,
+});
+
 // Presence stale-entry sweep. Socket disconnect handlers
 // (server.js:7112, 7120) prune `_userPositions` on the happy path, but
 // crash-recovery / never-cleanly-disconnected sockets leave entries
@@ -9631,6 +9641,34 @@ async function runMacro(domain, name, input, ctx) {
   const publicReadDomains = {
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
     dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
+    // Phase 1 (UX completeness sprint) — per-lens auto-save drafts.
+    // Handlers self-scope by ctx.actor.userId; anonymous callers return
+    // {ok:false,reason:'no_user'}. Listing here bypasses the heavy
+    // mutation gate for the high-frequency save/load path.
+    drafts: new Set(["save", "load", "list_mine", "delete"]),
+    // Phase 4 (UX completeness sprint) — real free-API wire-up.
+    // External fetches go through these macros; no user data leaves the
+    // server, so anonymous reads are safe.
+    astronomy: new Set(["live_apod", "live_iss", "live_neo"]),
+    geology: new Set(["live_quakes_today"]),
+    ocean: new Set(["live_tides"]),
+    pharmacy: new Set(["live_label_lookup", "live_adverse_events", "live_recalls"]),
+    cooking: new Set(["live_food_search"]),
+    food: new Set(["live_food_search"]),
+    art: new Set(["live_met_search"]),
+    gallery: new Set(["live_met_search"]),
+    // arXiv wire-up — one macro per domain pre-filtered to that arXiv category.
+    physics: new Set(["live_arxiv"]),
+    quantum: new Set(["live_arxiv"]),
+    robotics: new Set(["live_arxiv"]),
+    neuro: new Set(["live_arxiv"]),
+    bio: new Set(["live_arxiv"]),
+    chem: new Set(["live_arxiv"]),
+    ml: new Set(["live_arxiv"]),
+    math: new Set(["live_arxiv"]),
+    // history domain already has other publicReadDomains entries elsewhere;
+    // we only need the live_wiki_otd here.
+    // atlas domain too; merged via Set spread below if it exists.
     lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate", "spatial_at"]),
     system: new Set(["status", "getStatus", "health", "analogize"]),
     settings: new Set(["get", "status"]),
@@ -9644,7 +9682,9 @@ async function runMacro(domain, name, input, ctx) {
     council: new Set(["tally", "status", "list"]),
     hypothesis: new Set(["list", "get", "status"]),
     analytics: new Set(["dashboard", "growth", "density", "citations", "marketplace", "personal"]),
-    atlas: new Set(["status", "get", "list", "scope", "config", "thresholds", "autogen", "chat", "contradictions", "score-explain", "submission", "search", "antigaming", "rights", "write-guard", "scope-metrics", "local-hints", "tile", "volume", "material", "subsurface", "change", "coverage", "live", "metrics"]),
+    atlas: new Set(["status", "get", "list", "scope", "config", "thresholds", "autogen", "chat", "contradictions", "score-explain", "submission", "search", "antigaming", "rights", "write-guard", "scope-metrics", "local-hints", "tile", "volume", "material", "subsurface", "change", "coverage", "live", "metrics", "live_geocode"]),
+    // Phase 4 (UX completeness sprint) — history live wiki On This Day.
+    history: new Set(["live_wiki_otd"]),
     agents: new Set(["list", "get", "status"]),
     personas: new Set(["list", "get"]),
     affect: new Set(["state", "events", "health", "system", "policy"]),
@@ -9761,7 +9801,7 @@ async function runMacro(domain, name, input, ctx) {
     // Each admin macro now enforces requireAdmin() itself.
     admin: new Set(),
     heartbeat: new Set(["status", "history", "metrics"]),
-    ai: new Set(["search", "gaps", "embeddings"]),
+    ai: new Set(["search", "gaps", "embeddings", "live_arxiv"]),
     feedback: new Set(["aggregate"]),
     artifact: new Set(["info", "thumbnail"]),
     // Missing frontend domains (three-gate audit scan)
@@ -9899,7 +9939,15 @@ async function runMacro(domain, name, input, ctx) {
     therapy: new Set(["active_fields"]),
   };
   const _domainSet = publicReadDomains[domain];
-  const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
+  let _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
+  // Phase 2 (UX completeness sprint) — every bulk-registered domain has
+  // a recent_mine + list_mine macro. Self-scoped by ctx.actor.userId, so
+  // anonymous reads get rejected by the handler with no_user; the gate
+  // bypass only lets authenticated cookie callers skip the heavy
+  // mutation gate.
+  if (!_domainNameAllowed && (name === "recent_mine" || name === "list_mine")) {
+    _domainNameAllowed = true;
+  }
 
   // safeReadBypass: comprehensive path check for ALL frontend GET routes (Gate 3 of 3, outer)
   const _safeReadPaths = [
@@ -23161,6 +23209,49 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+
+// Phase 1 (UX completeness sprint) — per-lens auto-save drafts. Four
+// macros (save / load / list_mine / delete) powering the useLensDraft
+// hook and the LoadFromSubstrate "Reopen recent" panel that every lens
+// will mount in Phase 3. Self-scoped by ctx.actor.userId; anonymous
+// callers get {ok:false, reason:'no_user'}.
+import registerDraftsMacros from "./domains/drafts.js";
+registerDraftsMacros(register);
+
+// Phase 2 (UX completeness sprint) — bulk-register <domain>.recent_mine
+// + <domain>.list_mine for every lens whose primary artifact is a DTU.
+// Mounts a uniform standard-shape recent-list for ~150 domains in one
+// call. Per-domain bespoke overrides (e.g. pharmacy reading its own
+// pharmacy_artifacts table) MUST register after this line so the
+// last-registration-wins semantics route to the bespoke version.
+import registerBulkRecentMine from "./domains/_recent-mine-bulk.js";
+registerBulkRecentMine(register);
+
+// Phase 4 (UX completeness sprint) — real free-API wiring for the
+// astronomy lens. Direct-fetch macros (NASA APOD, ISS, Near-Earth
+// Objects). DEMO_KEY rate-limited to 30/hr; set NASA_API_KEY env for
+// production. Honest REAL_FREE tier (per integration-registry).
+import registerAstronomyLiveMacros from "./domains/astronomy-live.js";
+registerAstronomyLiveMacros(register);
+
+// Phase 4 cont'd — bulk free-API wire-up. USGS earthquakes, NOAA tides,
+// OpenStreetMap Nominatim, Wikipedia On This Day. All free, no key.
+// publicReadDomains entries below.
+import registerFreeApiLiveMacros from "./domains/free-api-live.js";
+registerFreeApiLiveMacros(register);
+
+// Phase 4 cont'd — FDA OpenFDA wire-up for the pharmacy lens. Drug
+// labels, adverse-event reports, recent recalls. No key (rate-limited
+// 240/min unauthenticated). REAL_FREE — fuller formulary still requires
+// paid feeds.
+import registerPharmacyLiveMacros from "./domains/pharmacy-live.js";
+registerPharmacyLiveMacros(register);
+
+// Phase 4 cont'd — arXiv wire-up for science/physics/quantum/robotics/
+// neuro/bio/chem/math/ml/ai lenses. One macro per domain (live_arxiv)
+// each pre-filtered by the right arXiv category. Free, no key.
+import registerResearchLiveMacros from "./domains/research-live.js";
+registerResearchLiveMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";

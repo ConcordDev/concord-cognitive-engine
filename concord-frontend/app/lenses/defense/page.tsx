@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ContractSearch } from '@/components/defense/ContractSearch';
 import { DefenseActionPanel } from '@/components/defense/DefenseActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -212,7 +215,9 @@ export default function DefenseLensPage() {
 
   return (
     <LensShell lensId="defense" asMain={false}>
+      <FirstRunTour lensId="defense" />
       <ManifestActionBar />
+      <DepthBadge lensId="defense" size="sm" className="ml-2" />
     <div className={cn(ds.pageContainer, 'space-y-4')}>
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -378,6 +383,7 @@ export default function DefenseLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="defense" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

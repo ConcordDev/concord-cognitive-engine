@@ -2,7 +2,11 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NutritionExplorer } from '@/components/cooking/NutritionExplorer';
+import { UsdaFoodSearch } from '@/components/cooking/UsdaFoodSearch';
 import { CookingActionPanel } from '@/components/cooking/CookingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -302,8 +306,12 @@ export default function CookingLensPage() {
 
   return (
     <LensShell lensId="cooking" asMain={false}>
+      <FirstRunTour lensId="cooking" />
       <ManifestActionBar />
+      <DepthBadge lensId="cooking" size="sm" className="ml-2" />
     <div data-lens-theme="cooking" className="p-6 space-y-6">
+      {/* Phase 4 — REAL USDA FoodData Central search. Tier-1 honest macros. */}
+      <UsdaFoodSearch domain="cooking" />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <ChefHat className="w-6 h-6 text-orange-400" />
@@ -672,6 +680,7 @@ export default function CookingLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="cooking" /></div>}
       </div>
     </div>
+          <RecentMineCard domain="cooking" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

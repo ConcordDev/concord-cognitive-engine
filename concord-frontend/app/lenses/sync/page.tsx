@@ -11,6 +11,9 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SyncRepos } from '@/components/sync/SyncRepos';
 
 interface Device {
@@ -63,6 +66,8 @@ export default function SyncPage() {
 
   return (
         <LensShell lensId="sync">
+      <FirstRunTour lensId="sync" />
+      <DepthBadge lensId="sync" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-100">DTU Sync</h1>
@@ -121,6 +126,7 @@ export default function SyncPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
+          <RecentMineCard domain="sync" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

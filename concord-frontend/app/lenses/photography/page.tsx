@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PexelsBrowser } from '@/components/photography/PexelsBrowser';
 import { PhotographyActionPanel } from '@/components/photography/PhotographyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -384,7 +387,9 @@ export default function PhotographyPage() {
 
   return (
     <LensShell lensId="photography" asMain={false}>
+      <FirstRunTour lensId="photography" />
       <ManifestActionBar />
+      <DepthBadge lensId="photography" size="sm" className="ml-2" />
     <div data-lens-theme="photography" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
@@ -960,6 +965,7 @@ export default function PhotographyPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="photography" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

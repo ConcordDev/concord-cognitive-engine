@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useState, useMemo, useCallback } from 'react';
@@ -573,6 +576,8 @@ export default function AdminDashboardPage() {
   }
   return (
     <LensShell lensId="admin" asMain={false}>
+      <FirstRunTour lensId="admin" />
+      <DepthBadge lensId="admin" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -1499,6 +1504,7 @@ export default function AdminDashboardPage() {
         <LiveSystemHealth />
       </section>
     </div>
+          <RecentMineCard domain="admin" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

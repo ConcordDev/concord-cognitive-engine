@@ -2,6 +2,10 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { MetMuseumPanel } from '@/components/art/MetMuseumPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1049,7 +1053,11 @@ export default function ArtLensPage() {
   }
   return (
     <LensShell lensId="art" asMain={false}>
+      <FirstRunTour lensId="art" />
       <ManifestActionBar />
+      <DepthBadge lensId="art" size="sm" className="ml-2" />
+      {/* Phase 4 — REAL MET Museum Open Access (CC0). */}
+      <MetMuseumPanel domain="art" className="mx-4 mt-2" />
     <div data-lens-theme="art" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-rose-950/10 via-neutral-950 to-black">
       {renderNav()}
       <div className="flex-1 overflow-hidden flex">
@@ -1286,6 +1294,7 @@ export default function ArtLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="art" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

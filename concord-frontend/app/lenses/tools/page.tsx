@@ -10,6 +10,9 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ToolsRepos } from '@/components/tools/ToolsRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -104,7 +107,9 @@ export default function ToolsLensPage() {
 
   return (
     <LensShell lensId="tools" asMain={false}>
+      <FirstRunTour lensId="tools" />
       <ManifestActionBar />
+      <DepthBadge lensId="tools" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-yellow-50">
       <header className="sticky top-0 z-10 border-b border-yellow-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -241,6 +246,7 @@ export default function ToolsLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="tools" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

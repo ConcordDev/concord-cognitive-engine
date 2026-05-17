@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 
@@ -166,7 +169,9 @@ export default function ArtistryLensPage() {
 
   return (
     <LensShell lensId="artistry" asMain={false}>
+      <FirstRunTour lensId="artistry" />
       <ManifestActionBar />
+      <DepthBadge lensId="artistry" size="sm" className="ml-2" />
     <div data-lens-theme="artistry" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
@@ -458,6 +463,7 @@ export default function ArtistryLensPage() {
         <WikimediaArt />
       </section>
     </div>
+          <RecentMineCard domain="artistry" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

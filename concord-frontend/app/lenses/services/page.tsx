@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ServicesFeed } from '@/components/services/ServicesFeed';
 import { RevenueRetentionPanel } from '@/components/services/RevenueRetentionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -784,7 +787,9 @@ export default function ServicesLensPage() {
 
   return (
     <LensShell lensId="services" asMain={false}>
+      <FirstRunTour lensId="services" />
       <ManifestActionBar />
+      <DepthBadge lensId="services" size="sm" className="ml-2" />
     <div data-lens-theme="services" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -1161,6 +1166,7 @@ export default function ServicesLensPage() {
           );
         })()}
       </AnimatePresence>
+          <RecentMineCard domain="services" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

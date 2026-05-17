@@ -20,6 +20,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { StackOverflowSearch } from '@/components/answers/StackOverflowSearch';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -538,7 +541,9 @@ export default function AnswersLensPage() {
 
   return (
     <LensShell lensId="answers" asMain={false}>
+      <FirstRunTour lensId="answers" />
       <ManifestActionBar />
+      <DepthBadge lensId="answers" size="sm" className="ml-2" />
     <div data-lens-theme="answers" className={cn(ds.pageContainer, 'space-y-6')}>
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header className="space-y-4">
@@ -718,6 +723,7 @@ export default function AnswersLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="answers" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { InsurancePolicyTalk } from '@/components/insurance/InsurancePolicyTalk';
 import { InsuranceActionPanel } from '@/components/insurance/InsuranceActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -966,7 +969,9 @@ export default function InsuranceLensPage() {
 
   return (
     <LensShell lensId="insurance" asMain={false}>
+      <FirstRunTour lensId="insurance" />
       <ManifestActionBar />
+      <DepthBadge lensId="insurance" size="sm" className="ml-2" />
     <div data-lens-theme="insurance" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -1332,6 +1337,7 @@ export default function InsuranceLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#insurance-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to insurance content</a>
+          <RecentMineCard domain="insurance" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

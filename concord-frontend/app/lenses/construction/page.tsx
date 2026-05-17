@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -675,7 +678,9 @@ export default function ConstructionLensPage() {
 
   return (
     <LensShell lensId="construction" asMain={false}>
+      <FirstRunTour lensId="construction" />
       <ManifestActionBar />
+      <DepthBadge lensId="construction" size="sm" className="ml-2" />
     <LensPageShell
       domain="construction"
       title="Construction"
@@ -802,6 +807,7 @@ export default function ConstructionLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#construction-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to construction content</a>
+          <RecentMineCard domain="construction" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -3,6 +3,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
 import { ManufacturingActionPanel } from '@/components/manufacturing/ManufacturingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -2326,6 +2329,8 @@ export default function ManufacturingLensPage() {
 
   return (
     <LensShell lensId="manufacturing" asMain={false}>
+      <FirstRunTour lensId="manufacturing" />
+      <DepthBadge lensId="manufacturing" size="sm" className="ml-2" />
     <LensPageShell
       domain="manufacturing"
       title="Manufacturing"
@@ -2712,6 +2717,7 @@ export default function ManufacturingLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#manufacturing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to manufacturing content</a>
+          <RecentMineCard domain="manufacturing" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

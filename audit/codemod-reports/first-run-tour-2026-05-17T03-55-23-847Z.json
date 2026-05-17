@@ -1,0 +1,935 @@
+{
+  "ranAt": "2026-05-17T03:55:23.847Z",
+  "applied": 232,
+  "skipped": {},
+  "ledger": [
+    {
+      "lens": "accounting",
+      "status": "applied"
+    },
+    {
+      "lens": "admin",
+      "status": "applied"
+    },
+    {
+      "lens": "affect",
+      "status": "applied"
+    },
+    {
+      "lens": "agents",
+      "status": "applied"
+    },
+    {
+      "lens": "agriculture",
+      "status": "applied"
+    },
+    {
+      "lens": "all",
+      "status": "applied"
+    },
+    {
+      "lens": "alliance",
+      "status": "applied"
+    },
+    {
+      "lens": "analytics",
+      "status": "applied"
+    },
+    {
+      "lens": "animation",
+      "status": "applied"
+    },
+    {
+      "lens": "anon",
+      "status": "applied"
+    },
+    {
+      "lens": "answers",
+      "status": "applied"
+    },
+    {
+      "lens": "app-maker",
+      "status": "applied"
+    },
+    {
+      "lens": "ar",
+      "status": "applied"
+    },
+    {
+      "lens": "art",
+      "status": "applied"
+    },
+    {
+      "lens": "artistry",
+      "status": "applied"
+    },
+    {
+      "lens": "astronomy",
+      "status": "applied"
+    },
+    {
+      "lens": "atlas",
+      "status": "applied"
+    },
+    {
+      "lens": "attention",
+      "status": "applied"
+    },
+    {
+      "lens": "audit",
+      "status": "applied"
+    },
+    {
+      "lens": "automotive",
+      "status": "applied"
+    },
+    {
+      "lens": "aviation",
+      "status": "applied"
+    },
+    {
+      "lens": "billing",
+      "status": "applied"
+    },
+    {
+      "lens": "bio",
+      "status": "applied"
+    },
+    {
+      "lens": "black-market",
+      "status": "applied"
+    },
+    {
+      "lens": "board",
+      "status": "applied"
+    },
+    {
+      "lens": "bounties",
+      "status": "applied"
+    },
+    {
+      "lens": "bridge",
+      "status": "applied"
+    },
+    {
+      "lens": "byo-keys",
+      "status": "applied"
+    },
+    {
+      "lens": "calendar",
+      "status": "applied"
+    },
+    {
+      "lens": "carpentry",
+      "status": "applied"
+    },
+    {
+      "lens": "chat",
+      "status": "applied"
+    },
+    {
+      "lens": "chem",
+      "status": "applied"
+    },
+    {
+      "lens": "classroom",
+      "status": "applied"
+    },
+    {
+      "lens": "code",
+      "status": "applied"
+    },
+    {
+      "lens": "code-quality",
+      "status": "applied"
+    },
+    {
+      "lens": "cognition",
+      "status": "applied"
+    },
+    {
+      "lens": "cognitive-replay",
+      "status": "applied"
+    },
+    {
+      "lens": "collab",
+      "status": "applied"
+    },
+    {
+      "lens": "command-center",
+      "status": "applied"
+    },
+    {
+      "lens": "commonsense",
+      "status": "applied"
+    },
+    {
+      "lens": "construction",
+      "status": "applied"
+    },
+    {
+      "lens": "consulting",
+      "status": "applied"
+    },
+    {
+      "lens": "cooking",
+      "status": "applied"
+    },
+    {
+      "lens": "council",
+      "status": "applied"
+    },
+    {
+      "lens": "crafting",
+      "status": "applied"
+    },
+    {
+      "lens": "creative",
+      "status": "applied"
+    },
+    {
+      "lens": "creative-writing",
+      "status": "applied"
+    },
+    {
+      "lens": "creator",
+      "status": "applied"
+    },
+    {
+      "lens": "cri",
+      "status": "applied"
+    },
+    {
+      "lens": "crisis-ops",
+      "status": "applied"
+    },
+    {
+      "lens": "crypto",
+      "status": "applied"
+    },
+    {
+      "lens": "custom",
+      "status": "applied"
+    },
+    {
+      "lens": "daily",
+      "status": "applied"
+    },
+    {
+      "lens": "database",
+      "status": "applied"
+    },
+    {
+      "lens": "death-insurance",
+      "status": "applied"
+    },
+    {
+      "lens": "debate",
+      "status": "applied"
+    },
+    {
+      "lens": "debug",
+      "status": "applied"
+    },
+    {
+      "lens": "defense",
+      "status": "applied"
+    },
+    {
+      "lens": "deities",
+      "status": "applied"
+    },
+    {
+      "lens": "desert",
+      "status": "applied"
+    },
+    {
+      "lens": "disputes",
+      "status": "applied"
+    },
+    {
+      "lens": "diy",
+      "status": "applied"
+    },
+    {
+      "lens": "docs",
+      "status": "applied"
+    },
+    {
+      "lens": "dreams",
+      "status": "applied"
+    },
+    {
+      "lens": "dtus",
+      "status": "applied"
+    },
+    {
+      "lens": "dx-platform",
+      "status": "applied"
+    },
+    {
+      "lens": "eco",
+      "status": "applied"
+    },
+    {
+      "lens": "education",
+      "status": "applied"
+    },
+    {
+      "lens": "electrical",
+      "status": "applied"
+    },
+    {
+      "lens": "emergency-services",
+      "status": "applied"
+    },
+    {
+      "lens": "energy",
+      "status": "applied"
+    },
+    {
+      "lens": "engineering",
+      "status": "applied"
+    },
+    {
+      "lens": "entity",
+      "status": "applied"
+    },
+    {
+      "lens": "environment",
+      "status": "applied"
+    },
+    {
+      "lens": "ethics",
+      "status": "applied"
+    },
+    {
+      "lens": "event-timeline",
+      "status": "applied"
+    },
+    {
+      "lens": "events",
+      "status": "applied"
+    },
+    {
+      "lens": "expedition-journal",
+      "status": "applied"
+    },
+    {
+      "lens": "experience",
+      "status": "applied"
+    },
+    {
+      "lens": "expert-mode",
+      "status": "applied"
+    },
+    {
+      "lens": "export",
+      "status": "applied"
+    },
+    {
+      "lens": "fashion",
+      "status": "applied"
+    },
+    {
+      "lens": "federation",
+      "status": "applied"
+    },
+    {
+      "lens": "feed",
+      "status": "applied"
+    },
+    {
+      "lens": "film-studios",
+      "status": "applied"
+    },
+    {
+      "lens": "finance",
+      "status": "applied"
+    },
+    {
+      "lens": "fitness",
+      "status": "applied"
+    },
+    {
+      "lens": "food",
+      "status": "applied"
+    },
+    {
+      "lens": "forecast",
+      "status": "applied"
+    },
+    {
+      "lens": "forestry",
+      "status": "applied"
+    },
+    {
+      "lens": "forge",
+      "status": "applied"
+    },
+    {
+      "lens": "fork",
+      "status": "applied"
+    },
+    {
+      "lens": "forum",
+      "status": "applied"
+    },
+    {
+      "lens": "foundry",
+      "status": "applied"
+    },
+    {
+      "lens": "fractal",
+      "status": "applied"
+    },
+    {
+      "lens": "gallery",
+      "status": "applied"
+    },
+    {
+      "lens": "game",
+      "status": "applied"
+    },
+    {
+      "lens": "game-design",
+      "status": "applied"
+    },
+    {
+      "lens": "genesis",
+      "status": "applied"
+    },
+    {
+      "lens": "geology",
+      "status": "applied"
+    },
+    {
+      "lens": "ghost-tracker",
+      "status": "applied"
+    },
+    {
+      "lens": "global",
+      "status": "applied"
+    },
+    {
+      "lens": "goals",
+      "status": "applied"
+    },
+    {
+      "lens": "goddess",
+      "status": "applied"
+    },
+    {
+      "lens": "government",
+      "status": "applied"
+    },
+    {
+      "lens": "graph",
+      "status": "applied"
+    },
+    {
+      "lens": "grounding",
+      "status": "applied"
+    },
+    {
+      "lens": "healthcare",
+      "status": "applied"
+    },
+    {
+      "lens": "history",
+      "status": "applied"
+    },
+    {
+      "lens": "home-improvement",
+      "status": "applied"
+    },
+    {
+      "lens": "household",
+      "status": "applied"
+    },
+    {
+      "lens": "hr",
+      "status": "applied"
+    },
+    {
+      "lens": "hvac",
+      "status": "applied"
+    },
+    {
+      "lens": "hypothesis",
+      "status": "applied"
+    },
+    {
+      "lens": "import",
+      "status": "applied"
+    },
+    {
+      "lens": "inference",
+      "status": "applied"
+    },
+    {
+      "lens": "ingest",
+      "status": "applied"
+    },
+    {
+      "lens": "inheritance",
+      "status": "applied"
+    },
+    {
+      "lens": "insurance",
+      "status": "applied"
+    },
+    {
+      "lens": "integrations",
+      "status": "applied"
+    },
+    {
+      "lens": "invariant",
+      "status": "applied"
+    },
+    {
+      "lens": "kingdoms",
+      "status": "applied"
+    },
+    {
+      "lens": "lab",
+      "status": "applied"
+    },
+    {
+      "lens": "landscaping",
+      "status": "applied"
+    },
+    {
+      "lens": "lattice",
+      "status": "applied"
+    },
+    {
+      "lens": "law",
+      "status": "applied"
+    },
+    {
+      "lens": "law-enforcement",
+      "status": "applied"
+    },
+    {
+      "lens": "legacy",
+      "status": "applied"
+    },
+    {
+      "lens": "legal",
+      "status": "applied"
+    },
+    {
+      "lens": "linguistics",
+      "status": "applied"
+    },
+    {
+      "lens": "lock",
+      "status": "applied"
+    },
+    {
+      "lens": "logistics",
+      "status": "applied"
+    },
+    {
+      "lens": "maker",
+      "status": "applied"
+    },
+    {
+      "lens": "manufacturing",
+      "status": "applied"
+    },
+    {
+      "lens": "market",
+      "status": "applied"
+    },
+    {
+      "lens": "marketing",
+      "status": "applied"
+    },
+    {
+      "lens": "marketplace",
+      "status": "applied"
+    },
+    {
+      "lens": "markets",
+      "status": "applied"
+    },
+    {
+      "lens": "masonry",
+      "status": "applied"
+    },
+    {
+      "lens": "materials",
+      "status": "applied"
+    },
+    {
+      "lens": "math",
+      "status": "applied"
+    },
+    {
+      "lens": "meditation",
+      "status": "applied"
+    },
+    {
+      "lens": "mental-health",
+      "status": "applied"
+    },
+    {
+      "lens": "mentorship",
+      "status": "applied"
+    },
+    {
+      "lens": "mesh",
+      "status": "applied"
+    },
+    {
+      "lens": "message",
+      "status": "applied"
+    },
+    {
+      "lens": "meta",
+      "status": "applied"
+    },
+    {
+      "lens": "metacognition",
+      "status": "applied"
+    },
+    {
+      "lens": "metalearning",
+      "status": "applied"
+    },
+    {
+      "lens": "mining",
+      "status": "applied"
+    },
+    {
+      "lens": "ml",
+      "status": "applied"
+    },
+    {
+      "lens": "music",
+      "status": "applied"
+    },
+    {
+      "lens": "neuro",
+      "status": "applied"
+    },
+    {
+      "lens": "news",
+      "status": "applied"
+    },
+    {
+      "lens": "nonprofit",
+      "status": "applied"
+    },
+    {
+      "lens": "observe",
+      "status": "applied"
+    },
+    {
+      "lens": "ocean",
+      "status": "applied"
+    },
+    {
+      "lens": "offline",
+      "status": "applied"
+    },
+    {
+      "lens": "ops",
+      "status": "applied"
+    },
+    {
+      "lens": "organ",
+      "status": "applied"
+    },
+    {
+      "lens": "paper",
+      "status": "applied"
+    },
+    {
+      "lens": "parenting",
+      "status": "applied"
+    },
+    {
+      "lens": "personas",
+      "status": "applied"
+    },
+    {
+      "lens": "pets",
+      "status": "applied"
+    },
+    {
+      "lens": "pharmacy",
+      "status": "applied"
+    },
+    {
+      "lens": "philosophy",
+      "status": "applied"
+    },
+    {
+      "lens": "photography",
+      "status": "applied"
+    },
+    {
+      "lens": "physics",
+      "status": "applied"
+    },
+    {
+      "lens": "platform",
+      "status": "applied"
+    },
+    {
+      "lens": "plumbing",
+      "status": "applied"
+    },
+    {
+      "lens": "podcast",
+      "status": "applied"
+    },
+    {
+      "lens": "poetry",
+      "status": "applied"
+    },
+    {
+      "lens": "privacy",
+      "status": "applied"
+    },
+    {
+      "lens": "productivity",
+      "status": "applied"
+    },
+    {
+      "lens": "projects",
+      "status": "applied"
+    },
+    {
+      "lens": "psyops",
+      "status": "applied"
+    },
+    {
+      "lens": "quantum",
+      "status": "applied"
+    },
+    {
+      "lens": "questmarket",
+      "status": "applied"
+    },
+    {
+      "lens": "queue",
+      "status": "applied"
+    },
+    {
+      "lens": "realestate",
+      "status": "applied"
+    },
+    {
+      "lens": "reasoning",
+      "status": "applied"
+    },
+    {
+      "lens": "reflection",
+      "status": "applied"
+    },
+    {
+      "lens": "repos",
+      "status": "applied"
+    },
+    {
+      "lens": "research",
+      "status": "applied"
+    },
+    {
+      "lens": "resonance",
+      "status": "applied"
+    },
+    {
+      "lens": "retail",
+      "status": "applied"
+    },
+    {
+      "lens": "robotics",
+      "status": "applied"
+    },
+    {
+      "lens": "root",
+      "status": "applied"
+    },
+    {
+      "lens": "sandbox",
+      "status": "applied"
+    },
+    {
+      "lens": "schema",
+      "status": "applied"
+    },
+    {
+      "lens": "science",
+      "status": "applied"
+    },
+    {
+      "lens": "security",
+      "status": "applied"
+    },
+    {
+      "lens": "self",
+      "status": "applied"
+    },
+    {
+      "lens": "sentinel",
+      "status": "applied"
+    },
+    {
+      "lens": "services",
+      "status": "applied"
+    },
+    {
+      "lens": "settings",
+      "status": "applied"
+    },
+    {
+      "lens": "sim",
+      "status": "applied"
+    },
+    {
+      "lens": "society",
+      "status": "applied"
+    },
+    {
+      "lens": "space",
+      "status": "applied"
+    },
+    {
+      "lens": "sponsorship",
+      "status": "applied"
+    },
+    {
+      "lens": "sports",
+      "status": "applied"
+    },
+    {
+      "lens": "srs",
+      "status": "applied"
+    },
+    {
+      "lens": "staking",
+      "status": "applied"
+    },
+    {
+      "lens": "studio",
+      "status": "applied"
+    },
+    {
+      "lens": "sub-worlds",
+      "status": "applied"
+    },
+    {
+      "lens": "suffering",
+      "status": "applied"
+    },
+    {
+      "lens": "supplychain",
+      "status": "applied"
+    },
+    {
+      "lens": "sync",
+      "status": "applied"
+    },
+    {
+      "lens": "system",
+      "status": "applied"
+    },
+    {
+      "lens": "telecommunications",
+      "status": "applied"
+    },
+    {
+      "lens": "temporal",
+      "status": "applied"
+    },
+    {
+      "lens": "thread",
+      "status": "applied"
+    },
+    {
+      "lens": "tick",
+      "status": "applied"
+    },
+    {
+      "lens": "timeline",
+      "status": "applied"
+    },
+    {
+      "lens": "tools",
+      "status": "applied"
+    },
+    {
+      "lens": "tournaments",
+      "status": "applied"
+    },
+    {
+      "lens": "trades",
+      "status": "applied"
+    },
+    {
+      "lens": "transfer",
+      "status": "applied"
+    },
+    {
+      "lens": "travel",
+      "status": "applied"
+    },
+    {
+      "lens": "understanding",
+      "status": "applied"
+    },
+    {
+      "lens": "urban-planning",
+      "status": "applied"
+    },
+    {
+      "lens": "ux-suite",
+      "status": "applied"
+    },
+    {
+      "lens": "veterinary",
+      "status": "applied"
+    },
+    {
+      "lens": "voice",
+      "status": "applied"
+    },
+    {
+      "lens": "vote",
+      "status": "applied"
+    },
+    {
+      "lens": "wallet",
+      "status": "applied"
+    },
+    {
+      "lens": "welding",
+      "status": "applied"
+    },
+    {
+      "lens": "wellness",
+      "status": "applied"
+    },
+    {
+      "lens": "whiteboard",
+      "status": "applied"
+    },
+    {
+      "lens": "world",
+      "status": "applied"
+    },
+    {
+      "lens": "world-creator",
+      "status": "applied"
+    },
+    {
+      "lens": "worldmodel",
+      "status": "applied"
+    }
+  ]
+}

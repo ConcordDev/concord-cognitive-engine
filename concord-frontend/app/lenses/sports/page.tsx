@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -272,7 +275,9 @@ export default function SportsLensPage() {
 
   return (
     <LensShell lensId="sports" asMain={false}>
+      <FirstRunTour lensId="sports" />
       <ManifestActionBar />
+      <DepthBadge lensId="sports" size="sm" className="ml-2" />
     <div data-lens-theme="sports" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1028,6 +1033,7 @@ export default function SportsLensPage() {
         <LiveScoreboard />
       </section>
     </div>
+          <RecentMineCard domain="sports" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -4,6 +4,9 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { KPIStrip } from '@/components/accounting/KPIStrip';
 import { motion } from 'framer-motion';
@@ -2659,6 +2662,8 @@ export default function AccountingLensPage() {
 
   return (
     <LensShell lensId="accounting" asMain={false}>
+      <FirstRunTour lensId="accounting" />
+      <DepthBadge lensId="accounting" size="sm" className="ml-2" />
     <div data-lens-theme="accounting" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -3058,6 +3063,7 @@ export default function AccountingLensPage() {
         <AccountingActionPanel />
       </section>
     </PipingProvider>
+          <RecentMineCard domain="accounting" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

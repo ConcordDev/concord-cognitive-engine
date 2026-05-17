@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ResearchArxiv } from '@/components/research/ResearchArxiv';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -316,7 +319,9 @@ export default function ResearchLensPage() {
 
   return (
     <LensShell lensId="research" asMain={false}>
+      <FirstRunTour lensId="research" />
       <ManifestActionBar />
+      <DepthBadge lensId="research" size="sm" className="ml-2" />
     <div data-lens-theme="research" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <BookOpen className="w-6 h-6 text-neon-cyan" />
@@ -900,6 +905,7 @@ export default function ResearchLensPage() {
     <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
       <ResearchArxiv />
     </section>
+          <RecentMineCard domain="research" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenHardwarePulse } from '@/components/electrical/OpenHardwarePulse';
 import { NecCodeCalc } from '@/components/electrical/NecCodeCalc';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -631,7 +634,9 @@ export default function ElectricalLensPage() {
 
   return (
     <LensShell lensId="electrical" asMain={false}>
+      <FirstRunTour lensId="electrical" />
       <ManifestActionBar />
+      <DepthBadge lensId="electrical" size="sm" className="ml-2" />
     <LensPageShell
       domain="electrical"
       title="Electrical"
@@ -731,6 +736,7 @@ export default function ElectricalLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#electrical-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to electrical content</a>
+          <RecentMineCard domain="electrical" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

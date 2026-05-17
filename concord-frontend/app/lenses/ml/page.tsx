@@ -3,6 +3,10 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { MlRepos } from '@/components/ml/MlRepos';
 import { MlActionPanel } from '@/components/ml/MlActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -412,8 +416,12 @@ export default function MLLensPage() {
   }
   return (
     <LensShell lensId="ml" asMain={false}>
+      <FirstRunTour lensId="ml" />
       <ManifestActionBar />
+      <DepthBadge lensId="ml" size="sm" className="ml-2" />
     <div data-lens-theme="ml" className="p-6 space-y-6">
+      {/* Phase 4 — REAL arXiv ML feed (cs.LG). */}
+      <ArxivPanel domain="ml" title="arXiv · Machine Learning (cs.LG)" />
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1032,6 +1040,7 @@ export default function MLLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="ml" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

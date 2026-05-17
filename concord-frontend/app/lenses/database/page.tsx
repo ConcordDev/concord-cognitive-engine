@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DbProjectExplorer } from '@/components/database/DbProjectExplorer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -427,7 +430,9 @@ export default function DatabaseLensPage() {
   }
   return (
     <LensShell lensId="database" asMain={false}>
+      <FirstRunTour lensId="database" />
       <ManifestActionBar />
+      <DepthBadge lensId="database" size="sm" className="ml-2" />
     <div data-lens-theme="database" className="p-6 space-y-6 bg-lattice-bg min-h-screen">
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -1243,6 +1248,7 @@ export default function DatabaseLensPage() {
         <DbProjectExplorer />
       </section>
     </div>
+          <RecentMineCard domain="database" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

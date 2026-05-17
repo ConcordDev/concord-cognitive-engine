@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -278,7 +281,9 @@ export default function DebugLensPage() {
 
   return (
     <LensShell lensId="debug" asMain={false}>
+      <FirstRunTour lensId="debug" />
       <ManifestActionBar />
+      <DepthBadge lensId="debug" size="sm" className="ml-2" />
     <div data-lens-theme="debug" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1224,6 +1229,7 @@ export default function DebugLensPage() {
         <NvdCveFeed />
       </section>
     </div>
+          <RecentMineCard domain="debug" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

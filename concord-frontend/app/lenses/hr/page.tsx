@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -334,7 +337,9 @@ export default function HRLensPage() {
 
   return (
     <LensShell lensId="hr" asMain={false}>
+      <FirstRunTour lensId="hr" />
       <ManifestActionBar />
+      <DepthBadge lensId="hr" size="sm" className="ml-2" />
     <div data-lens-theme="hr" className="space-y-6 p-6">
       <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -428,6 +433,7 @@ export default function HRLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#hr-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to hr content</a>
+          <RecentMineCard domain="hr" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

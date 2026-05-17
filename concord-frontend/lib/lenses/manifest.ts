@@ -21,6 +21,36 @@
 
 import { buildSubLensManifests } from './sub-lens-manifests';
 
+/**
+ * Phase 1 (UX completeness sprint) — data-tier vocabulary.
+ *
+ *   REAL_LIVE     — real external feed, polled live (Yahoo Finance, NOAA, NASA APOD)
+ *   REAL_FREE     — real but static / open-access (Wikipedia, OpenStreetMap, MET Museum)
+ *   SIM_GRADE_A   — high-fidelity LLM-grounded against a domain schema, NOT pretending to be real data
+ *   DEMO          — synthetic; the lens is a working surface but the domain requires paywalled data we haven't licensed
+ */
+export type DataTier = 'REAL_LIVE' | 'REAL_FREE' | 'SIM_GRADE_A' | 'DEMO';
+
+/** Phase 1 — copy + handlers for an empty-state CTA the lens mounts via EmptyStateCTA. */
+export interface LensEmptyState {
+  headline: string;
+  caption: string;
+  firstActionLabel: string;
+  /** Optional macro to fire when the CTA button is clicked. domain defaults to manifest.domain. */
+  firstActionMacro?: { domain?: string; name: string; input?: Record<string, unknown> };
+}
+
+/** Phase 1 — 30-second guided first-run mounted via FirstRunTour. */
+export interface LensFirstRunGuide {
+  steps: Array<{
+    caption: string;
+    /** CSS selector to spotlight (optional; if absent the step is text-only). */
+    selector?: string;
+    /** Optional macro to demonstrate / pre-fire during the step. */
+    macro?: string;
+  }>;
+}
+
 export interface LensManifest {
   /** Unique domain identifier (e.g. 'music', 'finance', 'studio') */
   domain: string;
@@ -45,6 +75,27 @@ export interface LensManifest {
   /** Category for grouping in UI */
   category: 'knowledge' | 'creative' | 'system' | 'social' | 'productivity' | 'finance'
           | 'healthcare' | 'trades' | 'operations' | 'agriculture' | 'government' | 'services' | 'lifestyle';
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Phase 1 (UX completeness sprint) — optional, additive fields.
+  // Existing lenses without these still work; the new primitives degrade
+  // gracefully when a field is absent.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Empty-state CTA copy + first-action handler. EmptyStateCTA reads this. */
+  emptyState?: LensEmptyState;
+
+  /** Step list for the 30-second guided tour. FirstRunTour reads this. */
+  firstRunGuide?: LensFirstRunGuide;
+
+  /** Data-tier label. DepthBadge renders the corresponding chip. */
+  dataTier?: DataTier;
+
+  /** Socket event names this lens listens to for live tile updates. useTilePush key list. */
+  realtimeEvents?: string[];
+
+  /** Backend table FK target for multi-step sessions (e.g. 'war_campaigns', 'reasoning_sessions'). */
+  sessionTable?: string;
 }
 
 // ---- Lens Manifests ----
@@ -65,6 +116,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'glb', 'gltf'],
     actions: ['explore', 'create_city', 'customize_character', 'stream', 'teleport', 'build', 'browse_assets'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Concordia awaits.',
+      caption: 'Pick your avatar, spawn into the simulator, and meet the NPCs whose dialogue is composed against your DTU substrate.',
+      firstActionLabel: 'Enter Concordia',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'WASD to move; mouse to look. The Rapier3D collider is authoritative — what your client sees the server agrees with.' },
+        { caption: 'Talk to NPCs by clicking. Their dialogue branches against authored content + your DTU citations.' },
+        { caption: 'The Goddess Concordia speaks in tones gated by ecosystem score + refusal-field strength. Watch the HUD chips for the live composition.' },
+      ],
+    },
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -79,6 +143,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'txt', 'pdf'],
     actions: ['send', 'summarize', 'branch', 'export_transcript', 'search_history', 'merge_threads'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No conversations yet.',
+      caption: 'Start one — Concord remembers everything you talk about, and the substrate compresses old conversations into searchable MEGA-DTUs.',
+      firstActionLabel: 'Start a conversation',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Type any question or task. Concord routes to whichever of the four brains fits — Conscious for reasoning, Subconscious for synthesis, Utility for quick tasks, Repair for fixes.' },
+        { caption: 'Every reply that grounds in a DTU gets a citation chip you can click — your knowledge substrate stays linked.' },
+        { caption: 'Threads persist server-side. Close the tab; come back tomorrow; the brain still has your context.' },
+      ],
+    },
   },
   {
     domain: 'code',
@@ -88,6 +165,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'zip', 'tar', 'patch'],
     actions: ['execute', 'lint', 'format', 'refactor', 'diff', 'review', 'test', 'package'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No code yet.',
+      caption: 'Paste, type, or import a snippet. The Code lens runs lint, formatter, refactor, diff, and review against the substrate.',
+      firstActionLabel: 'Create your first snippet',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Drop code into the editor — the VS Code-shape silhouette gives you file tree, tabs, and a status bar so it reads as your IDE.' },
+        { caption: 'Use the action bar to lint, format, or run a review pass. Results stream back as DTUs you can cite from chat.' },
+        { caption: 'Repos you connect via GitHub appear in the side panel — code-substrate-refresh keeps them current every 5 ticks.' },
+      ],
+    },
   },
   {
     domain: 'paper',
@@ -97,6 +187,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf', 'bibtex'],
     actions: ['validate', 'synthesize', 'detect-contradictions', 'trace-lineage', 'claim-evidence-consistency', 'hypothesis-mutation-retest'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No papers yet.',
+      caption: 'Start a project, capture claims with evidence, run validate / synthesize over the corpus. Export to bibtex or PDF.',
+      firstActionLabel: 'Start a paper project',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Projects hold claims + evidence; detect-contradictions runs the lattice drift scan against your corpus.' },
+        { caption: 'trace-lineage walks the DTU citation graph — see exactly which evidence chains your synthesis stands on.' },
+        { caption: 'hypothesis-mutation-retest variations and runs the reasoning_session loop to flag weakness.' },
+      ],
+    },
   },
   {
     domain: 'reasoning',
@@ -106,6 +209,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'svg'],
     actions: ['validate', 'trace', 'conclude', 'fork', 'detect-fallacy', 'strength-score', 'visualize-chain'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'graph',
@@ -115,6 +219,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'graphml', 'rdf', 'cypher'],
     actions: ['query', 'cluster', 'analyze', 'merge', 'conflict-resolution', 'entity-resolution', 'confidence-scoring', 'shortest-path'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'council',
@@ -124,6 +229,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['debate', 'vote', 'simulate-budget', 'audit', 'quorum-check', 'impact-analysis', 'generate-minutes'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'agents',
@@ -133,6 +239,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'yaml', 'csv'],
     actions: ['start', 'stop', 'reset', 'configure', 'deliberate', 'arbitrate', 'orchestrate', 'evaluate-performance'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No agents configured.',
+      caption: 'Build an agent from a role + task + brain assignment. Marathon sessions persist across restarts.',
+      firstActionLabel: 'Configure an agent',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Each agent gets a brain (conscious / subconscious / utility / repair) + a role + a tool whitelist.' },
+        { caption: 'Marathon sessions checkpoint state every node — close the tab, resume later, agent picks up where it left off.' },
+        { caption: 'deliberate spawns a council; arbitrate resolves conflicts between agents working the same problem.' },
+      ],
+    },
   },
   {
     domain: 'sim',
@@ -142,6 +261,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'png'],
     actions: ['simulate', 'analyze', 'compare', 'archive', 'monte-carlo', 'sensitivity-analysis', 'regime-detection'],
     category: 'system',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -156,6 +276,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'm3u', 'wav', 'midi'],
     actions: ['analyze', 'render', 'publish', 'export_stems', 'generate_arrangement', 'timeline_render', 'stem_split', 'project_package'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No tracks yet.',
+      caption: 'Upload audio, generate stems, or compose in Studio. Soundscapes you mix here can stream into Concordia districts.',
+      firstActionLabel: 'Add your first track',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Tracks list in the main column. Click any to open arrangement / mix.' },
+        { caption: 'Render exports stems as WAV; full mixdowns as MP3. Both mint as DTUs.' },
+        { caption: 'Published tracks attach to Concordia districts as ambient soundscape — your music becomes the world\'s background.' },
+      ],
+    },
   },
   {
     domain: 'studio',
@@ -165,6 +298,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'wav', 'mp3', 'midi', 'pdf'],
     actions: ['mix', 'master', 'bounce', 'render', 'apply_effect', 'normalize', 'session_snapshot'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'New session, blank canvas.',
+      caption: 'Add tracks, drop in effects, mix, and bounce. Sessions stream to Concordia\'s soundscape per district.',
+      firstActionLabel: 'Create your first session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Tracks list on the left. Hit + to add audio / MIDI / synth tracks.' },
+        { caption: 'The Mixer pane shows fader strips with effects chains. Mastering is a separate panel — ship-ready loudness.' },
+        { caption: 'Render a mixdown → DTU. Publish to marketplace or attach to Concordia districts as ambient soundscape.' },
+      ],
+    },
   },
   {
     domain: 'voice',
@@ -174,6 +320,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'txt', 'srt', 'wav'],
     actions: ['transcribe', 'process', 'analyze', 'summarize', 'extract_tasks', 'detect_speaker', 'generate_subtitles'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No voice takes yet.',
+      caption: 'Record a take, transcribe with speaker detection, generate subtitles. Pipeline runs persist server-side.',
+      firstActionLabel: 'Record a take',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Tap to record; the meter shows live audio. Auto-pauses on silence.' },
+        { caption: 'transcribe runs the Subconscious brain; detect_speaker tags by voice fingerprint.' },
+        { caption: 'extract_tasks turns a meeting recording into an actionable to-do list, ready to push into goals or calendar.' },
+      ],
+    },
   },
   {
     domain: 'art',
@@ -183,6 +342,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'png', 'svg', 'pdf'],
     actions: ['generate', 'remix', 'analyze', 'curate', 'style_transfer', 'publish_gallery'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'ar',
@@ -192,6 +352,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'gltf', 'usdz', 'png'],
     actions: ['place_anchor', 'render_scene', 'capture', 'export_3d', 'collision_detect', 'lighting_estimate'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'fractal',
@@ -201,6 +362,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'png', 'svg', 'mp4'],
     actions: ['generate', 'animate', 'explore', 'export_render', 'parameter_sweep', 'dimension_morph'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -215,6 +377,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'ics', 'csv', 'pdf'],
     actions: ['schedule', 'remind', 'plan_day', 'plan_week', 'resolve_conflicts', 'availability_search', 'recurrence_expand', 'block_time'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No events scheduled.',
+      caption: 'Block time, add reminders, plan day/week. The conflict resolver scans for overlap before commit.',
+      firstActionLabel: 'Schedule your first event',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Switch view via tabs (Day / Week / Month). Recurrence expands inline.' },
+        { caption: 'The plan_week action drafts a balanced schedule from your goals + recurring blocks.' },
+        { caption: 'Export to .ics for any external calendar, or keep it Concord-native to flow into the world simulator timeline.' },
+      ],
+    },
   },
   {
     domain: 'daily',
@@ -224,6 +399,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'md', 'pdf'],
     actions: ['summarize', 'analyze', 'detect_patterns', 'generate_insights', 'weekly_review', 'mood_trend'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'goals',
@@ -233,6 +409,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['evaluate', 'activate', 'complete', 'milestone_check', 'dependency_analysis', 'progress_report'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No goals set.',
+      caption: 'Add a goal with milestones. The dependency analyzer flags blockers; the progress reporter rolls up activity from other lenses.',
+      firstActionLabel: 'Set your first goal',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Goals can have child milestones + dependencies on other goals.' },
+        { caption: 'evaluate pulls activity signals from calendar / chat / paper / projects to gauge progress.' },
+        { caption: 'Completed goals mint as achievement DTUs you can cite from your profile / personas.' },
+      ],
+    },
   },
   {
     domain: 'srs',
@@ -242,6 +431,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'anki', 'pdf'],
     actions: ['review', 'schedule', 'optimize_intervals', 'generate_cards_from_dtus', 'retention_report', 'difficulty_calibrate'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -256,6 +446,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'rss'],
     actions: ['vote', 'pin', 'moderate', 'rank_posts', 'extract_thesis', 'generate_summary_dtu'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'collab',
@@ -265,6 +456,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'md'],
     actions: ['merge', 'lock', 'unlock', 'summarize_thread', 'run_council', 'extract_actions', 'resolve_conflict', 'version_diff'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No collab sessions yet.',
+      caption: 'Start a session to co-author with another user. Locks, version diffs, and conflict resolution are first-class.',
+      firstActionLabel: 'Start a session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sessions list with status (active / closed / archived). Click any to enter the live room.' },
+        { caption: 'Lock a section to claim it; unlock to release. Version diffs show every change with author attribution.' },
+        { caption: 'run_council escalates a contested decision to formal vote via the council substrate.' },
+      ],
+    },
   },
   {
     domain: 'feed',
@@ -274,6 +478,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'rss'],
     actions: ['like', 'repost', 'bookmark', 'rank', 'personalize', 'cluster_topics'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Feed empty for now.',
+      caption: 'Follow creators, subscribe to topics, or post. The federation bridge surfaces DTUs from peer instances too.',
+      firstActionLabel: 'Post or follow',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Posts can cite DTUs you minted in any lens. The Subconscious brain ranks by your past interactions + topic clusters.' },
+        { caption: 'personalize toggles personalization on/off; bookmark saves to a per-user cache surfaced in dailyhub.' },
+        { caption: 'Cross-lens flow: a marketplace listing appears in your feed when its creator publishes; clicking opens the marketplace lens with the DTU pre-selected.' },
+      ],
+    },
   },
   {
     domain: 'experience',
@@ -283,6 +500,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['endorse', 'analyze', 'generate_resume', 'compare_versions', 'validate_claims'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -297,6 +515,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ofx'],
     actions: ['trade', 'analyze', 'alert', 'simulate', 'generate_report', 'portfolio_rebalance', 'risk_assessment'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No tracked assets.',
+      caption: 'Track stocks (S&P 500 / NASDAQ / DOW), crypto (CoinGecko top 10), or set rate alerts (FRED). Live ticker updates every 60s.',
+      firstActionLabel: 'Add an asset',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Tickers stream live from Yahoo Finance + CoinGecko + World Bank — real prices, no synthetic.' },
+        { caption: 'Simulate runs a portfolio against historical data via the Subconscious brain.' },
+        { caption: 'risk_assessment pulls volatility + drawdown + correlation across your portfolio — also wired to real series.' },
+      ],
+    },
   },
   {
     domain: 'marketplace',
@@ -306,6 +537,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['buy', 'sell', 'review', 'verify_artifact_hash', 'issue_license', 'distribute_royalties', 'validate_listing', 'provenance_check'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No listings yet.',
+      caption: 'List a DTU you minted, or browse what creators have published. Royalty cascade pays ancestors automatically.',
+      firstActionLabel: 'List your first DTU',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'The Bandcamp-shape grid puts creator art up front. Click any tile for provenance + price + license terms.' },
+        { caption: 'Buying mints a license + cascades royalties up the lineage chain (95% to creators, 30% cap to ancestors, seller keeps ≥64.54%).' },
+        { caption: 'Selling: hit the "Mint" action on any DTU you own and set a tier price. Citations from your DTU pay you forever.' },
+      ],
+    },
   },
   {
     domain: 'market',
@@ -315,6 +559,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['place_bid', 'accept_offer', 'settle', 'price_history', 'volume_analysis', 'liquidity_check'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'questmarket',
@@ -324,6 +569,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['post_bounty', 'submit_work', 'verify_submission', 'release_payout', 'reputation_score', 'dispute_resolve'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -338,6 +584,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'onnx', 'pkl'],
     actions: ['train', 'infer', 'deploy', 'evaluate', 'run_experiment', 'compare_runs', 'generate_report', 'hyperparameter_search', 'model_explain'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No experiments yet.',
+      caption: 'Start an experiment with a dataset + model class. Live arXiv cs.LG feed at the top surfaces relevant new papers.',
+      firstActionLabel: 'Start an experiment',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv cs.LG panel up top streams new papers daily — REAL data from arXiv.' },
+        { caption: 'Experiments hold model + dataset + hyperparams + run log. compare_runs surfaces deltas across two experiments.' },
+        { caption: 'model_explain runs the Subconscious brain over a model summary to draft a plain-language explanation suitable for the docs lens.' },
+      ],
+    },
   },
   {
     domain: 'thread',
@@ -347,6 +606,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'md'],
     actions: ['branch', 'merge', 'summarize', 'detect_consensus', 'extract_decisions'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'law',
@@ -356,6 +616,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf', 'docx'],
     actions: ['check-compliance', 'analyze', 'draft', 'cite', 'clause_compare', 'precedent_search', 'risk_flag'],
     category: 'social',
+    dataTier: 'DEMO',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -370,6 +631,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['cast_ballot', 'tally_votes', 'verify_quorum', 'audit_results', 'ranked_choice_resolve', 'generate_report'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'ethics',
@@ -379,6 +641,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf'],
     actions: ['evaluate_case', 'apply_framework', 'check_alignment', 'generate_report', 'stakeholder_analysis', 'risk_assessment'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'alliance',
@@ -388,6 +651,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['propose_alliance', 'ratify_charter', 'add_member', 'vote_on_governance', 'compliance_check', 'dissolve'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -402,6 +666,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'png', 'svg', 'pdf'],
     actions: ['render', 'layout', 'collaborate', 'snapshot', 'auto_arrange', 'extract_decisions', 'version_diff'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Blank canvas.',
+      caption: 'Drag shapes, connect them, comment. The tldraw-shape silhouette opens by default. extract_decisions distills any board into a DTU.',
+      firstActionLabel: 'Drop a shape',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Toolbar at the bottom (rect / sticky / pen). Click and drag on the canvas to draw.' },
+        { caption: 'auto_arrange lays out connections with force-directed graph algorithm; snapshot freezes a version.' },
+        { caption: 'extract_decisions runs the Subconscious brain over your board to distill action items — useful after team sessions.' },
+      ],
+    },
   },
   {
     domain: 'board',
@@ -411,6 +688,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['move_card', 'assign', 'set_wip_limit', 'burndown', 'velocity_calc', 'sprint_review', 'archive_done'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'timeline',
@@ -420,6 +698,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'svg', 'ics'],
     actions: ['replay', 'diff_timelines', 'annotate', 'cluster_events', 'gap_analysis', 'causality_trace'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'anon',
@@ -429,6 +708,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['create_room', 'post_anonymous', 'verify_provenance', 'rotate_identity', 'export_sanitized', 'moderate'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -443,6 +723,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'sql', 'parquet'],
     actions: ['query', 'analyze', 'optimize', 'schema-inspect', 'migration_generate', 'index_suggest', 'explain_plan'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'game',
@@ -452,6 +733,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['complete', 'claim', 'levelup', 'simulate', 'resolve_turn', 'balance', 'leaderboard_update'],
     category: 'system',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'resonance',
@@ -469,6 +751,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['acknowledge', 'dismiss', 'snooze', 'escalate'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -483,6 +766,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'graphml'],
     actions: ['resolve_entity', 'link_evidence', 'merge_duplicates', 'relationship_map', 'confidence_score', 'provenance_trace'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'lab',
@@ -492,6 +776,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['run_protocol', 'record_result', 'compare_runs', 'statistical_analysis', 'equipment_calibrate', 'generate_report'],
     category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
+    emptyState: {
+      headline: 'Lab notebook empty.',
+      caption: 'Author protocols, log runs, attach reagents + equipment calibration. Compare runs to spot drift.',
+      firstActionLabel: 'New experiment',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Protocols are templates; runs instantiate them with specific reagent batches + equipment serials.' },
+        { caption: 'record_result captures structured outcomes (mean / sd / n); statistical_analysis runs t-test / ANOVA.' },
+        { caption: 'generate_report assembles a PDF combining protocol, runs, results, and analysis.' },
+      ],
+    },
   },
   {
     domain: 'repos',
@@ -501,6 +798,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'patch', 'tar'],
     actions: ['ingest_metadata', 'diff_view', 'release_package', 'issue_triage', 'contributor_stats', 'dependency_audit'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -516,6 +814,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['check_all', 'add_invariant', 'monitor_start', 'violation_report', 'trend_analysis', 'auto_repair_suggest'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'meta',
@@ -525,6 +824,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'md'],
     actions: ['score_lenses', 'policy_check', 'capability_audit', 'generate_status_report', 'cross_lens_analysis'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'eco',
@@ -534,6 +834,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'svg', 'graphml'],
     actions: ['map_dependencies', 'flow_analysis', 'health_check', 'bottleneck_detect', 'impact_simulation'],
     category: 'system',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'temporal',
@@ -543,6 +844,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'svg'],
     actions: ['replay', 'diff', 'causality_trace', 'temporal_query', 'truth_at_time', 'version_compare'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -559,6 +861,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'hl7', 'fhir'],
     actions: ['checkInteractions', 'protocolMatch', 'generateSummary', 'intakeWorkflow', 'riskFlagging', 'carePlanGenerate', 'labImport', 'dischargePackage'],
     category: 'healthcare',
+    dataTier: 'DEMO',
   },
 
   // === TRADES ===
@@ -570,6 +873,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['calculateEstimate', 'scheduleInspection', 'materialsCost', 'codeComplianceCheck', 'changeOrderGenerate', 'progressPhotoLog', 'safetyChecklist'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === FOOD ===
@@ -581,6 +885,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['scaleRecipe', 'costPlate', 'spoilageCheck', 'pourCost', 'menuEngineer', 'allergenValidate', 'shiftScheduleOptimize', 'supplierCompare'],
     category: 'operations',
+    dataTier: 'REAL_FREE',
   },
 
   // === RETAIL ===
@@ -592,6 +897,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['reorderCheck', 'pipelineValue', 'customerLTV', 'slaStatus', 'inventoryForecast', 'priceOptimize', 'promotionROI', 'churnPredict'],
     category: 'operations',
+    dataTier: 'REAL_FREE',
   },
 
   // === HOUSEHOLD ===
@@ -603,6 +909,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ics'],
     actions: ['generateGroceryList', 'maintenanceDue', 'choreRotation', 'mealPlanGenerate', 'budgetCheck', 'seasonalChecklist', 'emergencyContacts'],
     category: 'productivity',
+    dataTier: 'REAL_FREE',
   },
 
   // === ACCOUNTING ===
@@ -614,6 +921,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'qbo', 'xlsx'],
     actions: ['trialBalance', 'profitLoss', 'invoiceAging', 'budgetVariance', 'rentRoll', 'reconcile', 'categorize', 'taxEstimate', 'auditReport'],
     category: 'finance',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === AGRICULTURE ===
@@ -625,6 +933,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'geojson'],
     actions: ['rotationPlan', 'yieldAnalysis', 'equipmentDue', 'waterSchedule', 'soilHealthScore', 'pestPressureAlert', 'harvestForecast', 'certificationAudit'],
     category: 'agriculture',
+    dataTier: 'REAL_FREE',
   },
 
   // === LOGISTICS ===
@@ -636,6 +945,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'edi'],
     actions: ['optimizeRoute', 'hosCheck', 'maintenanceDue', 'inventoryAudit', 'etaCalculate', 'loadOptimize', 'complianceReport', 'warehouseSlotting'],
     category: 'operations',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === EDUCATION ===
@@ -647,6 +957,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'lti'],
     actions: ['gradeCalculation', 'attendanceReport', 'progressTrack', 'scheduleConflict', 'rubricGenerate', 'differentiate', 'parentReport', 'certificationCheck'],
     category: 'services',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No courses yet.',
+      caption: 'Create a course, add students, author lesson plans + rubrics. Khan Academy + Wikipedia power the resource browser.',
+      firstActionLabel: 'Create a course',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Courses hold students, assignments, grades. rubricGenerate produces criterion grids from a learning objective.' },
+        { caption: 'differentiate adapts an assignment to multiple difficulty tiers for mixed-level classrooms.' },
+        { caption: 'parentReport rolls up a student\'s arc into a one-page sharable PDF — useful for conferences.' },
+      ],
+    },
   },
 
   // === LEGAL ===
@@ -658,6 +981,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'docx'],
     actions: ['deadlineCheck', 'contractRenewal', 'conflictCheck', 'complianceScore', 'clauseChecker', 'citationPackager', 'caseTimelineBuilder', 'briefExport'],
     category: 'services',
+    dataTier: 'DEMO',
+    emptyState: {
+      headline: 'No matters opened.',
+      caption: 'Open a case / contract / compliance item. Note: full Westlaw / LexisNexis data is paywalled — this lens runs against authored content.',
+      firstActionLabel: 'Open a matter',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Notion-shape doc surface — the DocsShell silhouette opens by default. Bespoke legal workflow lives below.' },
+        { caption: 'deadlineCheck + conflictCheck + complianceScore run scheduled passes against your active matters.' },
+        { caption: 'Honest tier: this lens is DEMO until we wire a paid case-law feed. The structure works; the data is yours to author.' },
+      ],
+    },
   },
 
   // === NONPROFIT ===
@@ -669,6 +1005,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['donorRetention', 'grantReporting', 'volunteerMatch', 'campaignProgress', 'impactReport', 'taxReceipt', 'eventROI', 'memberEngagement'],
     category: 'social',
+    dataTier: 'REAL_FREE',
   },
 
   // === REALESTATE ===
@@ -680,6 +1017,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['capRate', 'cashFlow', 'closingTimeline', 'vacancyRate', 'comparableAnalysis', 'mortgageCalc', 'inspectionChecklist', 'netOperatingIncome'],
     category: 'finance',
+    dataTier: 'DEMO',
   },
 
   // === FITNESS ===
@@ -691,6 +1029,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['progressionCalc', 'classUtilization', 'periodization', 'recruitProfile', 'bodyCompAnalysis', 'programGenerate', 'injuryRiskScreen', 'nutritionPlan'],
     category: 'services',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No clients or programs yet.',
+      caption: 'Build a program, track workouts, score assessments. USDA macros + ACSM-style formulas wire up real numbers.',
+      firstActionLabel: 'Add a client',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Programs hold workouts; periodization runs the macrocycle planner against the client\'s training age.' },
+        { caption: 'injuryRiskScreen scores common red flags from intake; nutritionPlan uses USDA FoodData Central for real macros.' },
+        { caption: 'Class utilization rolls up across cohorts — useful for studios + teams managing many athletes.' },
+      ],
+    },
   },
 
   // === CREATIVE PRODUCTION ===
@@ -702,6 +1053,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'zip'],
     actions: ['shotListGenerate', 'assetOrganize', 'budgetTrack', 'distributionChecklist', 'proofGenerate', 'metadataEmbed', 'deliverablePackage', 'clientReviewFlow'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === MANUFACTURING ===
@@ -713,6 +1065,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['scheduleOptimize', 'bomCost', 'oeeCalculate', 'safetyRate', 'defectTrend', 'maintenancePredict', 'batchTrace', 'capacityPlan'],
     category: 'operations',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === ENVIRONMENT ===
@@ -724,6 +1077,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'geojson', 'kml'],
     actions: ['populationTrend', 'complianceCheck', 'trailCondition', 'diversionRate', 'sampleChainOfCustody', 'emissionsCalc', 'habitatAssess', 'impactForecast'],
     category: 'government',
+    dataTier: 'REAL_FREE',
   },
 
   // === GOVERNMENT ===
@@ -735,6 +1089,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xml'],
     actions: ['permitTimeline', 'violationEscalation', 'resourceStaging', 'retentionCheck', 'budgetImpact', 'publicNoticeGenerate', 'ordinancePackage', 'foiaProcess'],
     category: 'government',
+    dataTier: 'REAL_FREE',
   },
 
   // === AVIATION ===
@@ -746,6 +1101,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'kml'],
     actions: ['currencyCheck', 'maintenanceDue', 'hobbsLog', 'slipUtilization', 'weightBalance', 'flightPlan', 'crewSchedule', 'regulatoryCompliance'],
     category: 'operations',
+    dataTier: 'DEMO',
   },
 
   // === EVENTS ===
@@ -757,6 +1113,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ics'],
     actions: ['budgetReconcile', 'advanceSheet', 'techRiderMatch', 'settlementCalc', 'ticketForecast', 'vendorCompare', 'runOfShow', 'postEventReport'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
 
   // === SCIENCE ===
@@ -768,6 +1125,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'geojson', 'netcdf'],
     actions: ['chainOfCustody', 'calibrationCheck', 'dataExport', 'spatialCluster', 'statisticalTest', 'peerReviewPackage', 'replicationCheck', 'dataQuality'],
     category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
+    emptyState: {
+      headline: 'No expeditions logged.',
+      caption: 'Log expeditions with samples + protocols + equipment. Chain-of-custody + replication checks pin scientific integrity.',
+      firstActionLabel: 'Log an expedition',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Expeditions hold samples + lab protocols + equipment. Each sample carries a chain-of-custody trail.' },
+        { caption: 'spatialCluster runs DBSCAN over geo-tagged samples; statisticalTest applies t-test / chi-square / ANOVA.' },
+        { caption: 'peerReviewPackage exports your expedition as a reviewer-ready bundle (data + protocols + analysis).' },
+      ],
+    },
   },
 
   // === SECURITY ===
@@ -779,6 +1149,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'stix'],
     actions: ['incidentTrend', 'patrolCoverage', 'threatMatrix', 'evidenceChain', 'complianceCheck', 'hardeningChecklist', 'incidentReport', 'vulnerabilityScan'],
     category: 'operations',
+    dataTier: 'REAL_LIVE',
   },
 
   // === SERVICES ===
@@ -790,6 +1161,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ics'],
     actions: ['scheduleOptimize', 'reminderGenerate', 'revenueByProvider', 'supplyCheck', 'clientRetention', 'waitlistManage', 'bookingConfirm', 'feedbackCollect'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === INSURANCE ===
@@ -801,6 +1173,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'acord'],
     actions: ['coverageGap', 'premiumHistory', 'claimStatus', 'riskScore', 'renewalForecast', 'benefitComparison', 'fraudIndicator', 'lossRunReport'],
     category: 'finance',
+    dataTier: 'DEMO',
   },
 
   // === TRAVEL (Lens 61) ===
@@ -812,6 +1185,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'ical'],
     actions: ['planItinerary', 'budgetEstimate', 'packingChecklist', 'flightSearch', 'hotelCompare', 'travelAdvisory'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No trips planned.',
+      caption: 'Draft an itinerary; the planner uses OpenStreetMap + Wikipedia for real geo + lore. Pack lists generate from trip context.',
+      firstActionLabel: 'Plan a trip',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'planItinerary takes destination + dates + interests, produces a multi-day plan with real POIs.' },
+        { caption: 'travelAdvisory pulls relevant safety + visa notes; budgetEstimate uses regional cost benchmarks.' },
+        { caption: 'Itineraries export as iCal so they slot into any external calendar.' },
+      ],
+    },
   },
 
   // === FASHION (Lens 62) ===
@@ -823,6 +1209,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['outfitSuggest', 'seasonalRotation', 'donateList', 'styleAnalysis', 'wardrobeValue', 'colorPalette'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
   },
 
   // === COOKING (Lens 63) ===
@@ -834,6 +1221,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['scaleRecipe', 'mealPlan', 'shoppingList', 'nutritionCalc', 'substitutions', 'pairings'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No recipes saved.',
+      caption: 'Author or import a recipe; scale, plan meals, generate shopping lists. Nutrition pulls from USDA FoodData (real numbers).',
+      firstActionLabel: 'Add a recipe',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Recipes carry ingredients + techniques; scaleRecipe converts servings while preserving ratios.' },
+        { caption: 'nutritionCalc looks up each ingredient in USDA FoodData Central — real macros, not estimates.' },
+        { caption: 'mealPlan + shoppingList build week-ahead plans; substitutions and pairings expand by technique signature.' },
+      ],
+    },
   },
 
   // === HOME IMPROVEMENT (Lens 64) ===
@@ -845,6 +1245,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['costEstimate', 'permitCheck', 'contractorCompare', 'timeline', 'materialsCalc', 'beforeAfter'],
     category: 'lifestyle',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === PARENTING (Lens 65) ===
@@ -856,6 +1257,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['milestoneTracker', 'growthChart', 'vaccineSchedule', 'sleepAnalysis', 'developmentTips', 'schoolReadiness'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No child profiles yet.',
+      caption: 'Add a child profile; track milestones, schedule, vaccines, sleep. AAP guidelines power the milestone + vaccine timelines.',
+      firstActionLabel: 'Add a child',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Per-child profile tracks milestones (motor / cognitive / social) against AAP age-typical ranges.' },
+        { caption: 'vaccineSchedule pulls the current CDC recommended schedule; growthChart plots against WHO percentile curves.' },
+        { caption: 'sleepAnalysis surfaces nightly pattern + identifies regressions; developmentTips suggests stage-appropriate activities.' },
+      ],
+    },
   },
 
   // === PETS (Lens 66) ===
@@ -867,6 +1281,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['vetReminder', 'feedingPlan', 'medicationTracker', 'weightTrend', 'groomingSchedule', 'emergencyInfo'],
     category: 'lifestyle',
+    dataTier: 'REAL_FREE',
   },
 
   // === SPORTS (Lens 67) ===
@@ -878,6 +1293,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['seasonStats', 'playerCompare', 'trainingPlan', 'matchPreview', 'standingsCalc', 'injuryTracker'],
     category: 'lifestyle',
+    dataTier: 'REAL_LIVE',
   },
 
   // === DIY (Lens 68) ===
@@ -889,6 +1305,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['materialsList', 'costEstimate', 'stepByStep', 'toolSuggestion', 'difficultyAssess', 'timeEstimate'],
     category: 'lifestyle',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === DEBATE (Lens 76) ===
@@ -900,6 +1317,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['factCheck', 'counterArgument', 'logicAnalysis', 'biasDetect', 'summarize', 'moderateDebate'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // === MENTORSHIP (Lens 77) ===
@@ -911,6 +1329,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['matchMentor', 'progressReport', 'goalSetting', 'sessionPrep', 'feedbackSummary', 'skillGapAnalysis'],
     category: 'social',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'podcast',
@@ -920,6 +1339,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'rss', 'mp3'],
     actions: ['publish', 'schedule', 'generateRSS', 'analyzeListeners', 'transcribe', 'distributeFeed'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'admin',
@@ -929,6 +1349,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'affect',
@@ -938,6 +1359,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'all',
@@ -947,6 +1369,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'analytics',
@@ -956,6 +1379,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'animation',
@@ -965,6 +1389,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'answers',
@@ -974,6 +1399,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf'],
     actions: ['browse', 'ask_oracle', 'expand', 'link_implementation', 'export'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'app-maker',
@@ -983,6 +1409,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'artistry',
@@ -992,6 +1419,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'astronomy',
@@ -1001,6 +1429,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'Observation log empty.',
+      caption: 'Save targets, plan observations, run light-travel calcs. NASA APOD + ISS + Near-Earth Objects load live up top.',
+      firstActionLabel: 'Save an observation',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'NASA panel up top shows today\'s APOD + ISS live position + Near-Earth Objects — all real data, no synthetic.', selector: '[aria-label*="NASA"]' },
+        { caption: 'Use the action panel to compute celestial position (RA/Dec → altitude/azimuth) or plan a night\'s observation with moon-phase awareness.' },
+        { caption: 'Saved observations mint as DTUs; reference them from chat or research later.' },
+      ],
+    },
   },
   {
     domain: 'atlas',
@@ -1010,6 +1451,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No regions explored yet.',
+      caption: 'Search any place via OpenStreetMap; drop annotations; layer real signal data over the map.',
+      firstActionLabel: 'Search a location',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Search uses OpenStreetMap Nominatim — real geocoding, free, no key.' },
+        { caption: 'Drop annotations and create regions of interest. Each becomes a DTU you can cite.' },
+        { caption: 'The graph view shows DTU citation lineage — your atlas becomes a map of your knowledge.' },
+      ],
+    },
   },
   {
     domain: 'attention',
@@ -1019,6 +1473,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'audit',
@@ -1028,6 +1483,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'automotive',
@@ -1037,6 +1493,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'DEMO',
   },
   {
     domain: 'billing',
@@ -1046,6 +1503,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'bio',
@@ -1055,6 +1513,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No organisms tracked.',
+      caption: 'Add organisms / genes / proteins; pull arXiv q-bio papers up top. NCBI lookups are honest live data.',
+      firstActionLabel: 'Add an organism',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv q-bio panel up top streams new biology papers — REAL data, daily.' },
+        { caption: 'Organisms link to genes link to proteins via the substrate; pathway browsing follows the citation chain.' },
+        { caption: 'analyze runs sequence-similarity against your tracked corpus; validate flags annotation inconsistencies.' },
+      ],
+    },
   },
   {
     domain: 'bridge',
@@ -1064,6 +1535,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'carpentry',
@@ -1073,6 +1545,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'chem',
@@ -1082,6 +1555,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No compounds tracked.',
+      caption: 'Add compounds / reactions / molecules. arXiv chemistry feed up top streams new papers.',
+      firstActionLabel: 'Add a compound',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv physics.chem-ph feed up top — REAL daily papers in chemical physics.' },
+        { caption: 'Compounds carry formula + properties; reactions reference reactants + products.' },
+        { caption: 'validate flags stoichiometric inconsistencies; analyze runs simple equilibrium / kinetic estimates.' },
+      ],
+    },
   },
   {
     domain: 'command-center',
@@ -1091,6 +1577,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'commonsense',
@@ -1100,6 +1587,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'construction',
@@ -1109,6 +1597,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'consulting',
@@ -1118,6 +1607,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'creative-writing',
@@ -1127,6 +1617,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'cri',
@@ -1136,6 +1627,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'crypto',
@@ -1145,6 +1637,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No tracked tokens.',
+      caption: 'Add a token to track price + balance via CoinGecko. The Coinbase-shape wallet silhouette opens by default so you read the lens immediately.',
+      firstActionLabel: 'Track a token',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'The wallet silhouette at the top is the rival shape — Coinbase / Phantom feel without leaving the substrate.' },
+        { caption: 'Live prices via CoinGecko (no key). Tokens you track are persisted server-side; the list survives reload.' },
+        { caption: 'Send / receive / swap actions remain stubs unless you wire an actual chain integration — the panel is honest about its DEMO status for those flows.' },
+      ],
+    },
   },
   {
     domain: 'custom',
@@ -1154,6 +1659,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'debug',
@@ -1163,6 +1669,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'defense',
@@ -1172,6 +1679,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'DEMO',
   },
   {
     domain: 'desert',
@@ -1181,6 +1689,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'disputes',
@@ -1190,6 +1699,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'docs',
@@ -1199,6 +1709,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No docs yet.',
+      caption: 'Author a document — Notion-shape sidebar tree + page editor. Every save is a DTU; versions are immutable.',
+      firstActionLabel: 'Create a doc',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sidebar tree on the left; nested docs by drag-and-drop. Templates accelerate common doc shapes.' },
+        { caption: 'Each save creates a new version under the doc. Rollback via the history panel.' },
+        { caption: 'Export to PDF (paged), JSON (machine), or CSV (tabular sections only).' },
+      ],
+    },
   },
   {
     domain: 'dtus',
@@ -1208,6 +1731,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'electrical',
@@ -1217,6 +1741,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'emergency-services',
@@ -1226,6 +1751,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'energy',
@@ -1235,6 +1761,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'engineering',
@@ -1244,6 +1771,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'export',
@@ -1253,6 +1781,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'film-studios',
@@ -1262,6 +1791,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'forestry',
@@ -1271,6 +1801,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'agriculture',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'fork',
@@ -1280,6 +1811,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'game-design',
@@ -1289,6 +1821,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'geology',
@@ -1298,6 +1831,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'global',
@@ -1307,6 +1841,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'grounding',
@@ -1316,6 +1851,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'history',
@@ -1325,6 +1861,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'hr',
@@ -1334,6 +1871,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'hvac',
@@ -1343,6 +1881,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'hypothesis',
@@ -1352,6 +1891,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'import',
@@ -1361,6 +1901,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'inference',
@@ -1370,6 +1911,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'ingest',
@@ -1379,6 +1921,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'integrations',
@@ -1388,6 +1931,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'landscaping',
@@ -1397,6 +1941,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'law-enforcement',
@@ -1406,6 +1951,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'legacy',
@@ -1415,6 +1961,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'linguistics',
@@ -1424,6 +1971,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'lock',
@@ -1433,6 +1981,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'marketing',
@@ -1442,6 +1991,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'services',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'masonry',
@@ -1451,6 +2001,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'materials',
@@ -1460,6 +2011,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'math',
@@ -1469,6 +2021,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'Workbench is clean.',
+      caption: 'Type an equation, drop a proof outline, or browse the MathOverflow feed. Wolfram Alpha is wired for symbolic ops.',
+      firstActionLabel: 'Compose your first equation',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'The MathStackFeed shows top MathOverflow questions in real time.' },
+        { caption: 'Proofs and equations mint as DTUs with LaTeX preserved. Other lenses can cite them.' },
+        { caption: 'analyze / validate actions route through the Subconscious brain for symbolic checking against Wolfram.' },
+      ],
+    },
   },
   {
     domain: 'mental-health',
@@ -1478,6 +2043,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No sessions logged.',
+      caption: 'Log a session, run an assessment, draft a plan. NIH MedlinePlus powers the resource browser (free, real federal health info).',
+      firstActionLabel: 'Log a session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sessions hold notes + tone tags. Assessments use validated instruments (PHQ-9, GAD-7) as templates.' },
+        { caption: 'Plans link to resources from MedlinePlus — real government-vetted info, not LLM speculation.' },
+        { caption: 'Progress rolls up across sessions to surface trends; export as PDF for clinician sharing.' },
+      ],
+    },
   },
   {
     domain: 'metacognition',
@@ -1487,6 +2065,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'metalearning',
@@ -1496,6 +2075,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'mining',
@@ -1505,6 +2085,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'neuro',
@@ -1514,6 +2095,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'news',
@@ -1523,6 +2105,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Inbox is quiet.',
+      caption: 'Reuters / BBC / NPR / TechCrunch / Ars Technica / Hacker News all poll live. Pick sources and topics; the feed populates within a minute.',
+      firstActionLabel: 'Subscribe to topics',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sources poll on a 15-minute cadence; new articles surface as cards in the feed.' },
+        { caption: 'analyze runs the Subconscious brain over a thread to extract a thesis or summarize a beat.' },
+        { caption: 'Subscribe to topics with the action bar — the engine matches incoming articles by tag.' },
+      ],
+    },
   },
   {
     domain: 'ocean',
@@ -1532,6 +2127,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'offline',
@@ -1541,6 +2137,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'organ',
@@ -1550,6 +2147,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'pharmacy',
@@ -1559,6 +2157,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No medications tracked.',
+      caption: 'Add a medication to track dose, refills, and interactions. FDA OpenFDA powers the drug reference panel.',
+      firstActionLabel: 'Add your first medication',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Add medications via the Medications tab. Each entry stores dose / frequency / route / refills server-side.' },
+        { caption: 'The Interactions tab runs your active list against FDA OpenFDA adverse-event data — real federal labels, not synthetic.' },
+        { caption: 'FDA Reference (tab F) opens the drug-label browser. The depth badge tells you when data is REAL vs. demo (formulary requires paid feeds we don\'t have).' },
+      ],
+    },
   },
   {
     domain: 'philosophy',
@@ -1568,6 +2179,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'photography',
@@ -1577,6 +2189,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'physics',
@@ -1586,6 +2199,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    emptyState: {
+      headline: 'Lab notebook empty.',
+      caption: 'Open with an arXiv physics feed; log experiments / models / measurements. Constants ship pre-seeded.',
+      firstActionLabel: 'Log an experiment',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv physics panel up top — REAL data; search filters within category.', selector: '[aria-label*="arXiv"]' },
+        { caption: 'Experiments hold observation / measurement / units; the analyzer flags dimensional inconsistencies.' },
+        { caption: 'Citations chain through the lattice — see which experiments stand on which models.' },
+      ],
+    },
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'platform',
@@ -1595,6 +2221,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'plumbing',
@@ -1604,6 +2231,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'poetry',
@@ -1613,6 +2241,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'privacy',
@@ -1622,6 +2251,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'projects',
@@ -1631,6 +2261,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'quantum',
@@ -1640,6 +2271,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'Circuit lab clean.',
+      caption: 'Compose a quantum circuit; track measurements; the arXiv quant-ph feed up top surfaces the latest papers in real time.',
+      firstActionLabel: 'New circuit',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'arXiv quant-ph panel up top — daily firehose of papers in your field.' },
+        { caption: 'Circuits compose qubit by qubit; measurements record collapse outcomes.' },
+        { caption: 'Simulation runs against a deterministic backend — useful for teaching, not for replacing real hardware.' },
+      ],
+    },
   },
   {
     domain: 'queue',
@@ -1649,6 +2293,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'reflection',
@@ -1658,6 +2303,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'research',
@@ -1667,6 +2313,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No research sessions yet.',
+      caption: 'Spin up a reasoning_session: claim, evidence, contradiction-check, citation. Backed by the lattice substrate.',
+      firstActionLabel: 'Start a session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sessions are multi-step. The lattice drift scan flags contradictions across your corpus as you add evidence.' },
+        { caption: 'Evidence pulls from any DTU in your substrate — past chats, papers, even Concordia NPC dialogue.' },
+        { caption: 'analyze runs ghost-fleet reasoning modes (deductive / abductive / constraint_check / counterfactual). Pick the right mode for the question.' },
+      ],
+    },
   },
   {
     domain: 'robotics',
@@ -1676,6 +2335,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'schema',
@@ -1685,6 +2345,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'space',
@@ -1694,6 +2355,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'suffering',
@@ -1703,6 +2365,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'supplychain',
@@ -1712,6 +2375,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'telecommunications',
@@ -1721,6 +2385,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
+    dataTier: 'DEMO',
   },
   {
     domain: 'tick',
@@ -1730,6 +2395,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'transfer',
@@ -1739,6 +2405,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'urban-planning',
@@ -1748,6 +2415,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'veterinary',
@@ -1757,6 +2425,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
+    dataTier: 'REAL_FREE',
   },
   {
     domain: 'wallet',
@@ -1766,6 +2435,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No CC yet.',
+      caption: 'Earn Concord Coin by minting DTUs, completing events, or buying CC via Stripe. Every transaction lands here.',
+      firstActionLabel: 'View earning paths',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Your balance sits at the top — substrate-real, not a price quote. CC earned from royalties shows up immediately.' },
+        { caption: 'The history rail shows every credit / debit with refId — refunds idempotent, withdrawal holds tracked at 48h.' },
+        { caption: 'Send and receive use the standard Concord Coin ledger. The 48-hour withdrawal hold is the anti-refund-exploit gate.' },
+      ],
+    },
   },
   {
     domain: 'welding',
@@ -1775,6 +2457,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // ── Manifests added to bring failing lenses to ≥5/7 score ──
@@ -1787,6 +2470,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'pdf'],
     actions: ['cook', 'brew', 'forge', 'list_for_marketplace', 'set_tier_pricing', 'apply_recipe'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No recipes minted yet.',
+      caption: 'Author a recipe — cook, brew, forge, fighting style, or spell. Mint as a recipe DTU; list to your marketplace stall with tier pricing.',
+      firstActionLabel: 'Mine / Browse / Author',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Three modes: Mine (your recipes), Browse Marketplace (others\'), Author (compose new).' },
+        { caption: 'Recipes are first-class DTUs — fighting styles use the v2.0 recipe substrate; spells fold base-6 glyph algebra.' },
+        { caption: 'list_for_marketplace + set_tier_pricing publishes for sale; the royalty cascade pays you on every cite.' },
+      ],
+    },
   },
   {
     domain: 'understanding',
@@ -1804,6 +2500,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['parse', 'compose', 'recompose', 'record_evidence', 'evaluate_promotion', 'apply_promotion', 'consolidate', 'lineage', 'evolution_tick', 'sweep'],
     category: 'knowledge',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'creator',
@@ -1813,6 +2510,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'federation',
@@ -1822,6 +2520,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['export_shadows', 'import_shadows', 'verify_token', 'list_remote_nodes', 'sync'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'genesis',
@@ -1831,6 +2530,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_emergents', 'recent_feed', 'legendary_skills', 'subscribe_activity', 'name_emergent'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'black-market',
@@ -1840,6 +2540,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['list_gray', 'place_anon_offer', 'verify_reputation', 'release_escrow', 'audit'],
     category: 'finance',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'world-creator',
@@ -1849,6 +2550,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['scaffold_world', 'seed_lore', 'spawn_faction', 'register_anomaly', 'preview'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'root',
@@ -1858,6 +2560,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['convert_to_base6', 'convert_to_decimal', 'glyph_add', 'glyph_multiply', 'compose'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'settings',
@@ -1867,6 +2570,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'hub',
@@ -1876,6 +2580,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['browse_lenses', 'pin_lens', 'unpin_lens', 'recent', 'recommend'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'world-creator/anomalies',
@@ -1885,6 +2590,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['list_public_stats', 'list_for_creator', 'resolve', 'dismiss', 'audit'],
     category: 'system',
+    dataTier: 'SIM_GRADE_A',
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -1899,6 +2605,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['list_detectors', 'run_detector', 'run_all', 'baseline_diff', 'load_budget', 'history'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'cognition',
@@ -1908,6 +2615,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['run_hlr', 'show_hlm', 'list_clusters', 'list_drift_alerts', 'forgetting_status'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'forge',
@@ -1917,6 +2625,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['ts', 'zip', 'dockerfile'],
     actions: ['list_templates', 'list_sections', 'validate', 'generate', 'export_app', 'check_avoidance', 'repair_log'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No Forge apps yet.',
+      caption: 'Pick a template, fill the sections, and Forge generates a single-file polyglot app. Mint it to your marketplace stall.',
+      firstActionLabel: 'Browse templates',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Templates ship with section slots. Fill each slot with prose; Forge generates the matching code.' },
+        { caption: 'Validate runs lint + repair before publish — the repair log surfaces any auto-fixes.' },
+        { caption: 'Generated apps mint as DTUs and can list on the creative marketplace with royalty cascade.' },
+      ],
+    },
   },
   {
     domain: 'foundry',
@@ -1926,6 +2647,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: [],
     actions: ['systems', 'system_schema', 'validate_systems', 'create', 'update', 'get', 'list', 'delete', 'validate', 'publish', 'unpublish'],
     category: 'creative',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'kingdoms',
@@ -1935,6 +2657,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_kingdoms', 'view_kingdom', 'compose_decree', 'contest_decree', 'view_minimap'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No kingdoms yet.',
+      caption: 'Found a realm, issue decrees, rally war campaigns. The CK3-port substrate runs strategy cycles every ~50 minutes.',
+      firstActionLabel: 'Found a kingdom',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Decrees affect loyalty + tax + military across citizens. The kingdom-decree-cycle heartbeat enforces effects every 16 ticks.' },
+        { caption: 'War campaigns persist server-side via war_campaigns table — they survive restarts and run their own resolution cycle.' },
+        { caption: 'view_minimap renders territory polygons; contest_decree lets rivals challenge through the faction-strategy cycle.' },
+      ],
+    },
   },
   {
     domain: 'lattice',
@@ -1944,6 +2679,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['training_status', 'grant_consent', 'revoke_consent', 'run_pipeline', 'view_drift'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'maker',
@@ -1953,6 +2689,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'zip'],
     actions: ['build_app', 'compose_quest', 'creative_generate'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'mesh',
@@ -1962,6 +2699,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_transports', 'route_status', 'send_frame', 'peer_discovery'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'message',
@@ -1971,6 +2709,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['send_dm', 'list_threads', 'mark_read', 'archive', 'search_messages'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Inbox empty.',
+      caption: 'DMs, Concord-Link messages, and federation traffic land here. Start a thread or wait for the first ping.',
+      firstActionLabel: 'Start a new message',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Threads list in the left rail; the right pane shows the active conversation in the Gmail-shape silhouette.' },
+        { caption: 'Mark as read, archive, or search — all mutations write to the substrate; offline edits queue and replay.' },
+        { caption: 'Channels routed through Concord-Mesh fall back to BLE / WiFi-Direct when offline.' },
+      ],
+    },
   },
   {
     domain: 'ops',
@@ -1980,6 +2731,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['dtu_metrics', 'attention_status', 'repair_recent', 'physical_status', 'explore_recent', 'forge_recent', 'cortex_recent', 'lattice_recent'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'productivity',
@@ -1989,6 +2741,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md', 'pdf', 'svg'],
     actions: ['create_notebook', 'create_sheet', 'render_diagram', 'create_mindmap', 'create_outline', 'create_slides'],
     category: 'productivity',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'sandbox',
@@ -1998,6 +2751,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['spawn_dummies', 'reset_arena', 'record_run', 'replay_run'],
     category: 'creative',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'self',
@@ -2007,6 +2761,19 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['log_fitness', 'log_sleep', 'log_mood', 'add_journal_entry', 'log_meditation', 'view_trends'],
     category: 'lifestyle',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Your self log is empty.',
+      caption: 'Log fitness, sleep, mood, journal entries, meditation. The trends view rolls up across all five streams to surface patterns.',
+      firstActionLabel: 'Add your first entry',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Five log kinds (fitness / sleep / mood / journal / meditation). Each is a private DTU you own.' },
+        { caption: 'view_trends rolls weeks of data into a single mood vs. sleep vs. workout overlay.' },
+        { caption: 'Journal entries can cite DTUs from any other lens — your self-reflection lives in the same substrate as your work.' },
+      ],
+    },
   },
   {
     domain: 'sentinel',
@@ -2016,6 +2783,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['intel_status', 'shield_status', 'semantic_status', 'list_alerts'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'society',
@@ -2025,6 +2793,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['culture_metrics', 'entity_economy_status', 'autonomy_recent', 'conflict_status', 'teaching_status', 'list_personas'],
     category: 'social',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'system',
@@ -2034,6 +2803,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'md'],
     actions: ['cartograph', 'list_nodes', 'show_cross_refs', 'health_status'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'tools',
@@ -2043,6 +2813,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'pdf'],
     actions: ['web_research', 'compile_build', 'request_signature'],
     category: 'productivity',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'tournaments',
@@ -2052,6 +2823,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_tournaments', 'view_bracket', 'register_player', 'submit_result', 'organize_tournament'],
     category: 'social',
+    dataTier: 'SIM_GRADE_A',
   },
   {
     domain: 'ux-suite',
@@ -2069,6 +2841,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_components', 'render_demo', 'apply_preset', 'record_visit'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'worldmodel',
@@ -2078,6 +2851,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['create_scenario', 'run_simulation', 'view_forecast', 'compare_counterfactuals'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
   {
     domain: 'dx-platform',
@@ -2087,6 +2861,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv'],
     actions: ['register_codebase', 'run_detectors', 'view_billing', 'top_up_wallet', 'web_editor_demo', 'record_fix_decision'],
     category: 'system',
+    dataTier: 'REAL_LIVE',
   },
 
   // ═══════════════════════════════════════════════════════════════

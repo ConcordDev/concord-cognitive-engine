@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PrivacyFeed } from '@/components/privacy/PrivacyFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useEffect } from 'react';
@@ -558,7 +561,9 @@ export default function PrivacySharingPage() {
 
   return (
     <LensShell lensId="privacy" asMain={false}>
+      <FirstRunTour lensId="privacy" />
       <ManifestActionBar />
+      <DepthBadge lensId="privacy" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -840,6 +845,7 @@ export default function PrivacySharingPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="privacy" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

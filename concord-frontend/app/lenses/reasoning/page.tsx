@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ReasoningArxiv } from '@/components/reasoning/ReasoningArxiv';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -986,6 +989,8 @@ export default function ReasoningLensPage() {
 
   return (
     <LensShell lensId="reasoning" asMain={false}>
+      <FirstRunTour lensId="reasoning" />
+      <DepthBadge lensId="reasoning" size="sm" className="ml-2" />
     <div data-lens-theme="reasoning" className={ds.pageContainer}>
       {/* ---- Header ---- */}
       <header className={ds.sectionHeader}>
@@ -2534,6 +2539,7 @@ export default function ReasoningLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#reasoning-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to reasoning content</a>
+          <RecentMineCard domain="reasoning" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

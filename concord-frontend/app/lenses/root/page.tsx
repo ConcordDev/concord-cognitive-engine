@@ -3,6 +3,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RootMetrics } from '@/components/root/RootMetrics';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -165,7 +168,9 @@ export default function RootLens() {
 
   return (
     <LensShell lensId="root" asMain={false}>
+      <FirstRunTour lensId="root" />
       <ManifestActionBar />
+      <DepthBadge lensId="root" size="sm" className="ml-2" />
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6 sm:p-8 font-mono">
       <div className="max-w-3xl mx-auto space-y-8">
 
@@ -332,6 +337,7 @@ export default function RootLens() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
+          <RecentMineCard domain="root" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

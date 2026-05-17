@@ -24,6 +24,9 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { api } from '@/lib/api/client';
@@ -133,7 +136,9 @@ export default function UnderstandingPage() {
 
   return (
     <LensShell lensId="understanding" asMain={false}>
+      <FirstRunTour lensId="understanding" />
       <ManifestActionBar />
+      <DepthBadge lensId="understanding" size="sm" className="ml-2" />
       <main className="min-h-screen p-6 max-w-6xl mx-auto text-white">
         <header className="flex items-start justify-between gap-3 mb-5 flex-wrap">
           <div>
@@ -171,6 +176,7 @@ export default function UnderstandingPage() {
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="understanding" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -263,7 +266,9 @@ export default function SpaceLensPage() {
 
   return (
     <LensShell lensId="space" asMain={false}>
+      <FirstRunTour lensId="space" />
       <ManifestActionBar />
+      <DepthBadge lensId="space" size="sm" className="ml-2" />
     <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>
 
       {/* ── Header with starfield gradient ── */}
@@ -645,6 +650,7 @@ export default function SpaceLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#space-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to space content</a>
+          <RecentMineCard domain="space" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

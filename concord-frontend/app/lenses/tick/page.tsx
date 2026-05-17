@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TickRate } from '@/components/tick/TickRate';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -535,7 +538,9 @@ export default function TickLensPage() {
 
   return (
     <LensShell lensId="tick" asMain={false}>
+      <FirstRunTour lensId="tick" />
       <ManifestActionBar />
+      <DepthBadge lensId="tick" size="sm" className="ml-2" />
     <div data-lens-theme="tick" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -1152,6 +1157,7 @@ export default function TickLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#tick-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to tick content</a>
+          <RecentMineCard domain="tick" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

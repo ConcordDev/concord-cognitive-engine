@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ParentingFeed } from '@/components/parenting/ParentingFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -342,7 +345,9 @@ export default function ParentingLensPage() {
 
   return (
     <LensShell lensId="parenting" asMain={false}>
+      <FirstRunTour lensId="parenting" />
       <ManifestActionBar />
+      <DepthBadge lensId="parenting" size="sm" className="ml-2" />
     <div data-lens-theme="parenting" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -382,6 +387,7 @@ export default function ParentingLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#parenting-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to parenting content</a>
+          <RecentMineCard domain="parenting" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

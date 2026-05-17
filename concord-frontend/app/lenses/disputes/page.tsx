@@ -11,6 +11,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LawStackFeed } from '@/components/disputes/LawStackFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback } from 'react';
@@ -712,7 +715,9 @@ export default function DisputesPage() {
 
   return (
     <LensShell lensId="disputes" asMain={false}>
+      <FirstRunTour lensId="disputes" />
       <ManifestActionBar />
+      <DepthBadge lensId="disputes" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* Header */}
       <div className={ds.sectionHeader}>
@@ -1031,6 +1036,7 @@ export default function DisputesPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="disputes" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

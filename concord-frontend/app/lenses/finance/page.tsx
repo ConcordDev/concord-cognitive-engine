@@ -2,6 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MarketsPulse } from '@/components/finance/MarketsPulse';
 import { FinanceActionPanel } from '@/components/finance/FinanceActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1783,6 +1786,8 @@ export default function FinanceLensPage() {
 
   return (
     <LensShell lensId="finance" asMain={false}>
+      <FirstRunTour lensId="finance" />
+      <DepthBadge lensId="finance" size="sm" className="ml-2" />
     <div data-lens-theme="finance" className="p-6 space-y-6 bg-[#0c0f14] font-mono">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -2410,6 +2415,7 @@ export default function FinanceLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="finance" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

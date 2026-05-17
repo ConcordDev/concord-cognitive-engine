@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DailyInspiration } from '@/components/daily/DailyInspiration';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -375,7 +378,9 @@ export default function DailyLensPage() {
   }
   return (
     <LensShell lensId="daily" asMain={false}>
+      <FirstRunTour lensId="daily" />
       <ManifestActionBar />
+      <DepthBadge lensId="daily" size="sm" className="ml-2" />
     <div data-lens-theme="daily" className="h-[calc(100vh-4rem)] flex bg-lattice-deep text-white overflow-hidden">
       {/* =================== LEFT SIDEBAR =================== */}
       <aside className="w-72 border-r border-lattice-border bg-lattice-surface/40 flex flex-col shrink-0">
@@ -964,6 +969,7 @@ export default function DailyLensPage() {
         </section>
       </main>
     </div>
+          <RecentMineCard domain="daily" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

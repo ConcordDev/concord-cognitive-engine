@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
@@ -189,7 +192,9 @@ export default function AppMakerLens() {
 
   return (
     <LensShell lensId="app-maker" asMain={false}>
+      <FirstRunTour lensId="app-maker" />
       <ManifestActionBar />
+      <DepthBadge lensId="app-maker" size="sm" className="ml-2" />
     <div data-lens-theme="app-maker" className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Boxes className="w-6 h-6 text-neon-cyan" />
@@ -614,6 +619,7 @@ export default function AppMakerLens() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="app-maker" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

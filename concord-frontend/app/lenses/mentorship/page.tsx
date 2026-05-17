@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MentorshipFeed } from '@/components/mentorship/MentorshipFeed';
 import { MentorshipActionPanel } from '@/components/mentorship/MentorshipActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -191,7 +194,9 @@ export default function MentorshipLensPage() {
 
   return (
     <LensShell lensId="mentorship" asMain={false}>
+      <FirstRunTour lensId="mentorship" />
       <ManifestActionBar />
+      <DepthBadge lensId="mentorship" size="sm" className="ml-2" />
     <div data-lens-theme="mentorship" className="p-6 space-y-6">
       <motion.header
         initial={{ opacity: 0, y: -10 }}
@@ -622,6 +627,7 @@ export default function MentorshipLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="mentorship" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ProjectMgmtRepos } from '@/components/projects/ProjectMgmtRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -221,7 +224,9 @@ export default function ProjectsLensPage() {
 
   return (
     <LensShell lensId="projects" asMain={false}>
+      <FirstRunTour lensId="projects" />
       <ManifestActionBar />
+      <DepthBadge lensId="projects" size="sm" className="ml-2" />
     <div data-lens-theme="projects" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -503,6 +508,7 @@ export default function ProjectsLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#projects-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to projects content</a>
+          <RecentMineCard domain="projects" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

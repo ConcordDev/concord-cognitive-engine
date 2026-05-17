@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MarketingFeed } from '@/components/marketing/MarketingFeed';
 import { MarketingActionPanel } from '@/components/marketing/MarketingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -404,7 +407,9 @@ export default function MarketingLensPage() {
 
   return (
     <LensShell lensId="marketing" asMain={false}>
+      <FirstRunTour lensId="marketing" />
       <ManifestActionBar />
+      <DepthBadge lensId="marketing" size="sm" className="ml-2" />
     <div data-lens-theme="marketing" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -521,6 +526,7 @@ export default function MarketingLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#marketing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to marketing content</a>
+          <RecentMineCard domain="marketing" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

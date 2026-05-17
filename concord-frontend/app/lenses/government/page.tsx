@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BillsList } from '@/components/government/BillsList';
 import { GovernmentActionPanel } from '@/components/government/GovernmentActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -3179,6 +3181,8 @@ export default function GovernmentLensPage() {
 
   return (
     <LensShell lensId="government" asMain={false}>
+      <FirstRunTour lensId="government" />
+      <DepthBadge lensId="government" size="sm" className="ml-2" />
     <div data-lens-theme="government" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

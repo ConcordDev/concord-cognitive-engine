@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HvacFeed } from '@/components/hvac/HvacFeed';
 import { ManualJCalc } from '@/components/hvac/ManualJCalc';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -631,7 +634,9 @@ export default function HVACLensPage() {
 
   return (
     <LensShell lensId="hvac" asMain={false}>
+      <FirstRunTour lensId="hvac" />
       <ManifestActionBar />
+      <DepthBadge lensId="hvac" size="sm" className="ml-2" />
     <LensPageShell
       domain="hvac"
       title="HVAC"
@@ -729,6 +734,7 @@ export default function HVACLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#hvac-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to hvac content</a>
+          <RecentMineCard domain="hvac" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

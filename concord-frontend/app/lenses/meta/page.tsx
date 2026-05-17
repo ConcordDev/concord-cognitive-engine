@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SystemHealth } from '@/components/meta/SystemHealth';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -1151,7 +1154,9 @@ export default function MetaLensPage() {
   );
   return (
     <LensShell lensId="meta" asMain={false}>
+      <FirstRunTour lensId="meta" />
       <ManifestActionBar />
+      <DepthBadge lensId="meta" size="sm" className="ml-2" />
     <div data-lens-theme="meta" className="p-6 space-y-6">
       {/* Header */}
       <motion.header
@@ -1219,6 +1224,7 @@ export default function MetaLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
       <a href="#meta-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to meta content</a>
+          <RecentMineCard domain="meta" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

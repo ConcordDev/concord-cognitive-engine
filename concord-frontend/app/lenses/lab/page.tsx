@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivLabFeed } from '@/components/lab/ArxivLabFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
@@ -105,7 +108,9 @@ export default function LabLensPage() {
   }
   return (
     <LensShell lensId="lab" asMain={false}>
+      <FirstRunTour lensId="lab" />
       <ManifestActionBar />
+      <DepthBadge lensId="lab" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -287,6 +292,7 @@ export default function LabLensPage() {
         <ArxivLabFeed />
       </section>
     </div>
+          <RecentMineCard domain="lab" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

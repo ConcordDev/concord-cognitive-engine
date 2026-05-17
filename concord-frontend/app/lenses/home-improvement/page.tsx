@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HomeImprovementFeed } from '@/components/home-improvement/HomeImprovementFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -214,7 +217,9 @@ export default function HomeImprovementLensPage() {
 
   return (
     <LensShell lensId="home-improvement" asMain={false}>
+      <FirstRunTour lensId="home-improvement" />
       <ManifestActionBar />
+      <DepthBadge lensId="home-improvement" size="sm" className="ml-2" />
     <div data-lens-theme="home-improvement" className="p-6 space-y-6">
       <motion.header
         initial={{ opacity: 0, y: -10 }}
@@ -715,6 +720,7 @@ export default function HomeImprovementLensPage() {
         <HomeImprovementFeed />
       </section>
     </div>
+          <RecentMineCard domain="home-improvement" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -215,7 +218,9 @@ export default function ForkLensPage() {
   }
   return (
     <LensShell lensId="fork" asMain={false}>
+      <FirstRunTour lensId="fork" />
       <ManifestActionBar />
+      <DepthBadge lensId="fork" size="sm" className="ml-2" />
     <div data-lens-theme="fork" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -754,6 +759,7 @@ export default function ForkLensPage() {
         <ForkNetworkExplorer />
       </section>
     </div>
+          <RecentMineCard domain="fork" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

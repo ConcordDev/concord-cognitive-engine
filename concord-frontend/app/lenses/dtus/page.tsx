@@ -13,6 +13,9 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingDtus } from '@/components/dtus/TrendingDtus';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -164,7 +167,9 @@ export default function DTUBrowserPage() {
 
   return (
     <LensShell lensId="dtus" asMain={false}>
+      <FirstRunTour lensId="dtus" />
       <ManifestActionBar />
+      <DepthBadge lensId="dtus" size="sm" className="ml-2" />
     <div data-lens-theme="dtus" className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-lattice-surface/80 backdrop-blur border-b border-lattice-border">
@@ -675,6 +680,7 @@ export default function DTUBrowserPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="dtus" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -3,7 +3,11 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QuantumArxiv } from '@/components/quantum/QuantumArxiv';
+import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -158,8 +162,12 @@ export default function QuantumLensPage() {
   }
   return (
     <LensShell lensId="quantum" asMain={false}>
+      <FirstRunTour lensId="quantum" />
       <ManifestActionBar />
+      <DepthBadge lensId="quantum" size="sm" className="ml-2" />
     <div data-lens-theme="quantum" className="p-6 space-y-6">
+      {/* Phase 4 — REAL arXiv quant-ph feed. */}
+      <ArxivPanel domain="quantum" title="arXiv · Quantum Physics (quant-ph)" />
       <header className="flex items-center gap-3">
         <span className="text-2xl">\u269B\uFE0F</span>
         <div>
@@ -490,6 +498,7 @@ export default function QuantumLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#quantum-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to quantum content</a>
+          <RecentMineCard domain="quantum" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

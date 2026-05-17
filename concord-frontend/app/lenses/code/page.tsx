@@ -4,6 +4,9 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { SafeCard } from '@/components/common/SafeCard';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -1293,8 +1296,10 @@ export default function CodeLensPage() {
 
   return (
     <LensShell lensId="code" asMain={false} disableAgentFab={true}>
+      <FirstRunTour lensId="code" />
       <ManifestActionBar />
-      <RivalShapePreview lensId="code" />
+      <DepthBadge lensId="code" size="sm" className="ml-2" />
+      <RivalShapePreview lensId="code" defaultOpen={true} />
     <div data-lens-theme="code" className={`flex flex-col font-mono ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'h-full bg-[#0d1117]'}`}>
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-green-900/40 bg-[#161b22]">
@@ -2560,6 +2565,7 @@ export default function CodeLensPage() {
         <CodeActionPanel />
       </section>
     </PipingProvider>
+          <RecentMineCard domain="code" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

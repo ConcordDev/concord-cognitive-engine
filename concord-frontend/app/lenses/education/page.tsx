@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GutenbergCurriculum } from '@/components/education/GutenbergCurriculum';
 import { EducationActionPanel } from '@/components/education/EducationActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1299,6 +1301,8 @@ export default function EducationLensPage() {
 
   return (
     <LensShell lensId="education" asMain={false}>
+      <FirstRunTour lensId="education" />
+      <DepthBadge lensId="education" size="sm" className="ml-2" />
     <div data-lens-theme="education" className="p-6 space-y-6 bg-gradient-to-b from-amber-950/10 to-transparent">
       {/* Header */}
       <header className={ds.sectionHeader}>

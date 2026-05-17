@@ -2,6 +2,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlatformRepos } from '@/components/platform/PlatformRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -352,7 +355,9 @@ export default function PlatformPage() {
 
   return (
     <LensShell lensId="platform" asMain={false}>
+      <FirstRunTour lensId="platform" />
       <ManifestActionBar />
+      <DepthBadge lensId="platform" size="sm" className="ml-2" />
     <div data-lens-theme="platform" className="min-h-screen bg-lattice-void text-gray-200">
       {/* Top Bar */}
       <div className="border-b border-lattice-border bg-lattice-deep/50 backdrop-blur-sm sticky top-0 z-10">
@@ -561,6 +566,7 @@ export default function PlatformPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#platform-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to platform content</a>
+          <RecentMineCard domain="platform" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

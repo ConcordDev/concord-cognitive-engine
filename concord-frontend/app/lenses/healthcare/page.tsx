@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import SymptomChecker from '@/components/healthcare/SymptomChecker';
 import MedicationTracker from '@/components/healthcare/MedicationTracker';
 import PatientChart from '@/components/healthcare/PatientChart';
@@ -1491,7 +1493,9 @@ export default function HealthcareLensPage() {
 
   return (
     <LensShell lensId="healthcare" asMain={false}>
-      <RivalShapePreview lensId="healthcare" />
+      <FirstRunTour lensId="healthcare" />
+      <DepthBadge lensId="healthcare" size="sm" className="ml-2" />
+      <RivalShapePreview lensId="healthcare" defaultOpen={true} />
     <div
       data-lens-theme="healthcare"
       className="p-6 space-y-6 bg-gradient-to-b from-blue-950/20 to-transparent"

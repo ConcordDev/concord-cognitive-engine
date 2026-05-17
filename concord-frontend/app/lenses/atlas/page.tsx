@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { OsmGeocodePanel } from '@/components/atlas/OsmGeocodePanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -149,8 +153,12 @@ export default function AtlasLensPage() {
 
   return (
     <LensShell lensId="atlas" asMain={false}>
+      <FirstRunTour lensId="atlas" />
       <ManifestActionBar />
+      <DepthBadge lensId="atlas" size="sm" className="ml-2" />
     <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
+      {/* Phase 4 — REAL OpenStreetMap Nominatim search. Tier-1 honest live geocode. */}
+      <OsmGeocodePanel />
       {/* Error banner */}
       {(coverageError || anomalyError) && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-between">
@@ -512,6 +520,7 @@ export default function AtlasLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#atlas-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to atlas content</a>
+          <RecentMineCard domain="atlas" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -3,6 +3,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnEngineeringFeed } from '@/components/engineering/HnEngineeringFeed';
 import { EngineeringActionPanel } from '@/components/engineering/EngineeringActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -347,7 +350,9 @@ export default function EngineeringPage() {
 
   return (
     <LensShell lensId="engineering" asMain={false}>
+      <FirstRunTour lensId="engineering" />
       <ManifestActionBar />
+      <DepthBadge lensId="engineering" size="sm" className="ml-2" />
     <div className="min-h-screen bg-lattice-void text-white p-4 space-y-4 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -828,6 +833,7 @@ export default function EngineeringPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="engineering" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,9 @@
 
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GdeltHeadlines } from '@/components/news-explorer/GdeltHeadlines';
 import { NewsActionPanel } from '@/components/news/NewsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -310,7 +313,9 @@ export default function NewsLensPage() {
 
   return (
     <LensShell lensId="news" asMain={false}>
+      <FirstRunTour lensId="news" />
       <ManifestActionBar />
+      <DepthBadge lensId="news" size="sm" className="ml-2" />
     <div data-lens-theme="news" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -1032,6 +1037,7 @@ export default function NewsLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="news" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

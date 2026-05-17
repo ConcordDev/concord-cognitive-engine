@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ExportFormatGallery } from '@/components/export/ExportFormatGallery';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -199,7 +202,9 @@ export default function ExportLensPage() {
 
   return (
     <LensShell lensId="export" asMain={false}>
+      <FirstRunTour lensId="export" />
       <ManifestActionBar />
+      <DepthBadge lensId="export" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <Download className="w-7 h-7 text-neon-green" />
@@ -582,6 +587,7 @@ export default function ExportLensPage() {
         <ExportFormatGallery />
       </section>
     </div>
+          <RecentMineCard domain="export" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

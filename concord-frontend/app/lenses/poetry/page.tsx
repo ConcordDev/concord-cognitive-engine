@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -394,7 +397,9 @@ export default function PoetryPage() {
 
   return (
     <LensShell lensId="poetry" asMain={false}>
+      <FirstRunTour lensId="poetry" />
       <ManifestActionBar />
+      <DepthBadge lensId="poetry" size="sm" className="ml-2" />
     <div data-lens-theme="poetry" className="min-h-screen">
       {/* Reading Mode Overlay */}
       <AnimatePresence>
@@ -675,6 +680,7 @@ export default function PoetryPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="poetry" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

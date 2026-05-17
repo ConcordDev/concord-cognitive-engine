@@ -3,6 +3,9 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MshaLookup } from '@/components/mining/MshaLookup';
 import { MiningActionPanel } from '@/components/mining/MiningActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -176,7 +179,9 @@ export default function MiningLensPage() {
 
   return (
     <LensShell lensId="mining" asMain={false}>
+      <FirstRunTour lensId="mining" />
       <ManifestActionBar />
+      <DepthBadge lensId="mining" size="sm" className="ml-2" />
     <LensPageShell
       domain="mining"
       title="Mining Operations"
@@ -378,6 +383,7 @@ export default function MiningLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#mining-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to mining content</a>
+          <RecentMineCard domain="mining" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LegacyChatter } from '@/components/legacy/LegacyChatter';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -100,7 +103,9 @@ export default function LegacyLensPage() {
   }
   return (
     <LensShell lensId="legacy" asMain={false}>
+      <FirstRunTour lensId="legacy" />
       <ManifestActionBar />
+      <DepthBadge lensId="legacy" size="sm" className="ml-2" />
     <div data-lens-theme="legacy" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🏛️</span>
@@ -527,6 +532,7 @@ export default function LegacyLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#legacy-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legacy content</a>
+          <RecentMineCard domain="legacy" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

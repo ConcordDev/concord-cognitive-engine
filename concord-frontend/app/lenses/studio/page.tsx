@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { StudioRepos } from '@/components/studio/StudioRepos';
 import { StudioActionPanel } from '@/components/studio/StudioActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1581,6 +1584,8 @@ export default function StudioLensPage() {
   // ---- Render: Active project ----
   return (
     <LensShell lensId="studio" asMain={false} disableAgentFab={true}>
+      <FirstRunTour lensId="studio" />
+      <DepthBadge lensId="studio" size="sm" className="ml-2" />
     <div
       className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
       data-lens-theme="studio"
@@ -2671,6 +2676,7 @@ export default function StudioLensPage() {
           <StudioActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="studio" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

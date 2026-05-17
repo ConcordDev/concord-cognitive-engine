@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -228,7 +231,9 @@ export default function AttentionLensPage() {
 
   return (
     <LensShell lensId="attention" asMain={false}>
+      <FirstRunTour lensId="attention" />
       <ManifestActionBar />
+      <DepthBadge lensId="attention" size="sm" className="ml-2" />
     <div data-lens-theme="attention" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -952,6 +957,7 @@ export default function AttentionLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#attention-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to attention content</a>
+          <RecentMineCard domain="attention" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

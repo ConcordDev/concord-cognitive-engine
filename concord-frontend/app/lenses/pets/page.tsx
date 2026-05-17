@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BreedExplorer } from '@/components/pets/BreedExplorer';
 import { PetCarePlanner } from '@/components/pets/PetCarePlanner';
 import { ActivityWeightDashboard } from '@/components/pets/ActivityWeightDashboard';
@@ -380,7 +383,9 @@ export default function PetsLensPage() {
 
   return (
     <LensShell lensId="pets" asMain={false}>
+      <FirstRunTour lensId="pets" />
       <ManifestActionBar />
+      <DepthBadge lensId="pets" size="sm" className="ml-2" />
     <div data-lens-theme="pets" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -443,6 +448,7 @@ export default function PetsLensPage() {
           );
         })()}
       </AnimatePresence>
+          <RecentMineCard domain="pets" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

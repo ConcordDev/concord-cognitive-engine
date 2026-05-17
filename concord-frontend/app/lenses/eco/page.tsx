@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WeatherPanel } from '@/components/eco/WeatherPanel';
 import { WeatherRadar } from '@/components/eco/WeatherRadar';
 import { AQIPanel } from '@/components/eco/AQIPanel';
@@ -962,7 +965,9 @@ export default function EcoLensPage() {
 
   return (
     <LensShell lensId="eco" asMain={false}>
+      <FirstRunTour lensId="eco" />
       <ManifestActionBar />
+      <DepthBadge lensId="eco" size="sm" className="ml-2" />
     <div data-lens-theme="eco" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1274,6 +1279,7 @@ export default function EcoLensPage() {
         <WeatherPanel />
       </section>
     </div>
+          <RecentMineCard domain="eco" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

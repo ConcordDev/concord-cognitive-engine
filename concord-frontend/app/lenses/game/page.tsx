@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GameFeed } from '@/components/game/GameFeed';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -929,6 +932,8 @@ export default function GameLensPage() {
   }
   return (
     <LensShell lensId="game" asMain={false}>
+      <FirstRunTour lensId="game" />
+      <DepthBadge lensId="game" size="sm" className="ml-2" />
     <div className="p-6 space-y-6 min-h-screen">
       {/* Header */}
       <header className="flex items-center justify-between flex-wrap gap-4">
@@ -1862,6 +1867,7 @@ export default function GameLensPage() {
         <GameFeed />
       </section>
     </div>
+          <RecentMineCard domain="game" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

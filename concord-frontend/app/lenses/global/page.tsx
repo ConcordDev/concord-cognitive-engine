@@ -2,6 +2,9 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -163,7 +166,9 @@ export default function GlobalLensPage() {
 
   return (
     <LensShell lensId="global" asMain={false}>
+      <FirstRunTour lensId="global" />
       <ManifestActionBar />
+      <DepthBadge lensId="global" size="sm" className="ml-2" />
     <div data-lens-theme="global" className="p-6 space-y-5">
       <motion.header
         initial={{ opacity: 0, y: -10 }}
@@ -685,6 +690,7 @@ export default function GlobalLensPage() {
         <CountryAtlas />
       </section>
     </div>
+          <RecentMineCard domain="global" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

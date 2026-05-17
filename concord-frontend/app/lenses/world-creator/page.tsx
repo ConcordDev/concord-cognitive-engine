@@ -22,6 +22,9 @@ import { } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldBuilderInspo } from '@/components/world-creator/WorldBuilderInspo';
 
 const UNIVERSE_TYPES = [
@@ -105,6 +108,8 @@ export default function WorldCreatorPage() {
 
   return (
     <LensShell lensId="world-creator">
+      <FirstRunTour lensId="world-creator" />
+      <DepthBadge lensId="world-creator" size="sm" className="ml-2" />
       <div className="mx-auto max-w-3xl px-6 py-8 text-stone-100">
         <header className="mb-8">
           <h1 className="text-3xl font-semibold tracking-tight">Create a sub-world</h1>
@@ -235,6 +240,7 @@ export default function WorldCreatorPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="world-creator" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from "@/hooks/useLensCommand";
@@ -635,7 +638,9 @@ export default function CarpentryLensPage() {
 
   return (
     <LensShell lensId="carpentry" asMain={false}>
+      <FirstRunTour lensId="carpentry" />
       <ManifestActionBar />
+      <DepthBadge lensId="carpentry" size="sm" className="ml-2" />
     <LensPageShell
       domain="carpentry"
       title="Carpentry"
@@ -776,6 +781,7 @@ export default function CarpentryLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#carpentry-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to carpentry content</a>
+          <RecentMineCard domain="carpentry" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

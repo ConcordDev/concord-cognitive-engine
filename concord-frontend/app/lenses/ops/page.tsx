@@ -12,6 +12,9 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpsRepos } from '@/components/ops/OpsRepos';
 import { OpsActionPanel } from '@/components/ops/OpsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -98,7 +101,9 @@ export default function OpsLensPage() {
 
   return (
     <LensShell lensId="ops" asMain={false}>
+      <FirstRunTour lensId="ops" />
       <ManifestActionBar />
+      <DepthBadge lensId="ops" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-slate-50">
       <header className="sticky top-0 z-10 border-b border-slate-800/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -256,6 +261,7 @@ export default function OpsLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
+          <RecentMineCard domain="ops" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

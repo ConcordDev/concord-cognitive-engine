@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AnatomyExplorer } from '@/components/organ/AnatomyExplorer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -181,7 +184,9 @@ export default function OrganLensPage() {
 
   return (
     <LensShell lensId="organ" asMain={false}>
+      <FirstRunTour lensId="organ" />
       <ManifestActionBar />
+      <DepthBadge lensId="organ" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -694,6 +699,7 @@ export default function OrganLensPage() {
         <AnatomyExplorer />
       </section>
     </div>
+          <RecentMineCard domain="organ" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

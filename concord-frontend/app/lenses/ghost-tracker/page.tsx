@@ -9,6 +9,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HauntingsFeed } from '@/components/ghost-tracker/HauntingsFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -62,7 +65,9 @@ export default function GhostTrackerPage() {
 
   return (
     <LensShell lensId="ghost-tracker" asMain={false}>
+      <FirstRunTour lensId="ghost-tracker" />
       <ManifestActionBar />
+      <DepthBadge lensId="ghost-tracker" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5">
           <h1 className="text-3xl font-semibold text-violet-300">Ghost Tracker</h1>
@@ -99,6 +104,7 @@ export default function GhostTrackerPage() {
           <HauntingsFeed />
         </section>
       </div>
+          <RecentMineCard domain="ghost-tracker" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

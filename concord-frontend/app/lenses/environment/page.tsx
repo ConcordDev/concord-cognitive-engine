@@ -3,6 +3,8 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EnviroPanel } from '@/components/environment/EnviroPanel';
 import { ComplianceDiversionPanel } from '@/components/environment/ComplianceDiversionPanel';
 import { AirQualityActionStack } from '@/components/environment/AirQualityActionStack';
@@ -3322,6 +3324,8 @@ export default function EnvironmentLensPage() {
 
   return (
     <LensShell lensId="environment" asMain={false}>
+      <FirstRunTour lensId="environment" />
+      <DepthBadge lensId="environment" size="sm" className="ml-2" />
     <LensPageShell
       domain="environment"
       title="Environmental Monitoring"

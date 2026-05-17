@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FashionFeed } from '@/components/fashion/FashionFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -170,7 +173,9 @@ export default function FashionLensPage() {
 
   return (
     <LensShell lensId="fashion" asMain={false}>
+      <FirstRunTour lensId="fashion" />
       <ManifestActionBar />
+      <DepthBadge lensId="fashion" size="sm" className="ml-2" />
     <div data-lens-theme="fashion" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -624,6 +629,7 @@ export default function FashionLensPage() {
         <FashionFeed />
       </section>
     </div>
+          <RecentMineCard domain="fashion" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

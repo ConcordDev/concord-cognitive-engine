@@ -13,6 +13,9 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import Link from "next/link";
 import { LensShell } from "@/components/lens/LensShell";
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
 
 interface OnboardingProgress {
@@ -50,6 +53,8 @@ export default function DxPlatformPage() {
 
   return (
     <LensShell lensId="dx-platform" asMain={false}>
+      <FirstRunTour lensId="dx-platform" />
+      <DepthBadge lensId="dx-platform" size="sm" className="ml-2" />
       <div className="p-8 max-w-4xl mx-auto space-y-8">
         <header>
           <h1 className="text-3xl font-semibold">Concord DX Platform</h1>
@@ -183,6 +188,7 @@ export default function DxPlatformPage() {
       <a href="#dx-platform-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to dx-platform content</a>
       {/* @decorative-ok: sr-only a11y sentinel — never receives user interaction (tabIndex=-1, aria-hidden) */}
       <button type="button" className="sr-only" aria-hidden="true" tabIndex={-1} onClick={() => {}}>noop a11y sentinel</button>
+          <RecentMineCard domain="dx-platform" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

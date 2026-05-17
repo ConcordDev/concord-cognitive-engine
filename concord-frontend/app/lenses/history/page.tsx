@@ -2,6 +2,10 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { WikipediaOnThisDayPanel } from '@/components/history/WikipediaOnThisDayPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -189,8 +193,12 @@ export default function HistoryLensPage() {
 
   return (
     <LensShell lensId="history" asMain={false}>
+      <FirstRunTour lensId="history" />
       <ManifestActionBar />
+      <DepthBadge lensId="history" size="sm" className="ml-2" />
     <div data-lens-theme="history" className="p-6 space-y-6">
+      {/* Phase 4 — REAL Wikipedia On This Day. Tier-1 honest free data. */}
+      <WikipediaOnThisDayPanel />
       <header className="flex items-center gap-3">
         <Clock className="w-6 h-6 text-neon-cyan" />
         <div>
@@ -636,6 +644,7 @@ export default function HistoryLensPage() {
         <TimelineSourceTools />
       </section>
     </div>
+          <RecentMineCard domain="history" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

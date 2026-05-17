@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WordLookup } from '@/components/linguistics/WordLookup';
 import { LinguisticsActionPanel } from '@/components/linguistics/LinguisticsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -206,7 +209,9 @@ export default function LinguisticsLensPage() {
 
   return (
     <LensShell lensId="linguistics" asMain={false}>
+      <FirstRunTour lensId="linguistics" />
       <ManifestActionBar />
+      <DepthBadge lensId="linguistics" size="sm" className="ml-2" />
     <div data-lens-theme="linguistics" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <Languages className="w-6 h-6 text-pink-400" />
@@ -679,6 +684,7 @@ export default function LinguisticsLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="linguistics" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

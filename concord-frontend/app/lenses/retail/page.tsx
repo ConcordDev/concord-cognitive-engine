@@ -2,6 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1863,6 +1866,8 @@ export default function RetailLensPage() {
 
   return (
     <LensShell lensId="retail" asMain={false}>
+      <FirstRunTour lensId="retail" />
+      <DepthBadge lensId="retail" size="sm" className="ml-2" />
     <div data-lens-theme="retail" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -2027,6 +2032,7 @@ export default function RetailLensPage() {
           <RetailActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="retail" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

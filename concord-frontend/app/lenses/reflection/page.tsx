@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ReflectionFeed } from '@/components/reflection/ReflectionFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -149,7 +152,9 @@ export default function ReflectionLensPage() {
   }
   return (
     <LensShell lensId="reflection" asMain={false}>
+      <FirstRunTour lensId="reflection" />
       <ManifestActionBar />
+      <DepthBadge lensId="reflection" size="sm" className="ml-2" />
     <div data-lens-theme="reflection" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🪞</span>
@@ -592,6 +597,7 @@ export default function ReflectionLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#reflection-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to reflection content</a>
+          <RecentMineCard domain="reflection" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

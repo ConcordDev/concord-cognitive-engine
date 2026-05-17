@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlumbingFeed } from '@/components/plumbing/PlumbingFeed';
 import { PlumbCalc } from '@/components/plumbing/PlumbCalc';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -640,7 +643,9 @@ export default function PlumbingLensPage() {
 
   return (
     <LensShell lensId="plumbing" asMain={false}>
+      <FirstRunTour lensId="plumbing" />
       <ManifestActionBar />
+      <DepthBadge lensId="plumbing" size="sm" className="ml-2" />
     <LensPageShell
       domain="plumbing"
       title="Plumbing"
@@ -768,6 +773,7 @@ export default function PlumbingLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#plumbing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to plumbing content</a>
+          <RecentMineCard domain="plumbing" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

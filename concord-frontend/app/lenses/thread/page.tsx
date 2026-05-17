@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ThreadFeed } from '@/components/thread/ThreadFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -331,7 +334,9 @@ export default function ThreadLensPage() {
   }
   return (
     <LensShell lensId="thread" asMain={false}>
+      <FirstRunTour lensId="thread" />
       <ManifestActionBar />
+      <DepthBadge lensId="thread" size="sm" className="ml-2" />
     <div data-lens-theme="thread" className="h-[calc(100vh-4rem)] flex flex-col">
       <header className="flex items-center justify-between p-4 border-b border-lattice-border">
         <div className="flex items-center gap-3">
@@ -812,6 +817,7 @@ export default function ThreadLensPage() {
         <ThreadFeed />
       </section>
     </div>
+          <RecentMineCard domain="thread" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

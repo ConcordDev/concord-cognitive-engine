@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SecurityRepos } from '@/components/lock/SecurityRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { use70Lock } from '@/hooks/use70Lock';
@@ -163,7 +166,9 @@ export default function LockLensPage() {
   }
   return (
     <LensShell lensId="lock" asMain={false}>
+      <FirstRunTour lensId="lock" />
       <ManifestActionBar />
+      <DepthBadge lensId="lock" size="sm" className="ml-2" />
     <div data-lens-theme="lock" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -832,6 +837,7 @@ export default function LockLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#lock-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to lock content</a>
+          <RecentMineCard domain="lock" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

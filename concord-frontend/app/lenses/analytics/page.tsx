@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { AnalyticsActionPanel } from '@/components/analytics/AnalyticsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -266,7 +269,9 @@ export default function AnalyticsPage() {
 
   return (
     <LensShell lensId="analytics" asMain={false}>
+      <FirstRunTour lensId="analytics" />
       <ManifestActionBar />
+      <DepthBadge lensId="analytics" size="sm" className="ml-2" />
     <div className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="bg-lattice-surface border-b border-lattice-border">
@@ -925,6 +930,7 @@ export default function AnalyticsPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#analytics-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to analytics content</a>
+          <RecentMineCard domain="analytics" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

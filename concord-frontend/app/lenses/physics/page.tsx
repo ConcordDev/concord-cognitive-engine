@@ -3,7 +3,11 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhysicsArxiv } from '@/components/physics/PhysicsArxiv';
+import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -1037,7 +1041,12 @@ export default function PhysicsLensPage() {
   }
   return (
     <LensShell lensId="physics" asMain={false}>
+      <FirstRunTour lensId="physics" />
+      <DepthBadge lensId="physics" size="sm" className="ml-2" />
     <div data-lens-theme="physics" className="p-6 space-y-6">
+      {/* Phase 4 — REAL arXiv physics feed, sorted by submission date. */}
+      <ArxivPanel domain="physics" title="arXiv · Physics" />
+
       {/* Sub-Lenses */}
       <SubLensQuickNav lensId="physics" />
 
@@ -1740,6 +1749,7 @@ export default function PhysicsLensPage() {
         <PhysicsActionPanel />
       </section>
     </PipingProvider>
+          <RecentMineCard domain="physics" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 

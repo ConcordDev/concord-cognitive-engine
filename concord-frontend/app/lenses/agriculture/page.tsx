@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1449,6 +1452,8 @@ export default function AgricultureLensPage() {
   }
   return (
     <LensShell lensId="agriculture" asMain={false}>
+      <FirstRunTour lensId="agriculture" />
+      <DepthBadge lensId="agriculture" size="sm" className="ml-2" />
     <div data-lens-theme="agriculture" className={ds.pageContainer}>
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -1962,6 +1967,7 @@ export default function AgricultureLensPage() {
           <AgricultureActionPanel />
         </section>
       </PipingProvider>
+          <RecentMineCard domain="agriculture" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

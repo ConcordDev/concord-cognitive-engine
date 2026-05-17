@@ -2,6 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaEarthEvents } from '@/components/events/NasaEarthEvents';
 import { useState, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -2506,6 +2509,8 @@ export default function EventsLensPage() {
   // ---------------------------------------------------------------------------
   return (
     <LensShell lensId="events" asMain={false}>
+      <FirstRunTour lensId="events" />
+      <DepthBadge lensId="events" size="sm" className="ml-2" />
     <div data-lens-theme="events" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -2880,6 +2885,7 @@ export default function EventsLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#events-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to events content</a>
+          <RecentMineCard domain="events" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

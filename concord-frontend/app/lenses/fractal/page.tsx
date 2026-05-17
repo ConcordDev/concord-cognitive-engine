@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FractalRepos } from '@/components/fractal/FractalRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -402,7 +405,9 @@ export default function FractalLensPage() {
 
   return (
     <LensShell lensId="fractal" asMain={false}>
+      <FirstRunTour lensId="fractal" />
       <ManifestActionBar />
+      <DepthBadge lensId="fractal" size="sm" className="ml-2" />
     <div data-lens-theme="fractal" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -464,6 +469,7 @@ export default function FractalLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#fractal-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to fractal content</a>
+          <RecentMineCard domain="fractal" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -2,7 +2,11 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
+import { NasaLivePanel } from '@/components/astronomy/NasaLivePanel';
 import { AstronomyActionPanel } from '@/components/astronomy/AstronomyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -212,7 +216,9 @@ export default function AstronomyLensPage() {
 
   return (
     <LensShell lensId="astronomy" asMain={false}>
+      <FirstRunTour lensId="astronomy" />
       <ManifestActionBar />
+      <DepthBadge lensId="astronomy" size="sm" className="ml-2" />
     <div data-lens-theme="astronomy" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -399,6 +405,11 @@ export default function AstronomyLensPage() {
         </div>
       )}
 
+      {/* Phase 4 — REAL NASA live data (APOD / ISS / NEO). Lens-grade "this is real, not synthetic" proof. */}
+      <section className="rounded-xl">
+        <NasaLivePanel />
+      </section>
+
       {/* Bespoke NASA APOD + ISS + NEO explorer with shared DateScrubber + Save-as-DTU */}
       <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <NasaExplorer />
@@ -419,6 +430,7 @@ export default function AstronomyLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="astronomy" /></div>}
       </div>
     </div>
+          <RecentMineCard domain="astronomy" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

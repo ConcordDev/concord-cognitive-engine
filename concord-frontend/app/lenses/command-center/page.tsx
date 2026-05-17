@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConcordVitals } from '@/components/command-center/ConcordVitals';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
@@ -1889,6 +1892,8 @@ export default function CommandCenterPage() {
 
   return (
     <LensShell lensId="command-center" asMain={false}>
+      <FirstRunTour lensId="command-center" />
+      <DepthBadge lensId="command-center" size="sm" className="ml-2" />
     <div data-lens-theme="dashboard" className="min-h-screen bg-[#070b10] text-white">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#0a0f18]/95 backdrop-blur-md border-b border-cyan-900/20 px-4 py-3">
@@ -2027,6 +2032,7 @@ export default function CommandCenterPage() {
         <ConcordVitals />
       </section>
     </div>
+          <RecentMineCard domain="command-center" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

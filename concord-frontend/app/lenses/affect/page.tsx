@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -580,6 +583,8 @@ export default function AffectLensPage() {
 
   return (
     <LensShell lensId="affect" asMain={false}>
+      <FirstRunTour lensId="affect" />
+      <DepthBadge lensId="affect" size="sm" className="ml-2" />
     <div data-lens-theme="affect" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -2216,6 +2221,7 @@ export default function AffectLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#affect-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to affect content</a>
+          <RecentMineCard domain="affect" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

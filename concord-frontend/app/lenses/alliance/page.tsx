@@ -2,6 +2,9 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -193,7 +196,9 @@ export default function AllianceLensPage() {
   }
   return (
     <LensShell lensId="alliance" asMain={false}>
+      <FirstRunTour lensId="alliance" />
       <ManifestActionBar />
+      <DepthBadge lensId="alliance" size="sm" className="ml-2" />
     <div data-lens-theme="alliance" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -683,6 +688,7 @@ export default function AllianceLensPage() {
         <FactionWarIntel />
       </section>
     </div>
+          <RecentMineCard domain="alliance" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -3,6 +3,9 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
 import { PodcastActionPanel } from '@/components/podcast/PodcastActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -373,7 +376,9 @@ export default function PodcastLensPage() {
 
   return (
     <LensShell lensId="podcast" asMain={false}>
+      <FirstRunTour lensId="podcast" />
       <ManifestActionBar />
+      <DepthBadge lensId="podcast" size="sm" className="ml-2" />
     <div data-lens-theme="podcast" className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="border-b border-white/10 bg-lattice-surface/50 backdrop-blur-xl sticky top-0 z-30">
@@ -924,6 +929,7 @@ export default function PodcastLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="podcast" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

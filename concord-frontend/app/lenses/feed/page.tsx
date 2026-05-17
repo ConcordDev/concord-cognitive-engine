@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnFrontPage } from '@/components/feed/HnFrontPage';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -942,6 +945,8 @@ export default function FeedLensPage() {
   }
   return (
     <LensShell lensId="feed" asMain={false}>
+      <FirstRunTour lensId="feed" />
+      <DepthBadge lensId="feed" size="sm" className="ml-2" />
     <div className="lens-feed min-h-full bg-lattice-bg flex" data-lens-theme="feed">
       {/* ── Left Sidebar ──────────────────────────────────────────────────── */}
       <aside className="w-20 xl:w-64 border-r border-lattice-border/50 p-2 xl:p-4 flex flex-col items-center xl:items-start sticky top-0 h-screen overflow-y-auto bg-gradient-to-b from-lattice-surface to-lattice-bg">
@@ -2244,6 +2249,7 @@ export default function FeedLensPage() {
         <HnFrontPage />
       </section>
     </div>
+          <RecentMineCard domain="feed" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

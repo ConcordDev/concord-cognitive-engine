@@ -15,6 +15,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MeshRepos } from '@/components/mesh/MeshRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -117,7 +120,9 @@ export default function MeshLensPage() {
 
   return (
     <LensShell lensId="mesh" asMain={false}>
+      <FirstRunTour lensId="mesh" />
       <ManifestActionBar />
+      <DepthBadge lensId="mesh" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-teal-50">
       <header className="sticky top-0 z-10 border-b border-teal-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -255,6 +260,7 @@ export default function MeshLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
+          <RecentMineCard domain="mesh" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

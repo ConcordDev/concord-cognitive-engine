@@ -3,7 +3,11 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RoboticsRepos } from '@/components/robotics/RoboticsRepos';
+import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { RoboticsActionPanel } from '@/components/robotics/RoboticsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -242,8 +246,12 @@ export default function RoboticsLensPage() {
 
   return (
     <LensShell lensId="robotics" asMain={false}>
+      <FirstRunTour lensId="robotics" />
       <ManifestActionBar />
+      <DepthBadge lensId="robotics" size="sm" className="ml-2" />
     <div data-lens-theme="robotics" className="p-6 space-y-6">
+      {/* Phase 4 — REAL arXiv robotics feed (cs.RO). */}
+      <ArxivPanel domain="robotics" title="arXiv · Robotics (cs.RO)" />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Bot className="w-8 h-8 text-neon-cyan" />
@@ -599,6 +607,7 @@ export default function RoboticsLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="robotics" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

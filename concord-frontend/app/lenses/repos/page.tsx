@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingRepos } from '@/components/repos/TrendingRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -237,7 +240,9 @@ export default function ReposLensPage() {
   }
   return (
     <LensShell lensId="repos" asMain={false}>
+      <FirstRunTour lensId="repos" />
       <ManifestActionBar />
+      <DepthBadge lensId="repos" size="sm" className="ml-2" />
     <div data-lens-theme="repos" className="min-h-full bg-[#0d1117]">
       {/* Header */}
       <header className="bg-[#161b22] border-b border-gray-700">
@@ -664,6 +669,7 @@ export default function ReposLensPage() {
         <TrendingRepos />
       </section>
     </div>
+          <RecentMineCard domain="repos" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

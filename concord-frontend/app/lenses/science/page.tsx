@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ScienceArxiv } from '@/components/science/ScienceArxiv';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
@@ -1762,6 +1765,8 @@ export default function ScienceLensPage() {
 
   return (
     <LensShell lensId="science" asMain={false}>
+      <FirstRunTour lensId="science" />
+      <DepthBadge lensId="science" size="sm" className="ml-2" />
     <div data-lens-theme="science" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -2202,6 +2207,7 @@ export default function ScienceLensPage() {
       <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ScienceArxiv />
       </section>
+          <RecentMineCard domain="science" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

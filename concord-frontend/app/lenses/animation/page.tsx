@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -312,7 +315,9 @@ export default function AnimationPage() {
 
   return (
     <LensShell lensId="animation" asMain={false}>
+      <FirstRunTour lensId="animation" />
       <ManifestActionBar />
+      <DepthBadge lensId="animation" size="sm" className="ml-2" />
     <div data-lens-theme="animation" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
@@ -673,6 +678,7 @@ export default function AnimationPage() {
         <AnimationReference />
       </section>
     </div>
+          <RecentMineCard domain="animation" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

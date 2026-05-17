@@ -16,6 +16,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EsportsFeed } from '@/components/tournaments/EsportsFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Trophy, Users, Coins, Plus, Play, ChevronRight } from 'lucide-react';
@@ -103,7 +106,9 @@ export default function TournamentsPage() {
 
   return (
     <LensShell lensId="tournaments" asMain={false}>
+      <FirstRunTour lensId="tournaments" />
       <ManifestActionBar />
+      <DepthBadge lensId="tournaments" size="sm" className="ml-2" />
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 flex items-center justify-between">
@@ -139,6 +144,7 @@ export default function TournamentsPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
+          <RecentMineCard domain="tournaments" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

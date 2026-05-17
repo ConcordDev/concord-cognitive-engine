@@ -15,6 +15,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -282,7 +285,9 @@ export default function MeditationLensPage() {
 
   return (
     <LensShell lensId="meditation">
+      <FirstRunTour lensId="meditation" />
       <ManifestActionBar />
+      <DepthBadge lensId="meditation" size="sm" className="ml-2" />
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-zinc-950 to-purple-950/20 text-zinc-100 px-4 sm:px-6 py-8">
         <div className="mx-auto max-w-2xl">
           <header className="mb-6 flex items-center gap-3">
@@ -530,6 +535,7 @@ export default function MeditationLensPage() {
           </AnimatePresence>
         </div>
       </div>
+          <RecentMineCard domain="meditation" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

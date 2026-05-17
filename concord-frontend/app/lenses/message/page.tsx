@@ -18,6 +18,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MessagingRepos } from '@/components/message/MessagingRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -225,7 +228,9 @@ export default function MessageLensPage() {
 
   return (
     <LensShell lensId="message" asMain={false}>
+      <FirstRunTour lensId="message" />
       <ManifestActionBar />
+      <DepthBadge lensId="message" size="sm" className="ml-2" />
       <div className="h-[calc(100vh-6rem)]">
         <InboxShell
           labels={[
@@ -387,6 +392,7 @@ export default function MessageLensPage() {
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MessagingRepos />
       </section>
+          <RecentMineCard domain="message" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

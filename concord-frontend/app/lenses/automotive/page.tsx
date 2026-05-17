@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VinDecoder } from '@/components/automotive/VinDecoder';
 import { FuelRepairPanel } from '@/components/automotive/FuelRepairPanel';
 import { VehicleHistory } from '@/components/automotive/VehicleHistory';
@@ -629,7 +632,9 @@ export default function AutomotiveLensPage() {
 
   return (
     <LensShell lensId="automotive" asMain={false}>
+      <FirstRunTour lensId="automotive" />
       <ManifestActionBar />
+      <DepthBadge lensId="automotive" size="sm" className="ml-2" />
     <LensPageShell
       domain="automotive"
       title="Automotive"
@@ -732,6 +737,7 @@ export default function AutomotiveLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#automotive-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to automotive content</a>
+          <RecentMineCard domain="automotive" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

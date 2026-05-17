@@ -2,6 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SimRepos } from '@/components/sim/SimRepos';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -988,6 +991,8 @@ export default function SimLensPage() {
 
   return (
     <LensShell lensId="sim" asMain={false}>
+      <FirstRunTour lensId="sim" />
+      <DepthBadge lensId="sim" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className={ds.sectionHeader}>
@@ -1843,6 +1848,7 @@ export default function SimLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#sim-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to sim content</a>
+          <RecentMineCard domain="sim" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

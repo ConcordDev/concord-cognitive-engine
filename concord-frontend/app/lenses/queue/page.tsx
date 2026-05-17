@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QueueRepos } from '@/components/queue/QueueRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -131,7 +134,9 @@ export default function QueueLensPage() {
   }
   return (
     <LensShell lensId="queue" asMain={false}>
+      <FirstRunTour lensId="queue" />
       <ManifestActionBar />
+      <DepthBadge lensId="queue" size="sm" className="ml-2" />
     <div data-lens-theme="queue" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">📥</span>
@@ -630,6 +635,7 @@ export default function QueueLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#queue-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to queue content</a>
+          <RecentMineCard domain="queue" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

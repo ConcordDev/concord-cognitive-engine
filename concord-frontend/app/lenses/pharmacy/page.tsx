@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -17,7 +20,9 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { FdaDrugReference } from '@/components/pharmacy/FdaDrugReference';
+import { FdaLivePanel } from '@/components/pharmacy/FdaLivePanel';
 import { PharmacyActionPanel } from '@/components/pharmacy/PharmacyActionPanel';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { PipingProvider } from '@/components/panel-polish';
 
 interface Medication {
@@ -149,7 +154,9 @@ export default function PharmacyLensPage() {
 
   return (
     <LensShell lensId="pharmacy" asMain={false}>
+      <FirstRunTour lensId="pharmacy" />
       <ManifestActionBar />
+      <DepthBadge lensId="pharmacy" size="sm" className="ml-2" />
     <div data-lens-theme="pharmacy" className="p-6 space-y-6">
       {/* Disclaimer */}
       <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -519,6 +526,17 @@ export default function PharmacyLensPage() {
               </select>
               <button onClick={addMedication} className="px-4 py-2 bg-neon-green/20 text-neon-green rounded-lg text-sm hover:bg-neon-green/30 focus:outline-none focus:ring-2 focus:ring-amber-500">Add</button>
             </div>
+            {/* Phase 1 — DraftedTextarea: server-side auto-save with offline mirror. */}
+            <div className="mt-3">
+              <label className="block text-xs text-gray-400 mb-1">Intake notes (auto-saved as you type)</label>
+              <DraftedTextarea
+                lensId="pharmacy"
+                draftKey="rxIntakeNotes"
+                placeholder="Patient notes, allergies, prior reactions, doctor's instructions…"
+                className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm h-24 resize-y"
+                wrapperClassName="w-full"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -616,8 +634,12 @@ export default function PharmacyLensPage() {
 
       {/* FDA Reference Tab — real OpenFDA-backed drug reference */}
       {activeTab === 'fda' && (
-        <div className="panel p-4">
-          <FdaDrugReference />
+        <div className="space-y-4">
+          {/* Phase 4 — REAL FDA OpenFDA data (labels / adverse events / recalls). */}
+          <FdaLivePanel />
+          <div className="panel p-4">
+            <FdaDrugReference />
+          </div>
         </div>
       )}
 
@@ -639,6 +661,7 @@ export default function PharmacyLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="pharmacy" /></div>}
       </div>
     </div>
+          <RecentMineCard domain="pharmacy" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

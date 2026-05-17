@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -159,7 +162,9 @@ export default function BridgeLens() {
 
   return (
     <LensShell lensId="bridge" asMain={false}>
+      <FirstRunTour lensId="bridge" />
       <ManifestActionBar />
+      <DepthBadge lensId="bridge" size="sm" className="ml-2" />
     <div data-lens-theme="bridge" className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -573,6 +578,7 @@ export default function BridgeLens() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="bridge" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -9,6 +9,9 @@
 
 import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BaseCampAlmanac } from '@/components/expedition-journal/BaseCampAlmanac';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { gameModeOrchestrator } from '@/lib/concordia/game-mode-orchestrator';
@@ -59,7 +62,9 @@ export default function ExpeditionJournalPage() {
 
   return (
     <LensShell lensId="expedition-journal" asMain={false}>
+      <FirstRunTour lensId="expedition-journal" />
       <ManifestActionBar />
+      <DepthBadge lensId="expedition-journal" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5">
           <h1 className="text-3xl font-semibold text-emerald-300">Expedition Journal</h1>
@@ -100,6 +105,7 @@ export default function ExpeditionJournalPage() {
           <BaseCampAlmanac />
         </section>
       </div>
+          <RecentMineCard domain="expedition-journal" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

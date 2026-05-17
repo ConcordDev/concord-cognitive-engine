@@ -4,6 +4,9 @@ import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CouncilVoices } from '@/components/council/CouncilVoices';
 import { CouncilActionPanel } from '@/components/council/CouncilActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -2501,6 +2504,8 @@ export default function CouncilLensPage() {
   // ===== MAIN RENDER =====
   return (
     <LensShell lensId="council" asMain={false}>
+      <FirstRunTour lensId="council" />
+      <DepthBadge lensId="council" size="sm" className="ml-2" />
     <div data-lens-theme="council" className={ds.pageContainer}>
       {/* Header */}
       <header>
@@ -3453,6 +3458,7 @@ export default function CouncilLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#council-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to council content</a>
+          <RecentMineCard domain="council" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

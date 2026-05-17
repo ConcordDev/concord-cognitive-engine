@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ForumChatter } from '@/components/forum/ForumChatter';
 import { ForumActionPanel } from '@/components/forum/ForumActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -792,7 +795,9 @@ export default function ForumLensPage() {
   }
   return (
     <LensShell lensId="forum" asMain={false}>
+      <FirstRunTour lensId="forum" />
       <ManifestActionBar />
+      <DepthBadge lensId="forum" size="sm" className="ml-2" />
     <div className="lens-forum min-h-full bg-lattice-bg" data-lens-theme="forum">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-lattice-surface/95 backdrop-blur border-b border-orange-500/10">
@@ -1177,6 +1182,7 @@ export default function ForumLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="forum" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

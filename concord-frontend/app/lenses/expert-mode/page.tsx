@@ -19,6 +19,9 @@ import { useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BrainPoolStatus } from '@/components/expert-mode/BrainPoolStatus';
 import { AnswerActionPanel } from '@/components/expert-mode/AnswerActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -141,6 +144,8 @@ export default function ExpertModeLens() {
 
   return (
     <LensShell lensId="expert-mode">
+      <FirstRunTour lensId="expert-mode" />
+      <DepthBadge lensId="expert-mode" size="sm" className="ml-2" />
     <div className="min-h-screen bg-zinc-950 text-zinc-100 px-4 sm:px-6 py-8">
       <div className="mx-auto max-w-3xl">
         {busy && (
@@ -277,6 +282,7 @@ export default function ExpertModeLens() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <RecentMineCard domain="expert-mode" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

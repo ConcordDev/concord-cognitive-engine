@@ -3,6 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TransferRepos } from '@/components/transfer/TransferRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -113,7 +116,9 @@ export default function TransferLensPage() {
   }
   return (
     <LensShell lensId="transfer" asMain={false}>
+      <FirstRunTour lensId="transfer" />
       <ManifestActionBar />
+      <DepthBadge lensId="transfer" size="sm" className="ml-2" />
     <div data-lens-theme="transfer" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🔄</span>
@@ -483,6 +488,7 @@ export default function TransferLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#transfer-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to transfer content</a>
+          <RecentMineCard domain="transfer" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

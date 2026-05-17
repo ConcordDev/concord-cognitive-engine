@@ -2,6 +2,9 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WhiteboardRepos } from '@/components/whiteboard/WhiteboardRepos';
 import { WhiteboardActionPanel } from '@/components/whiteboard/WhiteboardActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -942,7 +945,9 @@ export default function WhiteboardLensPage() {
   }
   return (
     <LensShell lensId="whiteboard" asMain={false}>
-      <RivalShapePreview lensId="whiteboard" />
+      <FirstRunTour lensId="whiteboard" />
+      <DepthBadge lensId="whiteboard" size="sm" className="ml-2" />
+      <RivalShapePreview lensId="whiteboard" defaultOpen={true} />
     <div className="h-full flex bg-lattice-bg">
       {/* ===== Sidebar ===== */}
       <aside className="w-64 border-r border-lattice-border bg-lattice-surface p-4 flex flex-col">
@@ -1687,6 +1692,7 @@ export default function WhiteboardLensPage() {
         <WhiteboardActionPanel />
       </section>
     </PipingProvider>
+          <RecentMineCard domain="whiteboard" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

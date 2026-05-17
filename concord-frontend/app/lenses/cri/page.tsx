@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QualityDistribution } from '@/components/cri/QualityDistribution';
 import { CrisisActionPanel } from '@/components/cri/CrisisActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -191,7 +194,9 @@ export default function CRILensPage() {
 
   return (
     <LensShell lensId="cri" asMain={false}>
+      <FirstRunTour lensId="cri" />
       <ManifestActionBar />
+      <DepthBadge lensId="cri" size="sm" className="ml-2" />
     <div data-lens-theme="cri" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <BarChart3 className="w-6 h-6 text-neon-cyan" />
@@ -753,6 +758,7 @@ export default function CRILensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#cri-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to cri content</a>
+          <RecentMineCard domain="cri" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

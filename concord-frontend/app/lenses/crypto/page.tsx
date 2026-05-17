@@ -2,6 +2,9 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CoinGeckoTicker } from '@/components/crypto/CoinGeckoTicker';
 import { CryptoActionPanel } from '@/components/crypto/CryptoActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -544,8 +547,10 @@ export default function CryptoLensPage() {
 
   return (
     <LensShell lensId="crypto" asMain={false}>
+      <FirstRunTour lensId="crypto" />
       <ManifestActionBar />
-      <RivalShapePreview lensId="crypto" />
+      <DepthBadge lensId="crypto" size="sm" className="ml-2" />
+      <RivalShapePreview lensId="crypto" defaultOpen={true} />
     <div data-lens-theme="crypto" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1633,6 +1638,7 @@ export default function CryptoLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <RecentMineCard domain="crypto" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

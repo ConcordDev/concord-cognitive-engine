@@ -2,6 +2,9 @@
 
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SufferingRef } from '@/components/suffering/SufferingRef';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -102,7 +105,9 @@ export default function SufferingLensPage() {
   }
   return (
     <LensShell lensId="suffering" asMain={false}>
+      <FirstRunTour lensId="suffering" />
       <ManifestActionBar />
+      <DepthBadge lensId="suffering" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       {/* Wellbeing Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -354,6 +359,7 @@ export default function SufferingLensPage() {
         <SufferingRef />
       </section>
     </div>
+          <RecentMineCard domain="suffering" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }
