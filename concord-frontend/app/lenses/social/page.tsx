@@ -30,7 +30,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Globe2, Users, Bell, TrendingUp, BarChart3,
-  Sparkles, Hash, Activity, Loader2, Bookmark,
+  Sparkles, Hash, Activity, Loader2, Bookmark, Play,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -55,8 +55,9 @@ import { StreakIndicator } from '@/components/social/StreakIndicator';
 import { CreatorAnalytics } from '@/components/social/CreatorAnalytics';
 import { UserLink } from '@/components/social/UserLink';
 import { BookmarksList } from '@/components/social/BookmarksList';
+import { ReelsFeed } from '@/components/reels/ReelsFeed';
 
-type TabId = 'discover' | 'following' | 'notifications' | 'analytics' | 'saved';
+type TabId = 'discover' | 'reels' | 'following' | 'notifications' | 'analytics' | 'saved';
 
 interface MeResponse {
   ok: boolean;
@@ -95,6 +96,7 @@ export default function SocialHubPage() {
 
   const TABS: { id: TabId; label: string; icon: typeof Globe2; badge?: number }[] = [
     { id: 'discover',      label: 'For You',       icon: Sparkles },
+    { id: 'reels',         label: 'Reels',         icon: Play },
     { id: 'following',     label: 'Following',     icon: Users },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'saved',         label: 'Saved',         icon: Bookmark },
@@ -185,6 +187,10 @@ export default function SocialHubPage() {
               <NotificationCenter userId={currentUserId} mode="panel" />
             )}
 
+            {activeTab === 'reels' && (
+              <ReelsFeed />
+            )}
+
             {activeTab === 'saved' && (
               <BookmarksList currentUserId={currentUserId} />
             )}
@@ -224,6 +230,7 @@ export default function SocialHubPage() {
       <MobileTabBar
         tabs={[
           { id: 'discover',      label: 'For You',  icon: Sparkles },
+          { id: 'reels',         label: 'Reels',    icon: Play },
           { id: 'following',     label: 'Follow',   icon: Users },
           { id: 'notifications', label: 'Alerts',   icon: Bell },
           { id: 'saved',         label: 'Saved',    icon: Bookmark },

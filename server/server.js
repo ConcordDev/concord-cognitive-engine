@@ -9771,6 +9771,9 @@ async function runMacro(domain, name, input, ctx) {
     agriculture: new Set(["live_gbif"]),
     // Phase 11 (Item 9) — key-required REAL_FREE wires.
     weather: new Set(["live_forecast"]),
+    // Phase 11 (Item 6) — Reels feed reads. record_view is a write
+    // but tolerated as anonymous (viewer_user_id can be null).
+    reels: new Set(["list_for_you", "list_by_user", "record_view"]),
     paper: new Set(["live_openlibrary", "live_crossref", "live_openalex"]),
     education: new Set(["live_openlibrary", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     // Phase 4 (third wave) — scholarly + language wires.
@@ -23392,6 +23395,14 @@ registerFreeApiLiveMacros(register);
 // when the env var is missing instead of a fake demo response.
 import registerKeyRequiredLiveMacros from "./domains/key-required-live.js";
 registerKeyRequiredLiveMacros(register);
+
+// Phase 11 (Item 6) — Reels (short-form vertical video). Macros:
+// reels.{list_for_you, list_by_user, record_view, create_from_post}.
+// Reels reuse the in-memory social post substrate for reactions /
+// comments / shares / bookmarks; the reels table adds video metadata
+// + per-viewer watch analytics.
+import registerReelsMacros from "./domains/reels.js";
+registerReelsMacros(register);
 
 // Phase 4 cont'd — FDA OpenFDA wire-up for the pharmacy lens. Drug
 // labels, adverse-event reports, recent recalls. No key (rate-limited
