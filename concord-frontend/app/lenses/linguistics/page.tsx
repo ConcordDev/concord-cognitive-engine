@@ -3,8 +3,12 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
+import { DictionaryPanel } from '@/components/linguistics/DictionaryPanel';
 import { WordLookup } from '@/components/linguistics/WordLookup';
 import { LinguisticsActionPanel } from '@/components/linguistics/LinguisticsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -213,6 +217,11 @@ export default function LinguisticsLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="linguistics" size="sm" className="ml-2" />
     <div data-lens-theme="linguistics" className="p-6 space-y-6">
+      {/* Phase 4 (third wave) — REAL Datamuse + Dictionary panels. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <DatamusePanel domain="linguistics" />
+        <DictionaryPanel domain="linguistics" />
+      </div>
       <header className="flex items-center gap-3">
         <Languages className="w-6 h-6 text-pink-400" />
         <div>
@@ -685,6 +694,8 @@ export default function LinguisticsLensPage() {
       </PipingProvider>
     </div>
           <RecentMineCard domain="linguistics" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="linguistics" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="linguistics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

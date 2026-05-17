@@ -3,10 +3,13 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TidePredictions } from '@/components/ocean/TidePredictions';
 import { NoaaTidesPanel } from '@/components/ocean/NoaaTidesPanel';
+import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { WaveEcosystemPanel } from '@/components/ocean/WaveEcosystemPanel';
 import { TideActionStack } from '@/components/ocean/TideActionStack';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -226,6 +229,8 @@ export default function OceanLensPage() {
     <div data-lens-theme="ocean" className={cn(ds.pageContainer, 'space-y-4')}>
       {/* Phase 4 — REAL NOAA tide predictions for the next 24h. Tier-1 honest live data. */}
       <NoaaTidesPanel />
+      {/* Phase 4 (fourth wave) — REAL Wikipedia oceanography reference. */}
+      <WikipediaSearchPanel domain="ocean" title="Wikipedia · oceanography" />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
@@ -552,6 +557,8 @@ export default function OceanLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#ocean-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to ocean content</a>
           <RecentMineCard domain="ocean" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="ocean" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="ocean" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

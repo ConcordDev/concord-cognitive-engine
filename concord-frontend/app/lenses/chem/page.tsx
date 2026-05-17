@@ -3,9 +3,12 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
+import { PubChemPanel } from '@/components/chem/PubChemPanel';
 import { PeriodicTable } from '@/components/chem/PeriodicTable';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -128,6 +131,8 @@ export default function ChemLensPage() {
     <div data-lens-theme="chem" className="p-6 space-y-6">
       {/* Phase 4 — REAL arXiv chemistry feed (physics.chem-ph). */}
       <ArxivPanel domain="chem" title="arXiv · Chemical Physics" />
+      {/* Phase 4 — REAL PubChem (NIH) compound lookup. */}
+      <PubChemPanel />
       {/* Sub-Lenses */}
       <SubLensQuickNav lensId="chem" />
 
@@ -662,6 +667,8 @@ export default function ChemLensPage() {
         </section>
       </PipingProvider>
           <RecentMineCard domain="chem" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="chem" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="chem" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

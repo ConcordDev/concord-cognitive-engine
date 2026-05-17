@@ -13,7 +13,8 @@
  * MessageRenderer component to match the rest of the chat UI.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useDtuSurface } from '@/hooks/useDtuSurface';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles,
@@ -226,6 +227,15 @@ function DtuChip({
 }) {
   const domain = domainFromDtuId(id);
   const palette = domainBadgeClasses(domain);
+  // Phase 7 — fire-and-forget surface record so DownstreamBadge can
+  // show "used in chat" counts. Mounted once per id via ref-dedup.
+  const { record } = useDtuSurface();
+  const recordedRef = useRef(false);
+  useEffect(() => {
+    if (!id || recordedRef.current) return;
+    recordedRef.current = true;
+    void record({ dtuId: id, lensId: 'chat', surfaceKind: 'citation_chip' });
+  }, [id, record]);
   return (
     <button
       type="button"

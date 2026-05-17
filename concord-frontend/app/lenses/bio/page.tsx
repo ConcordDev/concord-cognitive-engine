@@ -3,9 +3,12 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
+import { PubMedPanel } from '@/components/research/PubMedPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -136,6 +139,8 @@ export default function BioLensPage() {
     <div data-lens-theme="bio" className="p-6 space-y-6">
       {/* Phase 4 — REAL arXiv q-bio feed. */}
       <ArxivPanel domain="bio" title="arXiv · Quantitative Biology" />
+      {/* Phase 4 — REAL PubMed (NCBI E-utilities) search. */}
+      <PubMedPanel domain="bio" title="PubMed · biology" initialQuery="CRISPR" />
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
@@ -473,6 +478,8 @@ export default function BioLensPage() {
       </section>
     </PipingProvider>
           <RecentMineCard domain="bio" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="bio" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="bio" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

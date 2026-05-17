@@ -3,8 +3,12 @@
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
+import { PoetryDbPanel } from '@/components/poetry/PoetryDbPanel';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -409,6 +413,10 @@ export default function PoetryPage() {
       </AnimatePresence>
 
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        {/* Phase 4 (third wave) — REAL Datamuse word-relationship panel: rhymes, near-rhymes, syllables. */}
+        <DatamusePanel domain="poetry" />
+        {/* Phase 4 (fifth wave) — REAL PoetryDB public-domain poem catalog. */}
+        <PoetryDbPanel />
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -681,6 +689,8 @@ export default function PoetryPage() {
       </PipingProvider>
     </div>
           <RecentMineCard domain="poetry" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="poetry" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="poetry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

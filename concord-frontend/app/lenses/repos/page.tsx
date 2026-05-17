@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingRepos } from '@/components/repos/TrendingRepos';
@@ -670,6 +672,8 @@ export default function ReposLensPage() {
       </section>
     </div>
           <RecentMineCard domain="repos" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="repos" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="repos" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

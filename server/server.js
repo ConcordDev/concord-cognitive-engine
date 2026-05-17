@@ -5607,7 +5607,7 @@ function authMiddleware(req, res, next) {
   // CRITICAL: Every frontend GET route must be listed here (Gate 1 of 3)
   const publicReadPaths = [
     // Core data
-    "/api/dtus", "/api/dtu", "/api/lenses", "/api/lens", "/api/emergent", "/api/knowledge",
+    "/api/dtus", "/api/dtu", "/api/lenses", "/api/lens", "/api/lens-actions", "/api/emergent", "/api/knowledge",
     "/api/search", "/api/species", "/api/events", "/api/schema",
     // Settings, metrics & context
     "/api/settings", "/api/growth", "/api/metrics", "/api/context",
@@ -9646,26 +9646,63 @@ async function runMacro(domain, name, input, ctx) {
     // {ok:false,reason:'no_user'}. Listing here bypasses the heavy
     // mutation gate for the high-frequency save/load path.
     drafts: new Set(["save", "load", "list_mine", "delete"]),
+    // Phase 5 — multi-step workflow sessions. Handlers self-scope by
+    // ctx.actor.userId; anonymous callers return {ok:false, reason:'no_user'}.
+    sessions: new Set(["start", "advance", "update_state", "get", "list_mine", "close"]),
+    // Phase 7 — cross-lens DTU surface log. record + 3 read macros for
+    // ProvenanceTrail / DownstreamBadge / cross-lens recents.
+    dtu_surface: new Set(["record", "where_used", "surfaced_from", "provenance_trail"]),
     // Phase 4 (UX completeness sprint) — real free-API wire-up.
     // External fetches go through these macros; no user data leaves the
     // server, so anonymous reads are safe.
-    astronomy: new Set(["live_apod", "live_iss", "live_neo"]),
-    geology: new Set(["live_quakes_today"]),
-    ocean: new Set(["live_tides"]),
+    geology: new Set(["live_quakes_today", "live_wiki_search", "live_wiki_summary"]),
+    ocean: new Set(["live_tides", "live_wiki_search", "live_wiki_summary"]),
     pharmacy: new Set(["live_label_lookup", "live_adverse_events", "live_recalls"]),
-    cooking: new Set(["live_food_search"]),
-    food: new Set(["live_food_search"]),
+    cooking: new Set(["live_food_search", "live_breweries"]),
+    food: new Set(["live_food_search", "live_breweries"]),
     art: new Set(["live_met_search"]),
     gallery: new Set(["live_met_search"]),
     // arXiv wire-up — one macro per domain pre-filtered to that arXiv category.
     physics: new Set(["live_arxiv"]),
     quantum: new Set(["live_arxiv"]),
     robotics: new Set(["live_arxiv"]),
-    neuro: new Set(["live_arxiv"]),
-    bio: new Set(["live_arxiv"]),
-    chem: new Set(["live_arxiv"]),
+    // Phase 4 cont'd — bio + neuro also get PubMed; chem also gets PubChem.
+    neuro: new Set(["live_arxiv", "live_pubmed_neuro", "live_wiki_search", "live_wiki_summary"]),
+    bio: new Set(["live_arxiv", "live_pubmed"]),
+    chem: new Set(["live_arxiv", "live_pubchem"]),
     ml: new Set(["live_arxiv"]),
     math: new Set(["live_arxiv"]),
+    // Phase 4 cont'd — additional REAL free-API wire-ups.
+    "mental-health": new Set(["live_medlineplus"]),
+    podcast: new Set(["live_itunes_search"]),
+    global: new Set(["live_countries", "live_wiki_search", "live_wiki_summary", "live_worldbank"]),
+    environment: new Set(["live_gbif"]),
+    forestry: new Set(["live_gbif"]),
+    agriculture: new Set(["live_gbif"]),
+    paper: new Set(["live_openlibrary", "live_crossref", "live_openalex"]),
+    education: new Set(["live_openlibrary", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
+    // Phase 4 (third wave) — scholarly + language wires.
+    research: new Set(["live_crossref", "live_openalex"]),
+    linguistics: new Set(["live_datamuse", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
+    "creative-writing": new Set(["live_datamuse"]),
+    poetry: new Set(["live_datamuse", "live_poetrydb"]),
+    // Phase 4 (fourth wave) — Wikipedia search + summary across reference lenses.
+    philosophy: new Set(["live_wiki_search", "live_wiki_summary"]),
+    desert: new Set(["live_wiki_search", "live_wiki_summary"]),
+    space: new Set(["live_wiki_search", "live_wiki_summary", "live_spaceflight_news", "live_launches_upcoming", "live_iss_pass"]),
+    // Phase 4 (fifth wave) — curated content APIs.
+    astronomy: new Set(["live_apod", "live_iss", "live_neo", "live_spaceflight_news", "live_launches_upcoming", "live_iss_pass"]),
+    daily: new Set(["live_quote"]),
+    reflection: new Set(["live_quote"]),
+    pets: new Set(["live_catfact", "live_dog"]),
+    // Phase 4 (sixth wave) — civic / postal / finance reference wires.
+    finance: new Set(["live_worldbank"]),
+    retail: new Set(["live_zippopotam"]),
+    logistics: new Set(["live_zippopotam"]),
+    travel: new Set(["live_zippopotam"]),
+    game: new Set(["live_trivia"]),
+    // Phase 4 (seventh wave) — CryptoCompare basic (no key).
+    crypto: new Set(["live_top", "live_price"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
@@ -9684,7 +9721,7 @@ async function runMacro(domain, name, input, ctx) {
     analytics: new Set(["dashboard", "growth", "density", "citations", "marketplace", "personal"]),
     atlas: new Set(["status", "get", "list", "scope", "config", "thresholds", "autogen", "chat", "contradictions", "score-explain", "submission", "search", "antigaming", "rights", "write-guard", "scope-metrics", "local-hints", "tile", "volume", "material", "subsurface", "change", "coverage", "live", "metrics", "live_geocode"]),
     // Phase 4 (UX completeness sprint) — history live wiki On This Day.
-    history: new Set(["live_wiki_otd"]),
+    history: new Set(["live_wiki_otd", "live_wiki_search", "live_wiki_summary"]),
     agents: new Set(["list", "get", "status"]),
     personas: new Set(["list", "get"]),
     affect: new Set(["state", "events", "health", "system", "policy"]),
@@ -23218,6 +23255,23 @@ registerBeatsMacros(register);
 import registerDraftsMacros from "./domains/drafts.js";
 registerDraftsMacros(register);
 
+// Phase 5 (UX completeness sprint) — multi-step workflow sessions.
+// Six macros (start / advance / update_state / get / list_mine / close)
+// powering the useLensSession hook. Each session belongs to a user × lens;
+// state is opaque JSON the lens owns. State capped at 1 MiB. Every
+// transition appends to lens_session_events for the timeline UI.
+import registerSessionsMacros from "./domains/sessions.js";
+registerSessionsMacros(register);
+
+// Phase 7 (UX completeness sprint) — cross-lens narrative substrate.
+// Four macros (record / where_used / surfaced_from / provenance_trail)
+// powering the ProvenanceTrail + DownstreamBadge + cross-lens recents
+// tile. Append-only dtu_surface_log table records every time a downstream
+// lens renders a DTU, so the upstream lens can show "your DTU is being
+// used here." Migration 196.
+import registerDtuSurfaceMacros from "./domains/dtu-surface.js";
+registerDtuSurfaceMacros(register);
+
 // Phase 2 (UX completeness sprint) — bulk-register <domain>.recent_mine
 // + <domain>.list_mine for every lens whose primary artifact is a DTU.
 // Mounts a uniform standard-shape recent-list for ~150 domains in one
@@ -23252,6 +23306,44 @@ registerPharmacyLiveMacros(register);
 // each pre-filtered by the right arXiv category. Free, no key.
 import registerResearchLiveMacros from "./domains/research-live.js";
 registerResearchLiveMacros(register);
+
+// Phase 4 cont'd — more REAL free-API wire-ups (no API keys needed):
+// PubChem (chem), NCBI PubMed (bio + neuro), MedlinePlus (mental-health),
+// iTunes Search (podcast), REST Countries (global), GBIF
+// (environment/forestry/agriculture), Open Library (paper + education).
+import registerMoreFreeApiMacros from "./domains/more-free-apis.js";
+registerMoreFreeApiMacros(register);
+
+// Phase 4 (third wave) — academic + language REAL_FREE wire-ups:
+// CrossRef (paper/research), OpenAlex (paper/research), Datamuse
+// (linguistics/creative-writing/poetry), Free Dictionary
+// (linguistics/education).
+import registerScholarlyApiMacros from "./domains/scholarly-apis.js";
+registerScholarlyApiMacros(register);
+
+// Phase 4 (fourth wave) — Wikipedia REST search + summary REAL_FREE wires
+// for history / philosophy / linguistics / education / desert / ocean /
+// neuro / geology / space / global. Pairs two macros per lens.
+import registerWikipediaSearchMacros from "./domains/wikipedia-search.js";
+registerWikipediaSearchMacros(register);
+
+// Phase 4 (fifth wave) — curated REAL_FREE content APIs: Spaceflight
+// News + Launch Library (astronomy/space), PoetryDB (poetry), Open
+// Trivia DB (game), Quotable (daily/reflection), Cat Facts (pets).
+import registerCuratedFreeApiMacros from "./domains/curated-free-apis.js";
+registerCuratedFreeApiMacros(register);
+
+// Phase 4 (sixth wave) — civic / reference REAL_FREE APIs: World Bank
+// indicators (global/finance), Open Brewery DB (food/cooking), Dog CEO
+// images (pets), Zippopotam postal lookup (retail/logistics/travel),
+// Open Notify ISS pass times (astronomy/space).
+import registerCivicDataApiMacros from "./domains/civic-data-apis.js";
+registerCivicDataApiMacros(register);
+
+// Phase 4 (seventh wave) — CryptoCompare basic (no key): top coins by
+// 24h volume + multi-asset price quotes for the crypto lens.
+import registerCryptoLiveMacros from "./domains/crypto-live.js";
+registerCryptoLiveMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";
@@ -40027,6 +40119,46 @@ app.get("/api/entity/:entityId/profile", asyncHandler(async (req, res) => {
 }));
 
 // Lens manifest endpoint — exposes action manifest per domain
+// ── Auto-discovery: every action actually registered for a domain ──────
+// Returns the union of LENS_ACTIONS (legacy registerLensAction) + MACROS
+// (canonical macro registry). Used by the AutoActionStrip to render a
+// button per compute call on every lens — closes the "registered but
+// never wired into UI" gap that left ~250 compute actions unreachable.
+app.get("/api/lens-actions/:domain", (req, res) => {
+  const domain = String(req.params.domain || "");
+  if (!domain || !/^[a-z0-9_-]+$/i.test(domain)) {
+    return res.status(400).json({ ok: false, error: "invalid_domain" });
+  }
+  // Pull every LENS_ACTIONS key that prefixes with this domain.
+  const lensActions = [];
+  for (const key of LENS_ACTIONS.keys()) {
+    const [d, ...rest] = key.split(".");
+    if (d === domain) lensActions.push(rest.join("."));
+  }
+  // Pull every macro registered for this domain.
+  const macroSubmap = MACROS.get(domain);
+  const macros = macroSubmap ? Array.from(macroSubmap.keys()) : [];
+  // Merge + dedupe.
+  const all = Array.from(new Set([...lensActions, ...macros])).sort();
+  // Annotate from DOMAIN_ACTION_MANIFEST where available.
+  const aiManifest = DOMAIN_ACTION_MANIFEST[domain] || [];
+  const aiMeta = new Map(aiManifest.map(a => [a.action, a]));
+  const actions = all.map(name => {
+    const ai = aiMeta.get(name);
+    return {
+      action: name,
+      desc: ai?.desc || null,
+      brain: ai?.brain || null,
+      isAi: !!ai,
+      isGenerative: /^(generate|build|suggest|create|compile|plan|design|compose)/i.test(name),
+      isAnalysis: /^(analyze|detect|validate|check|assess|compare|score|audit)/i.test(name),
+      isLive: /^live_/.test(name),
+      isCompute: !ai && !/^live_/.test(name),
+    };
+  });
+  res.json({ ok: true, domain, total: actions.length, actions });
+});
+
 app.get("/api/lens/manifest/:domain", (req, res) => {
   const domain = req.params.domain;
   const actions = DOMAIN_ACTION_MANIFEST[domain];

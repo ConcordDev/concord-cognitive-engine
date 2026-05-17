@@ -3,10 +3,15 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
 import { NasaLivePanel } from '@/components/astronomy/NasaLivePanel';
+import { SpaceflightNewsPanel } from '@/components/space/SpaceflightNewsPanel';
+import { UpcomingLaunchesPanel } from '@/components/space/UpcomingLaunchesPanel';
+import { IssPassPanel } from '@/components/astronomy/IssPassPanel';
 import { AstronomyActionPanel } from '@/components/astronomy/AstronomyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -220,6 +225,13 @@ export default function AstronomyLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="astronomy" size="sm" className="ml-2" />
     <div data-lens-theme="astronomy" className="p-6 space-y-6">
+      {/* Phase 4 (fifth wave) — REAL Spaceflight News + launch schedule. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SpaceflightNewsPanel domain="astronomy" />
+        <UpcomingLaunchesPanel domain="astronomy" />
+      </div>
+      {/* Phase 4 (sixth wave) — REAL ISS pass times for your city. */}
+      <IssPassPanel domain="astronomy" />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Telescope className="w-8 h-8 text-indigo-400" />
@@ -431,6 +443,8 @@ export default function AstronomyLensPage() {
       </div>
     </div>
           <RecentMineCard domain="astronomy" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="astronomy" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="astronomy" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

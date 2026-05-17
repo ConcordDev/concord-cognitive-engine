@@ -3,8 +3,11 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { PhiloFeed } from '@/components/philosophy/PhiloFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -184,6 +187,8 @@ export default function PhilosophyLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="philosophy" size="sm" className="ml-2" />
     <div data-lens-theme="philosophy" className="p-6 space-y-6">
+      {/* Phase 4 (fourth wave) — REAL Wikipedia concept lookup for philosophy. */}
+      <WikipediaSearchPanel domain="philosophy" title="Wikipedia · philosophy concepts" />
       <header className="flex items-center gap-3">
         <BookOpen className="w-6 h-6 text-neon-purple" />
         <div>
@@ -566,6 +571,8 @@ export default function PhilosophyLensPage() {
       </section>
     </div>
           <RecentMineCard domain="philosophy" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="philosophy" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="philosophy" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -4,8 +4,11 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
 import { PodcastActionPanel } from '@/components/podcast/PodcastActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -564,9 +567,11 @@ export default function PodcastLensPage() {
                 {/* Description */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Description</label>
-                  <textarea
-                    value={formDescription}
-                    onChange={e => setFormDescription(e.target.value)}
+                  <DraftedTextarea
+                    lensId="podcast"
+                    draftKey="episodeDescription"
+                    initial=""
+                    onValueChange={setFormDescription}
                     placeholder="Episode description..."
                     rows={4}
                     className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-400/50 resize-none"
@@ -930,6 +935,8 @@ export default function PodcastLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <RecentMineCard domain="podcast" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="podcast" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="podcast" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

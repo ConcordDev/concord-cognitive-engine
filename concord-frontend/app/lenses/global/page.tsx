@@ -3,9 +3,12 @@
 import { useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
+import { WorldBankPanel } from '@/components/global/WorldBankPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -170,6 +173,8 @@ export default function GlobalLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="global" size="sm" className="ml-2" />
     <div data-lens-theme="global" className="p-6 space-y-5">
+      {/* Phase 4 (sixth wave) — REAL World Bank country indicators. */}
+      <WorldBankPanel domain="global" />
       <motion.header
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -691,6 +696,8 @@ export default function GlobalLensPage() {
       </section>
     </div>
           <RecentMineCard domain="global" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="global" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="global" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

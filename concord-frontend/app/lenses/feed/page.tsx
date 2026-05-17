@@ -3,6 +3,8 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnFrontPage } from '@/components/feed/HnFrontPage';
@@ -2250,6 +2252,8 @@ export default function FeedLensPage() {
       </section>
     </div>
           <RecentMineCard domain="feed" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="feed" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="feed" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

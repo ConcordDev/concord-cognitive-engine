@@ -3,6 +3,8 @@
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GameDevRepos } from '@/components/game-design/GameDevRepos';
@@ -744,6 +746,8 @@ export default function GameDesignPage() {
       </section>
     </div>
           <RecentMineCard domain="game-design" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="game-design" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="game-design" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

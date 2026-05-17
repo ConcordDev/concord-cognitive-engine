@@ -5,8 +5,11 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { KPIStrip } from '@/components/accounting/KPIStrip';
 import { motion } from 'framer-motion';
@@ -1555,7 +1558,15 @@ export default function AccountingLensPage() {
         {/* Notes */}
         <div className="mt-6">
           <label className={ds.label}>Notes / Terms</label>
-          <textarea className={ds.textarea} rows={3} placeholder="Payment terms, thank you note, etc..." value={invNotes} onChange={e => setInvNotes(e.target.value)} />
+          <DraftedTextarea
+            lensId="accounting"
+            draftKey="invoiceNotes"
+            initial=""
+            onValueChange={setInvNotes}
+            className={ds.textarea}
+            rows={3}
+            placeholder="Payment terms, thank you note, etc..."
+          />
         </div>
 
         <div className="mt-4 flex items-center justify-end gap-3">
@@ -3064,6 +3075,8 @@ export default function AccountingLensPage() {
       </section>
     </PipingProvider>
           <RecentMineCard domain="accounting" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="accounting" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="accounting" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

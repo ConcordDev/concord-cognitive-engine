@@ -23,6 +23,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldBuilderInspo } from '@/components/world-creator/WorldBuilderInspo';
@@ -241,6 +243,8 @@ export default function WorldCreatorPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <RecentMineCard domain="world-creator" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="world-creator" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="world-creator" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

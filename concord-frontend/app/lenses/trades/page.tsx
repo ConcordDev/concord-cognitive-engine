@@ -3,6 +3,8 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TradesFeed } from '@/components/trades/TradesFeed';
@@ -2520,6 +2522,8 @@ export default function TradesLensPage() {
         <TradesFeed />
       </section>
           <RecentMineCard domain="trades" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="trades" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="trades" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

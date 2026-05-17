@@ -3,9 +3,13 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { SessionRail } from '@/components/lens/SessionRail';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ResearchArxiv } from '@/components/research/ResearchArxiv';
+import { CrossRefPanel } from '@/components/research/CrossRefPanel';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -323,6 +327,10 @@ export default function ResearchLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="research" size="sm" className="ml-2" />
     <div data-lens-theme="research" className="p-6 space-y-6">
+      {/* Phase 5 — open research-arc sessions for this lens. */}
+      <SessionRail lensId="research" hideWhenEmpty />
+      {/* Phase 4 (third wave) — REAL CrossRef DOI metadata search. */}
+      <CrossRefPanel domain="research" />
       <header className="flex items-center gap-3">
         <BookOpen className="w-6 h-6 text-neon-cyan" />
         <div>
@@ -906,6 +914,8 @@ export default function ResearchLensPage() {
       <ResearchArxiv />
     </section>
           <RecentMineCard domain="research" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="research" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="research" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

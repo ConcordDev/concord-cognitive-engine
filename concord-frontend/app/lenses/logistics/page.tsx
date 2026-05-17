@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
@@ -2760,6 +2762,8 @@ export default function LogisticsLensPage() {
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#logistics-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to logistics content</a>
           <RecentMineCard domain="logistics" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="logistics" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="logistics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

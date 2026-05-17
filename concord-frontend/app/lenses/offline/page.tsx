@@ -4,6 +4,8 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OfflineRepos } from '@/components/offline/OfflineRepos';
@@ -523,6 +525,8 @@ export default function OfflineLensPage() {
       </section>
     </div>
           <RecentMineCard domain="offline" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="offline" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="offline" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

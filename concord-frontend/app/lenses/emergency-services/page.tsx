@@ -3,6 +3,8 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QuakeFeed } from '@/components/emergency-services/QuakeFeed';
@@ -502,6 +504,8 @@ export default function EmergencyServicesLensPage() {
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#emergency-services-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to emergency-services content</a>
           <RecentMineCard domain="emergency-services" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="emergency-services" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="emergency-services" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

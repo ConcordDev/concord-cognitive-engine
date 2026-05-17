@@ -84,12 +84,12 @@ export function computeMessageCost({ messageType, sourceWorld, destWorld, encryp
  * Roll for message corruption. Higher emotional weight + lower encryption
  * = higher chance the Veil distorts the message in transit.
  */
-export function rollCorruption({ encryption = "basic", emotionalWeight = 0, veilStability = 1.0 }) {
+export function rollCorruption({ encryption = "basic", emotionalWeight = 0, veilStability = 1.0, rng = Math.random }) {
   const baseChance = BASE_CORRUPTION_CHANCE[encryption] ?? BASE_CORRUPTION_CHANCE.basic;
   const weightFactor = 1 + Math.max(0, emotionalWeight) * 0.5;
   const stabilityFactor = 1 / Math.max(0.1, veilStability);
   const chance = Math.min(0.5, baseChance * weightFactor * stabilityFactor);
-  const corrupted = Math.random() < chance;
+  const corrupted = rng() < chance;
   return { corrupted, chance };
 }
 
@@ -183,8 +183,8 @@ export function sendMessage(db, opts, deps = {}) {
   // Cost calculation
   const { cost } = computeMessageCost({ messageType, sourceWorld, destWorld, encryption });
 
-  // Corruption roll
-  const { corrupted, chance: corruptionChance } = rollCorruption({ encryption, emotionalWeight, veilStability });
+  // Corruption roll. Tests inject deps.corruptionRng to make it deterministic.
+  const { corrupted, chance: corruptionChance } = rollCorruption({ encryption, emotionalWeight, veilStability, rng: deps.corruptionRng });
   const status = corrupted ? "corrupted" : "delivered";
   const corruptionNote = corrupted ? `Corruption chance was ${(corruptionChance * 100).toFixed(2)}%` : null;
 

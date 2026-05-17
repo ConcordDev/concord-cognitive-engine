@@ -3,8 +3,11 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import ContractAnalyzer from '@/components/legal/ContractAnalyzer';
 import { LegalActionPanel } from '@/components/legal/LegalActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -2828,9 +2831,11 @@ export default function LegalLensPage() {
                   </div>
                   <div>
                     <label className={ds.label}>Obligations (one per line)</label>
-                    <textarea
-                      value={formObligations}
-                      onChange={(e) => setFormObligations(e.target.value)}
+                    <DraftedTextarea
+                      lensId="legal"
+                      draftKey="formObligations"
+                      initial=""
+                      onValueChange={setFormObligations}
                       className={ds.textarea}
                       rows={3}
                       placeholder="Monthly reporting&#10;Annual audit&#10;Insurance maintenance"
@@ -2941,9 +2946,11 @@ export default function LegalLensPage() {
               {/* Common bottom fields */}
               <div>
                 <label className={ds.label}>Description</label>
-                <textarea
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
+                <DraftedTextarea
+                  lensId="legal"
+                  draftKey="formDescription"
+                  initial=""
+                  onValueChange={setFormDescription}
                   className={ds.textarea}
                   rows={3}
                   placeholder="Describe the item..."
@@ -2951,9 +2958,11 @@ export default function LegalLensPage() {
               </div>
               <div>
                 <label className={ds.label}>Notes</label>
-                <textarea
-                  value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
+                <DraftedTextarea
+                  lensId="legal"
+                  draftKey="formNotes"
+                  initial=""
+                  onValueChange={setFormNotes}
                   className={ds.textarea}
                   rows={2}
                   placeholder="Internal notes..."
@@ -3383,6 +3392,8 @@ export default function LegalLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#legal-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legal content</a>
           <RecentMineCard domain="legal" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="legal" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="legal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

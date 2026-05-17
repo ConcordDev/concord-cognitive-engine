@@ -3,9 +3,15 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { SessionRail } from '@/components/lens/SessionRail';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
+import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
+import { CrossRefPanel } from '@/components/research/CrossRefPanel';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import CitationSearch from '@/components/paper/CitationSearch';
 import PaperSummarizer from '@/components/paper/PaperSummarizer';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -913,7 +919,14 @@ export default function PaperLensPage() {
                 {activeTab === 'hypotheses' && (
                   <div>
                     <label className={ds.label}>Hypothesis Statement</label>
-                    <textarea value={newStatement} onChange={e => setNewStatement(e.target.value)} className={cn(ds.textarea, 'min-h-[80px]')} placeholder="State your hypothesis..." />
+                    <DraftedTextarea
+                      lensId="paper"
+                      draftKey="newHypothesisStatement"
+                      initial=""
+                      onValueChange={setNewStatement}
+                      className={cn(ds.textarea, 'min-h-[80px]')}
+                      placeholder="State your hypothesis..."
+                    />
                   </div>
                 )}
 
@@ -943,7 +956,14 @@ export default function PaperLensPage() {
                 {activeTab === 'experiments' && (
                   <div>
                     <label className={ds.label}>Methodology</label>
-                    <textarea value={newMethodology} onChange={e => setNewMethodology(e.target.value)} className={cn(ds.textarea, 'min-h-[80px]')} placeholder="Describe methodology..." />
+                    <DraftedTextarea
+                      lensId="paper"
+                      draftKey="newExperimentMethodology"
+                      initial=""
+                      onValueChange={setNewMethodology}
+                      className={cn(ds.textarea, 'min-h-[80px]')}
+                      placeholder="Describe methodology..."
+                    />
                   </div>
                 )}
 
@@ -1110,7 +1130,21 @@ export default function PaperLensPage() {
     <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
       <ArxivSearch />
     </section>
+    {/* Phase 4 — REAL Open Library book search. */}
+    <section className="mt-4 mx-4">
+      <OpenLibraryPanel domain="paper" />
+    </section>
+    {/* Phase 4 (third wave) — REAL CrossRef DOI metadata search. */}
+    <section className="mt-4 mx-4">
+      <CrossRefPanel domain="paper" />
+    </section>
+    {/* Phase 5 — open research-arc sessions for this lens. */}
+    <section className="mt-3 mx-4">
+      <SessionRail lensId="paper" hideWhenEmpty />
+    </section>
           <RecentMineCard domain="paper" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="paper" hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="paper" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

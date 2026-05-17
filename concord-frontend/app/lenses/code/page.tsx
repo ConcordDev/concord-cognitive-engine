@@ -5,6 +5,9 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { SafeCard } from '@/components/common/SafeCard';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { SessionRail } from '@/components/lens/SessionRail';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import LensAgentFab from '@/components/lens/LensAgentFab';
@@ -2472,7 +2475,7 @@ export default function CodeLensPage() {
                     </div>
                   ))}
                   {!isUser && m.dtuRefs && m.dtuRefs.length > 0 && (
-                    <CitationChips dtuRefs={m.dtuRefs} />
+                    <CitationChips dtuRefs={m.dtuRefs} surfaceFromLens="code" />
                   )}
                 </div>
               );
@@ -2565,7 +2568,10 @@ export default function CodeLensPage() {
         <CodeActionPanel />
       </section>
     </PipingProvider>
+          <SessionRail lensId="code" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="code" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="code" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="code" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

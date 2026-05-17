@@ -3,10 +3,14 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
 import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealthActionPanel';
+import { MedlinePlusPanel } from '@/components/health/MedlinePlusPanel';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -160,6 +164,8 @@ export default function MentalHealthLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
     <div data-lens-theme="mental-health" className="p-6 space-y-6">
+      {/* Phase 4 — REAL MedlinePlus (NIH/NLM) consumer-health topic search. */}
+      <MedlinePlusPanel initialQuery="" />
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
@@ -541,9 +547,11 @@ export default function MentalHealthLensPage() {
                 );
               })}
             </div>
-            <textarea
-              value={newNotes}
-              onChange={e => setNewNotes(e.target.value)}
+            <DraftedTextarea
+              lensId="mental-health"
+              draftKey="moodNotes"
+              initial=""
+              onValueChange={setNewNotes}
               placeholder="How are you feeling? (optional)"
               className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm resize-none h-20"
             />
@@ -584,9 +592,11 @@ export default function MentalHealthLensPage() {
         <div className="space-y-4">
           <div className="panel p-4">
             <h3 className="font-semibold mb-3">New Journal Entry</h3>
-            <textarea
-              value={journalText}
-              onChange={e => setJournalText(e.target.value)}
+            <DraftedTextarea
+              lensId="mental-health"
+              draftKey="journalEntry"
+              initial=""
+              onValueChange={setJournalText}
               placeholder="Write your thoughts..."
               className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm resize-none h-32"
             />
@@ -688,6 +698,8 @@ export default function MentalHealthLensPage() {
       </PipingProvider>
     </div>
           <RecentMineCard domain="mental-health" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="mental-health" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="mental-health" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

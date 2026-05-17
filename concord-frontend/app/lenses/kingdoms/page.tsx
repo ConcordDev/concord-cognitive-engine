@@ -13,13 +13,19 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { SessionRail } from '@/components/lens/SessionRail';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
 import { RealmActionPanel } from '@/components/kingdoms/RealmActionPanel';
+import { WarCampaignSession } from '@/components/kingdoms/WarCampaignSession';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { PipingProvider } from '@/components/panel-polish';
-import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle, List, Eye } from 'lucide-react';
 
 interface Kingdom {
   id: string;
@@ -131,6 +137,8 @@ export default function KingdomsPage() {
         {view === 'list' && <KingdomList kingdoms={kingdoms} onPick={(id) => { setActiveId(id); setView('detail'); }} />}
         {view === 'detail' && detail && <KingdomDetail detail={detail} decreeKinds={decreeKinds} onRefresh={() => activeId && fetchDetail(activeId)} />}
         {view === 'create' && <KingdomCreate onCreated={(id) => { setActiveId(id); setView('detail'); fetchList(); }} />}
+        {/* Phase 5 — open war-campaign / decree sessions belonging to this lens. */}
+        <SessionRail lensId="kingdoms" className="mt-6" hideWhenEmpty />
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <HistoryExplorer />
         </section>
@@ -148,6 +156,18 @@ export default function KingdomsPage() {
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
           <RecentMineCard domain="kingdoms" limit={10} hideWhenEmpty className="mt-4" />
+          <AutoActionStrip domain="kingdoms" hideWhenEmpty className="mt-3" title="More actions" />
+          <CrossLensRecentsPanel lensId="kingdoms" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      {/* Phase 5 mobile — thumb-friendly bottom tab bar; hides on desktop. */}
+      <MobileTabBar
+        tabs={[
+          { id: 'list', label: 'Browse', icon: List },
+          { id: 'create', label: 'Found', icon: Plus },
+          { id: 'detail', label: 'Detail', icon: Eye },
+        ]}
+        active={view}
+        onSelect={(id) => setView(id as 'list' | 'create' | 'detail')}
+      />
     </LensShell>
   );
 }
@@ -238,6 +258,8 @@ function KingdomDetail({
 
   return (
     <div className="space-y-6">
+      {/* Phase 5 — multi-session war-campaign workspace, real sessions substrate. */}
+      <WarCampaignSession kingdomId={kingdom.id} kingdomName={kingdom.name} />
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-5">
         <div className="flex items-start justify-between">
           <div>
@@ -406,9 +428,11 @@ function KingdomCreate({ onCreated }: { onCreated: (id: string) => void }) {
         </div>
         <div>
           <label className="mb-1 block text-[11px] uppercase tracking-wider text-slate-400">Region polygon (JSON [[x,z], …])</label>
-          <textarea
-            value={polygon}
-            onChange={(e) => setPolygon(e.target.value)}
+          <DraftedTextarea
+            lensId="kingdoms"
+            draftKey="newKingdomPolygon"
+            initial=""
+            onValueChange={setPolygon}
             rows={4}
             className="w-full rounded bg-slate-800 px-2 py-1 font-mono text-xs"
           />
