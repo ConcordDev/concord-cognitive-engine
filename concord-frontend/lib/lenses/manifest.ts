@@ -321,6 +321,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['transcribe', 'process', 'analyze', 'summarize', 'extract_tasks', 'detect_speaker', 'generate_subtitles'],
     category: 'creative',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No voice takes yet.',
+      caption: 'Record a take, transcribe with speaker detection, generate subtitles. Pipeline runs persist server-side.',
+      firstActionLabel: 'Record a take',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Tap to record; the meter shows live audio. Auto-pauses on silence.' },
+        { caption: 'transcribe runs the Subconscious brain; detect_speaker tags by voice fingerprint.' },
+        { caption: 'extract_tasks turns a meeting recording into an actionable to-do list, ready to push into goals or calendar.' },
+      ],
+    },
   },
   {
     domain: 'art',
@@ -765,6 +777,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['run_protocol', 'record_result', 'compare_runs', 'statistical_analysis', 'equipment_calibrate', 'generate_report'],
     category: 'knowledge',
     dataTier: 'SIM_GRADE_A',
+    emptyState: {
+      headline: 'Lab notebook empty.',
+      caption: 'Author protocols, log runs, attach reagents + equipment calibration. Compare runs to spot drift.',
+      firstActionLabel: 'New experiment',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Protocols are templates; runs instantiate them with specific reagent batches + equipment serials.' },
+        { caption: 'record_result captures structured outcomes (mean / sd / n); statistical_analysis runs t-test / ANOVA.' },
+        { caption: 'generate_report assembles a PDF combining protocol, runs, results, and analysis.' },
+      ],
+    },
   },
   {
     domain: 'repos',
@@ -934,6 +958,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['gradeCalculation', 'attendanceReport', 'progressTrack', 'scheduleConflict', 'rubricGenerate', 'differentiate', 'parentReport', 'certificationCheck'],
     category: 'services',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No courses yet.',
+      caption: 'Create a course, add students, author lesson plans + rubrics. Khan Academy + Wikipedia power the resource browser.',
+      firstActionLabel: 'Create a course',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Courses hold students, assignments, grades. rubricGenerate produces criterion grids from a learning objective.' },
+        { caption: 'differentiate adapts an assignment to multiple difficulty tiers for mixed-level classrooms.' },
+        { caption: 'parentReport rolls up a student\'s arc into a one-page sharable PDF — useful for conferences.' },
+      ],
+    },
   },
 
   // === LEGAL ===
@@ -946,6 +982,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['deadlineCheck', 'contractRenewal', 'conflictCheck', 'complianceScore', 'clauseChecker', 'citationPackager', 'caseTimelineBuilder', 'briefExport'],
     category: 'services',
     dataTier: 'DEMO',
+    emptyState: {
+      headline: 'No matters opened.',
+      caption: 'Open a case / contract / compliance item. Note: full Westlaw / LexisNexis data is paywalled — this lens runs against authored content.',
+      firstActionLabel: 'Open a matter',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Notion-shape doc surface — the DocsShell silhouette opens by default. Bespoke legal workflow lives below.' },
+        { caption: 'deadlineCheck + conflictCheck + complianceScore run scheduled passes against your active matters.' },
+        { caption: 'Honest tier: this lens is DEMO until we wire a paid case-law feed. The structure works; the data is yours to author.' },
+      ],
+    },
   },
 
   // === NONPROFIT ===
@@ -1174,6 +1222,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['scaleRecipe', 'mealPlan', 'shoppingList', 'nutritionCalc', 'substitutions', 'pairings'],
     category: 'lifestyle',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No recipes saved.',
+      caption: 'Author or import a recipe; scale, plan meals, generate shopping lists. Nutrition pulls from USDA FoodData (real numbers).',
+      firstActionLabel: 'Add a recipe',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Recipes carry ingredients + techniques; scaleRecipe converts servings while preserving ratios.' },
+        { caption: 'nutritionCalc looks up each ingredient in USDA FoodData Central — real macros, not estimates.' },
+        { caption: 'mealPlan + shoppingList build week-ahead plans; substitutions and pairings expand by technique signature.' },
+      ],
+    },
   },
 
   // === HOME IMPROVEMENT (Lens 64) ===
@@ -1198,6 +1258,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['milestoneTracker', 'growthChart', 'vaccineSchedule', 'sleepAnalysis', 'developmentTips', 'schoolReadiness'],
     category: 'lifestyle',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No child profiles yet.',
+      caption: 'Add a child profile; track milestones, schedule, vaccines, sleep. AAP guidelines power the milestone + vaccine timelines.',
+      firstActionLabel: 'Add a child',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Per-child profile tracks milestones (motor / cognitive / social) against AAP age-typical ranges.' },
+        { caption: 'vaccineSchedule pulls the current CDC recommended schedule; growthChart plots against WHO percentile curves.' },
+        { caption: 'sleepAnalysis surfaces nightly pattern + identifies regressions; developmentTips suggests stage-appropriate activities.' },
+      ],
+    },
   },
 
   // === PETS (Lens 66) ===
@@ -1972,6 +2044,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No sessions logged.',
+      caption: 'Log a session, run an assessment, draft a plan. NIH MedlinePlus powers the resource browser (free, real federal health info).',
+      firstActionLabel: 'Log a session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Sessions hold notes + tone tags. Assessments use validated instruments (PHQ-9, GAD-7) as templates.' },
+        { caption: 'Plans link to resources from MedlinePlus — real government-vetted info, not LLM speculation.' },
+        { caption: 'Progress rolls up across sessions to surface trends; export as PDF for clinician sharing.' },
+      ],
+    },
   },
   {
     domain: 'metacognition',
