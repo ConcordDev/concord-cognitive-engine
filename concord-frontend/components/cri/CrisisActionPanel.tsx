@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -40,11 +41,11 @@ interface ImpactResult { stakeholders?: Array<{ group: string; impact: string; p
 
 export function CrisisActionPanel() {
   const [crisisName, setCrisisName] = useState('');
-  const [eventType, setEventType] = useState('outage');
+  const [eventType, setEventType] = useState('');
   const [scope, setScope] = useState<'local' | 'regional' | 'global'>('regional');
-  const [affectedCount, setAffectedCount] = useState('1000');
-  const [duration, setDuration] = useState('4');
-  const [stakeholders, setStakeholders] = useState('customers\nemployees\npress\nregulators');
+  const [affectedCount, setAffectedCount] = useState('');
+  const [duration, setDuration] = useState('');
+  const [stakeholders, setStakeholders] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -61,33 +62,41 @@ export function CrisisActionPanel() {
   const err = (text: string) => setFeedback({ kind: 'err', text });
   const ready = crisisName.trim().length > 0;
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actSeverity() {
     if (!ready) { err('Crisis name required.'); return; }
+    if (!eventType.trim()) { err('Event type required.'); return; }
+    const a = parseInt(affectedCount, 10), d = parseFloat(duration);
+    if (!Number.isFinite(a) || !Number.isFinite(d)) { err('Affected count + duration hours required.'); return; }
     setBusy('severity'); setFeedback(null);
     try {
-      const r = await callMacro<SeverityResult>('severityAssessment', { name: crisisName.trim(), eventType, scope, affectedCount: parseInt(affectedCount, 10), durationHours: parseFloat(duration) });
-      if (r.ok && r.result) { setSeverityResult(r.result); ok(`Severity: ${r.result.severity ?? '—'}.`); }
+      const r = await callMacro<SeverityResult>('severityAssessment', { name: crisisName.trim(), eventType, scope, affectedCount: a, durationHours: d });
+      if (r.ok && r.result) { setSeverityResult(r.result); pipe.publish('cri.severity', r.result, { label: `Severity ${r.result.severity}` }); ok(`Severity: ${r.result.severity ?? '—'}.`); }
       else err(r.reason ?? r.error ?? 'severity failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
   async function actTimeline() {
     if (!ready) { err('Crisis name required.'); return; }
+    if (!eventType.trim()) { err('Event type required.'); return; }
     setBusy('timeline'); setFeedback(null);
     try {
       const r = await callMacro<TimelineResult>('responseTimeline', { name: crisisName.trim(), eventType, severity: severityResult?.severity ?? 'high' });
-      if (r.ok && r.result) { setTimelineResult(r.result); ok(`Timeline: ${r.result.phases?.length ?? 0} phases.`); }
+      if (r.ok && r.result) { setTimelineResult(r.result); pipe.publish('cri.timeline', r.result, { label: `Timeline ${r.result.phases?.length ?? 0} phases` }); ok(`Timeline: ${r.result.phases?.length ?? 0} phases.`); }
       else err(r.error ?? 'timeline failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
   async function actImpact() {
     const stk = stakeholders.split('\n').map(s => s.trim()).filter(Boolean);
-    if (!stk.length) { err('Add at least one stakeholder.'); return; }
+    if (!stk.length) { err('Add at least one stakeholder (one per line).'); return; }
     setBusy('impact'); setFeedback(null);
     try {
       const r = await callMacro<ImpactResult>('stakeholderImpact', { stakeholders: stk.map(group => ({ group })), eventType, severity: severityResult?.severity ?? 'high' });
-      if (r.ok && r.result) { setImpactResult(r.result); ok(`${r.result.stakeholders?.length ?? 0} stakeholder groups assessed.`); }
+      if (r.ok && r.result) { setImpactResult(r.result); pipe.publish('cri.impact', r.result, { label: `Impact ${r.result.stakeholders?.length ?? 0} groups` }); ok(`${r.result.stakeholders?.length ?? 0} stakeholder groups assessed.`); }
       else err(r.error ?? 'impact failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -111,7 +120,7 @@ export function CrisisActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Crisis DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('cri.mintedDtuId', id, { label: `Crisis DTU ${id.slice(0, 8)}…` }); ok(`Crisis DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -129,9 +138,12 @@ export function CrisisActionPanel() {
       mintedDtuId ? `\n[Crisis DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Brief sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok(`Brief sent to ${recipient.trim()}. 60s to recall.`); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -139,21 +151,24 @@ export function CrisisActionPanel() {
     if (!ready) { err('Crisis name required.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Public crisis brief — ${crisisName.trim()}`,
-          tags: ['cri', 'crisis', 'public', severityResult?.severity ?? 'unassessed'],
-          source: 'cri:crisis:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, crisis: { name: crisisName.trim(), eventType, scope, severity: severityResult?.severity, recommendation: severityResult?.recommendation, phases: timelineResult?.phases } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Public crisis brief — ${crisisName.trim()}`,
+            tags: ['cri', 'crisis', 'public', severityResult?.severity ?? 'unassessed'],
+            source: 'cri:crisis:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, crisis: { name: crisisName.trim(), eventType, scope, severity: severityResult?.severity, recommendation: severityResult?.recommendation, phases: timelineResult?.phases } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Crisis brief published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('cri.publishedDtuId', id, { label: `Public crisis ${id.slice(0, 8)}…` }); ok(`Crisis brief published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -196,6 +211,10 @@ export function CrisisActionPanel() {
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">CRI</span>
       </header>
 
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <input type="text" value={crisisName} onChange={(e) => setCrisisName(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-rose-400/40" placeholder="Crisis name (e.g. east-region power outage)" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="IC user id (for DM)" />
