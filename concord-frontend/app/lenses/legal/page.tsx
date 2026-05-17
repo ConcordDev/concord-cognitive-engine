@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import { LayoutDashboard as MobileTabDash, Briefcase as MobileTabCase, FileText as MobileTabDoc, Clock as MobileTabClock, Calendar as MobileTabCal, Users as MobileTabPeople } from 'lucide-react';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -3394,6 +3396,19 @@ export default function LegalLensPage() {
           <RecentMineCard domain="legal" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="legal" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="legal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 11 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'Dashboard',    label: 'Home',    icon: MobileTabDash },
+              { id: 'Cases',        label: 'Cases',   icon: MobileTabCase },
+              { id: 'Documents',    label: 'Docs',    icon: MobileTabDoc },
+              { id: 'TimeBilling',  label: 'Time',    icon: MobileTabClock },
+              { id: 'Calendar',     label: 'Cal',     icon: MobileTabCal },
+              { id: 'Contacts',     label: 'People',  icon: MobileTabPeople },
+            ]}
+            active={activeTab}
+            onSelect={(id) => setActiveTab(id as ModeTab)}
+          />
     </LensShell>
   );
 }

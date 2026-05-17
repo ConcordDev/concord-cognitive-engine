@@ -9,6 +9,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { api } from '@/lib/api/client';
@@ -169,6 +170,7 @@ export default function CodeQualityLensPage() {
       <FirstRunTour lensId="code-quality" />
       <ManifestActionBar />
       <DepthBadge lensId="code-quality" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="code-quality" className="mx-6 mt-4" />
       <div data-lens-theme="code-quality" className="p-6 space-y-5">
         <header>
           <p className="text-xs uppercase text-gray-400 tracking-wider">Tooling</p>

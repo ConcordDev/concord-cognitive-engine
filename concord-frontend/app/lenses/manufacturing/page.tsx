@@ -10,6 +10,11 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
 import { ManufacturingActionPanel } from '@/components/manufacturing/ManufacturingActionPanel';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  LayoutDashboard as MTabDash, ClipboardList as MTabWO, GitBranch as MTabBom,
+  ShieldCheck as MTabQC, CalendarClock as MTabSched, Cog as MTabMach,
+} from 'lucide-react';
 import { PipingProvider } from '@/components/panel-polish';
 import OEEDashboard from '@/components/manufacturing/OEEDashboard';
 import WorkOrderBoard from '@/components/manufacturing/WorkOrderBoard';
@@ -2722,6 +2727,19 @@ export default function ManufacturingLensPage() {
           <RecentMineCard domain="manufacturing" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="manufacturing" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="manufacturing" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'dashboard',   label: 'Dash',   icon: MTabDash },
+              { id: 'work_orders', label: 'WO',     icon: MTabWO },
+              { id: 'bom',         label: 'BOM',    icon: MTabBom },
+              { id: 'quality',     label: 'QC',     icon: MTabQC },
+              { id: 'scheduling',  label: 'Sched',  icon: MTabSched },
+              { id: 'machines',    label: 'Mach',   icon: MTabMach },
+            ]}
+            active={mode}
+            onSelect={(id) => setMode(id as ModeTab)}
+          />
     </LensShell>
   );
 }

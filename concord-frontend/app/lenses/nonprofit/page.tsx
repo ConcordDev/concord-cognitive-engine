@@ -2,7 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { SessionRail } from '@/components/lens/SessionRail';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -1862,7 +1864,7 @@ export default function NonprofitLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Notes</label>
-                  <textarea value={giftNotes} onChange={e => setGiftNotes(e.target.value)} className={ds.textarea} rows={2} placeholder="Gift notes..." />
+                  <DraftedTextarea lensId="nonprofit" draftKey="gift-notes" className={ds.textarea} rows={2} initial={giftNotes} onValueChange={setGiftNotes} placeholder="Gift notes..." />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 p-4 border-t border-lattice-border">
@@ -1974,6 +1976,7 @@ export default function NonprofitLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <SessionRail lensId="nonprofit" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="nonprofit" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="nonprofit" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="nonprofit" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

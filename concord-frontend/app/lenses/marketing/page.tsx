@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -274,7 +275,7 @@ export default function MarketingLensPage() {
           </div>
           <div className="space-y-3">
             <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} placeholder="Enter name..." /></div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={2} value={formDescription} onChange={e => setFormDescription(e.target.value)} /></div>
+            <div><label className={ds.label}>Description</label><DraftedTextarea lensId="marketing" draftKey="artifact_description" initial={formDescription} onValueChange={setFormDescription} className={ds.textarea} rows={2} /></div>
             <div><label className={ds.label}>Status</label>
               <select className={ds.select} value={formStatus} onChange={e => setFormStatus(e.target.value as Status)}>
                 {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -339,7 +340,7 @@ export default function MarketingLensPage() {
                 </div>
               </>
             )}
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="marketing" draftKey="artifact_notes" initial={formNotes} onValueChange={setFormNotes} className={ds.textarea} rows={2} /></div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>Cancel</button>

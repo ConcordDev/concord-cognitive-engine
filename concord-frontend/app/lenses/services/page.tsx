@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -395,7 +396,7 @@ export default function ServicesLensPage() {
             {(formData.recurring as boolean) && (
               <div><label className={ds.label}>Frequency</label><select className={ds.select} value={(formData.recurringFrequency as string) || 'weekly'} onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value })}><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select></div>
             )}
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="services" draftKey="appt_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'Client':
@@ -418,9 +419,9 @@ export default function ServicesLensPage() {
               <div><label className={ds.label}>Preferred Provider</label><input className={ds.input} value={(formData.preferredProvider as string) || ''} onChange={e => setFormData({ ...formData, preferredProvider: e.target.value })} /></div>
               <div><label className={ds.label}>Referral Source</label><input className={ds.input} value={(formData.referralSource as string) || ''} onChange={e => setFormData({ ...formData, referralSource: e.target.value })} placeholder="Walk-in, Google, Referral..." /></div>
             </div>
-            <div><label className={ds.label}>Preferences</label><textarea className={ds.textarea} rows={2} value={(formData.preferences as string) || ''} onChange={e => setFormData({ ...formData, preferences: e.target.value })} placeholder="Color preferences, style notes..." /></div>
+            <div><label className={ds.label}>Preferences</label><DraftedTextarea lensId="services" draftKey="client_preferences" initial={(formData.preferences as string) || ''} onValueChange={(v) => setFormData({ ...formData, preferences: v })} className={ds.textarea} rows={2} placeholder="Color preferences, style notes..." /></div>
             <div><label className={ds.label}>Allergies / Sensitivities</label><input className={ds.input} value={(formData.allergies as string) || ''} onChange={e => setFormData({ ...formData, allergies: e.target.value })} /></div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="services" draftKey="client_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'ServiceItem':
@@ -437,7 +438,7 @@ export default function ServicesLensPage() {
             </div>
             <div><label className={ds.label}>Add-on Services (comma-separated)</label><input className={ds.input} value={((formData.addOns as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, addOns: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Deep Conditioning, Blow Dry..." /></div>
             <div><label className={ds.label}>Package Deals (comma-separated)</label><input className={ds.input} value={((formData.packageDeals as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, packageDeals: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Bridal Package, Color + Cut..." /></div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={2} value={(formData.description as string) || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} /></div>
+            <div><label className={ds.label}>Description</label><DraftedTextarea lensId="services" draftKey="service_item_description" initial={(formData.description as string) || ''} onValueChange={(v) => setFormData({ ...formData, description: v })} className={ds.textarea} rows={2} /></div>
             <label className="flex items-center gap-2 text-sm text-gray-300">
               <input type="checkbox" checked={(formData.isActive as boolean) !== false} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
               Active Service
@@ -463,7 +464,7 @@ export default function ServicesLensPage() {
               <div><label className={ds.label}>Phone</label><input className={ds.input} value={(formData.phone as string) || ''} onChange={e => setFormData({ ...formData, phone: e.target.value })} /></div>
               <div><label className={ds.label}>Email</label><input type="email" className={ds.input} value={(formData.email as string) || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} /></div>
             </div>
-            <div><label className={ds.label}>Bio</label><textarea className={ds.textarea} rows={2} value={(formData.bio as string) || ''} onChange={e => setFormData({ ...formData, bio: e.target.value })} /></div>
+            <div><label className={ds.label}>Bio</label><DraftedTextarea lensId="services" draftKey="staff_bio" initial={(formData.bio as string) || ''} onValueChange={(v) => setFormData({ ...formData, bio: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'Transaction':
@@ -512,7 +513,7 @@ export default function ServicesLensPage() {
               <div><label className={ds.label}>Supplier</label><input className={ds.input} value={(formData.supplier as string) || ''} onChange={e => setFormData({ ...formData, supplier: e.target.value })} /></div>
               <div><label className={ds.label}>Last Restocked</label><input type="date" className={ds.input} value={(formData.lastRestocked as string) || ''} onChange={e => setFormData({ ...formData, lastRestocked: e.target.value })} /></div>
             </div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={2} value={(formData.description as string) || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} /></div>
+            <div><label className={ds.label}>Description</label><DraftedTextarea lensId="services" draftKey="inventory_description" initial={(formData.description as string) || ''} onValueChange={(v) => setFormData({ ...formData, description: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       default:

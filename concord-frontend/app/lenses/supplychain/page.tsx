@@ -2,11 +2,13 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SupplyChainFeed } from '@/components/supplychain/SupplyChainFeed';
 import { SupplyChainActionPanel } from '@/components/supplychain/SupplyChainActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -148,7 +150,7 @@ export default function SupplyChainLensPage() {
           <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button></div>
           <div className="space-y-3">
             <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={2} value={formDescription} onChange={e => setFormDescription(e.target.value)} /></div>
+            <div><label className={ds.label}>Description</label><DraftedTextarea lensId="supplychain" draftKey="artifact_description" initial={formDescription} onValueChange={setFormDescription} className={ds.textarea} rows={2} /></div>
             <div><label className={ds.label}>Status</label><select className={ds.select} value={formStatus} onChange={e => setFormStatus(e.target.value as Status)}>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
             <div><label className={ds.label}>Supplier</label><input className={ds.input} value={formSupplier} onChange={e => setFormSupplier(e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -161,7 +163,7 @@ export default function SupplyChainLensPage() {
             </div>
             <div><label className={ds.label}>SKU</label><input className={ds.input} value={formSku} onChange={e => setFormSku(e.target.value)} /></div>
             <div><label className={ds.label}>Tracking Number</label><input className={ds.input} value={formTrackingNumber} onChange={e => setFormTrackingNumber(e.target.value)} /></div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="supplychain" draftKey="artifact_notes" initial={formNotes} onValueChange={setFormNotes} className={ds.textarea} rows={2} /></div>
           </div>
           <div className="flex justify-end gap-2 mt-4"><button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>Cancel</button><button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>Save</button></div>
         </div>
@@ -203,6 +205,7 @@ export default function SupplyChainLensPage() {
       <FirstRunTour lensId="supplychain" />
       <ManifestActionBar />
       <DepthBadge lensId="supplychain" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="supplychain" className="mx-6 mt-4" />
     <div data-lens-theme="supplychain" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

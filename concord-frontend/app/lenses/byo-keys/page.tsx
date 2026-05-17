@@ -29,6 +29,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
 
 interface OverrideRow {
@@ -161,6 +162,7 @@ export default function ByoKeysLens() {
         <LensShell lensId="byo-keys">
       <FirstRunTour lensId="byo-keys" />
       <DepthBadge lensId="byo-keys" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="byo-keys" className="mx-6 mt-4" />
   <div className="min-h-screen bg-zinc-950 text-zinc-100 px-6 py-8">
         <div className="mx-auto max-w-4xl">
           <header className="mb-8">

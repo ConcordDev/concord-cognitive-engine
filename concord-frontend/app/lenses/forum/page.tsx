@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { SessionRail } from '@/components/lens/SessionRail';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -647,7 +649,7 @@ export default function ForumLensPage() {
         {!selectedPost.locked && (
           <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 lens-card">
             <p className="text-xs text-gray-400 mb-2">Comment as <span className="text-neon-cyan">u/{DEFAULT_AUTHOR.username}</span></p>
-            <textarea value={postReplyContent} onChange={e => setPostReplyContent(e.target.value)} rows={3} placeholder="What are your thoughts?" className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
+            <DraftedTextarea lensId="forum" draftKey="post-reply" initial={postReplyContent} onValueChange={setPostReplyContent} rows={3} placeholder="What are your thoughts?" className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
             <div className="flex justify-end mt-2">
               <button onClick={() => handleAddComment(selectedPost.id, null, postReplyContent)} disabled={!postReplyContent.trim()} className="px-4 py-1.5 bg-neon-cyan text-black text-sm font-medium rounded-full hover:bg-neon-cyan/90 disabled:opacity-40 disabled:cursor-not-allowed btn-neon">Comment</button>
             </div>
@@ -890,7 +892,7 @@ export default function ForumLensPage() {
                 {/* Content */}
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1">Content</label>
-                  <textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)} rows={6} placeholder="Share your thoughts, tips, questions..." className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
+                  <DraftedTextarea lensId="forum" draftKey="new-post" initial={newPostContent} onValueChange={setNewPostContent} rows={6} placeholder="Share your thoughts, tips, questions..." className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
                 </div>
                 {/* Tags */}
                 <div>
@@ -934,7 +936,7 @@ export default function ForumLensPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1">Description</label>
-                  <textarea value={newCommDesc} onChange={e => setNewCommDesc(e.target.value)} rows={3} placeholder="What is this community about?" className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
+                  <DraftedTextarea lensId="forum" draftKey="new-community-desc" initial={newCommDesc} onValueChange={setNewCommDesc} rows={3} placeholder="What is this community about?" className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
                 </div>
               </div>
               <div className="flex justify-end gap-3 px-5 py-4 border-t border-lattice-border">
@@ -1184,6 +1186,7 @@ export default function ForumLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <SessionRail lensId="forum" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="forum" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="forum" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="forum" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { VetFeed } from '@/components/veterinary/VetFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -174,6 +175,7 @@ export default function VeterinaryLensPage() {
       <FirstRunTour lensId="veterinary" />
       <ManifestActionBar />
       <DepthBadge lensId="veterinary" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="veterinary" className="mx-6 mt-4" />
     <LensPageShell
       domain="veterinary"
       title="Veterinary Medicine"

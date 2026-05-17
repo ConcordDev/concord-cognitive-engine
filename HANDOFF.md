@@ -2,14 +2,163 @@
 
 Branch: `claude/add-api-wires-onboarding-EWvZC` (built on top of merged
 `claude/audit-app-completeness-GwBlp`, PR #759 — pushed to origin)
-Plan: `/root/.claude/plans/what-s-missing-to-be-humble-scott.md`
-Last update: 2026-05-17 (session 8 final — 35 commits total this branch;
-all 10 dimensions complete + 37 REAL_FREE wire panels + 13-lens
-SessionRail coverage + **AutoActionStrip mounted in 226 of 234 lenses
-(96.5%) with JSON-param input mode** + **/admin/wires status dashboard
-auto-tests every live_*** + **dtu_surface.record lifted into 3 hot DTU
-renderers** + 2 pre-existing test failures fixed + 0 type errors +
-201 sprint contract tests passing)
+Plan: `/root/.claude/plans/make-a-new-plan-nifty-crayon.md` (Phase 11
+17-item backlog; commit `eba0a3d` is the last push)
+Last update: 2026-05-17 (sessions 9–11 — branch now at **236 lens dirs**,
+all 10 UX-completeness dimensions complete + **pan-social hub** at
+`/lenses/social` with React/Share/Bookmark/Follow/Comment/Story/UserLink
+primitives + Saved tab + **@mention autocomplete** + **social:notification
+toast** + **/admin/endpoints** 2,400-route inventory + **useTilePush**
+hook + 41 REAL_FREE no-key wire panels + 0 type errors + 25/25 social
+contract tests + server tests green with two pre-existing failures fixed)
+
+## Session 11 additions (Phase 11 — 17-item backlog, parts 1-5)
+
+```
+1eb6d81 Phase 11 Items 5 + 10 sweep: 4 more hero lenses get MobileTabBar, 6 more DraftedTextarea swaps
+0e95008 Phase 11 Items 5 + 10 partial: MobileTabBar on council/sim + DraftedTextarea swaps
+5598765 Phase 11 Item 7 (substrate + roster): Spaces (live audio rooms)
+4a049bc Phase 11 Item 6 (substrate + feed): Reels short-form video
+a38889e Phase 11 Items 12 + 8-part-3: federation push for social + useTilePush mount
+9ec5f65 Phase 11 Item 13: WebPush notifications — migration 197 + dispatcher + hook + service worker + 8/8 tests
+e18face Phase 11 Item 9 finish: 4 panels for the key-required wires
+67658a6 Phase 11 Stage B (Item 9): 4 key-required REAL_FREE wires + 6/6 contract tests
+5cdd5dd Phase 11 Stage A: HANDOFF refresh + 25/25 social tests green
+eba0a3d Phase 11 part 2 (in-flight): useTilePush + FlashHighlight + 7 social contract tests + realtimeEvents
+1970f29 Phase 11 part 1: admin/endpoints, bookmarks lens, mention autocomplete, notification toast, two pre-existing test fixes
+fe31813 chore: refresh macro telemetry artifact
+```
+
+### Phase 11 final tally — 15 of 17 backlog items fully shipped, 2 partial
+
+| # | Item | Status |
+|---|---|---|
+| 1 | /admin/endpoints inventory | ✅ |
+| 2 | Bookmarks lens (Saved) | ✅ |
+| 3 | @mention autocomplete | ✅ |
+| 4 | Notification toast | ✅ |
+| 5 | Mobile polish hero lenses | 🟡 9/20 (kingdoms, sessions, social, council, sim, food, education, legal, healthcare) |
+| 6 | Reels short-form video | ✅ Substrate + feed |
+| 7 | Spaces live audio rooms | ✅ Substrate + roster |
+| 8 | useTilePush + FlashHighlight | ✅ Hook + marketplace mount |
+| 9 | 4 REAL_FREE key-required wires (FRED/EPA/NPS/OpenWeatherMap) | ✅ |
+| 10 | DraftedTextarea hand-swaps | 🟡 10 swapped (astronomy, game-design, environment, insurance, fitness, calendar, realestate ×2, healthcare, education ×2) |
+| 11 | Migrations 195-200 deployed | ✅ Locally; prod = human action |
+| 12 | Federation push (ActivityPub) | ✅ Substrate + outbox + heartbeat + visibility selector |
+| 13 | Push notifications (WebPush) | ✅ |
+| 14 | HANDOFF.md refresh | ✅ This file |
+| 15 | Tier-2 social contract tests | ✅ 25/25 |
+| 16 | Server test baseline | ✅ Plus 2 pre-existing fixes |
+| 17 | README pan-social section | ✅ |
+
+### New tests landed this phase (all green)
+
+- `tests/route-inventory.test.js` — 5/5
+- `tests/key-required-live-registration.test.js` — 6/6
+- `tests/push-tokens.test.js` — 8/8
+- `tests/federation-outbox.test.js` — 8/8
+- `tests/reels.test.js` — 9/9
+- `tests/audio-rooms.test.js` — 10/10
+- `tests/components/social/{ReactionBar,BookmarkButton,FollowButton,UserLink,QuickPostComposer,ShareButton,CommentThread}.test.tsx` — 25/25 (vitest)
+
+### New migrations landed this phase
+
+- 197 `push_tokens` — WebPush + Expo device registry
+- 198 `social_federation` — federation_outbox + federation_inbox + federation_peer_actors
+- 199 `reels` — reels + reel_views
+- 200 `audio_rooms` — audio_rooms + audio_room_speakers + audio_room_listeners
+
+
+
+### Session 11 highlights
+
+**`/admin/endpoints` — full HTTP route inventory.** Companion to
+`/admin/wires`. Static-parses `server.js` + every `routes/*.js` for
+`(method, path, file, line, auth)` tuples; caches result; renders
+~2,400 rows grouped by base path with one-click Test buttons. Auth
+posture (public / required / gated) derived from real source. POST /
+PUT / DELETE buttons confirm before firing.
+New: `server/lib/route-inventory.js` + `concord-frontend/app/admin/endpoints/page.tsx` + 5/5 contract tests.
+
+**Saved lens.** `BookmarkButton` was mounted in every `DTUEmbed` but
+there was no surface to SEE saved posts. Fixed: new `BookmarksList.tsx`
+that pulls `/api/social/bookmarks` then parallel-fetches each post via
+`/api/social/post/:postId`; new `/lenses/saved` page + new "Saved"
+tab on `/lenses/social`; manifest entry `category: 'social'`,
+`dataTier: 'REAL_LIVE'`. "Post unavailable" placeholder + one-click
+Remove for deleted posts.
+
+**@mention autocomplete.** `createPost` was already accepting a
+`mentionedUsers` array but no UI wired it. Fixed: new endpoint
+`GET /api/social/mention-search?q=&limit=` ranked followed > followers
+> citation count + prefix matches; new `MentionAutocomplete.tsx`
+render-prop wrapper (debounced 200ms, arrow keys, Enter/Tab/Escape);
+wired into both `QuickPostComposer` and `CommentThread`; `addComment`
+now persists `mentionedUsers` and fires `type: 'mention'` notifications.
+
+**Social notification toast.** `NotificationBell` polls every 60s but
+reactions/comments/follows fired no real-time UI. Fixed:
+`setSocialEmitter(fn)` exported from `social-layer.js`, called once
+at boot to thread `emitToUser` in; `createNotification` now also
+fires a `social:notification` socket event to the recipient's
+`user:${userId}` room; new `useSocialNotificationToast.ts` hook
+subscribes via `subscribe()` and pushes through `useUIStore.addToast`.
+Mounted in `AppShell.tsx` — app-wide. Dedupes against an in-memory
+seen-set so poll + socket race doesn't double-toast.
+
+**useTilePush + FlashHighlight (in-flight).** Manifest already
+declared `realtimeEvents?: string[]` but no lens populated it. Fixed:
+new `useTilePush.ts` reads the manifest, subscribes to events,
+invalidates the supplied query keys + flips `flashKey`; new
+`FlashHighlight.tsx` pulses an indigo ring for 900ms. `realtimeEvents`
+populated on world (building-state, refusal-field, season-transition,
+sign-placed, weather:update, combat:hit/stagger), chat (chat:status/
+token/complete + message:saved), finance, marketplace, crypto. **TODO
+Phase 11 part 3**: codemod-mount `useTilePush` + wrap primary list
+renders with `<FlashHighlight>`.
+
+**7 social contract test files** (25/25 green):
+`ReactionBar`, `BookmarkButton`, `FollowButton`, `UserLink`,
+`QuickPostComposer`, `ShareButton`, `CommentThread` — Tier-2 vitest
+coverage of the pan-social primitives.
+
+**Two pre-existing server-test regressions fixed:**
+- `three-gate-consistency`: `/api/lens-actions` was in Gate 1 but not
+  Gate 3 — added it to `_safeReadPaths`.
+- `social-dm-recall: rejects recall after the window has elapsed`:
+  `ageSec > windowSeconds` let `windowSeconds=0` through when ageSec
+  was 0. Changed to `>=` so "zero window = no recall" is honest.
+
+**README updated**: 236 lens dirs, 196 migrations, new "Pan-Social
+Hub" section listing every primitive.
+
+## Sessions 9–10 highlights (pan-social hub)
+
+- **Session 9**: promoted 41 "light vertical" lenses → solid via
+  `LensVerticalHero` codemod.
+- **Session 10**: pan-social hub at `/lenses/social` mounting
+  StoriesBar / Discovery / NotificationCenter / UserProfile /
+  SuggestedFollows / TrendingTopics / TrendingDomains /
+  PresenceIndicator / DMIndicator / StreakIndicator /
+  CreatorAnalytics / QuickPostComposer / MobileTabBar.
+- **Session 10 primitives** (new): `ReactionBar` (6 canonical
+  reaction types matching backend `VALID_REACTIONS`), `CommentThread`
+  (threaded, collapsed mode, maxDepth=2), `QuickPostComposer`
+  (Post / 24h Story modes, 500-char cap), `ShareButton`
+  (`POST /api/social/share` with commentary), `BookmarkButton`
+  (toggle endpoint, shared cache), `FollowButton` (hides for self
+  and anon), `UserLink` (routes to `/profile/:username`).
+- **Session 10 wiring**: `DTUEmbed.tsx` composes ReactionBar +
+  ShareButton + BookmarkButton + CommentThread + DownstreamBadge so
+  every cross-lens DTU embed has social context.
+- **Session 10 production fixes**: groupId fall-through in
+  `routes/social-groups.js` (was unconditionally blocking generic
+  createPost); reaction-type rename to match backend canonical set.
+
+---
+
+## Original session 8 summary (carried for context)
+
 
 ## Session 8 additions (3 new commits)
 

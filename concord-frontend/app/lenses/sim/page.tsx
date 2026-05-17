@@ -33,6 +33,8 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import { FlaskConical as MobileTabFlask, SlidersHorizontal as MobileTabSliders, Activity as MobileTabActivity, BarChart3 as MobileTabBar3, GitCompare as MobileTabCompare, Cpu as MobileTabCpu } from 'lucide-react';
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
 
@@ -1853,6 +1855,19 @@ export default function SimLensPage() {
           <RecentMineCard domain="sim" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="sim" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="sim" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 11 (Item 5) — mobile thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'scenarios',  label: 'Scen',   icon: MobileTabFlask },
+              { id: 'parameters', label: 'Params', icon: MobileTabSliders },
+              { id: 'runs',       label: 'Runs',   icon: MobileTabActivity },
+              { id: 'results',    label: 'Result', icon: MobileTabBar3 },
+              { id: 'comparison', label: 'Compare',icon: MobileTabCompare },
+              { id: 'models',     label: 'Models', icon: MobileTabCpu },
+            ]}
+            active={activeTab}
+            onSelect={(id) => setActiveTab(id as SimTab)}
+          />
     </LensShell>
   );
 }

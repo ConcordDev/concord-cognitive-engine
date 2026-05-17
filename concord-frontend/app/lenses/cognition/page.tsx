@@ -21,6 +21,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -164,6 +165,7 @@ export default function CognitionLensPage() {
       <FirstRunTour lensId="cognition" />
       <ManifestActionBar />
       <DepthBadge lensId="cognition" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="cognition" className="mx-6 mt-4" />
     <div className="min-h-screen bg-black pb-12 text-cyan-50">
       <header className="sticky top-0 z-10 border-b border-violet-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">

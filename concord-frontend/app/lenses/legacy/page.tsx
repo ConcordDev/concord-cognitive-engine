@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { LegacyChatter } from '@/components/legacy/LegacyChatter';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -108,6 +109,7 @@ export default function LegacyLensPage() {
       <FirstRunTour lensId="legacy" />
       <ManifestActionBar />
       <DepthBadge lensId="legacy" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="legacy" className="mx-6 mt-4" />
     <div data-lens-theme="legacy" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🏛️</span>

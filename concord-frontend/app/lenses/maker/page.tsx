@@ -21,6 +21,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { MakerShowcase } from '@/components/maker/MakerShowcase';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -135,6 +136,7 @@ export default function MakerLensPage() {
       <FirstRunTour lensId="maker" />
       <ManifestActionBar />
       <DepthBadge lensId="maker" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="maker" className="mx-6 mt-4" />
     <div className="min-h-screen bg-black pb-12 text-pink-50">
       <header className="sticky top-0 z-10 border-b border-pink-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">

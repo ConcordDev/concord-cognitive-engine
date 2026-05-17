@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SettingsHealth } from '@/components/settings/SettingsHealth';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { MouseSensitivitySlider } from '@/components/settings/MouseSensitivitySlider';
@@ -66,6 +67,7 @@ export default function SettingsPage() {
       <FirstRunTour lensId="settings" />
       <ManifestActionBar />
       <DepthBadge lensId="settings" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="settings" className="mx-6 mt-4" />
     <main className="min-h-screen p-6 sm:p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Settings</h1>
       <section className="space-y-4">

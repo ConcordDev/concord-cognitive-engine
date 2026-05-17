@@ -31,6 +31,11 @@ import SettingsPanel, { loadSettings as loadCodeSettings, DEFAULT_SETTINGS as DE
 import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
 import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
 import { SourceControlPanel } from '@/components/code/SourceControlPanel';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  Files as MTabFiles, Search as MTabSearch, GitBranch as MTabSC,
+  BookOpen as MTabSnip, Terminal as MTabTerm, Sparkles as MTabAgent,
+} from 'lucide-react';
 import MultiFileAgentReview, { type MultiFileEdit } from '@/components/code/MultiFileAgentReview';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
@@ -2572,6 +2577,25 @@ export default function CodeLensPage() {
           <RecentMineCard domain="code" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="code" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="code" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 12 (Item 5) — mobile thumb-reachable activity bar.
+              Surfaces the most-used VS Code-style activities on touch. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'files',         label: 'Files',   icon: MTabFiles },
+              { id: 'search',        label: 'Search',  icon: MTabSearch },
+              { id: 'sourceControl', label: 'Git',     icon: MTabSC },
+              { id: 'snippets',      label: 'Snip',    icon: MTabSnip },
+              { id: 'terminal',      label: 'Term',    icon: MTabTerm },
+              { id: 'agent',         label: 'Agent',   icon: MTabAgent },
+            ]}
+            active={activity}
+            onSelect={(id) => {
+              const a = id as Activity;
+              if (a === 'terminal') { setTerminalOpen(true); return; }
+              if (a === 'agent')    { setAgentOpen(true);    return; }
+              setActivity(a);
+            }}
+          />
     </LensShell>
   );
 }

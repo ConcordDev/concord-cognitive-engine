@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import zlib from "zlib";
+import { execFileSync } from "child_process";
 import logger from '../logger.js';
 import { transcodeImage, transcodeAudio, transcodeVideo, generateVideoDerivatives, isTranscodingAvailable } from './artifact-transcoder.js';
 import { checkBudget, downgradePlan } from './artifact-budget.js';
@@ -354,6 +355,41 @@ function generateThumbnail(dtuDir, filePath, mimeType) {
       fs.writeFileSync(waveformPath, JSON.stringify(peaks));
       return waveformPath;
     } catch (err) { console.warn('[artifact-store] waveform extraction failed', err?.message); return null; }
+  }
+  if (mimeType.startsWith("video/")) {
+    // Phase 12 — extract a single JPEG poster for video artifacts (Reels,
+    // studio clips, etc.). Tries seconds 1 → 0 → ½ duration so the
+    // resulting frame is unlikely to be the codec init's black frame.
+    // ffmpeg is invoked synchronously so generateThumbnail can stay
+    // sync — the call blocks for ~0.3–1.5s on small clips, acceptable
+    // for an upload that already took longer to send the bytes.
+    // If ffmpeg isn't on PATH we just return null — the UI will fall
+    // back to the <video> element's first-frame poster.
+    const out = path.join(dtuDir, "thumbnail.jpg");
+    try { fs.unlinkSync(out); } catch { /* not present yet */ }
+    const seekCandidates = ["00:00:01.000", "00:00:00.500", "00:00:00.000"];
+    for (const ts of seekCandidates) {
+      try {
+        execFileSync("ffmpeg", [
+          "-y",
+          "-ss", ts,
+          "-i", filePath,
+          "-frames:v", "1",
+          "-q:v", "3",
+          "-vf", "scale='min(720,iw)':-2",
+          out,
+        ], { stdio: "ignore", timeout: 10_000 });
+        if (fs.existsSync(out) && fs.statSync(out).size > 0) return out;
+      } catch (err) {
+        // ENOENT — ffmpeg not installed. Stop probing.
+        if (err?.code === "ENOENT") {
+          logger.debug?.("artifact-store", "ffmpeg-not-found-thumbnail", { mimeType });
+          return null;
+        }
+        // Otherwise try the next seek timestamp before giving up.
+      }
+    }
+    return null;
   }
   if (mimeType.startsWith("text/") || mimeType === "application/json" || mimeType === "application/javascript") {
     try {

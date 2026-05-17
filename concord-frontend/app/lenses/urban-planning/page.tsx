@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -186,6 +187,7 @@ export default function UrbanPlanningLensPage() {
       <FirstRunTour lensId="urban-planning" />
       <ManifestActionBar />
       <DepthBadge lensId="urban-planning" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="urban-planning" className="mx-6 mt-4" />
     <LensPageShell
       domain="urban-planning"
       title="Urban Planning"

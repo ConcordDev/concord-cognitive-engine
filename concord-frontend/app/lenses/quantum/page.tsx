@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { QuantumArxiv } from '@/components/quantum/QuantumArxiv';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -167,6 +168,7 @@ export default function QuantumLensPage() {
       <FirstRunTour lensId="quantum" />
       <ManifestActionBar />
       <DepthBadge lensId="quantum" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="quantum" className="mx-6 mt-4" />
     <div data-lens-theme="quantum" className="p-6 space-y-6">
       {/* Phase 4 — REAL arXiv quant-ph feed. */}
       <ArxivPanel domain="quantum" title="arXiv · Quantum Physics (quant-ph)" />

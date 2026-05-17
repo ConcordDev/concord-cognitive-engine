@@ -3,10 +3,16 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EnviroPanel } from '@/components/environment/EnviroPanel';
 import { GbifPanel } from '@/components/environment/GbifPanel';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  MapPin as MTabSite, Bird as MTabSpecies, TestTube as MTabSamp,
+  ShieldCheck as MTabComp, Leaf as MTabCarbon, Target as MTabGoals,
+} from 'lucide-react';
 import { ComplianceDiversionPanel } from '@/components/environment/ComplianceDiversionPanel';
 import { AirQualityActionStack } from '@/components/environment/AirQualityActionStack';
 import { motion } from 'framer-motion';
@@ -1183,11 +1189,13 @@ export default function EnvironmentLensPage() {
             </div>
             <div>
               <label className={ds.label}>Notes</label>
-              <textarea
+              <DraftedTextarea
+                lensId="environment"
+                draftKey="observation-notes"
                 className={ds.textarea}
                 rows={3}
-                value={(formData.notes as string) || ''}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                initial={(formData.notes as string) || ''}
+                onValueChange={(v) => setFormData({ ...formData, notes: v })}
                 placeholder="Additional observation notes..."
               />
             </div>
@@ -3719,6 +3727,19 @@ export default function EnvironmentLensPage() {
         <ComplianceDiversionPanel />
       </section>
     </LensPageShell>
+    {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
+    <MobileTabBar
+      tabs={[
+        { id: 'Sites',      label: 'Sites',  icon: MTabSite },
+        { id: 'Species',    label: 'Species',icon: MTabSpecies },
+        { id: 'Sampling',   label: 'Samp',   icon: MTabSamp },
+        { id: 'Compliance', label: 'Comply', icon: MTabComp },
+        { id: 'Carbon',     label: 'Carbon', icon: MTabCarbon },
+        { id: 'Goals',      label: 'Goals',  icon: MTabGoals },
+      ]}
+      active={mode}
+      onSelect={(id) => setMode(id as ModeTab)}
+    />
     </LensShell>
   );
 }

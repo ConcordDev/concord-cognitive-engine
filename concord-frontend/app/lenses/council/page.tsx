@@ -5,6 +5,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { SessionRail } from '@/components/lens/SessionRail';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -71,6 +72,8 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { GovernanceVotingPanel } from '@/components/emergent/GovernanceVotingPanel';
 import CouncilTheaterPanel from '@/components/council/CouncilTheaterPanel';
 import { EntityCard } from '@/components/entity/EntityCard';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import { FileText as MobileTabFileText, Vote as MobileTabVote, MessageSquare as MobileTabMessage, DollarSign as MobileTabDollar, ScrollText as MobileTabScroll, UsersRound as MobileTabPeople } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -3460,9 +3463,23 @@ export default function CouncilLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#council-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to council content</a>
+          <SessionRail lensId="council" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="council" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="council" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="council" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 11 (Item 5) — mobile-only thumb-reachable tab bar. */}
+          <MobileTabBar
+            tabs={[
+              { id: 'proposals',    label: 'Props',    icon: MobileTabFileText },
+              { id: 'voting',       label: 'Vote',     icon: MobileTabVote },
+              { id: 'debates',      label: 'Debate',   icon: MobileTabMessage },
+              { id: 'budget',       label: 'Budget',   icon: MobileTabDollar },
+              { id: 'audit',        label: 'Audit',    icon: MobileTabScroll },
+              { id: 'stakeholders', label: 'People',   icon: MobileTabPeople },
+            ]}
+            active={activeTab}
+            onSelect={(id) => setActiveTab(id as CouncilTab)}
+          />
     </LensShell>
   );
 }

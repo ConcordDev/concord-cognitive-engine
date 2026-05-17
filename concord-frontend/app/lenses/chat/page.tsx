@@ -8,6 +8,12 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HackerNewsReference } from '@/components/chat/HackerNewsReference';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useTilePush } from '@/hooks/useTilePush';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  Bot as MTabChat, MessageSquare as MTabConvos, Search as MTabSearch,
+  Command as MTabTools, Clock as MTabSched, Folder as MTabProj,
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -461,6 +467,10 @@ function fileToBase64(file: File): Promise<string> {
 
 export default function ChatLensPage() {
   useLensNav('chat');
+  // Phase 12 (Item 8 cont.) — flash on chat completion + multi-device
+  // message saves. Excludes chat:token / chat:status because those fire
+  // once per streamed token and would strobe the surface.
+  useTilePush({ lensId: 'chat', events: ['chat:complete', 'message:saved'] });
   const {
     latestData: realtimeData,
     alerts: realtimeAlerts,
@@ -4123,6 +4133,42 @@ export default function ChatLensPage() {
         <HackerNewsReference />
       </section>
     </div>
+    {/* Phase 12 (C4) — mobile pane switcher. Chat has multiple overlays
+        (sidebar, thread-search, tool-palette, scheduled, projects) that
+        each ship their own desktop affordance; mobile users only need
+        one tappable surface that opens each panel. The "active" tab
+        here is best-effort — these panels close themselves on action. */}
+    <MobileTabBar
+      tabs={[
+        { id: 'chat',      label: 'Chat',    icon: MTabChat },
+        { id: 'convos',    label: 'Convos',  icon: MTabConvos },
+        { id: 'projects',  label: 'Projects',icon: MTabProj },
+        { id: 'threads',   label: 'Find',    icon: MTabSearch },
+        { id: 'tools',     label: 'Tools',   icon: MTabTools },
+        { id: 'scheduled', label: 'Sched',   icon: MTabSched },
+      ]}
+      active={
+        threadSearchOpen ? 'threads'
+        : toolPaletteOpen ? 'tools'
+        : scheduledPanelOpen ? 'scheduled'
+        : chatSidebarOpen ? 'convos'
+        : 'chat'
+      }
+      onSelect={(id) => {
+        // Close everything first so the active panel is unambiguous.
+        setChatSidebarOpen(false);
+        setThreadSearchOpen(false);
+        setToolPaletteOpen(false);
+        setScheduledPanelOpen(false);
+        if (id === 'convos')    setChatSidebarOpen(true);
+        if (id === 'threads')   setThreadSearchOpen(true);
+        if (id === 'tools')     setToolPaletteOpen(true);
+        if (id === 'scheduled') setScheduledPanelOpen(true);
+        // 'projects' tab opens the convos sidebar — projects live inside it.
+        if (id === 'projects')  setChatSidebarOpen(true);
+        // 'chat' just closes everything, restoring focus to the input.
+      }}
+    />
     </LensShell>
   );
 }

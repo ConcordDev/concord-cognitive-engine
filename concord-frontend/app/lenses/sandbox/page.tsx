@@ -27,6 +27,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SandboxRepos } from '@/components/sandbox/SandboxRepos';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -289,6 +290,7 @@ export default function CombatSandboxPage() {
       <FirstRunTour lensId="sandbox" />
       <ManifestActionBar />
       <DepthBadge lensId="sandbox" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="sandbox" className="mx-6 mt-4" />
     <Suspense fallback={<div className="h-screen w-screen bg-slate-900" />}>
       <CombatSandboxInner />
     </Suspense>

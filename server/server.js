@@ -613,6 +613,17 @@ registerHeartbeat("npc-conversation-initiator", {
   handler: ({ db } = {}) => runNpcConversationInitiator({ db, io: REALTIME?.io }),
 });
 
+// Phase 11 (Item 12) — federation outbox pump. Drains pending
+// outbound ActivityPub activities. Opt-in via CONCORD_ACTIVITYPUB=true
+// so local-first installs don't make outbound HTTP fanouts they
+// didn't ask for. Frequency 30 ticks (~7.5 min) keeps retry latency
+// reasonable without hammering remote inboxes.
+import { runFederationOutboxPump } from "./emergent/federation-outbox-pump.js";
+registerHeartbeat("federation-outbox-pump", {
+  frequency: 30,
+  handler: ({ db } = {}) => runFederationOutboxPump({ db }),
+});
+
 // Layer 8: repair-cycle pain processor. Every 20 ticks (~5min) consumes
 // pending pain_signals rows for each user, grants endurance / strength /
 // agility / vitality / focus XP based on regional distribution, and grants
@@ -985,7 +996,7 @@ import { createAtlasDtu, getAtlasDtu, searchAtlasDtus, promoteAtlasDtu, addAtlas
 import { runAntiGamingScan, getAntiGamingMetrics } from "./emergent/atlas-antigaming.js";
 import { runAutogenV2, getAutogenRun, acceptAutogenOutput, mergeAutogenOutput, propagateConfidence, getAutogenV2Metrics } from "./emergent/atlas-autogen-v2.js";
 import { councilResolve, getCouncilQueue, councilRequestSources, councilMerge, getCouncilActions, getCouncilMetrics } from "./emergent/atlas-council.js";
-import { upsertProfile, getProfile, listProfiles, followUser, unfollowUser, getFollowers, getFollowing, publishDtu, unpublishDtu, recordCitation, getCitedBy, getFeed, computeTrending, discoverUsers, getSocialMetrics, createPost as socialCreatePost, getPost as socialGetPost, deletePost as socialDeletePost, getUserPosts as socialGetUserPosts, addReaction as socialAddReaction, getReactions as socialGetReactions, addComment as socialAddComment, deleteComment as socialDeleteComment, getComments as socialGetComments, sharePost as socialSharePost, getShares as socialGetShares, bookmarkPost as socialBookmarkPost, getUserBookmarks as socialGetUserBookmarks, getForYouFeed, getFollowingFeed, getExploreFeed, sendMessage as socialSendMessage, recallMessage as socialRecallMessage, getConversations as socialGetConversations, getMessages as socialGetMessages, markMessagesRead as socialMarkMessagesRead, getActiveStories, viewStory as socialViewStory, votePoll as socialVotePoll, getPollResults as socialGetPollResults, getNotifications as socialGetNotifications, markNotificationRead as socialMarkNotificationRead, markAllNotificationsRead as socialMarkAllNotificationsRead, getUnreadCount as socialGetUnreadCount, deleteNotification as socialDeleteNotification } from "./emergent/social-layer.js";
+import { upsertProfile, getProfile, listProfiles, followUser, unfollowUser, getFollowers, getFollowing, publishDtu, unpublishDtu, recordCitation, getCitedBy, getFeed, computeTrending, discoverUsers, getSocialMetrics, createPost as socialCreatePost, getPost as socialGetPost, deletePost as socialDeletePost, getUserPosts as socialGetUserPosts, addReaction as socialAddReaction, getReactions as socialGetReactions, addComment as socialAddComment, deleteComment as socialDeleteComment, getComments as socialGetComments, sharePost as socialSharePost, getShares as socialGetShares, bookmarkPost as socialBookmarkPost, getUserBookmarks as socialGetUserBookmarks, getForYouFeed, getFollowingFeed, getExploreFeed, sendMessage as socialSendMessage, recallMessage as socialRecallMessage, getConversations as socialGetConversations, getMessages as socialGetMessages, markMessagesRead as socialMarkMessagesRead, getActiveStories, viewStory as socialViewStory, votePoll as socialVotePoll, getPollResults as socialGetPollResults, getNotifications as socialGetNotifications, markNotificationRead as socialMarkNotificationRead, markAllNotificationsRead as socialMarkAllNotificationsRead, getUnreadCount as socialGetUnreadCount, deleteNotification as socialDeleteNotification, setSocialEmitter, searchUsersByPrefix as socialSearchUsersByPrefix, setFederationDispatcher } from "./emergent/social-layer.js";
 import { createWorkspace as collabCreateWorkspace, getWorkspace as collabGetWorkspace, listWorkspaces as collabListWorkspaces, addWorkspaceMember as collabAddWorkspaceMember, removeWorkspaceMember as collabRemoveWorkspaceMember, addDtuToWorkspace as collabAddDtuToWorkspace, addComment as collabAddComment, getComments as collabGetComments, editComment as collabEditComment, resolveComment as collabResolveComment, proposeRevision, getRevisionProposals, voteOnRevision, applyRevision, startEditSession, recordEdit, endEditSession, getCollabMetrics } from "./emergent/collaboration.js";
 import { createOrgWorkspace, getOrgWorkspace, assignRole, revokeRole, getUserRole, getOrgMembers, checkPermission, getUserPermissions, assignOrgLens, getOrgLenses, exportAuditLog, getRbacMetrics } from "./emergent/rbac.js";
 import { takeSnapshot as takeAnalyticsSnapshot, getPersonalAnalytics, getDtuGrowthTrends, getCitationAnalytics, getMarketplaceAnalytics as getMarketAnalytics, getKnowledgeDensity, getAtlasDomainAnalytics, getDashboardSummary } from "./emergent/analytics-dashboard.js";
@@ -5725,6 +5736,10 @@ function authMiddleware(req, res, next) {
     "/api/foundation",
     // Foundation Atlas signal tomography
     "/api/atlas",
+    // Phase 12 — RFC 7033 webfinger. Per spec the well-known endpoint
+    // must be publicly resolvable so federated peers (Mastodon, etc.)
+    // can discover Concord actors before any authenticated handshake.
+    "/.well-known/webfinger",
   ];
   // Public-read bypass: anon GETs to whitelisted paths skip auth. But if the
   // caller sent an Authorization header or auth cookie, run the full auth
@@ -5740,6 +5755,11 @@ function authMiddleware(req, res, next) {
   // Gate 1 POST bypass: anonymous client telemetry pings (perf, error reports).
   if (req.method === "POST" && req.path === "/api/world/perf-telemetry") return next();
   if (req.method === "POST" && req.path === "/api/client-error") return next();
+  // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
+  // POST activities here without any local auth — authentication is the
+  // HTTP-Signature on the request, verified by the inbox handler itself
+  // via lib/ap-signature.js + activitypub-bridge.js#receiveActivity.
+  if (req.method === "POST" && /^\/api\/federation\/users\/[^/]+\/inbox$/.test(req.path)) return next();
   // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
@@ -6257,6 +6277,13 @@ async function initMetrics() {
     METRICS.registry = new prom.Registry();
     prom.collectDefaultMetrics({ register: METRICS.registry });
 
+    // Phase 12 audit fix — expose the registry so routes/system.js can
+    // scrape it from the public /metrics endpoint (was previously
+    // declared but never reached from the public scrape path, so
+    // heartbeat counters / module-error counter / block-latency
+    // histogram were all invisible to Prometheus).
+    globalThis._concordMETRICS = METRICS;
+
     // Custom counters
     METRICS.counters.httpRequests = new prom.Counter({
       name: "concord_http_requests_total",
@@ -6663,10 +6690,16 @@ if (rateLimit) {
 // Health probes are always exempt — orchestrators (k8s, load balancers,
 // monitoring) and CI wait-loops legitimately hit them with curl/wget UAs.
 const _BOT_UA_RE = /\b(bot|crawler|spider|scraper|python-requests|aiohttp|httpx|go-http-client|java\/|libwww|wget|curl\/)\b/i;
+// ActivityPub federation endpoints are always fetched by automated
+// clients (Mastodon's HTTP fetcher, Pleroma, etc.) — exempting them
+// from the bot guard is the only way the public actor + inbox + outbox
+// can interop with the wider Fediverse.
+const _AP_PUBLIC_RE = /^\/api\/federation\/users\/[^/]+(?:\/(inbox|outbox|followers|following))?$/;
 function botGuardMiddleware(req, res, next) {
   if (req.user?.id) return next(); // authenticated — pass
   if (!req.path.startsWith("/api/")) return next(); // non-API — pass
   if (_HEALTH_PROBE_RE.test(req.path)) return next(); // health probes — pass
+  if (_AP_PUBLIC_RE.test(req.path)) return next(); // federation discovery — pass
   const ua = req.headers["user-agent"] || "";
   if (!ua || _BOT_UA_RE.test(ua)) {
     return res.status(403).json({
@@ -6980,6 +7013,91 @@ function emitToUser(userId, event, payload) {
     return { ok: false, reason: String(e?.message || e) };
   }
 }
+
+// Phase 11 (Item 4) — thread the per-user emit helper into
+// social-layer's createNotification path so every notification fires
+// a real-time `social:notification` event in addition to the
+// in-memory ledger write. The frontend useSocialNotificationToast
+// hook subscribes and renders a toast instead of waiting on the 60s
+// poll.
+// Phase 11 (Item 12) — wire the federation dispatcher. When a post is
+// authored with federationVisibility !== 'local', enqueue an outbox
+// row per follower-instance (and the relay inbox for 'public'). For
+// now we only enqueue against followers whose AP inbox URL we already
+// know via federation_peer_actors; the discovery handshake
+// (webfinger) is a future hardening pass.
+try {
+  setFederationDispatcher(async (post) => {
+    if (process.env.CONCORD_ACTIVITYPUB !== 'true') return;
+    try {
+      const { enqueueOutbound } = await import('./lib/federation-outbox.js');
+      // Pull every peer actor we've ever seen — start broad; the
+      // followers/public distinction is enforced by the receiving
+      // instance reading the `to` field of the activity.
+      const peers = db.prepare(`SELECT inbox_url FROM federation_peer_actors WHERE inbox_url IS NOT NULL`).all();
+      if (peers.length === 0) return;
+      // actor URLs must match the federation actor route mount (see
+      // lib/activitypub-bridge.js#buildActor + federation-outbox.js#
+      // signingInputsFor — the keyId fragment, signing identity, and
+      // actor link all share this prefix).
+      const _instanceBase = process.env.CONCORD_BASE_URL || process.env.CONCORD_INSTANCE_URL || 'http://localhost:5050';
+      const _actorUrl = `${_instanceBase}/api/federation/users/${encodeURIComponent(post.userId)}`;
+      const activity = {
+        '@context': 'https://www.w3.org/ns/activitystreams',
+        id: post.apActivityId,
+        type: 'Create',
+        actor: _actorUrl,
+        published: post.createdAt,
+        to: post.federationVisibility === 'public'
+          ? ['https://www.w3.org/ns/activitystreams#Public']
+          : [`${_actorUrl}/followers`],
+        object: {
+          id: `${post.apActivityId}#object`,
+          type: 'Note',
+          content: post.content,
+          published: post.createdAt,
+          tag: (post.tags || []).map(t => ({ type: 'Hashtag', name: `#${t}` })),
+        },
+      };
+      const activityJson = JSON.stringify(activity);
+      for (const p of peers) {
+        enqueueOutbound(db, {
+          homeUserId: post.userId,
+          apActivityId: post.apActivityId,
+          activityType: 'Create',
+          activityJson,
+          targetInboxUrl: p.inbox_url,
+        });
+      }
+    } catch (_e) { /* never crash createPost */ }
+  });
+} catch (_e) { /* non-fatal at boot */ }
+
+try {
+  setSocialEmitter(async (uid, evt, payload) => {
+    // 1) Real-time socket fan-out (always).
+    emitToUser(uid, evt, payload);
+    // 2) Phase 11 (Item 13): push notification fan-out for the
+    //    'social:notification' channel only. Best-effort; no throw.
+    if (evt === 'social:notification' && payload?.notification) {
+      try {
+        const { sendPush } = await import('./lib/push.js');
+        const n = payload.notification;
+        await sendPush(db, {
+          userId: uid,
+          title: n.type === 'mention' ? 'You were mentioned' :
+                 n.type === 'comment' ? 'New comment' :
+                 n.type === 'share'   ? 'Your post was shared' :
+                 n.type === 'like'    ? 'New reaction' :
+                 n.type === 'dm'      ? 'New message' :
+                 'Concord notification',
+          body: String(n.content || '').slice(0, 120),
+          data: { type: n.type, postId: n.postId, notificationId: n.id, fromUserId: n.fromUserId },
+        });
+      } catch (_e) { /* push deps optional */ }
+    }
+  });
+} catch (_e) { /* non-fatal at boot */ }
 
 /**
  * Sprint B Phase 11.3 helper — broadcast to every client subscribed to
@@ -8157,16 +8275,63 @@ async function tryInitWebSockets(server) {
       }
     });
 
+    // Phase 12 (Item 7) — Spaces audio-room signaling. Per-room WebRTC
+    // signaling (multiple rooms can coexist; namespaced 'audio-room:*'
+    // to keep separate from the in-world voice mesh above).
+    // The roomId comes from `spaces.create` / `spaces.list_active`;
+    // the room key joined here is `audio-room:${roomId}`.
+    socket.on("audio-room:join", (msg) => {
+      const roomId = msg && typeof msg.roomId === "string" ? msg.roomId : null;
+      if (!roomId) return;
+      const room = `audio-room:${roomId}`;
+      socket.join(room);
+      socket.to(room).emit("audio-room:peer-joined", { peerId: socket.id, roomId });
+      const peers = [...(io.sockets.adapter.rooms.get(room) || [])].filter((id) => id !== socket.id);
+      socket.emit("audio-room:room-state", { roomId, peers });
+    });
+    socket.on("audio-room:offer", (msg) => {
+      const { to, sdp, roomId } = msg || {};
+      if (to && sdp) io.to(to).emit("audio-room:offer", { from: socket.id, sdp, roomId });
+    });
+    socket.on("audio-room:answer", (msg) => {
+      const { to, sdp, roomId } = msg || {};
+      if (to && sdp) io.to(to).emit("audio-room:answer", { from: socket.id, sdp, roomId });
+    });
+    socket.on("audio-room:ice-candidate", (msg) => {
+      const { to, candidate, roomId } = msg || {};
+      if (to && candidate) io.to(to).emit("audio-room:ice-candidate", { from: socket.id, candidate, roomId });
+    });
+    socket.on("audio-room:leave", (msg) => {
+      const roomId = msg && typeof msg.roomId === "string" ? msg.roomId : null;
+      if (!roomId) return;
+      const room = `audio-room:${roomId}`;
+      if (socket.rooms.has(room)) {
+        socket.to(room).emit("audio-room:peer-left", { peerId: socket.id, roomId });
+        socket.leave(room);
+      }
+    });
+
+    // Common cleanup: emit peer-left to any voice or audio-room rooms
+    // the socket is in. Disconnect + error both run this.
+    const broadcastDeparture = () => {
+      try {
+        for (const r of socket.rooms || []) {
+          if (r === "voice") {
+            socket.to(r).emit("voice:peer-left", { peerId: socket.id });
+          } else if (typeof r === "string" && r.startsWith("audio-room:")) {
+            const roomId = r.slice("audio-room:".length);
+            socket.to(r).emit("audio-room:peer-left", { peerId: socket.id, roomId });
+          }
+        }
+      } catch (_e) { /* ignore */ }
+    };
+
     socket.on("disconnect", () => {
       const userId = socket.data?.userId;
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
       }
-      // Voice room cleanup so peers don't keep stale ICE candidates
-      // and peer-list broadcasts.
-      if (socket.rooms?.has?.("voice")) {
-        try { socket.to("voice").emit("voice:peer-left", { peerId: socket.id }); } catch (_e) { /* ignore */ }
-      }
+      broadcastDeparture();
       REALTIME.clients.delete(clientId);
     });
 
@@ -8175,9 +8340,7 @@ async function tryInitWebSockets(server) {
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
       }
-      if (socket.rooms?.has?.("voice")) {
-        try { socket.to("voice").emit("voice:peer-left", { peerId: socket.id }); } catch (_e) { /* ignore */ }
-      }
+      broadcastDeparture();
       REALTIME.clients.delete(clientId);
     });
   });
@@ -9676,9 +9839,16 @@ async function runMacro(domain, name, input, ctx) {
     "mental-health": new Set(["live_medlineplus"]),
     podcast: new Set(["live_itunes_search"]),
     global: new Set(["live_countries", "live_wiki_search", "live_wiki_summary", "live_worldbank"]),
-    environment: new Set(["live_gbif"]),
+    environment: new Set(["live_gbif", "live_air_quality"]),
     forestry: new Set(["live_gbif"]),
     agriculture: new Set(["live_gbif"]),
+    // Phase 11 (Item 9) — key-required REAL_FREE wires.
+    weather: new Set(["live_forecast"]),
+    // Phase 11 (Item 6) — Reels feed reads. record_view is a write
+    // but tolerated as anonymous (viewer_user_id can be null).
+    reels: new Set(["list_for_you", "list_by_user", "record_view"]),
+    // Phase 11 (Item 7) — Spaces list + room read are public.
+    spaces: new Set(["list_active", "get"]),
     paper: new Set(["live_openlibrary", "live_crossref", "live_openalex"]),
     education: new Set(["live_openlibrary", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     // Phase 4 (third wave) — scholarly + language wires.
@@ -9696,10 +9866,10 @@ async function runMacro(domain, name, input, ctx) {
     reflection: new Set(["live_quote"]),
     pets: new Set(["live_catfact", "live_dog"]),
     // Phase 4 (sixth wave) — civic / postal / finance reference wires.
-    finance: new Set(["live_worldbank"]),
+    finance: new Set(["live_worldbank", "live_fred_series"]),
     retail: new Set(["live_zippopotam"]),
     logistics: new Set(["live_zippopotam"]),
-    travel: new Set(["live_zippopotam"]),
+    travel: new Set(["live_zippopotam", "live_nps_parks"]),
     game: new Set(["live_trivia"]),
     // Phase 4 (seventh wave) — CryptoCompare basic (no key).
     crypto: new Set(["live_top", "live_price"]),
@@ -10004,7 +10174,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/artifacts", "/api/notifications", "/api/reminders", "/api/webhooks",
     "/api/whiteboard", "/api/whiteboards", "/api/mobile", "/api/global",
     "/api/sovereign", "/api/autotag", "/api/efficiency", "/api/model-optimizer",
-    "/api/lens-items", "/api/ml", "/api/db", "/api/preview-action", "/api/pwa",
+    "/api/lens-items", "/api/lens-actions", "/api/ml", "/api/db", "/api/preview-action", "/api/pwa",
     "/api/obsidian", "/api/integrations", "/api/distribution", "/api/backpressure",
     "/api/embeddings", "/api/perf", "/api/precompute", "/api/distillation",
     "/api/redis", "/api/lenses", "/api/studio", "/api/artistry", "/api/rbac",
@@ -23294,6 +23464,30 @@ registerAstronomyLiveMacros(register);
 import registerFreeApiLiveMacros from "./domains/free-api-live.js";
 registerFreeApiLiveMacros(register);
 
+// Phase 11 (Item 9) — REAL_FREE wires requiring a free signup key:
+// FRED (finance), EPA AirNow (environment), NPS (travel),
+// OpenWeatherMap (weather). Render an honest "Set X in .env" message
+// when the env var is missing instead of a fake demo response.
+import registerKeyRequiredLiveMacros from "./domains/key-required-live.js";
+registerKeyRequiredLiveMacros(register);
+
+// Phase 11 (Item 6) — Reels (short-form vertical video). Macros:
+// reels.{list_for_you, list_by_user, record_view, create_from_post}.
+// Reels reuse the in-memory social post substrate for reactions /
+// comments / shares / bookmarks; the reels table adds video metadata
+// + per-viewer watch analytics.
+import registerReelsMacros from "./domains/reels.js";
+registerReelsMacros(register);
+
+// Phase 11 (Item 7) — Spaces (live audio rooms). Macros:
+// spaces.{list_active, get, create, join_listener, leave, raise_hand,
+// promote, end, set_recording}. Substrate-only; the WebRTC
+// signaling layer is a separate Socket.io event channel
+// ('audio-room:*'). No TURN server ships — strict-NAT clients see
+// an honest "needs TURN" message in the UI.
+import registerSpacesMacros from "./domains/audio-rooms.js";
+registerSpacesMacros(register);
+
 // Phase 4 cont'd — FDA OpenFDA wire-up for the pharmacy lens. Drug
 // labels, adverse-event reports, recent recalls. No key (rate-limited
 // 240/min unauthenticated). REAL_FREE — fuller formulary still requires
@@ -28914,6 +29108,24 @@ function startHeartbeat() {
 }
 // Stagger: heartbeat starts at T+45s (LLM-heavy, needs breathing room)
 setTimeout(() => startHeartbeat(), 45_000);
+
+// Phase 12 audit fix — wire the registry-pattern heartbeat dispatcher.
+// `_startGovernorHeartbeat()` schedules `governorTick()` on a setInterval;
+// `governorTick()` is the only caller of `tickAllRegistered()`, which
+// dispatches every module registered via `registerHeartbeat()`. Without
+// this call the 68+ registry-style heartbeats (signal-propagation,
+// npc-conversation-initiator, faction-strategy-cycle, forward-sim-cycle,
+// embodied-dream-cycle, repair-cycle, environment-sensor, etc.)
+// silently never fire. Started at T+50s so registrations from the
+// late-loading ghost-fleet modules land first.
+setTimeout(() => {
+  try {
+    const result = _startGovernorHeartbeat();
+    structuredLog("info", "governor_heartbeat_boot", result || { ok: false });
+  } catch (e) {
+    structuredLog("warn", "governor_heartbeat_boot_failed", { error: String(e?.message || e) });
+  }
+}, 50_000);
 
 // ---- Operations Endpoints (extracted to routes/operations.js) ----
 registerOperationRoutes(app, {
@@ -35808,7 +36020,35 @@ app.post("/api/artifact/upload", async (req, res) => {
     // Record byte delta for the user. Best-effort — counter drift won't
     // crash the upload pipeline if it happens.
     recordStorageDelta(db, userId, artifactRef.sizeBytes || buffer.length, STORAGE_REASONS.UPLOAD, dtuId);
-    res.json({ ok: true, dtuId, artifact: { type: artifactRef.type, sizeBytes: artifactRef.sizeBytes } });
+    // Surface thumbnail URL when one was synchronously generated
+    // (currently: video → ffmpeg frame extraction; falsy otherwise).
+    const hasThumb = !!artifactRef.thumbnail && typeof artifactRef.thumbnail === "string" && contentType.startsWith("video/");
+    res.json({
+      ok: true,
+      dtuId,
+      artifact: { type: artifactRef.type, sizeBytes: artifactRef.sizeBytes },
+      thumbnailUrl: hasThumb ? `/api/artifact/${dtuId}/thumbnail` : null,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
+
+// Thumbnail/poster bytes for an artifact. Currently populated for
+// video uploads (Reels, studio clips) via ffmpeg frame extraction.
+// Returns 404 when no thumbnail exists (rather than a stock placeholder),
+// so the UI can fall back to <video poster=""> first-frame decoding.
+app.get("/api/artifact/:dtuId/thumbnail", async (req, res) => {
+  try {
+    const dtu = STATE.dtus.get(req.params.dtuId);
+    if (!dtu?.artifact?.thumbnail) return res.status(404).json({ ok: false, error: "no_thumbnail" });
+    const thumbPath = dtu.artifact.thumbnail;
+    const fs = await import("fs");
+    if (!fs.existsSync(thumbPath)) return res.status(404).json({ ok: false, error: "thumbnail_missing" });
+    // Cache for an hour — thumbnails are immutable.
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    fs.createReadStream(thumbPath).pipe(res);
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
@@ -40117,6 +40357,30 @@ app.get("/api/entity/:entityId/profile", asyncHandler(async (req, res) => {
     totalRoyaltiesEarned: entity.economy?.totalEarned || 0,
   });
 }));
+
+// ── /admin/endpoints inventory ────────────────────────────────────────
+// Static-parse server.js + every routes/*.js for HTTP route
+// registrations; annotate each with auth posture (public/required/gated)
+// derived from publicReadPaths / _safeReadPaths / requireAuth /
+// requireRole presence in source. Result is cached after first call —
+// pass ?force=1 to recompute. /admin/endpoints calls this once per
+// page load and runs per-row Test buttons against the live server for
+// trust-but-verify status.
+app.get("/api/admin/endpoints", requireRole("admin", "sovereign"), async (req, res) => {
+  try {
+    const { buildRouteInventory } = await import("./lib/route-inventory.js");
+    const here = path.dirname(url.fileURLToPath(import.meta.url));
+    const force = String(req.query.force || "") === "1";
+    const inv = buildRouteInventory({
+      serverPath: path.join(here, "server.js"),
+      routesDir: path.join(here, "routes"),
+      force,
+    });
+    res.json({ ok: true, ...inv });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || "inventory_failed" });
+  }
+});
 
 // Lens manifest endpoint — exposes action manifest per domain
 // ── Auto-discovery: every action actually registered for a domain ──────
@@ -49394,7 +49658,13 @@ app.get("/api/social/reactions/:postId", (req, res) => {
 app.post("/api/social/comment", requireAuth(), (req, res) => {
   try {
     const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialAddComment(STATE, { userId, postId: req.body?.postId, content: req.body?.content, parentCommentId: req.body?.parentCommentId }));
+    res.json(socialAddComment(STATE, {
+      userId,
+      postId: req.body?.postId,
+      content: req.body?.content,
+      parentCommentId: req.body?.parentCommentId,
+      mentionedUsers: req.body?.mentionedUsers,
+    }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -49426,6 +49696,111 @@ app.post("/api/social/bookmark", requireAuth(), (req, res) => {
   try {
     const userId = req.user?.id || req.actor?.userId || "anon";
     res.json(socialBookmarkPost(STATE, { userId, postId: req.body?.postId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---- Social Mention Search (type-ahead) ----
+// Phase 11 (Item 3) — backs MentionAutocomplete in QuickPostComposer
+// + CommentThread. Returns a ranked list (followed > followers >
+// citation-weighted), empty when no matches — no fake suggestions.
+app.get("/api/social/mention-search", (req, res) => {
+  try {
+
+    // eslint-disable-next-line no-restricted-syntax
+    const viewerId = req.user?.id || req.query.viewerId || "anon";
+    const q = String(req.query.q || "");
+    const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 10));
+    res.json(socialSearchUsersByPrefix(STATE, q, viewerId, limit));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---- ActivityPub federation inbox + status (Phase 11 Item 12) ----
+// Remote peers POST signed activities here. We currently accept the
+// activity and stash it in federation_inbox; signature verification
+// is left to a future hardening pass (the activity body is parsed +
+// dedupe-protected by ap_activity_id UNIQUE constraint, so the
+// blast radius is bounded — the worst a malicious POST can do is
+// queue an entry that the processor either materializes (if it's
+// shaped like Follow/Like/Reply) or ignores). When federation is
+// disabled (CONCORD_ACTIVITYPUB unset), the endpoint reports the
+// disabled state rather than silently dropping.
+
+app.post("/api/federation/inbox", async (req, res) => {
+  try {
+    if (process.env.CONCORD_ACTIVITYPUB !== 'true') {
+      return res.status(503).json({ ok: false, reason: 'federation_disabled', hint: 'Set CONCORD_ACTIVITYPUB=true to enable.' });
+    }
+    const body = req.body || {};
+    const apActivityId = body.id;
+    const actor = body.actor;
+    const type = body.type;
+    if (!apActivityId || !actor || !type) {
+      return res.status(400).json({ ok: false, reason: 'missing_activity_fields' });
+    }
+    const { receiveInbound } = await import('./lib/federation-outbox.js');
+    const r = receiveInbound(db, {
+      apActivityId: String(apActivityId),
+      sourceActor: String(actor),
+      activityType: String(type),
+      activityJson: JSON.stringify(body),
+    });
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/federation/status", requireRole("admin", "sovereign"), async (_req, res) => {
+  try {
+    const { outboxStats } = await import('./lib/federation-outbox.js');
+    res.json({
+      ok: true,
+      enabled: process.env.CONCORD_ACTIVITYPUB === 'true',
+      outbox: outboxStats(db),
+      inbox: {
+        total: db.prepare(`SELECT COUNT(*) AS c FROM federation_inbox`).get().c,
+        unprocessed: db.prepare(`SELECT COUNT(*) AS c FROM federation_inbox WHERE processed = 0`).get().c,
+      },
+      peerActors: db.prepare(`SELECT COUNT(*) AS c FROM federation_peer_actors`).get().c,
+    });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---- Push notification registration (Phase 11 Item 13) ----
+// Devices register their token here so createNotification can fan out
+// real OS-level pushes to iOS / Android / browser. Web tokens are the
+// JSON-stringified PushSubscription; Expo tokens are the raw
+// ExponentPushToken[...] string.
+
+app.get("/api/push/vapid-public-key", (_req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || null;
+  res.json({
+    ok: !!key,
+    publicKey: key,
+    reason: key ? undefined : 'vapid_not_configured',
+    hint: key ? undefined : 'Generate keys via `npx web-push generate-vapid-keys` and set VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY in .env',
+  });
+});
+
+app.post("/api/push/register", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { registerToken } = await import('./lib/push.js');
+    res.json(registerToken(db, {
+      userId,
+      token: String(req.body?.token || ''),
+      platform: String(req.body?.platform || ''),
+      deviceLabel: req.body?.deviceLabel || null,
+      expiresAt: Number(req.body?.expiresAt) || null,
+    }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/push/unregister", requireAuth(), async (req, res) => {
+  try {
+    const { removeToken } = await import('./lib/push.js');
+    res.json(removeToken(db, { token: String(req.body?.token || '') }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -69562,22 +69937,26 @@ register("federation", "inbox", async (ctx, input = {}) => {
 // Public inbox endpoint — federated peers POST activities here.
 // W3C ActivityPub §7: respond 202 Accepted on receipt, even if processing
 // fails downstream. Idempotent on activity.id so dupe deliveries are safe.
+//
+// Phase 12 — wires real HTTP-Signature verification: req.rawBody is
+// captured by the express.json verify hook so we can prove the body
+// hashes to the digest header the actor signed.
 app.post("/api/federation/users/:userId/inbox", asyncHandler(async (req, res) => {
   const recipientUserId = req.params.userId;
   const activity = req.body || {};
-  const headers = {
-    signature: req.headers["signature"],
-    Signature: req.headers["Signature"],
-    digest: req.headers["digest"],
-  };
   let ap;
   try { ap = await import("./lib/activitypub-bridge.js"); }
   catch { return res.status(503).json({ ok: false, reason: "ap_unavailable" }); }
-  const r = await ap.receiveActivity(db, recipientUserId, activity, headers);
-  // 202 even on signature_required so the peer doesn't infinite-retry —
-  // the spec is permissive about silent rejection at the inbox boundary.
+  const r = await ap.receiveActivity(db, recipientUserId, activity, req.headers, req.rawBody, {
+    method: "POST",
+    path: req.originalUrl || req.url,
+  });
   if (r?.ok && r.accepted) return res.status(202).json({ ok: true, deduped: !!r.deduped });
-  return res.status(r?.reason === "signature_required" ? 401 : 400).json(r);
+  if (r?.reason === "signature_required") return res.status(401).json(r);
+  if (r?.reason === "signature_invalid" || r?.reason === "actor_signature_mismatch") {
+    return res.status(401).json(r);
+  }
+  return res.status(400).json(r);
 }));
 
 // Public actor descriptor — federated peers GET this to discover the
@@ -69606,6 +69985,45 @@ app.get("/api/federation/users/:userId/outbox", asyncHandler(async (req, res) =>
 structuredLog("info", "phase8_2_ap_inbox_init", {
   detail: "Phase 8.2 — ActivityPub inbox endpoint + federation.{inbox,inbox_receive} macros wired",
 });
+
+// ── Phase 12: Webfinger discovery (RFC 7033) ────────────────────────────
+// Required for Mastodon-class peers to resolve "@user@host" handles to an
+// ActivityPub actor URL. Without this, our outbound posts can be
+// received by peers but peers can't discover us by username.
+app.get("/.well-known/webfinger", asyncHandler(async (req, res) => {
+  const resource = String(req.query.resource || "");
+  // Accepted forms: `acct:user@host` and (Mastodon admin form) `https://host/users/user`.
+  let username = null;
+  if (resource.startsWith("acct:")) {
+    const handle = resource.slice(5);
+    const at = handle.indexOf("@");
+    if (at < 0) return res.status(400).json({ ok: false, error: "malformed_acct" });
+    username = handle.slice(0, at);
+  } else if (resource.startsWith("https://") || resource.startsWith("http://")) {
+    const m = resource.match(/\/users\/([^/?#]+)/);
+    if (m) username = decodeURIComponent(m[1]);
+  }
+  if (!username) return res.status(400).json({ ok: false, error: "unsupported_resource" });
+
+  // Look up the local user; 404 if they don't exist so a probe doesn't
+  // confirm/deny arbitrary handles silently.
+  let userRow = null;
+  try {
+    userRow = db.prepare(`SELECT id, username FROM users WHERE username = ? OR id = ?`).get(username, username);
+  } catch { /* users table may be absent in some test envs */ }
+  if (!userRow) return res.status(404).json({ ok: false, error: "user_not_found" });
+
+  const base = process.env.CONCORD_BASE_URL || process.env.CONCORD_INSTANCE_URL || "https://concord-os.org";
+  const actorUrl = `${base}/api/federation/users/${encodeURIComponent(userRow.username || userRow.id)}`;
+  res.type("application/jrd+json").json({
+    subject: `acct:${userRow.username || userRow.id}@${new URL(base).host}`,
+    aliases: [actorUrl],
+    links: [
+      { rel: "self", type: "application/activity+json", href: actorUrl },
+      { rel: "http://webfinger.net/rel/profile-page", type: "text/html", href: `${base}/users/${encodeURIComponent(userRow.username || userRow.id)}` },
+    ],
+  });
+}));
 
 // ── Phase 8.5: Self-improving PR loop — reflex → forge → GitHub PR ──────────
 //

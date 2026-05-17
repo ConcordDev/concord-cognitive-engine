@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -1117,7 +1118,7 @@ export default function ArtLensPage() {
                 </div>
                 <div>
                   <label className="text-sm text-gray-400 block mb-1">Description</label>
-                  <textarea value={uploadDescription} onChange={e => setUploadDescription(e.target.value)} rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50 resize-none" placeholder="Describe your artwork" />
+                  <DraftedTextarea lensId="art" draftKey="artwork-description" initial={uploadDescription} onValueChange={setUploadDescription} rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50 resize-none" placeholder="Describe your artwork" />
                 </div>
                 <div>
                   <label className="text-sm text-gray-400 block mb-1">Style</label>

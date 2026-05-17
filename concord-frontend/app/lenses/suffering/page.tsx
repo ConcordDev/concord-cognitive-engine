@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SufferingRef } from '@/components/suffering/SufferingRef';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -110,6 +111,7 @@ export default function SufferingLensPage() {
       <FirstRunTour lensId="suffering" />
       <ManifestActionBar />
       <DepthBadge lensId="suffering" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="suffering" className="mx-6 mt-4" />
     <div className="p-6 space-y-6">
       {/* Wellbeing Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">

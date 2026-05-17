@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { PhiloFeed } from '@/components/philosophy/PhiloFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -186,6 +187,7 @@ export default function PhilosophyLensPage() {
       <FirstRunTour lensId="philosophy" />
       <ManifestActionBar />
       <DepthBadge lensId="philosophy" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="philosophy" className="mx-6 mt-4" />
     <div data-lens-theme="philosophy" className="p-6 space-y-6">
       {/* Phase 4 (fourth wave) — REAL Wikipedia concept lookup for philosophy. */}
       <WikipediaSearchPanel domain="philosophy" title="Wikipedia · philosophy concepts" />

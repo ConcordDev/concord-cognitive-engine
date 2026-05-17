@@ -32,7 +32,8 @@
           "bluetooth-central",
           "bluetooth-peripheral",
           "fetch",
-          "processing"
+          "processing",
+          "remote-notification"
         ]
       }
     },
@@ -69,6 +70,12 @@
         "HIGH_SAMPLING_RATE_SENSORS"
       ]
     },
+    "notification": {
+      "icon": "./assets/icon.png",
+      "color": "#00d4ff",
+      "androidMode": "default",
+      "androidCollapsedTitle": "Concord"
+    },
     "plugins": [
       "expo-dev-client",
       [
@@ -79,7 +86,14 @@
         }
       ],
       "react-native-nfc-manager",
-      "react-native-background-fetch"
+      "react-native-background-fetch",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#00d4ff"
+        }
+      ]
     ]
   }
 }

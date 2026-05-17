@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
@@ -128,6 +129,7 @@ export default function SchemaLensPage() {
       <FirstRunTour lensId="schema" />
       <ManifestActionBar />
       <DepthBadge lensId="schema" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="schema" className="mx-6 mt-4" />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

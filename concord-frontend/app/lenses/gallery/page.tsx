@@ -18,6 +18,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { MetMuseumPanel } from '@/components/art/MetMuseumPanel';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
 import { GalleryActionPanel } from '@/components/gallery/GalleryActionPanel';
@@ -126,6 +127,7 @@ export default function GalleryPage() {
     <LensShell lensId="gallery">
       <FirstRunTour lensId="gallery" />
       <DepthBadge lensId="gallery" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="gallery" className="mx-6 mt-4" />
       <div className="p-8 text-zinc-400 flex items-center gap-2 focus:ring-2">
         <Loader2 className="w-4 h-4 animate-spin" />
         Loading your gallery…

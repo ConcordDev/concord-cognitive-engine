@@ -12,6 +12,11 @@ import BillTracker from '@/components/government/BillTracker';
 import CivicAlerts from '@/components/government/CivicAlerts';
 import FOIATracker from '@/components/government/FOIATracker';
 import BudgetVisualizer from '@/components/government/BudgetVisualizer';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  FileCheck as MTabPermit, HardHat as MTabPW, Archive as MTabRec,
+  Gavel as MTabCourt, FileText as MTabBills, Siren as MTabAlert,
+} from 'lucide-react';
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -3556,6 +3561,19 @@ export default function GovernmentLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#government-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to government content</a>
+      {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
+      <MobileTabBar
+        tabs={[
+          { id: 'Permits',      label: 'Permits', icon: MTabPermit },
+          { id: 'Public Works', label: 'PW',      icon: MTabPW },
+          { id: 'Records',      label: 'Records', icon: MTabRec },
+          { id: 'Court',        label: 'Court',   icon: MTabCourt },
+          { id: 'Bills',        label: 'Bills',   icon: MTabBills },
+          { id: 'CivicAlerts',  label: 'Alerts',  icon: MTabAlert },
+        ]}
+        active={mode}
+        onSelect={(id) => setMode(id as ModeTab)}
+      />
     </LensShell>
   );
 }

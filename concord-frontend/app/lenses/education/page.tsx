@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import { Users as MobileTabUsers, BookOpen as MobileTabBook, ClipboardList as MobileTabList, Award as MobileTabAward, Calendar as MobileTabCal, Brain as MobileTabBrain } from 'lucide-react';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GutenbergCurriculum } from '@/components/education/GutenbergCurriculum';
@@ -3143,11 +3146,11 @@ export default function EducationLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
-                  <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} className={ds.textarea} rows={3} placeholder="Description..." />
+                  <DraftedTextarea lensId="education" draftKey="form-description" className={ds.textarea} rows={3} initial={formDescription} onValueChange={setFormDescription} placeholder="Description..." />
                 </div>
                 <div>
                   <label className={ds.label}>Notes</label>
-                  <textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} className={ds.textarea} rows={2} placeholder="Additional notes..." />
+                  <DraftedTextarea lensId="education" draftKey="form-notes" className={ds.textarea} rows={2} initial={formNotes} onValueChange={setFormNotes} placeholder="Additional notes..." />
                 </div>
               </div>
               <div className="flex items-center justify-between p-4 border-t border-lattice-border">
@@ -3211,6 +3214,19 @@ export default function EducationLensPage() {
         </section>
       </PipingProvider>
     </div>
+    {/* Phase 11 (Item 5) — mobile thumb-reachable tab bar. */}
+    <MobileTabBar
+      tabs={[
+        { id: 'Students',     label: 'People',  icon: MobileTabUsers },
+        { id: 'Courses',      label: 'Courses', icon: MobileTabBook },
+        { id: 'Assignments',  label: 'Work',    icon: MobileTabList },
+        { id: 'Grades',       label: 'Grades',  icon: MobileTabAward },
+        { id: 'Plans',        label: 'Plans',   icon: MobileTabCal },
+        { id: 'Study',        label: 'Study',   icon: MobileTabBrain },
+      ]}
+      active={activeTab}
+      onSelect={(id) => setActiveTab(id as ModeTab)}
+    />
     </LensShell>
   );
 }

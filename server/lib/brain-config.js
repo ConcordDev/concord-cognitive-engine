@@ -48,7 +48,11 @@ export const BRAIN_CONFIG = Object.freeze({
   },
   repair: {
     url: process.env.BRAIN_REPAIR_URL || "http://ollama-repair:11434",
-    model: process.env.BRAIN_REPAIR_MODEL || "qwen2.5:0.5b",
+    // Default matches the inline BRAIN declaration in server.js
+    // (the hand-written object at server.js:14712 is the live source
+    // of truth — see Phase 12 audit). 0.5b was the pre-Sprint-D
+    // choice; 1.5b proved necessary for the auto-repair quality bar.
+    model: process.env.BRAIN_REPAIR_MODEL || "qwen2.5:1.5b",
     role: "error detection, auto-fix, runtime repair",
     temperature: 0.1,
     timeout: Number(process.env.BRAIN_REPAIR_TIMEOUT_MS) || 10000,

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -490,7 +491,7 @@ export default function InsuranceLensPage() {
               <div><label className={ds.label}>Date of Loss</label><input type="date" className={ds.input} value={(formData.dateOfLoss as string) || ''} onChange={e => setFormData({ ...formData, dateOfLoss: e.target.value })} /></div>
               <div><label className={ds.label}>Date Reported</label><input type="date" className={ds.input} value={(formData.dateReported as string) || ''} onChange={e => setFormData({ ...formData, dateReported: e.target.value })} /></div>
             </div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={3} value={(formData.description as string) || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Detailed claim description..." /></div>
+            <div><label className={ds.label}>Description</label><DraftedTextarea lensId="insurance" draftKey="claim_description" initial={(formData.description as string) || ''} onValueChange={(v) => setFormData({ ...formData, description: v })} className={ds.textarea} rows={3} placeholder="Detailed claim description..." /></div>
             <div className={ds.grid2}>
               <div><label className={ds.label}>Claimant</label><input className={ds.input} value={(formData.claimant as string) || ''} onChange={e => setFormData({ ...formData, claimant: e.target.value })} /></div>
               <div><label className={ds.label}>Adjuster</label><input className={ds.input} value={(formData.adjuster as string) || ''} onChange={e => setFormData({ ...formData, adjuster: e.target.value })} /></div>
@@ -509,7 +510,7 @@ export default function InsuranceLensPage() {
                 </label>
               </div>
             </div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="insurance" draftKey="claim_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'Quote':
@@ -539,7 +540,7 @@ export default function InsuranceLensPage() {
               <input type="checkbox" checked={(formData.multiPolicyDiscount as boolean) || false} onChange={e => setFormData({ ...formData, multiPolicyDiscount: e.target.checked })} />
               Multi-Policy Discount Applied
             </label>
-            <div><label className={ds.label}>Comparison Notes</label><textarea className={ds.textarea} rows={2} value={(formData.comparisonNotes as string) || ''} onChange={e => setFormData({ ...formData, comparisonNotes: e.target.value })} /></div>
+            <div><label className={ds.label}>Comparison Notes</label><DraftedTextarea lensId="insurance" draftKey="quote_comparison_notes" initial={(formData.comparisonNotes as string) || ''} onValueChange={(v) => setFormData({ ...formData, comparisonNotes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'InsuredClient':
@@ -589,7 +590,7 @@ export default function InsuranceLensPage() {
               <div><label className={ds.label}>Payment Date</label><input type="date" className={ds.input} value={(formData.paymentDate as string) || ''} onChange={e => setFormData({ ...formData, paymentDate: e.target.value })} /></div>
               <div><label className={ds.label}>Period</label><input className={ds.input} value={(formData.period as string) || ''} onChange={e => setFormData({ ...formData, period: e.target.value })} placeholder="January 2026" /></div>
             </div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="insurance" draftKey="commission_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'ComplianceItem':
@@ -614,7 +615,7 @@ export default function InsuranceLensPage() {
               <div><label className={ds.label}>Renewal Fee ($)</label><input type="number" step="0.01" className={ds.input} value={(formData.renewalFee as number) || ''} onChange={e => setFormData({ ...formData, renewalFee: parseFloat(e.target.value) || 0 })} /></div>
             </div>
             <div><label className={ds.label}>License Number</label><input className={ds.input} value={(formData.licenseNumber as string) || ''} onChange={e => setFormData({ ...formData, licenseNumber: e.target.value })} /></div>
-            <div><label className={ds.label}>Details</label><textarea className={ds.textarea} rows={2} value={(formData.details as string) || ''} onChange={e => setFormData({ ...formData, details: e.target.value })} /></div>
+            <div><label className={ds.label}>Details</label><DraftedTextarea lensId="insurance" draftKey="compliance_details" initial={(formData.details as string) || ''} onValueChange={(v) => setFormData({ ...formData, details: v })} className={ds.textarea} rows={2} /></div>
           </>
         );
       case 'Document':
@@ -651,7 +652,7 @@ export default function InsuranceLensPage() {
               <div><label className={ds.label}>Expiry Date</label><input type="date" className={ds.input} value={(formData.expiryDate as string) || ''} onChange={e => setFormData({ ...formData, expiryDate: e.target.value })} /></div>
             </div>
             <div><label className={ds.label}>File Name</label><input className={ds.input} value={(formData.fileName as string) || ''} onChange={e => setFormData({ ...formData, fileName: e.target.value })} placeholder="document.pdf" /></div>
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={3} value={(formData.notes as string) || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Additional notes about this document..." /></div>
+            <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="insurance" draftKey="document-notes" className={ds.textarea} rows={3} initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} placeholder="Additional notes about this document..." /></div>
           </>
         );
       default:

@@ -6,6 +6,24 @@
  */
 
 
+// ── Realtime emit hookup (Phase 11, Item 4) ─────────────────────────────
+//
+// createNotification is invoked from inside this module (from
+// addReaction / addComment / sharePost / sendMessage etc.) — there's
+// no server.js call frame to attach a socket emit to.  setSocialEmitter
+// is called from server.js once at boot to thread the emitToUser
+// helper in.  When the emitter is set, every notification that's
+// generated also fires a `social:notification` event to the
+// recipient's user-scoped socket room so toasts show up in real time
+// instead of waiting on the 60s notification-bell poll.
+
+let _socialEmitter = null;
+export function setSocialEmitter(fn) { _socialEmitter = typeof fn === "function" ? fn : null; }
+function _fireNotificationSocket(userId, notification) {
+  if (!_socialEmitter || !userId) return;
+  try { _socialEmitter(userId, "social:notification", { notification }); }
+  catch (_e) { /* never crash the substrate over a socket fanout */ }
+}
 
 // ── Social State ─────────────────────────────────────────────────────────
 
@@ -369,6 +387,70 @@ export function computeTrending(STATE, limit = 20) {
 // ── Discovery ────────────────────────────────────────────────────────────
 
 /**
+ * searchUsersByPrefix — type-ahead lookup for @mention autocomplete.
+ *
+ * Phase 11 (Item 3): supports the MentionAutocomplete dropdown in
+ * QuickPostComposer and CommentThread.  Ranks by:
+ *   1. people the viewer follows
+ *   2. people who follow the viewer
+ *   3. everyone else (public profiles only), ordered by citation count
+ *
+ * Returns canonical shape so the round-trip to the post's
+ * `mentionedUsers` array doesn't lose any identity info.
+ *
+ * @param {Object} STATE
+ * @param {string} prefix    typed prefix (without @)
+ * @param {string} viewerId  the caller's userId (for follow-ranking)
+ * @param {number} limit
+ * @returns {{ ok: true, results: Array<{ userId, username, displayName, avatar, isFollowing, isFollower }> }}
+ */
+export function searchUsersByPrefix(STATE, prefix, viewerId, limit = 10) {
+  const social = getSocialState(STATE);
+  const q = String(prefix || "").trim().toLowerCase();
+  if (!q) return { ok: true, results: [] };
+
+  const following = social.follows.get(viewerId) || new Set();
+  const followers = new Set();
+  for (const [otherId, theirFollows] of social.follows) {
+    if (otherId !== viewerId && theirFollows.has(viewerId)) followers.add(otherId);
+  }
+
+  const matches = [];
+  for (const [id, profile] of social.profiles) {
+    if (id === viewerId) continue;
+    if (!profile.isPublic) continue;
+    const dn = String(profile.displayName || "").toLowerCase();
+    // Username is the userId tail for now (auth-system users carry it
+    // separately; we fall back to displayName + id prefix-match).
+    const idLower = String(id).toLowerCase();
+    if (!dn.startsWith(q) && !idLower.startsWith(q) && !dn.includes(q)) continue;
+
+    const isFollowing = following.has(id);
+    const isFollower = followers.has(id);
+    let rankScore = 0;
+    if (isFollowing) rankScore += 100;
+    if (isFollower) rankScore += 50;
+    rankScore += Math.min(50, profile.stats?.citationCount || 0);
+    // prefix matches outrank substring matches
+    if (dn.startsWith(q) || idLower.startsWith(q)) rankScore += 25;
+
+    matches.push({
+      userId: id,
+      username: profile.displayName || id,
+      displayName: profile.displayName || id,
+      avatar: profile.avatar || null,
+      isFollowing,
+      isFollower,
+      _rank: rankScore,
+    });
+  }
+
+  matches.sort((a, b) => b._rank - a._rank);
+  const trimmed = matches.slice(0, limit).map(({ _rank, ...rest }) => rest);
+  return { ok: true, results: trimmed };
+}
+
+/**
  * Discover users to follow based on shared interests (tags, domains).
  */
 export function discoverUsers(STATE, userId, limit = 10) {
@@ -425,13 +507,18 @@ export function getSocialMetrics(STATE) {
 
 // ── Posts ────────────────────────────────────────────────────────────────
 
-export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs }) {
+export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs, federationVisibility }) {
   const social = getSocialState(STATE);
   if (!userId) return { ok: false, error: "userId required" };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
 
   const id = nextId("post");
   const now = new Date().toISOString();
+  // Phase 11 (Item 12) — federation visibility lives on the post.
+  // Defaults to 'local'. Server-side fanout to the federation outbox
+  // only happens when visibility !== 'local' AND the federation
+  // dispatcher is wired (CONCORD_ACTIVITYPUB=true).
+  const visibility = ['local', 'followers', 'public'].includes(federationVisibility) ? federationVisibility : 'local';
   const post = {
     id,
     userId,
@@ -441,9 +528,9 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
     mediaUrl: mediaUrl || null,
     tags: tags || [],
     mentionedUsers: mentionedUsers || [],
-    taggedProducts: taggedProducts || [],  // Array of { listingId, title, price, imageUrl, sellerId }
-    linkedDTUs: linkedDTUs || [],          // Array of { dtuId, title, type }
-    reactions: new Map(),  // type → Set<userId>
+    taggedProducts: taggedProducts || [],
+    linkedDTUs: linkedDTUs || [],
+    reactions: new Map(),
     comments: [],
     shares: [],
     bookmarks: new Set(),
@@ -456,6 +543,8 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
     threadParentId: null,
     threadPosition: 0,
     groupId: null,
+    federationVisibility: visibility,
+    apActivityId: visibility !== 'local' ? `concord:post:${id}` : null,
   };
 
   social.posts.set(id, post);
@@ -467,10 +556,26 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
     }
   }
 
+  // Federation outbox fanout (best-effort). Caller in server.js sets
+  // _federationDispatcher with (post) → enqueue rows. Wrapped in
+  // try/catch so an outbox-write failure never breaks createPost.
+  if (visibility !== 'local' && typeof _federationDispatcher === 'function') {
+    try { _federationDispatcher(post); }
+    catch (_e) { /* substrate stays consistent */ }
+  }
+
   // Update streak
   updateStreak(STATE, userId);
 
   return { ok: true, post: serializePost(post) };
+}
+
+// Phase 11 (Item 12) — federation dispatcher hook. server.js wires
+// this once at boot to fan visibility-non-local posts into the
+// federation_outbox table via federation-outbox.js#enqueueOutbound.
+let _federationDispatcher = null;
+export function setFederationDispatcher(fn) {
+  _federationDispatcher = typeof fn === 'function' ? fn : null;
 }
 
 function serializePost(post) {
@@ -504,6 +609,8 @@ function serializePost(post) {
     threadParentId: post.threadParentId,
     threadPosition: post.threadPosition,
     groupId: post.groupId,
+    federationVisibility: post.federationVisibility || 'local',
+    apActivityId: post.apActivityId || null,
   };
 }
 
@@ -571,7 +678,7 @@ export function getReactions(STATE, postId, currentUserId) {
 
 // ── Comments ─────────────────────────────────────────────────────────────
 
-export function addComment(STATE, { userId, postId, content, parentCommentId }) {
+export function addComment(STATE, { userId, postId, content, parentCommentId, mentionedUsers }) {
   const social = getSocialState(STATE);
   if (!content) return { ok: false, error: "content required" };
   const post = social.posts.get(postId);
@@ -582,6 +689,7 @@ export function addComment(STATE, { userId, postId, content, parentCommentId }) 
     userId,
     content,
     parentCommentId: parentCommentId || null,
+    mentionedUsers: Array.isArray(mentionedUsers) ? mentionedUsers.filter(Boolean) : [],
     createdAt: new Date().toISOString(),
     replies: [],
   };
@@ -598,7 +706,13 @@ export function addComment(STATE, { userId, postId, content, parentCommentId }) 
     createNotification(STATE, { userId: post.userId, type: "comment", fromUserId: userId, postId, content: `${userId} commented on your post` });
   }
 
-  return { ok: true, comment: { id: comment.id, userId: comment.userId, content: comment.content, parentCommentId: comment.parentCommentId, createdAt: comment.createdAt } };
+  // Phase 11 (Item 3) — mention notifications on comment.
+  for (const mentioned of comment.mentionedUsers) {
+    if (mentioned === userId || mentioned === post.userId) continue;
+    createNotification(STATE, { userId: mentioned, type: "mention", fromUserId: userId, postId, content: `${userId} mentioned you in a comment` });
+  }
+
+  return { ok: true, comment: { id: comment.id, userId: comment.userId, content: comment.content, parentCommentId: comment.parentCommentId, mentionedUsers: comment.mentionedUsers, createdAt: comment.createdAt } };
 }
 
 export function deleteComment(STATE, { userId, postId, commentId }) {
@@ -846,7 +960,7 @@ export function recallMessage(STATE, { messageId, userId, windowSeconds = 120 })
     const msg = msgs[idx];
     if (msg.fromUserId !== userId) return { ok: false, error: "only the sender can recall a message" };
     const ageSec = (Date.now() - new Date(msg.createdAt).getTime()) / 1000;
-    if (ageSec > windowSeconds) return { ok: false, error: `recall window (${windowSeconds}s) elapsed` };
+    if (ageSec >= windowSeconds) return { ok: false, error: `recall window (${windowSeconds}s) elapsed` };
     msg.content = "";
     msg.mediaUrl = null;
     msg.recalled = true;
@@ -877,6 +991,8 @@ export function createNotification(STATE, { userId, type, fromUserId, postId, co
   // Keep max 500 per user
   const arr = social.notifications.get(userId);
   if (arr.length > 500) arr.length = 500;
+
+  _fireNotificationSocket(userId, notif);
 
   return { ok: true, notification: notif };
 }

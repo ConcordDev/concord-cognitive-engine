@@ -117,6 +117,15 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['explore', 'create_city', 'customize_character', 'stream', 'teleport', 'build', 'browse_assets'],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    realtimeEvents: [
+      'world:building-state',
+      'world:refusal-field',
+      'world:season-transition',
+      'world:sign-placed',
+      'weather:update',
+      'combat:hit',
+      'combat:stagger',
+    ],
     emptyState: {
       headline: 'Concordia awaits.',
       caption: 'Pick your avatar, spawn into the simulator, and meet the NPCs whose dialogue is composed against your DTU substrate.',
@@ -136,6 +145,28 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // ═══════════════════════════════════════════════════════════════
 
   {
+    domain: 'saved',
+    label: 'Saved',
+    artifacts: ['bookmark', 'post'],
+    macros: { list: 'lens.saved.list', get: 'lens.saved.get' },
+    exports: ['json'],
+    actions: [],
+    category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No bookmarks yet.',
+      caption: 'Click the bookmark icon on any post or DTU to save it for later. Bookmarks live in the social substrate and are private to you.',
+      firstActionLabel: 'Browse Social',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Bookmarks toggle on/off via the bookmark icon on every post and DTU.' },
+        { caption: 'This page shows every post you\'ve saved, newest first — react, comment, share, or remove the bookmark inline.' },
+        { caption: 'Deleted posts show a "Post unavailable" placeholder so you can prune the orphans.' },
+      ],
+    },
+  },
+  {
     domain: 'chat',
     label: 'Chat',
     artifacts: ['conversation', 'message', 'session', 'branch'],
@@ -144,6 +175,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['send', 'summarize', 'branch', 'export_transcript', 'search_history', 'merge_threads'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    realtimeEvents: ['chat:status', 'chat:token', 'chat:complete', 'message:saved'],
     emptyState: {
       headline: 'No conversations yet.',
       caption: 'Start one — Concord remembers everything you talk about, and the substrate compresses old conversations into searchable MEGA-DTUs.',
@@ -648,6 +680,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['trade', 'analyze', 'alert', 'simulate', 'generate_report', 'portfolio_rebalance', 'risk_assessment'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
+    realtimeEvents: ['finance:ticker', 'finance:market_update', 'finance:alert', 'economy:update'],
     emptyState: {
       headline: 'No tracked assets.',
       caption: 'Track stocks (S&P 500 / NASDAQ / DOW), crypto (CoinGecko top 10), or set rate alerts (FRED). Live ticker updates every 60s.',
@@ -670,6 +703,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['buy', 'sell', 'review', 'verify_artifact_hash', 'issue_license', 'distribute_royalties', 'validate_listing', 'provenance_check'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
+    realtimeEvents: ['marketplace:purchase', 'market:listing', 'market:trade', 'creative_registry:update'],
     emptyState: {
       headline: 'No listings yet.',
       caption: 'List a DTU you minted, or browse what creators have published. Royalty cascade pays ancestors automatically.',
@@ -2562,6 +2596,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
+    realtimeEvents: ['crypto:ticker'],
     emptyState: {
       headline: 'No tracked tokens.',
       caption: 'Add a token to track price + balance via CoinGecko. The Coinbase-shape wallet silhouette opens by default so you read the lens immediately.',
@@ -4818,6 +4853,28 @@ export const LENS_MANIFESTS: LensManifest[] = [
         { caption: "run_simulation drops your scenario through the world-model engine." },
         { caption: "view_forecast renders the probability bands." },
         { caption: "compare_counterfactuals diffs two world-model runs." },
+      ],
+    },
+  },
+  {
+    domain: 'social',
+    label: 'Social',
+    artifacts: ['post', 'story', 'reaction', 'notification', 'follow', 'profile'],
+    macros: { list: 'lens.social.list', get: 'lens.social.get', create: 'lens.social.create', update: 'lens.social.update', delete: 'lens.social.delete', run: 'lens.social.run', export: 'lens.social.export' },
+    exports: ['json'],
+    actions: ['follow', 'unfollow', 'react', 'comment', 'share', 'post', 'story_create', 'discover', 'notifications', 'trending'],
+    category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: "Your pan-social hub.",
+      caption: "Stories, discovery, notifications, presence, trending — every Concord-native social primitive in one place. Real activity from real follows.",
+      firstActionLabel: "Open social hub",
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: "The Stories bar at the top shows 24h ephemeral updates from people you follow. Tap to view full-screen." },
+        { caption: "For You is your algorithmic discover feed (cross-domain). Following is reverse-chrono activity from your follow graph." },
+        { caption: "Right rail surfaces your profile, trending topics + domains, suggested follows, and live presence — all from the same substrate as chat / feed." },
       ],
     },
   },

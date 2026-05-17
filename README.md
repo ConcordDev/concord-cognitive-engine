@@ -60,7 +60,7 @@ The list below is representative — the full per-directory inventory is in `doc
 
 **Lifestyle:** Travel · Fashion · Cooking · Crafting · Home · Parenting · Pets · Sports · DIY
 
-**Social & Community:** Feed · Forum · Message · Marketplace · Collab · Vote · Global · Alliance · Debate · Mentorship
+**Social & Community:** Social · Feed · Forum · Message · Marketplace · Collab · Vote · Global · Alliance · Debate · Mentorship
 
 **System & Governance:** Chat · Entity · Council · Organ · Tick · Timeline · Admin · Command Center · Debug · Audit · Invariant · UX Suite
 
@@ -69,6 +69,25 @@ The list below is representative — the full per-directory inventory is in `doc
 **Specialized Domains:** Lab · Experience · Simulation · Journalism · Translation · Archival · Military/Defense · Diplomacy · Space · Ocean · Desert · Urban Planning · Transportation · Telecommunications · Mining · Forestry · Veterinary · Law Enforcement · Emergency Services
 
 **World Lens (Concordia):** 3D civilization simulator — districts, NPCs, multiplayer, creator economy, physics validation, user-created cities with configurable rulesets
+
+-----
+
+## Pan-Social Hub (`/lenses/social`)
+
+A first-class social surface that sits alongside the 232 domain lenses. Every primitive is reusable — drop them into any lens to make any artifact discussable, share-able, reactable.
+
+| Primitive | What it does |
+|---|---|
+| **ReactionBar** | 6 reaction types (`like`/`fire`/`heart`/`mind-blown`/`useful`/`disagree`) backed by `POST /api/social/react`. Optimistic UI; rolls back on failure. Counts are real — no synthetic warming. |
+| **CommentThread** | Threaded replies with `parentCommentId`. Collapsed mode for inline mounts (every DTU embed). Real-time updates via Socket.io. |
+| **QuickPostComposer** | Post / 24h Story modes with 500-char counter + tags. Wires through `createPost` with optional `isStory=true`. |
+| **ShareButton** | Repost-with-commentary via `POST /api/social/share`. Hides when share count is 0 and the composer is closed. |
+| **BookmarkButton** | Toggle save-for-later via `POST /api/social/bookmark` (single endpoint that flips on/off). Shared cache across the app. |
+| **FollowButton** | `POST /api/social/follow` + `/unfollow`. Hides for self; hides for anonymous viewers. |
+| **UserLink** | Username chip routing to `/profile/[username]`. Optional inline FollowButton mount. Falls back to plain span when neither username nor userId is present. |
+| **DTUEmbed** | The canonical cross-lens DTU preview. Composes ReactionBar + ShareButton + BookmarkButton + CommentThread + DownstreamBadge + CreatorBadge + TierBadge + FederationBadge + FreshnessBadge so social context follows the DTU into every lens. |
+
+The `/lenses/social` page mounts these primitives together as a Facebook/Instagram/Twitter-class hub: StoriesBar → Discover/Following/Notifications/Analytics tabs → CreatorAnalytics + SuggestedFollows + TrendingTopics + TrendingDomains rails. Every datum it shows is real substrate state — empty states say "nothing yet" instead of fake placeholders.
 
 -----
 
@@ -274,7 +293,7 @@ docker-compose up
 
 **Mobile:** React Native 0.76 + Expo 52 with native mesh networking (BLE, NFC, LoRa bridge, peer manager, relay system)
 
-**Database:** SQLite via better-sqlite3. 192 numbered, append-only migrations (latest `192_foundry_phase7.js`). 459 tables. Schema version tracked in the `schema_version` table.
+**Database:** SQLite via better-sqlite3. 196 numbered, append-only migrations (latest `196_dtu_surface_log.js`). 459+ tables. Schema version tracked in the `schema_version` table.
 
 **Infrastructure:** Docker Compose (13 services), Nginx, Prometheus + Grafana, Kubernetes configs
 
@@ -360,7 +379,7 @@ All figures verified by direct `grep`/`ls` against the working tree. Reproductio
 |------------------------|----------------------------|
 |Total lines of code     |~1,364,000                  |
 |Source files            |~3,500                      |
-|Frontend lens pages     |232 directories             |
+|Frontend lens pages     |235 directories             |
 |Backend domain files    |249                         |
 |DTU substrate (`dtus.js`)|145,600+ lines              |
 |Server core (`server.js`)|70,200+ lines               |
@@ -369,7 +388,7 @@ All figures verified by direct `grep`/`ls` against the working tree. Reproductio
 |Route files             |131                         |
 |HTTP route registrations|~2,400 (1,087 in server.js + 1,313 in routes/*.js)|
 |Macros                  |~800 (domain, macro) pairs across 160+ domains|
-|Migrations              |192 numbered (latest `192_foundry_phase7.js`)|
+|Migrations              |196 numbered (latest `196_dtu_surface_log.js`)|
 |Database tables         |459                         |
 |Heartbeats              |64 registered               |
 |Mobile client           |~42,000 lines               |

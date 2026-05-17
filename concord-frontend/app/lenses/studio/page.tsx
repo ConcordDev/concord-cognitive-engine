@@ -11,6 +11,11 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { StudioRepos } from '@/components/studio/StudioRepos';
 import { StudioActionPanel } from '@/components/studio/StudioActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
+import { MobileTabBar } from '@/components/mobile/MobileTabBar';
+import {
+  Grid3x3 as MTabSess, LineChart as MTabArr, SlidersHorizontal as MTabMix,
+  Piano as MTabPiano, AudioLines as MTabAud, Wand2 as MTabAuto,
+} from 'lucide-react';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -2683,6 +2688,19 @@ export default function StudioLensPage() {
           <RecentMineCard domain="studio" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="studio" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="studio" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar (most-used DAW views). */}
+          <MobileTabBar
+            tabs={[
+              { id: 'session',    label: 'Session',  icon: MTabSess },
+              { id: 'arrange',    label: 'Arrange',  icon: MTabArr },
+              { id: 'mixer',      label: 'Mixer',    icon: MTabMix },
+              { id: 'pianoRoll',  label: 'Piano',    icon: MTabPiano },
+              { id: 'audioEditor', label: 'Audio',   icon: MTabAud },
+              { id: 'automation', label: 'Auto',     icon: MTabAuto },
+            ]}
+            active={studioView}
+            onSelect={(id) => setStudioView(id as StudioViewType)}
+          />
     </LensShell>
   );
 }
