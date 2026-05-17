@@ -25,6 +25,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { DebateActionPanel } from '@/components/debate/DebateActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 interface DebateData {
   topic: string;
@@ -974,6 +975,7 @@ export default function DebateLensPage() {
 
               {/* Kialo / CMV action panel — fallacy / steelman / score / branch / snapshot / publish */}
               {selectedDebate && (
+                <PipingProvider>
                 <DebateActionPanel
                   debate={{
                     id: selectedDebate,
@@ -990,6 +992,7 @@ export default function DebateLensPage() {
                     },
                   }}
                 />
+                </PipingProvider>
               )}
             </>
           ) : (

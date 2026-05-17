@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface ArgumentLike { author?: string; text: string; votes?: number }
 interface DebateLike {
@@ -84,6 +85,9 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
+
+  const pipe = usePipe();
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
   function selectedArg(): { side: 'pro' | 'con'; idx: number; text: string; author?: string } | null {
     if (!argChoice) return allArgs[0] ?? null;
@@ -213,34 +217,32 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Debate for community review: ${d.topic ?? debate.title}`,
-          tags: ['debate', 'public', 'community-review', d.format ?? 'open'],
-          source: 'debate:publish',
-          meta: {
-            visibility: 'public',
-            consent: { allowCitations: true },
-            debate: {
-              id: debate.id,
-              topic: d.topic,
-              description: d.description,
-              format: d.format,
-              proArguments: d.proArguments,
-              conArguments: d.conArguments,
-              proVotes: d.proVotes,
-              conVotes: d.conVotes,
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Debate for community review: ${d.topic ?? debate.title}`,
+            tags: ['debate', 'public', 'community-review', d.format ?? 'open'],
+            source: 'debate:publish',
+            meta: {
+              visibility: 'public',
+              consent: { allowCitations: true },
+              debate: {
+                id: debate.id, topic: d.topic, description: d.description, format: d.format,
+                proArguments: d.proArguments, conArguments: d.conArguments,
+                proVotes: d.proVotes, conVotes: d.conVotes,
+              },
             },
           },
-        },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}… for review.`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('debate.publishedDtuId', id, { label: `Public debate ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… for review · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -391,6 +393,10 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
         {publishedDtuId && (
           <span className="rounded bg-emerald-500/20 text-emerald-300 px-2 py-0.5 text-[10px] font-mono">published {publishedDtuId.slice(0, 8)}</span>
         )}
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <AnimatePresence>
