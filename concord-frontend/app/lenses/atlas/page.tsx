@@ -9,6 +9,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { GraphView } from '@/components/atlas/GraphView';
 import { AtlasActionPanel } from '@/components/atlas/AtlasActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { SafeCard } from '@/components/common/SafeCard';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -501,9 +502,11 @@ export default function AtlasLensPage() {
         <SavedPlaces />
       </section>
 
-      <section className="mt-6">
-        <AtlasActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <AtlasActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
