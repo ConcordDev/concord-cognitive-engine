@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { MarketsPulse } from '@/components/finance/MarketsPulse';
 import { FinanceActionPanel } from '@/components/finance/FinanceActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import NetWorthTracker from '@/components/finance/NetWorthTracker';
 import EnvelopeBudget from '@/components/finance/EnvelopeBudget';
 import InvestmentCheckup from '@/components/finance/InvestmentCheckup';
@@ -2403,9 +2404,11 @@ export default function FinanceLensPage() {
       </section>
 
       {/* Robinhood + YNAB-shape money workbench: net-worth / envelopes / tax / retirement-MC + actions */}
-      <section className="mt-6">
-        <FinanceActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <FinanceActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

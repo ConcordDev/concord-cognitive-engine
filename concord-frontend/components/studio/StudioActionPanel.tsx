@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -40,11 +41,11 @@ function pickMessage(e: unknown): string {
 export function StudioActionPanel() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectName, setProjectName] = useState('');
-  const [projectBpm, setProjectBpm] = useState('120');
+  const [projectBpm, setProjectBpm] = useState('');
   const [currentProjectId, setCurrentProjectId] = useState('');
   const [trackName, setTrackName] = useState('');
   const [trackType, setTrackType] = useState<'audio' | 'midi' | 'instrument' | 'return'>('audio');
-  const [effectName, setEffectName] = useState('Reverb');
+  const [effectName, setEffectName] = useState('');
   const [renderFormat, setRenderFormat] = useState<'wav' | 'mp3' | 'flac' | 'stems'>('wav');
   const [recipient, setRecipient] = useState('');
 
@@ -59,6 +60,21 @@ export function StudioActionPanel() {
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
+
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
 
   useEffect(() => {
     (async () => {
@@ -77,6 +93,7 @@ export function StudioActionPanel() {
       if (r.ok && r.result?.project) {
         setCurrentProjectId(r.result.project.id);
         setProjects(prev => [...prev, r.result!.project]);
+        pipe.publish('studio.project', r.result.project, { label: r.result.project.name });
         ok(`Project created: ${r.result.project.id.slice(0, 8)}…`);
       } else err(r.error ?? 'create failed');
     } catch (e) { err(pickMessage(e)); }
@@ -87,7 +104,7 @@ export function StudioActionPanel() {
     setBusy('addTrack'); setFeedback(null);
     try {
       const r = await callMacro<{ track?: { id: string } }>('track-add', { projectId: currentProjectId, name: trackName.trim(), type: trackType });
-      if (r.ok && r.result?.track) { ok(`Track added: ${r.result.track.id.slice(0, 8)}.`); setTrackName(''); }
+      if (r.ok && r.result?.track) { pipe.publish('studio.track', r.result.track, { label: `track ${r.result.track.id.slice(0, 6)}` }); ok(`Track added: ${r.result.track.id.slice(0, 8)}.`); setTrackName(''); }
       else err(r.error ?? 'track add failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -97,7 +114,7 @@ export function StudioActionPanel() {
     setBusy('addEffect'); setFeedback(null);
     try {
       const r = await callMacro<{ effect?: { id: string } }>('effect-add', { projectId: currentProjectId, effectName: effectName.trim() });
-      if (r.ok && r.result) { ok(`Effect added: ${effectName.trim()}.`); }
+      if (r.ok && r.result) { pipe.publish('studio.effect', { name: effectName.trim() }, { label: effectName.trim() }); ok(`Effect added: ${effectName.trim()}.`); }
       else err(r.error ?? 'effect add failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -107,7 +124,7 @@ export function StudioActionPanel() {
     setBusy('render'); setFeedback(null);
     try {
       const r = await callMacro<RenderResult>('renderEstimate', { projectId: currentProjectId, format: renderFormat });
-      if (r.ok && r.result) { setRenderResult(r.result); ok(`Render estimate: ~${r.result.estimatedMinutes}min.`); }
+      if (r.ok && r.result) { setRenderResult(r.result); pipe.publish('studio.render', r.result, { label: `~${r.result.estimatedMinutes}min` }); ok(`Render estimate: ~${r.result.estimatedMinutes}min.`); }
       else err(r.error ?? 'render failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -117,7 +134,7 @@ export function StudioActionPanel() {
     setBusy('timeline'); setFeedback(null);
     try {
       const r = await callMacro<TimelineResult>('projectTimeline', { projectId: currentProjectId });
-      if (r.ok && r.result) { setTimelineResult(r.result); ok(`${r.result.milestones?.length ?? 0} milestones.`); }
+      if (r.ok && r.result) { setTimelineResult(r.result); pipe.publish('studio.timeline', r.result, { label: `${r.result.milestones?.length ?? 0} milestones` }); ok(`${r.result.milestones?.length ?? 0} milestones.`); }
       else err(r.error ?? 'timeline failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -138,7 +155,7 @@ export function StudioActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Project DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('studio.mintedDtuId', id, { label: `project ${id.slice(0, 8)}` }); ok(`Project DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -154,9 +171,12 @@ export function StudioActionPanel() {
       mintedDtuId ? `\n[Project DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -164,21 +184,24 @@ export function StudioActionPanel() {
     if (!currentProjectId) { err('Select a project.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Public release — ${projectName.trim() || currentProjectId}`,
-          tags: ['studio', 'release', 'public', `bpm:${projectBpm}`],
-          source: 'studio:release:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, release: { name: projectName, bpm: parseInt(projectBpm, 10), format: renderFormat } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Public release — ${projectName.trim() || currentProjectId}`,
+            tags: ['studio', 'release', 'public', `bpm:${projectBpm}`],
+            source: 'studio:release:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, release: { name: projectName, bpm: parseInt(projectBpm, 10), format: renderFormat } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Release published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('studio.publishedDtuId', id, { label: `release ${id.slice(0, 8)}` }); ok(`Release published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -236,6 +259,11 @@ export function StudioActionPanel() {
           <option value="">— pick a project ({projects.length}) —</option>
           {projects.map(p => <option key={p.id} value={p.id}>{p.name} ({p.bpm ?? '?'} BPM)</option>)}
         </select>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">

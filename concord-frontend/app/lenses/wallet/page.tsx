@@ -16,6 +16,7 @@ import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from 'rea
 import { LensShell } from '@/components/lens/LensShell';
 import { WalletMarkets } from '@/components/wallet/WalletMarkets';
 import { WalletActionPanel } from '@/components/wallet/WalletActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -1152,9 +1153,11 @@ export default function WalletPage() {
     </section>
 
     {/* Coinbase + Mint-shape wallet workbench: balance / categorize / budget / trend + actions */}
-    <section className="mt-6 mx-auto max-w-7xl">
-      <WalletActionPanel />
-    </section>
+    <PipingProvider>
+      <section className="mt-6 mx-auto max-w-7xl">
+        <WalletActionPanel />
+      </section>
+    </PipingProvider>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>

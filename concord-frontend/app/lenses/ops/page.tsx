@@ -14,6 +14,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { OpsRepos } from '@/components/ops/OpsRepos';
 import { OpsActionPanel } from '@/components/ops/OpsActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -245,9 +246,11 @@ export default function OpsLensPage() {
       </section>
 
       {/* PagerDuty-shape ops workbench: on-call / runbook / escalation / post-mortem + actions */}
-      <section className="mt-6 mx-4">
-        <OpsActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 mx-4">
+          <OpsActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

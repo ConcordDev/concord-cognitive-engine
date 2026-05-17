@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ForumChatter } from '@/components/forum/ForumChatter';
 import { ForumActionPanel } from '@/components/forum/ForumActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
@@ -1170,9 +1171,11 @@ export default function ForumLensPage() {
         <ForumChatter />
       </section>
 
-      <section className="mt-6">
-        <ForumActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <ForumActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

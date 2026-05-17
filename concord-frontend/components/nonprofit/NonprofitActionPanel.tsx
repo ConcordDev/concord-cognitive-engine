@@ -11,6 +11,7 @@ import { Heart, Users, FileText, Target, Search, Sparkles, Send, Globe, Wand2, L
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,12 +34,12 @@ interface Org { ein?: string; name: string; mission?: string; rating?: string }
 export function NonprofitActionPanel() {
   const [orgName, setOrgName] = useState('');
   const [ein, setEin] = useState('');
-  const [donorCount, setDonorCount] = useState('500');
-  const [lapsedCount, setLapsedCount] = useState('80');
-  const [campaignGoal, setCampaignGoal] = useState('100000');
-  const [campaignRaised, setCampaignRaised] = useState('42000');
-  const [campaignDaysLeft, setCampaignDaysLeft] = useState('45');
-  const [searchQuery, setSearchQuery] = useState('youth education');
+  const [donorCount, setDonorCount] = useState('');
+  const [lapsedCount, setLapsedCount] = useState('');
+  const [campaignGoal, setCampaignGoal] = useState('');
+  const [campaignRaised, setCampaignRaised] = useState('');
+  const [campaignDaysLeft, setCampaignDaysLeft] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -54,25 +55,40 @@ export function NonprofitActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actRetention() {
     setBusy('retention'); setFeedback(null);
-    try { const r = await callMacro<RetentionResult>('donorRetention', { totalDonors: parseInt(donorCount, 10), lapsedDonors: parseInt(lapsedCount, 10) }); if (r.ok && r.result) { setRetentionResult(r.result); ok(`Retention: ${r.result.ratePct}%.`); } else err(r.error ?? 'retention failed'); }
+    try { const r = await callMacro<RetentionResult>('donorRetention', { totalDonors: parseInt(donorCount, 10), lapsedDonors: parseInt(lapsedCount, 10) }); if (r.ok && r.result) { setRetentionResult(r.result); pipe.publish('nonprofit.retention', r.result, { label: `${r.result.ratePct}%` }); ok(`Retention: ${r.result.ratePct}%.`); } else err(r.error ?? 'retention failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actGrant() {
     setBusy('grant'); setFeedback(null);
-    try { const r = await callMacro<GrantResult>('grantReporting', {}); if (r.ok && r.result) { setGrantResult(r.result); ok(`${r.result.reportsDue} reports due.`); } else err(r.error ?? 'grant failed'); }
+    try { const r = await callMacro<GrantResult>('grantReporting', {}); if (r.ok && r.result) { setGrantResult(r.result); pipe.publish('nonprofit.grant', r.result, { label: `${r.result.reportsDue} due` }); ok(`${r.result.reportsDue} reports due.`); } else err(r.error ?? 'grant failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCampaign() {
     setBusy('campaign'); setFeedback(null);
-    try { const r = await callMacro<CampaignResult>('campaignProgress', { goal: parseFloat(campaignGoal), raised: parseFloat(campaignRaised), daysLeft: parseInt(campaignDaysLeft, 10) }); if (r.ok && r.result) { setCampaignResult(r.result); ok(`${r.result.progressPct}% raised.`); } else err(r.error ?? 'campaign failed'); }
+    try { const r = await callMacro<CampaignResult>('campaignProgress', { goal: parseFloat(campaignGoal), raised: parseFloat(campaignRaised), daysLeft: parseInt(campaignDaysLeft, 10) }); if (r.ok && r.result) { setCampaignResult(r.result); pipe.publish('nonprofit.campaign', r.result, { label: `${r.result.progressPct}% raised` }); ok(`${r.result.progressPct}% raised.`); } else err(r.error ?? 'campaign failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSearch() {
     if (!searchQuery.trim()) { err('Query required.'); return; }
     setBusy('search'); setFeedback(null);
-    try { const r = await callMacro<{ orgs?: Org[] }>('search-orgs', { query: searchQuery.trim(), limit: 10 }); if (r.ok && r.result?.orgs) { setOrgs(r.result.orgs); ok(`${r.result.orgs.length} orgs.`); } else err(r.error ?? 'search failed'); }
+    try { const r = await callMacro<{ orgs?: Org[] }>('search-orgs', { query: searchQuery.trim(), limit: 10 }); if (r.ok && r.result?.orgs) { setOrgs(r.result.orgs); pipe.publish('nonprofit.orgs', r.result.orgs, { label: `${r.result.orgs.length} orgs` }); ok(`${r.result.orgs.length} orgs.`); } else err(r.error ?? 'search failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -80,25 +96,35 @@ export function NonprofitActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `NPO — ${orgName.trim() || 'analysis'}`, tags: ['nonprofit', ein].filter(Boolean), source: 'nonprofit:org:mint', meta: { visibility: 'private', consent: { allowCitations: false }, npo: { orgName, ein, retention: retentionResult, grant: grantResult, campaign: campaignResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`NPO DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('nonprofit.mintedDtuId', id, { label: `org ${id.slice(0, 8)}` }); ok(`NPO DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`💗 ${orgName || 'NPO'} brief`, '', retentionResult ? `Retention: ${retentionResult.ratePct}% (${retentionResult.band})` : '', campaignResult ? `Campaign: ${campaignResult.progressPct}% raised (${campaignResult.daysLeft}d left)` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!campaignResult) { err('Run a campaign first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Campaign — ${orgName.trim() || 'public'}`, tags: ['nonprofit', 'campaign', 'public'], source: 'nonprofit:campaign:publish', meta: { visibility: 'public', consent: { allowCitations: true }, campaign: campaignResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Campaign — ${orgName.trim() || 'public'}`, tags: ['nonprofit', 'campaign', 'public'], source: 'nonprofit:campaign:publish', meta: { visibility: 'public', consent: { allowCitations: true }, campaign: campaignResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('nonprofit.publishedDtuId', id, { label: `campaign ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -140,6 +166,11 @@ export function NonprofitActionPanel() {
         <input type="text" value={campaignDaysLeft} onChange={(e) => setCampaignDaysLeft(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Days left" />
         <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Org search" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

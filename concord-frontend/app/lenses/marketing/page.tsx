@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { MarketingFeed } from '@/components/marketing/MarketingFeed';
 import { MarketingActionPanel } from '@/components/marketing/MarketingActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -511,9 +512,11 @@ export default function MarketingLensPage() {
         <MarketingFeed />
       </section>
 
-      <section className="mt-6">
-        <MarketingActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <MarketingActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

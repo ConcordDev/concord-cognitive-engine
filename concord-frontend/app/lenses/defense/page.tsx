@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ContractSearch } from '@/components/defense/ContractSearch';
 import { DefenseActionPanel } from '@/components/defense/DefenseActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -371,9 +372,11 @@ export default function DefenseLensPage() {
         <ContractSearch />
       </section>
 
-      <section className="mt-6">
-        <DefenseActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <DefenseActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

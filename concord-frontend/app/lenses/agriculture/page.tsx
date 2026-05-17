@@ -54,6 +54,7 @@ import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero'
 import FarmWorkbench from '@/components/agriculture/FarmWorkbench';
 import { PestIdentifier } from '@/components/agriculture/PestIdentifier';
 import { AgricultureActionPanel } from '@/components/agriculture/AgricultureActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1956,9 +1957,11 @@ export default function AgricultureLensPage() {
       </button>
       <FarmWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
-      <section className="mt-6 max-w-7xl mx-auto px-4">
-        <AgricultureActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 max-w-7xl mx-auto px-4">
+          <AgricultureActionPanel />
+        </section>
+      </PipingProvider>
     </LensShell>
   );
 }

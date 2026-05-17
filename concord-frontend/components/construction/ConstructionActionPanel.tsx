@@ -11,6 +11,7 @@ import { Hammer, GitBranch, ShieldCheck, TrendingUp, Sparkles, Send, Globe, Wand
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,57 +34,12 @@ interface SafetyResult { complianceRate: number; checklistResults: { passed: num
 interface ProgPhase { phase?: string; plannedPercent: number; actualPercent: number; variance: number; status: string }
 interface ProgResult { phases: ProgPhase[]; overallPlannedPercent: number; overallActualPercent: number; overallVariance: number; projectStatus: string; behindPhases: string[] }
 
-const DEMO_TAKEOFF = JSON.stringify({
-  lineItems: [
-    { description: 'Concrete (yd³)', quantity: 80, unit: 'yd³', unitCost: 145, wastePercent: 5 },
-    { description: '2x4 framing (lf)', quantity: 2400, unit: 'lf', unitCost: 1.85, wastePercent: 12 },
-    { description: 'Drywall (sf)', quantity: 4200, unit: 'sf', unitCost: 0.65, wastePercent: 10 },
-    { description: 'Roofing shingles (sq)', quantity: 24, unit: 'sq', unitCost: 145, wastePercent: 15 },
-  ],
-  laborPercent: 50,
-  squareFootage: 2400,
-}, null, 2);
-
-const DEMO_TASKS = JSON.stringify({
-  tasks: [
-    { name: 'Site prep', duration: 5, dependencies: [] },
-    { name: 'Foundation', duration: 10, dependencies: ['Site prep'] },
-    { name: 'Framing', duration: 15, dependencies: ['Foundation'] },
-    { name: 'Roofing', duration: 7, dependencies: ['Framing'] },
-    { name: 'MEP rough-in', duration: 12, dependencies: ['Framing'] },
-    { name: 'Drywall', duration: 8, dependencies: ['MEP rough-in', 'Roofing'] },
-    { name: 'Finish', duration: 14, dependencies: ['Drywall'] },
-  ],
-}, null, 2);
-
-const DEMO_SAFETY = JSON.stringify({
-  workerCount: 24,
-  totalHoursWorked: 18000,
-  incidents: [{ severity: 'recordable', date: '2026-03-15' }],
-  safetyChecklist: [
-    { item: 'PPE compliance', passed: true, critical: true },
-    { item: 'Fall protection', passed: true, critical: true },
-    { item: 'Hazcom signage', passed: false, critical: true },
-    { item: 'First aid kit stocked', passed: true, critical: false },
-    { item: 'Equipment inspection', passed: true, critical: false },
-  ],
-}, null, 2);
-
-const DEMO_PHASES = JSON.stringify({
-  phases: [
-    { name: 'Site prep', plannedPercent: 100, actualPercent: 100 },
-    { name: 'Foundation', plannedPercent: 100, actualPercent: 95 },
-    { name: 'Framing', plannedPercent: 80, actualPercent: 70 },
-    { name: 'MEP', plannedPercent: 40, actualPercent: 25 },
-    { name: 'Drywall', plannedPercent: 10, actualPercent: 0 },
-  ],
-}, null, 2);
-
+// No seeded examples — paste real takeoff/CPM/safety/phase JSON.
 export function ConstructionActionPanel() {
-  const [takeoffText, setTakeoffText] = useState(DEMO_TAKEOFF);
-  const [tasksText, setTasksText] = useState(DEMO_TASKS);
-  const [safetyText, setSafetyText] = useState(DEMO_SAFETY);
-  const [phasesText, setPhasesText] = useState(DEMO_PHASES);
+  const [takeoffText, setTakeoffText] = useState('');
+  const [tasksText, setTasksText] = useState('');
+  const [safetyText, setSafetyText] = useState('');
+  const [phasesText, setPhasesText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -101,54 +57,86 @@ export function ConstructionActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actTakeoff() {
+    if (!takeoffText.trim()) { err('Paste takeoff JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(takeoffText); if (!parsed) { err('Invalid takeoff JSON.'); return; }
     setBusy('takeoff'); setFeedback(null);
-    try { const r = await callMacro<TakeoffResult>('takeoffEstimate', { artifact: { data: parsed } }); if (r.ok && r.result) { setTakeoffResult(r.result); ok(`$${r.result.grandTotal.toLocaleString()} grand total.`); } else err(r.error ?? 'takeoff failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<TakeoffResult>('takeoffEstimate', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setTakeoffResult(r.result); pipe.publish('construction.takeoff', r.result, { label: `Takeoff $${r.result.grandTotal.toLocaleString()}` }); ok(`$${r.result.grandTotal.toLocaleString()} grand total.`); } else err(r.error ?? 'takeoff failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCpm() {
+    if (!tasksText.trim()) { err('Paste CPM tasks JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(tasksText); if (!parsed) { err('Invalid tasks JSON.'); return; }
     setBusy('cpm'); setFeedback(null);
-    try { const r = await callMacro<CpmResult>('criticalPath', { artifact: { data: parsed } }); if (r.ok && r.result) { setCpmResult(r.result); ok(`${r.result.projectDuration}d · CP: ${r.result.criticalPath.join(' → ')}.`); } else err(r.error ?? 'cpm failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<CpmResult>('criticalPath', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setCpmResult(r.result); pipe.publish('construction.cpm', r.result, { label: `CPM ${r.result.projectDuration}d` }); ok(`${r.result.projectDuration}d · CP: ${r.result.criticalPath.join(' → ')}.`); } else err(r.error ?? 'cpm failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSafety() {
+    if (!safetyText.trim()) { err('Paste safety JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(safetyText); if (!parsed) { err('Invalid safety JSON.'); return; }
     setBusy('safety'); setFeedback(null);
-    try { const r = await callMacro<SafetyResult>('safetyCompliance', { artifact: { data: parsed } }); if (r.ok && r.result) { setSafetyResult(r.result); ok(`${r.result.complianceRate}% · TRIR ${r.result.incidentRate} · ${r.result.rating}.`); } else err(r.error ?? 'safety failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SafetyResult>('safetyCompliance', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setSafetyResult(r.result); pipe.publish('construction.safety', r.result, { label: `Safety ${r.result.complianceRate}%` }); ok(`${r.result.complianceRate}% · TRIR ${r.result.incidentRate} · ${r.result.rating}.`); } else err(r.error ?? 'safety failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actProgress() {
+    if (!phasesText.trim()) { err('Paste phases JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(phasesText); if (!parsed) { err('Invalid phases JSON.'); return; }
     setBusy('progress'); setFeedback(null);
-    try { const r = await callMacro<ProgResult>('progressReport', { artifact: { data: parsed } }); if (r.ok && r.result) { setProgResult(r.result); ok(`${r.result.overallActualPercent}% vs ${r.result.overallPlannedPercent}% (${r.result.projectStatus}).`); } else err(r.error ?? 'progress failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ProgResult>('progressReport', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setProgResult(r.result); pipe.publish('construction.progress', r.result, { label: `${r.result.overallActualPercent}% (${r.result.projectStatus})` }); ok(`${r.result.overallActualPercent}% vs ${r.result.overallPlannedPercent}% (${r.result.projectStatus}).`); } else err(r.error ?? 'progress failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Job report — ${progResult?.projectStatus ?? 'project'}`, tags: ['construction', 'jobsite', progResult?.projectStatus].filter((t): t is string => !!t), source: 'construction:job:mint', meta: { visibility: 'private', consent: { allowCitations: false }, gc: { takeoff: takeoffResult, cpm: cpmResult, safety: safetyResult, prog: progResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Job DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('construction.mintedDtuId', id, { label: `Job DTU ${id.slice(0, 8)}…` }); ok(`Job DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🔨 Jobsite brief`, '', takeoffResult ? `Estimate: $${takeoffResult.grandTotal.toLocaleString()} (mat $${takeoffResult.subtotalMaterials} + lab $${takeoffResult.laborCost} + OH $${takeoffResult.overhead} + P $${takeoffResult.profit})${takeoffResult.costPerSqFt ? ` · $${takeoffResult.costPerSqFt}/sf` : ''}` : '', cpmResult ? `Schedule: ${cpmResult.projectDuration}d · CP: ${cpmResult.criticalPath.join(' → ')}` : '', safetyResult ? `Safety: ${safetyResult.complianceRate}% (${safetyResult.rating}) · TRIR ${safetyResult.incidentRate}${safetyResult.criticalFailures.length ? ` · ⚠ ${safetyResult.criticalFailures.join(', ')}` : ''}` : '', progResult ? `Progress: ${progResult.overallActualPercent}% vs ${progResult.overallPlannedPercent}% plan (${progResult.projectStatus})${progResult.behindPhases.length ? ` · behind: ${progResult.behindPhases.join(', ')}` : ''}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🔨 Jobsite brief`, '',
+      takeoffResult ? `Estimate: $${takeoffResult.grandTotal.toLocaleString()} (mat $${takeoffResult.subtotalMaterials} + lab $${takeoffResult.laborCost} + OH $${takeoffResult.overhead} + P $${takeoffResult.profit})${takeoffResult.costPerSqFt ? ` · $${takeoffResult.costPerSqFt}/sf` : ''}` : '',
+      cpmResult ? `Schedule: ${cpmResult.projectDuration}d · CP: ${cpmResult.criticalPath.join(' → ')}` : '',
+      safetyResult ? `Safety: ${safetyResult.complianceRate}% (${safetyResult.rating}) · TRIR ${safetyResult.incidentRate}${safetyResult.criticalFailures.length ? ` · ⚠ ${safetyResult.criticalFailures.join(', ')}` : ''}` : '',
+      progResult ? `Progress: ${progResult.overallActualPercent}% vs ${progResult.overallPlannedPercent}% plan (${progResult.projectStatus})${progResult.behindPhases.length ? ` · behind: ${progResult.behindPhases.join(', ')}` : ''}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!takeoffResult) { err('Run takeoff first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Cost benchmark`, tags: ['construction', 'cost', 'benchmark', 'public'], source: 'construction:cost:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, takeoff: takeoffResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Cost benchmark`, tags: ['construction', 'cost', 'benchmark', 'public'], source: 'construction:cost:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, takeoff: takeoffResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('construction.publishedDtuId', id, { label: `Public benchmark ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -197,7 +185,11 @@ export function ConstructionActionPanel() {
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Phases JSON</label>
           <textarea value={phasesText} onChange={(e) => setPhasesText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

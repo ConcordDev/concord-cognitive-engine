@@ -11,6 +11,7 @@ import { Sprout, Cloud, Droplet, TrendingUp, Sparkles, Send, Globe, Wand2, Loade
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -34,12 +35,12 @@ interface WaterResult { totalGallons?: number; perPlantLiters?: number; frequenc
 interface YieldResult { predictedYield?: number; unit?: string; confidence?: string; assumedConditions?: Record<string, string | number>; risks?: string[] }
 
 export function AgricultureActionPanel() {
-  const [lat, setLat] = useState('37.7749');
-  const [lng, setLng] = useState('-122.4194');
-  const [acres, setAcres] = useState('40');
-  const [crop, setCrop] = useState('corn');
-  const [prevCrop, setPrevCrop] = useState('soybean');
-  const [plantCount, setPlantCount] = useState('500');
+  const [lat, setLat] = useState('');
+  const [lng, setLng] = useState('');
+  const [acres, setAcres] = useState('');
+  const [crop, setCrop] = useState('');
+  const [prevCrop, setPrevCrop] = useState('');
+  const [plantCount, setPlantCount] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -55,50 +56,85 @@ export function AgricultureActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actWx() {
+    const la = parseFloat(lat), ln = parseFloat(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) { err('Field lat + lng required.'); return; }
     setBusy('wx'); setFeedback(null);
-    try { const r = await callMacro<WxResult>('weather-for-field', { lat: parseFloat(lat), lng: parseFloat(lng) }); if (r.ok && r.result) { setWxResult(r.result); ok(`Today: ${r.result.today.tempMin}-${r.result.today.tempMax}°C · ${r.result.today.precipSum}mm rain.`); } else err(r.error ?? 'wx failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<WxResult>('weather-for-field', { lat: la, lng: ln });
+      if (r.ok && r.result) { setWxResult(r.result); pipe.publish('ag.wx', r.result, { label: `Wx ${r.result.today.tempMin}-${r.result.today.tempMax}°C` }); ok(`Today: ${r.result.today.tempMin}-${r.result.today.tempMax}°C · ${r.result.today.precipSum}mm rain.`); } else err(r.error ?? 'wx failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRot() {
+    if (!crop.trim() || !prevCrop.trim()) { err('Current + previous crop required.'); return; }
     setBusy('rot'); setFeedback(null);
-    try { const r = await callMacro<RotResult>('rotationPlan', { artifact: { data: { currentCrop: crop, previousCrops: [prevCrop], seasons: 4, soilType: 'loam' } } }); if (r.ok && r.result) { setRotResult(r.result); ok(`${r.result.plan?.length ?? 0} seasons planned.`); } else err(r.error ?? 'rotation failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<RotResult>('rotationPlan', { artifact: { data: { currentCrop: crop, previousCrops: [prevCrop], seasons: 4, soilType: 'loam' } } });
+      if (r.ok && r.result) { setRotResult(r.result); pipe.publish('ag.rot', r.result, { label: `Rotation: ${r.result.plan?.length ?? 0} seasons` }); ok(`${r.result.plan?.length ?? 0} seasons planned.`); } else err(r.error ?? 'rotation failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actWater() {
+    const pc = parseInt(plantCount, 10);
+    if (!crop.trim() || !Number.isFinite(pc)) { err('Crop + plant count required.'); return; }
     setBusy('water'); setFeedback(null);
-    try { const r = await callMacro<WaterResult>('waterSchedule', { artifact: { data: { crop, plantCount: parseInt(plantCount, 10), waterPerPlantLiters: 2.5, recentRainfallMm: wxResult?.today?.precipSum ?? 0, evapotranspirationMmDay: wxResult?.today?.et0 ?? 4, soilMoisturePercent: wxResult?.currentSoilMoisture ? Math.round(wxResult.currentSoilMoisture * 100) : 50 } } }); if (r.ok && r.result) { setWaterResult(r.result); ok(`${r.result.frequency} · ${r.result.totalGallons} gal.`); } else err(r.error ?? 'water failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<WaterResult>('waterSchedule', { artifact: { data: { crop, plantCount: pc, waterPerPlantLiters: 2.5, recentRainfallMm: wxResult?.today?.precipSum ?? 0, evapotranspirationMmDay: wxResult?.today?.et0 ?? 4, soilMoisturePercent: wxResult?.currentSoilMoisture ? Math.round(wxResult.currentSoilMoisture * 100) : 50 } } });
+      if (r.ok && r.result) { setWaterResult(r.result); pipe.publish('ag.water', r.result, { label: `Water ${r.result.totalGallons}gal` }); ok(`${r.result.frequency} · ${r.result.totalGallons} gal.`); } else err(r.error ?? 'water failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actYield() {
+    const ac = parseFloat(acres);
+    if (!crop.trim() || !Number.isFinite(ac)) { err('Crop + acres required.'); return; }
     setBusy('yield'); setFeedback(null);
-    try { const r = await callMacro<YieldResult>('predict-yield', { artifact: { data: { crop, acres: parseFloat(acres), soilQuality: 75, plannedIrrigationMm: 250, plantingDate: new Date().toISOString().split('T')[0] } } }); if (r.ok && r.result) { setYieldResult(r.result); ok(`${r.result.predictedYield} ${r.result.unit} (${r.result.confidence}).`); } else err(r.error ?? 'yield failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<YieldResult>('predict-yield', { artifact: { data: { crop, acres: ac, soilQuality: 75, plannedIrrigationMm: 250, plantingDate: new Date().toISOString().split('T')[0] } } });
+      if (r.ok && r.result) { setYieldResult(r.result); pipe.publish('ag.yield', r.result, { label: `Yield ${r.result.predictedYield} ${r.result.unit}` }); ok(`${r.result.predictedYield} ${r.result.unit} (${r.result.confidence}).`); } else err(r.error ?? 'yield failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Farm plan — ${crop} ${acres}ac`, tags: ['agriculture', 'farm', crop], source: 'agriculture:farm:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ag: { crop, acres, lat, lng, wx: wxResult, rot: rotResult, water: waterResult, yield: yieldResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Farm DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('ag.mintedDtuId', id, { label: `Farm DTU ${id.slice(0, 8)}…` }); ok(`Farm DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🌾 Field brief`, '', wxResult ? `Wx: ${wxResult.today.tempMin}-${wxResult.today.tempMax}°C · ${wxResult.today.precipSum}mm · ET₀ ${wxResult.today.et0}mm · soil moist ${wxResult.currentSoilMoisture}` : '', rotResult ? `Rotation: ${rotResult.plan?.map(p => `${p.season}=${p.crop}`).join(', ')}` : '', waterResult ? `Water: ${waterResult.frequency} · ${waterResult.totalGallons} gal · next ${waterResult.nextWatering}` : '', yieldResult ? `Yield: ${yieldResult.predictedYield} ${yieldResult.unit} (${yieldResult.confidence})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🌾 Field brief`, '',
+      wxResult ? `Wx: ${wxResult.today.tempMin}-${wxResult.today.tempMax}°C · ${wxResult.today.precipSum}mm · ET₀ ${wxResult.today.et0}mm · soil moist ${wxResult.currentSoilMoisture}` : '',
+      rotResult ? `Rotation: ${rotResult.plan?.map(p => `${p.season}=${p.crop}`).join(', ')}` : '',
+      waterResult ? `Water: ${waterResult.frequency} · ${waterResult.totalGallons} gal · next ${waterResult.nextWatering}` : '',
+      yieldResult ? `Yield: ${yieldResult.predictedYield} ${yieldResult.unit} (${yieldResult.confidence})` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!yieldResult) { err('Run yield prediction first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Yield benchmark — ${crop}`, tags: ['agriculture', 'yield', 'benchmark', 'public'], source: 'agriculture:yield:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, crop, acres, yield: yieldResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Yield benchmark — ${crop}`, tags: ['agriculture', 'yield', 'benchmark', 'public'], source: 'agriculture:yield:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, crop, acres, yield: yieldResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('ag.publishedDtuId', id, { label: `Public yield ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -138,6 +174,10 @@ export function AgricultureActionPanel() {
         <input type="text" value={prevCrop} onChange={(e) => setPrevCrop(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Previous crop" />
         <input type="text" value={plantCount} onChange={(e) => setPlantCount(e.target.value.replace(/\D/g, '') || '0')} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Plants" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

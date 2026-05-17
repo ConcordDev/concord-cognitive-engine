@@ -11,6 +11,7 @@ import { Stethoscope, Search, Pill, DollarSign, Sparkles, Send, Globe, Wand2, Lo
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -38,13 +39,13 @@ const BODY_REGIONS = ['head', 'chest', 'abdomen', 'back', 'arm', 'leg', 'throat'
 
 export function HealthcareActionPanel() {
   const [regions, setRegions] = useState<string[]>(['head']);
-  const [description, setDescription] = useState('Throbbing headache for 3 days, sensitivity to light.');
-  const [age, setAge] = useState('35');
+  const [description, setDescription] = useState('');
+  const [age, setAge] = useState('');
   const [sex, setSex] = useState<'M' | 'F' | 'X'>('F');
-  const [specialty, setSpecialty] = useState('Family Medicine');
-  const [zip, setZip] = useState('94110');
-  const [drugName, setDrugName] = useState('atorvastatin');
-  const [drugDose, setDrugDose] = useState('20mg');
+  const [specialty, setSpecialty] = useState('');
+  const [zip, setZip] = useState('');
+  const [drugName, setDrugName] = useState('');
+  const [drugDose, setDrugDose] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -60,29 +61,33 @@ export function HealthcareActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   function toggleRegion(r: string) { setRegions(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]); }
 
   async function actTriage() {
     if (regions.length === 0 && !description.trim()) { err('Region or description required.'); return; }
     setBusy('triage'); setFeedback(null);
-    try { const r = await callMacro<TriageResult>('symptom-triage', { regions, description: description.trim(), age: parseInt(age, 10), sex }); if (r.ok && r.result) { setTriageResult(r.result); ok(`Severity: ${r.result.severity}.`); } else err(r.error ?? 'triage failed'); }
+    try { const r = await callMacro<TriageResult>('symptom-triage', { regions, description: description.trim(), age: parseInt(age, 10) || 0, sex }); if (r.ok && r.result) { setTriageResult(r.result); pipe.publish('healthcare.triage', r.result, { label: `Triage ${r.result.severity}` }); ok(`Severity: ${r.result.severity}.`); } else err(r.error ?? 'triage failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFind() {
     if (!specialty.trim() && !zip.trim()) { err('Specialty or zip required.'); return; }
     setBusy('find'); setFeedback(null);
-    try { const r = await callMacro<ProviderResult>('providers-search', { specialty: specialty.trim(), zipCode: zip.trim(), limit: 15 }); if (r.ok && r.result) { setProviderResult(r.result); ok(`${r.result.count} providers (NPI registry).`); } else err(r.error ?? 'find failed'); }
+    try { const r = await callMacro<ProviderResult>('providers-search', { specialty: specialty.trim(), zipCode: zip.trim(), limit: 15 }); if (r.ok && r.result) { setProviderResult(r.result); pipe.publish('healthcare.providers', r.result, { label: `${r.result.count} providers` }); ok(`${r.result.count} providers (NPI registry).`); } else err(r.error ?? 'find failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMeds() {
     setBusy('meds'); setFeedback(null);
-    try { const r = await callMacro<MedsResult>('medications-list', {}); if (r.ok && r.result) { setMedsResult(r.result); ok(`${r.result.medications.length} medications.`); } else err(r.error ?? 'meds failed'); }
+    try { const r = await callMacro<MedsResult>('medications-list', {}); if (r.ok && r.result) { setMedsResult(r.result); pipe.publish('healthcare.meds', r.result, { label: `${r.result.medications.length} meds` }); ok(`${r.result.medications.length} medications.`); } else err(r.error ?? 'meds failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRx() {
     if (!drugName.trim()) { err('Drug required.'); return; }
     setBusy('rx'); setFeedback(null);
-    try { const r = await callMacro<RxResult>('rx-price-compare', { drug: drugName.trim(), dose: drugDose.trim() }); if (r.ok && r.result) { setRxResult(r.result); ok(`Cheapest: ${r.result.cheapest?.pharmacy ?? '-'} $${r.result.cheapest?.discountedPrice ?? r.result.cheapest?.cashPrice ?? '-'}.`); } else err(r.error ?? 'rx failed'); }
+    try { const r = await callMacro<RxResult>('rx-price-compare', { drug: drugName.trim(), dose: drugDose.trim() }); if (r.ok && r.result) { setRxResult(r.result); pipe.publish('healthcare.rx', r.result, { label: `Rx ${r.result.drug ?? drugName}` }); ok(`Cheapest: ${r.result.cheapest?.pharmacy ?? '-'} $${r.result.cheapest?.discountedPrice ?? r.result.cheapest?.cashPrice ?? '-'}.`); } else err(r.error ?? 'rx failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -90,25 +95,42 @@ export function HealthcareActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Health visit prep`, tags: ['healthcare', 'visit', triageResult?.severity].filter((t): t is string => !!t), source: 'healthcare:visit:mint', meta: { visibility: 'private', consent: { allowCitations: false }, health: { triage: triageResult, providers: providerResult, meds: medsResult, rx: rxResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Visit DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('healthcare.mintedDtuId', id, { label: `Visit DTU ${id.slice(0, 8)}…` }); ok(`Visit DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🩺 Visit prep`, '', triageResult ? `Triage: ${triageResult.severity.toUpperCase()} — ${triageResult.reasoning}` : '', providerResult ? `Providers: ${providerResult.count} matches in ${zip}` : '', medsResult ? `Meds: ${medsResult.medications.length} active${medsResult.medications.slice(0, 3).map(m => ` · ${m.name} ${m.dose}`).join('')}` : '', rxResult?.cheapest ? `Rx ${rxResult.drug}: ${rxResult.cheapest.pharmacy} $${rxResult.cheapest.discountedPrice ?? rxResult.cheapest.cashPrice}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '', '\nNot medical advice.'].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🩺 Visit prep`, '',
+      triageResult ? `Triage: ${triageResult.severity.toUpperCase()} — ${triageResult.reasoning}` : '',
+      providerResult ? `Providers: ${providerResult.count} matches in ${zip}` : '',
+      medsResult ? `Meds: ${medsResult.medications.length} active${medsResult.medications.slice(0, 3).map(m => ` · ${m.name} ${m.dose}`).join('')}` : '',
+      rxResult?.cheapest ? `Rx ${rxResult.drug}: ${rxResult.cheapest.pharmacy} $${rxResult.cheapest.discountedPrice ?? rxResult.cheapest.cashPrice}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+      '\nNot medical advice.',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!providerResult) { err('Run provider search first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Provider directory — ${specialty} ${zip}`, tags: ['healthcare', 'providers', 'public', specialty.toLowerCase().replace(/\s/g, '-')], source: 'healthcare:providers:publish', meta: { visibility: 'public', consent: { allowCitations: true }, providers: providerResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Provider directory — ${specialty} ${zip}`, tags: ['healthcare', 'providers', 'public', specialty.toLowerCase().replace(/\s/g, '-')], source: 'healthcare:providers:publish', meta: { visibility: 'public', consent: { allowCitations: true }, providers: providerResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('healthcare.publishedDtuId', id, { label: `Public directory ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -165,6 +187,10 @@ export function HealthcareActionPanel() {
             <input type="text" value={drugDose} onChange={(e) => setDrugDose(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Dose" />
           </div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

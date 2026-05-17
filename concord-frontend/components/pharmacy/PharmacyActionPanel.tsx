@@ -11,6 +11,7 @@ import { Pill, BookOpen, AlertOctagon, Calculator, Sparkles, Send, Globe, Wand2,
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -34,12 +35,12 @@ interface AdverseResult { drug?: string; total?: number; topReactions?: AdverseE
 interface DoseResult { weightKg: number; dosePerKg: number; singleDose: string; frequency: string; dailyDose: string; maxDailyDose: string; capped: boolean; disclaimer: string }
 
 export function PharmacyActionPanel() {
-  const [drugName, setDrugName] = useState('ibuprofen');
-  const [drug2Name, setDrug2Name] = useState('warfarin');
-  const [weightKg, setWeightKg] = useState('70');
-  const [dosePerKg, setDosePerKg] = useState('10');
-  const [freq, setFreq] = useState('3');
-  const [maxDaily, setMaxDaily] = useState('3200');
+  const [drugName, setDrugName] = useState('');
+  const [drug2Name, setDrug2Name] = useState('');
+  const [weightKg, setWeightKg] = useState('');
+  const [dosePerKg, setDosePerKg] = useState('');
+  const [freq, setFreq] = useState('');
+  const [maxDaily, setMaxDaily] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -55,27 +56,42 @@ export function PharmacyActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actLabel() {
     if (!drugName.trim()) { err('Drug required.'); return; }
     setBusy('label'); setFeedback(null);
-    try { const r = await callMacro<LabelResult>('drug-label', { drug: drugName.trim() }); if (r.ok && r.result) { setLabelResult(r.result); ok(`${r.result.brandName ?? r.result.genericName ?? drugName} loaded.`); } else err(r.error ?? 'label failed'); }
+    try { const r = await callMacro<LabelResult>('drug-label', { drug: drugName.trim() }); if (r.ok && r.result) { setLabelResult(r.result); pipe.publish('pharmacy.label', r.result, { label: r.result.brandName ?? r.result.genericName ?? drugName }); ok(`${r.result.brandName ?? r.result.genericName ?? drugName} loaded.`); } else err(r.error ?? 'label failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actInter() {
     if (!drugName.trim() || !drug2Name.trim()) { err('Two drugs required.'); return; }
     setBusy('inter'); setFeedback(null);
-    try { const r = await callMacro<InterResult>('drugInteractionCheck', { artifact: { data: { medications: [drugName.trim(), drug2Name.trim()] } } }); if (r.ok && r.result) { setInterResult(r.result); ok(`${r.result.interactionsFound} co-mentions.`); } else err(r.error ?? 'interaction failed'); }
+    try { const r = await callMacro<InterResult>('drugInteractionCheck', { artifact: { data: { medications: [drugName.trim(), drug2Name.trim()] } } }); if (r.ok && r.result) { setInterResult(r.result); pipe.publish('pharmacy.interactions', r.result, { label: `${r.result.interactionsFound} co-mentions` }); ok(`${r.result.interactionsFound} co-mentions.`); } else err(r.error ?? 'interaction failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAdverse() {
     if (!drugName.trim()) { err('Drug required.'); return; }
     setBusy('adverse'); setFeedback(null);
-    try { const r = await callMacro<AdverseResult>('adverse-events', { drug: drugName.trim() }); if (r.ok && r.result) { setAdverseResult(r.result); ok(`${r.result.total ?? 0} FAERS reports.`); } else err(r.error ?? 'adverse failed'); }
+    try { const r = await callMacro<AdverseResult>('adverse-events', { drug: drugName.trim() }); if (r.ok && r.result) { setAdverseResult(r.result); pipe.publish('pharmacy.adverse', r.result, { label: `${r.result.total ?? 0} FAERS` }); ok(`${r.result.total ?? 0} FAERS reports.`); } else err(r.error ?? 'adverse failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDose() {
     setBusy('dose'); setFeedback(null);
-    try { const r = await callMacro<DoseResult>('dosageCalculator', { artifact: { data: { weightKg: parseFloat(weightKg), dosePerKg: parseFloat(dosePerKg), frequencyPerDay: parseInt(freq, 10), maxDailyDose: parseFloat(maxDaily) } } }); if (r.ok && r.result) { setDoseResult(r.result); ok(`${r.result.singleDose}, ${r.result.dailyDose}/day.`); } else err(r.error ?? 'dose failed'); }
+    try { const r = await callMacro<DoseResult>('dosageCalculator', { artifact: { data: { weightKg: parseFloat(weightKg), dosePerKg: parseFloat(dosePerKg), frequencyPerDay: parseInt(freq, 10), maxDailyDose: parseFloat(maxDaily) } } }); if (r.ok && r.result) { setDoseResult(r.result); pipe.publish('pharmacy.dose', r.result, { label: `${r.result.singleDose}` }); ok(`${r.result.singleDose}, ${r.result.dailyDose}/day.`); } else err(r.error ?? 'dose failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -83,25 +99,35 @@ export function PharmacyActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Rx — ${drugName}`, tags: ['pharmacy', 'rx', labelResult?.rxOtc].filter((t): t is string => !!t), source: 'pharmacy:rx:mint', meta: { visibility: 'private', consent: { allowCitations: false }, pharmacy: { label: labelResult, inter: interResult, adverse: adverseResult, dose: doseResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Rx DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('pharmacy.mintedDtuId', id, { label: `rx ${id.slice(0, 8)}` }); ok(`Rx DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`💊 Rx note`, '', labelResult ? `${labelResult.brandName ?? labelResult.genericName} (${labelResult.route ?? '-'}, ${labelResult.rxOtc ?? '-'})` : '', interResult ? `Interaction screen: ${interResult.interactionsFound} co-mentions across ${interResult.medications.join(' + ')}` : '', adverseResult ? `FAERS: ${adverseResult.total} reports` : '', doseResult ? `Dose: ${doseResult.singleDose} ${doseResult.frequency} → ${doseResult.dailyDose} daily` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!labelResult) { err('Load a drug label first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Drug brief — ${labelResult.brandName ?? labelResult.genericName ?? drugName}`, tags: ['pharmacy', 'drug', 'public'], source: 'pharmacy:drug:publish', meta: { visibility: 'public', consent: { allowCitations: true }, label: labelResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Drug brief — ${labelResult.brandName ?? labelResult.genericName ?? drugName}`, tags: ['pharmacy', 'drug', 'public'], source: 'pharmacy:drug:publish', meta: { visibility: 'public', consent: { allowCitations: true }, label: labelResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('pharmacy.publishedDtuId', id, { label: `brief ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -134,7 +160,7 @@ export function PharmacyActionPanel() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <input type="text" value={drugName} onChange={(e) => setDrugName(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Drug A (ibuprofen)" />
+        <input type="text" value={drugName} onChange={(e) => setDrugName(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Drug A" />
         <input type="text" value={drug2Name} onChange={(e) => setDrug2Name(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Drug B for interaction" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
         <div className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-zinc-400">Dose calc:</div>
@@ -142,6 +168,11 @@ export function PharmacyActionPanel() {
         <input type="text" value={dosePerKg} onChange={(e) => setDosePerKg(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="mg/kg" />
         <input type="text" value={freq} onChange={(e) => setFreq(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="freq/day" />
         <input type="text" value={maxDaily} onChange={(e) => setMaxDaily(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="max mg/day" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

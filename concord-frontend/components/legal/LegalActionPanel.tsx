@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,8 +43,8 @@ interface AuditResult { findings?: Array<{ control: string; status: string; gap?
 
 export function LegalActionPanel() {
   const [caseName, setCaseName] = useState('');
-  const [deadlines, setDeadlines] = useState('Motion to dismiss 2026-05-25 high\nDiscovery response 2026-06-15 medium\nExpert disclosure 2026-07-01 low');
-  const [contracts, setContracts] = useState('NDA-Acme 2026-08-01\nMSA-Globex 2026-11-30\nDPA-Initech 2027-02-15');
+  const [deadlines, setDeadlines] = useState('');
+  const [contracts, setContracts] = useState('');
   const [partyA, setPartyA] = useState('');
   const [partyB, setPartyB] = useState('');
   const [recipient, setRecipient] = useState('');
@@ -61,29 +62,44 @@ export function LegalActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actDeadline() {
     const parsed = deadlines.split('\n').map(l => { const m = l.trim().match(/^(.+?)\s+(\d{4}-\d{2}-\d{2})\s+(\S+)$/); return m ? { name: m[1], dueDate: m[2], severity: m[3] } : null; }).filter(Boolean);
     if (!parsed.length) { err('Add deadlines (name YYYY-MM-DD severity).'); return; }
     setBusy('deadline'); setFeedback(null);
-    try { const r = await callMacro<DeadlineResult>('deadlineCheck', { deadlines: parsed }); if (r.ok && r.result) { setDeadlineResult(r.result); ok(`${r.result.upcoming?.length ?? 0} upcoming.`); } else err(r.error ?? 'deadline failed'); }
+    try { const r = await callMacro<DeadlineResult>('deadlineCheck', { deadlines: parsed }); if (r.ok && r.result) { setDeadlineResult(r.result); pipe.publish('legal.deadlines', r.result, { label: `${r.result.upcoming?.length ?? 0} upcoming` }); ok(`${r.result.upcoming?.length ?? 0} upcoming.`); } else err(r.error ?? 'deadline failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRenewal() {
     const parsed = contracts.split('\n').map(l => { const m = l.trim().match(/^(.+?)\s+(\d{4}-\d{2}-\d{2})$/); return m ? { name: m[1], expiresOn: m[2] } : null; }).filter(Boolean);
     if (!parsed.length) { err('Add contracts (name YYYY-MM-DD).'); return; }
     setBusy('renewal'); setFeedback(null);
-    try { const r = await callMacro<RenewalResult>('contractRenewal', { contracts: parsed }); if (r.ok && r.result) { setRenewalResult(r.result); ok(`${r.result.renewals?.length ?? 0} renewals.`); } else err(r.error ?? 'renewal failed'); }
+    try { const r = await callMacro<RenewalResult>('contractRenewal', { contracts: parsed }); if (r.ok && r.result) { setRenewalResult(r.result); pipe.publish('legal.renewals', r.result, { label: `${r.result.criticalCount ?? 0} critical` }); ok(`${r.result.renewals?.length ?? 0} renewals.`); } else err(r.error ?? 'renewal failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actConflict() {
     if (!partyA.trim() || !partyB.trim()) { err('Both parties required.'); return; }
     setBusy('conflict'); setFeedback(null);
-    try { const r = await callMacro<ConflictResult>('conflictCheck', { partyA: partyA.trim(), partyB: partyB.trim() }); if (r.ok && r.result) { setConflictResult(r.result); ok(r.result.hasConflict ? 'CONFLICT detected.' : 'No conflict.'); } else err(r.error ?? 'conflict failed'); }
+    try { const r = await callMacro<ConflictResult>('conflictCheck', { partyA: partyA.trim(), partyB: partyB.trim() }); if (r.ok && r.result) { setConflictResult(r.result); pipe.publish('legal.conflict', r.result, { label: r.result.hasConflict ? 'CONFLICT' : 'clear' }); ok(r.result.hasConflict ? 'CONFLICT detected.' : 'No conflict.'); } else err(r.error ?? 'conflict failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAudit() {
     setBusy('audit'); setFeedback(null);
-    try { const r = await callMacro<AuditResult>('complianceAudit', { caseName: caseName.trim() }); if (r.ok && r.result) { setAuditResult(r.result); ok(`Score: ${r.result.complianceScore ?? '—'}.`); } else err(r.error ?? 'audit failed'); }
+    try { const r = await callMacro<AuditResult>('complianceAudit', { caseName: caseName.trim() }); if (r.ok && r.result) { setAuditResult(r.result); pipe.publish('legal.audit', r.result, { label: `score ${r.result.complianceScore ?? '—'}` }); ok(`Score: ${r.result.complianceScore ?? '—'}.`); } else err(r.error ?? 'audit failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -91,24 +107,34 @@ export function LegalActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Legal — ${caseName.trim() || 'matter'}`, tags: ['legal', 'matter', conflictResult?.hasConflict ? 'conflict' : 'clean'], source: 'legal:matter:mint', meta: { visibility: 'private', consent: { allowCitations: false }, legal: { case: caseName, deadlines: deadlineResult, renewals: renewalResult, conflict: conflictResult, audit: auditResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Matter DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('legal.mintedDtuId', id, { label: `matter ${id.slice(0, 8)}` }); ok(`Matter DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`⚖ Legal brief: ${caseName || 'matter'}`, '', deadlineResult ? `Upcoming deadlines: ${deadlineResult.upcoming?.length ?? 0}` : '', renewalResult ? `Renewals: ${renewalResult.criticalCount ?? 0} critical` : '', conflictResult?.hasConflict ? `⚠ CONFLICT: ${conflictResult.explanation}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public legal note — ${caseName.trim()}`, tags: ['legal', 'public', 'note'], source: 'legal:note:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, note: { case: caseName, complianceScore: auditResult?.complianceScore } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public legal note — ${caseName.trim()}`, tags: ['legal', 'public', 'note'], source: 'legal:note:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, note: { case: caseName, complianceScore: auditResult?.complianceScore } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('legal.publishedDtuId', id, { label: `note ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -145,6 +171,11 @@ export function LegalActionPanel() {
         <input type="text" value={partyA} onChange={(e) => setPartyA(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Party A" />
         <input type="text" value={partyB} onChange={(e) => setPartyB(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Party B" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

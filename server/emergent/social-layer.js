@@ -833,6 +833,29 @@ export function markMessagesRead(STATE, { userId, conversationId }) {
   return { ok: true, conversationId, markedRead: marked };
 }
 
+// Recall (delete) a DM the caller sent, within a short window. Used by
+// frontend panels to surface a "you can take this back" affordance after
+// a send. Recipient-side notification stays — only the message body is
+// wiped (replaced with a tombstone marker) so the read receipt is honest.
+export function recallMessage(STATE, { messageId, userId, windowSeconds = 120 }) {
+  if (!messageId || !userId) return { ok: false, error: "messageId and userId required" };
+  const social = getSocialState(STATE);
+  for (const [convId, msgs] of social.messages) {
+    const idx = msgs.findIndex((m) => m.id === messageId);
+    if (idx === -1) continue;
+    const msg = msgs[idx];
+    if (msg.fromUserId !== userId) return { ok: false, error: "only the sender can recall a message" };
+    const ageSec = (Date.now() - new Date(msg.createdAt).getTime()) / 1000;
+    if (ageSec > windowSeconds) return { ok: false, error: `recall window (${windowSeconds}s) elapsed` };
+    msg.content = "";
+    msg.mediaUrl = null;
+    msg.recalled = true;
+    msg.recalledAt = new Date().toISOString();
+    return { ok: true, messageId, conversationId: convId, recalledAt: msg.recalledAt };
+  }
+  return { ok: false, error: "message not found" };
+}
+
 // ── Notifications ────────────────────────────────────────────────────────
 
 export function createNotification(STATE, { userId, type, fromUserId, postId, content }) {

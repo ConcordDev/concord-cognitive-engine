@@ -11,6 +11,7 @@ import { Camera, Sliders, Eye, Frame, Sparkles, Send, Globe, Wand2, Loader2, Che
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,15 +34,15 @@ interface PrintResult { resolution: string; megapixels: number; maxPrintAt300DPI
 const COMP_RULES = ['rule-of-thirds', 'leading-lines', 'symmetry', 'framing', 'depth', 'negative-space', 'golden-ratio', 'patterns'];
 
 export function PhotographyActionPanel() {
-  const [iso, setIso] = useState('400');
-  const [aperture, setAperture] = useState('5.6');
-  const [ev, setEv] = useState('12');
-  const [appliedRules, setAppliedRules] = useState<string[]>(['rule-of-thirds', 'leading-lines']);
+  const [iso, setIso] = useState('');
+  const [aperture, setAperture] = useState('');
+  const [ev, setEv] = useState('');
+  const [appliedRules, setAppliedRules] = useState<string[]>([]);
   const [genre, setGenre] = useState<'portrait' | 'landscape' | 'street' | 'macro' | 'sports' | 'general'>('portrait');
   const [budget, setBudget] = useState<'low' | 'medium' | 'high'>('medium');
-  const [widthPx, setWidthPx] = useState('6000');
-  const [heightPx, setHeightPx] = useState('4000');
-  const [dpi, setDpi] = useState('300');
+  const [widthPx, setWidthPx] = useState('');
+  const [heightPx, setHeightPx] = useState('');
+  const [dpi, setDpi] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -57,28 +58,43 @@ export function PhotographyActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   function toggleRule(rule: string) {
     setAppliedRules(prev => prev.includes(rule) ? prev.filter(r => r !== rule) : [...prev, rule]);
   }
 
   async function actExp() {
     setBusy('exp'); setFeedback(null);
-    try { const r = await callMacro<ExposureResult>('exposureCalc', { artifact: { data: { iso: parseInt(iso, 10), aperture: parseFloat(aperture), ev: parseFloat(ev) } } }); if (r.ok && r.result) { setExpResult(r.result); ok(`${r.result.shutterSpeed} · DoF ${r.result.depthOfField}.`); } else err(r.error ?? 'exp failed'); }
+    try { const r = await callMacro<ExposureResult>('exposureCalc', { artifact: { data: { iso: parseInt(iso, 10), aperture: parseFloat(aperture), ev: parseFloat(ev) } } }); if (r.ok && r.result) { setExpResult(r.result); pipe.publish('photography.exposure', r.result, { label: r.result.shutterSpeed }); ok(`${r.result.shutterSpeed} · DoF ${r.result.depthOfField}.`); } else err(r.error ?? 'exp failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actComp() {
     setBusy('comp'); setFeedback(null);
-    try { const r = await callMacro<CompResult>('compositionAnalysis', { artifact: { data: { compositionRules: appliedRules } } }); if (r.ok && r.result) { setCompResult(r.result); ok(`Score ${r.result.score} · ${r.result.strength}.`); } else err(r.error ?? 'comp failed'); }
+    try { const r = await callMacro<CompResult>('compositionAnalysis', { artifact: { data: { compositionRules: appliedRules } } }); if (r.ok && r.result) { setCompResult(r.result); pipe.publish('photography.composition', r.result, { label: `${r.result.score}/100` }); ok(`Score ${r.result.score} · ${r.result.strength}.`); } else err(r.error ?? 'comp failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actGear() {
     setBusy('gear'); setFeedback(null);
-    try { const r = await callMacro<GearResult>('gearRecommend', { artifact: { data: { genre, budget } } }); if (r.ok && r.result) { setGearResult(r.result); ok(`Lens: ${r.result.recommendation.lens}.`); } else err(r.error ?? 'gear failed'); }
+    try { const r = await callMacro<GearResult>('gearRecommend', { artifact: { data: { genre, budget } } }); if (r.ok && r.result) { setGearResult(r.result); pipe.publish('photography.gear', r.result, { label: r.result.recommendation.lens }); ok(`Lens: ${r.result.recommendation.lens}.`); } else err(r.error ?? 'gear failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPrint() {
     setBusy('print'); setFeedback(null);
-    try { const r = await callMacro<PrintResult>('printSize', { artifact: { data: { widthPixels: parseInt(widthPx, 10), heightPixels: parseInt(heightPx, 10), dpi: parseInt(dpi, 10) } } }); if (r.ok && r.result) { setPrintResult(r.result); ok(`${r.result.megapixels} MP · max ${r.result.maxPrintAt300DPI}.`); } else err(r.error ?? 'print failed'); }
+    try { const r = await callMacro<PrintResult>('printSize', { artifact: { data: { widthPixels: parseInt(widthPx, 10), heightPixels: parseInt(heightPx, 10), dpi: parseInt(dpi, 10) } } }); if (r.ok && r.result) { setPrintResult(r.result); pipe.publish('photography.print', r.result, { label: `${r.result.megapixels}MP` }); ok(`${r.result.megapixels} MP · max ${r.result.maxPrintAt300DPI}.`); } else err(r.error ?? 'print failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -86,25 +102,35 @@ export function PhotographyActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Photo — ${genre}`, tags: ['photography', genre, 'shoot'], source: 'photography:shoot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, photo: { exp: expResult, comp: compResult, gear: gearResult, print: printResult, genre, budget } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Shoot DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('photography.mintedDtuId', id, { label: `shoot ${id.slice(0, 8)}` }); ok(`Shoot DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`📸 Photo brief`, '', expResult ? `Exposure: ISO ${expResult.iso} · ${expResult.aperture} · ${expResult.shutterSpeed} · DoF ${expResult.depthOfField}` : '', compResult ? `Composition: ${compResult.score}/100 (${compResult.strength}) · ${compResult.rulesApplied.join(', ')}` : '', gearResult ? `Gear: ${gearResult.recommendation.lens} · ${gearResult.recommendation.lighting}` : '', printResult ? `Print: ${printResult.megapixels} MP → max ${printResult.maxPrintAt300DPI}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!compResult && !gearResult) { err('Run a calc first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Shoot template — ${genre}`, tags: ['photography', genre, 'public', 'template'], source: 'photography:template:publish', meta: { visibility: 'public', consent: { allowCitations: true }, exp: expResult, comp: compResult, gear: gearResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Shoot template — ${genre}`, tags: ['photography', genre, 'public', 'template'], source: 'photography:template:publish', meta: { visibility: 'public', consent: { allowCitations: true }, exp: expResult, comp: compResult, gear: gearResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('photography.publishedDtuId', id, { label: `template ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -139,7 +165,7 @@ export function PhotographyActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Exposure</div>
-          <input type="text" value={iso} onChange={(e) => setIso(e.target.value.replace(/\D/g, '') || '0')} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="ISO" />
+          <input type="text" value={iso} onChange={(e) => setIso(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="ISO" />
           <input type="text" value={aperture} onChange={(e) => setAperture(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="f/" />
           <input type="text" value={ev} onChange={(e) => setEv(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="EV (12=sunny)" />
         </div>
@@ -159,11 +185,16 @@ export function PhotographyActionPanel() {
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Print</div>
-          <input type="text" value={widthPx} onChange={(e) => setWidthPx(e.target.value.replace(/\D/g, '') || '0')} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Width px" />
-          <input type="text" value={heightPx} onChange={(e) => setHeightPx(e.target.value.replace(/\D/g, '') || '0')} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Height px" />
-          <input type="text" value={dpi} onChange={(e) => setDpi(e.target.value.replace(/\D/g, '') || '0')} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="DPI" />
+          <input type="text" value={widthPx} onChange={(e) => setWidthPx(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Width px" />
+          <input type="text" value={heightPx} onChange={(e) => setHeightPx(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Height px" />
+          <input type="text" value={dpi} onChange={(e) => setDpi(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="DPI" />
         </div>
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-4 bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

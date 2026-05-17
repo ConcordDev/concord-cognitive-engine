@@ -4,6 +4,9 @@
  * AccountingActionPanel — CFO + bookkeeper bench.
  * trialBalance / profitLoss / invoiceAging / budgetVariance +
  * mint/DM/publish/agent.
+ *
+ * Max-polish: no seed data (paste real books JSON), pipe publish/import
+ * for cross-panel hand-off, recall window on DM + publish.
  */
 
 import { useState } from 'react';
@@ -11,6 +14,7 @@ import { Calculator, TrendingUp, FileText, Scale, Sparkles, Send, Globe, Wand2, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,54 +37,11 @@ interface AgingResult { totalInvoices: number; unpaidCount: number; totalOutstan
 interface VarLine { category?: string; planned: number; actual: number; variance: number; variancePercent: number; status: string }
 interface VarResult { lines: VarLine[]; totalPlanned: number; totalActual: number; totalVariance: number; status: string }
 
-const DEMO_TB = JSON.stringify({
-  entries: [
-    { account: 'Cash', debit: 45000, credit: 0 },
-    { account: 'AR', debit: 28500, credit: 0 },
-    { account: 'Inventory', debit: 18000, credit: 0 },
-    { account: 'AP', debit: 0, credit: 15200 },
-    { account: 'Equity', debit: 0, credit: 50000 },
-    { account: 'Revenue', debit: 0, credit: 84500 },
-    { account: 'COGS', debit: 38000, credit: 0 },
-    { account: 'Operating expenses', debit: 20200, credit: 0 },
-  ],
-}, null, 2);
-
-const DEMO_PL = JSON.stringify({
-  period: 'Q1 2026',
-  transactions: [
-    { category: 'Product revenue', type: 'revenue', amount: 184000 },
-    { category: 'Services revenue', type: 'revenue', amount: 52000 },
-    { category: 'COGS', type: 'expense', amount: 92000 },
-    { category: 'Salaries', type: 'expense', amount: 68000 },
-    { category: 'Rent + utilities', type: 'expense', amount: 22000 },
-    { category: 'Marketing', type: 'expense', amount: 18000 },
-  ],
-}, null, 2);
-
-const DEMO_AGING = JSON.stringify({
-  invoices: [
-    { invoiceId: 'INV-1001', customer: 'Acme', amount: 5400, dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0] },
-    { invoiceId: 'INV-1002', customer: 'Globex', amount: 12800, dueDate: new Date(Date.now() - 18 * 86400000).toISOString().split('T')[0] },
-    { invoiceId: 'INV-1003', customer: 'Initech', amount: 3200, dueDate: new Date(Date.now() - 50 * 86400000).toISOString().split('T')[0] },
-    { invoiceId: 'INV-1004', customer: 'Hooli', amount: 8200, dueDate: new Date(Date.now() - 95 * 86400000).toISOString().split('T')[0] },
-  ],
-}, null, 2);
-
-const DEMO_VAR = JSON.stringify({
-  lines: [
-    { category: 'Salaries', planned: 70000, actual: 68000 },
-    { category: 'Marketing', planned: 15000, actual: 18000 },
-    { category: 'Tech', planned: 12000, actual: 10500 },
-    { category: 'Travel', planned: 8000, actual: 14200 },
-  ],
-}, null, 2);
-
 export function AccountingActionPanel() {
-  const [tbText, setTbText] = useState(DEMO_TB);
-  const [plText, setPlText] = useState(DEMO_PL);
-  const [agingText, setAgingText] = useState(DEMO_AGING);
-  const [varText, setVarText] = useState(DEMO_VAR);
+  const [tbText, setTbText] = useState('');
+  const [plText, setPlText] = useState('');
+  const [agingText, setAgingText] = useState('');
+  const [varText, setVarText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -96,24 +57,36 @@ export function AccountingActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actTb() {
+    if (!tbText.trim()) { err('Paste TB JSON first.'); return; }
     try { const parsed = JSON.parse(tbText); setBusy('tb'); setFeedback(null);
-      const r = await callMacro<TbResult>('trialBalance', { artifact: { data: parsed } }); if (r.ok && r.result) { setTbResult(r.result); ok(`${r.result.balanced ? '✓ balanced' : '⚠ off by ' + r.result.difference}.`); } else err(r.error ?? 'tb failed');
+      const r = await callMacro<TbResult>('trialBalance', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setTbResult(r.result); pipe.publish('accounting.tb', r.result, { label: `TB ${r.result.balanced ? '✓' : '⚠'}` }); ok(`${r.result.balanced ? '✓ balanced' : '⚠ off by ' + r.result.difference}.`); } else err(r.error ?? 'tb failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid TB JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPl() {
+    if (!plText.trim()) { err('Paste P&L JSON first.'); return; }
     try { const parsed = JSON.parse(plText); setBusy('pl'); setFeedback(null);
-      const r = await callMacro<PlResult>('profitLoss', { artifact: { data: parsed } }); if (r.ok && r.result) { setPlResult(r.result); ok(`Net $${r.result.netIncome.toLocaleString()}.`); } else err(r.error ?? 'pl failed');
+      const r = await callMacro<PlResult>('profitLoss', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setPlResult(r.result); pipe.publish('accounting.pl', r.result, { label: `P&L net $${r.result.netIncome.toLocaleString()}` }); ok(`Net $${r.result.netIncome.toLocaleString()}.`); } else err(r.error ?? 'pl failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid PL JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAging() {
+    if (!agingText.trim()) { err('Paste AR aging JSON first.'); return; }
     try { const parsed = JSON.parse(agingText); setBusy('aging'); setFeedback(null);
-      const r = await callMacro<AgingResult>('invoiceAging', { artifact: { data: parsed } }); if (r.ok && r.result) { setAgingResult(r.result); ok(`$${r.result.totalOutstanding.toLocaleString()} outstanding · ${r.result.avgDaysOutstanding}d avg.`); } else err(r.error ?? 'aging failed');
+      const r = await callMacro<AgingResult>('invoiceAging', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setAgingResult(r.result); pipe.publish('accounting.aging', r.result, { label: `AR $${r.result.totalOutstanding.toLocaleString()}` }); ok(`$${r.result.totalOutstanding.toLocaleString()} outstanding · ${r.result.avgDaysOutstanding}d avg.`); } else err(r.error ?? 'aging failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid aging JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actVar() {
+    if (!varText.trim()) { err('Paste variance JSON first.'); return; }
     try { const parsed = JSON.parse(varText); setBusy('var'); setFeedback(null);
-      const r = await callMacro<VarResult>('budgetVariance', { artifact: { data: parsed } }); if (r.ok && r.result) { setVarResult(r.result); ok(`Variance ${r.result.totalVariance >= 0 ? '+' : ''}$${r.result.totalVariance.toLocaleString()}.`); } else err(r.error ?? 'var failed');
+      const r = await callMacro<VarResult>('budgetVariance', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setVarResult(r.result); pipe.publish('accounting.var', r.result, { label: `Variance ${r.result.totalVariance >= 0 ? '+' : ''}$${r.result.totalVariance.toLocaleString()}` }); ok(`Variance ${r.result.totalVariance >= 0 ? '+' : ''}$${r.result.totalVariance.toLocaleString()}.`); } else err(r.error ?? 'var failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid variance JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -121,25 +94,41 @@ export function AccountingActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Books — ${plResult?.period ?? 'period'}`, tags: ['accounting', 'books', plResult?.period].filter((t): t is string => !!t), source: 'accounting:books:mint', meta: { visibility: 'private', consent: { allowCitations: false }, books: { tb: tbResult, pl: plResult, aging: agingResult, var: varResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Books DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('accounting.mintedDtuId', id, { label: `Books DTU ${id.slice(0, 8)}…` }); ok(`Books DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`📊 Books`, '', tbResult ? `TB: ${tbResult.balanced ? '✓ balanced' : `⚠ off by $${tbResult.difference}`} · D $${tbResult.totalDebits?.toLocaleString()} / C $${tbResult.totalCredits?.toLocaleString()}` : '', plResult ? `P&L ${plResult.period}: rev $${plResult.revenue.toLocaleString()} - exp $${plResult.expenses.toLocaleString()} = net $${plResult.netIncome.toLocaleString()}${plResult.grossMargin != null ? ` (margin ${plResult.grossMargin}%)` : ''}` : '', agingResult ? `AR aging: $${agingResult.totalOutstanding.toLocaleString()} out · $${agingResult.totalOverdue.toLocaleString()} overdue · ${agingResult.avgDaysOutstanding}d avg` : '', varResult ? `Budget variance: ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varResult.status})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`📊 Books`, '',
+      tbResult ? `TB: ${tbResult.balanced ? '✓ balanced' : `⚠ off by $${tbResult.difference}`} · D $${tbResult.totalDebits?.toLocaleString()} / C $${tbResult.totalCredits?.toLocaleString()}` : '',
+      plResult ? `P&L ${plResult.period}: rev $${plResult.revenue.toLocaleString()} - exp $${plResult.expenses.toLocaleString()} = net $${plResult.netIncome.toLocaleString()}${plResult.grossMargin != null ? ` (margin ${plResult.grossMargin}%)` : ''}` : '',
+      agingResult ? `AR aging: $${agingResult.totalOutstanding.toLocaleString()} out · $${agingResult.totalOverdue.toLocaleString()} overdue · ${agingResult.avgDaysOutstanding}d avg` : '',
+      varResult ? `Budget variance: ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varResult.status})` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!plResult) { err('Run P&L first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `P&L summary — ${plResult.period}`, tags: ['accounting', 'pl', 'public'], source: 'accounting:pl:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, pl: plResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `P&L summary — ${plResult.period}`, tags: ['accounting', 'pl', 'public'], source: 'accounting:pl:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, pl: plResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('accounting.publishedDtuId', id, { label: `Public P&L ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -148,7 +137,11 @@ export function AccountingActionPanel() {
       const task = `CFO brief. ${plResult ? `Net income $${plResult.netIncome.toLocaleString()} on $${plResult.revenue.toLocaleString()} revenue${plResult.grossMargin != null ? ` (${plResult.grossMargin}% margin)` : ''}.` : ''} ${agingResult ? `AR outstanding $${agingResult.totalOutstanding.toLocaleString()}, overdue $${agingResult.totalOverdue.toLocaleString()}, ${agingResult.avgDaysOutstanding}d avg.` : ''} ${varResult ? `Budget variance ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varResult.status}).` : ''} Identify single biggest cash-flow lever this month + one cost to address. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
+      if (reply) {
+        const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
+        setAgentReply(text); pipe.publish('accounting.agentReply', text, { label: 'CFO brief' });
+        ok('Brief ready.');
+      } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -174,21 +167,25 @@ export function AccountingActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">TB JSON</label>
-          <textarea value={tbText} onChange={(e) => setTbText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={tbText} onChange={(e) => setTbText(e.target.value)} rows={5} placeholder='{"entries":[{"account":"Cash","debit":45000,"credit":0}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">P&L JSON</label>
-          <textarea value={plText} onChange={(e) => setPlText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={plText} onChange={(e) => setPlText(e.target.value)} rows={5} placeholder='{"period":"Q1 2026","transactions":[{"category":"...","type":"revenue|expense","amount":N}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">AR aging JSON</label>
-          <textarea value={agingText} onChange={(e) => setAgingText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={agingText} onChange={(e) => setAgingText(e.target.value)} rows={5} placeholder='{"invoices":[{"invoiceId":"INV-1","customer":"...","amount":N,"dueDate":"YYYY-MM-DD"}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Variance JSON</label>
-          <textarea value={varText} onChange={(e) => setVarText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={varText} onChange={(e) => setVarText(e.target.value)} rows={5} placeholder='{"lines":[{"category":"...","planned":N,"actual":N}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

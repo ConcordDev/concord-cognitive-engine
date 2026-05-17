@@ -11,6 +11,7 @@ import { Factory, DollarSign, ShieldAlert, Calendar, Sparkles, Send, Globe, Wand
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,45 +34,16 @@ interface SafeResult { incidentRate: number; recordableIncidents: number; totalI
 interface SchedJob { id?: string; product?: string; duration?: number; machine?: string; startTime?: number; endTime?: number }
 interface SchedResult { jobs?: SchedJob[]; totalDuration?: number; makespan?: number; utilization?: number; bottleneck?: string }
 
-const DEMO_BOM = JSON.stringify({
-  product: 'Widget-Pro',
-  bom: [
-    { material: 'Steel housing', quantity: 1, unitCost: 12.5 },
-    { material: 'PCB assembly', quantity: 1, unitCost: 8.75 },
-    { material: 'M3 screws', quantity: 4, unitCost: 0.05 },
-    { material: 'O-ring', quantity: 2, unitCost: 0.15 },
-    { material: 'Label', quantity: 1, unitCost: 0.02 },
-  ],
-  targetPrice: 49.99,
-}, null, 2);
-
-const DEMO_INCIDENTS = JSON.stringify({
-  hoursWorked: 200000,
-  incidents: [
-    { type: 'finger laceration', severity: 'first-aid', oshaRecordable: false, date: '2026-04-12' },
-    { type: 'sprain', severity: 'recordable', oshaRecordable: true, date: '2026-03-08' },
-    { type: 'eye irritation', severity: 'recordable', oshaRecordable: true, date: '2026-02-15' },
-  ],
-}, null, 2);
-
-const DEMO_JOBS = JSON.stringify({
-  jobs: [
-    { id: 'J1', product: 'Widget A', duration: 120, machine: 'CNC-01' },
-    { id: 'J2', product: 'Widget B', duration: 90, machine: 'CNC-02' },
-    { id: 'J3', product: 'Widget A', duration: 80, machine: 'CNC-01' },
-    { id: 'J4', product: 'Bracket', duration: 45, machine: 'CNC-03' },
-  ],
-}, null, 2);
-
+// No seed data — every input starts empty.
 export function ManufacturingActionPanel() {
-  const [plannedTime, setPlannedTime] = useState('480');
-  const [downtime, setDowntime] = useState('45');
-  const [idealCycleTime, setIdealCycleTime] = useState('0.5');
-  const [totalPieces, setTotalPieces] = useState('800');
-  const [goodPieces, setGoodPieces] = useState('780');
-  const [bomText, setBomText] = useState(DEMO_BOM);
-  const [incidentsText, setIncidentsText] = useState(DEMO_INCIDENTS);
-  const [jobsText, setJobsText] = useState(DEMO_JOBS);
+  const [plannedTime, setPlannedTime] = useState('');
+  const [downtime, setDowntime] = useState('');
+  const [idealCycleTime, setIdealCycleTime] = useState('');
+  const [totalPieces, setTotalPieces] = useState('');
+  const [goodPieces, setGoodPieces] = useState('');
+  const [bomText, setBomText] = useState('');
+  const [incidentsText, setIncidentsText] = useState('');
+  const [jobsText, setJobsText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -89,53 +61,86 @@ export function ManufacturingActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actOee() {
+    const pt = parseFloat(plannedTime), dt = parseFloat(downtime), ct = parseFloat(idealCycleTime), tp = parseInt(totalPieces, 10), gp = parseInt(goodPieces, 10);
+    if (![pt, dt, ct, tp, gp].every(Number.isFinite)) { err('All 5 OEE inputs required (planned, downtime, cycle, total, good).'); return; }
     setBusy('oee'); setFeedback(null);
-    try { const r = await callMacro<OEEResult>('oeeCalculate', { artifact: { title: 'Line 1', data: { plannedTime: parseFloat(plannedTime), downtime: parseFloat(downtime), idealCycleTime: parseFloat(idealCycleTime), totalPieces: parseInt(totalPieces, 10), goodPieces: parseInt(goodPieces, 10) } } }); if (r.ok && r.result) { setOeeResult(r.result); ok(`OEE ${r.result.oee}% (${r.result.rating}).`); } else err(r.error ?? 'oee failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<OEEResult>('oeeCalculate', { artifact: { title: 'Line 1', data: { plannedTime: pt, downtime: dt, idealCycleTime: ct, totalPieces: tp, goodPieces: gp } } });
+      if (r.ok && r.result) { setOeeResult(r.result); pipe.publish('mfg.oee', r.result, { label: `OEE ${r.result.oee}% (${r.result.rating})` }); ok(`OEE ${r.result.oee}% (${r.result.rating}).`); } else err(r.error ?? 'oee failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBom() {
+    if (!bomText.trim()) { err('Paste BOM JSON first.'); return; }
     const parsed = parseJSON<{ product?: string; bom?: unknown[]; targetPrice?: number }>(bomText); if (!parsed) { err('Invalid BOM JSON.'); return; }
     setBusy('bom'); setFeedback(null);
-    try { const r = await callMacro<BomResult>('bomCost', { artifact: { data: parsed } }); if (r.ok && r.result) { setBomResult(r.result); ok(`${r.result.itemCount} items · $${r.result.totalCost}.`); } else err(r.error ?? 'bom failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<BomResult>('bomCost', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setBomResult(r.result); pipe.publish('mfg.bom', r.result, { label: `BOM $${r.result.totalCost}` }); ok(`${r.result.itemCount} items · $${r.result.totalCost}.`); } else err(r.error ?? 'bom failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSafe() {
+    if (!incidentsText.trim()) { err('Paste incidents JSON first.'); return; }
     const parsed = parseJSON<{ hoursWorked?: number; incidents?: SafeIncident[] }>(incidentsText); if (!parsed) { err('Invalid incidents JSON.'); return; }
     setBusy('safe'); setFeedback(null);
-    try { const r = await callMacro<SafeResult>('safetyRate', { artifact: { data: parsed } }); if (r.ok && r.result) { setSafeResult(r.result); ok(`TRIR ${r.result.incidentRate} (${r.result.benchmark}).`); } else err(r.error ?? 'safe failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SafeResult>('safetyRate', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setSafeResult(r.result); pipe.publish('mfg.safe', r.result, { label: `TRIR ${r.result.incidentRate}` }); ok(`TRIR ${r.result.incidentRate} (${r.result.benchmark}).`); } else err(r.error ?? 'safe failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSched() {
+    if (!jobsText.trim()) { err('Paste jobs JSON first.'); return; }
     const parsed = parseJSON<{ jobs?: unknown[] }>(jobsText); if (!parsed) { err('Invalid jobs JSON.'); return; }
     setBusy('sched'); setFeedback(null);
-    try { const r = await callMacro<SchedResult>('scheduleOptimize', { artifact: { data: parsed } }); if (r.ok && r.result) { setSchedResult(r.result); ok(`Makespan ${r.result.makespan ?? '-'}min.`); } else err(r.error ?? 'sched failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SchedResult>('scheduleOptimize', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setSchedResult(r.result); pipe.publish('mfg.sched', r.result, { label: `Schedule ${r.result.makespan}min` }); ok(`Makespan ${r.result.makespan ?? '-'}min.`); } else err(r.error ?? 'sched failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Shop-floor — ${oeeResult?.rating ?? 'shift'}`, tags: ['manufacturing', 'shopfloor', oeeResult?.rating].filter((t): t is string => !!t), source: 'manufacturing:shift:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mfg: { oee: oeeResult, bom: bomResult, safe: safeResult, sched: schedResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Shift DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('mfg.mintedDtuId', id, { label: `Shift DTU ${id.slice(0, 8)}…` }); ok(`Shift DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🏭 Shift brief`, '', oeeResult ? `OEE: ${oeeResult.oee}% (A ${oeeResult.availability}% × P ${oeeResult.performance}% × Q ${oeeResult.quality}%) — ${oeeResult.rating}` : '', bomResult ? `BOM cost: $${bomResult.totalCost} × ${bomResult.itemCount} items${bomResult.marginPercent != null ? ` · margin ${bomResult.marginPercent}%` : ''}` : '', safeResult ? `TRIR: ${safeResult.incidentRate} (${safeResult.recordableIncidents} recordable / ${safeResult.hoursWorked.toLocaleString()} hrs) · ${safeResult.benchmark}` : '', schedResult ? `Schedule: makespan ${schedResult.makespan ?? '-'}min · util ${schedResult.utilization ?? '-'}%` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🏭 Shift brief`, '',
+      oeeResult ? `OEE: ${oeeResult.oee}% (A ${oeeResult.availability}% × P ${oeeResult.performance}% × Q ${oeeResult.quality}%) — ${oeeResult.rating}` : '',
+      bomResult ? `BOM cost: $${bomResult.totalCost} × ${bomResult.itemCount} items${bomResult.marginPercent != null ? ` · margin ${bomResult.marginPercent}%` : ''}` : '',
+      safeResult ? `TRIR: ${safeResult.incidentRate} (${safeResult.recordableIncidents} recordable / ${safeResult.hoursWorked.toLocaleString()} hrs) · ${safeResult.benchmark}` : '',
+      schedResult ? `Schedule: makespan ${schedResult.makespan ?? '-'}min · util ${schedResult.utilization ?? '-'}%` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!oeeResult) { err('Run OEE first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `OEE benchmark`, tags: ['manufacturing', 'oee', 'benchmark', 'public'], source: 'manufacturing:oee:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, oee: oeeResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `OEE benchmark`, tags: ['manufacturing', 'oee', 'benchmark', 'public'], source: 'manufacturing:oee:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, oee: oeeResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('mfg.publishedDtuId', id, { label: `Public OEE ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -181,6 +186,10 @@ export function ManufacturingActionPanel() {
             <input type="text" value={goodPieces} onChange={(e) => setGoodPieces(e.target.value)} className="col-span-2 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Good pieces" />
           </div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">BOM JSON</label>

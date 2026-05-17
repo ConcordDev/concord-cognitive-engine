@@ -11,6 +11,7 @@ import { Shield, Activity, AlertOctagon, FileText, Sparkles, Send, Globe, Wand2,
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -32,26 +33,18 @@ interface IncResult { incidentType?: string; severity?: string; responseTime?: s
 interface DodAward { awardId?: string; recipient?: string; amount?: number; agency?: string; description?: string; placeOfPerformance?: string; naics?: string; psc?: string; periodStart?: string; periodEnd?: string }
 interface SpendResult { results?: DodAward[]; totalResults?: number; pageInfo?: { page: number; hasNext: boolean } }
 
-const DEMO_THREATS = JSON.stringify({
-  threats: [
-    { name: 'Supply chain disruption', category: 'logistics', likelihood: 0.6, impact: 0.7, mitigation: 'Dual-source critical parts' },
-    { name: 'Cyber intrusion (state actor)', category: 'cyber', likelihood: 0.4, impact: 0.9, mitigation: 'Zero-trust + active threat hunting' },
-    { name: 'GPS jamming', category: 'electronic-warfare', likelihood: 0.3, impact: 0.8, mitigation: 'INS backup, M-code' },
-    { name: 'Insider threat', category: 'personnel', likelihood: 0.2, impact: 0.6, mitigation: 'Continuous evaluation' },
-  ],
-}, null, 2);
-
+// No seeded data — every input starts empty.
 export function DefenseActionPanel() {
-  const [threatsText, setThreatsText] = useState(DEMO_THREATS);
-  const [personnelReady, setPersonnelReady] = useState('420');
-  const [personnelTotal, setPersonnelTotal] = useState('500');
-  const [equipReady, setEquipReady] = useState('85');
-  const [equipTotal, setEquipTotal] = useState('100');
-  const [training, setTraining] = useState('78');
-  const [supplies, setSupplies] = useState('92');
-  const [incidentType, setIncidentType] = useState('Perimeter breach attempt');
+  const [threatsText, setThreatsText] = useState('');
+  const [personnelReady, setPersonnelReady] = useState('');
+  const [personnelTotal, setPersonnelTotal] = useState('');
+  const [equipReady, setEquipReady] = useState('');
+  const [equipTotal, setEquipTotal] = useState('');
+  const [training, setTraining] = useState('');
+  const [supplies, setSupplies] = useState('');
+  const [incidentType, setIncidentType] = useState('');
   const [incidentSev, setIncidentSev] = useState<'low' | 'medium' | 'high' | 'critical'>('high');
-  const [contractKeyword, setContractKeyword] = useState('satellite');
+  const [contractKeyword, setContractKeyword] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -67,52 +60,82 @@ export function DefenseActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actThreat() {
+    if (!threatsText.trim()) { err('Paste threats JSON first.'); return; }
     try { const parsed = JSON.parse(threatsText); setBusy('threat'); setFeedback(null);
-      const r = await callMacro<ThreatResult>('threatAssessment', { artifact: { data: parsed } }); if (r.ok && r.result) { setThreatResult(r.result); ok(`${r.result.critical} critical · top: ${r.result.topThreat}.`); } else err(r.error ?? 'threat failed');
+      const r = await callMacro<ThreatResult>('threatAssessment', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setThreatResult(r.result); pipe.publish('defense.threat', r.result, { label: `Threats ${r.result.critical} crit` }); ok(`${r.result.critical} critical · top: ${r.result.topThreat}.`); } else err(r.error ?? 'threat failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid threats JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actReady() {
+    const pr = parseInt(personnelReady, 10), pt = parseInt(personnelTotal, 10), er = parseInt(equipReady, 10), et = parseInt(equipTotal, 10), tr = parseInt(training, 10), su = parseInt(supplies, 10);
+    if (![pr, pt, er, et, tr, su].every(Number.isFinite)) { err('All 6 readiness metrics required.'); return; }
     setBusy('ready'); setFeedback(null);
-    try { const r = await callMacro<ReadyResult>('readinessScore', { artifact: { data: { personnelReady: parseInt(personnelReady, 10), personnelTotal: parseInt(personnelTotal, 10), equipmentOperational: parseInt(equipReady, 10), equipmentTotal: parseInt(equipTotal, 10), trainingCompletionPercent: parseInt(training, 10), suppliesPercent: parseInt(supplies, 10) } } }); if (r.ok && r.result) { setReadyResult(r.result); ok(`${r.result.overallReadiness}% · ${r.result.status}.`); } else err(r.error ?? 'ready failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ReadyResult>('readinessScore', { artifact: { data: { personnelReady: pr, personnelTotal: pt, equipmentOperational: er, equipmentTotal: et, trainingCompletionPercent: tr, suppliesPercent: su } } });
+      if (r.ok && r.result) { setReadyResult(r.result); pipe.publish('defense.ready', r.result, { label: `Ready ${r.result.overallReadiness}%` }); ok(`${r.result.overallReadiness}% · ${r.result.status}.`); } else err(r.error ?? 'ready failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actInc() {
     if (!incidentType.trim()) { err('Incident type required.'); return; }
     setBusy('inc'); setFeedback(null);
-    try { const r = await callMacro<IncResult>('incidentResponse', { artifact: { data: { type: incidentType.trim(), severity: incidentSev, location: 'Sector 7G', reporter: 'sentry-04' } } }); if (r.ok && r.result) { setIncResult(r.result); ok(`Protocol: ${r.result.escalationLevel}.`); } else err(r.error ?? 'incident failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<IncResult>('incidentResponse', { artifact: { data: { type: incidentType.trim(), severity: incidentSev, location: 'Sector 7G', reporter: 'sentry-04' } } });
+      if (r.ok && r.result) { setIncResult(r.result); pipe.publish('defense.inc', r.result, { label: `Inc ${r.result.escalationLevel}` }); ok(`Protocol: ${r.result.escalationLevel}.`); } else err(r.error ?? 'incident failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSpend() {
     if (!contractKeyword.trim()) { err('Keyword required.'); return; }
     setBusy('spend'); setFeedback(null);
-    try { const r = await callMacro<SpendResult>('usaspending-dod-contracts', { keyword: contractKeyword.trim(), awardType: 'contracts', limit: 10 }); if (r.ok && r.result) { setSpendResult(r.result); ok(`${r.result.results?.length ?? 0} DoD contracts.`); } else err(r.error ?? 'spend failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SpendResult>('usaspending-dod-contracts', { keyword: contractKeyword.trim(), awardType: 'contracts', limit: 10 });
+      if (r.ok && r.result) { setSpendResult(r.result); pipe.publish('defense.spend', r.result, { label: `DoD ${r.result.results?.length ?? 0} contracts` }); ok(`${r.result.results?.length ?? 0} DoD contracts.`); } else err(r.error ?? 'spend failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Sec ops — ${readyResult?.status ?? threatResult?.overallThreatLevel ?? 'briefing'}`, tags: ['defense', 'security', readyResult?.status].filter((t): t is string => !!t), source: 'defense:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, def: { threats: threatResult, ready: readyResult, inc: incResult, spend: spendResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Sec DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('defense.mintedDtuId', id, { label: `Sec DTU ${id.slice(0, 8)}…` }); ok(`Sec DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🛡 Sec brief`, '', threatResult ? `Threats: ${threatResult.critical} critical / ${threatResult.total} total · top: ${threatResult.topThreat} (${threatResult.overallThreatLevel})` : '', readyResult ? `Readiness: ${readyResult.overallReadiness}% · ${readyResult.status}${readyResult.gaps.length > 0 ? ` · gaps: ${readyResult.gaps.join(', ')}` : ''}` : '', incResult ? `Incident: ${incResult.incidentType} (${incResult.severity}) · response ${incResult.responseTime} · ${incResult.escalationLevel}` : '', spendResult ? `DoD contracts (${contractKeyword}): ${spendResult.results?.length} found` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🛡 Sec brief`, '',
+      threatResult ? `Threats: ${threatResult.critical} critical / ${threatResult.total} total · top: ${threatResult.topThreat} (${threatResult.overallThreatLevel})` : '',
+      readyResult ? `Readiness: ${readyResult.overallReadiness}% · ${readyResult.status}${readyResult.gaps.length > 0 ? ` · gaps: ${readyResult.gaps.join(', ')}` : ''}` : '',
+      incResult ? `Incident: ${incResult.incidentType} (${incResult.severity}) · response ${incResult.responseTime} · ${incResult.escalationLevel}` : '',
+      spendResult ? `DoD contracts (${contractKeyword}): ${spendResult.results?.length} found` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!spendResult) { err('Run DoD contracts search first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `DoD contract briefing — ${contractKeyword}`, tags: ['defense', 'contracts', 'usaspending', 'public', contractKeyword], source: 'defense:contracts:publish', meta: { visibility: 'public', consent: { allowCitations: true }, contracts: spendResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `DoD contract briefing — ${contractKeyword}`, tags: ['defense', 'contracts', 'usaspending', 'public', contractKeyword], source: 'defense:contracts:publish', meta: { visibility: 'public', consent: { allowCitations: true }, contracts: spendResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('defense.publishedDtuId', id, { label: `Public DoD brief ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -171,6 +194,10 @@ export function DefenseActionPanel() {
           </select>
           <input type="text" value={contractKeyword} onChange={(e) => setContractKeyword(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Contract keyword" />
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

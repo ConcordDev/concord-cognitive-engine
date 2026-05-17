@@ -15,6 +15,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
 import { RealmActionPanel } from '@/components/kingdoms/RealmActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { PipingProvider } from '@/components/panel-polish';
 import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
 
 interface Kingdom {
@@ -130,9 +131,11 @@ export default function KingdomsPage() {
         </section>
 
         {/* Crusader Kings III-shape realm command: list / decree / loyalty / takeover + actions */}
-        <section className="mt-6">
-          <RealmActionPanel />
-        </section>
+        <PipingProvider>
+          <section className="mt-6">
+            <RealmActionPanel />
+          </section>
+        </PipingProvider>
       </div>
     </div>
 

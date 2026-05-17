@@ -22,6 +22,7 @@ import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import ChemWorkbench from '@/components/chem/ChemWorkbench';
 import { ChemActionPanel } from '@/components/chem/ChemActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 interface Compound {
   id: string;
@@ -647,9 +648,11 @@ export default function ChemLensPage() {
         <PeriodicTable />
       </section>
 
-      <section className="mt-6">
-        <ChemActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <ChemActionPanel />
+        </section>
+      </PipingProvider>
     </LensShell>
   );
 }

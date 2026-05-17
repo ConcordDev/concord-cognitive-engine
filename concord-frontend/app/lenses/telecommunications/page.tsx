@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { TelcoRepos } from '@/components/telecommunications/TelcoRepos';
 import { TelecommunicationsActionPanel } from '@/components/telecommunications/TelecommunicationsActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -347,9 +348,11 @@ export default function TelecommunicationsLensPage() {
         <TelcoRepos />
       </section>
 
-      <section className="mt-6 max-w-7xl mx-auto px-4">
-        <TelecommunicationsActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 max-w-7xl mx-auto px-4">
+          <TelecommunicationsActionPanel />
+        </section>
+      </PipingProvider>
     </LensPageShell>
     
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

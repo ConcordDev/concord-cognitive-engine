@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -41,9 +42,9 @@ interface BudgetResult { onTrack?: boolean; overBudget?: string[]; underBudget?:
 interface TrendResult { direction?: string; changePct?: number; topGrowing?: string[]; topShrinking?: string[] }
 
 export function WalletActionPanel() {
-  const [holdings, setHoldings] = useState('BTC 0.5 65000\nETH 5 3200\nSOL 50 180\nUSDC 2000 1');
-  const [transactions, setTransactions] = useState('Whole Foods 87.42\nUber 23.10\nNetflix 15.99\nShell 65.00\nLandlord 2400');
-  const [budgetMap, setBudgetMap] = useState('food 600\ntransport 200\nentertainment 100\nhousing 2500\nutilities 200');
+  const [holdings, setHoldings] = useState('');
+  const [transactions, setTransactions] = useState('');
+  const [budgetMap, setBudgetMap] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -58,6 +59,21 @@ export function WalletActionPanel() {
 
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
+
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
 
   function parseHoldings() {
     return holdings.split('\n').map(l => { const m = l.trim().match(/^(\S+)\s+([\d.]+)\s+([\d.]+)$/); return m ? { symbol: m[1], amount: parseFloat(m[2]), priceUsd: parseFloat(m[3]) } : null; }).filter(Boolean);
@@ -74,23 +90,23 @@ export function WalletActionPanel() {
   async function actBalance() {
     const h = parseHoldings(); if (!h.length) { err('Add holdings.'); return; }
     setBusy('balance'); setFeedback(null);
-    try { const r = await callMacro<BalanceResult>('portfolioBalance', { holdings: h }); if (r.ok && r.result) { setBalanceResult(r.result); ok(`Total: $${r.result.totalUsd?.toLocaleString()}.`); } else err(r.error ?? 'balance failed'); }
+    try { const r = await callMacro<BalanceResult>('portfolioBalance', { holdings: h }); if (r.ok && r.result) { setBalanceResult(r.result); pipe.publish('wallet.balance', r.result, { label: `$${r.result.totalUsd?.toLocaleString()}` }); ok(`Total: $${r.result.totalUsd?.toLocaleString()}.`); } else err(r.error ?? 'balance failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCategorize() {
     const t = parseTransactions(); if (!t.length) { err('Add transactions.'); return; }
     setBusy('categorize'); setFeedback(null);
-    try { const r = await callMacro<CategorizeResult>('transactionCategorize', { transactions: t }); if (r.ok && r.result) { setCategorizeResult(r.result); ok(`${r.result.categorized?.length ?? 0} categorized.`); } else err(r.error ?? 'categorize failed'); }
+    try { const r = await callMacro<CategorizeResult>('transactionCategorize', { transactions: t }); if (r.ok && r.result) { setCategorizeResult(r.result); pipe.publish('wallet.categorize', r.result, { label: `${r.result.categorized?.length ?? 0} categorized` }); ok(`${r.result.categorized?.length ?? 0} categorized.`); } else err(r.error ?? 'categorize failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBudget() {
     setBusy('budget'); setFeedback(null);
-    try { const r = await callMacro<BudgetResult>('budgetCheck', { budget: parseBudget(), categorized: categorizeResult?.byCategory ?? {} }); if (r.ok && r.result) { setBudgetResult(r.result); ok(r.result.onTrack ? 'On track.' : 'Over budget.'); } else err(r.error ?? 'budget failed'); }
+    try { const r = await callMacro<BudgetResult>('budgetCheck', { budget: parseBudget(), categorized: categorizeResult?.byCategory ?? {} }); if (r.ok && r.result) { setBudgetResult(r.result); pipe.publish('wallet.budget', r.result, { label: r.result.onTrack ? 'on track' : 'over' }); ok(r.result.onTrack ? 'On track.' : 'Over budget.'); } else err(r.error ?? 'budget failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actTrend() {
     setBusy('trend'); setFeedback(null);
-    try { const r = await callMacro<TrendResult>('spendingTrend', { window: 'month' }); if (r.ok && r.result) { setTrendResult(r.result); ok(`Trend: ${r.result.direction}.`); } else err(r.error ?? 'trend failed'); }
+    try { const r = await callMacro<TrendResult>('spendingTrend', { window: 'month' }); if (r.ok && r.result) { setTrendResult(r.result); pipe.publish('wallet.trend', r.result, { label: r.result.direction ?? 'trend' }); ok(`Trend: ${r.result.direction}.`); } else err(r.error ?? 'trend failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -98,25 +114,35 @@ export function WalletActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Wallet snapshot — ${new Date().toISOString().slice(0, 10)}`, tags: ['wallet', 'snapshot', budgetResult?.onTrack ? 'on-track' : 'over-budget'], source: 'wallet:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, wallet: { balance: balanceResult, categorize: categorizeResult, budget: budgetResult, trend: trendResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Wallet DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('wallet.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`Wallet DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`💼 Wallet snapshot — ${new Date().toLocaleDateString()}`, '', balanceResult ? `Portfolio: $${balanceResult.totalUsd?.toLocaleString()}` : '', budgetResult ? `Budget: ${budgetResult.onTrack ? '✓ on track' : '⚠ over'}` : '', trendResult ? `Trend: ${trendResult.direction} (${trendResult.changePct}%)` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!trendResult) { err('Run a trend first (anonymized).'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Spending insight — ${trendResult.direction}`, tags: ['wallet', 'insight', 'public'], source: 'wallet:insight:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, insight: { trend: trendResult.direction, changePct: trendResult.changePct, growing: trendResult.topGrowing } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Insight published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Spending insight — ${trendResult.direction}`, tags: ['wallet', 'insight', 'public'], source: 'wallet:insight:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, insight: { trend: trendResult.direction, changePct: trendResult.changePct, growing: trendResult.topGrowing } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('wallet.publishedDtuId', id, { label: `insight ${id.slice(0, 8)}` }); ok(`Insight published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -155,6 +181,11 @@ export function WalletActionPanel() {
       </div>
 
       <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (advisor / partner)" />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {

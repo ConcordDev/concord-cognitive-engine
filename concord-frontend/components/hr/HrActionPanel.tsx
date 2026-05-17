@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -41,14 +42,14 @@ interface InterviewResult { totalScore?: number; passingScore?: number; recommen
 interface PtoResult { accrued?: number; used?: number; remaining?: number; rolloverDate?: string }
 
 export function HrActionPanel() {
-  const [role, setRole] = useState('Senior Engineer');
-  const [location, setLocation] = useState('San Francisco');
-  const [headcount, setHeadcount] = useState('50');
-  const [leavers, setLeavers] = useState('5');
+  const [role, setRole] = useState('');
+  const [location, setLocation] = useState('');
+  const [headcount, setHeadcount] = useState('');
+  const [leavers, setLeavers] = useState('');
   const [candidateName, setCandidateName] = useState('');
-  const [scores, setScores] = useState('technical 4\ncommunication 5\nculture-fit 4\nproblem-solving 5\nleadership 3');
+  const [scores, setScores] = useState('');
   const [employeeId, setEmployeeId] = useState('');
-  const [annualPtoDays, setAnnualPtoDays] = useState('20');
+  const [annualPtoDays, setAnnualPtoDays] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -64,55 +65,87 @@ export function HrActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actComp() {
     if (!role.trim()) { err('Role required.'); return; }
     setBusy('comp'); setFeedback(null);
-    try { const r = await callMacro<CompResult>('compensationBenchmark', { role: role.trim(), location: location.trim() }); if (r.ok && r.result) { setCompResult(r.result); ok(`$${r.result.market50}k median.`); } else err(r.error ?? 'comp failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<CompResult>('compensationBenchmark', { role: role.trim(), location: location.trim() });
+      if (r.ok && r.result) { setCompResult(r.result); pipe.publish('hr.comp', r.result, { label: `$${r.result.market50}k median` }); ok(`$${r.result.market50}k median.`); } else err(r.error ?? 'comp failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actTurnover() {
+    const h = parseInt(headcount, 10), l = parseInt(leavers, 10);
+    if (![h, l].every(Number.isFinite)) { err('Headcount + leavers required.'); return; }
     setBusy('turnover'); setFeedback(null);
-    try { const r = await callMacro<TurnoverResult>('turnoverAnalysis', { headcount: parseInt(headcount, 10), leaversLast12Months: parseInt(leavers, 10) }); if (r.ok && r.result) { setTurnoverResult(r.result); ok(`Turnover: ${r.result.ratePct}%.`); } else err(r.error ?? 'turnover failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<TurnoverResult>('turnoverAnalysis', { headcount: h, leaversLast12Months: l });
+      if (r.ok && r.result) { setTurnoverResult(r.result); pipe.publish('hr.turnover', r.result, { label: `Turn ${r.result.ratePct}%` }); ok(`Turnover: ${r.result.ratePct}%.`); } else err(r.error ?? 'turnover failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actInterview() {
     if (!candidateName.trim()) { err('Candidate required.'); return; }
+    if (!scores.trim()) { err('Scores required (one per line: dimension N).'); return; }
     const parsed: Record<string, number> = {};
     scores.split('\n').forEach(l => { const m = l.trim().match(/^(\S+)\s+(\d+)$/); if (m) parsed[m[1]] = parseInt(m[2], 10); });
     setBusy('interview'); setFeedback(null);
-    try { const r = await callMacro<InterviewResult>('interviewScorecard', { candidate: candidateName.trim(), scores: parsed }); if (r.ok && r.result) { setInterviewResult(r.result); ok(`Rec: ${r.result.recommendation}.`); } else err(r.error ?? 'interview failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<InterviewResult>('interviewScorecard', { candidate: candidateName.trim(), scores: parsed });
+      if (r.ok && r.result) { setInterviewResult(r.result); pipe.publish('hr.interview', r.result, { label: `Rec: ${r.result.recommendation}` }); ok(`Rec: ${r.result.recommendation}.`); } else err(r.error ?? 'interview failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPto() {
     if (!employeeId.trim()) { err('Employee id required.'); return; }
+    const a = parseInt(annualPtoDays, 10);
+    if (!Number.isFinite(a)) { err('Annual PTO days required.'); return; }
     setBusy('pto'); setFeedback(null);
-    try { const r = await callMacro<PtoResult>('ptoBalance', { employeeId: employeeId.trim(), annualDays: parseInt(annualPtoDays, 10) }); if (r.ok && r.result) { setPtoResult(r.result); ok(`${r.result.remaining}d remaining.`); } else err(r.error ?? 'pto failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PtoResult>('ptoBalance', { employeeId: employeeId.trim(), annualDays: a });
+      if (r.ok && r.result) { setPtoResult(r.result); pipe.publish('hr.pto', r.result, { label: `PTO ${r.result.remaining}d left` }); ok(`${r.result.remaining}d remaining.`); } else err(r.error ?? 'pto failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `HR snapshot — ${role || 'team'}`, tags: ['hr', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, hr: { role, location, comp: compResult, turnover: turnoverResult, interview: interviewResult, pto: ptoResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`HR DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('hr.mintedDtuId', id, { label: `HR DTU ${id.slice(0, 8)}…` }); ok(`HR DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`👥 HR brief: ${role}`, '', compResult ? `Comp: $${compResult.market50}k median (range $${compResult.rangeLow}-${compResult.rangeHigh}k)` : '', turnoverResult ? `Turnover: ${turnoverResult.ratePct}% (${turnoverResult.band})` : '', interviewResult ? `Candidate ${candidateName}: ${interviewResult.recommendation}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`👥 HR brief: ${role}`, '',
+      compResult ? `Comp: $${compResult.market50}k median (range $${compResult.rangeLow}-${compResult.rangeHigh}k)` : '',
+      turnoverResult ? `Turnover: ${turnoverResult.ratePct}% (${turnoverResult.band})` : '',
+      interviewResult ? `Candidate ${candidateName}: ${interviewResult.recommendation}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!compResult) { err('Run comp benchmark first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public comp data — ${role} (${location})`, tags: ['hr', 'comp', 'public', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:comp:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, comp: { role, location, market50: compResult.market50, market75: compResult.market75 } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Comp data published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public comp data — ${role} (${location})`, tags: ['hr', 'comp', 'public', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:comp:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, comp: { role, location, market50: compResult.market50, market75: compResult.market75 } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('hr.publishedDtuId', id, { label: `Public comp ${id.slice(0, 8)}…` }); ok(`Comp data published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -159,7 +192,11 @@ export function HrActionPanel() {
         <textarea value={scores} onChange={(e) => setScores(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-blue-200 font-mono focus:outline-none focus:ring-2 focus:ring-blue-400/40 resize-none" />
       </div>
 
-      <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (hiring manager)" />
+      <div className="flex items-center gap-2 flex-wrap">
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (hiring manager)" />
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {

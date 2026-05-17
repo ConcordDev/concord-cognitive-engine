@@ -11,6 +11,7 @@ import { Trees, Ruler, Flame, Axe, Leaf, Sparkles, Send, Globe, Wand2, Loader2, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -32,13 +33,13 @@ interface CarbonResult { tonsPerYear?: number; lifetimeTons?: number; equivalent
 
 export function ForestryActionPanel() {
   const [standName, setStandName] = useState('');
-  const [species, setSpecies] = useState('douglas-fir');
-  const [acres, setAcres] = useState('100');
-  const [age, setAge] = useState('40');
-  const [trees, setTrees] = useState('50000');
-  const [tempF, setTempF] = useState('85');
-  const [humidity, setHumidity] = useState('25');
-  const [windMph, setWindMph] = useState('15');
+  const [species, setSpecies] = useState('');
+  const [acres, setAcres] = useState('');
+  const [age, setAge] = useState('');
+  const [trees, setTrees] = useState('');
+  const [tempF, setTempF] = useState('');
+  const [humidity, setHumidity] = useState('');
+  const [windMph, setWindMph] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -54,50 +55,85 @@ export function ForestryActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actVolume() {
+    const a = parseFloat(acres), ag = parseFloat(age), t = parseInt(trees, 10);
+    if (!species.trim() || ![a, ag, t].every(Number.isFinite)) { err('Species + acres + age + tree count required.'); return; }
     setBusy('volume'); setFeedback(null);
-    try { const r = await callMacro<VolumeResult>('timberVolume', { species, acres: parseFloat(acres), avgAgeYears: parseFloat(age), treeCount: parseInt(trees, 10) }); if (r.ok && r.result) { setVolumeResult(r.result); ok(`${r.result.boardFeet?.toLocaleString()} board ft.`); } else err(r.error ?? 'volume failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<VolumeResult>('timberVolume', { species, acres: a, avgAgeYears: ag, treeCount: t });
+      if (r.ok && r.result) { setVolumeResult(r.result); pipe.publish('forestry.volume', r.result, { label: `${r.result.boardFeet?.toLocaleString()} bf` }); ok(`${r.result.boardFeet?.toLocaleString()} board ft.`); } else err(r.error ?? 'volume failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRisk() {
+    const t = parseFloat(tempF), h = parseFloat(humidity), w = parseFloat(windMph);
+    if (![t, h, w].every(Number.isFinite)) { err('Temp °F + humidity % + wind mph required.'); return; }
     setBusy('risk'); setFeedback(null);
-    try { const r = await callMacro<RiskResult>('fireRisk', { tempF: parseFloat(tempF), humidity: parseFloat(humidity), windMph: parseFloat(windMph) }); if (r.ok && r.result) { setRiskResult(r.result); ok(`Risk: ${r.result.riskLevel}.`); } else err(r.error ?? 'risk failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<RiskResult>('fireRisk', { tempF: t, humidity: h, windMph: w });
+      if (r.ok && r.result) { setRiskResult(r.result); pipe.publish('forestry.risk', r.result, { label: `Risk ${r.result.riskLevel}` }); ok(`Risk: ${r.result.riskLevel}.`); } else err(r.error ?? 'risk failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actHarvest() {
+    const a = parseFloat(acres), ag = parseFloat(age);
+    if (!species.trim() || ![a, ag].every(Number.isFinite)) { err('Species + acres + age required.'); return; }
     setBusy('harvest'); setFeedback(null);
-    try { const r = await callMacro<HarvestResult>('harvestPlan', { species, acres: parseFloat(acres), currentAge: parseFloat(age) }); if (r.ok && r.result) { setHarvestResult(r.result); ok(`${r.result.schedule?.length ?? 0}-year plan.`); } else err(r.error ?? 'harvest failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<HarvestResult>('harvestPlan', { species, acres: a, currentAge: ag });
+      if (r.ok && r.result) { setHarvestResult(r.result); pipe.publish('forestry.harvest', r.result, { label: `Harvest ${r.result.schedule?.length ?? 0}yr` }); ok(`${r.result.schedule?.length ?? 0}-year plan.`); } else err(r.error ?? 'harvest failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCarbon() {
+    const a = parseFloat(acres), ag = parseFloat(age);
+    if (!species.trim() || ![a, ag].every(Number.isFinite)) { err('Species + acres + age required.'); return; }
     setBusy('carbon'); setFeedback(null);
-    try { const r = await callMacro<CarbonResult>('carbonSequestration', { species, acres: parseFloat(acres), ageYears: parseFloat(age) }); if (r.ok && r.result) { setCarbonResult(r.result); ok(`${r.result.tonsPerYear} t/yr CO₂.`); } else err(r.error ?? 'carbon failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<CarbonResult>('carbonSequestration', { species, acres: a, ageYears: ag });
+      if (r.ok && r.result) { setCarbonResult(r.result); pipe.publish('forestry.carbon', r.result, { label: `Carbon ${r.result.tonsPerYear}t/yr` }); ok(`${r.result.tonsPerYear} t/yr CO₂.`); } else err(r.error ?? 'carbon failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Forest stand — ${standName.trim() || species}`, tags: ['forestry', species], source: 'forestry:stand:mint', meta: { visibility: 'private', consent: { allowCitations: false }, stand: { name: standName, species, acres: parseFloat(acres), volume: volumeResult, risk: riskResult, harvest: harvestResult, carbon: carbonResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Stand DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('forestry.mintedDtuId', id, { label: `Stand DTU ${id.slice(0, 8)}…` }); ok(`Stand DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🌲 Stand: ${standName || species}`, '', `${acres} acres · age ${age}y`, volumeResult ? `Volume: ${volumeResult.boardFeet?.toLocaleString()} bf · $${volumeResult.valuation?.toLocaleString()}` : '', riskResult ? `Fire risk: ${riskResult.riskLevel}` : '', carbonResult ? `Carbon: ${carbonResult.tonsPerYear} t/yr` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🌲 Stand: ${standName || species}`, '', `${acres} acres · age ${age}y`,
+      volumeResult ? `Volume: ${volumeResult.boardFeet?.toLocaleString()} bf · $${volumeResult.valuation?.toLocaleString()}` : '',
+      riskResult ? `Fire risk: ${riskResult.riskLevel}` : '',
+      carbonResult ? `Carbon: ${carbonResult.tonsPerYear} t/yr` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!carbonResult) { err('Run carbon estimate first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Carbon record — ${species} ${acres}ac`, tags: ['forestry', 'carbon', 'public'], source: 'forestry:carbon:publish', meta: { visibility: 'public', consent: { allowCitations: true }, carbon: carbonResult, species, acres: parseFloat(acres) } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Carbon record — ${species} ${acres}ac`, tags: ['forestry', 'carbon', 'public'], source: 'forestry:carbon:publish', meta: { visibility: 'public', consent: { allowCitations: true }, carbon: carbonResult, species, acres: parseFloat(acres) } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('forestry.publishedDtuId', id, { label: `Public carbon ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -140,7 +176,11 @@ export function ForestryActionPanel() {
         <input type="text" value={tempF} onChange={(e) => setTempF(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Temp °F" />
         <input type="text" value={humidity} onChange={(e) => setHumidity(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Humidity %" />
         <input type="text" value={windMph} onChange={(e) => setWindMph(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Wind mph" />
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

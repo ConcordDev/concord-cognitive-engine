@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -41,16 +42,16 @@ interface MonteCarloResult { successRate?: number; medianFinal?: number; p10Fina
 interface SubsResult { subscriptions?: Array<{ name: string; monthlyAmount: number; flagged?: boolean }>; monthlyTotal?: number }
 
 export function FinanceActionPanel() {
-  const [assets, setAssets] = useState('checking 5000\nsavings 25000\nbrokerage 80000\n401k 120000');
-  const [liabilities, setLiabilities] = useState('mortgage 280000\nstudent_loan 12000');
+  const [assets, setAssets] = useState('');
+  const [liabilities, setLiabilities] = useState('');
   const [envName, setEnvName] = useState('');
-  const [envAmount, setEnvAmount] = useState('500');
-  const [taxIncome, setTaxIncome] = useState('120000');
+  const [envAmount, setEnvAmount] = useState('');
+  const [taxIncome, setTaxIncome] = useState('');
   const [taxStatus, setTaxStatus] = useState<'single' | 'married' | 'head'>('single');
-  const [mcCurrentAge, setMcCurrentAge] = useState('35');
-  const [mcRetireAge, setMcRetireAge] = useState('65');
-  const [mcCurrentBalance, setMcCurrentBalance] = useState('200000');
-  const [mcMonthlyContrib, setMcMonthlyContrib] = useState('1500');
+  const [mcCurrentAge, setMcCurrentAge] = useState('');
+  const [mcRetireAge, setMcRetireAge] = useState('');
+  const [mcCurrentBalance, setMcCurrentBalance] = useState('');
+  const [mcMonthlyContrib, setMcMonthlyContrib] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -68,6 +69,10 @@ export function FinanceActionPanel() {
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   function parseKvLines(text: string) {
     return text.split('\n').map(l => {
       const m = l.trim().match(/^(\S+)\s+([\d.]+)$/);
@@ -82,7 +87,7 @@ export function FinanceActionPanel() {
     setBusy('snapshot'); setFeedback(null);
     try {
       const r = await callMacro<NetWorthResult>('net-worth-snapshot', { assets: a, liabilities: l });
-      if (r.ok && r.result) { setNetWorthResult(r.result); ok(`Net worth $${(r.result.netWorth ?? 0).toLocaleString()}.`); }
+      if (r.ok && r.result) { setNetWorthResult(r.result); pipe.publish('finance.netWorth', r.result, { label: `Net worth $${(r.result.netWorth ?? 0).toLocaleString()}` }); ok(`Net worth $${(r.result.netWorth ?? 0).toLocaleString()}.`); }
       else err(r.error ?? 'snapshot failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -92,7 +97,7 @@ export function FinanceActionPanel() {
     setBusy('envelope'); setFeedback(null);
     try {
       const r = await callMacro<{ envelope?: { id: string } }>('envelopes-create', { name: envName.trim(), monthlyBudget: parseFloat(envAmount) });
-      if (r.ok && r.result?.envelope) { setEnvCreated(r.result.envelope.id); ok(`Envelope: ${envName.trim()}.`); setEnvName(''); }
+      if (r.ok && r.result?.envelope) { setEnvCreated(r.result.envelope.id); pipe.publish('finance.envelope', r.result.envelope, { label: `Env: ${envName.trim()}` }); ok(`Envelope: ${envName.trim()}.`); setEnvName(''); }
       else err(r.error ?? 'envelope failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -101,7 +106,7 @@ export function FinanceActionPanel() {
     setBusy('tax'); setFeedback(null);
     try {
       const r = await callMacro<TaxResult>('tax-estimate', { income: parseFloat(taxIncome), filingStatus: taxStatus, year: new Date().getFullYear() });
-      if (r.ok && r.result) { setTaxResult(r.result); ok(`Tax: $${(r.result.estimatedTax ?? 0).toLocaleString()}.`); }
+      if (r.ok && r.result) { setTaxResult(r.result); pipe.publish('finance.tax', r.result, { label: `Tax $${(r.result.estimatedTax ?? 0).toLocaleString()}` }); ok(`Tax: $${(r.result.estimatedTax ?? 0).toLocaleString()}.`); }
       else err(r.error ?? 'tax failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -115,7 +120,7 @@ export function FinanceActionPanel() {
         currentBalance: parseFloat(mcCurrentBalance),
         monthlyContribution: parseFloat(mcMonthlyContrib),
       });
-      if (r.ok && r.result) { setMcResult(r.result); ok(`MC success rate: ${r.result.successRate}%.`); }
+      if (r.ok && r.result) { setMcResult(r.result); pipe.publish('finance.mc', r.result, { label: `MC ${r.result.successRate}% success` }); ok(`MC success rate: ${r.result.successRate}%.`); }
       else err(r.error ?? 'monte carlo failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -124,7 +129,7 @@ export function FinanceActionPanel() {
     setBusy('subs'); setFeedback(null);
     try {
       const r = await callMacro<SubsResult>('subscriptions-detect', {});
-      if (r.ok && r.result) { setSubsResult(r.result); ok(`${r.result.subscriptions?.length ?? 0} subscriptions detected.`); }
+      if (r.ok && r.result) { setSubsResult(r.result); pipe.publish('finance.subs', r.result, { label: `${r.result.subscriptions?.length ?? 0} subs` }); ok(`${r.result.subscriptions?.length ?? 0} subscriptions detected.`); }
       else err(r.error ?? 'subs failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -144,7 +149,7 @@ export function FinanceActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Finance DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('finance.mintedDtuId', id, { label: `Finance DTU ${id.slice(0, 8)}…` }); ok(`Finance DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -160,9 +165,12 @@ export function FinanceActionPanel() {
       mintedDtuId ? `\n[Finance DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok(`Sent to ${recipient.trim()}. 60s to recall.`); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -170,21 +178,24 @@ export function FinanceActionPanel() {
     if (!mcResult) { err('Run monte-carlo first (only anonymized retirement scenarios publish).'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Retirement scenario — ${mcCurrentAge}→${mcRetireAge}, ${mcResult.successRate}% success`,
-          tags: ['finance', 'retirement', 'public', `success:${mcResult.successRate}`],
-          source: 'finance:retirement:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, scenario: { currentAge: parseInt(mcCurrentAge, 10), retirementAge: parseInt(mcRetireAge, 10), monthlyContrib: parseFloat(mcMonthlyContrib), result: mcResult } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Retirement scenario — ${mcCurrentAge}→${mcRetireAge}, ${mcResult.successRate}% success`,
+            tags: ['finance', 'retirement', 'public', `success:${mcResult.successRate}`],
+            source: 'finance:retirement:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, scenario: { currentAge: parseInt(mcCurrentAge, 10), retirementAge: parseInt(mcRetireAge, 10), monthlyContrib: parseFloat(mcMonthlyContrib), result: mcResult } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Scenario published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('finance.publishedDtuId', id, { label: `Public scenario ${id.slice(0, 8)}…` }); ok(`Scenario published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -254,7 +265,7 @@ export function FinanceActionPanel() {
             <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Bal $</label><input type="text" value={mcCurrentBalance} onChange={(e) => setMcCurrentBalance(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" /></div>
             <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">$/mo</label><input type="text" value={mcMonthlyContrib} onChange={(e) => setMcMonthlyContrib(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" /></div>
           </div>
-          <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">DM recipient</label><input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="accountant / advisor user id" /></div>
+          <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">DM recipient</label><input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="accountant / advisor user id" /><div className="flex items-center gap-2 flex-wrap mt-1"><RecallSlot ctl={dmRecall} /><RecallSlot ctl={publishRecall} /></div></div>
         </div>
       </div>
 

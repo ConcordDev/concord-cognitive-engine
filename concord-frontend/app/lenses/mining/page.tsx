@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { MshaLookup } from '@/components/mining/MshaLookup';
 import { MiningActionPanel } from '@/components/mining/MiningActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -367,9 +368,11 @@ export default function MiningLensPage() {
       </section>
 
       {/* MSHA + USGS-shape mine workbench: grade / blast / safety / resource + actions */}
-      <section className="mt-6">
-        <MiningActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <MiningActionPanel />
+        </section>
+      </PipingProvider>
     </LensPageShell>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

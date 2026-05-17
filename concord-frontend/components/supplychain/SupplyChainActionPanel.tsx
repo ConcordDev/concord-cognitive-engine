@@ -11,6 +11,7 @@ import { Truck, Package, Star, TrendingUp, Sparkles, Send, Globe, Wand2, Loader2
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,34 +34,12 @@ interface SupResult { suppliers: ScoredSup[]; topSupplier: string; atRisk: numbe
 interface ForecastPt { period: string; predicted: number; confidence: string }
 interface ForecastResult { historicalPeriods: number; avgDemand: number; trend: string; forecast: ForecastPt[] }
 
-const DEMO_ORDERS = JSON.stringify([
-  { id: 'PO-001', supplier: 'Acme', orderDate: new Date(Date.now() - 25 * 86400000).toISOString(), receivedDate: new Date(Date.now() - 15 * 86400000).toISOString() },
-  { id: 'PO-002', supplier: 'Globex', orderDate: new Date(Date.now() - 30 * 86400000).toISOString(), receivedDate: new Date(Date.now() - 22 * 86400000).toISOString() },
-  { id: 'PO-003', supplier: 'Acme', orderDate: new Date(Date.now() - 18 * 86400000).toISOString(), receivedDate: new Date(Date.now() - 5 * 86400000).toISOString() },
-  { id: 'PO-004', supplier: 'Initech', orderDate: new Date(Date.now() - 40 * 86400000).toISOString(), receivedDate: new Date(Date.now() - 8 * 86400000).toISOString() },
-], null, 2);
-
-const DEMO_INVENTORY = JSON.stringify([
-  { name: 'Widget A', dailyDemand: 50, leadTimeDays: 10, currentStock: 800, orderCost: 50, holdingCost: 5 },
-  { name: 'Bolt M8', dailyDemand: 200, leadTimeDays: 5, currentStock: 600, orderCost: 25, holdingCost: 2 },
-  { name: 'Motor 12V', dailyDemand: 8, leadTimeDays: 21, currentStock: 30, orderCost: 200, holdingCost: 15 },
-], null, 2);
-
-const DEMO_SUPPLIERS = JSON.stringify([
-  { name: 'Acme', qualityScore: 92, onTimePercent: 88, priceCompetitiveness: 75, responsiveness: 85 },
-  { name: 'Globex', qualityScore: 78, onTimePercent: 92, priceCompetitiveness: 88, responsiveness: 70 },
-  { name: 'Initech', qualityScore: 60, onTimePercent: 55, priceCompetitiveness: 95, responsiveness: 50 },
-], null, 2);
-
-const DEMO_HISTORY = JSON.stringify([
-  { demand: 480 }, { demand: 510 }, { demand: 495 }, { demand: 540 }, { demand: 575 }, { demand: 590 }, { demand: 620 },
-], null, 2);
-
+// No seeded data — every input starts empty.
 export function SupplyChainActionPanel() {
-  const [ordersText, setOrdersText] = useState(DEMO_ORDERS);
-  const [invText, setInvText] = useState(DEMO_INVENTORY);
-  const [supText, setSupText] = useState(DEMO_SUPPLIERS);
-  const [histText, setHistText] = useState(DEMO_HISTORY);
+  const [ordersText, setOrdersText] = useState('');
+  const [invText, setInvText] = useState('');
+  const [supText, setSupText] = useState('');
+  const [histText, setHistText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -78,54 +57,86 @@ export function SupplyChainActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actLead() {
+    if (!ordersText.trim()) { err('Paste orders JSON first.'); return; }
     const orders = parseJSON<unknown[]>(ordersText); if (!orders) { err('Invalid orders JSON.'); return; }
     setBusy('lead'); setFeedback(null);
-    try { const r = await callMacro<LeadResult>('leadTimeAnalysis', { artifact: { data: { orders } } }); if (r.ok && r.result) { setLeadResult(r.result); ok(`Avg ${r.result.avgLeadTimeDays}d (${r.result.reliability}).`); } else err(r.error ?? 'lead failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<LeadResult>('leadTimeAnalysis', { artifact: { data: { orders } } });
+      if (r.ok && r.result) { setLeadResult(r.result); pipe.publish('supplychain.lead', r.result, { label: `Lead ${r.result.avgLeadTimeDays}d` }); ok(`Avg ${r.result.avgLeadTimeDays}d (${r.result.reliability}).`); } else err(r.error ?? 'lead failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actInv() {
+    if (!invText.trim()) { err('Paste inventory JSON first.'); return; }
     const items = parseJSON<unknown[]>(invText); if (!items) { err('Invalid inventory JSON.'); return; }
     setBusy('inv'); setFeedback(null);
-    try { const r = await callMacro<InvResult>('inventoryOptimize', { artifact: { data: { items } } }); if (r.ok && r.result) { setInvResult(r.result); ok(`${r.result.needsReorder} of ${r.result.totalItems} need reorder.`); } else err(r.error ?? 'inv failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<InvResult>('inventoryOptimize', { artifact: { data: { items } } });
+      if (r.ok && r.result) { setInvResult(r.result); pipe.publish('supplychain.inv', r.result, { label: `Inv ${r.result.needsReorder}/${r.result.totalItems}` }); ok(`${r.result.needsReorder} of ${r.result.totalItems} need reorder.`); } else err(r.error ?? 'inv failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSup() {
+    if (!supText.trim()) { err('Paste suppliers JSON first.'); return; }
     const suppliers = parseJSON<unknown[]>(supText); if (!suppliers) { err('Invalid suppliers JSON.'); return; }
     setBusy('sup'); setFeedback(null);
-    try { const r = await callMacro<SupResult>('supplierScore', { artifact: { data: { suppliers } } }); if (r.ok && r.result) { setSupResult(r.result); ok(`Top: ${r.result.topSupplier} · at-risk ${r.result.atRisk}.`); } else err(r.error ?? 'sup failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SupResult>('supplierScore', { artifact: { data: { suppliers } } });
+      if (r.ok && r.result) { setSupResult(r.result); pipe.publish('supplychain.sup', r.result, { label: `Top: ${r.result.topSupplier}` }); ok(`Top: ${r.result.topSupplier} · at-risk ${r.result.atRisk}.`); } else err(r.error ?? 'sup failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFore() {
+    if (!histText.trim()) { err('Paste history JSON first.'); return; }
     const history = parseJSON<unknown[]>(histText); if (!history) { err('Invalid history JSON.'); return; }
     setBusy('fore'); setFeedback(null);
-    try { const r = await callMacro<ForecastResult>('demandForecast', { artifact: { data: { history } } }); if (r.ok && r.result) { setForeResult(r.result); ok(`${r.result.trend} · avg ${r.result.avgDemand}.`); } else err(r.error ?? 'forecast failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ForecastResult>('demandForecast', { artifact: { data: { history } } });
+      if (r.ok && r.result) { setForeResult(r.result); pipe.publish('supplychain.fore', r.result, { label: `Forecast ${r.result.trend}` }); ok(`${r.result.trend} · avg ${r.result.avgDemand}.`); } else err(r.error ?? 'forecast failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Ops — ${supResult?.topSupplier ?? 'pipeline'}`, tags: ['supplychain', 'ops', supResult?.topSupplier].filter((t): t is string => !!t), source: 'supplychain:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, sc: { lead: leadResult, inv: invResult, sup: supResult, fore: foreResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Ops DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('supplychain.mintedDtuId', id, { label: `Ops DTU ${id.slice(0, 8)}…` }); ok(`Ops DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🚚 Ops brief`, '', leadResult ? `Lead time: avg ${leadResult.avgLeadTimeDays}d (${leadResult.minDays}-${leadResult.maxDays}, ${leadResult.reliability})` : '', invResult ? `Inventory: ${invResult.needsReorder}/${invResult.totalItems} need reorder` : '', supResult ? `Top supplier: ${supResult.topSupplier} · ${supResult.atRisk} at-risk` : '', foreResult ? `Forecast (${foreResult.trend}): +1=${foreResult.forecast[0]?.predicted} / +2=${foreResult.forecast[1]?.predicted} / +3=${foreResult.forecast[2]?.predicted}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🚚 Ops brief`, '',
+      leadResult ? `Lead time: avg ${leadResult.avgLeadTimeDays}d (${leadResult.minDays}-${leadResult.maxDays}, ${leadResult.reliability})` : '',
+      invResult ? `Inventory: ${invResult.needsReorder}/${invResult.totalItems} need reorder` : '',
+      supResult ? `Top supplier: ${supResult.topSupplier} · ${supResult.atRisk} at-risk` : '',
+      foreResult ? `Forecast (${foreResult.trend}): +1=${foreResult.forecast[0]?.predicted} / +2=${foreResult.forecast[1]?.predicted} / +3=${foreResult.forecast[2]?.predicted}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!supResult) { err('Run supplier score first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Supplier scorecard (anon)`, tags: ['supplychain', 'benchmark', 'public'], source: 'supplychain:scorecard:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, supScorecard: supResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Supplier scorecard (anon)`, tags: ['supplychain', 'benchmark', 'public'], source: 'supplychain:scorecard:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, supScorecard: supResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('supplychain.publishedDtuId', id, { label: `Public scorecard ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -177,7 +188,11 @@ export function SupplyChainActionPanel() {
           <label className="text-[10px] uppercase tracking-wider text-cyan-400 font-semibold">Demand history (JSON)</label>
           <textarea value={histText} onChange={(e) => setHistText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

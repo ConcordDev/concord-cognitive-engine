@@ -11,6 +11,7 @@ import { GraduationCap, TrendingUp, BookOpen, ListChecks, Sparkles, Send, Globe,
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,34 +34,14 @@ interface LessonResult { topic: string; gradeLevel: string; objectives?: string[
 interface QuizQ { question: string; options?: string[]; answer?: string; explanation?: string }
 interface QuizResult { questions: QuizQ[]; topic: string }
 
-const DEMO_GRADES = JSON.stringify({
-  studentName: 'Alex Chen',
-  categories: [
-    { name: 'Exams', weight: 50, scores: [{ name: 'Midterm', earned: 88, outOf: 100 }, { name: 'Final', earned: 92, outOf: 100 }] },
-    { name: 'Homework', weight: 25, scores: [{ name: 'HW1', earned: 18, outOf: 20 }, { name: 'HW2', earned: 19, outOf: 20 }, { name: 'HW3', earned: 17, outOf: 20 }] },
-    { name: 'Participation', weight: 15, scores: [{ name: 'Class', earned: 14, outOf: 15 }] },
-    { name: 'Project', weight: 10, scores: [{ name: 'Capstone', earned: 92, outOf: 100 }] },
-  ],
-}, null, 2);
-
-const DEMO_PROG = JSON.stringify({
-  studentName: 'Alex Chen',
-  scores: [
-    { date: '2026-01-15', score: 72 },
-    { date: '2026-02-01', score: 78 },
-    { date: '2026-02-15', score: 81 },
-    { date: '2026-03-01', score: 79 },
-    { date: '2026-03-15', score: 85 },
-    { date: '2026-04-01', score: 88 },
-  ],
-}, null, 2);
-
+// No seeded examples — paste real grades / progress JSON or type the
+// topic + source-text for lesson and quiz generation.
 export function EducationActionPanel() {
-  const [gradesText, setGradesText] = useState(DEMO_GRADES);
-  const [progText, setProgText] = useState(DEMO_PROG);
-  const [lessonTopic, setLessonTopic] = useState('Photosynthesis');
-  const [lessonGrade, setLessonGrade] = useState('7');
-  const [quizText, setQuizText] = useState('Photosynthesis is the process by which plants convert light energy, water, and carbon dioxide into glucose and oxygen. The reaction takes place in chloroplasts, where chlorophyll absorbs primarily red and blue wavelengths of light. The overall equation is 6CO2 + 6H2O + light → C6H12O6 + 6O2.');
+  const [gradesText, setGradesText] = useState('');
+  const [progText, setProgText] = useState('');
+  const [lessonTopic, setLessonTopic] = useState('');
+  const [lessonGrade, setLessonGrade] = useState('');
+  const [quizText, setQuizText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -78,54 +59,84 @@ export function EducationActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actGrade() {
+    if (!gradesText.trim()) { err('Paste grades JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(gradesText); if (!parsed) { err('Invalid grades JSON.'); return; }
     setBusy('grade'); setFeedback(null);
-    try { const r = await callMacro<GradeResult>('gradeCalculation', { artifact: { data: parsed } }); if (r.ok && r.result) { setGradeResult(r.result); ok(`${r.result.letterGrade} (${r.result.finalPercent}%).`); } else err(r.error ?? 'grade failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<GradeResult>('gradeCalculation', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setGradeResult(r.result); pipe.publish('education.grade', r.result, { label: `${r.result.letterGrade} (${r.result.finalPercent}%)` }); ok(`${r.result.letterGrade} (${r.result.finalPercent}%).`); } else err(r.error ?? 'grade failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actProg() {
+    if (!progText.trim()) { err('Paste progress JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(progText); if (!parsed) { err('Invalid progress JSON.'); return; }
     setBusy('prog'); setFeedback(null);
-    try { const r = await callMacro<ProgResult>('progressTrack', { artifact: { data: parsed } }); if (r.ok && r.result) { setProgResult(r.result); ok(`${r.result.trend} · ${r.result.mastery}.`); } else err(r.error ?? 'prog failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ProgResult>('progressTrack', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setProgResult(r.result); pipe.publish('education.prog', r.result, { label: `Progress ${r.result.trend}` }); ok(`${r.result.trend} · ${r.result.mastery}.`); } else err(r.error ?? 'prog failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actLesson() {
-    if (!lessonTopic.trim()) { err('Topic required.'); return; }
+    if (!lessonTopic.trim() || !lessonGrade.trim()) { err('Topic + grade level required.'); return; }
     setBusy('lesson'); setFeedback(null);
-    try { const r = await callMacro<LessonResult>('lesson-plan-generate', { topic: lessonTopic.trim(), gradeLevel: lessonGrade, duration: 45 }); if (r.ok && r.result) { setLessonResult(r.result); ok(`Lesson on ${r.result.topic}.`); } else err(r.error ?? 'lesson failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<LessonResult>('lesson-plan-generate', { topic: lessonTopic.trim(), gradeLevel: lessonGrade, duration: 45 });
+      if (r.ok && r.result) { setLessonResult(r.result); pipe.publish('education.lesson', r.result, { label: `Lesson: ${r.result.topic}` }); ok(`Lesson on ${r.result.topic}.`); } else err(r.error ?? 'lesson failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actQuiz() {
     if (!quizText.trim()) { err('Source text required.'); return; }
     setBusy('quiz'); setFeedback(null);
-    try { const r = await callMacro<QuizResult>('quiz-from-text', { text: quizText.trim(), topic: lessonTopic, count: 5 }); if (r.ok && r.result) { setQuizResult(r.result); ok(`${r.result.questions.length} questions.`); } else err(r.error ?? 'quiz failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<QuizResult>('quiz-from-text', { text: quizText.trim(), topic: lessonTopic, count: 5 });
+      if (r.ok && r.result) { setQuizResult(r.result); pipe.publish('education.quiz', r.result, { label: `Quiz: ${r.result.topic} (${r.result.questions.length}q)` }); ok(`${r.result.questions.length} questions.`); } else err(r.error ?? 'quiz failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Class — ${lessonTopic}`, tags: ['education', 'class', `grade-${lessonGrade}`], source: 'education:class:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ed: { grade: gradeResult, prog: progResult, lesson: lessonResult, quiz: quizResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Class DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('education.mintedDtuId', id, { label: `Class DTU ${id.slice(0, 8)}…` }); ok(`Class DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🎓 Class update`, '', gradeResult ? `${gradeResult.studentName}: ${gradeResult.letterGrade} (${gradeResult.finalPercent}%) · ${gradeResult.passing ? '✓ passing' : '⚠ failing'}` : '', progResult ? `Progress: ${progResult.trend} (+${progResult.improvement}) · ${progResult.mastery} · ${progResult.recommendation}` : '', lessonResult ? `Lesson plan: ${lessonResult.topic} (G${lessonResult.gradeLevel}) · ${lessonResult.objectives?.length ?? 0} objectives` : '', quizResult ? `Quiz: ${quizResult.questions.length} questions on ${quizResult.topic}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🎓 Class update`, '',
+      gradeResult ? `${gradeResult.studentName}: ${gradeResult.letterGrade} (${gradeResult.finalPercent}%) · ${gradeResult.passing ? '✓ passing' : '⚠ failing'}` : '',
+      progResult ? `Progress: ${progResult.trend} (+${progResult.improvement}) · ${progResult.mastery} · ${progResult.recommendation}` : '',
+      lessonResult ? `Lesson plan: ${lessonResult.topic} (G${lessonResult.gradeLevel}) · ${lessonResult.objectives?.length ?? 0} objectives` : '',
+      quizResult ? `Quiz: ${quizResult.questions.length} questions on ${quizResult.topic}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!lessonResult && !quizResult) { err('Generate lesson or quiz first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Lesson — ${lessonTopic} (G${lessonGrade})`, tags: ['education', 'lesson', 'public', `grade-${lessonGrade}`], source: 'education:lesson:publish', meta: { visibility: 'public', consent: { allowCitations: true }, lesson: lessonResult, quiz: quizResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Lesson — ${lessonTopic} (G${lessonGrade})`, tags: ['education', 'lesson', 'public', `grade-${lessonGrade}`], source: 'education:lesson:publish', meta: { visibility: 'public', consent: { allowCitations: true }, lesson: lessonResult, quiz: quizResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('education.publishedDtuId', id, { label: `Public lesson ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -174,6 +185,10 @@ export function EducationActionPanel() {
           <input type="text" value={lessonGrade} onChange={(e) => setLessonGrade(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Grade level" />
           <textarea value={quizText} onChange={(e) => setQuizText(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white" placeholder="Quiz source text" />
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

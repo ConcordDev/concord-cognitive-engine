@@ -11,6 +11,7 @@ import { Calendar, AlertOctagon, Clock, ListChecks, Sparkles, Send, Globe, Wand2
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -32,35 +33,13 @@ interface AvailResult { date: string; workHours: string; eventsToday: number; av
 interface OptResult { optimizedOrder: string[]; morningBlock: string[]; afternoonBlock: string[]; totalMinutes: number; totalHours: number; fitsInWorkday: boolean }
 interface IcalResult { ics: string; eventCount: number; contentType: string }
 
+// TODAY is the actual current date — not seed data.
 const TODAY = new Date().toISOString().split('T')[0];
-const DEMO_EVENTS = JSON.stringify({
-  events: [
-    { name: 'Standup', start: `${TODAY}T09:00:00`, end: `${TODAY}T09:15:00` },
-    { name: 'Design review', start: `${TODAY}T10:00:00`, end: `${TODAY}T11:00:00` },
-    { name: '1:1 w/ Lee', start: `${TODAY}T10:45:00`, end: `${TODAY}T11:15:00` },
-    { name: 'Lunch', start: `${TODAY}T12:00:00`, end: `${TODAY}T13:00:00` },
-    { name: 'Client call', start: `${TODAY}T14:00:00`, end: `${TODAY}T15:00:00` },
-    { name: 'Deep work', start: `${TODAY}T15:30:00`, end: `${TODAY}T16:30:00` },
-  ],
-  date: TODAY,
-  workStartHour: 9,
-  workEndHour: 18,
-  slotMinutes: 30,
-}, null, 2);
 
-const DEMO_TASKS = JSON.stringify({
-  tasks: [
-    { name: 'Write proposal', duration: 90, priority: 'critical', energy: 'high' },
-    { name: 'Code review', duration: 45, priority: 'high', energy: 'high' },
-    { name: 'Inbox triage', duration: 30, priority: 'medium', energy: 'low' },
-    { name: 'Expense report', duration: 20, priority: 'low', energy: 'low' },
-    { name: 'Team sync', duration: 60, priority: 'high', energy: 'medium' },
-  ],
-}, null, 2);
-
+// No seeded events/tasks — paste real calendar JSON.
 export function CalendarActionPanel() {
-  const [eventsText, setEventsText] = useState(DEMO_EVENTS);
-  const [tasksText, setTasksText] = useState(DEMO_TASKS);
+  const [eventsText, setEventsText] = useState('');
+  const [tasksText, setTasksText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -78,23 +57,36 @@ export function CalendarActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actConf() {
+    if (!eventsText.trim()) { err('Paste events JSON first.'); return; }
     const parsed = parseJSON<{ events: unknown[] }>(eventsText); if (!parsed) { err('Invalid events JSON.'); return; }
     setBusy('conf'); setFeedback(null);
-    try { const r = await callMacro<ConflictResult>('detectConflicts', { artifact: { data: parsed } }); if (r.ok && r.result) { setConfResult(r.result); ok(`${r.result.conflictCount} conflicts in ${r.result.totalEvents} events.`); } else err(r.error ?? 'conf failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ConflictResult>('detectConflicts', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setConfResult(r.result); pipe.publish('calendar.conf', r.result, { label: `Conf ${r.result.conflictCount}` }); ok(`${r.result.conflictCount} conflicts in ${r.result.totalEvents} events.`); } else err(r.error ?? 'conf failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAvail() {
+    if (!eventsText.trim()) { err('Paste events JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(eventsText); if (!parsed) { err('Invalid events JSON.'); return; }
     setBusy('avail'); setFeedback(null);
-    try { const r = await callMacro<AvailResult>('findAvailability', { artifact: { data: parsed } }); if (r.ok && r.result) { setAvailResult(r.result); ok(`${r.result.availableSlots.length} slots · ${r.result.totalFreeMinutes}min free.`); } else err(r.error ?? 'avail failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<AvailResult>('findAvailability', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setAvailResult(r.result); pipe.publish('calendar.avail', r.result, { label: `Avail ${r.result.totalFreeMinutes}min` }); ok(`${r.result.availableSlots.length} slots · ${r.result.totalFreeMinutes}min free.`); } else err(r.error ?? 'avail failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actOpt() {
+    if (!tasksText.trim()) { err('Paste tasks JSON first.'); return; }
     const parsed = parseJSON<{ tasks: unknown[] }>(tasksText); if (!parsed) { err('Invalid tasks JSON.'); return; }
     setBusy('opt'); setFeedback(null);
-    try { const r = await callMacro<OptResult>('scheduleOptimize', { artifact: { data: parsed } }); if (r.ok && r.result) { setOptResult(r.result); ok(`${r.result.totalHours}h · ${r.result.fitsInWorkday ? 'fits' : 'overflows'}.`); } else err(r.error ?? 'opt failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<OptResult>('scheduleOptimize', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setOptResult(r.result); pipe.publish('calendar.opt', r.result, { label: `Opt ${r.result.totalHours}h` }); ok(`${r.result.totalHours}h · ${r.result.fitsInWorkday ? 'fits' : 'overflows'}.`); } else err(r.error ?? 'opt failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actIcal() {
     const parsed = parseJSON<{ events: unknown[] }>(eventsText); if (!parsed) { err('Invalid events JSON.'); return; }
@@ -114,25 +106,40 @@ export function CalendarActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Day plan — ${TODAY}`, tags: ['calendar', 'plan'], source: 'calendar:plan:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cal: { conf: confResult, avail: availResult, opt: optResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Plan DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('calendar.mintedDtuId', id, { label: `Plan DTU ${id.slice(0, 8)}…` }); ok(`Plan DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`📅 Day plan ${TODAY}`, '', confResult ? `Conflicts: ${confResult.conflictCount}${confResult.conflicts[0] ? ` (${confResult.conflicts[0].event1} ⨯ ${confResult.conflicts[0].event2} = ${confResult.conflicts[0].overlapMinutes}min)` : ''}` : '', availResult ? `Free: ${availResult.availableSlots.length} slots / ${availResult.totalFreeMinutes}min in ${availResult.workHours}` : '', optResult ? `Schedule: ${optResult.totalHours}h ${optResult.fitsInWorkday ? '✓ fits' : '⚠ overflows'} · AM: ${optResult.morningBlock.join(', ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`📅 Day plan ${TODAY}`, '',
+      confResult ? `Conflicts: ${confResult.conflictCount}${confResult.conflicts[0] ? ` (${confResult.conflicts[0].event1} ⨯ ${confResult.conflicts[0].event2} = ${confResult.conflicts[0].overlapMinutes}min)` : ''}` : '',
+      availResult ? `Free: ${availResult.availableSlots.length} slots / ${availResult.totalFreeMinutes}min in ${availResult.workHours}` : '',
+      optResult ? `Schedule: ${optResult.totalHours}h ${optResult.fitsInWorkday ? '✓ fits' : '⚠ overflows'} · AM: ${optResult.morningBlock.join(', ')}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!optResult) { err('Run schedule optimize first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Day-plan template`, tags: ['calendar', 'template', 'public'], source: 'calendar:template:publish', meta: { visibility: 'public', consent: { allowCitations: true }, opt: optResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Day-plan template`, tags: ['calendar', 'template', 'public'], source: 'calendar:template:publish', meta: { visibility: 'public', consent: { allowCitations: true }, opt: optResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('calendar.publishedDtuId', id, { label: `Public day plan ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -173,7 +180,11 @@ export function CalendarActionPanel() {
           <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Tasks JSON (for optimize)</label>
           <textarea value={tasksText} onChange={(e) => setTasksText(e.target.value)} rows={8} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

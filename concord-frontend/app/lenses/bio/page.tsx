@@ -11,6 +11,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import BioWorkbench from '@/components/bio/BioWorkbench';
 import { SequenceAnalyzer } from '@/components/bio/SequenceAnalyzer';
 import { BioActionPanel } from '@/components/bio/BioActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -458,9 +459,11 @@ export default function BioLensPage() {
       <SequenceAnalyzer />
     </section>
 
-    <section className="mx-auto mt-6 max-w-6xl">
-      <BioActionPanel />
-    </section>
+    <PipingProvider>
+      <section className="mx-auto mt-6 max-w-6xl">
+        <BioActionPanel />
+      </section>
+    </PipingProvider>
     </LensShell>
   );
 }

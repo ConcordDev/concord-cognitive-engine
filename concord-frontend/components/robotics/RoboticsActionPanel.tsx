@@ -11,6 +11,7 @@ import { Bot, GitBranch, Cpu, BatteryFull, Sparkles, Send, Globe, Wand2, Loader2
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,38 +34,15 @@ interface FuseReading { sensor: string; value: number; confidence: number; weigh
 interface FuseResult { sensorCount: number; fusedValue: number; fusedConfidence: number; method: string; sensors: FuseReading[] }
 interface BatResult { batteryCapacity: string; totalPowerDraw: string; breakdown: Record<string, string>; estimatedRuntime: string; safeRuntime: string; recommendation: string }
 
-const DEMO_JOINTS = JSON.stringify([
-  { type: 'revolute', angle: 0, length: 250, minAngle: -180, maxAngle: 180 },
-  { type: 'revolute', angle: 45, length: 220, minAngle: -90, maxAngle: 90 },
-  { type: 'revolute', angle: -30, length: 200, minAngle: -135, maxAngle: 135 },
-  { type: 'revolute', angle: 60, length: 110, minAngle: -180, maxAngle: 180 },
-  { type: 'revolute', angle: 0, length: 90, minAngle: -90, maxAngle: 90 },
-  { type: 'revolute', angle: 0, length: 65, minAngle: -180, maxAngle: 180 },
-], null, 2);
-
-const DEMO_WAYPOINTS = JSON.stringify([
-  { x: 0, y: 0, z: 0 },
-  { x: 200, y: 0, z: 100 },
-  { x: 300, y: 150, z: 200 },
-  { x: 150, y: 300, z: 150 },
-  { x: 0, y: 200, z: 0 },
-], null, 2);
-
-const DEMO_SENSORS = JSON.stringify([
-  { name: 'lidar', value: 1.42, confidence: 0.95, weight: 1.5 },
-  { name: 'imu', value: 1.51, confidence: 0.80, weight: 1.0 },
-  { name: 'visual', value: 1.45, confidence: 0.88, weight: 1.2 },
-  { name: 'ultrasonic', value: 1.38, confidence: 0.65, weight: 0.6 },
-], null, 2);
-
+// No seeded data — every input starts empty.
 export function RoboticsActionPanel() {
-  const [jointsText, setJointsText] = useState(DEMO_JOINTS);
-  const [waypointsText, setWaypointsText] = useState(DEMO_WAYPOINTS);
-  const [sensorsText, setSensorsText] = useState(DEMO_SENSORS);
-  const [batteryWh, setBatteryWh] = useState('100');
-  const [motorW, setMotorW] = useState('40');
-  const [sensorW, setSensorW] = useState('8');
-  const [computeW, setComputeW] = useState('15');
+  const [jointsText, setJointsText] = useState('');
+  const [waypointsText, setWaypointsText] = useState('');
+  const [sensorsText, setSensorsText] = useState('');
+  const [batteryWh, setBatteryWh] = useState('');
+  const [motorW, setMotorW] = useState('');
+  const [sensorW, setSensorW] = useState('');
+  const [computeW, setComputeW] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -82,53 +60,86 @@ export function RoboticsActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actKin() {
+    if (!jointsText.trim()) { err('Paste joints JSON first.'); return; }
     const joints = parseJSON<unknown[]>(jointsText); if (!joints) { err('Invalid joints JSON.'); return; }
     setBusy('kin'); setFeedback(null);
-    try { const r = await callMacro<KinResult>('kinematicsCalc', { artifact: { data: { joints } } }); if (r.ok && r.result) { setKinResult(r.result); ok(`${r.result.degreesOfFreedom}-DOF · ${r.result.maxReach}.`); } else err(r.error ?? 'kin failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<KinResult>('kinematicsCalc', { artifact: { data: { joints } } });
+      if (r.ok && r.result) { setKinResult(r.result); pipe.publish('robotics.kin', r.result, { label: `${r.result.degreesOfFreedom}-DOF` }); ok(`${r.result.degreesOfFreedom}-DOF · ${r.result.maxReach}.`); } else err(r.error ?? 'kin failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPath() {
+    if (!waypointsText.trim()) { err('Paste waypoints JSON first.'); return; }
     const waypoints = parseJSON<unknown[]>(waypointsText); if (!waypoints) { err('Invalid waypoints JSON.'); return; }
     setBusy('path'); setFeedback(null);
-    try { const r = await callMacro<PathResult>('pathPlan', { artifact: { data: { waypoints } } }); if (r.ok && r.result) { setPathResult(r.result); ok(`${r.result.totalDistance} mm path.`); } else err(r.error ?? 'path failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PathResult>('pathPlan', { artifact: { data: { waypoints } } });
+      if (r.ok && r.result) { setPathResult(r.result); pipe.publish('robotics.path', r.result, { label: `Path ${r.result.totalDistance}mm` }); ok(`${r.result.totalDistance} mm path.`); } else err(r.error ?? 'path failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFuse() {
+    if (!sensorsText.trim()) { err('Paste sensors JSON first.'); return; }
     const sensors = parseJSON<unknown[]>(sensorsText); if (!sensors) { err('Invalid sensors JSON.'); return; }
     setBusy('fuse'); setFeedback(null);
-    try { const r = await callMacro<FuseResult>('sensorFusion', { artifact: { data: { sensors } } }); if (r.ok && r.result) { setFuseResult(r.result); ok(`Fused: ${r.result.fusedValue} · ${r.result.fusedConfidence}%.`); } else err(r.error ?? 'fuse failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<FuseResult>('sensorFusion', { artifact: { data: { sensors } } });
+      if (r.ok && r.result) { setFuseResult(r.result); pipe.publish('robotics.fuse', r.result, { label: `Fused ${r.result.fusedValue}` }); ok(`Fused: ${r.result.fusedValue} · ${r.result.fusedConfidence}%.`); } else err(r.error ?? 'fuse failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBat() {
+    const b = parseFloat(batteryWh), m = parseFloat(motorW), s = parseFloat(sensorW), c = parseFloat(computeW);
+    if (![b, m, s, c].every(Number.isFinite)) { err('Battery + motor + sensor + compute Wh all required.'); return; }
     setBusy('bat'); setFeedback(null);
-    try { const r = await callMacro<BatResult>('batteryLife', { artifact: { data: { batteryCapacityWh: parseFloat(batteryWh), motorDrawW: parseFloat(motorW), sensorDrawW: parseFloat(sensorW), computeDrawW: parseFloat(computeW) } } }); if (r.ok && r.result) { setBatResult(r.result); ok(r.result.estimatedRuntime); } else err(r.error ?? 'bat failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<BatResult>('batteryLife', { artifact: { data: { batteryCapacityWh: b, motorDrawW: m, sensorDrawW: s, computeDrawW: c } } });
+      if (r.ok && r.result) { setBatResult(r.result); pipe.publish('robotics.bat', r.result, { label: `Bat ${r.result.estimatedRuntime}` }); ok(r.result.estimatedRuntime); } else err(r.error ?? 'bat failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Robot — ${kinResult?.workspace ?? 'spec'}`, tags: ['robotics', 'spec', kinResult?.type].filter((t): t is string => !!t), source: 'robotics:spec:mint', meta: { visibility: 'private', consent: { allowCitations: false }, robotics: { kin: kinResult, path: pathResult, fuse: fuseResult, bat: batResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Robot DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('robotics.mintedDtuId', id, { label: `Robot DTU ${id.slice(0, 8)}…` }); ok(`Robot DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🤖 Robotics bench`, '', kinResult ? `${kinResult.degreesOfFreedom}-DOF ${kinResult.type} · reach ${kinResult.maxReach}` : '', pathResult ? `Path: ${pathResult.totalDistance} mm over ${pathResult.waypoints} waypoints · ${pathResult.estimatedTime}` : '', fuseResult ? `Sensor fusion: ${fuseResult.fusedValue} (${fuseResult.fusedConfidence}% conf, ${fuseResult.sensorCount} sensors)` : '', batResult ? `Battery: ${batResult.estimatedRuntime} (safe ${batResult.safeRuntime})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🤖 Robotics bench`, '',
+      kinResult ? `${kinResult.degreesOfFreedom}-DOF ${kinResult.type} · reach ${kinResult.maxReach}` : '',
+      pathResult ? `Path: ${pathResult.totalDistance} mm over ${pathResult.waypoints} waypoints · ${pathResult.estimatedTime}` : '',
+      fuseResult ? `Sensor fusion: ${fuseResult.fusedValue} (${fuseResult.fusedConfidence}% conf, ${fuseResult.sensorCount} sensors)` : '',
+      batResult ? `Battery: ${batResult.estimatedRuntime} (safe ${batResult.safeRuntime})` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!kinResult) { err('Run kinematics first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Robot spec — ${kinResult.degreesOfFreedom}-DOF`, tags: ['robotics', 'spec', 'public'], source: 'robotics:spec:publish', meta: { visibility: 'public', consent: { allowCitations: true }, kin: kinResult, bat: batResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Robot spec — ${kinResult.degreesOfFreedom}-DOF`, tags: ['robotics', 'spec', 'public'], source: 'robotics:spec:publish', meta: { visibility: 'public', consent: { allowCitations: true }, kin: kinResult, bat: batResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('robotics.publishedDtuId', id, { label: `Public robot spec ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -179,6 +190,10 @@ export function RoboticsActionPanel() {
           <input type="text" value={sensorW} onChange={(e) => setSensorW(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Sensor W" />
           <input type="text" value={computeW} onChange={(e) => setComputeW(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Compute W" />
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="DM recipient" />
+        </div>
+        <div className="md:col-span-3 flex items-center gap-2 flex-wrap">
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
         </div>
       </div>
 

@@ -4,6 +4,9 @@
  * CommonsenseActionPanel — knowledge graph + reasoning bench.
  * conceptnet-edges / conceptnet-relatedness / plausibilityCheck /
  * analogyMapping + mint/DM/publish/agent.
+ *
+ * Max-polish pass: empty defaults (no seed concepts/statements), pipe
+ * publish/import for cross-panel hand-off, recall window on DM + publish.
  */
 
 import { useState } from 'react';
@@ -11,6 +14,12 @@ import { Brain, Link2, Lightbulb, ArrowLeftRight, Sparkles, Send, Globe, Wand2, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import {
+  usePipe,
+  PipeImporter,
+  useRecallableAction,
+  RecallSlot,
+} from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -32,11 +41,13 @@ interface PlausResult { statement?: string; plausibilityScore?: number; reasonin
 interface AnalogResult { source?: string; target?: string; mappings?: { sourceConcept: string; targetConcept: string; similarity?: number }[]; coherence?: number }
 
 export function CommonsenseActionPanel() {
-  const [concept, setConcept] = useState('coffee');
-  const [concept2, setConcept2] = useState('tea');
-  const [statement, setStatement] = useState('A penguin is climbing a tree to escape a polar bear.');
-  const [analogSource, setAnalogSource] = useState('solar system');
-  const [analogTarget, setAnalogTarget] = useState('atom');
+  const pipe = usePipe();
+
+  const [concept, setConcept] = useState('');
+  const [concept2, setConcept2] = useState('');
+  const [statement, setStatement] = useState('');
+  const [analogSource, setAnalogSource] = useState('');
+  const [analogTarget, setAnalogTarget] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -52,54 +63,103 @@ export function CommonsenseActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const dmRecall = useRecallableAction({
+    label: 'DM', windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish', windowMs: 30_000,
+    onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); },
+  });
+
   async function actEdges() {
     if (!concept.trim()) { err('Concept required.'); return; }
     setBusy('edges'); setFeedback(null);
-    try { const r = await callMacro<EdgesResult>('conceptnet-edges', { concept: concept.trim(), limit: 30 }); if (r.ok && r.result) { setEdgesResult(r.result); ok(`${r.result.count} edges.`); } else err(r.error ?? 'edges failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<EdgesResult>('conceptnet-edges', { concept: concept.trim(), limit: 30 });
+      if (r.ok && r.result) {
+        setEdgesResult(r.result);
+        pipe.publish('commonsense.edges', r.result, { label: `${r.result.concept}: ${r.result.count} edges` });
+        ok(`${r.result.count} edges.`);
+      } else err(r.error ?? 'edges failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRel() {
     if (!concept.trim() || !concept2.trim()) { err('Both concepts required.'); return; }
     setBusy('rel'); setFeedback(null);
-    try { const r = await callMacro<RelResult>('conceptnet-relatedness', { concept1: concept.trim(), concept2: concept2.trim() }); if (r.ok && r.result) { setRelResult(r.result); ok(`${r.result.relatedness.toFixed(2)} · ${r.result.interpretation}.`); } else err(r.error ?? 'rel failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<RelResult>('conceptnet-relatedness', { concept1: concept.trim(), concept2: concept2.trim() });
+      if (r.ok && r.result) {
+        setRelResult(r.result);
+        pipe.publish('commonsense.rel', r.result, { label: `${r.result.concept1} ↔ ${r.result.concept2}: ${r.result.relatedness.toFixed(2)}` });
+        ok(`${r.result.relatedness.toFixed(2)} · ${r.result.interpretation}.`);
+      } else err(r.error ?? 'rel failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPlaus() {
     if (!statement.trim()) { err('Statement required.'); return; }
     setBusy('plaus'); setFeedback(null);
-    try { const r = await callMacro<PlausResult>('plausibilityCheck', { artifact: { data: { statement: statement.trim() } } }); if (r.ok && r.result) { setPlausResult(r.result); ok(`${r.result.verdict ?? '-'}.`); } else err(r.error ?? 'plaus failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PlausResult>('plausibilityCheck', { artifact: { data: { statement: statement.trim() } } });
+      if (r.ok && r.result) {
+        setPlausResult(r.result);
+        pipe.publish('commonsense.plaus', r.result, { label: `Plausibility: ${r.result.verdict ?? '?'}` });
+        ok(`${r.result.verdict ?? '-'}.`);
+      } else err(r.error ?? 'plaus failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAnalog() {
     if (!analogSource.trim() || !analogTarget.trim()) { err('Source + target required.'); return; }
     setBusy('analog'); setFeedback(null);
-    try { const r = await callMacro<AnalogResult>('analogyMapping', { artifact: { data: { source: analogSource.trim(), target: analogTarget.trim() } } }); if (r.ok && r.result) { setAnalogResult(r.result); ok(`${r.result.mappings?.length ?? 0} mappings.`); } else err(r.error ?? 'analogy failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<AnalogResult>('analogyMapping', { artifact: { data: { source: analogSource.trim(), target: analogTarget.trim() } } });
+      if (r.ok && r.result) {
+        setAnalogResult(r.result);
+        pipe.publish('commonsense.analog', r.result, { label: `${r.result.source} → ${r.result.target}` });
+        ok(`${r.result.mappings?.length ?? 0} mappings.`);
+      } else err(r.error ?? 'analogy failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Commonsense — ${concept}`, tags: ['commonsense', 'kg', concept], source: 'commonsense:kg:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cs: { edges: edgesResult, rel: relResult, plaus: plausResult, analog: analogResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Commonsense — ${concept || 'kg'}`, tags: ['commonsense', 'kg', concept].filter(Boolean), source: 'commonsense:kg:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cs: { edges: edgesResult, rel: relResult, plaus: plausResult, analog: analogResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`KG DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('commonsense.mintedDtuId', id, { label: `KG DTU ${id.slice(0, 8)}…` }); ok(`KG DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🧠 Commonsense brief`, '', edgesResult ? `${edgesResult.concept}: ${edgesResult.count} edges (top: ${edgesResult.edges[0]?.surfaceText || edgesResult.edges[0]?.relation})` : '', relResult ? `${relResult.concept1} ↔ ${relResult.concept2}: ${relResult.relatedness.toFixed(2)} (${relResult.interpretation})` : '', plausResult ? `Plausibility: ${plausResult.verdict} (${plausResult.plausibilityScore})` : '', analogResult ? `Analogy ${analogResult.source} → ${analogResult.target}: ${analogResult.mappings?.length} mappings · coherence ${analogResult.coherence}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🧠 Commonsense brief`, '',
+      edgesResult ? `${edgesResult.concept}: ${edgesResult.count} edges (top: ${edgesResult.edges[0]?.surfaceText || edgesResult.edges[0]?.relation})` : '',
+      relResult ? `${relResult.concept1} ↔ ${relResult.concept2}: ${relResult.relatedness.toFixed(2)} (${relResult.interpretation})` : '',
+      plausResult ? `Plausibility: ${plausResult.verdict} (${plausResult.plausibilityScore})` : '',
+      analogResult ? `Analogy ${analogResult.source} → ${analogResult.target}: ${analogResult.mappings?.length} mappings · coherence ${analogResult.coherence}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!edgesResult && !analogResult) { err('Run edges or analogy first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `KG card — ${concept}`, tags: ['commonsense', 'public'], source: 'commonsense:kg:publish', meta: { visibility: 'public', consent: { allowCitations: true }, edges: edgesResult, analog: analogResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `KG card — ${concept || 'kg'}`, tags: ['commonsense', 'public'], source: 'commonsense:kg:publish', meta: { visibility: 'public', consent: { allowCitations: true }, edges: edgesResult, analog: analogResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('commonsense.publishedDtuId', id, { label: `Public KG card ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -108,9 +168,17 @@ export function CommonsenseActionPanel() {
       const task = `Commonsense reasoning brief. ${edgesResult ? `Concept "${edgesResult.concept}": ${edgesResult.count} edges, top: ${edgesResult.edges.slice(0, 3).map(e => e.surfaceText || `${e.relation}: ${e.end}`).join('; ')}.` : ''} ${relResult ? `Relatedness ${relResult.concept1} ↔ ${relResult.concept2}: ${relResult.relatedness.toFixed(2)} (${relResult.interpretation}).` : ''} ${plausResult ? `Statement plausibility: ${plausResult.verdict}.` : ''} Synthesize the most interesting commonsense observation + one follow-up query. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Insight ready.'); } else err('Agent returned empty.');
+      if (reply) {
+        const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
+        setAgentReply(text); pipe.publish('commonsense.agentReply', text, { label: 'KG observation' });
+        ok('Insight ready.');
+      } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
+  // Pull concept from a recently piped commonsense edges/rel result.
+  function importConceptFromEdges(v: EdgesResult) { if (v?.concept) setConcept(v.concept); }
+  function importPairFromRel(v: RelResult) { if (v?.concept1) setConcept(v.concept1); if (v?.concept2) setConcept2(v.concept2); }
 
   const actions = [
     { id: 'edges' as ActionId, label: 'Edges', desc: 'ConceptNet edges', icon: Link2, accent: '#3b82f6', handler: actEdges },
@@ -134,12 +202,22 @@ export function CommonsenseActionPanel() {
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <input type="text" value={concept} onChange={(e) => setConcept(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Concept" />
-        <input type="text" value={concept2} onChange={(e) => setConcept2(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Concept B" />
+        <div className="flex items-center gap-1">
+          <input type="text" value={concept} onChange={(e) => setConcept(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Concept" />
+          <PipeImporter<EdgesResult> accept={['commonsense.edges']} onImport={importConceptFromEdges} compact />
+        </div>
+        <div className="flex items-center gap-1">
+          <input type="text" value={concept2} onChange={(e) => setConcept2(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Concept B" />
+          <PipeImporter<RelResult> accept={['commonsense.rel']} onImport={importPairFromRel} compact />
+        </div>
         <input type="text" value={analogSource} onChange={(e) => setAnalogSource(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Analogy source" />
         <input type="text" value={analogTarget} onChange={(e) => setAnalogTarget(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Analogy target" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
         <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={2} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Statement to plausibility-check" />
+        <div className="md:col-span-5 flex items-center gap-2 flex-wrap">
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

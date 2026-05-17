@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -41,9 +42,9 @@ interface StyleResult { style?: string; period?: string; confidence?: number }
 
 export function ArtActionPanel() {
   const [pieceTitle, setPieceTitle] = useState('');
-  const [colors, setColors] = useState('#0a3d62\n#ee5a24\n#fbc531\n#44bd32');
-  const [seedColor, setSeedColor] = useState('#0a3d62');
-  const [paletteCount, setPaletteCount] = useState('5');
+  const [colors, setColors] = useState('');
+  const [seedColor, setSeedColor] = useState('');
+  const [paletteCount, setPaletteCount] = useState('');
   const [imageDataUrl, setImageDataUrl] = useState('');
   const [recipient, setRecipient] = useState('');
 
@@ -60,52 +61,84 @@ export function ArtActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actHarmony() {
     const colorList = colors.split('\n').map(c => c.trim()).filter(c => /^#[0-9a-f]{6}$/i.test(c));
-    if (colorList.length < 2) { err('Need at least 2 hex colors.'); return; }
+    if (colorList.length < 2) { err('Need at least 2 hex colors (one per line, #RRGGBB).'); return; }
     setBusy('harmony'); setFeedback(null);
-    try { const r = await callMacro<HarmonyResult>('colorHarmony', { colors: colorList }); if (r.ok && r.result) { setHarmonyResult(r.result); ok(`Harmony: ${r.result.harmony}.`); } else err(r.error ?? 'harmony failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<HarmonyResult>('colorHarmony', { colors: colorList });
+      if (r.ok && r.result) { setHarmonyResult(r.result); pipe.publish('art.harmony', r.result, { label: `Harmony ${r.result.harmony}` }); ok(`Harmony: ${r.result.harmony}.`); } else err(r.error ?? 'harmony failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actComposition() {
+    if (!imageDataUrl) { err('Provide image data URL first.'); return; }
     setBusy('composition'); setFeedback(null);
-    try { const r = await callMacro<CompositionResult>('compositionScore', { imageDataUrl: imageDataUrl || null }); if (r.ok && r.result) { setCompositionResult(r.result); ok(`Composition: ${r.result.score}.`); } else err(r.error ?? 'composition failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<CompositionResult>('compositionScore', { imageDataUrl });
+      if (r.ok && r.result) { setCompositionResult(r.result); pipe.publish('art.composition', r.result, { label: `Composition ${r.result.score}` }); ok(`Composition: ${r.result.score}.`); } else err(r.error ?? 'composition failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPalette() {
-    if (!/^#[0-9a-f]{6}$/i.test(seedColor)) { err('Valid seed hex required.'); return; }
+    if (!/^#[0-9a-f]{6}$/i.test(seedColor)) { err('Valid seed hex required (#RRGGBB).'); return; }
+    const n = parseInt(paletteCount, 10);
+    if (!Number.isFinite(n) || n < 2) { err('Palette count must be ≥ 2.'); return; }
     setBusy('palette'); setFeedback(null);
-    try { const r = await callMacro<PaletteResult>('generatePalette', { seedColor, count: parseInt(paletteCount, 10) }); if (r.ok && r.result) { setPaletteResult(r.result); ok(`${r.result.palette?.length ?? 0} colors.`); } else err(r.error ?? 'palette failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PaletteResult>('generatePalette', { seedColor, count: n });
+      if (r.ok && r.result) { setPaletteResult(r.result); pipe.publish('art.palette', r.result, { label: `${r.result.palette?.length ?? 0} colors` }); ok(`${r.result.palette?.length ?? 0} colors.`); } else err(r.error ?? 'palette failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actStyle() {
+    if (!imageDataUrl && !pieceTitle.trim()) { err('Image data URL or piece title required.'); return; }
     setBusy('style'); setFeedback(null);
-    try { const r = await callMacro<StyleResult>('styleClassify', { imageDataUrl: imageDataUrl || null, title: pieceTitle }); if (r.ok && r.result) { setStyleResult(r.result); ok(`${r.result.style} (${r.result.period}).`); } else err(r.error ?? 'style failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<StyleResult>('styleClassify', { imageDataUrl: imageDataUrl || null, title: pieceTitle });
+      if (r.ok && r.result) { setStyleResult(r.result); pipe.publish('art.style', r.result, { label: `${r.result.style} (${r.result.period})` }); ok(`${r.result.style} (${r.result.period}).`); } else err(r.error ?? 'style failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Art — ${pieceTitle.trim() || 'piece'}`, tags: ['art', styleResult?.style ?? 'unknown', harmonyResult?.mood ?? ''].filter(Boolean), source: 'art:piece:mint', meta: { visibility: 'private', consent: { allowCitations: false }, art: { title: pieceTitle, colors: colors.split('\n').filter(Boolean), harmony: harmonyResult, composition: compositionResult, palette: paletteResult, style: styleResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Piece DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('art.mintedDtuId', id, { label: `Piece DTU ${id.slice(0, 8)}…` }); ok(`Piece DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🎨 Art piece: ${pieceTitle || 'untitled'}`, '', harmonyResult ? `Harmony: ${harmonyResult.harmony} (${harmonyResult.mood})` : '', compositionResult ? `Composition: ${compositionResult.score}/100` : '', paletteResult?.palette ? `Palette: ${paletteResult.palette.map(p => p.hex).join(' ')}` : '', styleResult ? `Style: ${styleResult.style} (${styleResult.period})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🎨 Art piece: ${pieceTitle || 'untitled'}`, '',
+      harmonyResult ? `Harmony: ${harmonyResult.harmony} (${harmonyResult.mood})` : '',
+      compositionResult ? `Composition: ${compositionResult.score}/100` : '',
+      paletteResult?.palette ? `Palette: ${paletteResult.palette.map(p => p.hex).join(' ')}` : '',
+      styleResult ? `Style: ${styleResult.style} (${styleResult.period})` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public piece — ${pieceTitle.trim() || 'untitled'}`, tags: ['art', 'public', styleResult?.style ?? 'unknown'], source: 'art:piece:publish', meta: { visibility: 'public', consent: { allowCitations: true }, piece: { title: pieceTitle, palette: paletteResult?.palette?.map(p => p.hex), style: styleResult?.style, harmony: harmonyResult?.harmony } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Piece published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public piece — ${pieceTitle.trim() || 'untitled'}`, tags: ['art', 'public', styleResult?.style ?? 'unknown'], source: 'art:piece:publish', meta: { visibility: 'public', consent: { allowCitations: true }, piece: { title: pieceTitle, palette: paletteResult?.palette?.map(p => p.hex), style: styleResult?.style, harmony: harmonyResult?.harmony } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('art.publishedDtuId', id, { label: `Public piece ${id.slice(0, 8)}…` }); ok(`Piece published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -148,7 +181,11 @@ export function ArtActionPanel() {
         <textarea value={colors} onChange={(e) => setColors(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-pink-200 font-mono focus:outline-none focus:ring-2 focus:ring-pink-400/40 resize-none" />
       </div>
 
-      <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      <div className="flex items-center gap-2 flex-wrap">
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {

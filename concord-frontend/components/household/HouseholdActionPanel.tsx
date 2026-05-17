@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -41,9 +42,9 @@ interface MaintResult { items?: Array<{ task: string; dueDate: string; daysOverd
 interface SummaryResult { choresDone?: number; choresTotal?: number; maintCompleted?: number; sentiment?: string }
 
 export function HouseholdActionPanel() {
-  const [meals, setMeals] = useState('Mon: pasta\nTue: salad\nWed: tacos\nThu: stir-fry\nFri: pizza\nSat: takeout\nSun: roast');
-  const [chores, setChores] = useState('dishes\nlaundry\nvacuum\nbathroom\ntrash\nlitter\nplants');
-  const [members, setMembers] = useState('Alice\nBob');
+  const [meals, setMeals] = useState('');
+  const [chores, setChores] = useState('');
+  const [members, setMembers] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -59,11 +60,15 @@ export function HouseholdActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actGrocery() {
     const mealList = meals.split('\n').map(l => l.trim()).filter(Boolean);
     if (!mealList.length) { err('Add meals.'); return; }
     setBusy('grocery'); setFeedback(null);
-    try { const r = await callMacro<GroceryResult>('generateGroceryList', { meals: mealList }); if (r.ok && r.result) { setGroceryResult(r.result); ok(`${r.result.items?.length ?? 0} items.`); } else err(r.error ?? 'grocery failed'); }
+    try { const r = await callMacro<GroceryResult>('generateGroceryList', { meals: mealList }); if (r.ok && r.result) { setGroceryResult(r.result); pipe.publish('household.grocery', r.result, { label: `${r.result.items?.length ?? 0} items` }); ok(`${r.result.items?.length ?? 0} items.`); } else err(r.error ?? 'grocery failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actChores() {
@@ -71,17 +76,17 @@ export function HouseholdActionPanel() {
     const m = members.split('\n').map(s => s.trim()).filter(Boolean);
     if (!c.length || !m.length) { err('Add chores + members.'); return; }
     setBusy('chores'); setFeedback(null);
-    try { const r = await callMacro<ChoreResult>('choreRotation', { chores: c, members: m, weekStart: new Date().toISOString().slice(0, 10) }); if (r.ok && r.result) { setChoreResult(r.result); ok(`${r.result.rotation?.length ?? 0} chores rotated.`); } else err(r.error ?? 'chores failed'); }
+    try { const r = await callMacro<ChoreResult>('choreRotation', { chores: c, members: m, weekStart: new Date().toISOString().slice(0, 10) }); if (r.ok && r.result) { setChoreResult(r.result); pipe.publish('household.chores', r.result, { label: `${r.result.rotation?.length ?? 0} rotated` }); ok(`${r.result.rotation?.length ?? 0} chores rotated.`); } else err(r.error ?? 'chores failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMaintenance() {
     setBusy('maintenance'); setFeedback(null);
-    try { const r = await callMacro<MaintResult>('maintenanceDue', { window: 'month' }); if (r.ok && r.result) { setMaintResult(r.result); ok(`${r.result.overdueCount ?? 0} overdue.`); } else err(r.error ?? 'maintenance failed'); }
+    try { const r = await callMacro<MaintResult>('maintenanceDue', { window: 'month' }); if (r.ok && r.result) { setMaintResult(r.result); pipe.publish('household.maint', r.result, { label: `${r.result.overdueCount ?? 0} overdue` }); ok(`${r.result.overdueCount ?? 0} overdue.`); } else err(r.error ?? 'maintenance failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSummary() {
     setBusy('summary'); setFeedback(null);
-    try { const r = await callMacro<SummaryResult>('weeklySummary', {}); if (r.ok && r.result) { setSummaryResult(r.result); ok(`${r.result.choresDone}/${r.result.choresTotal} chores done.`); } else err(r.error ?? 'summary failed'); }
+    try { const r = await callMacro<SummaryResult>('weeklySummary', {}); if (r.ok && r.result) { setSummaryResult(r.result); pipe.publish('household.summary', r.result, { label: `${r.result.choresDone}/${r.result.choresTotal} chores` }); ok(`${r.result.choresDone}/${r.result.choresTotal} chores done.`); } else err(r.error ?? 'summary failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -89,24 +94,40 @@ export function HouseholdActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Household — week of ${new Date().toISOString().slice(0, 10)}`, tags: ['household', 'week'], source: 'household:week:mint', meta: { visibility: 'private', consent: { allowCitations: false }, household: { meals: meals.split('\n').filter(Boolean), grocery: groceryResult, chores: choreResult, maintenance: maintResult, summary: summaryResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Week DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('household.mintedDtuId', id, { label: `Week DTU ${id.slice(0, 8)}…` }); ok(`Week DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🏠 Household — week of ${new Date().toLocaleDateString()}`, '', groceryResult ? `Grocery: ${groceryResult.items?.length} items` : '', choreResult ? `Chores rotated: ${choreResult.rotation?.length}` : '', maintResult ? `Maintenance overdue: ${maintResult.overdueCount}` : '', summaryResult ? `Sentiment: ${summaryResult.sentiment}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🏠 Household — week of ${new Date().toLocaleDateString()}`, '',
+      groceryResult ? `Grocery: ${groceryResult.items?.length} items` : '',
+      choreResult ? `Chores rotated: ${choreResult.rotation?.length}` : '',
+      maintResult ? `Maintenance overdue: ${maintResult.overdueCount}` : '',
+      summaryResult ? `Sentiment: ${summaryResult.sentiment}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Household routine — ${chores.split('\n').filter(Boolean).length} chores`, tags: ['household', 'public', 'routine'], source: 'household:routine:publish', meta: { visibility: 'public', consent: { allowCitations: true }, routine: { chores: chores.split('\n').filter(Boolean), meals: meals.split('\n').filter(Boolean) } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Routine published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Household routine — ${chores.split('\n').filter(Boolean).length} chores`, tags: ['household', 'public', 'routine'], source: 'household:routine:publish', meta: { visibility: 'public', consent: { allowCitations: true }, routine: { chores: chores.split('\n').filter(Boolean), meals: meals.split('\n').filter(Boolean) } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('household.publishedDtuId', id, { label: `Public routine ${id.slice(0, 8)}…` }); ok(`Routine published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -144,7 +165,11 @@ export function HouseholdActionPanel() {
         <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Members (one per line)</label><textarea value={members} onChange={(e) => setMembers(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-teal-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-400/40 resize-none" /></div>
       </div>
 
-      <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (housemate / partner)" />
+      <div className="flex items-center gap-2 flex-wrap">
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (housemate / partner)" />
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {

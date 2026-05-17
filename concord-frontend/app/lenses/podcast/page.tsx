@@ -5,6 +5,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
 import { PodcastActionPanel } from '@/components/podcast/PodcastActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -914,9 +915,11 @@ export default function PodcastLensPage() {
       </section>
 
       {/* Apple Podcasts + Buzzsprout-shape workbench: analytics / guest / production / monetization + actions */}
-      <section className="mt-6 mx-4">
-        <PodcastActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 mx-4">
+          <PodcastActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

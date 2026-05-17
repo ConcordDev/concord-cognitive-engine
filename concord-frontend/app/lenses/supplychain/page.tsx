@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SupplyChainFeed } from '@/components/supplychain/SupplyChainFeed';
 import { SupplyChainActionPanel } from '@/components/supplychain/SupplyChainActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -226,9 +227,11 @@ export default function SupplyChainLensPage() {
         <SupplyChainFeed />
       </section>
 
-      <section className="mt-6">
-        <SupplyChainActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <SupplyChainActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

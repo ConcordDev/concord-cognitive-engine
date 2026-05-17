@@ -11,6 +11,7 @@ import { ShoppingCart, Target, Users, Clock, Sparkles, Send, Globe, Wand2, Loade
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -32,43 +33,15 @@ interface PipeResult { totalDeals?: number; totalUnweighted?: number; totalWeigh
 interface LtvResult { avgOrderValue?: number; purchaseFrequency?: number; customerLifespanYears?: number; ltv?: number; cac?: number; ltvToCacRatio?: number; profitable?: boolean }
 interface SlaResult { totalIncidents?: number; withinSLA?: number; breaches?: number; complianceRate?: number; avgResponseMinutes?: number; tier?: string }
 
-const DEMO_PRODUCTS = JSON.stringify({
-  products: [
-    { sku: 'WID-100', name: 'Widget Pro', onHand: 12, reorderPoint: 20, reorderQty: 100, dailyUsage: 4, leadTimeDays: 7 },
-    { sku: 'GIZ-200', name: 'Gizmo', onHand: 0, reorderPoint: 15, reorderQty: 50, dailyUsage: 2, leadTimeDays: 10 },
-    { sku: 'BOLT-3', name: 'Bolt M3', onHand: 480, reorderPoint: 200, reorderQty: 1000, dailyUsage: 30, leadTimeDays: 5 },
-    { sku: 'GASKET', name: 'Rubber Gasket', onHand: 35, reorderPoint: 40, reorderQty: 200, dailyUsage: 6, leadTimeDays: 14 },
-  ],
-}, null, 2);
-
-const DEMO_DEALS = JSON.stringify({
-  deals: [
-    { name: 'Acme retainer', value: 45000, probability: 0.75, stage: 'proposal', expectedCloseDate: '2026-06-15' },
-    { name: 'Globex expansion', value: 120000, probability: 0.40, stage: 'discovery', expectedCloseDate: '2026-07-30' },
-    { name: 'Initech upsell', value: 22000, probability: 0.90, stage: 'negotiation', expectedCloseDate: '2026-05-28' },
-    { name: 'Hooli pilot', value: 8000, probability: 0.95, stage: 'closed-won', expectedCloseDate: '2026-05-01' },
-    { name: 'Pied Piper', value: 75000, probability: 0.30, stage: 'qualification', expectedCloseDate: '2026-09-15' },
-  ],
-}, null, 2);
-
-const DEMO_INCIDENTS = JSON.stringify({
-  incidents: [
-    { id: 'INC-1', responseMinutes: 8, slaMinutes: 15 },
-    { id: 'INC-2', responseMinutes: 22, slaMinutes: 15 },
-    { id: 'INC-3', responseMinutes: 12, slaMinutes: 15 },
-    { id: 'INC-4', responseMinutes: 5, slaMinutes: 30 },
-    { id: 'INC-5', responseMinutes: 60, slaMinutes: 30 },
-  ],
-}, null, 2);
-
+// No seeded data — every input starts empty.
 export function RetailActionPanel() {
-  const [productsText, setProductsText] = useState(DEMO_PRODUCTS);
-  const [dealsText, setDealsText] = useState(DEMO_DEALS);
-  const [aov, setAov] = useState('85');
-  const [freq, setFreq] = useState('6');
-  const [lifespan, setLifespan] = useState('3.5');
-  const [cac, setCac] = useState('120');
-  const [incidentsText, setIncidentsText] = useState(DEMO_INCIDENTS);
+  const [productsText, setProductsText] = useState('');
+  const [dealsText, setDealsText] = useState('');
+  const [aov, setAov] = useState('');
+  const [freq, setFreq] = useState('');
+  const [lifespan, setLifespan] = useState('');
+  const [cac, setCac] = useState('');
+  const [incidentsText, setIncidentsText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -86,53 +59,86 @@ export function RetailActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actReorder() {
+    if (!productsText.trim()) { err('Paste products JSON first.'); return; }
     const parsed = parseJSON<{ products: unknown[] }>(productsText); if (!parsed) { err('Invalid products JSON.'); return; }
     setBusy('reorder'); setFeedback(null);
-    try { const r = await callMacro<ReorderResult>('reorderCheck', { artifact: { data: parsed } }); if (r.ok && r.result) { setReorderResult(r.result); ok(`${r.result.criticalCount} critical, ${r.result.reorderCount} reorder.`); } else err(r.error ?? 'reorder failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ReorderResult>('reorderCheck', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setReorderResult(r.result); pipe.publish('retail.reorder', r.result, { label: `Reorder ${r.result.criticalCount} crit` }); ok(`${r.result.criticalCount} critical, ${r.result.reorderCount} reorder.`); } else err(r.error ?? 'reorder failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPipe() {
+    if (!dealsText.trim()) { err('Paste deals JSON first.'); return; }
     const parsed = parseJSON<{ deals: unknown[] }>(dealsText); if (!parsed) { err('Invalid deals JSON.'); return; }
     setBusy('pipe'); setFeedback(null);
-    try { const r = await callMacro<PipeResult>('pipelineValue', { artifact: { data: parsed } }); if (r.ok && r.result) { setPipeResult(r.result); ok(`Weighted $${r.result.totalWeighted?.toLocaleString()}.`); } else err(r.error ?? 'pipe failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PipeResult>('pipelineValue', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setPipeResult(r.result); pipe.publish('retail.pipe', r.result, { label: `Pipe $${r.result.totalWeighted?.toLocaleString()}` }); ok(`Weighted $${r.result.totalWeighted?.toLocaleString()}.`); } else err(r.error ?? 'pipe failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actLtv() {
+    const a = parseFloat(aov), f = parseFloat(freq), l = parseFloat(lifespan), c = parseFloat(cac);
+    if (![a, f, l, c].every(Number.isFinite)) { err('AOV + freq + lifespan + CAC all required.'); return; }
     setBusy('ltv'); setFeedback(null);
-    try { const r = await callMacro<LtvResult>('customerLTV', { artifact: { data: { avgOrderValue: parseFloat(aov), purchaseFrequencyPerYear: parseFloat(freq), customerLifespanYears: parseFloat(lifespan), cac: parseFloat(cac) } } }); if (r.ok && r.result) { setLtvResult(r.result); ok(`LTV $${r.result.ltv} · ${r.result.ltvToCacRatio?.toFixed(1)}× CAC.`); } else err(r.error ?? 'ltv failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<LtvResult>('customerLTV', { artifact: { data: { avgOrderValue: a, purchaseFrequencyPerYear: f, customerLifespanYears: l, cac: c } } });
+      if (r.ok && r.result) { setLtvResult(r.result); pipe.publish('retail.ltv', r.result, { label: `LTV $${r.result.ltv}` }); ok(`LTV $${r.result.ltv} · ${r.result.ltvToCacRatio?.toFixed(1)}× CAC.`); } else err(r.error ?? 'ltv failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSla() {
+    if (!incidentsText.trim()) { err('Paste incidents JSON first.'); return; }
     const parsed = parseJSON<{ incidents: unknown[] }>(incidentsText); if (!parsed) { err('Invalid incidents JSON.'); return; }
     setBusy('sla'); setFeedback(null);
-    try { const r = await callMacro<SlaResult>('slaStatus', { artifact: { data: parsed } }); if (r.ok && r.result) { setSlaResult(r.result); ok(`${r.result.complianceRate}% compliance.`); } else err(r.error ?? 'sla failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SlaResult>('slaStatus', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setSlaResult(r.result); pipe.publish('retail.sla', r.result, { label: `SLA ${r.result.complianceRate}%` }); ok(`${r.result.complianceRate}% compliance.`); } else err(r.error ?? 'sla failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Retail ops`, tags: ['retail', 'ops'], source: 'retail:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, retail: { reorder: reorderResult, pipe: pipeResult, ltv: ltvResult, sla: slaResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Ops DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('retail.mintedDtuId', id, { label: `Ops DTU ${id.slice(0, 8)}…` }); ok(`Ops DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🛒 Retail brief`, '', reorderResult ? `Reorder: ${reorderResult.criticalCount} critical · ${reorderResult.reorderCount} below ROP · ${reorderResult.sufficientCount} OK` : '', pipeResult ? `Pipeline: $${pipeResult.totalWeighted?.toLocaleString()} weighted (${pipeResult.totalDeals} deals)` : '', ltvResult ? `LTV $${ltvResult.ltv} · CAC $${ltvResult.cac} · ratio ${ltvResult.ltvToCacRatio?.toFixed(1)}×` : '', slaResult ? `SLA: ${slaResult.complianceRate}% · ${slaResult.breaches} breaches` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🛒 Retail brief`, '',
+      reorderResult ? `Reorder: ${reorderResult.criticalCount} critical · ${reorderResult.reorderCount} below ROP · ${reorderResult.sufficientCount} OK` : '',
+      pipeResult ? `Pipeline: $${pipeResult.totalWeighted?.toLocaleString()} weighted (${pipeResult.totalDeals} deals)` : '',
+      ltvResult ? `LTV $${ltvResult.ltv} · CAC $${ltvResult.cac} · ratio ${ltvResult.ltvToCacRatio?.toFixed(1)}×` : '',
+      slaResult ? `SLA: ${slaResult.complianceRate}% · ${slaResult.breaches} breaches` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!ltvResult) { err('Run LTV first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Retail unit econ`, tags: ['retail', 'ltv', 'public'], source: 'retail:ltv:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ltv: ltvResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Retail unit econ`, tags: ['retail', 'ltv', 'public'], source: 'retail:ltv:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ltv: ltvResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('retail.publishedDtuId', id, { label: `Public unit econ ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -184,6 +190,10 @@ export function RetailActionPanel() {
           <div className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold mt-1.5">Incidents JSON</div>
           <textarea value={incidentsText} onChange={(e) => setIncidentsText(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono" />
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

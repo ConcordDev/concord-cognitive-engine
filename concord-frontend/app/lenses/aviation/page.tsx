@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { AirportBrief } from '@/components/aviation/AirportBrief';
 import { AviationActionPanel } from '@/components/aviation/AviationActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -2102,9 +2103,11 @@ export default function AviationLensPage() {
         <AirportBrief />
       </section>
 
-      <section className="mx-auto mt-6 max-w-6xl">
-        <AviationActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mx-auto mt-6 max-w-6xl">
+          <AviationActionPanel />
+        </section>
+      </PipingProvider>
     </LensShell>
   );
 }

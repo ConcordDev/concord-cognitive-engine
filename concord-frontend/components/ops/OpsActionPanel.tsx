@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -41,11 +42,11 @@ interface EscalationResult { severity?: string; minutesOpen?: number; thresholdM
 interface PostmortemResult { title?: string; incidentId?: string; severity?: string; durationMin?: number; sections?: Array<{ name: string; placeholder: string }> }
 
 export function OpsActionPanel() {
-  const [rotation, setRotation] = useState('alice 0 8\nbob 8 16\ncarol 16 24');
-  const [runbooks, setRunbooks] = useState('db-timeout | restart pgbouncer; failover read replica; page DBA | dba@\napi-5xx | check upstream; rollback last deploy; bump replicas | sre@');
+  const [rotation, setRotation] = useState('');
+  const [runbooks, setRunbooks] = useState('');
   const [alertSig, setAlertSig] = useState('');
   const [escSev, setEscSev] = useState<'sev1' | 'sev2' | 'sev3' | 'sev4'>('sev2');
-  const [escMin, setEscMin] = useState('20');
+  const [escMin, setEscMin] = useState('');
   const [pmTitle, setPmTitle] = useState('');
   const [pmSev, setPmSev] = useState<'sev1' | 'sev2' | 'sev3' | 'sev4'>('sev2');
   const [pmAffected, setPmAffected] = useState('');
@@ -64,6 +65,21 @@ export function OpsActionPanel() {
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
+
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
 
   function parseRotation() {
     return rotation.split('\n').map(l => {
@@ -86,7 +102,7 @@ export function OpsActionPanel() {
     setBusy('oncall'); setFeedback(null);
     try {
       const r = await callMacro<OnCallResult>('pageOnCall', { rotation: rot });
-      if (r.ok && r.result) { setOncallResult(r.result); ok(`On-call: ${r.result.current}.`); }
+      if (r.ok && r.result) { setOncallResult(r.result); pipe.publish('ops.oncall', r.result, { label: r.result.current ?? 'on-call' }); ok(`On-call: ${r.result.current}.`); }
       else err(r.error ?? 'on-call lookup failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -98,7 +114,7 @@ export function OpsActionPanel() {
     setBusy('runbook'); setFeedback(null);
     try {
       const r = await callMacro<RunbookResult>('runbookLookup', { runbooks: rb, alert: alertSig.trim() });
-      if (r.ok && r.result) { setRunbookResult(r.result); ok(`${r.result.matches ?? 0} runbook matches.`); }
+      if (r.ok && r.result) { setRunbookResult(r.result); pipe.publish('ops.runbook', r.result, { label: `${r.result.matches ?? 0} matches` }); ok(`${r.result.matches ?? 0} runbook matches.`); }
       else err(r.reason ?? r.error ?? 'runbook lookup failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -108,7 +124,7 @@ export function OpsActionPanel() {
     setBusy('escalation'); setFeedback(null);
     try {
       const r = await callMacro<EscalationResult>('escalationCheck', { severity: escSev, minutesOpen: parseFloat(escMin) });
-      if (r.ok && r.result) { setEscalationResult(r.result); ok(r.result.breached ? 'BREACHED — escalate.' : 'Within window.'); }
+      if (r.ok && r.result) { setEscalationResult(r.result); pipe.publish('ops.escalation', r.result, { label: r.result.breached ? 'BREACHED' : 'within' }); ok(r.result.breached ? 'BREACHED — escalate.' : 'Within window.'); }
       else err(r.error ?? 'escalation check failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -119,7 +135,7 @@ export function OpsActionPanel() {
     setBusy('postmortem'); setFeedback(null);
     try {
       const r = await callMacro<PostmortemResult>('postmortemDraft', { title: pmTitle.trim(), severity: pmSev, affected: pmAffected.trim() || 'unspecified' });
-      if (r.ok && r.result) { setPostmortemResult(r.result); ok('Post-mortem skeleton ready.'); }
+      if (r.ok && r.result) { setPostmortemResult(r.result); pipe.publish('ops.postmortem', r.result, { label: r.result.incidentId ?? 'PM' }); ok('Post-mortem skeleton ready.'); }
       else err(r.error ?? 'post-mortem failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -139,7 +155,7 @@ export function OpsActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Snapshot DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('ops.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`Snapshot DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -158,9 +174,12 @@ export function OpsActionPanel() {
       mintedDtuId ? `\n[Snapshot DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Handoff sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -169,21 +188,24 @@ export function OpsActionPanel() {
     if (!postmortemResult?.incidentId) { err('Draft a post-mortem first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Public post-mortem — ${postmortemResult.title ?? postmortemResult.incidentId}`,
-          tags: ['ops', 'post-mortem', 'public', postmortemResult.severity ?? 'sev3'],
-          source: 'ops:postmortem:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, postmortem: postmortemResult },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Public post-mortem — ${postmortemResult.title ?? postmortemResult.incidentId}`,
+            tags: ['ops', 'post-mortem', 'public', postmortemResult.severity ?? 'sev3'],
+            source: 'ops:postmortem:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, postmortem: postmortemResult },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Post-mortem published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('ops.publishedDtuId', id, { label: `PM ${id.slice(0, 8)}` }); ok(`Post-mortem published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -271,6 +293,11 @@ export function OpsActionPanel() {
             <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="next on-call user id" />
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

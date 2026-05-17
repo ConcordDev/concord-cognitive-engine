@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RedditCreative } from '@/components/creative/RedditCreative';
 import { CreativeActionPanel } from '@/components/creative/CreativeActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1720,9 +1721,11 @@ export default function CreativeLensPage() {
         <RedditCreative />
       </section>
 
-      <section className="mt-6">
-        <CreativeActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <CreativeActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

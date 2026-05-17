@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -39,14 +40,14 @@ interface RecoveryResult { recoveryPct?: number; band?: string; recommendation?:
 interface HrvTrendResult { count?: number; average?: number; recentAverage?: number; latest?: number; min?: number; max?: number; trend?: string; message?: string }
 
 export function WellnessActionPanel() {
-  const [minutesAsleep, setMinutesAsleep] = useState('450');
-  const [minutesInBed, setMinutesInBed] = useState('480');
-  const [disturbances, setDisturbances] = useState('1');
-  const [z1, setZ1] = useState('20'); const [z2, setZ2] = useState('30'); const [z3, setZ3] = useState('15');
-  const [z4, setZ4] = useState('10'); const [z5, setZ5] = useState('5');
-  const [hrvMs, setHrvMs] = useState('52'); const [baselineHrv, setBaselineHrv] = useState('48');
-  const [rhrBpm, setRhrBpm] = useState('58'); const [baselineRhr, setBaselineRhr] = useState('62');
-  const [hrvSeries, setHrvSeries] = useState('2026-05-10,48\n2026-05-11,50\n2026-05-12,52\n2026-05-13,49\n2026-05-14,51\n2026-05-15,53\n2026-05-16,52');
+  const [minutesAsleep, setMinutesAsleep] = useState('');
+  const [minutesInBed, setMinutesInBed] = useState('');
+  const [disturbances, setDisturbances] = useState('');
+  const [z1, setZ1] = useState(''); const [z2, setZ2] = useState(''); const [z3, setZ3] = useState('');
+  const [z4, setZ4] = useState(''); const [z5, setZ5] = useState('');
+  const [hrvMs, setHrvMs] = useState(''); const [baselineHrv, setBaselineHrv] = useState('');
+  const [rhrBpm, setRhrBpm] = useState(''); const [baselineRhr, setBaselineRhr] = useState('');
+  const [hrvSeries, setHrvSeries] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -63,11 +64,26 @@ export function WellnessActionPanel() {
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actSleep() {
     setBusy('sleep'); setFeedback(null);
     try {
       const r = await callMacro<SleepResult>('sleepScore', { minutesAsleep: parseFloat(minutesAsleep), minutesInBed: parseFloat(minutesInBed), disturbances: parseInt(disturbances, 10) });
-      if (r.ok && r.result) { setSleepResult(r.result); ok(`Sleep ${r.result.band} (${r.result.score}).`); }
+      if (r.ok && r.result) { setSleepResult(r.result); pipe.publish('wellness.sleep', r.result, { label: `${r.result.score}/100` }); ok(`Sleep ${r.result.band} (${r.result.score}).`); }
       else err(r.reason ?? r.error ?? 'sleep failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -76,7 +92,7 @@ export function WellnessActionPanel() {
     setBusy('strain'); setFeedback(null);
     try {
       const r = await callMacro<StrainResult>('strainLog', { minutesByZone: { z1: parseInt(z1, 10), z2: parseInt(z2, 10), z3: parseInt(z3, 10), z4: parseInt(z4, 10), z5: parseInt(z5, 10) } });
-      if (r.ok && r.result) { setStrainResult(r.result); ok(`Strain ${r.result.strain} (${r.result.band}).`); }
+      if (r.ok && r.result) { setStrainResult(r.result); pipe.publish('wellness.strain', r.result, { label: `${r.result.strain} ${r.result.band ?? ''}` }); ok(`Strain ${r.result.strain} (${r.result.band}).`); }
       else err(r.error ?? 'strain failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -85,7 +101,7 @@ export function WellnessActionPanel() {
     setBusy('recovery'); setFeedback(null);
     try {
       const r = await callMacro<RecoveryResult>('recoveryReport', { hrvMs: parseFloat(hrvMs), baselineHrvMs: parseFloat(baselineHrv), rhrBpm: parseFloat(rhrBpm), baselineRhrBpm: parseFloat(baselineRhr), sleepScore: sleepResult?.score ?? 70 });
-      if (r.ok && r.result) { setRecoveryResult(r.result); ok(`Recovery ${r.result.recoveryPct}% (${r.result.band}).`); }
+      if (r.ok && r.result) { setRecoveryResult(r.result); pipe.publish('wellness.recovery', r.result, { label: `${r.result.recoveryPct}% ${r.result.band ?? ''}` }); ok(`Recovery ${r.result.recoveryPct}% (${r.result.band}).`); }
       else err(r.reason ?? r.error ?? 'recovery failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -95,7 +111,7 @@ export function WellnessActionPanel() {
     setBusy('hrv'); setFeedback(null);
     try {
       const r = await callMacro<HrvTrendResult>('hrvTrend', { readings });
-      if (r.ok && r.result) { setHrvResult(r.result); ok(`HRV ${r.result.trend ?? r.result.message ?? 'analyzed'}.`); }
+      if (r.ok && r.result) { setHrvResult(r.result); pipe.publish('wellness.hrv', r.result, { label: r.result.trend ?? 'hrv' }); ok(`HRV ${r.result.trend ?? r.result.message ?? 'analyzed'}.`); }
       else err(r.error ?? 'hrv failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -115,7 +131,7 @@ export function WellnessActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Wellness DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('wellness.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`Wellness DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -133,30 +149,36 @@ export function WellnessActionPanel() {
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Wellness trend — ${hrvResult?.trend ?? 'snapshot'}`,
-          tags: ['wellness', 'public', recoveryResult?.band ?? 'unknown'],
-          source: 'wellness:trend:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, trends: { hrv: hrvResult, recovery: recoveryResult } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Wellness trend — ${hrvResult?.trend ?? 'snapshot'}`,
+            tags: ['wellness', 'public', recoveryResult?.band ?? 'unknown'],
+            source: 'wellness:trend:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, trends: { hrv: hrvResult, recovery: recoveryResult } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Trend published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('wellness.publishedDtuId', id, { label: `trend ${id.slice(0, 8)}` }); ok(`Trend published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -223,6 +245,11 @@ export function WellnessActionPanel() {
       <div>
         <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">HRV series (YYYY-MM-DD,ms — one per line)</label>
         <textarea value={hrvSeries} onChange={(e) => setHrvSeries(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyan-400/40 resize-none" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

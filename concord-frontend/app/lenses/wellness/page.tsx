@@ -13,6 +13,7 @@ import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { WellnessFeed } from '@/components/wellness/WellnessFeed';
 import { WellnessActionPanel } from '@/components/wellness/WellnessActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 interface Field {
   id: number;
@@ -147,9 +148,11 @@ export default function WellnessPage() {
         </section>
 
         {/* Whoop-shape wellness workbench: sleep / strain / recovery / HRV + actions */}
-        <section className="mt-6">
-          <WellnessActionPanel />
-        </section>
+        <PipingProvider>
+          <section className="mt-6">
+            <WellnessActionPanel />
+          </section>
+        </PipingProvider>
       </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

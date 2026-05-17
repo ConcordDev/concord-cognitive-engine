@@ -75,6 +75,7 @@ import LiveFeed from '@/components/lens/LiveFeed';
 import RetailWorkbench from '@/components/retail/RetailWorkbench';
 import { LivePosTerminal } from '@/components/retail/LivePosTerminal';
 import { RetailActionPanel } from '@/components/retail/RetailActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -2021,9 +2022,11 @@ export default function RetailLensPage() {
         <LivePosTerminal />
       </section>
 
-      <section className="mt-6">
-        <RetailActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <RetailActionPanel />
+        </section>
+      </PipingProvider>
     </LensShell>
   );
 }

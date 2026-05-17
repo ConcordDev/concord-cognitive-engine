@@ -11,6 +11,7 @@ import { Hammer, BarChart3, Bomb, ShieldAlert, Calculator, Sparkles, Send, Globe
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -32,12 +33,12 @@ interface ResourceResult { totalTonnage?: number; recoverableMetal?: number; gro
 
 export function MiningActionPanel() {
   const [mineName, setMineName] = useState('');
-  const [samples, setSamples] = useState('S1 1.2\nS2 0.8\nS3 2.5\nS4 0.4\nS5 1.8\nS6 0.3');
-  const [hoursWorked, setHoursWorked] = useState('100000');
-  const [incidents, setIncidents] = useState('3');
-  const [lostTime, setLostTime] = useState('1');
-  const [volume, setVolume] = useState('500000');
-  const [grade, setGrade] = useState('1.5');
+  const [samples, setSamples] = useState('');
+  const [hoursWorked, setHoursWorked] = useState('');
+  const [incidents, setIncidents] = useState('');
+  const [lostTime, setLostTime] = useState('');
+  const [volume, setVolume] = useState('');
+  const [grade, setGrade] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -53,26 +54,41 @@ export function MiningActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actGrade() {
     const s = samples.split('\n').map(l => { const m = l.trim().match(/^(\S+)\s+([\d.]+)$/); return m ? { id: m[1], grade: parseFloat(m[2]) } : null; }).filter(Boolean);
     if (!s.length) { err('Add ore samples.'); return; }
     setBusy('grade'); setFeedback(null);
-    try { const r = await callMacro<GradeResult>('oreGradeCalc', { samples: s }); if (r.ok && r.result) { setGradeResult(r.result); ok(`${r.result.classification}.`); } else err(r.error ?? 'grade failed'); }
+    try { const r = await callMacro<GradeResult>('oreGradeCalc', { samples: s }); if (r.ok && r.result) { setGradeResult(r.result); pipe.publish('mining.grade', r.result, { label: r.result.classification ?? 'grade' }); ok(`${r.result.classification}.`); } else err(r.error ?? 'grade failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBlast() {
     setBusy('blast'); setFeedback(null);
-    try { const r = await callMacro<BlastResult>('blastDesign', {}); if (r.ok && r.result) { setBlastResult(r.result); ok(`${r.result.tonsPerHole}t per hole.`); } else err(r.error ?? 'blast failed'); }
+    try { const r = await callMacro<BlastResult>('blastDesign', {}); if (r.ok && r.result) { setBlastResult(r.result); pipe.publish('mining.blast', r.result, { label: `${r.result.tonsPerHole}t/hole` }); ok(`${r.result.tonsPerHole}t per hole.`); } else err(r.error ?? 'blast failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSafety() {
     setBusy('safety'); setFeedback(null);
-    try { const r = await callMacro<SafetyResult>('safetyMetrics', { hoursWorked: parseInt(hoursWorked, 10), incidents: parseInt(incidents, 10), lostTimeIncidents: parseInt(lostTime, 10) }); if (r.ok && r.result) { setSafetyResult(r.result); ok(`TRIR: ${r.result.trir}.`); } else err(r.error ?? 'safety failed'); }
+    try { const r = await callMacro<SafetyResult>('safetyMetrics', { hoursWorked: parseInt(hoursWorked, 10), incidents: parseInt(incidents, 10), lostTimeIncidents: parseInt(lostTime, 10) }); if (r.ok && r.result) { setSafetyResult(r.result); pipe.publish('mining.safety', r.result, { label: `TRIR ${r.result.trir}` }); ok(`TRIR: ${r.result.trir}.`); } else err(r.error ?? 'safety failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actResource() {
     setBusy('resource'); setFeedback(null);
-    try { const r = await callMacro<ResourceResult>('resourceEstimate', { volumeM3: parseFloat(volume), avgGradePercent: parseFloat(grade) }); if (r.ok && r.result) { setResourceResult(r.result); ok(`$${r.result.grossValue?.toLocaleString()}.`); } else err(r.error ?? 'resource failed'); }
+    try { const r = await callMacro<ResourceResult>('resourceEstimate', { volumeM3: parseFloat(volume), avgGradePercent: parseFloat(grade) }); if (r.ok && r.result) { setResourceResult(r.result); pipe.publish('mining.resource', r.result, { label: `$${r.result.grossValue?.toLocaleString()}` }); ok(`$${r.result.grossValue?.toLocaleString()}.`); } else err(r.error ?? 'resource failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -80,25 +96,35 @@ export function MiningActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Mining — ${mineName.trim() || 'site'}`, tags: ['mining', gradeResult?.classification ?? 'unclassified'], source: 'mining:site:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mining: { name: mineName, grade: gradeResult, blast: blastResult, safety: safetyResult, resource: resourceResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Site DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('mining.mintedDtuId', id, { label: `site ${id.slice(0, 8)}` }); ok(`Site DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`⛏ Mining brief: ${mineName || 'site'}`, '', gradeResult ? `Ore: ${gradeResult.classification} (avg ${gradeResult.avgGrade}%)` : '', safetyResult ? `Safety: TRIR ${safetyResult.trir} (${safetyResult.safetyRating})` : '', resourceResult ? `Resource: $${resourceResult.grossValue?.toLocaleString()} gross (${resourceResult.category})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!safetyResult) { err('Run safety metrics first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Safety record — TRIR ${safetyResult.trir}`, tags: ['mining', 'safety', 'public'], source: 'mining:safety:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, safety: safetyResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Safety record — TRIR ${safetyResult.trir}`, tags: ['mining', 'safety', 'public'], source: 'mining:safety:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, safety: safetyResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('mining.publishedDtuId', id, { label: `record ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -138,6 +164,11 @@ export function MiningActionPanel() {
         <input type="text" value={volume} onChange={(e) => setVolume(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Volume m³" />
         <input type="text" value={grade} onChange={(e) => setGrade(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Avg grade %" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-3 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Ore samples (id grade%)</label><textarea value={samples} onChange={(e) => setSamples(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-stone-200 font-mono focus:outline-none focus:ring-2 focus:ring-stone-400/40 resize-none" /></div>

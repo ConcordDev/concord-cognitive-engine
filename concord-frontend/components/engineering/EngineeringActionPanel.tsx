@@ -11,6 +11,7 @@ import { Cog, Ruler, Activity, Package, Sparkles, Send, Globe, Wand2, Loader2, C
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,33 +34,17 @@ interface BomItem { partNumber: string; description: string; quantity: number; u
 interface BomResult { bom: BomItem[]; totalLineItems: number; totalParts: number; totalCost: number; criticalPath: string; uniqueSuppliers: number }
 interface UnitResult { input: string; output: string; conversion: string }
 
-const DEMO_PARTS = JSON.stringify({
-  parts: [
-    { name: 'Shaft', nominal: 25.0, tolerance: 0.01 },
-    { name: 'Bearing bore', nominal: 25.1, tolerance: 0.005 },
-    { name: 'Spacer', nominal: 12.5, tolerance: 0.02 },
-    { name: 'Cap', nominal: 8.0, tolerance: 0.01 },
-  ],
-}, null, 2);
-
-const DEMO_BOM = JSON.stringify({
-  bomItems: [
-    { partNumber: 'SCR-M5x16', description: 'M5×16 socket cap screw', quantity: 24, unitCost: 0.18, leadTime: 'stock', supplier: 'Fastenal' },
-    { partNumber: 'BRG-6204', description: '6204-2RS bearing', quantity: 4, unitCost: 8.50, leadTime: '14', supplier: 'SKF' },
-    { partNumber: 'SHFT-25-200', description: '25mm × 200mm shaft', quantity: 2, unitCost: 32.00, leadTime: '21', supplier: 'McMaster' },
-    { partNumber: 'HSG-AL-001', description: 'Housing, AL 6061', quantity: 1, unitCost: 145.00, leadTime: '28', supplier: 'Local machine shop' },
-  ],
-}, null, 2);
-
+// UNIT_PAIRS is the supported conversion table, NOT seed data — it's
+// part of the macro contract (which units are valid).
 const UNIT_PAIRS = [['mm', 'in'], ['in', 'mm'], ['m', 'ft'], ['ft', 'm'], ['kg', 'lb'], ['lb', 'kg'], ['n', 'lbf'], ['lbf', 'n'], ['mpa', 'psi'], ['psi', 'mpa'], ['c', 'f'], ['f', 'c'], ['nm', 'ftlb'], ['ftlb', 'nm'], ['l', 'gal'], ['gal', 'l']];
 
 export function EngineeringActionPanel() {
-  const [partsText, setPartsText] = useState(DEMO_PARTS);
-  const [forceN, setForceN] = useState('5000');
-  const [areaMm2, setAreaMm2] = useState('120');
-  const [yieldMpa, setYieldMpa] = useState('275');
-  const [bomText, setBomText] = useState(DEMO_BOM);
-  const [unitValue, setUnitValue] = useState('25');
+  const [partsText, setPartsText] = useState('');
+  const [forceN, setForceN] = useState('');
+  const [areaMm2, setAreaMm2] = useState('');
+  const [yieldMpa, setYieldMpa] = useState('');
+  const [bomText, setBomText] = useState('');
+  const [unitValue, setUnitValue] = useState('');
   const [unitFrom, setUnitFrom] = useState('mm');
   const [unitTo, setUnitTo] = useState('in');
   const [recipient, setRecipient] = useState('');
@@ -79,52 +64,86 @@ export function EngineeringActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actTol() {
+    if (!partsText.trim()) { err('Paste parts JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(partsText); if (!parsed) { err('Invalid parts JSON.'); return; }
     setBusy('tol'); setFeedback(null);
-    try { const r = await callMacro<TolResult>('toleranceAnalysis', { artifact: { data: parsed } }); if (r.ok && r.result) { setTolResult(r.result); ok(`Stack ${r.result.stackUp.nominal} ±${r.result.stackUp.worstCaseTolerance}.`); } else err(r.error ?? 'tol failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<TolResult>('toleranceAnalysis', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setTolResult(r.result); pipe.publish('engineering.tol', r.result, { label: `Stack ${r.result.stackUp.nominal}±${r.result.stackUp.worstCaseTolerance}` }); ok(`Stack ${r.result.stackUp.nominal} ±${r.result.stackUp.worstCaseTolerance}.`); } else err(r.error ?? 'tol failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actStress() {
+    const F = parseFloat(forceN), A = parseFloat(areaMm2), Y = parseFloat(yieldMpa);
+    if (!isFinite(F) || !isFinite(A) || !isFinite(Y)) { err('Force, area, yield required (numeric).'); return; }
     setBusy('stress'); setFeedback(null);
-    try { const r = await callMacro<StressResult>('stressAnalysis', { artifact: { data: { forceNewtons: parseFloat(forceN), crossSectionMm2: parseFloat(areaMm2), yieldStrengthMPa: parseFloat(yieldMpa) } } }); if (r.ok && r.result) { setStressResult(r.result); ok(`SF ${r.result.safetyFactor} · ${r.result.status}.`); } else err(r.error ?? 'stress failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<StressResult>('stressAnalysis', { artifact: { data: { forceNewtons: F, crossSectionMm2: A, yieldStrengthMPa: Y } } });
+      if (r.ok && r.result) { setStressResult(r.result); pipe.publish('engineering.stress', r.result, { label: `Stress SF ${r.result.safetyFactor}` }); ok(`SF ${r.result.safetyFactor} · ${r.result.status}.`); } else err(r.error ?? 'stress failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBom() {
+    if (!bomText.trim()) { err('Paste BOM JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(bomText); if (!parsed) { err('Invalid BOM JSON.'); return; }
     setBusy('bom'); setFeedback(null);
-    try { const r = await callMacro<BomResult>('bom', { artifact: { data: parsed } }); if (r.ok && r.result) { setBomResult(r.result); ok(`$${r.result.totalCost.toLocaleString()} · ${r.result.totalParts} parts.`); } else err(r.error ?? 'bom failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<BomResult>('bom', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setBomResult(r.result); pipe.publish('engineering.bom', r.result, { label: `BOM $${r.result.totalCost.toLocaleString()}` }); ok(`$${r.result.totalCost.toLocaleString()} · ${r.result.totalParts} parts.`); } else err(r.error ?? 'bom failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actUnit() {
+    const v = parseFloat(unitValue);
+    if (!isFinite(v)) { err('Numeric value required.'); return; }
     setBusy('unit'); setFeedback(null);
-    try { const r = await callMacro<UnitResult>('unitConvert', { artifact: { data: { value: parseFloat(unitValue), from: unitFrom, to: unitTo } } }); if (r.ok && r.result) { setUnitResult(r.result); ok(`${r.result.output}.`); } else err(r.error ?? 'unit failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<UnitResult>('unitConvert', { artifact: { data: { value: v, from: unitFrom, to: unitTo } } });
+      if (r.ok && r.result) { setUnitResult(r.result); pipe.publish('engineering.unit', r.result, { label: r.result.conversion }); ok(`${r.result.output}.`); } else err(r.error ?? 'unit failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Engineering — ${stressResult?.status ?? 'design'}`, tags: ['engineering', 'design'], source: 'engineering:design:mint', meta: { visibility: 'private', consent: { allowCitations: false }, eng: { tol: tolResult, stress: stressResult, bom: bomResult, unit: unitResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Design DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('engineering.mintedDtuId', id, { label: `Design DTU ${id.slice(0, 8)}…` }); ok(`Design DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`⚙ Engineering review`, '', tolResult ? `Tolerance stack: ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance} (RSS ±${tolResult.stackUp.rssTolerance})` : '', stressResult ? `Stress: ${stressResult.appliedStress} / yield ${stressResult.yieldStrength} → SF ${stressResult.safetyFactor} · ${stressResult.status}` : '', bomResult ? `BOM: $${bomResult.totalCost.toLocaleString()} · ${bomResult.totalParts} parts · CP ${bomResult.criticalPath}` : '', unitResult ? `${unitResult.input} = ${unitResult.output}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`⚙ Engineering review`, '',
+      tolResult ? `Tolerance stack: ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance} (RSS ±${tolResult.stackUp.rssTolerance})` : '',
+      stressResult ? `Stress: ${stressResult.appliedStress} / yield ${stressResult.yieldStrength} → SF ${stressResult.safetyFactor} · ${stressResult.status}` : '',
+      bomResult ? `BOM: $${bomResult.totalCost.toLocaleString()} · ${bomResult.totalParts} parts · CP ${bomResult.criticalPath}` : '',
+      unitResult ? `${unitResult.input} = ${unitResult.output}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!tolResult && !stressResult) { err('Run analysis first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Engineering analysis card`, tags: ['engineering', 'analysis', 'public'], source: 'engineering:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, tol: tolResult, stress: stressResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Engineering analysis card`, tags: ['engineering', 'analysis', 'public'], source: 'engineering:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, tol: tolResult, stress: stressResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('engineering.publishedDtuId', id, { label: `Public eng analysis ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -181,6 +200,10 @@ export function EngineeringActionPanel() {
             <select value={unitTo} onChange={(e) => setUnitTo(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">{[...new Set(UNIT_PAIRS.map(p => p[1]))].map(u => <option key={u} value={u}>{u}</option>)}</select>
           </div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

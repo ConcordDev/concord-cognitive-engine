@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RoboticsRepos } from '@/components/robotics/RoboticsRepos';
 import { RoboticsActionPanel } from '@/components/robotics/RoboticsActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -592,9 +593,11 @@ export default function RoboticsLensPage() {
         <RoboticsRepos />
       </section>
 
-      <section className="mt-6">
-        <RoboticsActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <RoboticsActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

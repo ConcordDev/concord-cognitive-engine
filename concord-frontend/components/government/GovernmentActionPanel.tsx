@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -41,8 +42,8 @@ interface PermitResult { phases?: Array<{ name: string; weeks: number; status: s
 interface ViolationResult { tier?: string; escalated?: boolean; nextStep?: string }
 
 export function GovernmentActionPanel() {
-  const [zip, setZip] = useState('94110');
-  const [billQuery, setBillQuery] = useState('infrastructure');
+  const [zip, setZip] = useState('');
+  const [billQuery, setBillQuery] = useState('');
   const [permitType, setPermitType] = useState<'building' | 'business' | 'zoning' | 'environmental'>('building');
   const [violationSeverity, setViolationSeverity] = useState<'minor' | 'moderate' | 'severe'>('moderate');
   const [recipient, setRecipient] = useState('');
@@ -60,51 +61,78 @@ export function GovernmentActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actReps() {
     if (zip.length !== 5) { err('5-digit ZIP required.'); return; }
     setBusy('reps'); setFeedback(null);
-    try { const r = await callMacro<{ representatives?: Rep[] }>('representatives-find', { zip }); if (r.ok && r.result?.representatives) { setReps(r.result.representatives); ok(`${r.result.representatives.length} reps.`); } else err(r.error ?? 'reps failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<{ representatives?: Rep[] }>('representatives-find', { zip });
+      if (r.ok && r.result?.representatives) { setReps(r.result.representatives); pipe.publish('gov.reps', r.result, { label: `${r.result.representatives.length} reps` }); ok(`${r.result.representatives.length} reps.`); } else err(r.error ?? 'reps failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBills() {
     if (!billQuery.trim()) { err('Query required.'); return; }
     setBusy('bills'); setFeedback(null);
-    try { const r = await callMacro<{ bills?: Bill[] }>('bills-list', { query: billQuery.trim(), limit: 10 }); if (r.ok && r.result?.bills) { setBills(r.result.bills); ok(`${r.result.bills.length} bills.`); } else err(r.error ?? 'bills failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<{ bills?: Bill[] }>('bills-list', { query: billQuery.trim(), limit: 10 });
+      if (r.ok && r.result?.bills) { setBills(r.result.bills); pipe.publish('gov.bills', r.result, { label: `${r.result.bills.length} bills` }); ok(`${r.result.bills.length} bills.`); } else err(r.error ?? 'bills failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPermit() {
     setBusy('permit'); setFeedback(null);
-    try { const r = await callMacro<PermitResult>('permitTimeline', { permitType }); if (r.ok && r.result) { setPermitResult(r.result); ok(`~${r.result.estimatedWeeks} weeks.`); } else err(r.error ?? 'permit failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PermitResult>('permitTimeline', { permitType });
+      if (r.ok && r.result) { setPermitResult(r.result); pipe.publish('gov.permit', r.result, { label: `Permit ${r.result.estimatedWeeks}w` }); ok(`~${r.result.estimatedWeeks} weeks.`); } else err(r.error ?? 'permit failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actViolation() {
     setBusy('violation'); setFeedback(null);
-    try { const r = await callMacro<ViolationResult>('violationEscalation', { severity: violationSeverity }); if (r.ok && r.result) { setViolationResult(r.result); ok(`Tier: ${r.result.tier}.`); } else err(r.error ?? 'violation failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ViolationResult>('violationEscalation', { severity: violationSeverity });
+      if (r.ok && r.result) { setViolationResult(r.result); pipe.publish('gov.violation', r.result, { label: `Tier ${r.result.tier}` }); ok(`Tier: ${r.result.tier}.`); } else err(r.error ?? 'violation failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Civic — ZIP ${zip}`, tags: ['government', 'civic', `zip:${zip}`], source: 'government:civic:mint', meta: { visibility: 'private', consent: { allowCitations: false }, civic: { zip, reps, bills, permit: permitResult, violation: violationResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Civic DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('gov.mintedDtuId', id, { label: `Civic DTU ${id.slice(0, 8)}…` }); ok(`Civic DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🏛 Civic brief — ZIP ${zip}`, '', reps.length ? `Reps: ${reps.slice(0, 3).map(r => r.name).join(', ')}` : '', bills.length ? `Bills tracking "${billQuery}": ${bills.length}` : '', permitResult ? `Permit timeline: ~${permitResult.estimatedWeeks} weeks` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🏛 Civic brief — ZIP ${zip}`, '',
+      reps.length ? `Reps: ${reps.slice(0, 3).map(r => r.name).join(', ')}` : '',
+      bills.length ? `Bills tracking "${billQuery}": ${bills.length}` : '',
+      permitResult ? `Permit timeline: ~${permitResult.estimatedWeeks} weeks` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public civic guide — ZIP ${zip}`, tags: ['government', 'civic', 'public', `zip:${zip}`], source: 'government:guide:publish', meta: { visibility: 'public', consent: { allowCitations: true }, guide: { zip, repCount: reps.length, billTopic: billQuery, billCount: bills.length, permitEstimate: permitResult?.estimatedWeeks } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Guide published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public civic guide — ZIP ${zip}`, tags: ['government', 'civic', 'public', `zip:${zip}`], source: 'government:guide:publish', meta: { visibility: 'public', consent: { allowCitations: true }, guide: { zip, repCount: reps.length, billTopic: billQuery, billCount: bills.length, permitEstimate: permitResult?.estimatedWeeks } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('gov.publishedDtuId', id, { label: `Public guide ${id.slice(0, 8)}…` }); ok(`Guide published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -145,7 +173,11 @@ export function GovernmentActionPanel() {
         <select value={violationSeverity} onChange={(e) => setViolationSeverity(e.target.value as typeof violationSeverity)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
           {(['minor', 'moderate', 'severe'] as const).map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-5 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

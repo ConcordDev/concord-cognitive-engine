@@ -4,6 +4,9 @@
  * CollabActionPanel — team facilitator bench.
  * sessionAnalytics / contributionScore / detectConsensus / balanceWorkload +
  * mint/DM/publish/agent.
+ *
+ * Max-polish pass: structured row editors instead of JSON textareas, pipe
+ * publish/import for cross-panel hand-off, recall-window on DM + publish.
  */
 
 import { useState } from 'react';
@@ -11,6 +14,15 @@ import { Users, Trophy, Vote, Scale, Sparkles, Send, Globe, Wand2, Loader2, Chec
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import {
+  StructuredArrayEditor,
+  type ColumnSpec,
+  usePipe,
+  PipeImporter,
+  useRecallableAction,
+  RecallSlot,
+  LoadFromSubstrate,
+} from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -25,6 +37,13 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'session' | 'contrib' | 'consensus' | 'load' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
+// ── Row shapes (replace JSON textareas) ────────────────────────────────────
+interface MsgRow { author: string; content: string }
+interface ContribRow { name: string; type: string; quality: number; count: number }
+interface VoteRow { voter: string; position: string }
+interface MemberRow { name: string; capacityHours: number }
+interface TaskRow { assignee: string; hours: number }
+
 interface PStat { name: string; messages: number; wordCount: number; avgWordsPerMessage: number; sharePercent: number }
 interface SessionResult { totalMessages: number; totalParticipants: number; durationMinutes: number; messagesPerMinute: number; participantStats: PStat[]; participationBalance: number; balanceRating: string }
 interface Rank { name: string; totalScore: number; contributions: number }
@@ -33,57 +52,47 @@ interface ConsResult { totalVotes: number; tally: Record<string, number>; leadin
 interface MemberLoad { name: string; assignedTasks: number; totalHours: number; capacity: number; utilization: number; status: string }
 interface LoadResult { members: MemberLoad[]; unassignedTasks: number; overloadedMembers: number; suggestions: string[]; avgUtilization: number }
 
-const DEMO_SESSION = JSON.stringify({
-  durationMinutes: 45,
-  participants: ['Maya', 'Sam', 'Alex', 'Jordan'],
-  messages: [
-    { author: 'Maya', content: 'OK let us start with the roadmap.' },
-    { author: 'Sam', content: 'I agree, Q3 has too much in flight.' },
-    { author: 'Maya', content: 'We could cut two features.' },
-    { author: 'Alex', content: 'Which two?' },
-    { author: 'Maya', content: 'Search and notifications.' },
-    { author: 'Sam', content: 'Notifications is critical though.' },
-    { author: 'Jordan', content: '+1 on cutting search, agree on keeping notifications' },
-    { author: 'Maya', content: 'Fine, just search then.' },
-  ],
-}, null, 2);
+// No seeded examples — every row in these editors comes from real user
+// input or from a Load-from-substrate fetch against a live backend endpoint.
+interface CollabWorkspace { id: string; name?: string; members?: { userId: string; role?: string }[]; dtuCount?: number }
+interface CollabComment { id?: string; user_id?: string; userId?: string; author?: string; text?: string; content?: string; created_at?: string; createdAt?: string }
+interface DmConvo { conversationId?: string; otherUserId?: string; messageCount?: number; lastMessage?: { content?: string; fromUserId?: string; createdAt?: string } }
+interface DmMessage { id?: string; fromUserId?: string; content?: string; createdAt?: string }
 
-const DEMO_CONTRIBS = JSON.stringify({
-  contributions: [
-    { name: 'Maya', type: 'code', quality: 0.9, count: 12 },
-    { name: 'Maya', type: 'review', quality: 0.85, count: 18 },
-    { name: 'Sam', type: 'design', quality: 0.95, count: 8 },
-    { name: 'Alex', type: 'code', quality: 0.75, count: 6 },
-    { name: 'Alex', type: 'discussion', quality: 0.8, count: 15 },
-    { name: 'Jordan', type: 'document', quality: 0.9, count: 4 },
-  ],
-}, null, 2);
-
-const DEMO_VOTES = JSON.stringify({
-  votes: [
-    { voter: 'Maya', position: 'cut search' }, { voter: 'Sam', position: 'cut search' },
-    { voter: 'Jordan', position: 'cut search' }, { voter: 'Alex', position: 'keep both' },
-    { voter: 'Casey', position: 'cut search' }, { voter: 'Riley', position: 'cut search' },
-  ],
-}, null, 2);
-
-const DEMO_LOAD = JSON.stringify({
-  members: [
-    { name: 'Maya', capacityHours: 40 }, { name: 'Sam', capacityHours: 40 },
-    { name: 'Alex', capacityHours: 40 }, { name: 'Jordan', capacityHours: 40 },
-  ],
-  tasks: [
-    { assignee: 'Maya', hours: 18 }, { assignee: 'Maya', hours: 14 }, { assignee: 'Maya', hours: 12 },
-    { assignee: 'Sam', hours: 22 }, { assignee: 'Alex', hours: 8 },
-    { assignee: 'Jordan', hours: 30 }, { hours: 6 }, { hours: 10 },
-  ],
-}, null, 2);
+const MSG_COLS: ColumnSpec<MsgRow>[] = [
+  { key: 'author', label: 'Author', type: 'text', width: '6rem', placeholder: 'name' },
+  { key: 'content', label: 'Content', type: 'textarea', flex: 1, placeholder: 'message' },
+];
+const CONTRIB_COLS: ColumnSpec<ContribRow>[] = [
+  { key: 'name', label: 'Name', type: 'text', width: '6rem' },
+  { key: 'type', label: 'Type', type: 'select', width: '7rem', defaultValue: 'code', options: [
+    { value: 'code' }, { value: 'review' }, { value: 'design' }, { value: 'discussion' }, { value: 'document' }, { value: 'test' },
+  ] },
+  { key: 'quality', label: 'Quality', type: 'number', width: '4.5rem', step: 0.05, min: 0, max: 1, defaultValue: 0.8 },
+  { key: 'count', label: 'Count', type: 'number', width: '4.5rem', step: 1, min: 0, defaultValue: 1 },
+];
+const VOTE_COLS: ColumnSpec<VoteRow>[] = [
+  { key: 'voter', label: 'Voter', type: 'text', width: '6rem' },
+  { key: 'position', label: 'Position', type: 'text', flex: 1 },
+];
+const MEMBER_COLS: ColumnSpec<MemberRow>[] = [
+  { key: 'name', label: 'Member', type: 'text', flex: 1 },
+  { key: 'capacityHours', label: 'Capacity h/wk', type: 'number', width: '6rem', step: 1, min: 0, defaultValue: 40 },
+];
+const TASK_COLS: ColumnSpec<TaskRow>[] = [
+  { key: 'assignee', label: 'Assignee (blank = unassigned)', type: 'text', flex: 1 },
+  { key: 'hours', label: 'Hours', type: 'number', width: '5rem', step: 1, min: 0, defaultValue: 4 },
+];
 
 export function CollabActionPanel() {
-  const [sessionText, setSessionText] = useState(DEMO_SESSION);
-  const [contribText, setContribText] = useState(DEMO_CONTRIBS);
-  const [votesText, setVotesText] = useState(DEMO_VOTES);
-  const [loadText, setLoadText] = useState(DEMO_LOAD);
+  const pipe = usePipe();
+
+  const [messages, setMessages] = useState<MsgRow[]>([]);
+  const [durationMinutes, setDurationMinutes] = useState(45);
+  const [contribs, setContribs] = useState<ContribRow[]>([]);
+  const [votes, setVotes] = useState<VoteRow[]>([]);
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -99,50 +108,121 @@ export function CollabActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  // ── Recall controllers ───────────────────────────────────────────────────
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (messageId) => { await api.delete(`/api/social/dm/${encodeURIComponent(messageId)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (dtuId) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(dtuId)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actSession() {
-    try { const parsed = JSON.parse(sessionText); setBusy('session'); setFeedback(null);
-      const r = await callMacro<SessionResult>('sessionAnalytics', { artifact: { data: parsed } }); if (r.ok && r.result) { setSessionResult(r.result); ok(`${r.result.balanceRating} · Gini ${r.result.participationBalance}.`); } else err(r.error ?? 'session failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid session JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    if (messages.length === 0) { err('Add messages or "Load DM" first.'); return; }
+    setBusy('session'); setFeedback(null);
+    try {
+      const parsed = { durationMinutes, participants: Array.from(new Set(messages.map(m => m.author).filter(Boolean))), messages };
+      const r = await callMacro<SessionResult>('sessionAnalytics', { artifact: { data: parsed } });
+      if (r.ok && r.result) {
+        setSessionResult(r.result);
+        pipe.publish('collab.session', r.result, { label: `Session (${r.result.totalMessages} msgs)` });
+        ok(`${r.result.balanceRating} · Gini ${r.result.participationBalance}.`);
+      } else err(r.error ?? 'session failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actContrib() {
-    try { const parsed = JSON.parse(contribText); setBusy('contrib'); setFeedback(null);
-      const r = await callMacro<ContribResult>('contributionScore', { artifact: { data: parsed } }); if (r.ok && r.result) { setContribResult(r.result); ok(`Top: ${r.result.topContributor}.`); } else err(r.error ?? 'contrib failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid contrib JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    if (contribs.length === 0) { err('Add contributions first.'); return; }
+    setBusy('contrib'); setFeedback(null);
+    try {
+      const r = await callMacro<ContribResult>('contributionScore', { artifact: { data: { contributions: contribs } } });
+      if (r.ok && r.result) {
+        setContribResult(r.result);
+        pipe.publish('collab.contrib', r.result, { label: `Contributions (top: ${r.result.topContributor})` });
+        ok(`Top: ${r.result.topContributor}.`);
+      } else err(r.error ?? 'contrib failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actConsensus() {
-    try { const parsed = JSON.parse(votesText); setBusy('consensus'); setFeedback(null);
-      const r = await callMacro<ConsResult>('detectConsensus', { artifact: { data: parsed } }); if (r.ok && r.result) { setConsResult(r.result); ok(`${r.result.status} · ${r.result.consensusPercent}%.`); } else err(r.error ?? 'consensus failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid votes JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    if (votes.length === 0) { err('Add votes first.'); return; }
+    setBusy('consensus'); setFeedback(null);
+    try {
+      const r = await callMacro<ConsResult>('detectConsensus', { artifact: { data: { votes } } });
+      if (r.ok && r.result) {
+        setConsResult(r.result);
+        pipe.publish('collab.consensus', r.result, { label: `Vote: ${r.result.leadingPosition} (${r.result.consensusPercent}%)` });
+        ok(`${r.result.status} · ${r.result.consensusPercent}%.`);
+      } else err(r.error ?? 'consensus failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actLoad() {
-    try { const parsed = JSON.parse(loadText); setBusy('load'); setFeedback(null);
-      const r = await callMacro<LoadResult>('balanceWorkload', { artifact: { data: parsed } }); if (r.ok && r.result) { setLoadResult(r.result); ok(`${r.result.overloadedMembers} overloaded · avg ${r.result.avgUtilization}%.`); } else err(r.error ?? 'load failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid load JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    if (members.length === 0 || tasks.length === 0) { err('Add members and tasks first ("Load workspace" pulls real members).'); return; }
+    setBusy('load'); setFeedback(null);
+    try {
+      const tasksForApi = tasks.map(t => ({ ...(t.assignee ? { assignee: t.assignee } : {}), hours: t.hours }));
+      const r = await callMacro<LoadResult>('balanceWorkload', { artifact: { data: { members, tasks: tasksForApi } } });
+      if (r.ok && r.result) {
+        setLoadResult(r.result);
+        pipe.publish('collab.workload', r.result, { label: `Workload (${r.result.overloadedMembers} overloaded)` });
+        ok(`${r.result.overloadedMembers} overloaded · avg ${r.result.avgUtilization}%.`);
+      } else err(r.error ?? 'load failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Team session`, tags: ['collab', 'team', sessionResult?.balanceRating].filter((t): t is string => !!t), source: 'collab:team:mint', meta: { visibility: 'private', consent: { allowCitations: false }, team: { session: sessionResult, contrib: contribResult, cons: consResult, load: loadResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Team DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) {
+        setMintedDtuId(id);
+        pipe.publish('collab.mintedDtuId', id, { label: `Team DTU ${id.slice(0, 8)}…` });
+        ok(`Team DTU ${id.slice(0, 8)}…`);
+      } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`👥 Team brief`, '', sessionResult ? `Session: ${sessionResult.totalMessages} msgs / ${sessionResult.totalParticipants} ppl · ${sessionResult.balanceRating} (Gini ${sessionResult.participationBalance})` : '', contribResult ? `Top contributor: ${contribResult.topContributor} · ${contribResult.rankings[0]?.totalScore} pts` : '', consResult ? `Vote: ${consResult.leadingPosition} (${consResult.consensusPercent}%) · ${consResult.status}` : '', loadResult ? `Workload: ${loadResult.overloadedMembers} overloaded · avg ${loadResult.avgUtilization}%${loadResult.suggestions[0] ? ` · ${loadResult.suggestions[0]}` : ''}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`👥 Team brief`, '',
+      sessionResult ? `Session: ${sessionResult.totalMessages} msgs / ${sessionResult.totalParticipants} ppl · ${sessionResult.balanceRating} (Gini ${sessionResult.participationBalance})` : '',
+      contribResult ? `Top contributor: ${contribResult.topContributor} · ${contribResult.rankings[0]?.totalScore} pts` : '',
+      consResult ? `Vote: ${consResult.leadingPosition} (${consResult.consensusPercent}%) · ${consResult.status}` : '',
+      loadResult ? `Workload: ${loadResult.overloadedMembers} overloaded · avg ${loadResult.avgUtilization}%${loadResult.suggestions[0] ? ` · ${loadResult.suggestions[0]}` : ''}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        const id = r.data?.message?.id;
+        if (!id) throw new Error('no message id returned');
+        return id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!sessionResult) { err('Run session first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Team health card`, tags: ['collab', 'team', 'public'], source: 'collab:health:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, session: sessionResult, contrib: contribResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Team health card`, tags: ['collab', 'team', 'public'], source: 'collab:health:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, session: sessionResult, contrib: contribResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) {
+        setPublishedDtuId(id);
+        pipe.publish('collab.publishedDtuId', id, { label: `Public DTU ${id.slice(0, 8)}…` });
+        ok(`Published ${id.slice(0, 8)}… · 30s to recall.`);
+      }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -151,7 +231,12 @@ export function CollabActionPanel() {
       const task = `Team facilitator brief. ${sessionResult ? `Session balance: ${sessionResult.balanceRating} (Gini ${sessionResult.participationBalance}, ${sessionResult.totalMessages} msgs across ${sessionResult.totalParticipants} ppl).` : ''} ${contribResult ? `Top contributor: ${contribResult.topContributor}.` : ''} ${consResult ? `${consResult.status}.` : ''} ${loadResult ? `${loadResult.overloadedMembers} overloaded teammates.` : ''} Identify single most important facilitation move + one structural change. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
+      if (reply) {
+        const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
+        setAgentReply(text);
+        pipe.publish('collab.agentReply', text, { label: 'Facilitator brief' });
+        ok('Brief ready.');
+      } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -176,24 +261,91 @@ export function CollabActionPanel() {
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">session · contrib · consensus · load</span>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Session JSON</label>
-          <textarea value={sessionText} onChange={(e) => setSessionText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <div className="flex items-end justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Session</label>
+              <label className="text-[10px] text-zinc-500 flex items-center gap-1">duration
+                <input type="number" min={1} value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value) || 1)} className="w-12 bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-[10px] text-white font-mono" />
+                <span>min</span>
+              </label>
+            </div>
+            <div className="flex items-center gap-1">
+              <LoadFromSubstrate<DmConvo>
+                label="Load DM"
+                compact
+                emptyHint="No conversations yet."
+                fetcher={async () => {
+                  const r = await api.get('/api/social/dm/conversations');
+                  return (r.data?.conversations ?? []) as DmConvo[];
+                }}
+                describe={(c) => ({
+                  id: c.conversationId ?? `${c.otherUserId}`,
+                  primary: c.otherUserId ?? 'unknown',
+                  secondary: `${c.messageCount ?? 0} msgs · last: ${c.lastMessage?.content?.slice(0, 40) ?? ''}`,
+                })}
+                onSelect={async (c) => {
+                  if (!c.conversationId) return;
+                  try {
+                    const r = await api.get(`/api/social/dm/${encodeURIComponent(c.conversationId)}`, { params: { limit: 200 } });
+                    const msgs = (r.data?.messages ?? []) as DmMessage[];
+                    const rows: MsgRow[] = msgs.slice().reverse()
+                      .filter((m) => !!m.content)
+                      .map((m) => ({ author: m.fromUserId ?? 'unknown', content: m.content ?? '' }));
+                    setMessages(rows);
+                    ok(`Loaded ${rows.length} messages from real DM.`);
+                  } catch (e) { err(pickMessage(e)); }
+                }}
+              />
+              <PipeImporter<MsgRow[]> accept={['collab.sessionImport']} onImport={(rows) => Array.isArray(rows) && setMessages(rows)} compact />
+            </div>
+          </div>
+          <StructuredArrayEditor<MsgRow> value={messages} onChange={setMessages} template={{ author: '', content: '' }} columns={MSG_COLS} accent="blue" maxRows={200} />
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Contributions JSON</label>
-          <textarea value={contribText} onChange={(e) => setContribText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+        <div className="space-y-1">
+          <div className="flex items-end justify-between gap-2">
+            <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Contributions</label>
+            <PipeImporter<ContribRow[]> accept={['collab.contribImport']} onImport={(rows) => Array.isArray(rows) && setContribs(rows)} compact />
+          </div>
+          <StructuredArrayEditor<ContribRow> value={contribs} onChange={setContribs} template={{ name: '', type: 'code', quality: 0.8, count: 1 }} columns={CONTRIB_COLS} accent="amber" />
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Votes JSON</label>
-          <textarea value={votesText} onChange={(e) => setVotesText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+        <div className="space-y-1">
+          <div className="flex items-end justify-between gap-2">
+            <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Votes</label>
+            <PipeImporter<VoteRow[]> accept={['collab.voteImport']} onImport={(rows) => Array.isArray(rows) && setVotes(rows)} compact />
+          </div>
+          <StructuredArrayEditor<VoteRow> value={votes} onChange={setVotes} template={{ voter: '', position: '' }} columns={VOTE_COLS} accent="green" />
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Workload JSON</label>
-          <textarea value={loadText} onChange={(e) => setLoadText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+        <div className="space-y-1">
+          <div className="flex items-end justify-between gap-2">
+            <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Members</label>
+            <LoadFromSubstrate<CollabWorkspace>
+              label="Load workspace"
+              compact
+              emptyHint="No workspaces yet."
+              fetcher={async () => {
+                const r = await api.get('/api/collab/workspaces');
+                const data = r.data as { workspaces?: CollabWorkspace[] } | CollabWorkspace[];
+                return Array.isArray(data) ? data : (data.workspaces ?? []);
+              }}
+              describe={(w) => ({ id: w.id, primary: w.name ?? w.id, secondary: `${w.members?.length ?? 0} members · ${w.dtuCount ?? 0} dtus` })}
+              onSelect={(w) => {
+                const next: MemberRow[] = (w.members ?? []).map((m) => ({ name: m.userId, capacityHours: 40 }));
+                setMembers(next);
+                ok(`Loaded ${next.length} members from workspace.`);
+              }}
+            />
+          </div>
+          <StructuredArrayEditor<MemberRow> value={members} onChange={setMembers} template={{ name: '', capacityHours: 40 }} columns={MEMBER_COLS} accent="purple" />
+          <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold mt-2 block">Tasks</label>
+          <StructuredArrayEditor<TaskRow> value={tasks} onChange={setTasks} template={{ assignee: '', hours: 4 }} columns={TASK_COLS} accent="purple" />
         </div>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-2 flex items-center gap-2">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient (userId)" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

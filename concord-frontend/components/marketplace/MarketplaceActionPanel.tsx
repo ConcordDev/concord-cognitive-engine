@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,9 +43,9 @@ interface MetricsResult { listings?: number; views?: number; sales?: number; con
 export function MarketplaceActionPanel() {
   const [listingTitle, setListingTitle] = useState('');
   const [listingDesc, setListingDesc] = useState('');
-  const [listingPrice, setListingPrice] = useState('29');
+  const [listingPrice, setListingPrice] = useState('');
   const [listingTags, setListingTags] = useState('');
-  const [category, setCategory] = useState('digital-art');
+  const [category, setCategory] = useState<string>('digital-art');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -61,12 +62,27 @@ export function MarketplaceActionPanel() {
   const err = (text: string) => setFeedback({ kind: 'err', text });
   const ready = listingTitle.trim().length > 0;
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actScore() {
     if (!ready) { err('Listing title required.'); return; }
     setBusy('score'); setFeedback(null);
     try {
       const r = await callMacro<ScoreResult>('listingScore', { title: listingTitle.trim(), description: listingDesc, price: parseFloat(listingPrice), tags: listingTags.split(',').map(t => t.trim()).filter(Boolean), category });
-      if (r.ok && r.result) { setScoreResult(r.result); ok(`Score ${r.result.score} (${r.result.band}).`); }
+      if (r.ok && r.result) { setScoreResult(r.result); pipe.publish('marketplace.score', r.result, { label: `score ${r.result.score}` }); ok(`Score ${r.result.score} (${r.result.band}).`); }
       else err(r.error ?? 'score failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -76,7 +92,7 @@ export function MarketplaceActionPanel() {
     setBusy('price'); setFeedback(null);
     try {
       const r = await callMacro<PriceResult>('priceOptimize', { title: listingTitle.trim(), category, currentPrice: parseFloat(listingPrice) });
-      if (r.ok && r.result) { setPriceResult(r.result); ok(`Suggested $${r.result.suggestedPrice}.`); }
+      if (r.ok && r.result) { setPriceResult(r.result); pipe.publish('marketplace.price', r.result, { label: `$${r.result.suggestedPrice}` }); ok(`Suggested $${r.result.suggestedPrice}.`); }
       else err(r.error ?? 'price failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -85,7 +101,7 @@ export function MarketplaceActionPanel() {
     setBusy('metrics'); setFeedback(null);
     try {
       const r = await callMacro<MetricsResult>('sellerMetrics', {});
-      if (r.ok && r.result) { setMetricsResult(r.result); ok(`${r.result.sales} sales · ${r.result.conversionPct}% conv.`); }
+      if (r.ok && r.result) { setMetricsResult(r.result); pipe.publish('marketplace.metrics', r.result, { label: `${r.result.sales} sales` }); ok(`${r.result.sales} sales · ${r.result.conversionPct}% conv.`); }
       else err(r.error ?? 'metrics failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -106,7 +122,7 @@ export function MarketplaceActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Listing DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('marketplace.mintedDtuId', id, { label: `listing ${id.slice(0, 8)}` }); ok(`Listing DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -122,9 +138,12 @@ export function MarketplaceActionPanel() {
       mintedDtuId ? `\n[Listing DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -132,21 +151,24 @@ export function MarketplaceActionPanel() {
     if (!ready) { err('Listing title required.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `For sale — ${listingTitle.trim()}`,
-          tags: ['marketplace', 'listing', 'public', 'for-sale', category],
-          source: 'marketplace:listing:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, listing: { title: listingTitle, description: listingDesc, price: parseFloat(listingPrice), category, tags: listingTags.split(',').map(t => t.trim()).filter(Boolean) } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `For sale — ${listingTitle.trim()}`,
+            tags: ['marketplace', 'listing', 'public', 'for-sale', category],
+            source: 'marketplace:listing:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, listing: { title: listingTitle, description: listingDesc, price: parseFloat(listingPrice), category, tags: listingTags.split(',').map(t => t.trim()).filter(Boolean) } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Listing live ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('marketplace.publishedDtuId', id, { label: `live ${id.slice(0, 8)}` }); ok(`Listing live ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -197,6 +219,11 @@ export function MarketplaceActionPanel() {
         </select>
         <input type="text" value={listingTags} onChange={(e) => setListingTags(e.target.value)} className="md:col-span-3 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Tags (comma-separated)" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div>

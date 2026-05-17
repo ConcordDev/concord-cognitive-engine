@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -69,6 +70,21 @@ export function ExperimentActionPanel() {
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   const sampleList = samples.split('\n').map(s => s.trim()).filter(Boolean);
   const instrumentList = instruments.split('\n').map(s => s.trim()).filter(Boolean);
   const ready = name.trim().length > 0;
@@ -78,7 +94,7 @@ export function ExperimentActionPanel() {
     setBusy('calibration'); setFeedback(null);
     try {
       const r = await callMacro<MacroResult>('calibrationCheck', { instruments: instrumentList.map(name => ({ name })) });
-      if (r.ok && r.result) { setCalibrationResult(r.result); ok('Calibration checked.'); }
+      if (r.ok && r.result) { setCalibrationResult(r.result); pipe.publish('science.calibration', r.result, { label: r.result.status ?? 'calibration' }); ok('Calibration checked.'); }
       else err(r.error ?? 'calibration check failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -89,7 +105,7 @@ export function ExperimentActionPanel() {
     setBusy('protocol'); setFeedback(null);
     try {
       const r = await callMacro<MacroResult>('validateProtocol', { protocol: protocol.trim(), steps: protocol.split('\n').filter(s => s.trim()) });
-      if (r.ok && r.result) { setProtocolResult(r.result); ok('Protocol validated.'); }
+      if (r.ok && r.result) { setProtocolResult(r.result); pipe.publish('science.protocol', r.result, { label: r.result.status ?? 'protocol' }); ok('Protocol validated.'); }
       else err(r.error ?? 'protocol validate failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -100,7 +116,7 @@ export function ExperimentActionPanel() {
     setBusy('quality'); setFeedback(null);
     try {
       const r = await callMacro<MacroResult>('dataQualityReport', { samples: sampleList.map(id => ({ id })) });
-      if (r.ok && r.result) { setQualityResult(r.result); ok('Quality report ready.'); }
+      if (r.ok && r.result) { setQualityResult(r.result); pipe.publish('science.quality', r.result, { label: r.result.status ?? 'quality' }); ok('Quality report ready.'); }
       else err(r.error ?? 'quality report failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -111,7 +127,7 @@ export function ExperimentActionPanel() {
     setBusy('custody'); setFeedback(null);
     try {
       const r = await callMacro<MacroResult>('chainOfCustody', { samples: sampleList.map(id => ({ id })) });
-      if (r.ok && r.result) { setCustodyResult(r.result); ok('Chain of custody ready.'); }
+      if (r.ok && r.result) { setCustodyResult(r.result); pipe.publish('science.custody', r.result, { label: r.result.status ?? 'custody' }); ok('Chain of custody ready.'); }
       else err(r.error ?? 'chain of custody failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -143,7 +159,7 @@ export function ExperimentActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintDtuId(id); ok(`Experiment DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintDtuId(id); pipe.publish('science.mintedDtuId', id, { label: `experiment ${id.slice(0, 8)}` }); ok(`Experiment DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -162,9 +178,12 @@ export function ExperimentActionPanel() {
       mintDtuId ? `\n[Experiment DTU ${mintDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: dmRecipient.trim(), content: parts });
-      if (r.data?.ok !== false) { ok(`Sent to ${dmRecipient.trim()}.`); setDmRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: dmRecipient.trim(), content: parts });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setDmRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -173,31 +192,34 @@ export function ExperimentActionPanel() {
     if (!ready) { err('Enter an experiment name.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Open protocol — ${name.trim()}`,
-          tags: ['science', 'protocol', 'public', 'open-science'],
-          source: 'science:protocol:publish',
-          meta: {
-            visibility: 'public',
-            consent: { allowCitations: true },
-            protocol: {
-              name: name.trim(),
-              steps: protocol.split('\n').filter(s => s.trim()),
-              sampleTypes: sampleList,
-              instruments: instrumentList,
-              validation: protocolResult,
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Open protocol — ${name.trim()}`,
+            tags: ['science', 'protocol', 'public', 'open-science'],
+            source: 'science:protocol:publish',
+            meta: {
+              visibility: 'public',
+              consent: { allowCitations: true },
+              protocol: {
+                name: name.trim(),
+                steps: protocol.split('\n').filter(s => s.trim()),
+                sampleTypes: sampleList,
+                instruments: instrumentList,
+                validation: protocolResult,
+              },
             },
           },
-        },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Protocol published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('science.publishedDtuId', id, { label: `protocol ${id.slice(0, 8)}` }); ok(`Protocol published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -276,6 +298,11 @@ export function ExperimentActionPanel() {
             <input type="text" value={dmRecipient} onChange={(e) => setDmRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40" placeholder="lab partner user id" />
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

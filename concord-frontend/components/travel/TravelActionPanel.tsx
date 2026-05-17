@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,12 +43,12 @@ interface VisaResult { required?: boolean; type?: string; daysValid?: number; no
 
 export function TravelActionPanel() {
   const [destination, setDestination] = useState('');
-  const [originTz, setOriginTz] = useState('America/Los_Angeles');
-  const [destTz, setDestTz] = useState('Europe/Paris');
-  const [tripDays, setTripDays] = useState('7');
-  const [dailyBudget, setDailyBudget] = useState('150');
+  const [originTz, setOriginTz] = useState('');
+  const [destTz, setDestTz] = useState('');
+  const [tripDays, setTripDays] = useState('');
+  const [dailyBudget, setDailyBudget] = useState('');
   const [tripStyle, setTripStyle] = useState<'beach' | 'business' | 'adventure' | 'city' | 'cold-weather'>('city');
-  const [passportCountry, setPassportCountry] = useState('US');
+  const [passportCountry, setPassportCountry] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -63,25 +64,40 @@ export function TravelActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actBudget() {
     setBusy('budget'); setFeedback(null);
-    try { const r = await callMacro<BudgetResult>('tripBudget', { destination: destination.trim(), days: parseInt(tripDays, 10), dailyBudget: parseFloat(dailyBudget) }); if (r.ok && r.result) { setBudgetResult(r.result); ok(`Total: $${r.result.total ?? 0}.`); } else err(r.error ?? 'budget failed'); }
+    try { const r = await callMacro<BudgetResult>('tripBudget', { destination: destination.trim(), days: parseInt(tripDays, 10), dailyBudget: parseFloat(dailyBudget) }); if (r.ok && r.result) { setBudgetResult(r.result); pipe.publish('travel.budget', r.result, { label: `$${r.result.total ?? 0}` }); ok(`Total: $${r.result.total ?? 0}.`); } else err(r.error ?? 'budget failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPacking() {
     setBusy('packing'); setFeedback(null);
-    try { const r = await callMacro<PackingResult>('packingList', { destination: destination.trim(), days: parseInt(tripDays, 10), tripStyle }); if (r.ok && r.result) { setPackingResult(r.result); ok(`${r.result.items?.length ?? 0} items.`); } else err(r.error ?? 'packing failed'); }
+    try { const r = await callMacro<PackingResult>('packingList', { destination: destination.trim(), days: parseInt(tripDays, 10), tripStyle }); if (r.ok && r.result) { setPackingResult(r.result); pipe.publish('travel.packing', r.result, { label: `${r.result.items?.length ?? 0} items` }); ok(`${r.result.items?.length ?? 0} items.`); } else err(r.error ?? 'packing failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actJetlag() {
     setBusy('jetlag'); setFeedback(null);
-    try { const r = await callMacro<JetlagResult>('jetlagCalc', { originTimezone: originTz, destinationTimezone: destTz }); if (r.ok && r.result) { setJetlagResult(r.result); ok(`${r.result.hoursOffset}h offset.`); } else err(r.error ?? 'jetlag failed'); }
+    try { const r = await callMacro<JetlagResult>('jetlagCalc', { originTimezone: originTz, destinationTimezone: destTz }); if (r.ok && r.result) { setJetlagResult(r.result); pipe.publish('travel.jetlag', r.result, { label: `${r.result.hoursOffset}h offset` }); ok(`${r.result.hoursOffset}h offset.`); } else err(r.error ?? 'jetlag failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actVisa() {
     if (!destination.trim()) { err('Destination required.'); return; }
     setBusy('visa'); setFeedback(null);
-    try { const r = await callMacro<VisaResult>('visaCheck', { destination: destination.trim(), passportCountry, days: parseInt(tripDays, 10) }); if (r.ok && r.result) { setVisaResult(r.result); ok(r.result.required ? `${r.result.type} required` : 'No visa needed.'); } else err(r.error ?? 'visa failed'); }
+    try { const r = await callMacro<VisaResult>('visaCheck', { destination: destination.trim(), passportCountry, days: parseInt(tripDays, 10) }); if (r.ok && r.result) { setVisaResult(r.result); pipe.publish('travel.visa', r.result, { label: r.result.required ? r.result.type ?? 'visa' : 'no visa' }); ok(r.result.required ? `${r.result.type} required` : 'No visa needed.'); } else err(r.error ?? 'visa failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -89,24 +105,34 @@ export function TravelActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Trip — ${destination.trim() || 'untitled'}`, tags: ['travel', 'trip', tripStyle, destination.trim().toLowerCase()], source: 'travel:trip:mint', meta: { visibility: 'private', consent: { allowCitations: false }, trip: { destination, days: parseInt(tripDays, 10), style: tripStyle, budget: budgetResult, packing: packingResult, jetlag: jetlagResult, visa: visaResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Trip DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('travel.mintedDtuId', id, { label: `trip ${id.slice(0, 8)}` }); ok(`Trip DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`✈ Trip: ${destination || 'untitled'} · ${tripDays}d`, '', budgetResult ? `Budget: $${budgetResult.total} ($${budgetResult.dailyAverage}/d)` : '', packingResult ? `Packing: ${packingResult.items?.length} items` : '', jetlagResult ? `Jet lag: ${jetlagResult.hoursOffset}h · ${jetlagResult.daysToAdjust}d adjust` : '', visaResult ? `Visa: ${visaResult.required ? visaResult.type : 'not required'}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Travel guide — ${destination.trim() || 'destination'}`, tags: ['travel', 'guide', 'public', tripStyle], source: 'travel:guide:publish', meta: { visibility: 'public', consent: { allowCitations: true }, guide: { destination, style: tripStyle, packingTips: packingResult?.items, budget: budgetResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Guide published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Travel guide — ${destination.trim() || 'destination'}`, tags: ['travel', 'guide', 'public', tripStyle], source: 'travel:guide:publish', meta: { visibility: 'public', consent: { allowCitations: true }, guide: { destination, style: tripStyle, packingTips: packingResult?.items, budget: budgetResult } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('travel.publishedDtuId', id, { label: `guide ${id.slice(0, 8)}` }); ok(`Guide published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -150,6 +176,11 @@ export function TravelActionPanel() {
         <input type="text" value={destTz} onChange={(e) => setDestTz(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Dest TZ" />
         <input type="text" value={passportCountry} onChange={(e) => setPassportCountry(e.target.value.toUpperCase())} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono uppercase" placeholder="Passport (US)" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

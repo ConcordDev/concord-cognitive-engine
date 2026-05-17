@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,9 +43,9 @@ interface SetlistResult { tracks?: Array<{ title: string; bpm: number; key: stri
 
 export function MusicActionPanel() {
   const [trackTitle, setTrackTitle] = useState('');
-  const [audioMeta, setAudioMeta] = useState('{ "samples": [0.1,0.3,-0.2,0.5,-0.1], "sampleRate": 44100, "durationSec": 180 }');
-  const [chordsInput, setChordsInput] = useState('C G Am F');
-  const [setlistInput, setSetlistInput] = useState('Opener 120 C\nGroove 128 Am\nPeak 140 G\nWind down 100 F');
+  const [audioMeta, setAudioMeta] = useState('');
+  const [chordsInput, setChordsInput] = useState('');
+  const [setlistInput, setSetlistInput] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -60,28 +61,45 @@ export function MusicActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actBpm() {
+    if (!audioMeta.trim()) { err('Paste audio meta JSON.'); return; }
     setBusy('bpm'); setFeedback(null);
-    try { const meta = JSON.parse(audioMeta); const r = await callMacro<BpmResult>('bpmAnalyze', meta); if (r.ok && r.result) { setBpmResult(r.result); ok(`BPM ${r.result.bpm}.`); } else err(r.error ?? 'bpm failed'); }
+    try { const meta = JSON.parse(audioMeta); const r = await callMacro<BpmResult>('bpmAnalyze', meta); if (r.ok && r.result) { setBpmResult(r.result); pipe.publish('music.bpm', r.result, { label: `${r.result.bpm} BPM` }); ok(`BPM ${r.result.bpm}.`); } else err(r.error ?? 'bpm failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actKey() {
+    if (!audioMeta.trim()) { err('Paste audio meta JSON.'); return; }
     setBusy('key'); setFeedback(null);
-    try { const meta = JSON.parse(audioMeta); const r = await callMacro<KeyResult>('keyDetect', meta); if (r.ok && r.result) { setKeyResult(r.result); ok(`Key: ${r.result.key} ${r.result.scale}.`); } else err(r.error ?? 'key failed'); }
+    try { const meta = JSON.parse(audioMeta); const r = await callMacro<KeyResult>('keyDetect', meta); if (r.ok && r.result) { setKeyResult(r.result); pipe.publish('music.key', r.result, { label: `${r.result.key} ${r.result.scale}` }); ok(`Key: ${r.result.key} ${r.result.scale}.`); } else err(r.error ?? 'key failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actChords() {
     const chords = chordsInput.split(/\s+/).filter(Boolean);
     if (!chords.length) { err('Add chords.'); return; }
     setBusy('chords'); setFeedback(null);
-    try { const r = await callMacro<ChordResult>('chordProgress', { chords }); if (r.ok && r.result) { setChordResult(r.result); ok('Progression analyzed.'); } else err(r.error ?? 'chord failed'); }
+    try { const r = await callMacro<ChordResult>('chordProgress', { chords }); if (r.ok && r.result) { setChordResult(r.result); pipe.publish('music.chords', r.result, { label: r.result.commonPattern ?? 'progression' }); ok('Progression analyzed.'); } else err(r.error ?? 'chord failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSetlist() {
     const tracks = setlistInput.split('\n').map(l => { const m = l.trim().match(/^(.+?)\s+(\d+)\s+(\S+)$/); return m ? { title: m[1], bpm: parseInt(m[2], 10), key: m[3] } : null; }).filter(Boolean);
     if (!tracks.length) { err('Add setlist (title bpm key per line).'); return; }
     setBusy('setlist'); setFeedback(null);
-    try { const r = await callMacro<SetlistResult>('setlistPlan', { tracks }); if (r.ok && r.result) { setSetlistResult(r.result); ok(`Setlist: ${r.result.totalMinutes}min.`); } else err(r.error ?? 'setlist failed'); }
+    try { const r = await callMacro<SetlistResult>('setlistPlan', { tracks }); if (r.ok && r.result) { setSetlistResult(r.result); pipe.publish('music.setlist', r.result, { label: `${r.result.totalMinutes}min` }); ok(`Setlist: ${r.result.totalMinutes}min.`); } else err(r.error ?? 'setlist failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -89,24 +107,34 @@ export function MusicActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Music — ${trackTitle.trim() || 'session'}`, tags: ['music', bpmResult ? `bpm:${bpmResult.bpm}` : '', keyResult?.key ? `key:${keyResult.key}` : ''].filter(Boolean), source: 'music:session:mint', meta: { visibility: 'private', consent: { allowCitations: false }, music: { title: trackTitle, bpm: bpmResult, key: keyResult, chords: chordResult, setlist: setlistResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Music DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('music.mintedDtuId', id, { label: `session ${id.slice(0, 8)}` }); ok(`Music DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🎵 Music brief: ${trackTitle || 'session'}`, '', bpmResult ? `BPM ${bpmResult.bpm} (${bpmResult.tempoBand})` : '', keyResult ? `Key ${keyResult.key} ${keyResult.scale}` : '', chordResult ? `Progression: ${chordResult.progression?.join(' → ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok(`Sent.`); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public track — ${trackTitle.trim() || 'untitled'}`, tags: ['music', 'public', bpmResult ? `bpm:${bpmResult.bpm}` : ''].filter(Boolean), source: 'music:track:publish', meta: { visibility: 'public', consent: { allowCitations: true }, track: { title: trackTitle, bpm: bpmResult?.bpm, key: keyResult?.key, chords: chordResult?.progression, setlist: setlistResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public track — ${trackTitle.trim() || 'untitled'}`, tags: ['music', 'public', bpmResult ? `bpm:${bpmResult.bpm}` : ''].filter(Boolean), source: 'music:track:publish', meta: { visibility: 'public', consent: { allowCitations: true }, track: { title: trackTitle, bpm: bpmResult?.bpm, key: keyResult?.key, chords: chordResult?.progression, setlist: setlistResult } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('music.publishedDtuId', id, { label: `track ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -142,6 +170,11 @@ export function MusicActionPanel() {
         <input type="text" value={trackTitle} onChange={(e) => setTrackTitle(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Track title" />
         <input type="text" value={chordsInput} onChange={(e) => setChordsInput(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Chords (space-separated)" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

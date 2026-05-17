@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -45,8 +46,8 @@ export function ObserveActionPanel() {
   const [incTitle, setIncTitle] = useState('');
   const [incSev, setIncSev] = useState<'sev1' | 'sev2' | 'sev3' | 'sev4'>('sev3');
   const [incService, setIncService] = useState('');
-  const [sloTarget, setSloTarget] = useState('99.9');
-  const [sloActual, setSloActual] = useState('99.92');
+  const [sloTarget, setSloTarget] = useState('');
+  const [sloActual, setSloActual] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -62,6 +63,21 @@ export function ObserveActionPanel() {
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
+
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
 
   function parseLogs() {
     return serviceLogs.split('\n').map((l) => {
@@ -83,7 +99,7 @@ export function ObserveActionPanel() {
     setBusy('log'); setFeedback(null);
     try {
       const r = await callMacro<ServiceLogResult>('serviceLog', { entries, windowMinutes: 60 });
-      if (r.ok && r.result) { setLogResult(r.result); ok(`${r.result.count} lines, ${r.result.errorRate}% errors.`); }
+      if (r.ok && r.result) { setLogResult(r.result); pipe.publish('observe.logs', r.result, { label: `${r.result.count} lines · ${r.result.errorRate}% err` }); ok(`${r.result.count} lines, ${r.result.errorRate}% errors.`); }
       else err(r.error ?? r.reason ?? 'log failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -95,7 +111,7 @@ export function ObserveActionPanel() {
     setBusy('alert'); setFeedback(null);
     try {
       const r = await callMacro<AlertSummaryResult>('alertSummary', { alerts });
-      if (r.ok && r.result) { setAlertResult(r.result); ok(`${r.result.firingNow} firing, ${r.result.resolved} resolved.`); }
+      if (r.ok && r.result) { setAlertResult(r.result); pipe.publish('observe.alerts', r.result, { label: `${r.result.firingNow} firing` }); ok(`${r.result.firingNow} firing, ${r.result.resolved} resolved.`); }
       else err(r.error ?? 'alert summary failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -106,7 +122,7 @@ export function ObserveActionPanel() {
     setBusy('incident'); setFeedback(null);
     try {
       const r = await callMacro<IncidentResult>('incidentTrack', { title: incTitle.trim(), severity: incSev, affectedService: incService.trim() || 'unknown' });
-      if (r.ok && r.result) { setIncidentResult(r.result); ok(`Incident ${r.result.incident?.id}.`); }
+      if (r.ok && r.result) { setIncidentResult(r.result); pipe.publish('observe.incident', r.result, { label: r.result.incident?.id ?? 'incident' }); ok(`Incident ${r.result.incident?.id}.`); }
       else err(r.error ?? 'incident open failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -116,7 +132,7 @@ export function ObserveActionPanel() {
     setBusy('slo'); setFeedback(null);
     try {
       const r = await callMacro<SloResult>('sloCheck', { targetPct: parseFloat(sloTarget), actualPct: parseFloat(sloActual), windowDays: 30 });
-      if (r.ok && r.result) { setSloResult(r.result); ok(`SLO ${r.result.status}.`); }
+      if (r.ok && r.result) { setSloResult(r.result); pipe.publish('observe.slo', r.result, { label: `SLO ${r.result.status}` }); ok(`SLO ${r.result.status}.`); }
       else err(r.reason ?? r.error ?? 'SLO check failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -140,7 +156,7 @@ export function ObserveActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Snapshot DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('observe.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`Snapshot DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -159,9 +175,12 @@ export function ObserveActionPanel() {
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -169,21 +188,24 @@ export function ObserveActionPanel() {
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Public SLO report — ${new Date().toISOString().slice(0, 10)}`,
-          tags: ['observe', 'slo', 'public', sloResult?.status ?? 'unknown'],
-          source: 'observe:slo:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, slo: sloResult },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Public SLO report — ${new Date().toISOString().slice(0, 10)}`,
+            tags: ['observe', 'slo', 'public', sloResult?.status ?? 'unknown'],
+            source: 'observe:slo:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, slo: sloResult },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`SLO report published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('observe.publishedDtuId', id, { label: `SLO ${id.slice(0, 8)}` }); ok(`SLO report published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -267,6 +289,11 @@ high,db,2026-05-16T10:05Z" />
             <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="on-call user id" />
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

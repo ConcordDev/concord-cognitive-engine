@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import ContractAnalyzer from '@/components/legal/ContractAnalyzer';
 import { LegalActionPanel } from '@/components/legal/LegalActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import CaseTracker from '@/components/legal/CaseTracker';
 import LegalQA from '@/components/legal/LegalQA';
 import { LegalCaseSearch } from '@/components/legal/LegalCaseSearch';
@@ -3363,9 +3364,11 @@ export default function LegalLensPage() {
       </div>
 
       {/* Westlaw + CourtListener-shape legal workbench: deadlines / renewals / conflicts / audit + actions */}
-      <section className="mt-6">
-        <LegalActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <LegalActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     <LensAgentFab
       lensId="legal"

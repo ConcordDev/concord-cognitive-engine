@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -44,10 +45,10 @@ export function WhiteboardActionPanel() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [boardName, setBoardName] = useState('');
-  const [boardSnapshot, setBoardSnapshot] = useState('{ "shapes": [], "viewBox": "0 0 800 600" }');
+  const [boardSnapshot, setBoardSnapshot] = useState('');
   const [selectedBoardId, setSelectedBoardId] = useState('');
-  const [voteQ, setVoteQ] = useState('Which approach should we ship?');
-  const [voteOptions, setVoteOptions] = useState('A: ship now\nB: ship after polish\nC: redesign');
+  const [voteQ, setVoteQ] = useState('');
+  const [voteOptions, setVoteOptions] = useState('');
   const [myVote, setMyVote] = useState('');
   const [shareWith, setShareWith] = useState('');
   const [recipient, setRecipient] = useState('');
@@ -64,6 +65,21 @@ export function WhiteboardActionPanel() {
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
+
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
 
   useEffect(() => {
     (async () => {
@@ -101,6 +117,7 @@ export function WhiteboardActionPanel() {
       const r = await callMacro<{ boardId?: string }>('board-save', { name: boardName.trim(), snapshot: snapshotData });
       if (r.ok && r.result?.boardId) {
         setSavedBoardId(r.result.boardId);
+        pipe.publish('whiteboard.boardId', r.result.boardId, { label: `board ${r.result.boardId.slice(0, 8)}` });
         ok(`Board saved ${r.result.boardId.slice(0, 8)}…`);
         // Refresh list
         const b = await callMacro<{ boards: Board[] }>('board-list', {});
@@ -115,7 +132,7 @@ export function WhiteboardActionPanel() {
     try {
       const boardId = selectedBoardId || savedBoardId || 'session';
       const r = await callMacro<{ ok?: boolean; voteId?: string }>('vote-cast', { boardId, question: voteQ.trim(), choice: myVote.trim() });
-      if (r.ok) ok(`Vote cast for "${myVote.trim()}".`);
+      if (r.ok) { pipe.publish('whiteboard.vote', { question: voteQ.trim(), choice: myVote.trim() }, { label: myVote.trim() }); ok(`Vote cast for "${myVote.trim()}".`); }
       else err(r.error ?? 'vote failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -125,7 +142,7 @@ export function WhiteboardActionPanel() {
     try {
       const boardId = selectedBoardId || savedBoardId || 'session';
       const r = await callMacro<TallyResult>('vote-tally', { boardId, question: voteQ.trim() });
-      if (r.ok && r.result) { setTallyResult(r.result); ok(`${r.result.totalVotes ?? 0} votes; winner: ${r.result.winner ?? '—'}.`); }
+      if (r.ok && r.result) { setTallyResult(r.result); pipe.publish('whiteboard.tally', r.result, { label: `winner ${r.result.winner ?? '—'}` }); ok(`${r.result.totalVotes ?? 0} votes; winner: ${r.result.winner ?? '—'}.`); }
       else err(r.error ?? 'tally failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -137,7 +154,7 @@ export function WhiteboardActionPanel() {
     try {
       const users = shareWith.split(',').map(s => s.trim()).filter(Boolean);
       const r = await callMacro<{ shareUrl?: string; sharedWith?: number }>('share-board', { boardId: savedBoardId, userIds: users });
-      if (r.ok && r.result) { setShareResult(r.result); ok(`Shared with ${r.result.sharedWith ?? users.length}.`); }
+      if (r.ok && r.result) { setShareResult(r.result); pipe.publish('whiteboard.share', r.result, { label: `shared with ${r.result.sharedWith ?? users.length}` }); ok(`Shared with ${r.result.sharedWith ?? users.length}.`); }
       else err(r.error ?? 'share failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -156,7 +173,7 @@ export function WhiteboardActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Board DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('whiteboard.mintedDtuId', id, { label: `board ${id.slice(0, 8)}` }); ok(`Board DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -171,30 +188,36 @@ export function WhiteboardActionPanel() {
       mintedDtuId ? `\n[Board DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Public whiteboard — ${boardName.trim() || 'session'}`,
-          tags: ['whiteboard', 'public'],
-          source: 'whiteboard:board:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, board: { name: boardName, snapshot: boardSnapshot.slice(0, 8000), tally: tallyResult } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Public whiteboard — ${boardName.trim() || 'session'}`,
+            tags: ['whiteboard', 'public'],
+            source: 'whiteboard:board:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, board: { name: boardName, snapshot: boardSnapshot.slice(0, 8000), tally: tallyResult } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Board published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('whiteboard.publishedDtuId', id, { label: `board ${id.slice(0, 8)}` }); ok(`Board published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -247,6 +270,11 @@ export function WhiteboardActionPanel() {
         </select>
         <input type="text" value={shareWith} onChange={(e) => setShareWith(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Share with (comma-separated user ids)" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div>

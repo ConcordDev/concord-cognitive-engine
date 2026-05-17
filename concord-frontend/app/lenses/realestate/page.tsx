@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { NeighborhoodStats } from '@/components/realestate/NeighborhoodStats';
 import { RealEstateActionPanel } from '@/components/realestate/RealEstateActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { useState, useMemo, useCallback, useRef} from 'react';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -3357,9 +3358,11 @@ export default function RealEstateLensPage() {
       </section>
 
       {/* Zillow + Redfin + Stessa-shape property workbench: cap / mortgage / afford / rent-vs-buy + actions */}
-      <section className="mt-6 mx-4">
-        <RealEstateActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 mx-4">
+          <RealEstateActionPanel />
+        </section>
+      </PipingProvider>
     </LensShell>
   );
 }

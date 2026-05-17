@@ -11,6 +11,7 @@ import { BarChart3, Filter, Users, TrendingUp, Sparkles, Send, Globe, Wand2, Loa
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -35,38 +36,11 @@ interface AnomalyResult { mean: number; stdDev: number; totalPoints: number; ano
 interface ForecastPt { periodsAhead: number; predicted: number }
 interface TrendResult { trend: string; slope: number; dataPoints: number; lastValue: number; forecast: ForecastPt[]; confidence: string }
 
-const DEMO_FUNNEL = JSON.stringify({
-  stages: [
-    { name: 'Visited', count: 10000 },
-    { name: 'Signed up', count: 2400 },
-    { name: 'Activated', count: 1200 },
-    { name: 'Subscribed', count: 380 },
-    { name: 'Retained 30d', count: 290 },
-  ],
-}, null, 2);
-
-const DEMO_COHORTS = JSON.stringify({
-  cohorts: [
-    { name: '2026-01', initialUsers: 1200, retention: [1200, 720, 540, 420, 360, 320] },
-    { name: '2026-02', initialUsers: 1450, retention: [1450, 945, 765, 590, 510, 460] },
-    { name: '2026-03', initialUsers: 1620, retention: [1620, 1085, 880, 700, 620] },
-    { name: '2026-04', initialUsers: 1380, retention: [1380, 970, 815, 670] },
-  ],
-}, null, 2);
-
-const DEMO_TIMESERIES = JSON.stringify({
-  dataPoints: [
-    { date: '2026-04-01', value: 1240 }, { date: '2026-04-02', value: 1310 }, { date: '2026-04-03', value: 1280 },
-    { date: '2026-04-04', value: 1350 }, { date: '2026-04-05', value: 1290 }, { date: '2026-04-06', value: 1420 },
-    { date: '2026-04-07', value: 1380 }, { date: '2026-04-08', value: 2890 }, { date: '2026-04-09', value: 1410 },
-    { date: '2026-04-10', value: 1450 }, { date: '2026-04-11', value: 1490 }, { date: '2026-04-12', value: 1530 },
-  ],
-}, null, 2);
-
+// No seed data — paste real funnel / cohort / time-series JSON.
 export function AnalyticsActionPanel() {
-  const [funnelText, setFunnelText] = useState(DEMO_FUNNEL);
-  const [cohortText, setCohortText] = useState(DEMO_COHORTS);
-  const [seriesText, setSeriesText] = useState(DEMO_TIMESERIES);
+  const [funnelText, setFunnelText] = useState('');
+  const [cohortText, setCohortText] = useState('');
+  const [seriesText, setSeriesText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -84,54 +58,86 @@ export function AnalyticsActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actFunnel() {
+    if (!funnelText.trim()) { err('Paste funnel JSON first.'); return; }
     const parsed = parseJSON<{ stages: unknown[] }>(funnelText); if (!parsed) { err('Invalid funnel JSON.'); return; }
     setBusy('funnel'); setFeedback(null);
-    try { const r = await callMacro<FunnelResult>('funnelAnalysis', { artifact: { data: parsed } }); if (r.ok && r.result) { setFunnelResult(r.result); ok(`${r.result.overallConversion}% top-to-bottom.`); } else err(r.error ?? 'funnel failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<FunnelResult>('funnelAnalysis', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setFunnelResult(r.result); pipe.publish('analytics.funnel', r.result, { label: `Funnel ${r.result.overallConversion}%` }); ok(`${r.result.overallConversion}% top-to-bottom.`); } else err(r.error ?? 'funnel failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCohort() {
+    if (!cohortText.trim()) { err('Paste cohorts JSON first.'); return; }
     const parsed = parseJSON<{ cohorts: unknown[] }>(cohortText); if (!parsed) { err('Invalid cohorts JSON.'); return; }
     setBusy('cohort'); setFeedback(null);
-    try { const r = await callMacro<CohortResult>('cohortAnalysis', { artifact: { data: parsed } }); if (r.ok && r.result) { setCohortResult(r.result); ok(`Best: ${r.result.bestCohort}.`); } else err(r.error ?? 'cohort failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<CohortResult>('cohortAnalysis', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setCohortResult(r.result); pipe.publish('analytics.cohort', r.result, { label: `Cohort best: ${r.result.bestCohort}` }); ok(`Best: ${r.result.bestCohort}.`); } else err(r.error ?? 'cohort failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAnom() {
+    if (!seriesText.trim()) { err('Paste series JSON first.'); return; }
     const parsed = parseJSON<{ dataPoints: unknown[] }>(seriesText); if (!parsed) { err('Invalid series JSON.'); return; }
     setBusy('anom'); setFeedback(null);
-    try { const r = await callMacro<AnomalyResult>('detectAnomalies', { artifact: { data: parsed } }); if (r.ok && r.result) { setAnomResult(r.result); ok(`${r.result.anomaliesFound} anomalies (μ ${r.result.mean}).`); } else err(r.error ?? 'anom failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<AnomalyResult>('detectAnomalies', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setAnomResult(r.result); pipe.publish('analytics.anom', r.result, { label: `${r.result.anomaliesFound} anomalies` }); ok(`${r.result.anomaliesFound} anomalies (μ ${r.result.mean}).`); } else err(r.error ?? 'anom failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actTrend() {
+    if (!seriesText.trim()) { err('Paste series JSON first.'); return; }
     const parsed = parseJSON<{ dataPoints: unknown[] }>(seriesText); if (!parsed) { err('Invalid series JSON.'); return; }
     setBusy('trend'); setFeedback(null);
-    try { const r = await callMacro<TrendResult>('trendForecast', { artifact: { data: parsed } }); if (r.ok && r.result) { setTrendResult(r.result); ok(`${r.result.trend} · slope ${r.result.slope}.`); } else err(r.error ?? 'trend failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<TrendResult>('trendForecast', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setTrendResult(r.result); pipe.publish('analytics.trend', r.result, { label: `Trend ${r.result.trend}` }); ok(`${r.result.trend} · slope ${r.result.slope}.`); } else err(r.error ?? 'trend failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Analytics report`, tags: ['analytics', 'report', trendResult?.trend].filter((t): t is string => !!t), source: 'analytics:report:mint', meta: { visibility: 'private', consent: { allowCitations: false }, an: { funnel: funnelResult, cohort: cohortResult, anom: anomResult, trend: trendResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Report DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('analytics.mintedDtuId', id, { label: `Report DTU ${id.slice(0, 8)}…` }); ok(`Report DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`📊 Analytics report`, '', funnelResult ? `Funnel: ${funnelResult.overallConversion}% top-to-bottom · worst drop: ${funnelResult.worstDropoff} (${funnelResult.worstDropoffRate}%)` : '', cohortResult ? `Cohorts: best ${cohortResult.bestCohort}` : '', anomResult ? `Anomalies: ${anomResult.anomaliesFound}/${anomResult.totalPoints} (μ ${anomResult.mean}, σ ${anomResult.stdDev})` : '', trendResult ? `Trend ${trendResult.trend} · next 5p: ${trendResult.forecast.find(f => f.periodsAhead === 5)?.predicted}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`📊 Analytics report`, '',
+      funnelResult ? `Funnel: ${funnelResult.overallConversion}% top-to-bottom · worst drop: ${funnelResult.worstDropoff} (${funnelResult.worstDropoffRate}%)` : '',
+      cohortResult ? `Cohorts: best ${cohortResult.bestCohort}` : '',
+      anomResult ? `Anomalies: ${anomResult.anomaliesFound}/${anomResult.totalPoints} (μ ${anomResult.mean}, σ ${anomResult.stdDev})` : '',
+      trendResult ? `Trend ${trendResult.trend} · next 5p: ${trendResult.forecast.find(f => f.periodsAhead === 5)?.predicted}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!funnelResult && !trendResult) { err('Run funnel or trend first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Analytics benchmark`, tags: ['analytics', 'benchmark', 'public'], source: 'analytics:bench:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, funnel: funnelResult, trend: trendResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Analytics benchmark`, tags: ['analytics', 'benchmark', 'public'], source: 'analytics:bench:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, funnel: funnelResult, trend: trendResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('analytics.publishedDtuId', id, { label: `Public benchmark ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -178,7 +184,11 @@ export function AnalyticsActionPanel() {
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Time series JSON</label>
           <textarea value={seriesText} onChange={(e) => setSeriesText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-3 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-3 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

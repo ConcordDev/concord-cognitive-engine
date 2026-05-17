@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,7 +43,7 @@ interface FreqResult { totalWords?: number; uniqueWords?: number; topWords?: Arr
 
 export function PoetryActionPanel() {
   const [poemTitle, setPoemTitle] = useState('');
-  const [poemText, setPoemText] = useState('Shall I compare thee to a summer\'s day?\nThou art more lovely and more temperate:\nRough winds do shake the darling buds of May,\nAnd summer\'s lease hath all too short a date.');
+  const [poemText, setPoemText] = useState('');
   const [formType, setFormType] = useState<'sonnet' | 'haiku' | 'limerick' | 'villanelle' | 'free-verse'>('sonnet');
   const [recipient, setRecipient] = useState('');
 
@@ -59,27 +60,42 @@ export function PoetryActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actMeter() {
     if (!poemText.trim()) { err('Add poem text.'); return; }
     setBusy('meter'); setFeedback(null);
-    try { const r = await callMacro<MeterResult>('meterAnalysis', { text: poemText }); if (r.ok && r.result) { setMeterResult(r.result); ok(`Avg ${r.result.avgSyllables} syll · ${r.result.possibleForm}.`); } else err(r.error ?? 'meter failed'); }
+    try { const r = await callMacro<MeterResult>('meterAnalysis', { text: poemText }); if (r.ok && r.result) { setMeterResult(r.result); pipe.publish('poetry.meter', r.result, { label: r.result.possibleForm ?? 'meter' }); ok(`Avg ${r.result.avgSyllables} syll · ${r.result.possibleForm}.`); } else err(r.error ?? 'meter failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRhyme() {
     if (!poemText.trim()) { err('Add poem text.'); return; }
     setBusy('rhyme'); setFeedback(null);
-    try { const r = await callMacro<RhymeResult>('rhymeScheme', { text: poemText }); if (r.ok && r.result) { setRhymeResult(r.result); ok(`Scheme: ${r.result.scheme}.`); } else err(r.error ?? 'rhyme failed'); }
+    try { const r = await callMacro<RhymeResult>('rhymeScheme', { text: poemText }); if (r.ok && r.result) { setRhymeResult(r.result); pipe.publish('poetry.rhyme', r.result, { label: r.result.scheme ?? 'scheme' }); ok(`Scheme: ${r.result.scheme}.`); } else err(r.error ?? 'rhyme failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actForm() {
     setBusy('form'); setFeedback(null);
-    try { const r = await callMacro<FormResult>('formGuide', { form: formType }); if (r.ok && r.result) { setFormResult(r.result); ok(`Form: ${r.result.form}.`); } else err(r.error ?? 'form failed'); }
+    try { const r = await callMacro<FormResult>('formGuide', { form: formType }); if (r.ok && r.result) { setFormResult(r.result); pipe.publish('poetry.form', r.result, { label: r.result.form ?? formType }); ok(`Form: ${r.result.form}.`); } else err(r.error ?? 'form failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFreq() {
     if (!poemText.trim()) { err('Add poem text.'); return; }
     setBusy('frequency'); setFeedback(null);
-    try { const r = await callMacro<FreqResult>('wordFrequency', { text: poemText }); if (r.ok && r.result) { setFreqResult(r.result); ok(`${r.result.uniqueWords} unique words · density ${r.result.lexicalDensity}%.`); } else err(r.error ?? 'freq failed'); }
+    try { const r = await callMacro<FreqResult>('wordFrequency', { text: poemText }); if (r.ok && r.result) { setFreqResult(r.result); pipe.publish('poetry.frequency', r.result, { label: `${r.result.uniqueWords} unique` }); ok(`${r.result.uniqueWords} unique words · density ${r.result.lexicalDensity}%.`); } else err(r.error ?? 'freq failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -87,25 +103,35 @@ export function PoetryActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Poem — ${poemTitle.trim() || 'untitled'}`, tags: ['poetry', meterResult?.possibleForm ?? 'unknown'], source: 'poetry:poem:mint', meta: { visibility: 'private', consent: { allowCitations: false }, poem: { title: poemTitle, text: poemText, meter: meterResult, rhyme: rhymeResult, form: formResult, frequency: freqResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Poem DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('poetry.mintedDtuId', id, { label: `poem ${id.slice(0, 8)}` }); ok(`Poem DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`📜 Poem: ${poemTitle || 'untitled'}`, '', poemText, '', meterResult ? `\nMeter: ${meterResult.possibleForm} · avg ${meterResult.avgSyllables} syll` : '', rhymeResult ? `Rhyme: ${rhymeResult.scheme} (${rhymeResult.form})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!poemText.trim()) { err('Add poem text.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Published poem — ${poemTitle.trim() || 'untitled'}`, tags: ['poetry', 'public', meterResult?.possibleForm ?? 'free-verse'], source: 'poetry:poem:publish', meta: { visibility: 'public', consent: { allowCitations: true }, poem: { title: poemTitle, text: poemText, form: meterResult?.possibleForm, scheme: rhymeResult?.scheme } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Poem published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Published poem — ${poemTitle.trim() || 'untitled'}`, tags: ['poetry', 'public', meterResult?.possibleForm ?? 'free-verse'], source: 'poetry:poem:publish', meta: { visibility: 'public', consent: { allowCitations: true }, poem: { title: poemTitle, text: poemText, form: meterResult?.possibleForm, scheme: rhymeResult?.scheme } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('poetry.publishedDtuId', id, { label: `poem ${id.slice(0, 8)}` }); ok(`Poem published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -149,6 +175,11 @@ export function PoetryActionPanel() {
       <div>
         <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Poem text</label>
         <textarea value={poemText} onChange={(e) => setPoemText(e.target.value)} rows={8} className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-y leading-relaxed italic" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

@@ -22,6 +22,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface SourceLike {
   idx: number; id: string; title: string;
@@ -59,6 +60,10 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actSave() {
     setBusy('save'); setFeedback(null);
     try {
@@ -83,7 +88,7 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setSavedDtuId(id); ok(`Saved DTU ${id.slice(0, 8)}…`); }
+      if (id) { setSavedDtuId(id); pipe.publish('expert.savedDtuId', id, { label: `Saved DTU ${id.slice(0, 8)}…` }); ok(`Saved DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -119,9 +124,12 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
       savedDtuId ? `\n[DTU ${savedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${recipient.trim()}.`); setRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok(`Sent to ${recipient.trim()}. 60s to recall.`); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -129,26 +137,25 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Cited answer — ${query.slice(0, 60)}${query.length > 60 ? '…' : ''}`,
-          tags: ['expert-mode', 'qa', 'cited', 'public'],
-          source: 'expert-mode:qa:publish',
-          lineage: sources.map(s => s.id),
-          meta: {
-            visibility: 'public',
-            consent: { allowCitations: true },
-            qa: { query, answer, sourceCount: sources.length, provider, model },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Cited answer — ${query.slice(0, 60)}${query.length > 60 ? '…' : ''}`,
+            tags: ['expert-mode', 'qa', 'cited', 'public'],
+            source: 'expert-mode:qa:publish',
+            lineage: sources.map(s => s.id),
+            meta: { visibility: 'public', consent: { allowCitations: true }, qa: { query, answer, sourceCount: sources.length, provider, model } },
           },
-        },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Answer published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('expert.publishedDtuId', id, { label: `Public answer ${id.slice(0, 8)}…` }); ok(`Answer published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -201,6 +208,10 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
       <div>
         <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">DM recipient (optional)</label>
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40" placeholder="colleague user id" />
+        <div className="flex items-center gap-2 flex-wrap mt-1">
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">

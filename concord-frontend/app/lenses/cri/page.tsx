@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { QualityDistribution } from '@/components/cri/QualityDistribution';
 import { CrisisActionPanel } from '@/components/cri/CrisisActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -743,9 +744,11 @@ export default function CRILensPage() {
       </section>
 
       {/* Crisis-response workbench: severity / timeline / impact + actions */}
-      <section className="mt-6">
-        <CrisisActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <CrisisActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,15 +43,15 @@ interface RentBuyResult { breakEvenYears?: number; recommendation?: string; netD
 
 export function RealEstateActionPanel() {
   const [address, setAddress] = useState('');
-  const [price, setPrice] = useState('500000');
-  const [rentAnnual, setRentAnnual] = useState('36000');
-  const [expensesAnnual, setExpensesAnnual] = useState('12000');
-  const [downPct, setDownPct] = useState('20');
-  const [rateApr, setRateApr] = useState('6.5');
-  const [termYears, setTermYears] = useState('30');
-  const [income, setIncome] = useState('120000');
-  const [debts, setDebts] = useState('500');
-  const [monthlyRent, setMonthlyRent] = useState('3000');
+  const [price, setPrice] = useState('');
+  const [rentAnnual, setRentAnnual] = useState('');
+  const [expensesAnnual, setExpensesAnnual] = useState('');
+  const [downPct, setDownPct] = useState('');
+  const [rateApr, setRateApr] = useState('');
+  const [termYears, setTermYears] = useState('');
+  const [income, setIncome] = useState('');
+  const [debts, setDebts] = useState('');
+  const [monthlyRent, setMonthlyRent] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -66,24 +67,39 @@ export function RealEstateActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actCap() {
     setBusy('cap'); setFeedback(null);
-    try { const r = await callMacro<CapResult>('capRate', { propertyValue: parseFloat(price), annualRent: parseFloat(rentAnnual), annualExpenses: parseFloat(expensesAnnual) }); if (r.ok && r.result) { setCapResult(r.result); ok(`Cap rate: ${r.result.capRatePct?.toFixed(2)}%.`); } else err(r.error ?? 'cap failed'); }
+    try { const r = await callMacro<CapResult>('capRate', { propertyValue: parseFloat(price), annualRent: parseFloat(rentAnnual), annualExpenses: parseFloat(expensesAnnual) }); if (r.ok && r.result) { setCapResult(r.result); pipe.publish('realestate.cap', r.result, { label: `${r.result.capRatePct?.toFixed(2)}%` }); ok(`Cap rate: ${r.result.capRatePct?.toFixed(2)}%.`); } else err(r.error ?? 'cap failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMortgage() {
     setBusy('mortgage'); setFeedback(null);
-    try { const r = await callMacro<MortgageResult>('calc-mortgage', { price: parseFloat(price), downPaymentPct: parseFloat(downPct), interestRate: parseFloat(rateApr) / 100, termYears: parseInt(termYears, 10) }); if (r.ok && r.result) { setMortgageResult(r.result); ok(`$${r.result.monthlyPayment?.toFixed(0)}/mo.`); } else err(r.error ?? 'mortgage failed'); }
+    try { const r = await callMacro<MortgageResult>('calc-mortgage', { price: parseFloat(price), downPaymentPct: parseFloat(downPct), interestRate: parseFloat(rateApr) / 100, termYears: parseInt(termYears, 10) }); if (r.ok && r.result) { setMortgageResult(r.result); pipe.publish('realestate.mortgage', r.result, { label: `$${r.result.monthlyPayment?.toFixed(0)}/mo` }); ok(`$${r.result.monthlyPayment?.toFixed(0)}/mo.`); } else err(r.error ?? 'mortgage failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAfford() {
     setBusy('afford'); setFeedback(null);
-    try { const r = await callMacro<AffordResult>('calc-affordability', { annualIncome: parseFloat(income), monthlyDebts: parseFloat(debts), downPaymentAvailable: parseFloat(price) * (parseFloat(downPct) / 100), interestRate: parseFloat(rateApr) / 100 }); if (r.ok && r.result) { setAffordResult(r.result); ok(`Max: $${r.result.maxPrice?.toLocaleString()}.`); } else err(r.error ?? 'afford failed'); }
+    try { const r = await callMacro<AffordResult>('calc-affordability', { annualIncome: parseFloat(income), monthlyDebts: parseFloat(debts), downPaymentAvailable: parseFloat(price) * (parseFloat(downPct) / 100), interestRate: parseFloat(rateApr) / 100 }); if (r.ok && r.result) { setAffordResult(r.result); pipe.publish('realestate.afford', r.result, { label: `$${r.result.maxPrice?.toLocaleString()}` }); ok(`Max: $${r.result.maxPrice?.toLocaleString()}.`); } else err(r.error ?? 'afford failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRentBuy() {
     setBusy('rentBuy'); setFeedback(null);
-    try { const r = await callMacro<RentBuyResult>('calc-rent-vs-buy', { homePrice: parseFloat(price), monthlyRent: parseFloat(monthlyRent), downPaymentPct: parseFloat(downPct), interestRate: parseFloat(rateApr) / 100 }); if (r.ok && r.result) { setRentBuyResult(r.result); ok(`${r.result.recommendation}.`); } else err(r.error ?? 'rent-vs-buy failed'); }
+    try { const r = await callMacro<RentBuyResult>('calc-rent-vs-buy', { homePrice: parseFloat(price), monthlyRent: parseFloat(monthlyRent), downPaymentPct: parseFloat(downPct), interestRate: parseFloat(rateApr) / 100 }); if (r.ok && r.result) { setRentBuyResult(r.result); pipe.publish('realestate.rentVsBuy', r.result, { label: r.result.recommendation ?? 'rent-vs-buy' }); ok(`${r.result.recommendation}.`); } else err(r.error ?? 'rent-vs-buy failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -91,24 +107,34 @@ export function RealEstateActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Property — ${address.trim() || 'analysis'}`, tags: ['realestate', 'property', `price:${price}`], source: 'realestate:property:mint', meta: { visibility: 'private', consent: { allowCitations: false }, property: { address, price: parseFloat(price), cap: capResult, mortgage: mortgageResult, afford: affordResult, rentBuy: rentBuyResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Property DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('realestate.mintedDtuId', id, { label: `property ${id.slice(0, 8)}` }); ok(`Property DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🏠 Property: ${address || price}`, '', `Asking: $${parseFloat(price).toLocaleString()}`, capResult ? `Cap rate: ${capResult.capRatePct?.toFixed(2)}% (${capResult.band})` : '', mortgageResult ? `Mortgage: $${mortgageResult.monthlyPayment?.toFixed(0)}/mo` : '', rentBuyResult ? `Rent-vs-buy: ${rentBuyResult.recommendation}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Investor analysis — ${address || price}`, tags: ['realestate', 'analysis', 'public'], source: 'realestate:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, analysis: { price, capRate: capResult?.capRatePct, monthlyPayment: mortgageResult?.monthlyPayment, rentBuy: rentBuyResult?.recommendation } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Analysis published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Investor analysis — ${address || price}`, tags: ['realestate', 'analysis', 'public'], source: 'realestate:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, analysis: { price, capRate: capResult?.capRatePct, monthlyPayment: mortgageResult?.monthlyPayment, rentBuy: rentBuyResult?.recommendation } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('realestate.publishedDtuId', id, { label: `analysis ${id.slice(0, 8)}` }); ok(`Analysis published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -152,6 +178,11 @@ export function RealEstateActionPanel() {
         <input type="text" value={income} onChange={(e) => setIncome(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Income $/yr" />
         <input type="text" value={debts} onChange={(e) => setDebts(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Debts $/mo" />
         <input type="text" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Comp rent $/mo" />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

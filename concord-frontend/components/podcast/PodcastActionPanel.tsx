@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,10 +43,10 @@ interface MonetizeResult { adRevenue?: number; premiumRevenue?: number; totalMon
 
 export function PodcastActionPanel() {
   const [showTitle, setShowTitle] = useState('');
-  const [episodes, setEpisodes] = useState('Ep 1 1200\nEp 2 1800\nEp 3 2500\nEp 4 2100\nEp 5 3200');
+  const [episodes, setEpisodes] = useState('');
   const [guestName, setGuestName] = useState('');
-  const [guestTopics, setGuestTopics] = useState('startups\nproduct\nleadership');
-  const [downloads, setDownloads] = useState('5000');
+  const [guestTopics, setGuestTopics] = useState('');
+  const [downloads, setDownloads] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -61,27 +62,42 @@ export function PodcastActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actAnalytics() {
     const eps = episodes.split('\n').map(l => { const m = l.trim().match(/^(.+?)\s+(\d+)$/); return m ? { title: m[1], listens: parseInt(m[2], 10) } : null; }).filter(Boolean);
     if (!eps.length) { err('Add episodes (title listens per line).'); return; }
     setBusy('analytics'); setFeedback(null);
-    try { const r = await callMacro<AnalyticsResult>('episodeAnalytics', { episodes: eps }); if (r.ok && r.result) { setAnalyticsResult(r.result); ok(`${r.result.totalListens} total listens.`); } else err(r.error ?? 'analytics failed'); }
+    try { const r = await callMacro<AnalyticsResult>('episodeAnalytics', { episodes: eps }); if (r.ok && r.result) { setAnalyticsResult(r.result); pipe.publish('podcast.analytics', r.result, { label: `${r.result.totalListens} listens` }); ok(`${r.result.totalListens} total listens.`); } else err(r.error ?? 'analytics failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actGuest() {
     if (!guestName.trim()) { err('Guest name required.'); return; }
     setBusy('guest'); setFeedback(null);
-    try { const r = await callMacro<GuestResult>('guestResearch', { name: guestName.trim(), topics: guestTopics.split('\n').map(s => s.trim()).filter(Boolean) }); if (r.ok && r.result) { setGuestResult(r.result); ok(`${r.result.questionSuggestions?.length ?? 0} questions suggested.`); } else err(r.error ?? 'guest failed'); }
+    try { const r = await callMacro<GuestResult>('guestResearch', { name: guestName.trim(), topics: guestTopics.split('\n').map(s => s.trim()).filter(Boolean) }); if (r.ok && r.result) { setGuestResult(r.result); pipe.publish('podcast.guest', r.result, { label: r.result.name ?? guestName }); ok(`${r.result.questionSuggestions?.length ?? 0} questions suggested.`); } else err(r.error ?? 'guest failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actChecklist() {
     setBusy('checklist'); setFeedback(null);
-    try { const r = await callMacro<ChecklistResult>('productionChecklist', { completedSteps: [] }); if (r.ok && r.result) { setChecklistResult(r.result); ok(`${r.result.progress}% done.`); } else err(r.error ?? 'checklist failed'); }
+    try { const r = await callMacro<ChecklistResult>('productionChecklist', { completedSteps: [] }); if (r.ok && r.result) { setChecklistResult(r.result); pipe.publish('podcast.checklist', r.result, { label: `${r.result.progress}% done` }); ok(`${r.result.progress}% done.`); } else err(r.error ?? 'checklist failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMonetize() {
     setBusy('monetize'); setFeedback(null);
-    try { const r = await callMacro<MonetizeResult>('monetizationCalc', { monthlyDownloads: parseInt(downloads, 10) }); if (r.ok && r.result) { setMonetizeResult(r.result); ok(`$${r.result.totalMonthlyRevenue}/mo.`); } else err(r.error ?? 'monetize failed'); }
+    try { const r = await callMacro<MonetizeResult>('monetizationCalc', { monthlyDownloads: parseInt(downloads, 10) }); if (r.ok && r.result) { setMonetizeResult(r.result); pipe.publish('podcast.monetize', r.result, { label: `$${r.result.totalMonthlyRevenue}/mo` }); ok(`$${r.result.totalMonthlyRevenue}/mo.`); } else err(r.error ?? 'monetize failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -89,24 +105,34 @@ export function PodcastActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Podcast — ${showTitle.trim() || 'show'}`, tags: ['podcast', monetizeResult?.tier ?? 'unknown'], source: 'podcast:show:mint', meta: { visibility: 'private', consent: { allowCitations: false }, podcast: { show: showTitle, analytics: analyticsResult, guest: guestResult, checklist: checklistResult, monetize: monetizeResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Show DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('podcast.mintedDtuId', id, { label: `show ${id.slice(0, 8)}` }); ok(`Show DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🎙 Podcast: ${showTitle || 'show'}`, '', analyticsResult ? `Listens: ${analyticsResult.totalListens} · avg ${analyticsResult.avgListensPerEpisode}` : '', guestResult ? `Guest: ${guestResult.name} (${guestResult.topics?.join(', ')})` : '', monetizeResult ? `Rev: $${monetizeResult.totalMonthlyRevenue}/mo (${monetizeResult.tier})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public show notes — ${showTitle.trim()}`, tags: ['podcast', 'public', 'show-notes'], source: 'podcast:notes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, showNotes: { show: showTitle, guest: guestResult?.name, topics: guestResult?.topics, questions: guestResult?.questionSuggestions } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Notes published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public show notes — ${showTitle.trim()}`, tags: ['podcast', 'public', 'show-notes'], source: 'podcast:notes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, showNotes: { show: showTitle, guest: guestResult?.name, topics: guestResult?.topics, questions: guestResult?.questionSuggestions } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('podcast.publishedDtuId', id, { label: `notes ${id.slice(0, 8)}` }); ok(`Notes published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -150,6 +176,11 @@ export function PodcastActionPanel() {
       </div>
 
       <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (co-host / producer)" />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {

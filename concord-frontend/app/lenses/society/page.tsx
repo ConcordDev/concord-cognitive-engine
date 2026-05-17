@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { WorldBankExplorer } from '@/components/society/WorldBankExplorer';
 import { SocietyActionPanel } from '@/components/society/SocietyActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 type TabKey = 'culture' | 'economy' | 'autonomy' | 'conflict' | 'teaching' | 'persona';
 
@@ -178,9 +179,11 @@ export default function SocietyLensPage() {
         <WorldBankExplorer />
       </section>
 
-      <section className="mt-6">
-        <SocietyActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <SocietyActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

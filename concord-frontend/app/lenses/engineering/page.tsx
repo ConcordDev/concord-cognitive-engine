@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { HnEngineeringFeed } from '@/components/engineering/HnEngineeringFeed';
 import { EngineeringActionPanel } from '@/components/engineering/EngineeringActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -818,9 +819,11 @@ export default function EngineeringPage() {
         <HnEngineeringFeed />
       </section>
 
-      <section className="mt-6">
-        <EngineeringActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <EngineeringActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

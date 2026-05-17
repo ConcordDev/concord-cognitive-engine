@@ -28,6 +28,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -72,12 +73,27 @@ export function JournalActionPanel() {
   const err = (text: string) => setFeedback({ kind: 'err', text });
   const ready = entryBody.trim().length > 0;
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actInsights() {
     if (!ready) { err('Write the entry first.'); return; }
     setBusy('insights'); setFeedback(null);
     try {
       const r = await callMacro<InsightResult>('insightExtraction', { entry: entryBody.trim(), mood });
-      if (r.ok && r.result) { setInsightResult(r.result); ok('Insights extracted.'); }
+      if (r.ok && r.result) { setInsightResult(r.result); pipe.publish('reflection.insights', r.result, { label: `${r.result.themes?.length ?? 0} themes` }); ok('Insights extracted.'); }
       else err(r.error ?? 'insights failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -87,7 +103,7 @@ export function JournalActionPanel() {
     setBusy('growth'); setFeedback(null);
     try {
       const r = await callMacro<GrowthResult>('growthMetrics', { window: 'last_30_days', currentEntry: entryBody.trim() });
-      if (r.ok && r.result) { setGrowthResult(r.result); ok('Growth metrics ready.'); }
+      if (r.ok && r.result) { setGrowthResult(r.result); pipe.publish('reflection.growth', r.result, { label: `${r.result.trends?.length ?? 0} trends` }); ok('Growth metrics ready.'); }
       else err(r.error ?? 'growth metrics failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -98,7 +114,7 @@ export function JournalActionPanel() {
     setBusy('habits'); setFeedback(null);
     try {
       const r = await callMacro<HabitResult>('habitTracking', { entry: entryBody.trim() });
-      if (r.ok && r.result) { setHabitResult(r.result); ok(`${r.result.habits?.length ?? 0} habits parsed.`); }
+      if (r.ok && r.result) { setHabitResult(r.result); pipe.publish('reflection.habits', r.result, { label: `${r.result.habits?.length ?? 0} habits` }); ok(`${r.result.habits?.length ?? 0} habits parsed.`); }
       else err(r.error ?? 'habits failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -131,7 +147,7 @@ export function JournalActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setSavedDtuId(id); ok(`Saved DTU ${id.slice(0, 8)}…`); }
+      if (id) { setSavedDtuId(id); pipe.publish('reflection.savedDtuId', id, { label: `entry ${id.slice(0, 8)}` }); ok(`Saved DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -149,9 +165,12 @@ export function JournalActionPanel() {
       entryBody.trim(),
     ].join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: dmRecipient.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${dmRecipient.trim()}.`); setDmRecipient(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: dmRecipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setDmRecipient(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -160,31 +179,34 @@ export function JournalActionPanel() {
     if (!ready) { err('Write the entry first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Gratitude — ${entryTitle.trim() || new Date().toISOString().slice(0, 10)}`,
-          tags: ['reflection', 'gratitude', 'public'],
-          source: 'reflection:gratitude:publish',
-          meta: {
-            visibility: 'public',
-            consent: { allowCitations: true },
-            gratitude: {
-              date: new Date().toISOString().slice(0, 10),
-              mood,
-              themes: insightResult?.themes ?? [],
-              takeaways: insightResult?.takeaways ?? [],
-              body: entryBody.trim().slice(0, 2000),
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Gratitude — ${entryTitle.trim() || new Date().toISOString().slice(0, 10)}`,
+            tags: ['reflection', 'gratitude', 'public'],
+            source: 'reflection:gratitude:publish',
+            meta: {
+              visibility: 'public',
+              consent: { allowCitations: true },
+              gratitude: {
+                date: new Date().toISOString().slice(0, 10),
+                mood,
+                themes: insightResult?.themes ?? [],
+                takeaways: insightResult?.takeaways ?? [],
+                body: entryBody.trim().slice(0, 2000),
+              },
             },
           },
-        },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('reflection.publishedDtuId', id, { label: `gratitude ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -252,6 +274,11 @@ export function JournalActionPanel() {
         className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/40 resize-y leading-relaxed"
         placeholder={agentPrompt ? agentPrompt : 'What\'s on your mind today?'}
       />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
         {actions.map(a => {

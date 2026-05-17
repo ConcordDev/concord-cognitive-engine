@@ -11,6 +11,7 @@ import { Shield, AlertTriangle, TrendingDown, Calendar, Activity, Sparkles, Send
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -41,23 +42,12 @@ function makePolicies(jsonText: string): { policies: Policy[]; claims: { status:
   } catch { return null; }
 }
 
-const DEFAULT_BOOK = JSON.stringify({
-  policies: [
-    { type: 'auto', premium: 1800, expiryDate: new Date(Date.now() + 18 * 86400000).toISOString().split('T')[0], policyNumber: 'AUT-001', holder: 'Smith', commissionRate: 12 },
-    { type: 'home', premium: 2200, expiryDate: new Date(Date.now() + 52 * 86400000).toISOString().split('T')[0], policyNumber: 'HOM-014', holder: 'Lee', commissionRate: 10 },
-    { type: 'life', premium: 3600, expiryDate: new Date(Date.now() + 220 * 86400000).toISOString().split('T')[0], policyNumber: 'LIF-007', holder: 'Vega', commissionRate: 8 },
-  ],
-  claims: [
-    { status: 'paid', amount: 1400 },
-    { status: 'open', amount: 800 },
-  ],
-}, null, 2);
-
+// No seeded book — paste real policies/claims JSON.
 export function InsuranceActionPanel() {
-  const [bookText, setBookText] = useState(DEFAULT_BOOK);
-  const [riskTitle, setRiskTitle] = useState('Coastal flood — primary residence');
-  const [probability, setProbability] = useState('3');
-  const [impact, setImpact] = useState('4');
+  const [bookText, setBookText] = useState('');
+  const [riskTitle, setRiskTitle] = useState('');
+  const [probability, setProbability] = useState('');
+  const [impact, setImpact] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -73,6 +63,10 @@ export function InsuranceActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   function bookArtifact() {
     const parsed = makePolicies(bookText);
     if (!parsed) return null;
@@ -82,50 +76,70 @@ export function InsuranceActionPanel() {
   async function actGap() {
     const a = bookArtifact(); if (!a) { err('Invalid book JSON.'); return; }
     setBusy('gap'); setFeedback(null);
-    try { const r = await callMacro<GapResult>('coverageGap', { artifact: a }); if (r.ok && r.result) { setGapResult(r.result); ok(`${r.result.gapCount} gaps, ${r.result.expiringSoon?.length ?? 0} expiring.`); } else err(r.error ?? 'gap failed'); }
+    try { const r = await callMacro<GapResult>('coverageGap', { artifact: a }); if (r.ok && r.result) { setGapResult(r.result); pipe.publish('insurance.gap', r.result, { label: `Gaps ${r.result.gapCount}` }); ok(`${r.result.gapCount} gaps, ${r.result.expiringSoon?.length ?? 0} expiring.`); } else err(r.error ?? 'gap failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actLoss() {
     const a = bookArtifact(); if (!a) { err('Invalid book JSON.'); return; }
     setBusy('loss'); setFeedback(null);
-    try { const r = await callMacro<LossResult>('lossRatioReport', { artifact: a }); if (r.ok && r.result) { setLossResult(r.result); ok(`Loss ratio: ${r.result.lossRatio}% (${r.result.assessment}).`); } else err(r.error ?? 'loss failed'); }
+    try { const r = await callMacro<LossResult>('lossRatioReport', { artifact: a }); if (r.ok && r.result) { setLossResult(r.result); pipe.publish('insurance.loss', r.result, { label: `Loss ${r.result.lossRatio}%` }); ok(`Loss ratio: ${r.result.lossRatio}% (${r.result.assessment}).`); } else err(r.error ?? 'loss failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRenewal() {
     const a = bookArtifact(); if (!a) { err('Invalid book JSON.'); return; }
     setBusy('renewal'); setFeedback(null);
-    try { const r = await callMacro<RenewalResult>('renewalAlert', { artifact: a }); if (r.ok && r.result) { setRenewalResult(r.result); ok(`${r.result.urgentCount} urgent, $${r.result.premiumAtRisk?.toLocaleString()} at risk.`); } else err(r.error ?? 'renewal failed'); }
+    try { const r = await callMacro<RenewalResult>('renewalAlert', { artifact: a }); if (r.ok && r.result) { setRenewalResult(r.result); pipe.publish('insurance.renewal', r.result, { label: `${r.result.urgentCount} urgent` }); ok(`${r.result.urgentCount} urgent, $${r.result.premiumAtRisk?.toLocaleString()} at risk.`); } else err(r.error ?? 'renewal failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRisk() {
+    const p = parseInt(probability, 10), i = parseInt(impact, 10);
+    if (!riskTitle.trim() || ![p, i].every(Number.isFinite)) { err('Risk title + probability + impact required.'); return; }
     setBusy('risk'); setFeedback(null);
-    try { const r = await callMacro<RiskResult>('riskScore', { artifact: { title: riskTitle, data: { probability: parseInt(probability, 10), impact: parseInt(impact, 10) } } }); if (r.ok && r.result) { setRiskResult(r.result); ok(`${r.result.level?.toUpperCase()} (${r.result.normalizedScore}%).`); } else err(r.error ?? 'risk failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<RiskResult>('riskScore', { artifact: { title: riskTitle, data: { probability: p, impact: i } } });
+      if (r.ok && r.result) { setRiskResult(r.result); pipe.publish('insurance.risk', r.result, { label: `Risk ${r.result.level} ${r.result.normalizedScore}%` }); ok(`${r.result.level?.toUpperCase()} (${r.result.normalizedScore}%).`); } else err(r.error ?? 'risk failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Insurance — ${riskTitle || 'book'}`, tags: ['insurance', 'risk', riskResult?.level].filter(Boolean), source: 'insurance:book:mint', meta: { visibility: 'private', consent: { allowCitations: false }, insurance: { gap: gapResult, loss: lossResult, renewal: renewalResult, risk: riskResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Book DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('insurance.mintedDtuId', id, { label: `Book DTU ${id.slice(0, 8)}…` }); ok(`Book DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🛡 Insurance brief`, '', gapResult ? `${gapResult.gapCount} coverage gaps, ${gapResult.expiringSoon?.length ?? 0} expiring ≤30d` : '', lossResult ? `Loss ratio ${lossResult.lossRatio}% (${lossResult.assessment})` : '', renewalResult ? `${renewalResult.urgentCount} urgent renewals · $${renewalResult.premiumAtRisk?.toLocaleString()} at risk` : '', riskResult ? `Risk: ${riskResult.risk} → ${riskResult.level?.toUpperCase()} (${riskResult.normalizedScore}%)` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🛡 Insurance brief`, '',
+      gapResult ? `${gapResult.gapCount} coverage gaps, ${gapResult.expiringSoon?.length ?? 0} expiring ≤30d` : '',
+      lossResult ? `Loss ratio ${lossResult.lossRatio}% (${lossResult.assessment})` : '',
+      renewalResult ? `${renewalResult.urgentCount} urgent renewals · $${renewalResult.premiumAtRisk?.toLocaleString()} at risk` : '',
+      riskResult ? `Risk: ${riskResult.risk} → ${riskResult.level?.toUpperCase()} (${riskResult.normalizedScore}%)` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!lossResult && !renewalResult) { err('Run loss/renewal first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Insurance benchmark — anonymised`, tags: ['insurance', 'benchmark', 'public'], source: 'insurance:benchmark:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, loss: lossResult, renewal: renewalResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Insurance benchmark — anonymised`, tags: ['insurance', 'benchmark', 'public'], source: 'insurance:benchmark:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, loss: lossResult, renewal: renewalResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('insurance.publishedDtuId', id, { label: `Public bench ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -169,6 +183,10 @@ export function InsuranceActionPanel() {
             <input type="text" value={impact} onChange={(e) => setImpact(e.target.value.replace(/\D/g, '').slice(0, 1) || '1')} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="I 1-5" />
           </div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

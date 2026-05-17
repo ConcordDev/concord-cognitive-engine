@@ -11,6 +11,7 @@ import { BookOpen, Volume2, BarChart3, Smile, Search, Sparkles, Send, Globe, Wan
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -35,8 +36,8 @@ interface TextResult { wordCount?: number; sentenceCount?: number; vocabularySiz
 interface SentimentResult { sentiment?: string; score?: number; positiveWords?: number; negativeWords?: number; confidence?: string }
 
 export function LinguisticsActionPanel() {
-  const [word, setWord] = useState('serendipity');
-  const [text, setText] = useState('The quick brown fox jumps over the lazy dog. Linguistics is the scientific study of language and its structure.');
+  const [word, setWord] = useState('');
+  const [text, setText] = useState('');
   const [datamuseMode, setDatamuseMode] = useState<'ml' | 'rel_rhy' | 'rel_syn' | 'rel_ant' | 'topics'>('ml');
   const [recipient, setRecipient] = useState('');
 
@@ -53,28 +54,43 @@ export function LinguisticsActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actDefine() {
     if (!word.trim()) { err('Word required.'); return; }
     setBusy('define'); setFeedback(null);
-    try { const r = await callMacro<DictResult>('dictionary-lookup', { word: word.trim(), lang: 'en' }); if (r.ok && r.result) { setDictResult(r.result); ok(`${r.result.count} entries.`); } else err(r.error ?? 'lookup failed'); }
+    try { const r = await callMacro<DictResult>('dictionary-lookup', { word: word.trim(), lang: 'en' }); if (r.ok && r.result) { setDictResult(r.result); pipe.publish('linguistics.dict', r.result, { label: `${r.result.word}: ${r.result.count}` }); ok(`${r.result.count} entries.`); } else err(r.error ?? 'lookup failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRhyme() {
     if (!word.trim()) { err('Word required.'); return; }
     setBusy('rhyme'); setFeedback(null);
-    try { const r = await callMacro<{ words?: DatamuseWord[] }>('datamuse-words', { [datamuseMode]: word.trim(), max: 30 }); if (r.ok && r.result?.words) { setDatamuseWords(r.result.words); ok(`${r.result.words.length} ${datamuseMode} matches.`); } else err(r.error ?? 'datamuse failed'); }
+    try { const r = await callMacro<{ words?: DatamuseWord[] }>('datamuse-words', { [datamuseMode]: word.trim(), max: 30 }); if (r.ok && r.result?.words) { setDatamuseWords(r.result.words); pipe.publish('linguistics.datamuse', r.result.words, { label: `${datamuseMode} · ${r.result.words.length}` }); ok(`${r.result.words.length} ${datamuseMode} matches.`); } else err(r.error ?? 'datamuse failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAnalyze() {
     if (!text.trim()) { err('Text required.'); return; }
     setBusy('analyze'); setFeedback(null);
-    try { const r = await callMacro<TextResult>('textAnalysis', { artifact: { data: { text } } }); if (r.ok && r.result) { setTextResult(r.result); ok(`${r.result.wordCount}w · ${r.result.readingLevel}.`); } else err(r.error ?? 'analyze failed'); }
+    try { const r = await callMacro<TextResult>('textAnalysis', { artifact: { data: { text } } }); if (r.ok && r.result) { setTextResult(r.result); pipe.publish('linguistics.textStats', r.result, { label: `${r.result.wordCount}w · ${r.result.readingLevel}` }); ok(`${r.result.wordCount}w · ${r.result.readingLevel}.`); } else err(r.error ?? 'analyze failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSentiment() {
     if (!text.trim()) { err('Text required.'); return; }
     setBusy('sentiment'); setFeedback(null);
-    try { const r = await callMacro<SentimentResult>('sentimentAnalysis', { artifact: { data: { text } } }); if (r.ok && r.result) { setSentimentResult(r.result); ok(`${r.result.sentiment} (${r.result.score}).`); } else err(r.error ?? 'sentiment failed'); }
+    try { const r = await callMacro<SentimentResult>('sentimentAnalysis', { artifact: { data: { text } } }); if (r.ok && r.result) { setSentimentResult(r.result); pipe.publish('linguistics.sentiment', r.result, { label: `${r.result.sentiment} ${r.result.score}` }); ok(`${r.result.sentiment} (${r.result.score}).`); } else err(r.error ?? 'sentiment failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -82,7 +98,7 @@ export function LinguisticsActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Lexicon — ${word.trim() || 'analysis'}`, tags: ['linguistics', 'lexicon', dictResult ? 'definition' : null].filter((t): t is string => t !== null), source: 'linguistics:lex:mint', meta: { visibility: 'private', consent: { allowCitations: false }, lex: { word, dict: dictResult, datamuse: datamuseWords, textStats: textResult, sentiment: sentimentResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Lex DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('linguistics.mintedDtuId', id, { label: `lex ${id.slice(0, 8)}` }); ok(`Lex DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -90,18 +106,28 @@ export function LinguisticsActionPanel() {
     setBusy('dm'); setFeedback(null);
     const firstDef = dictResult?.entries?.[0]?.meanings?.[0]?.definitions?.[0]?.definition;
     const body = [`📖 ${word}`, dictResult?.entries?.[0]?.phonetic ? `/${dictResult.entries[0].phonetic}/` : '', firstDef ? `\n${firstDef}` : '', datamuseWords.length ? `\n${datamuseMode}: ${datamuseWords.slice(0, 8).map(w => w.word).join(', ')}` : '', mintedDtuId ? `\n\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!dictResult && !textResult) { err('Run a lookup or analysis first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Lexicon entry — ${word}`, tags: ['linguistics', 'lexicon', 'public'], source: 'linguistics:lex:publish', meta: { visibility: 'public', consent: { allowCitations: true }, dict: dictResult, datamuse: datamuseWords, textStats: textResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Lexicon entry — ${word}`, tags: ['linguistics', 'lexicon', 'public'], source: 'linguistics:lex:publish', meta: { visibility: 'public', consent: { allowCitations: true }, dict: dictResult, datamuse: datamuseWords, textStats: textResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('linguistics.publishedDtuId', id, { label: `entry ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -146,6 +172,10 @@ export function LinguisticsActionPanel() {
             <option value="topics">topics</option>
           </select>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
         <div className="md:col-span-2">
           <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Text corpus (for stats + sentiment)</label>

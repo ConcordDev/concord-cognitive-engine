@@ -14,6 +14,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { CveSearch } from '@/components/audit/CveSearch';
 import { AuditActionPanel } from '@/components/audit/AuditActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -657,9 +658,11 @@ export default function AuditLensPage() {
         <CveSearch />
       </section>
 
-      <section className="mt-6">
-        <AuditActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <AuditActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

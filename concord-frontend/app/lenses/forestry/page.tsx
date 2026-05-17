@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { FireIncidents } from '@/components/forestry/FireIncidents';
 import { ForestryActionPanel } from '@/components/forestry/ForestryActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -395,9 +396,11 @@ export default function ForestryLensPage() {
       </section>
 
       {/* USDA + InciWeb-shape forestry workbench: volume / fire-risk / harvest / carbon + actions */}
-      <section className="mt-6">
-        <ForestryActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <ForestryActionPanel />
+        </section>
+      </PipingProvider>
     </LensPageShell>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

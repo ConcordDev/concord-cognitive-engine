@@ -11,6 +11,7 @@ import { FlaskConical, Beaker, Droplets, Scale, Sparkles, Send, Globe, Wand2, Lo
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -32,16 +33,16 @@ interface PhResult { pH: number; pOH: number; hPlus: number; ohMinus: number; cl
 interface DilutionResult { m1: number; v1: number; m2: number; v2: number; formula?: string }
 
 export function ChemActionPanel() {
-  const [formula, setFormula] = useState('C6H12O6');
-  const [molMoles, setMolMoles] = useState('0.5');
-  const [molLiters, setMolLiters] = useState('1.0');
+  const [formula, setFormula] = useState('');
+  const [molMoles, setMolMoles] = useState('');
+  const [molLiters, setMolLiters] = useState('');
   const [molMolarity, setMolMolarity] = useState('');
-  const [phConcentration, setPhConcentration] = useState('0.001');
+  const [phConcentration, setPhConcentration] = useState('');
   const [phKind, setPhKind] = useState<'acid' | 'base' | 'h_plus' | 'oh_minus'>('acid');
-  const [dilM1, setDilM1] = useState('1.0');
+  const [dilM1, setDilM1] = useState('');
   const [dilV1, setDilV1] = useState('');
-  const [dilM2, setDilM2] = useState('0.1');
-  const [dilV2, setDilV2] = useState('100');
+  const [dilM2, setDilM2] = useState('');
+  const [dilV2, setDilV2] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -57,60 +58,92 @@ export function ChemActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actMW() {
-    if (!formula.trim()) { err('Formula required.'); return; }
+    if (!formula.trim()) { err('Formula required (e.g. C6H12O6).'); return; }
     setBusy('mw'); setFeedback(null);
-    try { const r = await callMacro<MWResult>('molecular-weight', { formula: formula.trim() }); if (r.ok && r.result) { setMwResult(r.result); ok(`MW = ${r.result.molecularWeight} g/mol.`); } else err(r.error ?? 'mw failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<MWResult>('molecular-weight', { formula: formula.trim() });
+      if (r.ok && r.result) { setMwResult(r.result); pipe.publish('chem.mw', r.result, { label: `MW ${r.result.molecularWeight}` }); ok(`MW = ${r.result.molecularWeight} g/mol.`); } else err(r.error ?? 'mw failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMolarity() {
-    setBusy('molarity'); setFeedback(null);
     const input: Record<string, number> = {};
     if (molMoles) input.moles = parseFloat(molMoles);
     if (molLiters) input.liters = parseFloat(molLiters);
     if (molMolarity) input.molarity = parseFloat(molMolarity);
-    try { const r = await callMacro<MolarityResult>('calc-molarity', input); if (r.ok && r.result) { setMolarityResult(r.result); ok(`M = ${r.result.molarity} mol/L.`); } else err(r.error ?? 'molarity failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    if (Object.keys(input).length < 2) { err('Provide at least 2 of: moles, liters, molarity.'); return; }
+    setBusy('molarity'); setFeedback(null);
+    try {
+      const r = await callMacro<MolarityResult>('calc-molarity', input);
+      if (r.ok && r.result) { setMolarityResult(r.result); pipe.publish('chem.molarity', r.result, { label: `M ${r.result.molarity}` }); ok(`M = ${r.result.molarity} mol/L.`); } else err(r.error ?? 'molarity failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPh() {
+    const c = parseFloat(phConcentration);
+    if (!Number.isFinite(c)) { err('Concentration required (mol/L).'); return; }
     setBusy('ph'); setFeedback(null);
-    try { const r = await callMacro<PhResult>('calc-ph', { concentration: parseFloat(phConcentration), kind: phKind }); if (r.ok && r.result) { setPhResult(r.result); ok(`pH = ${r.result.pH} (${r.result.classification}).`); } else err(r.error ?? 'ph failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PhResult>('calc-ph', { concentration: c, kind: phKind });
+      if (r.ok && r.result) { setPhResult(r.result); pipe.publish('chem.ph', r.result, { label: `pH ${r.result.pH}` }); ok(`pH = ${r.result.pH} (${r.result.classification}).`); } else err(r.error ?? 'ph failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDilution() {
-    setBusy('dilution'); setFeedback(null);
     const input: Record<string, number> = {};
     if (dilM1) input.m1 = parseFloat(dilM1);
     if (dilV1) input.v1 = parseFloat(dilV1);
     if (dilM2) input.m2 = parseFloat(dilM2);
     if (dilV2) input.v2 = parseFloat(dilV2);
-    try { const r = await callMacro<DilutionResult>('calc-dilution', input); if (r.ok && r.result) { setDilutionResult(r.result); ok(`Resolved.`); } else err(r.error ?? 'dilution failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    if (Object.keys(input).length < 3) { err('Provide 3 of m1/v1/m2/v2 to solve for the 4th.'); return; }
+    setBusy('dilution'); setFeedback(null);
+    try {
+      const r = await callMacro<DilutionResult>('calc-dilution', input);
+      if (r.ok && r.result) { setDilutionResult(r.result); pipe.publish('chem.dilution', r.result, { label: `M₁V₁=M₂V₂` }); ok(`Resolved.`); } else err(r.error ?? 'dilution failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Chem — ${formula || 'lab'}`, tags: ['chem', 'lab', phResult?.classification].filter((t): t is string => !!t), source: 'chem:lab:mint', meta: { visibility: 'private', consent: { allowCitations: false }, chem: { formula, mw: mwResult, molarity: molarityResult, ph: phResult, dilution: dilutionResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Lab DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('chem.mintedDtuId', id, { label: `Lab DTU ${id.slice(0, 8)}…` }); ok(`Lab DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🧪 Chem bench`, '', mwResult ? `${mwResult.formula}: ${mwResult.molecularWeight} g/mol` : '', molarityResult ? `M = ${molarityResult.molarity} mol/L` : '', phResult ? `pH = ${phResult.pH} (${phResult.classification})` : '', dilutionResult ? `Dilution: M1V1=M2V2 → ${dilutionResult.m1}×${dilutionResult.v1} = ${dilutionResult.m2}×${dilutionResult.v2}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🧪 Chem bench`, '',
+      mwResult ? `${mwResult.formula}: ${mwResult.molecularWeight} g/mol` : '',
+      molarityResult ? `M = ${molarityResult.molarity} mol/L` : '',
+      phResult ? `pH = ${phResult.pH} (${phResult.classification})` : '',
+      dilutionResult ? `Dilution: M1V1=M2V2 → ${dilutionResult.m1}×${dilutionResult.v1} = ${dilutionResult.m2}×${dilutionResult.v2}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!mwResult) { err('Run MW first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Compound profile — ${formula}`, tags: ['chem', 'compound', 'public'], source: 'chem:compound:publish', meta: { visibility: 'public', consent: { allowCitations: true }, formula, mw: mwResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Compound profile — ${formula}`, tags: ['chem', 'compound', 'public'], source: 'chem:compound:publish', meta: { visibility: 'public', consent: { allowCitations: true }, formula, mw: mwResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('chem.publishedDtuId', id, { label: `Public compound ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -163,6 +196,10 @@ export function ChemActionPanel() {
             <option value="oh_minus">[OH-]</option>
           </select>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-cyan-400 font-semibold">Dilution (3 of 4)</div>

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
 import { FoodActionPanel } from '@/components/food/FoodActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import CookMode from '@/components/food/CookMode';
 import PantryTracker from '@/components/food/PantryTracker';
 import PlateScan from '@/components/food/PlateScan';
@@ -2807,9 +2808,11 @@ export default function FoodLensPage() {
       </section>
 
       {/* Yummly + POS-shape kitchen workbench: scale / cost / suggest / waste + actions */}
-      <section className="mt-6">
-        <FoodActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <FoodActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );
