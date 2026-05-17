@@ -11,6 +11,7 @@ import { Brain, Activity, Network, Zap, Sparkles, Send, Globe, Wand2, Loader2, C
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -72,20 +73,35 @@ export function NeuroActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actFreq() {
     setBusy('freq'); setFeedback(null);
-    try { const r = await callMacro<FreqResult>('frequencyAnalysis', { artifact: { data: { channels } } }); if (r.ok && r.result) { setFreqResult(r.result); ok(`${r.result.channelCount} channels analyzed.`); } else err(r.error ?? 'freq failed'); }
+    try { const r = await callMacro<FreqResult>('frequencyAnalysis', { artifact: { data: { channels } } }); if (r.ok && r.result) { setFreqResult(r.result); pipe.publish('neuro.freq', r.result, { label: `${r.result.channelCount}ch FFT` }); ok(`${r.result.channelCount} channels analyzed.`); } else err(r.error ?? 'freq failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actConn() {
     if (channels.length < 2) { err('Need 2+ channels (use composite).'); return; }
     setBusy('conn'); setFeedback(null);
-    try { const r = await callMacro<ConnResult>('connectivityAnalysis', { artifact: { data: { channels } } }); if (r.ok && r.result) { setConnResult(r.result); ok(`${r.result.connections?.length ?? 0} connections.`); } else err(r.error ?? 'conn failed'); }
+    try { const r = await callMacro<ConnResult>('connectivityAnalysis', { artifact: { data: { channels } } }); if (r.ok && r.result) { setConnResult(r.result); pipe.publish('neuro.connectivity', r.result, { label: `${r.result.connections?.length ?? 0} edges` }); ok(`${r.result.connections?.length ?? 0} connections.`); } else err(r.error ?? 'conn failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actErp() {
     setBusy('erp'); setFeedback(null);
-    try { const r = await callMacro<ErpResult>('erpAnalysis', { artifact: { data: { signal: channels[0], eventOnset: 0.5 } } }); if (r.ok && r.result) { setErpResult(r.result); ok(`ERP analyzed.`); } else err(r.error ?? 'erp failed'); }
+    try { const r = await callMacro<ErpResult>('erpAnalysis', { artifact: { data: { signal: channels[0], eventOnset: 0.5 } } }); if (r.ok && r.result) { setErpResult(r.result); pipe.publish('neuro.erp', r.result, { label: r.result.component ?? 'ERP' }); ok(`ERP analyzed.`); } else err(r.error ?? 'erp failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSim() {
@@ -99,7 +115,7 @@ export function NeuroActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Neuro — ${signalKind} (${channels.length}ch)`, tags: ['neuro', 'eeg', signalKind], source: 'neuro:bench:mint', meta: { visibility: 'private', consent: { allowCitations: false }, neuro: { kind: signalKind, freq: freqResult, conn: connResult, erp: erpResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Neuro DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('neuro.mintedDtuId', id, { label: `bench ${id.slice(0, 8)}` }); ok(`Neuro DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -107,18 +123,28 @@ export function NeuroActionPanel() {
     setBusy('dm'); setFeedback(null);
     const ch0 = freqResult?.channels?.[0];
     const body = [`🧠 EEG bench`, '', ch0 ? `Dominant: ${ch0.dominantBand.name} (${ch0.dominantBand.relativePower}%) — ${ch0.dominantBand.association}` : '', ch0 ? `Peak ${ch0.peakFrequency} Hz · arousal ${ch0.indices.arousalLevel} · attention ${ch0.indices.attentionIndex}` : '', connResult?.connections?.length ? `${connResult.connections.length} functional connections` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!freqResult) { err('Run freq analysis first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EEG dataset — ${signalKind}`, tags: ['neuro', 'eeg', 'public'], source: 'neuro:dataset:publish', meta: { visibility: 'public', consent: { allowCitations: true }, freq: freqResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EEG dataset — ${signalKind}`, tags: ['neuro', 'eeg', 'public'], source: 'neuro:dataset:publish', meta: { visibility: 'public', consent: { allowCitations: true }, freq: freqResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('neuro.publishedDtuId', id, { label: `dataset ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -162,6 +188,11 @@ export function NeuroActionPanel() {
         <div className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-zinc-400 font-mono">{channels.length} ch · {channels[0].samples.length} samp · {channels[0].sampleRate} Hz</div>
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
         {simState && <div className="bg-zinc-900 border border-cyan-700 rounded px-3 py-1.5 text-[11px] text-cyan-300 font-mono">sim: {simState.kind}</div>}
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

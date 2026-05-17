@@ -4,6 +4,7 @@ import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { LensShell } from '@/components/lens/LensShell';
 import { GdeltHeadlines } from '@/components/news-explorer/GdeltHeadlines';
 import { NewsActionPanel } from '@/components/news/NewsActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import HeadlineFeed from '@/components/news/HeadlineFeed';
 import NewsBriefing from '@/components/news/NewsBriefing';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -1025,9 +1026,11 @@ export default function NewsLensPage() {
       </section>
 
       {/* Ground News + AllSides-shape literacy workbench: bias / events / narrative / briefing + actions */}
-      <section className="mt-6 mx-4">
-        <NewsActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6 mx-4">
+          <NewsActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

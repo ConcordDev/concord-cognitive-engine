@@ -45,6 +45,7 @@ import {
 import { SessionView } from '@/components/music/SessionView';
 import { MusicArtistExplorer } from '@/components/music/MusicArtistExplorer';
 import { MusicActionPanel } from '@/components/music/MusicActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -2082,9 +2083,11 @@ export default function MusicLensPage() {
         </section>
 
         {/* Spotify + Ableton-shape music workbench: BPM / key / chords / setlist + actions */}
-        <section className="mt-6">
-          <MusicActionPanel />
-        </section>
+        <PipingProvider>
+          <section className="mt-6">
+            <MusicActionPanel />
+          </section>
+        </PipingProvider>
       </main>
 
       {/* Floating Mini Player Bar */}

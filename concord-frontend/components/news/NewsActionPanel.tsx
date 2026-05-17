@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -59,27 +60,42 @@ export function NewsActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({
+    label: 'DM',
+    windowMs: 60_000,
+    onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); },
+  });
+  const publishRecall = useRecallableAction({
+    label: 'publish',
+    windowMs: 30_000,
+    onUndo: async (id) => {
+      await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`);
+      setPublishedDtuId(null);
+    },
+  });
+
   async function actBias() {
     if (!articleText.trim()) { err('Add article text.'); return; }
     setBusy('bias'); setFeedback(null);
-    try { const r = await callMacro<BiasResult>('biasDetection', { text: articleText, headline }); if (r.ok && r.result) { setBiasResult(r.result); ok(`Lean: ${r.result.lean}.`); } else err(r.error ?? 'bias failed'); }
+    try { const r = await callMacro<BiasResult>('biasDetection', { text: articleText, headline }); if (r.ok && r.result) { setBiasResult(r.result); pipe.publish('news.bias', r.result, { label: r.result.lean ?? 'lean' }); ok(`Lean: ${r.result.lean}.`); } else err(r.error ?? 'bias failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actEvents() {
     if (!articleText.trim()) { err('Add article text.'); return; }
     setBusy('events'); setFeedback(null);
-    try { const r = await callMacro<EventsResult>('eventExtraction', { text: articleText }); if (r.ok && r.result) { setEventsResult(r.result); ok(`${r.result.total ?? 0} events.`); } else err(r.error ?? 'events failed'); }
+    try { const r = await callMacro<EventsResult>('eventExtraction', { text: articleText }); if (r.ok && r.result) { setEventsResult(r.result); pipe.publish('news.events', r.result, { label: `${r.result.total ?? 0} events` }); ok(`${r.result.total ?? 0} events.`); } else err(r.error ?? 'events failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actNarrative() {
     if (!topic.trim()) { err('Topic required.'); return; }
     setBusy('narrative'); setFeedback(null);
-    try { const r = await callMacro<NarrativeResult>('narrativeTracking', { topic: topic.trim() }); if (r.ok && r.result) { setNarrativeResult(r.result); ok(r.result.shiftDetected ? 'Narrative SHIFT.' : 'Narrative stable.'); } else err(r.error ?? 'narrative failed'); }
+    try { const r = await callMacro<NarrativeResult>('narrativeTracking', { topic: topic.trim() }); if (r.ok && r.result) { setNarrativeResult(r.result); pipe.publish('news.narrative', r.result, { label: r.result.shiftDetected ? 'SHIFT' : 'stable' }); ok(r.result.shiftDetected ? 'Narrative SHIFT.' : 'Narrative stable.'); } else err(r.error ?? 'narrative failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBriefing() {
     setBusy('briefing'); setFeedback(null);
-    try { const r = await callMacro<BriefingResult>('daily-briefing', {}); if (r.ok && r.result) { setBriefingResult(r.result); ok(`${r.result.headlines?.length ?? 0} headlines.`); } else err(r.error ?? 'briefing failed'); }
+    try { const r = await callMacro<BriefingResult>('daily-briefing', {}); if (r.ok && r.result) { setBriefingResult(r.result); pipe.publish('news.briefing', r.result, { label: `${r.result.headlines?.length ?? 0} headlines` }); ok(`${r.result.headlines?.length ?? 0} headlines.`); } else err(r.error ?? 'briefing failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -87,24 +103,34 @@ export function NewsActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `News — ${headline.trim() || topic.trim() || 'snapshot'}`, tags: ['news', biasResult?.lean ?? 'unknown', topic ? `topic:${topic.trim().toLowerCase()}` : ''].filter(Boolean), source: 'news:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, news: { headline, topic, bias: biasResult, events: eventsResult, narrative: narrativeResult, briefing: briefingResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`News DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('news.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`News DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`📰 News brief: ${headline || topic || 'snapshot'}`, '', biasResult ? `Bias: ${biasResult.lean} (${biasResult.score})` : '', eventsResult ? `Events: ${eventsResult.total}` : '', narrativeResult ? `Narrative: ${narrativeResult.dominantNarrative}${narrativeResult.shiftDetected ? ' (SHIFT)' : ''}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `News literacy — ${topic || 'snapshot'}`, tags: ['news', 'literacy', 'public', biasResult?.lean ?? 'unknown'], source: 'news:literacy:publish', meta: { visibility: 'public', consent: { allowCitations: true }, literacy: { topic, bias: biasResult, narrative: narrativeResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `News literacy — ${topic || 'snapshot'}`, tags: ['news', 'literacy', 'public', biasResult?.lean ?? 'unknown'], source: 'news:literacy:publish', meta: { visibility: 'public', consent: { allowCitations: true }, literacy: { topic, bias: biasResult, narrative: narrativeResult } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('news.publishedDtuId', id, { label: `literacy ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -147,6 +173,11 @@ export function NewsActionPanel() {
       </div>
 
       <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {

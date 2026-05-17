@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { PropublicaSearch } from '@/components/nonprofit/PropublicaSearch';
 import { NonprofitActionPanel } from '@/components/nonprofit/NonprofitActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1960,9 +1961,11 @@ export default function NonprofitLensPage() {
         <PropublicaSearch />
       </section>
 
-      <section className="mt-6">
-        <NonprofitActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <NonprofitActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );
