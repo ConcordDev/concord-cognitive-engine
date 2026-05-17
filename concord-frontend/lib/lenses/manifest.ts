@@ -136,6 +136,28 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // ═══════════════════════════════════════════════════════════════
 
   {
+    domain: 'saved',
+    label: 'Saved',
+    artifacts: ['bookmark', 'post'],
+    macros: { list: 'lens.saved.list', get: 'lens.saved.get' },
+    exports: ['json'],
+    actions: [],
+    category: 'social',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No bookmarks yet.',
+      caption: 'Click the bookmark icon on any post or DTU to save it for later. Bookmarks live in the social substrate and are private to you.',
+      firstActionLabel: 'Browse Social',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Bookmarks toggle on/off via the bookmark icon on every post and DTU.' },
+        { caption: 'This page shows every post you\'ve saved, newest first — react, comment, share, or remove the bookmark inline.' },
+        { caption: 'Deleted posts show a "Post unavailable" placeholder so you can prune the orphans.' },
+      ],
+    },
+  },
+  {
     domain: 'chat',
     label: 'Chat',
     artifacts: ['conversation', 'message', 'session', 'branch'],

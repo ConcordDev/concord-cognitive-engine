@@ -26,6 +26,7 @@ import { OnboardingWizard, useOnboarding } from '@/components/onboarding/Onboard
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/store/sessions';
 import { useEventRouter } from '@/lib/event-router';
+import { useSocialNotificationToast } from '@/hooks/useSocialNotificationToast';
 import { LegalFooter } from '@/components/legal/LegalFooter';
 
 /** Routes that render their own chrome and should skip the AppShell layout. */
@@ -40,6 +41,12 @@ export function AppShell({ children }: AppShellProps) {
   // dispatched across the app and routes it to the right macro /
   // navigation / toast. See lib/event-router.ts for the table.
   useEventRouter();
+
+  // Phase 11 (Item 4) — pan-social notification toasts. Subscribes
+  // to the social:notification socket event so reactions / comments /
+  // follows / shares / mentions / DMs surface within ~500ms instead
+  // of waiting on the NotificationBell 60s poll.
+  useSocialNotificationToast();
 
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen);

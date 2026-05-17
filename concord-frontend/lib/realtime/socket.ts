@@ -364,7 +364,11 @@ export type SocketEvent =
   | 'forge:template:generated'
   | 'forge:template:published'
   // Layer 13 — NPC ambient conversations
-  | 'npc:conversation-bid';
+  | 'npc:conversation-bid'
+  // Phase 11 (Item 4) — pan-social notification toast: server fires
+  // this from createNotification (reactions / comments / follows /
+  // shares / mentions / DMs) to the recipient's user:${userId} room.
+  | 'social:notification';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

@@ -985,7 +985,7 @@ import { createAtlasDtu, getAtlasDtu, searchAtlasDtus, promoteAtlasDtu, addAtlas
 import { runAntiGamingScan, getAntiGamingMetrics } from "./emergent/atlas-antigaming.js";
 import { runAutogenV2, getAutogenRun, acceptAutogenOutput, mergeAutogenOutput, propagateConfidence, getAutogenV2Metrics } from "./emergent/atlas-autogen-v2.js";
 import { councilResolve, getCouncilQueue, councilRequestSources, councilMerge, getCouncilActions, getCouncilMetrics } from "./emergent/atlas-council.js";
-import { upsertProfile, getProfile, listProfiles, followUser, unfollowUser, getFollowers, getFollowing, publishDtu, unpublishDtu, recordCitation, getCitedBy, getFeed, computeTrending, discoverUsers, getSocialMetrics, createPost as socialCreatePost, getPost as socialGetPost, deletePost as socialDeletePost, getUserPosts as socialGetUserPosts, addReaction as socialAddReaction, getReactions as socialGetReactions, addComment as socialAddComment, deleteComment as socialDeleteComment, getComments as socialGetComments, sharePost as socialSharePost, getShares as socialGetShares, bookmarkPost as socialBookmarkPost, getUserBookmarks as socialGetUserBookmarks, getForYouFeed, getFollowingFeed, getExploreFeed, sendMessage as socialSendMessage, recallMessage as socialRecallMessage, getConversations as socialGetConversations, getMessages as socialGetMessages, markMessagesRead as socialMarkMessagesRead, getActiveStories, viewStory as socialViewStory, votePoll as socialVotePoll, getPollResults as socialGetPollResults, getNotifications as socialGetNotifications, markNotificationRead as socialMarkNotificationRead, markAllNotificationsRead as socialMarkAllNotificationsRead, getUnreadCount as socialGetUnreadCount, deleteNotification as socialDeleteNotification } from "./emergent/social-layer.js";
+import { upsertProfile, getProfile, listProfiles, followUser, unfollowUser, getFollowers, getFollowing, publishDtu, unpublishDtu, recordCitation, getCitedBy, getFeed, computeTrending, discoverUsers, getSocialMetrics, createPost as socialCreatePost, getPost as socialGetPost, deletePost as socialDeletePost, getUserPosts as socialGetUserPosts, addReaction as socialAddReaction, getReactions as socialGetReactions, addComment as socialAddComment, deleteComment as socialDeleteComment, getComments as socialGetComments, sharePost as socialSharePost, getShares as socialGetShares, bookmarkPost as socialBookmarkPost, getUserBookmarks as socialGetUserBookmarks, getForYouFeed, getFollowingFeed, getExploreFeed, sendMessage as socialSendMessage, recallMessage as socialRecallMessage, getConversations as socialGetConversations, getMessages as socialGetMessages, markMessagesRead as socialMarkMessagesRead, getActiveStories, viewStory as socialViewStory, votePoll as socialVotePoll, getPollResults as socialGetPollResults, getNotifications as socialGetNotifications, markNotificationRead as socialMarkNotificationRead, markAllNotificationsRead as socialMarkAllNotificationsRead, getUnreadCount as socialGetUnreadCount, deleteNotification as socialDeleteNotification, setSocialEmitter, searchUsersByPrefix as socialSearchUsersByPrefix } from "./emergent/social-layer.js";
 import { createWorkspace as collabCreateWorkspace, getWorkspace as collabGetWorkspace, listWorkspaces as collabListWorkspaces, addWorkspaceMember as collabAddWorkspaceMember, removeWorkspaceMember as collabRemoveWorkspaceMember, addDtuToWorkspace as collabAddDtuToWorkspace, addComment as collabAddComment, getComments as collabGetComments, editComment as collabEditComment, resolveComment as collabResolveComment, proposeRevision, getRevisionProposals, voteOnRevision, applyRevision, startEditSession, recordEdit, endEditSession, getCollabMetrics } from "./emergent/collaboration.js";
 import { createOrgWorkspace, getOrgWorkspace, assignRole, revokeRole, getUserRole, getOrgMembers, checkPermission, getUserPermissions, assignOrgLens, getOrgLenses, exportAuditLog, getRbacMetrics } from "./emergent/rbac.js";
 import { takeSnapshot as takeAnalyticsSnapshot, getPersonalAnalytics, getDtuGrowthTrends, getCitationAnalytics, getMarketplaceAnalytics as getMarketAnalytics, getKnowledgeDensity, getAtlasDomainAnalytics, getDashboardSummary } from "./emergent/analytics-dashboard.js";
@@ -6981,6 +6981,15 @@ function emitToUser(userId, event, payload) {
   }
 }
 
+// Phase 11 (Item 4) — thread the per-user emit helper into
+// social-layer's createNotification path so every notification fires
+// a real-time `social:notification` event in addition to the
+// in-memory ledger write. The frontend useSocialNotificationToast
+// hook subscribes and renders a toast instead of waiting on the 60s
+// poll.
+try { setSocialEmitter((uid, evt, payload) => emitToUser(uid, evt, payload)); }
+catch (_e) { /* non-fatal at boot */ }
+
 /**
  * Sprint B Phase 11.3 helper — broadcast to every client subscribed to
  * a world room. Used by walker:dispatched (cross-world journeys) and by
@@ -10004,7 +10013,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/artifacts", "/api/notifications", "/api/reminders", "/api/webhooks",
     "/api/whiteboard", "/api/whiteboards", "/api/mobile", "/api/global",
     "/api/sovereign", "/api/autotag", "/api/efficiency", "/api/model-optimizer",
-    "/api/lens-items", "/api/ml", "/api/db", "/api/preview-action", "/api/pwa",
+    "/api/lens-items", "/api/lens-actions", "/api/ml", "/api/db", "/api/preview-action", "/api/pwa",
     "/api/obsidian", "/api/integrations", "/api/distribution", "/api/backpressure",
     "/api/embeddings", "/api/perf", "/api/precompute", "/api/distillation",
     "/api/redis", "/api/lenses", "/api/studio", "/api/artistry", "/api/rbac",
@@ -40118,6 +40127,30 @@ app.get("/api/entity/:entityId/profile", asyncHandler(async (req, res) => {
   });
 }));
 
+// ── /admin/endpoints inventory ────────────────────────────────────────
+// Static-parse server.js + every routes/*.js for HTTP route
+// registrations; annotate each with auth posture (public/required/gated)
+// derived from publicReadPaths / _safeReadPaths / requireAuth /
+// requireRole presence in source. Result is cached after first call —
+// pass ?force=1 to recompute. /admin/endpoints calls this once per
+// page load and runs per-row Test buttons against the live server for
+// trust-but-verify status.
+app.get("/api/admin/endpoints", requireRole("admin", "sovereign"), async (req, res) => {
+  try {
+    const { buildRouteInventory } = await import("./lib/route-inventory.js");
+    const here = path.dirname(url.fileURLToPath(import.meta.url));
+    const force = String(req.query.force || "") === "1";
+    const inv = buildRouteInventory({
+      serverPath: path.join(here, "server.js"),
+      routesDir: path.join(here, "routes"),
+      force,
+    });
+    res.json({ ok: true, ...inv });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || "inventory_failed" });
+  }
+});
+
 // Lens manifest endpoint — exposes action manifest per domain
 // ── Auto-discovery: every action actually registered for a domain ──────
 // Returns the union of LENS_ACTIONS (legacy registerLensAction) + MACROS
@@ -49394,7 +49427,13 @@ app.get("/api/social/reactions/:postId", (req, res) => {
 app.post("/api/social/comment", requireAuth(), (req, res) => {
   try {
     const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialAddComment(STATE, { userId, postId: req.body?.postId, content: req.body?.content, parentCommentId: req.body?.parentCommentId }));
+    res.json(socialAddComment(STATE, {
+      userId,
+      postId: req.body?.postId,
+      content: req.body?.content,
+      parentCommentId: req.body?.parentCommentId,
+      mentionedUsers: req.body?.mentionedUsers,
+    }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -49426,6 +49465,21 @@ app.post("/api/social/bookmark", requireAuth(), (req, res) => {
   try {
     const userId = req.user?.id || req.actor?.userId || "anon";
     res.json(socialBookmarkPost(STATE, { userId, postId: req.body?.postId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---- Social Mention Search (type-ahead) ----
+// Phase 11 (Item 3) — backs MentionAutocomplete in QuickPostComposer
+// + CommentThread. Returns a ranked list (followed > followers >
+// citation-weighted), empty when no matches — no fake suggestions.
+app.get("/api/social/mention-search", (req, res) => {
+  try {
+
+    // eslint-disable-next-line no-restricted-syntax
+    const viewerId = req.user?.id || req.query.viewerId || "anon";
+    const q = String(req.query.q || "");
+    const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 10));
+    res.json(socialSearchUsersByPrefix(STATE, q, viewerId, limit));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

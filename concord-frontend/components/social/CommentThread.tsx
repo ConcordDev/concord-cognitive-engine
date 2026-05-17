@@ -25,6 +25,7 @@ import { MessageSquare, Loader2, AlertTriangle, Send, Trash2, CornerDownRight } 
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { UserLink } from './UserLink';
+import { MentionAutocomplete } from './MentionAutocomplete';
 
 interface Comment {
   id: string;
@@ -73,8 +74,10 @@ export function CommentThread({
 }: CommentThreadProps) {
   const [collapsed, setCollapsed] = useState(collapsedDefault);
   const [draftText, setDraftText] = useState('');
+  const [draftMentions, setDraftMentions] = useState<string[]>([]);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [replyMentions, setReplyMentions] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery<CommentsResponse | null>({
@@ -104,13 +107,18 @@ export function CommentThread({
   }, [comments]);
 
   const postMutation = useMutation({
-    mutationFn: async (input: { content: string; parentCommentId?: string | null }) => {
-      const r = await api.post('/api/social/comment', { postId, ...input });
+    mutationFn: async (input: { content: string; parentCommentId?: string | null; mentionedUsers?: string[] }) => {
+      const body: Record<string, unknown> = { postId, content: input.content };
+      if (input.parentCommentId) body.parentCommentId = input.parentCommentId;
+      if (input.mentionedUsers && input.mentionedUsers.length > 0) body.mentionedUsers = input.mentionedUsers;
+      const r = await api.post('/api/social/comment', body);
       return r?.data;
     },
     onSuccess: () => {
       setDraftText('');
+      setDraftMentions([]);
       setReplyText('');
+      setReplyMentions([]);
       setReplyTo(null);
       queryClient.invalidateQueries({ queryKey: ['social-comments', postId] });
     },
@@ -162,17 +170,30 @@ export function CommentThread({
             onSubmit={(e) => {
               e.preventDefault();
               if (!replyText.trim()) return;
-              postMutation.mutate({ content: replyText.trim(), parentCommentId: c.id });
+              postMutation.mutate({
+                content: replyText.trim(),
+                parentCommentId: c.id,
+                mentionedUsers: replyMentions,
+              });
             }}
             className="mt-1 flex items-center gap-1"
           >
-            <input
-              type="text"
+            <MentionAutocomplete
               value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Reply…"
-              autoFocus
-              className="flex-1 text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+              onChange={setReplyText}
+              mentionedUsers={replyMentions}
+              onMentionedUsersChange={setReplyMentions}
+              className="flex-1"
+              renderInput={(props) => (
+                <input
+                  {...props}
+                  ref={props.ref as React.Ref<HTMLInputElement>}
+                  type="text"
+                  placeholder="Reply… type @ to mention"
+                  autoFocus
+                  className="w-full text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+                />
+              )}
             />
             <button
               type="submit"
@@ -195,7 +216,7 @@ export function CommentThread({
         )}
       </li>
     );
-  }, [tree, currentUserId, deleteMutation, replyTo, replyText, postMutation, maxDepth]);
+  }, [tree, currentUserId, deleteMutation, replyTo, replyText, replyMentions, postMutation, maxDepth]);
 
   if (collapsed) {
     return (
@@ -260,16 +281,25 @@ export function CommentThread({
           onSubmit={(e) => {
             e.preventDefault();
             if (!draftText.trim()) return;
-            postMutation.mutate({ content: draftText.trim() });
+            postMutation.mutate({ content: draftText.trim(), mentionedUsers: draftMentions });
           }}
           className="border-t border-zinc-800/40 px-3 py-2 flex items-center gap-1.5"
         >
-          <input
-            type="text"
+          <MentionAutocomplete
             value={draftText}
-            onChange={(e) => setDraftText(e.target.value)}
-            placeholder="Write a comment…"
-            className="flex-1 text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+            onChange={setDraftText}
+            mentionedUsers={draftMentions}
+            onMentionedUsersChange={setDraftMentions}
+            className="flex-1"
+            renderInput={(props) => (
+              <input
+                {...props}
+                ref={props.ref as React.Ref<HTMLInputElement>}
+                type="text"
+                placeholder="Write a comment… type @ to mention"
+                className="w-full text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+              />
+            )}
           />
           <button
             type="submit"

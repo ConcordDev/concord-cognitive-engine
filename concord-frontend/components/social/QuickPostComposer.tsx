@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { MentionAutocomplete } from './MentionAutocomplete';
 
 const MAX_LEN = 500;
 
@@ -37,6 +38,7 @@ interface PostMutationInput {
   tags?: string[];
   isStory?: boolean;
   expiresAt?: string;
+  mentionedUsers?: string[];
 }
 
 export interface QuickPostComposerProps {
@@ -51,12 +53,14 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
   const [tagsRaw, setTagsRaw] = useState('');
   const [mode, setMode] = useState<'post' | 'story'>('post');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: async (input: PostMutationInput) => {
       const body: Record<string, unknown> = { content: input.content };
       if (input.tags && input.tags.length > 0) body.tags = input.tags;
+      if (input.mentionedUsers && input.mentionedUsers.length > 0) body.mentionedUsers = input.mentionedUsers;
       if (input.isStory) {
         body.isStory = true;
         body.expiresAt = input.expiresAt || new Date(Date.now() + 86400000).toISOString();
@@ -68,6 +72,7 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
       if (data?.ok) {
         setContent('');
         setTagsRaw('');
+        setMentionedUsers([]);
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 1500);
         // Invalidate the relevant feeds.
@@ -79,6 +84,19 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
     },
   });
 
+  // Filter mentionedUsers down to those still actually @-referenced in the
+  // current text (avoids leaking stale ids after the user edits a mention out).
+  const liveMentionedUsers = useCallback((text: string, ids: string[]) => {
+    // Build the set of @-tokens in the text.
+    const tokens = new Set<string>();
+    const re = /@([A-Za-z0-9_]+)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) tokens.add(m[1].toLowerCase());
+    // Without a username→userId map we can't precisely match, so we keep the
+    // ids list intact when at least one @-token exists, otherwise empty.
+    return tokens.size === 0 ? [] : ids;
+  }, []);
+
   const onSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const text = content.trim();
@@ -87,8 +105,13 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
       .split(',')
       .map(t => t.trim())
       .filter(t => t.length > 0 && t.length < 40);
-    mutation.mutate({ content: text, tags, isStory: mode === 'story' });
-  }, [content, tagsRaw, mode, mutation]);
+    mutation.mutate({
+      content: text,
+      tags,
+      isStory: mode === 'story',
+      mentionedUsers: liveMentionedUsers(text, mentionedUsers),
+    });
+  }, [content, tagsRaw, mode, mutation, mentionedUsers, liveMentionedUsers]);
 
   const remaining = MAX_LEN - content.length;
   const overLimit = remaining < 0;
@@ -135,12 +158,20 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
         </span>
       </header>
 
-      <textarea
+      <MentionAutocomplete
         value={content}
-        onChange={(e) => setContent(e.target.value)}
-        rows={3}
-        placeholder={mode === 'story' ? "What's happening right now? (24h)" : "What's on your mind?"}
-        className="w-full px-3 py-2 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none resize-none"
+        onChange={setContent}
+        mentionedUsers={mentionedUsers}
+        onMentionedUsersChange={setMentionedUsers}
+        renderInput={(props) => (
+          <textarea
+            {...props}
+            ref={props.ref as React.Ref<HTMLTextAreaElement>}
+            rows={3}
+            placeholder={mode === 'story' ? "What's happening right now? (24h)" : "What's on your mind? Type @ to mention someone"}
+            className="w-full px-3 py-2 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none resize-none"
+          />
+        )}
       />
 
       <div className="px-3 py-1.5 border-t border-zinc-800/40 flex items-center gap-2">

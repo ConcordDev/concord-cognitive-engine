@@ -30,7 +30,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Globe2, Users, Bell, TrendingUp, BarChart3,
-  Sparkles, Hash, Activity, Loader2,
+  Sparkles, Hash, Activity, Loader2, Bookmark,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -54,8 +54,9 @@ import { DMIndicator } from '@/components/social/DMIndicator';
 import { StreakIndicator } from '@/components/social/StreakIndicator';
 import { CreatorAnalytics } from '@/components/social/CreatorAnalytics';
 import { UserLink } from '@/components/social/UserLink';
+import { BookmarksList } from '@/components/social/BookmarksList';
 
-type TabId = 'discover' | 'following' | 'notifications' | 'analytics';
+type TabId = 'discover' | 'following' | 'notifications' | 'analytics' | 'saved';
 
 interface MeResponse {
   ok: boolean;
@@ -96,6 +97,7 @@ export default function SocialHubPage() {
     { id: 'discover',      label: 'For You',       icon: Sparkles },
     { id: 'following',     label: 'Following',     icon: Users },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'saved',         label: 'Saved',         icon: Bookmark },
     { id: 'analytics',     label: 'Analytics',     icon: BarChart3 },
   ];
 
@@ -183,6 +185,10 @@ export default function SocialHubPage() {
               <NotificationCenter userId={currentUserId} mode="panel" />
             )}
 
+            {activeTab === 'saved' && (
+              <BookmarksList currentUserId={currentUserId} />
+            )}
+
             {activeTab === 'analytics' && (
               <CreatorAnalytics userId={currentUserId} />
             )}
@@ -220,6 +226,7 @@ export default function SocialHubPage() {
           { id: 'discover',      label: 'For You',  icon: Sparkles },
           { id: 'following',     label: 'Follow',   icon: Users },
           { id: 'notifications', label: 'Alerts',   icon: Bell },
+          { id: 'saved',         label: 'Saved',    icon: Bookmark },
           { id: 'analytics',     label: 'Stats',    icon: BarChart3 },
         ]}
         active={activeTab}
