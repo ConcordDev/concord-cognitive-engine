@@ -2,14 +2,113 @@
 
 Branch: `claude/add-api-wires-onboarding-EWvZC` (built on top of merged
 `claude/audit-app-completeness-GwBlp`, PR #759 — pushed to origin)
-Plan: `/root/.claude/plans/what-s-missing-to-be-humble-scott.md`
-Last update: 2026-05-17 (session 8 final — 35 commits total this branch;
-all 10 dimensions complete + 37 REAL_FREE wire panels + 13-lens
-SessionRail coverage + **AutoActionStrip mounted in 226 of 234 lenses
-(96.5%) with JSON-param input mode** + **/admin/wires status dashboard
-auto-tests every live_*** + **dtu_surface.record lifted into 3 hot DTU
-renderers** + 2 pre-existing test failures fixed + 0 type errors +
-201 sprint contract tests passing)
+Plan: `/root/.claude/plans/make-a-new-plan-nifty-crayon.md` (Phase 11
+17-item backlog; commit `eba0a3d` is the last push)
+Last update: 2026-05-17 (sessions 9–11 — branch now at **236 lens dirs**,
+all 10 UX-completeness dimensions complete + **pan-social hub** at
+`/lenses/social` with React/Share/Bookmark/Follow/Comment/Story/UserLink
+primitives + Saved tab + **@mention autocomplete** + **social:notification
+toast** + **/admin/endpoints** 2,400-route inventory + **useTilePush**
+hook + 41 REAL_FREE no-key wire panels + 0 type errors + 25/25 social
+contract tests + server tests green with two pre-existing failures fixed)
+
+## Session 11 additions (Phase 11 — 17-item backlog, parts 1 & 2)
+
+```
+eba0a3d Phase 11 part 2 (in-flight): useTilePush + FlashHighlight + 7 social contract tests + realtimeEvents
+1970f29 Phase 11 part 1: admin/endpoints, bookmarks lens, mention autocomplete, notification toast, two pre-existing test fixes
+fe31813 chore: refresh macro telemetry artifact
+```
+
+### Session 11 highlights
+
+**`/admin/endpoints` — full HTTP route inventory.** Companion to
+`/admin/wires`. Static-parses `server.js` + every `routes/*.js` for
+`(method, path, file, line, auth)` tuples; caches result; renders
+~2,400 rows grouped by base path with one-click Test buttons. Auth
+posture (public / required / gated) derived from real source. POST /
+PUT / DELETE buttons confirm before firing.
+New: `server/lib/route-inventory.js` + `concord-frontend/app/admin/endpoints/page.tsx` + 5/5 contract tests.
+
+**Saved lens.** `BookmarkButton` was mounted in every `DTUEmbed` but
+there was no surface to SEE saved posts. Fixed: new `BookmarksList.tsx`
+that pulls `/api/social/bookmarks` then parallel-fetches each post via
+`/api/social/post/:postId`; new `/lenses/saved` page + new "Saved"
+tab on `/lenses/social`; manifest entry `category: 'social'`,
+`dataTier: 'REAL_LIVE'`. "Post unavailable" placeholder + one-click
+Remove for deleted posts.
+
+**@mention autocomplete.** `createPost` was already accepting a
+`mentionedUsers` array but no UI wired it. Fixed: new endpoint
+`GET /api/social/mention-search?q=&limit=` ranked followed > followers
+> citation count + prefix matches; new `MentionAutocomplete.tsx`
+render-prop wrapper (debounced 200ms, arrow keys, Enter/Tab/Escape);
+wired into both `QuickPostComposer` and `CommentThread`; `addComment`
+now persists `mentionedUsers` and fires `type: 'mention'` notifications.
+
+**Social notification toast.** `NotificationBell` polls every 60s but
+reactions/comments/follows fired no real-time UI. Fixed:
+`setSocialEmitter(fn)` exported from `social-layer.js`, called once
+at boot to thread `emitToUser` in; `createNotification` now also
+fires a `social:notification` socket event to the recipient's
+`user:${userId}` room; new `useSocialNotificationToast.ts` hook
+subscribes via `subscribe()` and pushes through `useUIStore.addToast`.
+Mounted in `AppShell.tsx` — app-wide. Dedupes against an in-memory
+seen-set so poll + socket race doesn't double-toast.
+
+**useTilePush + FlashHighlight (in-flight).** Manifest already
+declared `realtimeEvents?: string[]` but no lens populated it. Fixed:
+new `useTilePush.ts` reads the manifest, subscribes to events,
+invalidates the supplied query keys + flips `flashKey`; new
+`FlashHighlight.tsx` pulses an indigo ring for 900ms. `realtimeEvents`
+populated on world (building-state, refusal-field, season-transition,
+sign-placed, weather:update, combat:hit/stagger), chat (chat:status/
+token/complete + message:saved), finance, marketplace, crypto. **TODO
+Phase 11 part 3**: codemod-mount `useTilePush` + wrap primary list
+renders with `<FlashHighlight>`.
+
+**7 social contract test files** (25/25 green):
+`ReactionBar`, `BookmarkButton`, `FollowButton`, `UserLink`,
+`QuickPostComposer`, `ShareButton`, `CommentThread` — Tier-2 vitest
+coverage of the pan-social primitives.
+
+**Two pre-existing server-test regressions fixed:**
+- `three-gate-consistency`: `/api/lens-actions` was in Gate 1 but not
+  Gate 3 — added it to `_safeReadPaths`.
+- `social-dm-recall: rejects recall after the window has elapsed`:
+  `ageSec > windowSeconds` let `windowSeconds=0` through when ageSec
+  was 0. Changed to `>=` so "zero window = no recall" is honest.
+
+**README updated**: 236 lens dirs, 196 migrations, new "Pan-Social
+Hub" section listing every primitive.
+
+## Sessions 9–10 highlights (pan-social hub)
+
+- **Session 9**: promoted 41 "light vertical" lenses → solid via
+  `LensVerticalHero` codemod.
+- **Session 10**: pan-social hub at `/lenses/social` mounting
+  StoriesBar / Discovery / NotificationCenter / UserProfile /
+  SuggestedFollows / TrendingTopics / TrendingDomains /
+  PresenceIndicator / DMIndicator / StreakIndicator /
+  CreatorAnalytics / QuickPostComposer / MobileTabBar.
+- **Session 10 primitives** (new): `ReactionBar` (6 canonical
+  reaction types matching backend `VALID_REACTIONS`), `CommentThread`
+  (threaded, collapsed mode, maxDepth=2), `QuickPostComposer`
+  (Post / 24h Story modes, 500-char cap), `ShareButton`
+  (`POST /api/social/share` with commentary), `BookmarkButton`
+  (toggle endpoint, shared cache), `FollowButton` (hides for self
+  and anon), `UserLink` (routes to `/profile/:username`).
+- **Session 10 wiring**: `DTUEmbed.tsx` composes ReactionBar +
+  ShareButton + BookmarkButton + CommentThread + DownstreamBadge so
+  every cross-lens DTU embed has social context.
+- **Session 10 production fixes**: groupId fall-through in
+  `routes/social-groups.js` (was unconditionally blocking generic
+  createPost); reaction-type rename to match backend canonical set.
+
+---
+
+## Original session 8 summary (carried for context)
+
 
 ## Session 8 additions (3 new commits)
 
