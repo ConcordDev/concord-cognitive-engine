@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WordLookup } from '@/components/linguistics/WordLookup';
@@ -685,6 +686,7 @@ export default function LinguisticsLensPage() {
       </PipingProvider>
     </div>
           <RecentMineCard domain="linguistics" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="linguistics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

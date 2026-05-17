@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
@@ -665,6 +666,7 @@ export default function ChemLensPage() {
         </section>
       </PipingProvider>
           <RecentMineCard domain="chem" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="chem" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

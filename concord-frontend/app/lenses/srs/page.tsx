@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SrsRepos } from '@/components/srs/SrsRepos';
@@ -1282,6 +1283,7 @@ export default function SRSLensPage() {
       </section>
     </div>
           <RecentMineCard domain="srs" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="srs" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FilmStackFeed } from '@/components/film-studios/FilmStackFeed';
@@ -843,6 +844,7 @@ export default function FilmStudiosPage() {
       </section>
     </div>
           <RecentMineCard domain="film-studios" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="film-studios" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

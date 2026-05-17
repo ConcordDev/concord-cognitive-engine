@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
@@ -681,6 +682,7 @@ export default function PoetryPage() {
       </PipingProvider>
     </div>
           <RecentMineCard domain="poetry" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="poetry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

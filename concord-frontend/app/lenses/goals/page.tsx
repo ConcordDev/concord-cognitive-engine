@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
@@ -1231,6 +1232,7 @@ export default function GoalsLensPage() {
       </section>
     </div>
           <RecentMineCard domain="goals" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="goals" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

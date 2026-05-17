@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GameFeed } from '@/components/game/GameFeed';
@@ -1868,6 +1869,7 @@ export default function GameLensPage() {
       </section>
     </div>
           <RecentMineCard domain="game" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="game" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

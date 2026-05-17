@@ -5,6 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { SafeCard } from '@/components/common/SafeCard';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import LensAgentFab from '@/components/lens/LensAgentFab';
@@ -2566,6 +2567,7 @@ export default function CodeLensPage() {
       </section>
     </PipingProvider>
           <RecentMineCard domain="code" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="code" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

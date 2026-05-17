@@ -3,6 +3,7 @@
 import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SettingsHealth } from '@/components/settings/SettingsHealth';
@@ -115,6 +116,7 @@ export default function SettingsPage() {
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
           <RecentMineCard domain="settings" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="settings" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

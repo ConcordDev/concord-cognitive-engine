@@ -23,6 +23,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CreatorLeaderboard } from '@/components/creator/CreatorLeaderboard';
@@ -260,6 +261,7 @@ export default function CreatorDashboardPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
           <RecentMineCard domain="creator" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="creator" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

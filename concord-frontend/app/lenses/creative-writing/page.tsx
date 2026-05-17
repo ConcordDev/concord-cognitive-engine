@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GutendexSearch } from '@/components/creative-writing/GutendexSearch';
@@ -850,6 +851,7 @@ export default function CreativeWritingPage() {
       </section>
     </div>
           <RecentMineCard domain="creative-writing" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="creative-writing" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { GbifPanel } from '@/components/environment/GbifPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -1973,6 +1974,7 @@ export default function AgricultureLensPage() {
         <GbifPanel domain="agriculture" />
       </section>
           <RecentMineCard domain="agriculture" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="agriculture" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

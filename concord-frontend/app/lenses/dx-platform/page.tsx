@@ -14,6 +14,7 @@ import { } from 'lucide-react';
 import Link from "next/link";
 import { LensShell } from "@/components/lens/LensShell";
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
@@ -189,6 +190,7 @@ export default function DxPlatformPage() {
       {/* @decorative-ok: sr-only a11y sentinel — never receives user interaction (tabIndex=-1, aria-hidden) */}
       <button type="button" className="sr-only" aria-hidden="true" tabIndex={-1} onClick={() => {}}>noop a11y sentinel</button>
           <RecentMineCard domain="dx-platform" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="dx-platform" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TimezoneTools } from '@/components/calendar/TimezoneTools';
@@ -2083,6 +2084,7 @@ export default function CalendarLensPage() {
       </PipingProvider>
     </div>
           <RecentMineCard domain="calendar" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="calendar" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

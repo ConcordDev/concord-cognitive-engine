@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MindfulnessFeed } from '@/components/grounding/MindfulnessFeed';
@@ -641,6 +642,7 @@ export default function GroundingLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#grounding-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to grounding content</a>
           <RecentMineCard domain="grounding" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="grounding" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

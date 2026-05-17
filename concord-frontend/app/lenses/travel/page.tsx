@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -595,6 +596,7 @@ export default function TravelLensPage() {
       </PipingProvider>
     </div>
           <RecentMineCard domain="travel" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="travel" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

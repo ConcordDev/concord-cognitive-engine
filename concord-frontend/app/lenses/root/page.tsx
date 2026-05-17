@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RootMetrics } from '@/components/root/RootMetrics';
@@ -338,6 +339,7 @@ export default function RootLens() {
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
           <RecentMineCard domain="root" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="root" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

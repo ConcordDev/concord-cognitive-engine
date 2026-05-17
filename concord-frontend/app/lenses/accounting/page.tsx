@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
@@ -3073,6 +3074,7 @@ export default function AccountingLensPage() {
       </section>
     </PipingProvider>
           <RecentMineCard domain="accounting" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="accounting" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

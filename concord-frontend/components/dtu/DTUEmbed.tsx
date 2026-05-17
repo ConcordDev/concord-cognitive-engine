@@ -15,13 +15,16 @@
  * it appears.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, FileText, Music, Video } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { CreatorBadge, type CreatorBadgeProps } from './CreatorBadge';
 import { TierBadge, type DTUTier } from './TierBadge';
 import { FederationBadge, type FederationStatus } from '@/components/federation/FederationBadge';
+// Phase 7 — cross-lens narrative: small chip showing "used in N lenses".
+import { DownstreamBadge } from './DownstreamBadge';
+import { useDtuSurface } from '@/hooks/useDtuSurface';
 // Phase P — surface the previously-orphan provenance/freshness badges.
 import { FreshnessBadge } from '@/components/common/FreshnessBadge';
 
@@ -63,6 +66,8 @@ export interface DTUEmbedProps {
   mode?: 'card' | 'compact' | 'full';
   /** Click on the DTU body — typically open the full DTU detail modal. */
   onOpen?: (id: string) => void;
+  /** Lens this embed appears in. When set, an dtu_surface.record fires on mount. */
+  recordSurfaceFromLens?: string;
   className?: string;
 }
 
@@ -123,9 +128,24 @@ function MediaPreview({ artifact }: { artifact: DTUEmbedRecord['artifact'] }) {
   );
 }
 
-export function DTUEmbed({ dtu, mode = 'card', onOpen, className }: DTUEmbedProps) {
+export function DTUEmbed({ dtu, mode = 'card', onOpen, recordSurfaceFromLens, className }: DTUEmbedProps) {
   const [expanded, setExpanded] = useState(mode === 'full');
   const [childrenOpen, setChildrenOpen] = useState(false);
+  const { record } = useDtuSurface();
+
+  // Phase 7 — fire-and-forget surface log on mount when the caller declares
+  // the embedding lens. The substrate populates as users use the app, so
+  // DownstreamBadge starts showing real counts without manual instrumentation.
+  useEffect(() => {
+    if (!recordSurfaceFromLens || !dtu.id) return;
+    void record({
+      dtuId: dtu.id,
+      lensId: recordSurfaceFromLens,
+      surfaceKind: mode === 'compact' ? 'citation_chip' : 'quote_block',
+    });
+    // We deliberately do NOT re-fire on every prop change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dtu.id, recordSurfaceFromLens]);
 
   const title = dtu.title ?? dtu.id.slice(0, 16);
   const relTime = formatRelative(dtu.createdAt);
@@ -204,6 +224,7 @@ export function DTUEmbed({ dtu, mode = 'card', onOpen, className }: DTUEmbedProp
                 size="sm"
               />
             )}
+            <DownstreamBadge dtuId={dtu.id} compact />
           </div>
           {dtu.summary && (
             <p

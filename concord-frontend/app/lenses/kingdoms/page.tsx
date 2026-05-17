@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -152,6 +153,7 @@ export default function KingdomsPage() {
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
           <RecentMineCard domain="kingdoms" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="kingdoms" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

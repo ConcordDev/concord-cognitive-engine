@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
@@ -2823,6 +2824,7 @@ export default function FoodLensPage() {
       </PipingProvider>
     </div>
           <RecentMineCard domain="food" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="food" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

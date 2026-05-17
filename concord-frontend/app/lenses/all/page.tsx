@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -118,6 +119,7 @@ export default function AllLensesPage() {
       <a href="#all-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to all content</a>
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
           <RecentMineCard domain="all" limit={10} hideWhenEmpty className="mt-4" />
+          <CrossLensRecentsPanel lensId="all" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }
