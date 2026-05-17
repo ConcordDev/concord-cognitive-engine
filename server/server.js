@@ -9685,9 +9685,11 @@ async function runMacro(domain, name, input, ctx) {
     "mental-health": new Set(["live_medlineplus"]),
     podcast: new Set(["live_itunes_search"]),
     global: new Set(["live_countries", "live_wiki_search", "live_wiki_summary", "live_worldbank"]),
-    environment: new Set(["live_gbif"]),
+    environment: new Set(["live_gbif", "live_air_quality"]),
     forestry: new Set(["live_gbif"]),
     agriculture: new Set(["live_gbif"]),
+    // Phase 11 (Item 9) — key-required REAL_FREE wires.
+    weather: new Set(["live_forecast"]),
     paper: new Set(["live_openlibrary", "live_crossref", "live_openalex"]),
     education: new Set(["live_openlibrary", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     // Phase 4 (third wave) — scholarly + language wires.
@@ -9705,10 +9707,10 @@ async function runMacro(domain, name, input, ctx) {
     reflection: new Set(["live_quote"]),
     pets: new Set(["live_catfact", "live_dog"]),
     // Phase 4 (sixth wave) — civic / postal / finance reference wires.
-    finance: new Set(["live_worldbank"]),
+    finance: new Set(["live_worldbank", "live_fred_series"]),
     retail: new Set(["live_zippopotam"]),
     logistics: new Set(["live_zippopotam"]),
-    travel: new Set(["live_zippopotam"]),
+    travel: new Set(["live_zippopotam", "live_nps_parks"]),
     game: new Set(["live_trivia"]),
     // Phase 4 (seventh wave) — CryptoCompare basic (no key).
     crypto: new Set(["live_top", "live_price"]),
@@ -23302,6 +23304,13 @@ registerAstronomyLiveMacros(register);
 // publicReadDomains entries below.
 import registerFreeApiLiveMacros from "./domains/free-api-live.js";
 registerFreeApiLiveMacros(register);
+
+// Phase 11 (Item 9) — REAL_FREE wires requiring a free signup key:
+// FRED (finance), EPA AirNow (environment), NPS (travel),
+// OpenWeatherMap (weather). Render an honest "Set X in .env" message
+// when the env var is missing instead of a fake demo response.
+import registerKeyRequiredLiveMacros from "./domains/key-required-live.js";
+registerKeyRequiredLiveMacros(register);
 
 // Phase 4 cont'd — FDA OpenFDA wire-up for the pharmacy lens. Drug
 // labels, adverse-event reports, recent recalls. No key (rate-limited
