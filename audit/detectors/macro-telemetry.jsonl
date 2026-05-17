@@ -5856,3 +5856,16 @@
 {"generatedAt":"2026-05-17T22:11:38.119Z","key":"dtu.cluster","total":2,"lastFiredAt":1779055800499,"sources":{"http":0,"heartbeat":0,"internal":2,"system":0}}
 {"generatedAt":"2026-05-17T22:11:38.119Z","key":"dtu.gapPromote","total":12,"lastFiredAt":1779055801278,"sources":{"http":0,"heartbeat":0,"internal":12,"system":0}}
 {"generatedAt":"2026-05-17T22:11:38.119Z","key":"[object Object].dtu","total":12,"lastFiredAt":1779055801278,"sources":{"http":0,"heartbeat":0,"internal":0,"system":12}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"ingest.processQueueOnce","total":20,"lastFiredAt":1779056184486,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"system.autogen","total":20,"lastFiredAt":1779056189486,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"emergent.pipeline.run","total":60,"lastFiredAt":1779056189671,"sources":{"http":0,"heartbeat":0,"internal":60,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"system.dream","total":20,"lastFiredAt":1779056189556,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"dtu.create","total":25,"lastFiredAt":1779056189670,"sources":{"http":0,"heartbeat":0,"internal":25,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"system.evolution","total":20,"lastFiredAt":1779056189671,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"system.synth","total":20,"lastFiredAt":1779056189753,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"jobs.tick","total":20,"lastFiredAt":1779056189753,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"queue.tick","total":20,"lastFiredAt":1779056189753,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"ingest.tick","total":20,"lastFiredAt":1779056189753,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"crawl.tick","total":20,"lastFiredAt":1779056189753,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"emergent.bridge.heartbeatTick","total":3,"lastFiredAt":1779056154670,"sources":{"http":0,"heartbeat":0,"internal":3,"system":0}}
+{"generatedAt":"2026-05-17T22:16:38.119Z","key":"system.analogize","total":1,"lastFiredAt":1779056154677,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
