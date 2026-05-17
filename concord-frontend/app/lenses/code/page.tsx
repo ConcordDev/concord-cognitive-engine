@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { SafeCard } from '@/components/common/SafeCard';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
@@ -1294,6 +1295,7 @@ export default function CodeLensPage() {
 
   return (
     <LensShell lensId="code" asMain={false} disableAgentFab={true}>
+      <FirstRunTour lensId="code" />
       <ManifestActionBar />
       <DepthBadge lensId="code" size="sm" className="ml-2" />
       <RivalShapePreview lensId="code" />

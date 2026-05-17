@@ -14,6 +14,7 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WalletMarkets } from '@/components/wallet/WalletMarkets';
 import { WalletActionPanel } from '@/components/wallet/WalletActionPanel';
@@ -1135,6 +1136,7 @@ function WalletPageInner() {
 export default function WalletPage() {
   return (
     <LensShell lensId="wallet" asMain={false}>
+      <FirstRunTour lensId="wallet" />
       <ManifestActionBar />
       <DepthBadge lensId="wallet" size="sm" className="ml-2" />
     <Suspense

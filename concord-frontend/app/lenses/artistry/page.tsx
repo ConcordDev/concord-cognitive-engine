@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
@@ -167,6 +168,7 @@ export default function ArtistryLensPage() {
 
   return (
     <LensShell lensId="artistry" asMain={false}>
+      <FirstRunTour lensId="artistry" />
       <ManifestActionBar />
       <DepthBadge lensId="artistry" size="sm" className="ml-2" />
     <div data-lens-theme="artistry" className="min-h-screen">

@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaEarthEvents } from '@/components/events/NasaEarthEvents';
 import { useState, useMemo } from 'react';
@@ -2507,6 +2508,7 @@ export default function EventsLensPage() {
   // ---------------------------------------------------------------------------
   return (
     <LensShell lensId="events" asMain={false}>
+      <FirstRunTour lensId="events" />
       <DepthBadge lensId="events" size="sm" className="ml-2" />
     <div data-lens-theme="events" className={ds.pageContainer}>
       {/* Header */}

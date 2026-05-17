@@ -15,6 +15,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ProductivityRepos } from '@/components/productivity/ProductivityRepos';
 import { ProductivityActionPanel } from '@/components/productivity/ProductivityActionPanel';
@@ -82,6 +83,7 @@ export default function ProductivityLensPage() {
 
   return (
     <LensShell lensId="productivity" asMain={false}>
+      <FirstRunTour lensId="productivity" />
       <ManifestActionBar />
       <DepthBadge lensId="productivity" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-indigo-50">

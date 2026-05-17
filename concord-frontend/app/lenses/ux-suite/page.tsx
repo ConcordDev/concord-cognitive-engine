@@ -15,6 +15,7 @@
  */
 
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UxRepos } from '@/components/ux-suite/UxRepos';
@@ -81,6 +82,7 @@ const GROUP_COLOUR: Record<string, string> = {
 export default function UxSuiteLensPage() {
   return (
     <LensShell lensId="ux-suite" asMain={false}>
+      <FirstRunTour lensId="ux-suite" />
       <ManifestActionBar />
       <DepthBadge lensId="ux-suite" size="sm" className="ml-2" />
       <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-fuchsia-950/10 text-slate-100">

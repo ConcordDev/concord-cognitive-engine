@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QuakeFeed } from '@/components/emergency-services/QuakeFeed';
 import { EmergencyServicesActionPanel } from '@/components/emergency-services/EmergencyServicesActionPanel';
@@ -208,6 +209,7 @@ export default function EmergencyServicesLensPage() {
 
   return (
     <LensShell lensId="emergency-services" asMain={false}>
+      <FirstRunTour lensId="emergency-services" />
       <ManifestActionBar />
       <DepthBadge lensId="emergency-services" size="sm" className="ml-2" />
     <LensPageShell

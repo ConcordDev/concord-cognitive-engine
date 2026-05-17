@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -515,6 +516,7 @@ export default function ConsultingLensPage() {
 
   return (
     <LensShell lensId="consulting" asMain={false}>
+      <FirstRunTour lensId="consulting" />
       <ManifestActionBar />
       <DepthBadge lensId="consulting" size="sm" className="ml-2" />
     <LensPageShell

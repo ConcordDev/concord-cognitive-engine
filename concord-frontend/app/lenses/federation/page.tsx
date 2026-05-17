@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FediverseFeed } from '@/components/federation/FediverseFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -115,6 +116,7 @@ export default function FederationPage() {
 
   return (
     <LensShell lensId="federation" asMain={false}>
+      <FirstRunTour lensId="federation" />
       <ManifestActionBar />
       <DepthBadge lensId="federation" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">

@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GoddessGallery } from '@/components/goddess/GoddessGallery';
 import { Loader2, Sparkles } from 'lucide-react';
@@ -65,6 +66,7 @@ export default function GoddessPage() {
 
   return (
     <LensShell lensId="goddess">
+      <FirstRunTour lensId="goddess" />
       <DepthBadge lensId="goddess" size="sm" className="ml-2" />
     <div className="p-6 sm:p-8 max-w-2xl mx-auto">
       {loading && (

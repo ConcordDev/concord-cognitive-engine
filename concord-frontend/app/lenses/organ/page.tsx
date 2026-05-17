@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AnatomyExplorer } from '@/components/organ/AnatomyExplorer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -182,6 +183,7 @@ export default function OrganLensPage() {
 
   return (
     <LensShell lensId="organ" asMain={false}>
+      <FirstRunTour lensId="organ" />
       <ManifestActionBar />
       <DepthBadge lensId="organ" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">

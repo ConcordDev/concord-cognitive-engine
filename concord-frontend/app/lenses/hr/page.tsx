@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -335,6 +336,7 @@ export default function HRLensPage() {
 
   return (
     <LensShell lensId="hr" asMain={false}>
+      <FirstRunTour lensId="hr" />
       <ManifestActionBar />
       <DepthBadge lensId="hr" size="sm" className="ml-2" />
     <div data-lens-theme="hr" className="space-y-6 p-6">

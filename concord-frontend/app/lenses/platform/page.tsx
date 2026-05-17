@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlatformRepos } from '@/components/platform/PlatformRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -353,6 +354,7 @@ export default function PlatformPage() {
 
   return (
     <LensShell lensId="platform" asMain={false}>
+      <FirstRunTour lensId="platform" />
       <ManifestActionBar />
       <DepthBadge lensId="platform" size="sm" className="ml-2" />
     <div data-lens-theme="platform" className="min-h-screen bg-lattice-void text-gray-200">

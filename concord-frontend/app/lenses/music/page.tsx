@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -620,6 +621,7 @@ export default function MusicLensPage() {
   // ---- Render ----
   return (
     <LensShell lensId="music" asMain={false} disableAgentFab={true}>
+      <FirstRunTour lensId="music" />
       <DepthBadge lensId="music" size="sm" className="ml-2" />
     <div className="lens-music flex flex-col h-full overflow-hidden" data-lens-theme="music">
       {/* Top Navigation */}

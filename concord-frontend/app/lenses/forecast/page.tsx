@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WeatherForecast } from '@/components/forecast/WeatherForecast';
 
@@ -61,6 +62,7 @@ export default function ForecastPage() {
 
   return (
         <LensShell lensId="forecast">
+      <FirstRunTour lensId="forecast" />
       <DepthBadge lensId="forecast" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6 flex items-start justify-between gap-3">

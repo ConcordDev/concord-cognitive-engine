@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EarthquakeList } from '@/components/geology/EarthquakeList';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -172,6 +173,7 @@ export default function GeologyLensPage() {
 
   return (
     <LensShell lensId="geology" asMain={false}>
+      <FirstRunTour lensId="geology" />
       <ManifestActionBar />
       <DepthBadge lensId="geology" size="sm" className="ml-2" />
     <LensPageShell

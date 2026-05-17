@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -279,6 +280,7 @@ export default function DebugLensPage() {
 
   return (
     <LensShell lensId="debug" asMain={false}>
+      <FirstRunTour lensId="debug" />
       <ManifestActionBar />
       <DepthBadge lensId="debug" size="sm" className="ml-2" />
     <div data-lens-theme="debug" className="p-6 space-y-6">

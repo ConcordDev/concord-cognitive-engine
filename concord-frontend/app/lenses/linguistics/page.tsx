@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WordLookup } from '@/components/linguistics/WordLookup';
 import { LinguisticsActionPanel } from '@/components/linguistics/LinguisticsActionPanel';
@@ -207,6 +208,7 @@ export default function LinguisticsLensPage() {
 
   return (
     <LensShell lensId="linguistics" asMain={false}>
+      <FirstRunTour lensId="linguistics" />
       <ManifestActionBar />
       <DepthBadge lensId="linguistics" size="sm" className="ml-2" />
     <div data-lens-theme="linguistics" className="p-6 space-y-6">

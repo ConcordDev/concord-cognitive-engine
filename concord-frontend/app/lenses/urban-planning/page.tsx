@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
@@ -179,6 +180,7 @@ export default function UrbanPlanningLensPage() {
 
   return (
     <LensShell lensId="urban-planning" asMain={false}>
+      <FirstRunTour lensId="urban-planning" />
       <ManifestActionBar />
       <DepthBadge lensId="urban-planning" size="sm" className="ml-2" />
     <LensPageShell

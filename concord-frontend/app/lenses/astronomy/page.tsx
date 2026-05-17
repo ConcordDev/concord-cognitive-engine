@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
 import { AstronomyActionPanel } from '@/components/astronomy/AstronomyActionPanel';
@@ -213,6 +214,7 @@ export default function AstronomyLensPage() {
 
   return (
     <LensShell lensId="astronomy" asMain={false}>
+      <FirstRunTour lensId="astronomy" />
       <ManifestActionBar />
       <DepthBadge lensId="astronomy" size="sm" className="ml-2" />
     <div data-lens-theme="astronomy" className="p-6 space-y-6">

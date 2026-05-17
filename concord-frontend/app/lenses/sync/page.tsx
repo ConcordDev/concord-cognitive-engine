@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SyncRepos } from '@/components/sync/SyncRepos';
 
@@ -64,6 +65,7 @@ export default function SyncPage() {
 
   return (
         <LensShell lensId="sync">
+      <FirstRunTour lensId="sync" />
       <DepthBadge lensId="sync" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">

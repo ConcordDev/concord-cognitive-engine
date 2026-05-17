@@ -5,6 +5,7 @@ import { useState, useCallback, useRef, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TimelineWiki } from '@/components/timeline/TimelineWiki';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -394,6 +395,7 @@ export default function TimelineLensPage() {
   }
   return (
     <LensShell lensId="timeline" asMain={false}>
+      <FirstRunTour lensId="timeline" />
       <ManifestActionBar />
       <DepthBadge lensId="timeline" size="sm" className="ml-2" />
     <div data-lens-theme="timeline" className="min-h-full bg-[#18191a]">

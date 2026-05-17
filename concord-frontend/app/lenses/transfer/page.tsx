@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TransferRepos } from '@/components/transfer/TransferRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -114,6 +115,7 @@ export default function TransferLensPage() {
   }
   return (
     <LensShell lensId="transfer" asMain={false}>
+      <FirstRunTour lensId="transfer" />
       <ManifestActionBar />
       <DepthBadge lensId="transfer" size="sm" className="ml-2" />
     <div data-lens-theme="transfer" className="p-6 space-y-6">

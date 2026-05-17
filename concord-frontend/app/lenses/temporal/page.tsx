@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TemporalRepos } from '@/components/temporal/TemporalRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -756,6 +757,7 @@ export default function TemporalLensPage() {
 
   return (
     <LensShell lensId="temporal" asMain={false}>
+      <FirstRunTour lensId="temporal" />
       <ManifestActionBar />
       <DepthBadge lensId="temporal" size="sm" className="ml-2" />
     <LensPageShell

@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TickRate } from '@/components/tick/TickRate';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -536,6 +537,7 @@ export default function TickLensPage() {
 
   return (
     <LensShell lensId="tick" asMain={false}>
+      <FirstRunTour lensId="tick" />
       <ManifestActionBar />
       <DepthBadge lensId="tick" size="sm" className="ml-2" />
     <div data-lens-theme="tick" className="p-6 space-y-6">

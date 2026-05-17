@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EarthEventsLive } from '@/components/world/EarthEventsLive';
 import { useRouter } from 'next/navigation';
@@ -3714,6 +3715,7 @@ export default function WorldLensPage() {
 
   return (
     <LensShell lensId="world" asMain={false}>
+      <FirstRunTour lensId="world" />
       <DepthBadge lensId="world" size="sm" className="ml-2" />
     <div data-lens-theme="world" className="flex flex-col h-full min-h-0">
       {/* Header */}

@@ -22,6 +22,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CreatorLeaderboard } from '@/components/creator/CreatorLeaderboard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
@@ -201,6 +202,7 @@ export default function CreatorDashboardPage() {
 
   return (
     <LensShell lensId="creator" asMain={false} disableAgentFab={true}>
+      <FirstRunTour lensId="creator" />
       <ManifestActionBar />
       <DepthBadge lensId="creator" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">

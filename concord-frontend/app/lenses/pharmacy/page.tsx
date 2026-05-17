@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -150,6 +151,7 @@ export default function PharmacyLensPage() {
 
   return (
     <LensShell lensId="pharmacy" asMain={false}>
+      <FirstRunTour lensId="pharmacy" />
       <ManifestActionBar />
       <DepthBadge lensId="pharmacy" size="sm" className="ml-2" />
     <div data-lens-theme="pharmacy" className="p-6 space-y-6">

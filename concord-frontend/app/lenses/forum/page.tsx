@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ForumChatter } from '@/components/forum/ForumChatter';
 import { ForumActionPanel } from '@/components/forum/ForumActionPanel';
@@ -793,6 +794,7 @@ export default function ForumLensPage() {
   }
   return (
     <LensShell lensId="forum" asMain={false}>
+      <FirstRunTour lensId="forum" />
       <ManifestActionBar />
       <DepthBadge lensId="forum" size="sm" className="ml-2" />
     <div className="lens-forum min-h-full bg-lattice-bg" data-lens-theme="forum">

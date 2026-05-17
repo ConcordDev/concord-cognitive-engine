@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnFrontPage } from '@/components/feed/HnFrontPage';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -943,6 +944,7 @@ export default function FeedLensPage() {
   }
   return (
     <LensShell lensId="feed" asMain={false}>
+      <FirstRunTour lensId="feed" />
       <DepthBadge lensId="feed" size="sm" className="ml-2" />
     <div className="lens-feed min-h-full bg-lattice-bg flex" data-lens-theme="feed">
       {/* ── Left Sidebar ──────────────────────────────────────────────────── */}

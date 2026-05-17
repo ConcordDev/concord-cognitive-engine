@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BountiesFeed } from '@/components/questmarket/BountiesFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -732,6 +733,7 @@ export default function QuestmarketLensPage() {
 
   return (
     <LensShell lensId="questmarket" asMain={false}>
+      <FirstRunTour lensId="questmarket" />
       <ManifestActionBar />
       <DepthBadge lensId="questmarket" size="sm" className="ml-2" />
     <LensPageShell

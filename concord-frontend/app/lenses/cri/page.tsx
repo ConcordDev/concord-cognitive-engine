@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QualityDistribution } from '@/components/cri/QualityDistribution';
 import { CrisisActionPanel } from '@/components/cri/CrisisActionPanel';
@@ -192,6 +193,7 @@ export default function CRILensPage() {
 
   return (
     <LensShell lensId="cri" asMain={false}>
+      <FirstRunTour lensId="cri" />
       <ManifestActionBar />
       <DepthBadge lensId="cri" size="sm" className="ml-2" />
     <div data-lens-theme="cri" className="p-6 space-y-6">

@@ -13,6 +13,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingDtus } from '@/components/dtus/TrendingDtus';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -165,6 +166,7 @@ export default function DTUBrowserPage() {
 
   return (
     <LensShell lensId="dtus" asMain={false}>
+      <FirstRunTour lensId="dtus" />
       <ManifestActionBar />
       <DepthBadge lensId="dtus" size="sm" className="ml-2" />
     <div data-lens-theme="dtus" className="min-h-screen bg-lattice-void text-white">

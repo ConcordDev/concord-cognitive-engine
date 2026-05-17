@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ProjectMgmtRepos } from '@/components/projects/ProjectMgmtRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -222,6 +223,7 @@ export default function ProjectsLensPage() {
 
   return (
     <LensShell lensId="projects" asMain={false}>
+      <FirstRunTour lensId="projects" />
       <ManifestActionBar />
       <DepthBadge lensId="projects" size="sm" className="ml-2" />
     <div data-lens-theme="projects" className="space-y-6 p-6">

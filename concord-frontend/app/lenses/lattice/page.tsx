@@ -22,6 +22,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LatticeRepos } from '@/components/lattice/LatticeRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -133,6 +134,7 @@ export default function LatticeLensPage() {
 
   return (
     <LensShell lensId="lattice" asMain={false}>
+      <FirstRunTour lensId="lattice" />
       <ManifestActionBar />
       <DepthBadge lensId="lattice" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-fuchsia-50">

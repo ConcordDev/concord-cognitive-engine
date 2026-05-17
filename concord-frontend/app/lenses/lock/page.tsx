@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SecurityRepos } from '@/components/lock/SecurityRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -164,6 +165,7 @@ export default function LockLensPage() {
   }
   return (
     <LensShell lensId="lock" asMain={false}>
+      <FirstRunTour lensId="lock" />
       <ManifestActionBar />
       <DepthBadge lensId="lock" size="sm" className="ml-2" />
     <div data-lens-theme="lock" className="p-6 space-y-6">

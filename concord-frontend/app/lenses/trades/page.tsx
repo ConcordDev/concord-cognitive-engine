@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TradesFeed } from '@/components/trades/TradesFeed';
 import { useState, useMemo, useCallback, useRef } from 'react';
@@ -2245,6 +2246,7 @@ export default function TradesLensPage() {
 
   return (
     <LensShell lensId="trades" asMain={false}>
+      <FirstRunTour lensId="trades" />
       <DepthBadge lensId="trades" size="sm" className="ml-2" />
     <div className={cn(ds.pageContainer, 'lens-trades')} data-lens-theme="trades">
       {/* Header */}

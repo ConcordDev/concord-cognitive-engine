@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MetalearningFeed } from '@/components/metalearning/MetalearningFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -162,6 +163,7 @@ export default function MetalearningLensPage() {
   }
   return (
     <LensShell lensId="metalearning" asMain={false}>
+      <FirstRunTour lensId="metalearning" />
       <ManifestActionBar />
       <DepthBadge lensId="metalearning" size="sm" className="ml-2" />
     <div data-lens-theme="metalearning" className="p-6 space-y-6">

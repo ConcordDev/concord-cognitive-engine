@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MathStackFeed } from '@/components/math/MathStackFeed';
 import { MathActionPanel } from '@/components/math/MathActionPanel';
@@ -400,6 +401,7 @@ export default function MathLensPage() {
 
   return (
     <LensShell lensId="math" asMain={false}>
+      <FirstRunTour lensId="math" />
       <ManifestActionBar />
       <DepthBadge lensId="math" size="sm" className="ml-2" />
     <div data-lens-theme="math" className="p-6 space-y-6">

@@ -24,6 +24,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -134,6 +135,7 @@ export default function UnderstandingPage() {
 
   return (
     <LensShell lensId="understanding" asMain={false}>
+      <FirstRunTour lensId="understanding" />
       <ManifestActionBar />
       <DepthBadge lensId="understanding" size="sm" className="ml-2" />
       <main className="min-h-screen p-6 max-w-6xl mx-auto text-white">

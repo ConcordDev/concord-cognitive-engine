@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -132,6 +133,7 @@ export default function AuditLensPage() {
   }
   return (
     <LensShell lensId="audit" asMain={false}>
+      <FirstRunTour lensId="audit" />
       <ManifestActionBar />
       <DepthBadge lensId="audit" size="sm" className="ml-2" />
     <div data-lens-theme="audit" className="p-6 space-y-6">

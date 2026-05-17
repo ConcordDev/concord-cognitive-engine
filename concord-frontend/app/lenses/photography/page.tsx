@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PexelsBrowser } from '@/components/photography/PexelsBrowser';
 import { PhotographyActionPanel } from '@/components/photography/PhotographyActionPanel';
@@ -385,6 +386,7 @@ export default function PhotographyPage() {
 
   return (
     <LensShell lensId="photography" asMain={false}>
+      <FirstRunTour lensId="photography" />
       <ManifestActionBar />
       <DepthBadge lensId="photography" size="sm" className="ml-2" />
     <div data-lens-theme="photography" className="min-h-screen">

@@ -19,6 +19,7 @@ import { useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BrainPoolStatus } from '@/components/expert-mode/BrainPoolStatus';
 import { AnswerActionPanel } from '@/components/expert-mode/AnswerActionPanel';
@@ -142,6 +143,7 @@ export default function ExpertModeLens() {
 
   return (
     <LensShell lensId="expert-mode">
+      <FirstRunTour lensId="expert-mode" />
       <DepthBadge lensId="expert-mode" size="sm" className="ml-2" />
     <div className="min-h-screen bg-zinc-950 text-zinc-100 px-4 sm:px-6 py-8">
       <div className="mx-auto max-w-3xl">

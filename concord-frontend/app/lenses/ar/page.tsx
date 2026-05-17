@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -464,6 +465,7 @@ export default function ARLensPage() {
 
   return (
     <LensShell lensId="ar" asMain={false}>
+      <FirstRunTour lensId="ar" />
       <ManifestActionBar />
       <DepthBadge lensId="ar" size="sm" className="ml-2" />
     <div data-lens-theme="ar" className="space-y-6 p-6">

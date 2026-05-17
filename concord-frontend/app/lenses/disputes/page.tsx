@@ -11,6 +11,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LawStackFeed } from '@/components/disputes/LawStackFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -713,6 +714,7 @@ export default function DisputesPage() {
 
   return (
     <LensShell lensId="disputes" asMain={false}>
+      <FirstRunTour lensId="disputes" />
       <ManifestActionBar />
       <DepthBadge lensId="disputes" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>

@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CharacterStudio } from '@/components/personas/CharacterStudio';
 
@@ -83,6 +84,7 @@ export default function PersonasPage() {
 
   return (
         <LensShell lensId="personas">
+      <FirstRunTour lensId="personas" />
       <DepthBadge lensId="personas" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">

@@ -15,6 +15,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MeshRepos } from '@/components/mesh/MeshRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -118,6 +119,7 @@ export default function MeshLensPage() {
 
   return (
     <LensShell lensId="mesh" asMain={false}>
+      <FirstRunTour lensId="mesh" />
       <ManifestActionBar />
       <DepthBadge lensId="mesh" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-teal-50">

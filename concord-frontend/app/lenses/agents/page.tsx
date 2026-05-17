@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -286,6 +287,7 @@ export default function AgentsLensPage() {
   }
   return (
     <LensShell lensId="agents" asMain={false}>
+      <FirstRunTour lensId="agents" />
       <ManifestActionBar />
       <DepthBadge lensId="agents" size="sm" className="ml-2" />
     <div data-lens-theme="agents" className="min-h-full bg-lattice-bg">

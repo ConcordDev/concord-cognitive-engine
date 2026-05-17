@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LegacyChatter } from '@/components/legacy/LegacyChatter';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -101,6 +102,7 @@ export default function LegacyLensPage() {
   }
   return (
     <LensShell lensId="legacy" asMain={false}>
+      <FirstRunTour lensId="legacy" />
       <ManifestActionBar />
       <DepthBadge lensId="legacy" size="sm" className="ml-2" />
     <div data-lens-theme="legacy" className="p-6 space-y-6">

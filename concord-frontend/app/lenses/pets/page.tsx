@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BreedExplorer } from '@/components/pets/BreedExplorer';
 import { PetCarePlanner } from '@/components/pets/PetCarePlanner';
@@ -381,6 +382,7 @@ export default function PetsLensPage() {
 
   return (
     <LensShell lensId="pets" asMain={false}>
+      <FirstRunTour lensId="pets" />
       <ManifestActionBar />
       <DepthBadge lensId="pets" size="sm" className="ml-2" />
     <div data-lens-theme="pets" className="space-y-6 p-6">

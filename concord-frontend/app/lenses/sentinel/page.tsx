@@ -11,6 +11,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SentinelCves } from '@/components/sentinel/SentinelCves';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -113,6 +114,7 @@ export default function SentinelLensPage() {
 
   return (
     <LensShell lensId="sentinel" asMain={false}>
+      <FirstRunTour lensId="sentinel" />
       <ManifestActionBar />
       <DepthBadge lensId="sentinel" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-blue-50">

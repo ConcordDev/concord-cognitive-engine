@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -581,6 +582,7 @@ export default function AffectLensPage() {
 
   return (
     <LensShell lensId="affect" asMain={false}>
+      <FirstRunTour lensId="affect" />
       <DepthBadge lensId="affect" size="sm" className="ml-2" />
     <div data-lens-theme="affect" className="p-6 space-y-6">
       {/* Header */}

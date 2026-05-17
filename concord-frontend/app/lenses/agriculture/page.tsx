@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -1450,6 +1451,7 @@ export default function AgricultureLensPage() {
   }
   return (
     <LensShell lensId="agriculture" asMain={false}>
+      <FirstRunTour lensId="agriculture" />
       <DepthBadge lensId="agriculture" size="sm" className="ml-2" />
     <div data-lens-theme="agriculture" className={ds.pageContainer}>
       <header className={ds.sectionHeader}>

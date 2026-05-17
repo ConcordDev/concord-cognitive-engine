@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HvacFeed } from '@/components/hvac/HvacFeed';
 import { ManualJCalc } from '@/components/hvac/ManualJCalc';
@@ -632,6 +633,7 @@ export default function HVACLensPage() {
 
   return (
     <LensShell lensId="hvac" asMain={false}>
+      <FirstRunTour lensId="hvac" />
       <ManifestActionBar />
       <DepthBadge lensId="hvac" size="sm" className="ml-2" />
     <LensPageShell

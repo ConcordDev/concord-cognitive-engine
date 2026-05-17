@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DailyInspiration } from '@/components/daily/DailyInspiration';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -376,6 +377,7 @@ export default function DailyLensPage() {
   }
   return (
     <LensShell lensId="daily" asMain={false}>
+      <FirstRunTour lensId="daily" />
       <ManifestActionBar />
       <DepthBadge lensId="daily" size="sm" className="ml-2" />
     <div data-lens-theme="daily" className="h-[calc(100vh-4rem)] flex bg-lattice-deep text-white overflow-hidden">

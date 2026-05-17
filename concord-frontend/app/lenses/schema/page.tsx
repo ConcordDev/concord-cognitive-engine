@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -121,6 +122,7 @@ export default function SchemaLensPage() {
   }
   return (
     <LensShell lensId="schema" asMain={false}>
+      <FirstRunTour lensId="schema" />
       <ManifestActionBar />
       <DepthBadge lensId="schema" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">

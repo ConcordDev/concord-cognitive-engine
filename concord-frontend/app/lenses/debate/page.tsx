@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CmvFeed } from '@/components/debate/CmvFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -544,6 +545,7 @@ export default function DebateLensPage() {
 
   return (
     <LensShell lensId="debate" asMain={false}>
+      <FirstRunTour lensId="debate" />
       <ManifestActionBar />
       <DepthBadge lensId="debate" size="sm" className="ml-2" />
     <div data-lens-theme="debate" className="p-6 space-y-6">

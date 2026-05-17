@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BaseCampAlmanac } from '@/components/expedition-journal/BaseCampAlmanac';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -60,6 +61,7 @@ export default function ExpeditionJournalPage() {
 
   return (
     <LensShell lensId="expedition-journal" asMain={false}>
+      <FirstRunTour lensId="expedition-journal" />
       <ManifestActionBar />
       <DepthBadge lensId="expedition-journal" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">

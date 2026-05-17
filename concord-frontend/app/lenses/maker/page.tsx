@@ -16,6 +16,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MakerShowcase } from '@/components/maker/MakerShowcase';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -128,6 +129,7 @@ export default function MakerLensPage() {
 
   return (
     <LensShell lensId="maker" asMain={false}>
+      <FirstRunTour lensId="maker" />
       <ManifestActionBar />
       <DepthBadge lensId="maker" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-pink-50">

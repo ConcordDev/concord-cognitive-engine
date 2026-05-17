@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ServicesFeed } from '@/components/services/ServicesFeed';
 import { RevenueRetentionPanel } from '@/components/services/RevenueRetentionPanel';
@@ -785,6 +786,7 @@ export default function ServicesLensPage() {
 
   return (
     <LensShell lensId="services" asMain={false}>
+      <FirstRunTour lensId="services" />
       <ManifestActionBar />
       <DepthBadge lensId="services" size="sm" className="ml-2" />
     <div data-lens-theme="services" className={ds.pageContainer}>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FilmStackFeed } from '@/components/film-studios/FilmStackFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -212,6 +213,7 @@ export default function FilmStudiosPage() {
 
   return (
     <LensShell lensId="film-studios" asMain={false}>
+      <FirstRunTour lensId="film-studios" />
       <ManifestActionBar />
       <DepthBadge lensId="film-studios" size="sm" className="ml-2" />
     <div data-lens-theme="film-studios" className="min-h-screen">

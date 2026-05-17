@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ImportToolingGallery } from '@/components/import/ImportToolingGallery';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -434,6 +435,7 @@ export default function ImportLens() {
   }
   return (
     <LensShell lensId="import" asMain={false}>
+      <FirstRunTour lensId="import" />
       <ManifestActionBar />
       <DepthBadge lensId="import" size="sm" className="ml-2" />
     <div data-lens-theme="import" className="lens-container">

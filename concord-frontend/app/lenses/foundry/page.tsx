@@ -15,6 +15,7 @@
 
 import dynamic from 'next/dynamic';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
 import { FoundryActionPanel } from '@/components/foundry/FoundryActionPanel';
@@ -35,6 +36,7 @@ const FoundryCanvas = dynamic(() => import('@/components/foundry/FoundryCanvas')
 export default function FoundryLensPage() {
   return (
     <LensShell lensId="foundry" asMain={false}>
+      <FirstRunTour lensId="foundry" />
       <ManifestActionBar />
       <DepthBadge lensId="foundry" size="sm" className="ml-2" />
       <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-950 to-sky-950/10 text-slate-100">

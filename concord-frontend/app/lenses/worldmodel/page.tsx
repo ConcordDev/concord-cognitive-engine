@@ -20,6 +20,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldModelArxiv } from '@/components/worldmodel/WorldModelArxiv';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -153,6 +154,7 @@ export default function WorldmodelLensPage() {
 
   return (
     <LensShell lensId="worldmodel" asMain={false}>
+      <FirstRunTour lensId="worldmodel" />
       <ManifestActionBar />
       <DepthBadge lensId="worldmodel" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-emerald-50">

@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import ContractAnalyzer from '@/components/legal/ContractAnalyzer';
 import { LegalActionPanel } from '@/components/legal/LegalActionPanel';
@@ -3058,6 +3059,7 @@ export default function LegalLensPage() {
 
   return (
     <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
+      <FirstRunTour lensId="legal" />
       <DepthBadge lensId="legal" size="sm" className="ml-2" />
       <RivalShapePreview lensId="legal" />
     <div data-lens-theme="legal" className={ds.pageContainer}>

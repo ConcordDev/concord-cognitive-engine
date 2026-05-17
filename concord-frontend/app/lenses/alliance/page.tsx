@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -194,6 +195,7 @@ export default function AllianceLensPage() {
   }
   return (
     <LensShell lensId="alliance" asMain={false}>
+      <FirstRunTour lensId="alliance" />
       <ManifestActionBar />
       <DepthBadge lensId="alliance" size="sm" className="ml-2" />
     <div data-lens-theme="alliance" className="p-6 space-y-6">

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { InsurancePolicyTalk } from '@/components/insurance/InsurancePolicyTalk';
 import { InsuranceActionPanel } from '@/components/insurance/InsuranceActionPanel';
@@ -967,6 +968,7 @@ export default function InsuranceLensPage() {
 
   return (
     <LensShell lensId="insurance" asMain={false}>
+      <FirstRunTour lensId="insurance" />
       <ManifestActionBar />
       <DepthBadge lensId="insurance" size="sm" className="ml-2" />
     <div data-lens-theme="insurance" className={ds.pageContainer}>

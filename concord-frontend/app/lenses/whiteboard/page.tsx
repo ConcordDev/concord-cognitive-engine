@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WhiteboardRepos } from '@/components/whiteboard/WhiteboardRepos';
 import { WhiteboardActionPanel } from '@/components/whiteboard/WhiteboardActionPanel';
@@ -943,6 +944,7 @@ export default function WhiteboardLensPage() {
   }
   return (
     <LensShell lensId="whiteboard" asMain={false}>
+      <FirstRunTour lensId="whiteboard" />
       <DepthBadge lensId="whiteboard" size="sm" className="ml-2" />
       <RivalShapePreview lensId="whiteboard" />
     <div className="h-full flex bg-lattice-bg">

@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivFeed } from '@/components/hypothesis/ArxivFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -226,6 +227,7 @@ export default function HypothesisLensPage() {
   }
   return (
     <LensShell lensId="hypothesis" asMain={false}>
+      <FirstRunTour lensId="hypothesis" />
       <ManifestActionBar />
       <DepthBadge lensId="hypothesis" size="sm" className="ml-2" />
     <div data-lens-theme="hypothesis" className="p-6 space-y-6">

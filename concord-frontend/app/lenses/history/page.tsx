@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -190,6 +191,7 @@ export default function HistoryLensPage() {
 
   return (
     <LensShell lensId="history" asMain={false}>
+      <FirstRunTour lensId="history" />
       <ManifestActionBar />
       <DepthBadge lensId="history" size="sm" className="ml-2" />
     <div data-lens-theme="history" className="p-6 space-y-6">

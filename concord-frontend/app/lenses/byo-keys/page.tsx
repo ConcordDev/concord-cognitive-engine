@@ -24,6 +24,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
 
@@ -155,6 +156,7 @@ export default function ByoKeysLens() {
 
   return (
         <LensShell lensId="byo-keys">
+      <FirstRunTour lensId="byo-keys" />
       <DepthBadge lensId="byo-keys" size="sm" className="ml-2" />
   <div className="min-h-screen bg-zinc-950 text-zinc-100 px-6 py-8">
         <div className="mx-auto max-w-4xl">

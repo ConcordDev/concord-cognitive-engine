@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MarketingFeed } from '@/components/marketing/MarketingFeed';
 import { MarketingActionPanel } from '@/components/marketing/MarketingActionPanel';
@@ -405,6 +406,7 @@ export default function MarketingLensPage() {
 
   return (
     <LensShell lensId="marketing" asMain={false}>
+      <FirstRunTour lensId="marketing" />
       <ManifestActionBar />
       <DepthBadge lensId="marketing" size="sm" className="ml-2" />
     <div data-lens-theme="marketing" className="space-y-6 p-6">

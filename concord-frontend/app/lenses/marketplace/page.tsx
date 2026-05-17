@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingListings } from '@/components/marketplace/TrendingListings';
 import { MarketplaceActionPanel } from '@/components/marketplace/MarketplaceActionPanel';
@@ -1286,6 +1287,7 @@ export default function MarketplaceLensPage() {
   }
   return (
     <LensShell lensId="marketplace" asMain={false} disableAgentFab={true}>
+      <FirstRunTour lensId="marketplace" />
       <DepthBadge lensId="marketplace" size="sm" className="ml-2" />
     <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
       {/* ---- Header ---- */}

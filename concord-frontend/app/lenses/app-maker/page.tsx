@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useEffect, useRef } from 'react';
@@ -190,6 +191,7 @@ export default function AppMakerLens() {
 
   return (
     <LensShell lensId="app-maker" asMain={false}>
+      <FirstRunTour lensId="app-maker" />
       <ManifestActionBar />
       <DepthBadge lensId="app-maker" size="sm" className="ml-2" />
     <div data-lens-theme="app-maker" className="p-6 max-w-4xl mx-auto space-y-6">

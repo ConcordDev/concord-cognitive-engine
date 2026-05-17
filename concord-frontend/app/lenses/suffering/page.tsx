@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SufferingRef } from '@/components/suffering/SufferingRef';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -103,6 +104,7 @@ export default function SufferingLensPage() {
   }
   return (
     <LensShell lensId="suffering" asMain={false}>
+      <FirstRunTour lensId="suffering" />
       <ManifestActionBar />
       <DepthBadge lensId="suffering" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">

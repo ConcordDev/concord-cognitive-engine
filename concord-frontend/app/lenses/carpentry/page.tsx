@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -636,6 +637,7 @@ export default function CarpentryLensPage() {
 
   return (
     <LensShell lensId="carpentry" asMain={false}>
+      <FirstRunTour lensId="carpentry" />
       <ManifestActionBar />
       <DepthBadge lensId="carpentry" size="sm" className="ml-2" />
     <LensPageShell

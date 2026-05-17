@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingRepos } from '@/components/repos/TrendingRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -238,6 +239,7 @@ export default function ReposLensPage() {
   }
   return (
     <LensShell lensId="repos" asMain={false}>
+      <FirstRunTour lensId="repos" />
       <ManifestActionBar />
       <DepthBadge lensId="repos" size="sm" className="ml-2" />
     <div data-lens-theme="repos" className="min-h-full bg-[#0d1117]">

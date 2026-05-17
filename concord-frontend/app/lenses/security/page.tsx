@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SecurityAdvisories } from '@/components/security/SecurityAdvisories';
 import { ThreatVulnPanel } from '@/components/security/ThreatVulnPanel';
@@ -928,6 +929,7 @@ export default function SecurityLensPage() {
 
   return (
     <LensShell lensId="security" asMain={false}>
+      <FirstRunTour lensId="security" />
       <ManifestActionBar />
       <DepthBadge lensId="security" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>

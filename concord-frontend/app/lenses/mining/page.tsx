@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MshaLookup } from '@/components/mining/MshaLookup';
 import { MiningActionPanel } from '@/components/mining/MiningActionPanel';
@@ -177,6 +178,7 @@ export default function MiningLensPage() {
 
   return (
     <LensShell lensId="mining" asMain={false}>
+      <FirstRunTour lensId="mining" />
       <ManifestActionBar />
       <DepthBadge lensId="mining" size="sm" className="ml-2" />
     <LensPageShell

@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -283,6 +284,7 @@ export default function MeditationLensPage() {
 
   return (
     <LensShell lensId="meditation">
+      <FirstRunTour lensId="meditation" />
       <ManifestActionBar />
       <DepthBadge lensId="meditation" size="sm" className="ml-2" />
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-zinc-950 to-purple-950/20 text-zinc-100 px-4 sm:px-6 py-8">

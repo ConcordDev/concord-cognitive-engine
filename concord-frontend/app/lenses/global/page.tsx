@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -164,6 +165,7 @@ export default function GlobalLensPage() {
 
   return (
     <LensShell lensId="global" asMain={false}>
+      <FirstRunTour lensId="global" />
       <ManifestActionBar />
       <DepthBadge lensId="global" size="sm" className="ml-2" />
     <div data-lens-theme="global" className="p-6 space-y-5">

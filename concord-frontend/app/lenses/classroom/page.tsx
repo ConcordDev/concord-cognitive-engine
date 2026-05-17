@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
 import { ClassroomActionPanel } from '@/components/classroom/ClassroomActionPanel';
@@ -86,6 +87,7 @@ export default function ClassroomPage() {
 
   return (
         <LensShell lensId="classroom">
+      <FirstRunTour lensId="classroom" />
       <DepthBadge lensId="classroom" size="sm" className="ml-2" />
   <div className="p-6 max-w-3xl mx-auto">
         <header className="mb-6">

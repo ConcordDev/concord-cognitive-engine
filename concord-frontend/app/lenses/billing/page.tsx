@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -268,6 +269,7 @@ export default function BillingPage() {
 
   return (
     <LensShell lensId="billing" asMain={false}>
+      <FirstRunTour lensId="billing" />
       <ManifestActionBar />
       <DepthBadge lensId="billing" size="sm" className="ml-2" />
     <div data-lens-theme="billing" className="p-6 max-w-6xl mx-auto space-y-8">

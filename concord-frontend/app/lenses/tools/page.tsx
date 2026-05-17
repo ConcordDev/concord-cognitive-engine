@@ -10,6 +10,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ToolsRepos } from '@/components/tools/ToolsRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -105,6 +106,7 @@ export default function ToolsLensPage() {
 
   return (
     <LensShell lensId="tools" asMain={false}>
+      <FirstRunTour lensId="tools" />
       <ManifestActionBar />
       <DepthBadge lensId="tools" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-yellow-50">

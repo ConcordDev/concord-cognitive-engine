@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -160,6 +161,7 @@ export default function BridgeLens() {
 
   return (
     <LensShell lensId="bridge" asMain={false}>
+      <FirstRunTour lensId="bridge" />
       <ManifestActionBar />
       <DepthBadge lensId="bridge" size="sm" className="ml-2" />
     <div data-lens-theme="bridge" className="min-h-screen bg-zinc-950 text-zinc-100 p-6">

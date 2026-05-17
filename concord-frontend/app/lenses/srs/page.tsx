@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SrsRepos } from '@/components/srs/SrsRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -355,6 +356,7 @@ export default function SRSLensPage() {
   }
   return (
     <LensShell lensId="srs" asMain={false}>
+      <FirstRunTour lensId="srs" />
       <ManifestActionBar />
       <DepthBadge lensId="srs" size="sm" className="ml-2" />
     <div data-lens-theme="srs" className="min-h-full bg-lattice-bg">

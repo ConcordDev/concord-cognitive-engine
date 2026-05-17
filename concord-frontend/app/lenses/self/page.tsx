@@ -11,6 +11,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SelfFeed } from '@/components/self/SelfFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -195,6 +196,7 @@ export default function UnifiedSelfLensPage() {
 
   return (
     <LensShell lensId="self" asMain={false}>
+      <FirstRunTour lensId="self" />
       <ManifestActionBar />
       <DepthBadge lensId="self" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-rose-50">

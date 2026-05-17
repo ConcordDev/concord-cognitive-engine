@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OfflineRepos } from '@/components/offline/OfflineRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -206,6 +207,7 @@ export default function OfflineLensPage() {
   }
   return (
     <LensShell lensId="offline" asMain={false}>
+      <FirstRunTour lensId="offline" />
       <ManifestActionBar />
       <DepthBadge lensId="offline" size="sm" className="ml-2" />
     <div data-lens-theme="offline" className="p-6 space-y-6">

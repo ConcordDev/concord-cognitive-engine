@@ -117,6 +117,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['explore', 'create_city', 'customize_character', 'stream', 'teleport', 'build', 'browse_assets'],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Concordia awaits.',
+      caption: 'Pick your avatar, spawn into the simulator, and meet the NPCs whose dialogue is composed against your DTU substrate.',
+      firstActionLabel: 'Enter Concordia',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'WASD to move; mouse to look. The Rapier3D collider is authoritative — what your client sees the server agrees with.' },
+        { caption: 'Talk to NPCs by clicking. Their dialogue branches against authored content + your DTU citations.' },
+        { caption: 'The Goddess Concordia speaks in tones gated by ecosystem score + refusal-field strength. Watch the HUD chips for the live composition.' },
+      ],
+    },
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -132,6 +144,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['send', 'summarize', 'branch', 'export_transcript', 'search_history', 'merge_threads'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No conversations yet.',
+      caption: 'Start one — Concord remembers everything you talk about, and the substrate compresses old conversations into searchable MEGA-DTUs.',
+      firstActionLabel: 'Start a conversation',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Type any question or task. Concord routes to whichever of the four brains fits — Conscious for reasoning, Subconscious for synthesis, Utility for quick tasks, Repair for fixes.' },
+        { caption: 'Every reply that grounds in a DTU gets a citation chip you can click — your knowledge substrate stays linked.' },
+        { caption: 'Threads persist server-side. Close the tab; come back tomorrow; the brain still has your context.' },
+      ],
+    },
   },
   {
     domain: 'code',
@@ -142,6 +166,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['execute', 'lint', 'format', 'refactor', 'diff', 'review', 'test', 'package'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No code yet.',
+      caption: 'Paste, type, or import a snippet. The Code lens runs lint, formatter, refactor, diff, and review against the substrate.',
+      firstActionLabel: 'Create your first snippet',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Drop code into the editor — the VS Code-shape silhouette gives you file tree, tabs, and a status bar so it reads as your IDE.' },
+        { caption: 'Use the action bar to lint, format, or run a review pass. Results stream back as DTUs you can cite from chat.' },
+        { caption: 'Repos you connect via GitHub appear in the side panel — code-substrate-refresh keeps them current every 5 ticks.' },
+      ],
+    },
   },
   {
     domain: 'paper',
@@ -227,6 +263,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['mix', 'master', 'bounce', 'render', 'apply_effect', 'normalize', 'session_snapshot'],
     category: 'creative',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'New session, blank canvas.',
+      caption: 'Add tracks, drop in effects, mix, and bounce. Sessions stream to Concordia\'s soundscape per district.',
+      firstActionLabel: 'Create your first session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Tracks list on the left. Hit + to add audio / MIDI / synth tracks.' },
+        { caption: 'The Mixer pane shows fader strips with effects chains. Mastering is a separate panel — ship-ready loudness.' },
+        { caption: 'Render a mixdown → DTU. Publish to marketplace or attach to Concordia districts as ambient soundscape.' },
+      ],
+    },
   },
   {
     domain: 'voice',
@@ -382,6 +430,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['buy', 'sell', 'review', 'verify_artifact_hash', 'issue_license', 'distribute_royalties', 'validate_listing', 'provenance_check'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No listings yet.',
+      caption: 'List a DTU you minted, or browse what creators have published. Royalty cascade pays ancestors automatically.',
+      firstActionLabel: 'List your first DTU',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'The Bandcamp-shape grid puts creator art up front. Click any tile for provenance + price + license terms.' },
+        { caption: 'Buying mints a license + cascades royalties up the lineage chain (95% to creators, 30% cap to ancestors, seller keeps ≥64.54%).' },
+        { caption: 'Selling: hit the "Mint" action on any DTU you own and set a tier price. Citations from your DTU pay you forever.' },
+      ],
+    },
   },
   {
     domain: 'market',
@@ -1762,6 +1822,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
     dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No medications tracked.',
+      caption: 'Add a medication to track dose, refills, and interactions. FDA OpenFDA powers the drug reference panel.',
+      firstActionLabel: 'Add your first medication',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Add medications via the Medications tab. Each entry stores dose / frequency / route / refills server-side.' },
+        { caption: 'The Interactions tab runs your active list against FDA OpenFDA adverse-event data — real federal labels, not synthetic.' },
+        { caption: 'FDA Reference (tab F) opens the drug-label browser. The depth badge tells you when data is REAL vs. demo (formulary requires paid feeds we don\'t have).' },
+      ],
+    },
   },
   {
     domain: 'philosophy',
@@ -1992,6 +2064,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No CC yet.',
+      caption: 'Earn Concord Coin by minting DTUs, completing events, or buying CC via Stripe. Every transaction lands here.',
+      firstActionLabel: 'View earning paths',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Your balance sits at the top — substrate-real, not a price quote. CC earned from royalties shows up immediately.' },
+        { caption: 'The history rail shows every credit / debit with refId — refunds idempotent, withdrawal holds tracked at 48h.' },
+        { caption: 'Send and receive use the standard Concord Coin ledger. The 48-hour withdrawal hold is the anti-refund-exploit gate.' },
+      ],
+    },
   },
   {
     domain: 'welding',
@@ -2158,6 +2242,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['list_templates', 'list_sections', 'validate', 'generate', 'export_app', 'check_avoidance', 'repair_log'],
     category: 'creative',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'No Forge apps yet.',
+      caption: 'Pick a template, fill the sections, and Forge generates a single-file polyglot app. Mint it to your marketplace stall.',
+      firstActionLabel: 'Browse templates',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Templates ship with section slots. Fill each slot with prose; Forge generates the matching code.' },
+        { caption: 'Validate runs lint + repair before publish — the repair log surfaces any auto-fixes.' },
+        { caption: 'Generated apps mint as DTUs and can list on the creative marketplace with royalty cascade.' },
+      ],
+    },
   },
   {
     domain: 'foundry',
@@ -2218,6 +2314,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['send_dm', 'list_threads', 'mark_read', 'archive', 'search_messages'],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Inbox empty.',
+      caption: 'DMs, Concord-Link messages, and federation traffic land here. Start a thread or wait for the first ping.',
+      firstActionLabel: 'Start a new message',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Threads list in the left rail; the right pane shows the active conversation in the Gmail-shape silhouette.' },
+        { caption: 'Mark as read, archive, or search — all mutations write to the substrate; offline edits queue and replay.' },
+        { caption: 'Channels routed through Concord-Mesh fall back to BLE / WiFi-Direct when offline.' },
+      ],
+    },
   },
   {
     domain: 'ops',

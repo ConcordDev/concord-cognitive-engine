@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import QuoteCardList, { type QuoteCardItem } from '@/components/lens/QuoteCardList';
@@ -92,6 +93,7 @@ export default function MarketsPage() {
 
   return (
         <LensShell lensId="markets">
+      <FirstRunTour lensId="markets" />
       <DepthBadge lensId="markets" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-4xl mx-auto">
         <header className="mb-6">

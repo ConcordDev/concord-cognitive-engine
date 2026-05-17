@@ -16,6 +16,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EsportsFeed } from '@/components/tournaments/EsportsFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -104,6 +105,7 @@ export default function TournamentsPage() {
 
   return (
     <LensShell lensId="tournaments" asMain={false}>
+      <FirstRunTour lensId="tournaments" />
       <ManifestActionBar />
       <DepthBadge lensId="tournaments" size="sm" className="ml-2" />
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">

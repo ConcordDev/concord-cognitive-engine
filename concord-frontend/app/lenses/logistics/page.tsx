@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
 import ShipmentTracker from '@/components/logistics/ShipmentTracker';
@@ -2100,6 +2101,7 @@ export default function LogisticsLensPage() {
 
   return (
     <LensShell lensId="logistics" asMain={false}>
+      <FirstRunTour lensId="logistics" />
       <DepthBadge lensId="logistics" size="sm" className="ml-2" />
     <LensPageShell
       domain="logistics"

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
@@ -395,6 +396,7 @@ export default function PoetryPage() {
 
   return (
     <LensShell lensId="poetry" asMain={false}>
+      <FirstRunTour lensId="poetry" />
       <ManifestActionBar />
       <DepthBadge lensId="poetry" size="sm" className="ml-2" />
     <div data-lens-theme="poetry" className="min-h-screen">

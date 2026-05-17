@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
 import WorkoutLogger from '@/components/fitness/WorkoutLogger';
@@ -921,6 +922,7 @@ export default function FitnessLensPage() {
 
   return (
     <LensShell lensId="fitness" asMain={false}>
+      <FirstRunTour lensId="fitness" />
       <DepthBadge lensId="fitness" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* Fitness Disclaimer */}

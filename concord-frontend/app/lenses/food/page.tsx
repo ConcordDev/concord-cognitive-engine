@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
 import { FoodActionPanel } from '@/components/food/FoodActionPanel';
@@ -2654,6 +2655,7 @@ export default function FoodLensPage() {
 
   return (
     <LensShell lensId="food" asMain={false}>
+      <FirstRunTour lensId="food" />
       <DepthBadge lensId="food" size="sm" className="ml-2" />
     <div data-lens-theme="food" className={ds.pageContainer}>
       {/* Nutrition Disclaimer */}

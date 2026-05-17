@@ -17,6 +17,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SystemHealthPanel } from '@/components/system/SystemHealthPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -353,6 +354,7 @@ export default function SystemLensPage() {
 
   return (
     <LensShell lensId="system" asMain={false}>
+      <FirstRunTour lensId="system" />
       <ManifestActionBar />
       <DepthBadge lensId="system" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-cyan-50">

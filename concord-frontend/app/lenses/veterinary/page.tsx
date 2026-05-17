@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VetFeed } from '@/components/veterinary/VetFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -167,6 +168,7 @@ export default function VeterinaryLensPage() {
 
   return (
     <LensShell lensId="veterinary" asMain={false}>
+      <FirstRunTour lensId="veterinary" />
       <ManifestActionBar />
       <DepthBadge lensId="veterinary" size="sm" className="ml-2" />
     <LensPageShell

@@ -2,6 +2,7 @@
 
 import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SettingsHealth } from '@/components/settings/SettingsHealth';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -59,6 +60,7 @@ export default function SettingsPage() {
 
   return (
     <LensShell lensId="settings" asMain={false}>
+      <FirstRunTour lensId="settings" />
       <ManifestActionBar />
       <DepthBadge lensId="settings" size="sm" className="ml-2" />
     <main className="min-h-screen p-6 sm:p-8 max-w-3xl mx-auto">

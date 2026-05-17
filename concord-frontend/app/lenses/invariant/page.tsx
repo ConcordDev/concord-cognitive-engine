@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FormalVerificationRepos } from '@/components/invariant/FormalVerificationRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -205,6 +206,7 @@ export default function InvariantLensPage() {
   }
   return (
     <LensShell lensId="invariant" asMain={false}>
+      <FirstRunTour lensId="invariant" />
       <ManifestActionBar />
       <DepthBadge lensId="invariant" size="sm" className="ml-2" />
     <div data-lens-theme="invariant" className="p-6 space-y-6">

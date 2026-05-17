@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -313,6 +314,7 @@ export default function AnimationPage() {
 
   return (
     <LensShell lensId="animation" asMain={false}>
+      <FirstRunTour lensId="animation" />
       <ManifestActionBar />
       <DepthBadge lensId="animation" size="sm" className="ml-2" />
     <div data-lens-theme="animation" className="min-h-screen">

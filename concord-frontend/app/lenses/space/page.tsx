@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -264,6 +265,7 @@ export default function SpaceLensPage() {
 
   return (
     <LensShell lensId="space" asMain={false}>
+      <FirstRunTour lensId="space" />
       <ManifestActionBar />
       <DepthBadge lensId="space" size="sm" className="ml-2" />
     <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>

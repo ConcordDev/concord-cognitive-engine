@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OriginExplorer } from '@/components/genesis/OriginExplorer';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -240,6 +241,7 @@ export default function GenesisLens() {
 
   return (
     <LensShell lensId="genesis" asMain={false}>
+      <FirstRunTour lensId="genesis" />
       <ManifestActionBar />
       <DepthBadge lensId="genesis" size="sm" className="ml-2" />
     <div className="min-h-screen bg-gray-950 text-white p-6">

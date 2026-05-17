@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ProductivityFeed } from '@/components/goals/ProductivityFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -443,6 +444,7 @@ export default function GoalsLensPage() {
   }
   return (
     <LensShell lensId="goals" asMain={false}>
+      <FirstRunTour lensId="goals" />
       <ManifestActionBar />
       <DepthBadge lensId="goals" size="sm" className="ml-2" />
     <div data-lens-theme="goals" className="p-6 space-y-6 max-w-5xl mx-auto">

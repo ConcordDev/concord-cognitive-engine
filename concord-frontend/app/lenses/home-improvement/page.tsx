@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HomeImprovementFeed } from '@/components/home-improvement/HomeImprovementFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -215,6 +216,7 @@ export default function HomeImprovementLensPage() {
 
   return (
     <LensShell lensId="home-improvement" asMain={false}>
+      <FirstRunTour lensId="home-improvement" />
       <ManifestActionBar />
       <DepthBadge lensId="home-improvement" size="sm" className="ml-2" />
     <div data-lens-theme="home-improvement" className="p-6 space-y-6">

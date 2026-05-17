@@ -17,6 +17,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -136,6 +137,7 @@ export default function SocietyLensPage() {
 
   return (
     <LensShell lensId="society" asMain={false}>
+      <FirstRunTour lensId="society" />
       <ManifestActionBar />
       <DepthBadge lensId="society" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-amber-50">

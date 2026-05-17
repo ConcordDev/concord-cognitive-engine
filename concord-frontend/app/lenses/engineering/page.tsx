@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnEngineeringFeed } from '@/components/engineering/HnEngineeringFeed';
 import { EngineeringActionPanel } from '@/components/engineering/EngineeringActionPanel';
@@ -348,6 +349,7 @@ export default function EngineeringPage() {
 
   return (
     <LensShell lensId="engineering" asMain={false}>
+      <FirstRunTour lensId="engineering" />
       <ManifestActionBar />
       <DepthBadge lensId="engineering" size="sm" className="ml-2" />
     <div className="min-h-screen bg-lattice-void text-white p-4 space-y-4 max-w-6xl mx-auto">

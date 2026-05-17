@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ExportFormatGallery } from '@/components/export/ExportFormatGallery';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -200,6 +201,7 @@ export default function ExportLensPage() {
 
   return (
     <LensShell lensId="export" asMain={false}>
+      <FirstRunTour lensId="export" />
       <ManifestActionBar />
       <DepthBadge lensId="export" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">

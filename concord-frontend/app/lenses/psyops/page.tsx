@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PsyopsReference } from '@/components/psyops/PsyopsReference';
 
@@ -70,6 +71,7 @@ export default function PsyopsPage() {
 
   return (
         <LensShell lensId="psyops">
+      <FirstRunTour lensId="psyops" />
       <DepthBadge lensId="psyops" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6 flex items-start justify-between gap-3">

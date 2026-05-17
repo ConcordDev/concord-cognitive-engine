@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QueueRepos } from '@/components/queue/QueueRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -132,6 +133,7 @@ export default function QueueLensPage() {
   }
   return (
     <LensShell lensId="queue" asMain={false}>
+      <FirstRunTour lensId="queue" />
       <ManifestActionBar />
       <DepthBadge lensId="queue" size="sm" className="ml-2" />
     <div data-lens-theme="queue" className="p-6 space-y-6">

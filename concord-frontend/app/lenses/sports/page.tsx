@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -273,6 +274,7 @@ export default function SportsLensPage() {
 
   return (
     <LensShell lensId="sports" asMain={false}>
+      <FirstRunTour lensId="sports" />
       <ManifestActionBar />
       <DepthBadge lensId="sports" size="sm" className="ml-2" />
     <div data-lens-theme="sports" className="p-6 space-y-6">

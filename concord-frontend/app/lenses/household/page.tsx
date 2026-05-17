@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BarcodeLookup } from '@/components/household/BarcodeLookup';
 import { HouseholdActionPanel } from '@/components/household/HouseholdActionPanel';
@@ -1632,6 +1633,7 @@ export default function HouseholdLensPage() {
 
   return (
     <LensShell lensId="household" asMain={false}>
+      <FirstRunTour lensId="household" />
       <DepthBadge lensId="household" size="sm" className="ml-2" />
     <div data-lens-theme="household" className={ds.pageContainer}>
       {/* Header */}

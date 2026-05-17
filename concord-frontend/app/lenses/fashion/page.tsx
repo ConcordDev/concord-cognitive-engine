@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FashionFeed } from '@/components/fashion/FashionFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -171,6 +172,7 @@ export default function FashionLensPage() {
 
   return (
     <LensShell lensId="fashion" asMain={false}>
+      <FirstRunTour lensId="fashion" />
       <ManifestActionBar />
       <DepthBadge lensId="fashion" size="sm" className="ml-2" />
     <div data-lens-theme="fashion" className="p-6 space-y-6">

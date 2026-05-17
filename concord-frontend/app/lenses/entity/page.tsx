@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WikidataSearch } from '@/components/entity/WikidataSearch';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -161,6 +162,7 @@ export default function EntityLensPage() {
   }
   return (
     <LensShell lensId="entity" asMain={false}>
+      <FirstRunTour lensId="entity" />
       <ManifestActionBar />
       <DepthBadge lensId="entity" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">

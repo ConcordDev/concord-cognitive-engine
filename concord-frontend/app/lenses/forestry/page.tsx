@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FireIncidents } from '@/components/forestry/FireIncidents';
 import { ForestryActionPanel } from '@/components/forestry/ForestryActionPanel';
@@ -188,6 +189,7 @@ export default function ForestryLensPage() {
 
   return (
     <LensShell lensId="forestry" asMain={false}>
+      <FirstRunTour lensId="forestry" />
       <ManifestActionBar />
       <DepthBadge lensId="forestry" size="sm" className="ml-2" />
     <LensPageShell

@@ -13,6 +13,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import Link from "next/link";
 import { LensShell } from "@/components/lens/LensShell";
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
 
@@ -51,6 +52,7 @@ export default function DxPlatformPage() {
 
   return (
     <LensShell lensId="dx-platform" asMain={false}>
+      <FirstRunTour lensId="dx-platform" />
       <DepthBadge lensId="dx-platform" size="sm" className="ml-2" />
       <div className="p-8 max-w-4xl mx-auto space-y-8">
         <header>

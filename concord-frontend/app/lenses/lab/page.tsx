@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivLabFeed } from '@/components/lab/ArxivLabFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -106,6 +107,7 @@ export default function LabLensPage() {
   }
   return (
     <LensShell lensId="lab" asMain={false}>
+      <FirstRunTour lensId="lab" />
       <ManifestActionBar />
       <DepthBadge lensId="lab" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">

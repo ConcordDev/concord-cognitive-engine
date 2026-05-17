@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -470,6 +471,7 @@ export default function CollabLensPage() {
   }
   return (
     <LensShell lensId="collab" asMain={false}>
+      <FirstRunTour lensId="collab" />
       <DepthBadge lensId="collab" size="sm" className="ml-2" />
     <div data-lens-theme="collab" className="p-6 space-y-5 max-w-[1440px] mx-auto">
       {/* Header */}

@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
 import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealthActionPanel';
@@ -154,6 +155,7 @@ export default function MentalHealthLensPage() {
 
   return (
     <LensShell lensId="mental-health" asMain={false}>
+      <FirstRunTour lensId="mental-health" />
       <ManifestActionBar />
       <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
     <div data-lens-theme="mental-health" className="p-6 space-y-6">

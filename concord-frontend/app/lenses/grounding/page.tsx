@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MindfulnessFeed } from '@/components/grounding/MindfulnessFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -158,6 +159,7 @@ export default function GroundingLensPage() {
   }
   return (
     <LensShell lensId="grounding" asMain={false}>
+      <FirstRunTour lensId="grounding" />
       <ManifestActionBar />
       <DepthBadge lensId="grounding" size="sm" className="ml-2" />
     <div data-lens-theme="grounding" className="p-6 space-y-6">

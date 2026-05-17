@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SupplyChainFeed } from '@/components/supplychain/SupplyChainFeed';
 import { SupplyChainActionPanel } from '@/components/supplychain/SupplyChainActionPanel';
@@ -196,6 +197,7 @@ export default function SupplyChainLensPage() {
 
   return (
     <LensShell lensId="supplychain" asMain={false}>
+      <FirstRunTour lensId="supplychain" />
       <ManifestActionBar />
       <DepthBadge lensId="supplychain" size="sm" className="ml-2" />
     <div data-lens-theme="supplychain" className="space-y-6 p-6">

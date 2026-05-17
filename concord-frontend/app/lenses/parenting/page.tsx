@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ParentingFeed } from '@/components/parenting/ParentingFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -343,6 +344,7 @@ export default function ParentingLensPage() {
 
   return (
     <LensShell lensId="parenting" asMain={false}>
+      <FirstRunTour lensId="parenting" />
       <ManifestActionBar />
       <DepthBadge lensId="parenting" size="sm" className="ml-2" />
     <div data-lens-theme="parenting" className="space-y-6 p-6">

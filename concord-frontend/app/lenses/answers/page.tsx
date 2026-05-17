@@ -20,6 +20,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { StackOverflowSearch } from '@/components/answers/StackOverflowSearch';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -539,6 +540,7 @@ export default function AnswersLensPage() {
 
   return (
     <LensShell lensId="answers" asMain={false}>
+      <FirstRunTour lensId="answers" />
       <ManifestActionBar />
       <DepthBadge lensId="answers" size="sm" className="ml-2" />
     <div data-lens-theme="answers" className={cn(ds.pageContainer, 'space-y-6')}>

@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useEffect, useMemo, useState, useRef } from 'react';
@@ -162,6 +163,7 @@ export default function CodeQualityLensPage() {
 
   return (
     <LensShell lensId="code-quality" asMain={false}>
+      <FirstRunTour lensId="code-quality" />
       <ManifestActionBar />
       <DepthBadge lensId="code-quality" size="sm" className="ml-2" />
       <div data-lens-theme="code-quality" className="p-6 space-y-5">

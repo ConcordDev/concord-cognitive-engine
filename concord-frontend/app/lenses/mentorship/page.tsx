@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MentorshipFeed } from '@/components/mentorship/MentorshipFeed';
 import { MentorshipActionPanel } from '@/components/mentorship/MentorshipActionPanel';
@@ -192,6 +193,7 @@ export default function MentorshipLensPage() {
 
   return (
     <LensShell lensId="mentorship" asMain={false}>
+      <FirstRunTour lensId="mentorship" />
       <ManifestActionBar />
       <DepthBadge lensId="mentorship" size="sm" className="ml-2" />
     <div data-lens-theme="mentorship" className="p-6 space-y-6">

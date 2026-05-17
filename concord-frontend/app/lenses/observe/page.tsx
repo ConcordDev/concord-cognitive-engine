@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ObservabilityRepos } from '@/components/observe/ObservabilityRepos';
 import { ObserveActionPanel } from '@/components/observe/ObserveActionPanel';
@@ -56,6 +57,7 @@ export default function ObservePage() {
 
   return (
         <LensShell lensId="observe">
+      <FirstRunTour lensId="observe" />
       <DepthBadge lensId="observe" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">

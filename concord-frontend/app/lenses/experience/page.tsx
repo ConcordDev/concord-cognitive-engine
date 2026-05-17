@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DesignSystemAtlas } from '@/components/experience/DesignSystemAtlas';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -474,6 +475,7 @@ export default function ExperienceLensPage() {
   }
   return (
     <LensShell lensId="experience" asMain={false}>
+      <FirstRunTour lensId="experience" />
       <DepthBadge lensId="experience" size="sm" className="ml-2" />
     <div data-lens-theme="experience" className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* ========== Header ========== */}

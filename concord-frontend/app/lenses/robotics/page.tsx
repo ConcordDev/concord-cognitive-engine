@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RoboticsRepos } from '@/components/robotics/RoboticsRepos';
 import { RoboticsActionPanel } from '@/components/robotics/RoboticsActionPanel';
@@ -243,6 +244,7 @@ export default function RoboticsLensPage() {
 
   return (
     <LensShell lensId="robotics" asMain={false}>
+      <FirstRunTour lensId="robotics" />
       <ManifestActionBar />
       <DepthBadge lensId="robotics" size="sm" className="ml-2" />
     <div data-lens-theme="robotics" className="p-6 space-y-6">

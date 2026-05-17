@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SimRepos } from '@/components/sim/SimRepos';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -989,6 +990,7 @@ export default function SimLensPage() {
 
   return (
     <LensShell lensId="sim" asMain={false}>
+      <FirstRunTour lensId="sim" />
       <DepthBadge lensId="sim" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       {/* ── Header ──────────────────────────────────────────────────────── */}

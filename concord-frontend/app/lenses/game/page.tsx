@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GameFeed } from '@/components/game/GameFeed';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -930,6 +931,7 @@ export default function GameLensPage() {
   }
   return (
     <LensShell lensId="game" asMain={false}>
+      <FirstRunTour lensId="game" />
       <DepthBadge lensId="game" size="sm" className="ml-2" />
     <div className="p-6 space-y-6 min-h-screen">
       {/* Header */}

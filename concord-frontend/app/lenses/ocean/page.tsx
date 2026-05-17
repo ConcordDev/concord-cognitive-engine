@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TidePredictions } from '@/components/ocean/TidePredictions';
 import { WaveEcosystemPanel } from '@/components/ocean/WaveEcosystemPanel';
@@ -217,6 +218,7 @@ export default function OceanLensPage() {
 
   return (
     <LensShell lensId="ocean" asMain={false}>
+      <FirstRunTour lensId="ocean" />
       <ManifestActionBar />
       <DepthBadge lensId="ocean" size="sm" className="ml-2" />
     <div data-lens-theme="ocean" className={cn(ds.pageContainer, 'space-y-4')}>

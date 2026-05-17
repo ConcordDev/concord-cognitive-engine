@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenHardwarePulse } from '@/components/electrical/OpenHardwarePulse';
 import { NecCodeCalc } from '@/components/electrical/NecCodeCalc';
@@ -632,6 +633,7 @@ export default function ElectricalLensPage() {
 
   return (
     <LensShell lensId="electrical" asMain={false}>
+      <FirstRunTour lensId="electrical" />
       <ManifestActionBar />
       <DepthBadge lensId="electrical" size="sm" className="ml-2" />
     <LensPageShell

@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
 import { PodcastActionPanel } from '@/components/podcast/PodcastActionPanel';
@@ -374,6 +375,7 @@ export default function PodcastLensPage() {
 
   return (
     <LensShell lensId="podcast" asMain={false}>
+      <FirstRunTour lensId="podcast" />
       <ManifestActionBar />
       <DepthBadge lensId="podcast" size="sm" className="ml-2" />
     <div data-lens-theme="podcast" className="min-h-screen bg-lattice-void text-white">

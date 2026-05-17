@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConceptExplorer } from '@/components/commonsense/ConceptExplorer';
 import { CommonsenseActionPanel } from '@/components/commonsense/CommonsenseActionPanel';
@@ -246,6 +247,7 @@ export default function CommonsenseLensPage() {
 
   return (
     <LensShell lensId="commonsense" asMain={false}>
+      <FirstRunTour lensId="commonsense" />
       <ManifestActionBar />
       <DepthBadge lensId="commonsense" size="sm" className="ml-2" />
     <div data-lens-theme="commonsense" className="p-6 space-y-6">

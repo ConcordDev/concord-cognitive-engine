@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RedditCreative } from '@/components/creative/RedditCreative';
 import { CreativeActionPanel } from '@/components/creative/CreativeActionPanel';
@@ -1416,6 +1417,7 @@ export default function CreativeLensPage() {
   // ---------------------------------------------------------------------------
   return (
     <LensShell lensId="creative" asMain={false}>
+      <FirstRunTour lensId="creative" />
       <DepthBadge lensId="creative" size="sm" className="ml-2" />
     <div data-lens-theme="creative" className={ds.pageContainer}>
       {/* Header */}

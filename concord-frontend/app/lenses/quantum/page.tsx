@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QuantumArxiv } from '@/components/quantum/QuantumArxiv';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -159,6 +160,7 @@ export default function QuantumLensPage() {
   }
   return (
     <LensShell lensId="quantum" asMain={false}>
+      <FirstRunTour lensId="quantum" />
       <ManifestActionBar />
       <DepthBadge lensId="quantum" size="sm" className="ml-2" />
     <div data-lens-theme="quantum" className="p-6 space-y-6">

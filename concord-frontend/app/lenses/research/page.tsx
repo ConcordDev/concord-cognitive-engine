@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ResearchArxiv } from '@/components/research/ResearchArxiv';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -317,6 +318,7 @@ export default function ResearchLensPage() {
 
   return (
     <LensShell lensId="research" asMain={false}>
+      <FirstRunTour lensId="research" />
       <ManifestActionBar />
       <DepthBadge lensId="research" size="sm" className="ml-2" />
     <div data-lens-theme="research" className="p-6 space-y-6">
