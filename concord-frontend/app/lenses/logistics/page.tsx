@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
+import { LogisticsActionPanel } from '@/components/logistics/LogisticsActionPanel';
 import ShipmentTracker from '@/components/logistics/ShipmentTracker';
 import RouteOptimizer from '@/components/logistics/RouteOptimizer';
 import WarehouseInventory from '@/components/logistics/WarehouseInventory';
@@ -2748,6 +2749,9 @@ export default function LogisticsLensPage() {
       )}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <LogisticsChatter />
+      </section>
+      <section className="mt-6">
+        <LogisticsActionPanel />
       </section>
     </LensPageShell>
     

@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { TransferRepos } from '@/components/transfer/TransferRepos';
+import { TransferActionPanel } from '@/components/transfer/TransferActionPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -478,6 +479,9 @@ export default function TransferLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TransferRepos />
+      </section>
+      <section className="mt-6">
+        <TransferActionPanel />
       </section>
     </div>
 
