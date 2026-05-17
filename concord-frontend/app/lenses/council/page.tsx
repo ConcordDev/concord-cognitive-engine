@@ -6,6 +6,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { CouncilVoices } from '@/components/council/CouncilVoices';
 import { CouncilActionPanel } from '@/components/council/CouncilActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -3443,9 +3444,11 @@ export default function CouncilLensPage() {
       </section>
 
       {/* DAO + IBIS-shape governance workbench: deliberate / vote / minutes / resolve + actions */}
-      <section className="mt-6">
-        <CouncilActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <CouncilActionPanel />
+        </section>
+      </PipingProvider>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -42,8 +43,8 @@ interface ResolveResult { resolution?: string; nextSteps?: string[]; mediator?: 
 
 export function CouncilActionPanel() {
   const [motionText, setMotionText] = useState('');
-  const [members, setMembers] = useState('Alice (chair)\nBob\nCarol\nDave\nEve');
-  const [positions, setPositions] = useState('Alice for\nBob for\nCarol against\nDave abstain\nEve for');
+  const [members, setMembers] = useState('');
+  const [positions, setPositions] = useState('');
   const [conflict, setConflict] = useState('');
   const [recipient, setRecipient] = useState('');
 
@@ -60,59 +61,87 @@ export function CouncilActionPanel() {
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   function parsePositions() {
     return positions.split('\n').map(l => { const m = l.trim().match(/^(\S+)\s+(for|against|abstain)$/i); return m ? { member: m[1], position: m[2].toLowerCase() } : null; }).filter(Boolean);
   }
 
   async function actDeliberate() {
     if (!motionText.trim()) { err('Motion required.'); return; }
+    if (!members.trim()) { err('Members required (one per line).'); return; }
     setBusy('deliberate'); setFeedback(null);
-    try { const r = await callMacro<DeliberateResult>('deliberate', { motion: motionText.trim(), members: members.split('\n').filter(Boolean) }); if (r.ok && r.result) { setDeliberateResult(r.result); ok(`${r.result.positions?.length ?? 0} positions.`); } else err(r.error ?? 'deliberate failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<DeliberateResult>('deliberate', { motion: motionText.trim(), members: members.split('\n').filter(Boolean) });
+      if (r.ok && r.result) { setDeliberateResult(r.result); pipe.publish('council.deliberate', r.result, { label: `Deliberate ${r.result.positions?.length ?? 0}` }); ok(`${r.result.positions?.length ?? 0} positions.`); } else err(r.error ?? 'deliberate failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actVote() {
     const pos = parsePositions();
-    if (!pos.length) { err('Add positions (name for/against/abstain).'); return; }
+    if (!pos.length) { err('Add positions (name for/against/abstain, one per line).'); return; }
     setBusy('vote'); setFeedback(null);
-    try { const r = await callMacro<VoteResult>('voteCount', { motion: motionText.trim(), positions: pos }); if (r.ok && r.result) { setVoteResult(r.result); ok(r.result.passed ? 'PASSED.' : 'FAILED.'); } else err(r.error ?? 'vote failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<VoteResult>('voteCount', { motion: motionText.trim(), positions: pos });
+      if (r.ok && r.result) { setVoteResult(r.result); pipe.publish('council.vote', r.result, { label: r.result.passed ? 'PASSED' : 'FAILED' }); ok(r.result.passed ? 'PASSED.' : 'FAILED.'); } else err(r.error ?? 'vote failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMinutes() {
     if (!motionText.trim()) { err('Motion required.'); return; }
     setBusy('minutes'); setFeedback(null);
-    try { const r = await callMacro<MinutesResult>('generateMinutes', { motion: motionText.trim(), positions: parsePositions(), vote: voteResult }); if (r.ok && r.result) { setMinutesResult(r.result); ok(`${r.result.decisions?.length ?? 0} decisions.`); } else err(r.error ?? 'minutes failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<MinutesResult>('generateMinutes', { motion: motionText.trim(), positions: parsePositions(), vote: voteResult });
+      if (r.ok && r.result) { setMinutesResult(r.result); pipe.publish('council.minutes', r.result, { label: `Minutes ${r.result.decisions?.length ?? 0} decisions` }); ok(`${r.result.decisions?.length ?? 0} decisions.`); } else err(r.error ?? 'minutes failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actResolve() {
     if (!conflict.trim()) { err('Conflict description required.'); return; }
     setBusy('resolve'); setFeedback(null);
-    try { const r = await callMacro<ResolveResult>('conflictResolution', { conflict: conflict.trim(), members: members.split('\n').filter(Boolean) }); if (r.ok && r.result) { setResolveResult(r.result); ok('Resolution drafted.'); } else err(r.error ?? 'resolve failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ResolveResult>('conflictResolution', { conflict: conflict.trim(), members: members.split('\n').filter(Boolean) });
+      if (r.ok && r.result) { setResolveResult(r.result); pipe.publish('council.resolve', r.result, { label: 'Resolution drafted' }); ok('Resolution drafted.'); } else err(r.error ?? 'resolve failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Council session — ${motionText.trim().slice(0, 60) || 'meeting'}`, tags: ['council', 'governance', voteResult?.passed ? 'passed' : 'pending'], source: 'council:session:mint', meta: { visibility: 'private', consent: { allowCitations: false }, council: { motion: motionText, members: members.split('\n').filter(Boolean), positions: parsePositions(), deliberate: deliberateResult, vote: voteResult, minutes: minutesResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Session DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('council.mintedDtuId', id, { label: `Session DTU ${id.slice(0, 8)}…` }); ok(`Session DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🏛 Council session: ${motionText}`, '', voteResult ? `Vote: ${voteResult.yes}y / ${voteResult.no}n / ${voteResult.abstain}a → ${voteResult.passed ? 'PASSED' : 'FAILED'}` : '', minutesResult?.summary ? `Summary: ${minutesResult.summary}` : '', minutesResult?.actionItems?.length ? `\nAction items:\n${minutesResult.actionItems.map(a => `  ${a.owner}: ${a.task}${a.due ? ` (${a.due})` : ''}`).join('\n')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🏛 Council session: ${motionText}`, '',
+      voteResult ? `Vote: ${voteResult.yes}y / ${voteResult.no}n / ${voteResult.abstain}a → ${voteResult.passed ? 'PASSED' : 'FAILED'}` : '',
+      minutesResult?.summary ? `Summary: ${minutesResult.summary}` : '',
+      minutesResult?.actionItems?.length ? `\nAction items:\n${minutesResult.actionItems.map(a => `  ${a.owner}: ${a.task}${a.due ? ` (${a.due})` : ''}`).join('\n')}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!minutesResult) { err('Generate minutes first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public minutes — ${motionText.slice(0, 60)}`, tags: ['council', 'minutes', 'public'], source: 'council:minutes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion: motionText, summary: minutesResult.summary, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Minutes published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public minutes — ${motionText.slice(0, 60)}`, tags: ['council', 'minutes', 'public'], source: 'council:minutes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion: motionText, summary: minutesResult.summary, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('council.publishedDtuId', id, { label: `Public minutes ${id.slice(0, 8)}…` }); ok(`Minutes published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -153,7 +182,11 @@ export function CouncilActionPanel() {
         <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Conflict description (for resolve)</label><textarea value={conflict} onChange={(e) => setConflict(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-amber-200 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" placeholder="What's the disagreement?" /></div>
       </div>
 
-      <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (chair / secretary)" />
+      <div className="flex items-center gap-2 flex-wrap">
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (chair / secretary)" />
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {
