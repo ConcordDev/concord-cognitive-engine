@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { PexelsBrowser } from '@/components/photography/PexelsBrowser';
 import { PhotographyActionPanel } from '@/components/photography/PhotographyActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -953,9 +954,11 @@ export default function PhotographyPage() {
         <PexelsBrowser />
       </section>
 
-      <section className="mt-6">
-        <PhotographyActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <PhotographyActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

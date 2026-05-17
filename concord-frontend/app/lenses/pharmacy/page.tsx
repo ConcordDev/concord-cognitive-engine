@@ -18,6 +18,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { FdaDrugReference } from '@/components/pharmacy/FdaDrugReference';
 import { PharmacyActionPanel } from '@/components/pharmacy/PharmacyActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 interface Medication {
   name: string;
@@ -620,9 +621,11 @@ export default function PharmacyLensPage() {
         </div>
       )}
 
-      <section className="mt-6">
-        <PharmacyActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <PharmacyActionPanel />
+        </section>
+      </PipingProvider>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">

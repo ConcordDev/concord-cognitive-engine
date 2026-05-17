@@ -17,6 +17,7 @@ import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ObservabilityRepos } from '@/components/observe/ObservabilityRepos';
 import { ObserveActionPanel } from '@/components/observe/ObserveActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 interface Report {
   ok: boolean;
@@ -106,9 +107,11 @@ export default function ObservePage() {
         </section>
 
         {/* Datadog-shape observability workbench: serviceLog / alerts / SLO / incident + actions */}
-        <section className="mt-6">
-          <ObserveActionPanel />
-        </section>
+        <PipingProvider>
+          <section className="mt-6">
+            <ObserveActionPanel />
+          </section>
+        </PipingProvider>
       </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
