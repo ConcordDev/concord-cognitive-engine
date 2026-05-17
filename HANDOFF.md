@@ -3,12 +3,44 @@
 Branch: `claude/add-api-wires-onboarding-EWvZC` (built on top of merged
 `claude/audit-app-completeness-GwBlp`, PR #759 — pushed to origin)
 Plan: `/root/.claude/plans/what-s-missing-to-be-humble-scott.md`
-Last update: 2026-05-17 (session 5 final — 20 commits total this branch;
-all 10 dimensions complete + 26 REAL_FREE wire panels + 5-lens session
-mounts + game-trivia + pets-cat-facts content + production-grade
-sessions/cross-lens narrative substrate)
+Last update: 2026-05-17 (session 6 final — 25 commits total this branch;
+all 10 dimensions complete + 37 REAL_FREE wire panels + 13-lens
+SessionRail coverage + production-grade sessions/cross-lens narrative
+substrate + 13 frontend panels + 176 sprint contract tests passing)
 
-## Session 5 additions (3 new commits)
+## Session 6 additions (5 new commits)
+
+```
+97d9995 Phase 5: SessionRail mounted in marketplace + music + forge + foundry + projects
+5810110 Phase 4 (fourth wave): mount WikipediaSearchPanel in desert/ocean/neuro/geology
+f9d08a9 Phase 4 (sixth wave): mount ZippopotamPanel + IssPassPanel in travel + astronomy
+71d1936 Phase 4 (sixth wave): 5 more REAL free-API wires — World Bank, Open Brewery, Dog CEO, Zippopotam, Open Notify
+```
+
+### Session 6 wires (37 REAL_FREE panels total)
+- World Bank country indicators (global + finance) with SVG sparkline
+- Open Brewery DB (food + cooking)
+- Dog CEO API random dog images (pets)
+- Zippopotam.us postal-code lookup (retail + logistics + travel)
+- Open Notify ISS pass times (astronomy + space)
+- WikipediaSearchPanel mounted in 4 more lenses (desert / ocean / neuro / geology)
+- IssPassPanel mounted in /lenses/astronomy
+- ZippopotamPanel mounted in /lenses/travel
+
+### Session 6 frontend panels
+- WorldBankPanel (country/indicator selectors, big-number latest, sparkline)
+- BreweryPanel (city filter, type chips, address + website links)
+- DogPanel (4-col grid of random dog images, refresh)
+- ZippopotamPanel (country picker + postal lookup with lat/lon)
+- IssPassPanel (city picker + 5 upcoming overpass times)
+
+### Session 6 SessionRail mounts
+marketplace, music, forge, foundry, projects → 5 more lenses
+surface caller's open sessions. Total SessionRail-aware lenses: 13.
+
+Sprint contract suite now: **176 / 176 passing across 56 suites.**
+
+## Session 5 additions (3 commits)
 
 ```
 5fd3be4 Phase 4 (fifth wave): mount CatFactsPanel in pets lens
