@@ -3,8 +3,42 @@
 Branch: `claude/add-api-wires-onboarding-EWvZC` (built on top of merged
 `claude/audit-app-completeness-GwBlp`, PR #759 — pushed to origin)
 Plan: `/root/.claude/plans/what-s-missing-to-be-humble-scott.md`
-Last update: 2026-05-17 (session 3 final — 9 commits, all 10 dimensions
-have substrate + visible UX)
+Last update: 2026-05-17 (session 4 final — 16 commits total this branch;
+all 10 dimensions complete + 22 REAL_FREE wire panels + production-grade
+sessions/cross-lens narrative substrate)
+
+## Session 4 additions (on top of session 3)
+
+7 new commits closing the polish loop:
+
+```
+1d71699 Phase 7: mount ProvenanceTrail + DownstreamBadge in DTUDetailView
+2d7b789 Phase 5: SessionRail mounted in paper + research lenses
+9f7f4be Phase 4 (fourth wave): Wikipedia REST search wired across 10 reference lenses
+3e1fb7a Phase 5 (mobile): mount MobileTabBar in kingdoms + sessions lenses
+10f7b4a Phase 5 (mobile): ResponsiveModal + MobileTabBar primitives
+942cec3 Phase 5: WarCampaignSession — kingdoms uses the sessions substrate end-to-end
+1cbeb6b Phase 4 (third wave): 4 more REAL free-API wires — CrossRef, OpenAlex, Datamuse, Free Dictionary
+```
+
+### What's new this session
+
+- **REAL_FREE wires (20 → 22 panels)**:
+  - CrossRef DOI metadata (paper + research)
+  - OpenAlex academic graph (paper + research)
+  - Datamuse word relationships (linguistics + creative-writing + poetry)
+  - Free Dictionary (linguistics + education)
+  - Wikipedia REST search + summary (10 reference lenses)
+- **Marquee session use case**: `WarCampaignSession` in kingdoms with
+  declare→muster→engage→resolve step graph, SessionStepper UI, and
+  DraftedTextarea-backed state fields.
+- **Mobile primitives expanded**: ResponsiveModal (auto-picks desktop
+  modal vs. BottomSheet) + MobileTabBar (fixed-bottom thumb nav). Both
+  mounted in kingdoms + sessions lenses as exemplars.
+- **Cross-lens narrative visible at every level**: DTUEmbed shows compact
+  DownstreamBadge + auto-records on mount; DTUDetailView mounts full
+  ProvenanceTrail walking the citation graph upstream.
+- **Test totals (sprint-specific)**: 150 / 150 across 47 suites.
 
 ---
 
