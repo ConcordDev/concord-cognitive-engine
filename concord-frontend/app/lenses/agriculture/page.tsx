@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { GbifPanel } from '@/components/environment/GbifPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { motion } from 'framer-motion';
@@ -1967,6 +1968,10 @@ export default function AgricultureLensPage() {
           <AgricultureActionPanel />
         </section>
       </PipingProvider>
+      {/* Phase 4 — REAL GBIF biodiversity occurrence search. */}
+      <section className="mt-4 max-w-7xl mx-auto px-4">
+        <GbifPanel domain="agriculture" />
+      </section>
           <RecentMineCard domain="agriculture" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>
   );

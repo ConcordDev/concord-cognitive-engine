@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GutenbergCurriculum } from '@/components/education/GutenbergCurriculum';
+import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
 import { EducationActionPanel } from '@/components/education/EducationActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -3193,6 +3194,10 @@ export default function EducationLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <GutenbergCurriculum />
+      </section>
+      {/* Phase 4 — REAL Open Library book search. */}
+      <section className="mt-4">
+        <OpenLibraryPanel domain="education" />
       </section>
 
       <PipingProvider>

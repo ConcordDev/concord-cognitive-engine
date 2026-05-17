@@ -9661,11 +9661,21 @@ async function runMacro(domain, name, input, ctx) {
     physics: new Set(["live_arxiv"]),
     quantum: new Set(["live_arxiv"]),
     robotics: new Set(["live_arxiv"]),
-    neuro: new Set(["live_arxiv"]),
-    bio: new Set(["live_arxiv"]),
-    chem: new Set(["live_arxiv"]),
+    // Phase 4 cont'd — bio + neuro also get PubMed; chem also gets PubChem.
+    neuro: new Set(["live_arxiv", "live_pubmed_neuro"]),
+    bio: new Set(["live_arxiv", "live_pubmed"]),
+    chem: new Set(["live_arxiv", "live_pubchem"]),
     ml: new Set(["live_arxiv"]),
     math: new Set(["live_arxiv"]),
+    // Phase 4 cont'd — additional REAL free-API wire-ups.
+    "mental-health": new Set(["live_medlineplus"]),
+    podcast: new Set(["live_itunes_search"]),
+    global: new Set(["live_countries"]),
+    environment: new Set(["live_gbif"]),
+    forestry: new Set(["live_gbif"]),
+    agriculture: new Set(["live_gbif"]),
+    paper: new Set(["live_openlibrary"]),
+    education: new Set(["live_openlibrary"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
@@ -23252,6 +23262,13 @@ registerPharmacyLiveMacros(register);
 // each pre-filtered by the right arXiv category. Free, no key.
 import registerResearchLiveMacros from "./domains/research-live.js";
 registerResearchLiveMacros(register);
+
+// Phase 4 cont'd — more REAL free-API wire-ups (no API keys needed):
+// PubChem (chem), NCBI PubMed (bio + neuro), MedlinePlus (mental-health),
+// iTunes Search (podcast), REST Countries (global), GBIF
+// (environment/forestry/agriculture), Open Library (paper + education).
+import registerMoreFreeApiMacros from "./domains/more-free-apis.js";
+registerMoreFreeApiMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";

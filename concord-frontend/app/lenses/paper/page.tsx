@@ -6,6 +6,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
+import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
 import CitationSearch from '@/components/paper/CitationSearch';
 import PaperSummarizer from '@/components/paper/PaperSummarizer';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1109,6 +1110,10 @@ export default function PaperLensPage() {
     {/* Bespoke arXiv search with Save-as-DTU */}
     <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
       <ArxivSearch />
+    </section>
+    {/* Phase 4 — REAL Open Library book search. */}
+    <section className="mt-4 mx-4">
+      <OpenLibraryPanel domain="paper" />
     </section>
           <RecentMineCard domain="paper" limit={10} hideWhenEmpty className="mt-4" />
     </LensShell>

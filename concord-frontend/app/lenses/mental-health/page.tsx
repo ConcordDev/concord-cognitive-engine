@@ -7,6 +7,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
 import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealthActionPanel';
+import { MedlinePlusPanel } from '@/components/health/MedlinePlusPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -160,6 +161,8 @@ export default function MentalHealthLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
     <div data-lens-theme="mental-health" className="p-6 space-y-6">
+      {/* Phase 4 — REAL MedlinePlus (NIH/NLM) consumer-health topic search. */}
+      <MedlinePlusPanel initialQuery="" />
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />

@@ -8,6 +8,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FireIncidents } from '@/components/forestry/FireIncidents';
 import { ForestryActionPanel } from '@/components/forestry/ForestryActionPanel';
+import { GbifPanel } from '@/components/environment/GbifPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -398,6 +399,10 @@ export default function ForestryLensPage() {
       {/* Bespoke InciWeb + NIFC active wildfires with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <FireIncidents />
+      </section>
+      {/* Phase 4 — REAL GBIF biodiversity occurrence search. */}
+      <section className="mt-4 mx-4">
+        <GbifPanel domain="forestry" />
       </section>
 
       {/* USDA + InciWeb-shape forestry workbench: volume / fire-risk / harvest / carbon + actions */}

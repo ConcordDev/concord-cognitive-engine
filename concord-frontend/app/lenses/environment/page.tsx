@@ -6,6 +6,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EnviroPanel } from '@/components/environment/EnviroPanel';
+import { GbifPanel } from '@/components/environment/GbifPanel';
 import { ComplianceDiversionPanel } from '@/components/environment/ComplianceDiversionPanel';
 import { AirQualityActionStack } from '@/components/environment/AirQualityActionStack';
 import { motion } from 'framer-motion';
@@ -3703,6 +3704,10 @@ export default function EnvironmentLensPage() {
       {/* Bespoke EPA AirNow + Superfund + USGS Water with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <EnviroPanel />
+      </section>
+      {/* Phase 4 — REAL GBIF biodiversity occurrence search. */}
+      <section className="mt-4 mx-4">
+        <GbifPanel domain="environment" />
       </section>
 
       {/* AirNow-shape action surface: mint / DM alert / publish / agent / CSV */}

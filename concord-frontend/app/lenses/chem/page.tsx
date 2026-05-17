@@ -6,6 +6,7 @@ import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
+import { PubChemPanel } from '@/components/chem/PubChemPanel';
 import { PeriodicTable } from '@/components/chem/PeriodicTable';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -128,6 +129,8 @@ export default function ChemLensPage() {
     <div data-lens-theme="chem" className="p-6 space-y-6">
       {/* Phase 4 — REAL arXiv chemistry feed (physics.chem-ph). */}
       <ArxivPanel domain="chem" title="arXiv · Chemical Physics" />
+      {/* Phase 4 — REAL PubChem (NIH) compound lookup. */}
+      <PubChemPanel />
       {/* Sub-Lenses */}
       <SubLensQuickNav lensId="chem" />
 
