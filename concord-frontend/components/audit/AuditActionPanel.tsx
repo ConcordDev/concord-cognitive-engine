@@ -11,6 +11,7 @@ import { ShieldCheck, FileSearch, Activity, ListChecks, Sparkles, Send, Globe, W
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -31,44 +32,14 @@ interface RiskControlRow { id?: string; name?: string; adjustedEffectiveness: nu
 interface RiskResult { controls?: RiskControlRow[]; overallControlRisk?: number; detectionRisk?: number; inherentRisk?: number; auditRisk?: number; riskLevel?: string }
 interface SamplingResult { populationSize?: number; sampleSize?: number; confidenceLevel?: number; expectedErrorRate?: number; method?: string; rationale?: string }
 
-const DEMO_COMP = JSON.stringify({
-  framework: 'SOC 2 Type II',
-  requirements: [
-    { id: 'CC1.1', name: 'Code of conduct documented', met: true },
-    { id: 'CC2.1', name: 'Security policies reviewed annually', met: true },
-    { id: 'CC6.1', name: 'Access reviews quarterly', met: false, severity: 'high', remediation: 'Implement Q-cadence access review' },
-    { id: 'CC7.1', name: 'Incident response runbook tested', met: true },
-    { id: 'CC8.1', name: 'Change management process', met: false, severity: 'medium', remediation: 'Formalize CAB' },
-  ],
-}, null, 2);
-
-const DEMO_TRAIL = JSON.stringify({
-  events: [
-    { ts: '2026-04-12T03:14:00Z', user: 'admin', action: 'role.grant', target: 'finance-bot' },
-    { ts: '2026-04-12T08:21:00Z', user: 'alice', action: 'invoice.approve', target: 'INV-1138' },
-    { ts: '2026-04-12T22:55:00Z', user: 'bob', action: 'invoice.approve', target: 'INV-1140' },
-    { ts: '2026-04-13T02:08:00Z', user: 'bob', action: 'invoice.approve', target: 'INV-1141' },
-    { ts: '2026-04-13T02:09:00Z', user: 'bob', action: 'invoice.approve', target: 'INV-1142' },
-    { ts: '2026-04-13T02:10:00Z', user: 'bob', action: 'invoice.approve', target: 'INV-1143' },
-  ],
-}, null, 2);
-
-const DEMO_RISK = JSON.stringify({
-  controls: [
-    { id: 'C1', name: 'SOD on payments', effectiveness: 0.92, testResults: [{ passed: true }, { passed: true }, { passed: false }, { passed: true }] },
-    { id: 'C2', name: 'Quarterly access reviews', effectiveness: 0.65, testResults: [{ passed: false }, { passed: true }] },
-    { id: 'C3', name: 'MFA enforcement', effectiveness: 0.98, testResults: [{ passed: true }, { passed: true }, { passed: true }] },
-  ],
-  inherentRisks: [{ name: 'Fraudulent journal entry', likelihood: 0.4, impact: 0.8 }, { name: 'Privilege escalation', likelihood: 0.3, impact: 0.9 }],
-}, null, 2);
-
+// No seeded examples — paste real compliance, audit-trail, or risk JSON.
 export function AuditActionPanel() {
-  const [compText, setCompText] = useState(DEMO_COMP);
-  const [trailText, setTrailText] = useState(DEMO_TRAIL);
-  const [riskText, setRiskText] = useState(DEMO_RISK);
-  const [populationSize, setPopulationSize] = useState('5000');
-  const [confidence, setConfidence] = useState('95');
-  const [tolerableError, setTolerableError] = useState('5');
+  const [compText, setCompText] = useState('');
+  const [trailText, setTrailText] = useState('');
+  const [riskText, setRiskText] = useState('');
+  const [populationSize, setPopulationSize] = useState('');
+  const [confidence, setConfidence] = useState('');
+  const [tolerableError, setTolerableError] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -86,53 +57,86 @@ export function AuditActionPanel() {
 
   function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actComp() {
+    if (!compText.trim()) { err('Paste compliance JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(compText); if (!parsed) { err('Invalid compliance JSON.'); return; }
     setBusy('comp'); setFeedback(null);
-    try { const r = await callMacro<CompResult>('complianceCheck', { artifact: { data: parsed } }); if (r.ok && r.result) { setCompResult(r.result); ok(`${r.result.complianceRate ?? '-'}% compliance.`); } else err(r.error ?? 'comp failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<CompResult>('complianceCheck', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setCompResult(r.result); pipe.publish('audit.comp', r.result, { label: `${r.result.framework}: ${r.result.complianceRate}%` }); ok(`${r.result.complianceRate ?? '-'}% compliance.`); } else err(r.error ?? 'comp failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actTrail() {
+    if (!trailText.trim()) { err('Paste trail JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(trailText); if (!parsed) { err('Invalid trail JSON.'); return; }
     setBusy('trail'); setFeedback(null);
-    try { const r = await callMacro<TrailResult>('trailAnalysis', { artifact: { data: parsed } }); if (r.ok && r.result) { setTrailResult(r.result); ok(`${r.result.anomalies?.length ?? 0} anomalies of ${r.result.totalEvents}.`); } else err(r.error ?? 'trail failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<TrailResult>('trailAnalysis', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setTrailResult(r.result); pipe.publish('audit.trail', r.result, { label: `Trail: ${r.result.anomalies?.length ?? 0} anomalies` }); ok(`${r.result.anomalies?.length ?? 0} anomalies of ${r.result.totalEvents}.`); } else err(r.error ?? 'trail failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRisk() {
+    if (!riskText.trim()) { err('Paste risk JSON first.'); return; }
     const parsed = parseJSON<Record<string, unknown>>(riskText); if (!parsed) { err('Invalid risk JSON.'); return; }
     setBusy('risk'); setFeedback(null);
-    try { const r = await callMacro<RiskResult>('riskScore', { artifact: { data: parsed } }); if (r.ok && r.result) { setRiskResult(r.result); ok(`Audit risk ${r.result.auditRisk ?? '-'}.`); } else err(r.error ?? 'risk failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<RiskResult>('riskScore', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setRiskResult(r.result); pipe.publish('audit.risk', r.result, { label: `Audit risk: ${r.result.auditRisk}` }); ok(`Audit risk ${r.result.auditRisk ?? '-'}.`); } else err(r.error ?? 'risk failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSample() {
+    const N = parseInt(populationSize, 10), C = parseInt(confidence, 10), T = parseInt(tolerableError, 10);
+    if (!isFinite(N) || !isFinite(C) || !isFinite(T)) { err('Fill N / Conf % / Tol % first.'); return; }
     setBusy('sample'); setFeedback(null);
-    try { const r = await callMacro<SamplingResult>('samplingPlan', { artifact: { data: { populationSize: parseInt(populationSize, 10), confidenceLevel: parseInt(confidence, 10), tolerableErrorRate: parseInt(tolerableError, 10), expectedErrorRate: 1 } } }); if (r.ok && r.result) { setSamplingResult(r.result); ok(`Sample n=${r.result.sampleSize}.`); } else err(r.error ?? 'sample failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SamplingResult>('samplingPlan', { artifact: { data: { populationSize: N, confidenceLevel: C, tolerableErrorRate: T, expectedErrorRate: 1 } } });
+      if (r.ok && r.result) { setSamplingResult(r.result); pipe.publish('audit.sample', r.result, { label: `Sample n=${r.result.sampleSize}` }); ok(`Sample n=${r.result.sampleSize}.`); } else err(r.error ?? 'sample failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Audit findings`, tags: ['audit', 'findings', compResult?.framework].filter((t): t is string => !!t), source: 'audit:findings:mint', meta: { visibility: 'private', consent: { allowCitations: false }, audit: { comp: compResult, trail: trailResult, risk: riskResult, sampling: samplingResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Findings DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('audit.mintedDtuId', id, { label: `Findings DTU ${id.slice(0, 8)}…` }); ok(`Findings DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`📋 Audit findings`, '', compResult ? `Compliance: ${compResult.complianceRate}% (${compResult.metRequirements}/${compResult.totalRequirements}) · ${compResult.framework}${(compResult.gaps?.length ?? 0) > 0 ? ` · ${compResult.gaps?.length} gaps` : ''}` : '', trailResult ? `Trail: ${trailResult.totalEvents} events · ${trailResult.anomalies?.length ?? 0} anomalies` : '', riskResult ? `Risk: audit ${riskResult.auditRisk} · control ${riskResult.overallControlRisk} · ${riskResult.riskLevel}` : '', samplingResult ? `Sample plan: n=${samplingResult.sampleSize} of N=${samplingResult.populationSize} @ ${samplingResult.confidenceLevel}% conf` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`📋 Audit findings`, '',
+      compResult ? `Compliance: ${compResult.complianceRate}% (${compResult.metRequirements}/${compResult.totalRequirements}) · ${compResult.framework}${(compResult.gaps?.length ?? 0) > 0 ? ` · ${compResult.gaps?.length} gaps` : ''}` : '',
+      trailResult ? `Trail: ${trailResult.totalEvents} events · ${trailResult.anomalies?.length ?? 0} anomalies` : '',
+      riskResult ? `Risk: audit ${riskResult.auditRisk} · control ${riskResult.overallControlRisk} · ${riskResult.riskLevel}` : '',
+      samplingResult ? `Sample plan: n=${samplingResult.sampleSize} of N=${samplingResult.populationSize} @ ${samplingResult.confidenceLevel}% conf` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!compResult) { err('Run compliance first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `${compResult.framework} compliance card`, tags: ['audit', 'compliance', 'public'], source: 'audit:compliance:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, comp: compResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `${compResult.framework} compliance card`, tags: ['audit', 'compliance', 'public'], source: 'audit:compliance:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, comp: compResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('audit.publishedDtuId', id, { label: `Public compliance ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -183,6 +187,10 @@ export function AuditActionPanel() {
             <input type="text" value={tolerableError} onChange={(e) => setTolerableError(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Tol %" />
           </div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white mt-1" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap mt-1">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

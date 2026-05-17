@@ -11,6 +11,7 @@ import { Megaphone, FlaskConical, Filter, Users, Sparkles, Send, Globe, Wand2, L
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -33,40 +34,17 @@ interface FunnelResult { stages: FunnelStage[]; overallConversion: number; bigge
 interface Segment { segment: string; users: number; totalSpend: number; avgSpend: number; share: number }
 interface SegmentResult { totalUsers: number; segments: Segment[]; highValue?: string; pareto: string }
 
-const DEMO_AB = JSON.stringify({
-  variants: [
-    { name: 'control (red CTA)', visitors: 5200, conversions: 156 },
-    { name: 'variant A (green CTA)', visitors: 5180, conversions: 209 },
-    { name: 'variant B (orange CTA)', visitors: 5220, conversions: 178 },
-  ],
-}, null, 2);
-
-const DEMO_FUNNEL = JSON.stringify({
-  stages: [
-    { name: 'Landing', count: 25000 },
-    { name: 'Pricing viewed', count: 8200 },
-    { name: 'Signup started', count: 1850 },
-    { name: 'Signup complete', count: 920 },
-    { name: 'First purchase', count: 380 },
-  ],
-}, null, 2);
-
-const DEMO_USERS = JSON.stringify({
-  users: Array.from({ length: 200 }, (_, i) => ({
-    segment: i < 20 ? 'vip' : i < 70 ? 'power' : i < 150 ? 'regular' : 'trial',
-    spend: i < 20 ? 1200 + i * 30 : i < 70 ? 280 + i * 4 : i < 150 ? 45 + (i % 30) : 0,
-  })),
-}, null, 2);
-
+// No seeded data — every input starts empty. Paste real campaign / A/B /
+// funnel / user JSON, or fill the ROI inputs from a live campaign.
 export function MarketingActionPanel() {
-  const [campaignName, setCampaignName] = useState('Spring re-engagement');
-  const [spend, setSpend] = useState('12000');
-  const [revenue, setRevenue] = useState('48000');
-  const [leads, setLeads] = useState('850');
-  const [conversions, setConversions] = useState('142');
-  const [abText, setAbText] = useState(DEMO_AB);
-  const [funnelText, setFunnelText] = useState(DEMO_FUNNEL);
-  const [usersText, setUsersText] = useState(DEMO_USERS);
+  const [campaignName, setCampaignName] = useState('');
+  const [spend, setSpend] = useState('');
+  const [revenue, setRevenue] = useState('');
+  const [leads, setLeads] = useState('');
+  const [conversions, setConversions] = useState('');
+  const [abText, setAbText] = useState('');
+  const [funnelText, setFunnelText] = useState('');
+  const [usersText, setUsersText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -82,24 +60,37 @@ export function MarketingActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actRoi() {
+    if (!campaignName.trim() || !spend || !revenue) { err('Campaign name + spend + revenue required.'); return; }
     setBusy('roi'); setFeedback(null);
-    try { const r = await callMacro<RoiResult>('campaignROI', { artifact: { data: { name: campaignName, spend: parseFloat(spend), revenue: parseFloat(revenue), leads: parseInt(leads, 10), conversions: parseInt(conversions, 10) } } }); if (r.ok && r.result) { setRoiResult(r.result); ok(`ROI ${r.result.roi}% · ${r.result.grade}.`); } else err(r.error ?? 'roi failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<RoiResult>('campaignROI', { artifact: { data: { name: campaignName, spend: parseFloat(spend), revenue: parseFloat(revenue), leads: parseInt(leads, 10) || 0, conversions: parseInt(conversions, 10) || 0 } } });
+      if (r.ok && r.result) { setRoiResult(r.result); pipe.publish('marketing.roi', r.result, { label: `ROI ${r.result.roi}% (${r.result.grade})` }); ok(`ROI ${r.result.roi}% · ${r.result.grade}.`); } else err(r.error ?? 'roi failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAb() {
+    if (!abText.trim()) { err('Paste A/B variants JSON first.'); return; }
     try { const parsed = JSON.parse(abText); setBusy('ab'); setFeedback(null);
-      const r = await callMacro<AbResult>('abTestAnalysis', { artifact: { data: parsed } }); if (r.ok && r.result) { setAbResult(r.result); ok(`Winner: ${r.result.winner} (+${r.result.lift}%).`); } else err(r.error ?? 'ab failed');
+      const r = await callMacro<AbResult>('abTestAnalysis', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setAbResult(r.result); pipe.publish('marketing.ab', r.result, { label: `Winner: ${r.result.winner}` }); ok(`Winner: ${r.result.winner} (+${r.result.lift}%).`); } else err(r.error ?? 'ab failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid AB JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFunnel() {
+    if (!funnelText.trim()) { err('Paste funnel JSON first.'); return; }
     try { const parsed = JSON.parse(funnelText); setBusy('funnel'); setFeedback(null);
-      const r = await callMacro<FunnelResult>('funnelOptimize', { artifact: { data: parsed } }); if (r.ok && r.result) { setFunnelResult(r.result); ok(`${r.result.overallConversion}% conv · leak at ${r.result.biggestLeakage}.`); } else err(r.error ?? 'funnel failed');
+      const r = await callMacro<FunnelResult>('funnelOptimize', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setFunnelResult(r.result); pipe.publish('marketing.funnel', r.result, { label: `${r.result.overallConversion}% conv` }); ok(`${r.result.overallConversion}% conv · leak at ${r.result.biggestLeakage}.`); } else err(r.error ?? 'funnel failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid funnel JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSeg() {
+    if (!usersText.trim()) { err('Paste users JSON first.'); return; }
     try { const parsed = JSON.parse(usersText); setBusy('seg'); setFeedback(null);
-      const r = await callMacro<SegmentResult>('audienceSegment', { artifact: { data: parsed } }); if (r.ok && r.result) { setSegResult(r.result); ok(`${r.result.segments.length} segments · high-value: ${r.result.highValue}.`); } else err(r.error ?? 'seg failed');
+      const r = await callMacro<SegmentResult>('audienceSegment', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setSegResult(r.result); pipe.publish('marketing.seg', r.result, { label: `${r.result.segments.length} segments` }); ok(`${r.result.segments.length} segments · high-value: ${r.result.highValue}.`); } else err(r.error ?? 'seg failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid users JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -107,25 +98,41 @@ export function MarketingActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Marketing — ${campaignName}`, tags: ['marketing', 'campaign', roiResult?.grade].filter((t): t is string => !!t), source: 'marketing:report:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mkt: { roi: roiResult, ab: abResult, funnel: funnelResult, seg: segResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Report DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('marketing.mintedDtuId', id, { label: `Report DTU ${id.slice(0, 8)}…` }); ok(`Report DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`📣 Marketing report`, '', roiResult ? `${roiResult.campaign}: ROI ${roiResult.roi}% (${roiResult.grade}) · CPL $${roiResult.costPerLead} · CPA $${roiResult.costPerAcquisition}` : '', abResult ? `A/B winner: ${abResult.winner} (+${abResult.lift}%${abResult.statisticallySignificant ? ' · significant' : ' · not significant'})` : '', funnelResult ? `Funnel: ${funnelResult.overallConversion}% top-to-bottom · biggest leak: ${funnelResult.biggestLeakage} (${funnelResult.leakageRate}%)` : '', segResult ? `Segments: ${segResult.segments.length} · highest LTV: ${segResult.highValue} (${segResult.pareto})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`📣 Marketing report`, '',
+      roiResult ? `${roiResult.campaign}: ROI ${roiResult.roi}% (${roiResult.grade}) · CPL $${roiResult.costPerLead} · CPA $${roiResult.costPerAcquisition}` : '',
+      abResult ? `A/B winner: ${abResult.winner} (+${abResult.lift}%${abResult.statisticallySignificant ? ' · significant' : ' · not significant'})` : '',
+      funnelResult ? `Funnel: ${funnelResult.overallConversion}% top-to-bottom · biggest leak: ${funnelResult.biggestLeakage} (${funnelResult.leakageRate}%)` : '',
+      segResult ? `Segments: ${segResult.segments.length} · highest LTV: ${segResult.highValue} (${segResult.pareto})` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!abResult && !funnelResult) { err('Run A/B or funnel first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Marketing playbook`, tags: ['marketing', 'playbook', 'public'], source: 'marketing:playbook:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ab: abResult, funnel: funnelResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Marketing playbook`, tags: ['marketing', 'playbook', 'public'], source: 'marketing:playbook:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ab: abResult, funnel: funnelResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('marketing.publishedDtuId', id, { label: `Public playbook ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -170,6 +177,10 @@ export function MarketingActionPanel() {
             <input type="text" value={conversions} onChange={(e) => setConversions(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Conversions" />
           </div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">A/B variants JSON</label>
