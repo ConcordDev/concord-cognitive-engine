@@ -512,7 +512,7 @@ export default function GameDesignPage() {
             {showMechanicForm && (
               <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
                 <input value={mechName} onChange={e => setMechName(e.target.value)} placeholder="Mechanic name" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
-                <textarea value={mechDesc} onChange={e => setMechDesc(e.target.value)} placeholder="Description" rows={2} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none" />
+                <DraftedTextarea lensId="game-design" draftKey="mechanic-desc" initial={mechDesc} onValueChange={setMechDesc} placeholder="Description" rows={2} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none" />
                 <div className="flex gap-2">
                   <select value={mechCategory} onChange={e => setMechCategory(e.target.value)} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm">
                     {MECHANIC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -566,7 +566,7 @@ export default function GameDesignPage() {
                         <input value={charName} onChange={e => setCharName(e.target.value)} placeholder="Character name" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-emerald-500/30" />
                         <input value={charRole} onChange={e => setCharRole(e.target.value)} placeholder="Role (e.g. Protagonist)" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-emerald-500/30" />
                       </div>
-                      <textarea value={charDesc} onChange={e => setCharDesc(e.target.value)} placeholder="Character description, backstory, motivations..." rows={2} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none focus:outline-none focus:border-emerald-500/30" />
+                      <DraftedTextarea lensId="game-design" draftKey="character-desc" initial={charDesc} onValueChange={setCharDesc} placeholder="Character description, backstory, motivations..." rows={2} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none focus:outline-none focus:border-emerald-500/30" />
                       <div className="flex gap-2">
                         <button onClick={handleAddCharacter} disabled={!charName.trim()} className="px-4 py-2 bg-emerald-500/20 rounded-lg text-sm hover:bg-emerald-500/30 disabled:opacity-50">Add</button>
                         <button onClick={() => setShowCharForm(false)} className="px-4 py-2 bg-white/5 rounded-lg text-sm hover:bg-white/10">Cancel</button>
@@ -741,7 +741,7 @@ export default function GameDesignPage() {
                   <select value={newGenre} onChange={e => setNewGenre(e.target.value as GameGenre)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm">
                     {GAME_GENRES.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
                   </select>
-                  <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Game concept description" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none" />
+                  <DraftedTextarea lensId="game-design" draftKey="game-concept" initial={newDesc} onValueChange={setNewDesc} placeholder="Game concept description" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none" />
                   <input value={newPlatform} onChange={e => setNewPlatform(e.target.value)} placeholder="Target platform" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
                   <button onClick={handleCreate} disabled={!newTitle.trim()} className="w-full py-2 bg-emerald-500/20 rounded-lg text-sm hover:bg-emerald-500/30 disabled:opacity-50">Create</button>
                 </div>

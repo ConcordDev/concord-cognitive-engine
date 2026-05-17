@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { ChefHat as MobileTabChef, Calendar as MobileTabCal, ShoppingCart as MobileTabCart, Apple as MobileTabApple, Package as MobileTabPkg, Menu as MobileTabMenu } from 'lucide-react';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -2166,7 +2167,7 @@ export default function FoodLensPage() {
               </div>
               <div>
                 <label className={ds.label}>Description</label>
-                <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={2} className={ds.textarea} placeholder="Description..." />
+                <DraftedTextarea lensId="food" draftKey="recipe-description" initial={formDescription} onValueChange={setFormDescription} rows={2} className={ds.textarea} placeholder="Description..." />
               </div>
               <div className={ds.grid3}>
                 <div>
@@ -2424,7 +2425,7 @@ export default function FoodLensPage() {
 
               <div>
                 <label className={ds.label}>Notes</label>
-                <textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2} className={ds.textarea} placeholder="Notes..." />
+                <DraftedTextarea lensId="food" draftKey="recipe-notes" initial={formNotes} onValueChange={setFormNotes} rows={2} className={ds.textarea} placeholder="Notes..." />
               </div>
             </div>
             <div className="flex items-center justify-between p-6 border-t border-lattice-border">

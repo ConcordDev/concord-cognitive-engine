@@ -1740,7 +1740,7 @@ export default function FitnessLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
-                  <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} className={ds.textarea} rows={3} placeholder="Description..." />
+                  <DraftedTextarea lensId="fitness" draftKey="workout-description" initial={formDescription} onValueChange={setFormDescription} className={ds.textarea} rows={3} placeholder="Description..." />
                 </div>
                 <div>
                   <label className={ds.label}>Notes</label>
@@ -1880,7 +1880,7 @@ export default function FitnessLensPage() {
 
                     <div>
                       <label className={ds.label}>Auto-Progression Rules</label>
-                      <textarea value={formAutoProgression} onChange={e => setFormAutoProgression(e.target.value)} className={ds.textarea} rows={2} placeholder="e.g. Increase weight by 2.5% when all sets completed at target RPE for 2 consecutive sessions" />
+                      <DraftedTextarea lensId="fitness" draftKey="auto-progression" initial={formAutoProgression} onValueChange={setFormAutoProgression} className={ds.textarea} rows={2} placeholder="e.g. Increase weight by 2.5% when all sets completed at target RPE for 2 consecutive sessions" />
                     </div>
 
                     {/* Training blocks */}

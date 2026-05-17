@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -1258,8 +1259,8 @@ export default function WhiteboardLensPage() {
                           <h3 className="font-semibold flex items-center gap-2"><StickyNote className="w-4 h-4 text-yellow-400" />Note Card</h3>
                           <button onClick={() => { setShowNoteDialog(false); setTextPosition(null); }} aria-label="Close"><X className="w-5 h-5" /></button>
                         </div>
-                        <textarea placeholder="Note text..." value={noteText}
-                          onChange={e => setNoteText(e.target.value)} autoFocus rows={3}
+                        <DraftedTextarea lensId="whiteboard" draftKey="note-card-text" placeholder="Note text..." initial={noteText}
+                          onValueChange={setNoteText} autoFocus rows={3}
                           className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded text-sm mb-3 resize-none" />
                         <p className="text-xs text-gray-400 mb-2">Card color</p>
                         <div className="flex gap-2 mb-4">

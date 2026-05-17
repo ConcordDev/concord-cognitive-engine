@@ -649,7 +649,7 @@ export default function ForumLensPage() {
         {!selectedPost.locked && (
           <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 lens-card">
             <p className="text-xs text-gray-400 mb-2">Comment as <span className="text-neon-cyan">u/{DEFAULT_AUTHOR.username}</span></p>
-            <textarea value={postReplyContent} onChange={e => setPostReplyContent(e.target.value)} rows={3} placeholder="What are your thoughts?" className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
+            <DraftedTextarea lensId="forum" draftKey="post-reply" initial={postReplyContent} onValueChange={setPostReplyContent} rows={3} placeholder="What are your thoughts?" className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan resize-none input-lattice" />
             <div className="flex justify-end mt-2">
               <button onClick={() => handleAddComment(selectedPost.id, null, postReplyContent)} disabled={!postReplyContent.trim()} className="px-4 py-1.5 bg-neon-cyan text-black text-sm font-medium rounded-full hover:bg-neon-cyan/90 disabled:opacity-40 disabled:cursor-not-allowed btn-neon">Comment</button>
             </div>
