@@ -23,6 +23,8 @@ import {
   Search, X, ArrowRight, Sparkles, Grid3X3, LayoutGrid,
 } from 'lucide-react';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { SessionRail } from '@/components/lens/SessionRail';
+import { useRouter } from 'next/navigation';
 
 /** Display order for categories in the explorer */
 const CATEGORY_ORDER: LensCategory[] = [
@@ -43,6 +45,7 @@ const CATEGORY_DESCRIPTIONS: Partial<Record<LensCategory, string>> = {
 };
 
 export default function LensHubPage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'compact'>('grid');
 
@@ -173,6 +176,14 @@ export default function LensHubPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6 space-y-8">
+        {/* Phase 5 — open multi-step sessions across all lenses. */}
+        {!search && (
+          <SessionRail
+            limit={8}
+            hideWhenEmpty
+            onSelect={(_id, row) => router.push(`/lenses/${row.lensId}`)}
+          />
+        )}
         {/* Core 5 Hero Section (only when not searching) */}
         {!search && (
           <section>

@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { SessionRail } from '@/components/lens/SessionRail';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
@@ -131,6 +132,8 @@ export default function KingdomsPage() {
         {view === 'list' && <KingdomList kingdoms={kingdoms} onPick={(id) => { setActiveId(id); setView('detail'); }} />}
         {view === 'detail' && detail && <KingdomDetail detail={detail} decreeKinds={decreeKinds} onRefresh={() => activeId && fetchDetail(activeId)} />}
         {view === 'create' && <KingdomCreate onCreated={(id) => { setActiveId(id); setView('detail'); fetchList(); }} />}
+        {/* Phase 5 — open war-campaign / decree sessions belonging to this lens. */}
+        <SessionRail lensId="kingdoms" className="mt-6" hideWhenEmpty />
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <HistoryExplorer />
         </section>

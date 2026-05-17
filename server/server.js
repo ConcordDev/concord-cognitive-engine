@@ -9646,6 +9646,9 @@ async function runMacro(domain, name, input, ctx) {
     // {ok:false,reason:'no_user'}. Listing here bypasses the heavy
     // mutation gate for the high-frequency save/load path.
     drafts: new Set(["save", "load", "list_mine", "delete"]),
+    // Phase 5 — multi-step workflow sessions. Handlers self-scope by
+    // ctx.actor.userId; anonymous callers return {ok:false, reason:'no_user'}.
+    sessions: new Set(["start", "advance", "update_state", "get", "list_mine", "close"]),
     // Phase 4 (UX completeness sprint) — real free-API wire-up.
     // External fetches go through these macros; no user data leaves the
     // server, so anonymous reads are safe.
@@ -23227,6 +23230,14 @@ registerBeatsMacros(register);
 // callers get {ok:false, reason:'no_user'}.
 import registerDraftsMacros from "./domains/drafts.js";
 registerDraftsMacros(register);
+
+// Phase 5 (UX completeness sprint) — multi-step workflow sessions.
+// Six macros (start / advance / update_state / get / list_mine / close)
+// powering the useLensSession hook. Each session belongs to a user × lens;
+// state is opaque JSON the lens owns. State capped at 1 MiB. Every
+// transition appends to lens_session_events for the timeline UI.
+import registerSessionsMacros from "./domains/sessions.js";
+registerSessionsMacros(register);
 
 // Phase 2 (UX completeness sprint) — bulk-register <domain>.recent_mine
 // + <domain>.list_mine for every lens whose primary artifact is a DTU.
