@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { cn } from '@/lib/utils';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
@@ -50,7 +51,7 @@ interface CoverageResult { coveragePct?: number; uncoveredLines?: number; totalL
 
 export function CodeActionPanel() {
   const [snippetName, setSnippetName] = useState('');
-  const [snippetCode, setSnippetCode] = useState('// paste code here\nfunction hello() {\n  return \'world\';\n}');
+  const [snippetCode, setSnippetCode] = useState('');
   const [language, setLanguage] = useState('javascript');
   const [snapshotMsg, setSnapshotMsg] = useState('');
   const [reviewer, setReviewer] = useState('');
@@ -71,30 +72,36 @@ export function CodeActionPanel() {
   const err = (text: string) => setFeedback({ kind: 'err', text });
   const ready = snippetCode.trim().length > 0;
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actComplexity() {
     if (!ready) { err('Paste code.'); return; }
     setBusy('complexity'); setFeedback(null);
     try {
       const r = await callMacro<ComplexityResult>('complexityAnalysis', { code: snippetCode, language });
-      if (r.ok && r.result) { setComplexityResult(r.result); ok(`Cyclomatic: ${r.result.cyclomatic ?? '—'}.`); }
+      if (r.ok && r.result) { setComplexityResult(r.result); pipe.publish('code.complexity', r.result, { label: `Cyclomatic ${r.result.cyclomatic ?? '?'}` }); ok(`Cyclomatic: ${r.result.cyclomatic ?? '—'}.`); }
       else err(r.error ?? 'complexity failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
   async function actDeps() {
+    if (!ready) { err('Paste code.'); return; }
     setBusy('deps'); setFeedback(null);
     try {
       const r = await callMacro<DepsResult>('dependencyAudit', { code: snippetCode, language });
-      if (r.ok && r.result) { setDepsResult(r.result); ok(`Deps: ${r.result.total ?? 0}, ${r.result.outdated ?? 0} outdated.`); }
+      if (r.ok && r.result) { setDepsResult(r.result); pipe.publish('code.deps', r.result, { label: `Deps ${r.result.total ?? 0}` }); ok(`Deps: ${r.result.total ?? 0}, ${r.result.outdated ?? 0} outdated.`); }
       else err(r.error ?? 'deps failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
   async function actCoverage() {
+    if (!ready) { err('Paste code.'); return; }
     setBusy('coverage'); setFeedback(null);
     try {
       const r = await callMacro<CoverageResult>('coverageAnalysis', { code: snippetCode, language });
-      if (r.ok && r.result) { setCoverageResult(r.result); ok(`Coverage: ${r.result.coveragePct ?? 0}%.`); }
+      if (r.ok && r.result) { setCoverageResult(r.result); pipe.publish('code.coverage', r.result, { label: `Coverage ${r.result.coveragePct ?? 0}%` }); ok(`Coverage: ${r.result.coveragePct ?? 0}%.`); }
       else err(r.error ?? 'coverage failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -135,7 +142,7 @@ export function CodeActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Review DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('code.mintedDtuId', id, { label: `Review DTU ${id.slice(0, 8)}…` }); ok(`Review DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -153,9 +160,12 @@ export function CodeActionPanel() {
       mintedDtuId ? `\n[Review DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
-      const r = await api.post('/api/social/dm', { toUserId: reviewer.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${reviewer.trim()}.`); setReviewer(''); }
-      else err(r.data?.error ?? 'send failed');
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: reviewer.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok(`Sent to ${reviewer.trim()}. 60s to recall.`); setReviewer(''); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -163,21 +173,24 @@ export function CodeActionPanel() {
     if (!ready) { err('Paste code.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
-        domain: 'dtu', name: 'create',
-        input: {
-          title: `Public gist — ${snippetName.trim() || `${language} snippet`}`,
-          tags: ['code', 'gist', 'public', language],
-          source: 'code:gist:publish',
-          meta: { visibility: 'public', consent: { allowCitations: true }, gist: { language, name: snippetName.trim(), code: snippetCode } },
-        },
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', {
+          domain: 'dtu', name: 'create',
+          input: {
+            title: `Public gist — ${snippetName.trim() || `${language} snippet`}`,
+            tags: ['code', 'gist', 'public', language],
+            source: 'code:gist:publish',
+            meta: { visibility: 'public', consent: { allowCitations: true }, gist: { language, name: snippetName.trim(), code: snippetCode } },
+          },
+        });
+        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const newId = dtu?.id ?? dtu?.dtuId;
+        if (!newId) throw new Error('No DTU id returned.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
+        return newId as string;
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Gist published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      if (id) { setPublishedDtuId(id); pipe.publish('code.publishedDtuId', id, { label: `Public gist ${id.slice(0, 8)}…` }); ok(`Gist published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -226,6 +239,10 @@ export function CodeActionPanel() {
         </select>
         <input type="text" value={snapshotMsg} onChange={(e) => setSnapshotMsg(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Snapshot message" />
         <input type="text" value={reviewer} onChange={(e) => setReviewer(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Reviewer user id" />
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <RecallSlot ctl={dmRecall} />
+        <RecallSlot ctl={publishRecall} />
       </div>
 
       <textarea value={snippetCode} onChange={(e) => setSnippetCode(e.target.value)} rows={10} className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-[12px] text-cyan-100 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-400/40 resize-y leading-relaxed" />

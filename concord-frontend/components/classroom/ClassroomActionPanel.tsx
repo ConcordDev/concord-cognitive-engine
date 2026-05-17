@@ -11,6 +11,7 @@ import { BookOpen, Library, Hash, Search, Sparkles, Send, Globe, Wand2, Loader2,
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -31,10 +32,10 @@ interface WorkResult { workId: string; title: string; description?: string; subj
 interface IsbnResult { isbn?: string; title?: string; authors?: string[]; publisher?: string; publishDate?: string; pages?: number; coverImage?: string | null }
 
 export function ClassroomActionPanel() {
-  const [query, setQuery] = useState('Harry Potter');
-  const [subject, setSubject] = useState('computer_science');
-  const [workId, setWorkId] = useState('OL82563W');
-  const [isbn, setIsbn] = useState('9780262033848');
+  const [query, setQuery] = useState('');
+  const [subject, setSubject] = useState('');
+  const [workId, setWorkId] = useState('');
+  const [isbn, setIsbn] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -50,54 +51,82 @@ export function ClassroomActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actSearch() {
     if (!query.trim()) { err('Query required.'); return; }
     setBusy('search'); setFeedback(null);
-    try { const r = await callMacro<SearchResult>('ol-search', { query: query.trim(), limit: 12 }); if (r.ok && r.result) { setSearchResult(r.result); ok(`${r.result.count} of ${r.result.totalResults?.toLocaleString()} works.`); } else err(r.error ?? 'search failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SearchResult>('ol-search', { query: query.trim(), limit: 12 });
+      if (r.ok && r.result) { setSearchResult(r.result); pipe.publish('classroom.search', r.result, { label: `Search ${r.result.count}` }); ok(`${r.result.count} of ${r.result.totalResults?.toLocaleString()} works.`); } else err(r.error ?? 'search failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSubj() {
     if (!subject.trim()) { err('Subject required.'); return; }
     setBusy('subj'); setFeedback(null);
-    try { const r = await callMacro<SearchResult>('ol-subject', { subject: subject.trim(), ebooks: true, limit: 12 }); if (r.ok && r.result) { setSubjResult(r.result); ok(`${r.result.count} works in ${subject}.`); } else err(r.error ?? 'subject failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<SearchResult>('ol-subject', { subject: subject.trim(), ebooks: true, limit: 12 });
+      if (r.ok && r.result) { setSubjResult(r.result); pipe.publish('classroom.subj', r.result, { label: `${subject}: ${r.result.count}` }); ok(`${r.result.count} works in ${subject}.`); } else err(r.error ?? 'subject failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actWork() {
     if (!workId.trim()) { err('Work ID required (OL...W).'); return; }
     setBusy('work'); setFeedback(null);
-    try { const r = await callMacro<WorkResult>('ol-work', { workId: workId.trim() }); if (r.ok && r.result) { setWorkResult(r.result); ok(`${r.result.title} loaded.`); } else err(r.error ?? 'work failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<WorkResult>('ol-work', { workId: workId.trim() });
+      if (r.ok && r.result) { setWorkResult(r.result); pipe.publish('classroom.work', r.result, { label: `Work: ${r.result.title}` }); ok(`${r.result.title} loaded.`); } else err(r.error ?? 'work failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actIsbn() {
     if (!isbn.trim()) { err('ISBN required.'); return; }
     setBusy('isbn'); setFeedback(null);
-    try { const r = await callMacro<IsbnResult>('ol-isbn', { isbn: isbn.trim() }); if (r.ok && r.result) { setIsbnResult(r.result); ok(`${r.result.title ?? isbn}.`); } else err(r.error ?? 'isbn failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<IsbnResult>('ol-isbn', { isbn: isbn.trim() });
+      if (r.ok && r.result) { setIsbnResult(r.result); pipe.publish('classroom.isbn', r.result, { label: `ISBN: ${r.result.title}` }); ok(`${r.result.title ?? isbn}.`); } else err(r.error ?? 'isbn failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Reading list — ${query}`, tags: ['classroom', 'reading', subject], source: 'classroom:reading:mint', meta: { visibility: 'private', consent: { allowCitations: false }, books: { search: searchResult, subj: subjResult, work: workResult, isbn: isbnResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Reading DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('classroom.mintedDtuId', id, { label: `Reading DTU ${id.slice(0, 8)}…` }); ok(`Reading DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`📚 Reading list`, '', searchResult ? `Search "${searchResult.query}": ${searchResult.count} results${searchResult.works[0] ? `\n→ ${searchResult.works[0].title} (${searchResult.works[0].authors[0] ?? '?'}, ${searchResult.works[0].firstPublishYear ?? '?'})` : ''}` : '', subjResult ? `Subject ${subject}: top "${subjResult.works[0]?.title}"` : '', workResult ? `Work: ${workResult.title} (${workResult.firstPublishDate ?? '?'})` : '', isbnResult ? `ISBN ${isbnResult.isbn}: ${isbnResult.title} (${isbnResult.publisher})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`📚 Reading list`, '',
+      searchResult ? `Search "${searchResult.query}": ${searchResult.count} results${searchResult.works[0] ? `\n→ ${searchResult.works[0].title} (${searchResult.works[0].authors[0] ?? '?'}, ${searchResult.works[0].firstPublishYear ?? '?'})` : ''}` : '',
+      subjResult ? `Subject ${subject}: top "${subjResult.works[0]?.title}"` : '',
+      workResult ? `Work: ${workResult.title} (${workResult.firstPublishDate ?? '?'})` : '',
+      isbnResult ? `ISBN ${isbnResult.isbn}: ${isbnResult.title} (${isbnResult.publisher})` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!searchResult && !subjResult) { err('Run a search first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Curriculum list — ${subject || query}`, tags: ['classroom', 'curriculum', 'public', subject], source: 'classroom:curriculum:publish', meta: { visibility: 'public', consent: { allowCitations: true }, search: searchResult, subj: subjResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Curriculum list — ${subject || query}`, tags: ['classroom', 'curriculum', 'public', subject], source: 'classroom:curriculum:publish', meta: { visibility: 'public', consent: { allowCitations: true }, search: searchResult, subj: subjResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('classroom.publishedDtuId', id, { label: `Public curriculum ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -135,7 +164,11 @@ export function ClassroomActionPanel() {
         <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Subject" />
         <input type="text" value={workId} onChange={(e) => setWorkId(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="OL...W" />
         <input type="text" value={isbn} onChange={(e) => setIsbn(e.target.value.replace(/[^0-9X]/gi, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="ISBN" />
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <div className="md:col-span-5 flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">

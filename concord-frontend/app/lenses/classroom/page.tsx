@@ -13,6 +13,7 @@ import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
 import { ClassroomActionPanel } from '@/components/classroom/ClassroomActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 interface Cohort {
   id: number;
@@ -177,9 +178,11 @@ export default function ClassroomPage() {
         <OpenLibrarySearch />
       </section>
 
-      <section className="mt-6">
-        <ClassroomActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <ClassroomActionPanel />
+        </section>
+      </PipingProvider>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>

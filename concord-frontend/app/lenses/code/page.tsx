@@ -49,6 +49,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { GithubTrending } from '@/components/code/GithubTrending';
 import { CodeActionPanel } from '@/components/code/CodeActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 interface FileNode {
   id: string;
@@ -2554,9 +2555,11 @@ export default function CodeLensPage() {
     </section>
 
     {/* VS Code-shape code review workbench: complexity / deps / coverage / snippet + actions */}
-    <section className="mt-6 mx-4">
-      <CodeActionPanel />
-    </section>
+    <PipingProvider>
+      <section className="mt-6 mx-4">
+        <CodeActionPanel />
+      </section>
+    </PipingProvider>
     </LensShell>
   );
 }
