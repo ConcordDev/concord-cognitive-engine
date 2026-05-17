@@ -20,6 +20,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { TimelineExport } from '@/components/cognitive-replay/TimelineExport';
 import { Loader2, BookOpen } from 'lucide-react';
 
@@ -81,6 +82,7 @@ export default function CognitiveReplayPage() {
       <LensShell lensId="cognitive-replay">
       <FirstRunTour lensId="cognitive-replay" />
       <DepthBadge lensId="cognitive-replay" size="sm" className="ml-2" />
+      <LensTierBadge lensId="cognitive-replay" size="sm" className="ml-2" />
         <div className="p-8 text-zinc-400 flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin focus:ring-2 focus:outline-none sm:text-base" />
           Loading your cognitive timeline…

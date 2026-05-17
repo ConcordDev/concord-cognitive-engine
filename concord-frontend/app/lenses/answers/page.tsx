@@ -25,6 +25,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -546,6 +547,7 @@ export default function AnswersLensPage() {
       <FirstRunTour lensId="answers" />
       <ManifestActionBar />
       <DepthBadge lensId="answers" size="sm" className="ml-2" />
+      <LensTierBadge lensId="answers" size="sm" className="ml-2" />
     <div data-lens-theme="answers" className={cn(ds.pageContainer, 'space-y-6')}>
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header className="space-y-4">

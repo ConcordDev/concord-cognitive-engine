@@ -18,6 +18,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { VoiceRecorder } from '@/components/voice/VoiceRecorder';
+import { AudioReelRecorder } from '@/components/voice/AudioReelRecorder';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic,
@@ -135,6 +136,8 @@ export default function VoiceLensPage() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [sessionTime, setSessionTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Phase 13 (Stage B) — audio reel recorder modal toggle
+  const [audioReelOpen, setAudioReelOpen] = useState(false);
 
   // Takes
   const [takes, setTakes] = useState<Take[]>([]);
@@ -1120,6 +1123,40 @@ export default function VoiceLensPage() {
           <VoiceActionPanel />
         </section>
       </PipingProvider>
+
+      {/* Phase 13 (Stage B) — audio-only reels. The substrate (reels table
+          + reels.create_from_post macro) accepts audioUrl as of migration
+          201. Recorder hands off via the same artifact → social-post →
+          create-reel pipeline used by video reels. */}
+      <section data-testid="audio-reels-tab" className="mt-6 rounded-xl border border-sky-800/40 bg-sky-950/10 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-sky-200 flex items-center gap-2">
+            <Radio className="w-4 h-4" />
+            Audio Reels
+          </h3>
+          <button
+            type="button"
+            onClick={() => setAudioReelOpen(true)}
+            className="text-xs px-3 py-1.5 rounded bg-sky-600/30 text-sky-100 hover:bg-sky-600/40 border border-sky-500/40 inline-flex items-center gap-1.5"
+          >
+            <Mic className="w-3 h-3" />
+            Record audio reel
+          </button>
+        </div>
+        <p className="text-[11px] text-sky-300/80">
+          Audio-only short-form posts. ≤ 60 seconds. Surfaces in the Reels feed
+          alongside video reels with a waveform card.
+        </p>
+        {audioReelOpen && (
+          <AudioReelRecorder
+            onClose={() => setAudioReelOpen(false)}
+            onPosted={() => {
+              setAudioReelOpen(false);
+              useUIStore.getState().addToast({ type: 'success', message: 'Audio reel posted' });
+            }}
+          />
+        )}
+      </section>
     </div>
           <RecentMineCard domain="voice" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="voice" hideWhenEmpty className="mt-3" title="More actions" />

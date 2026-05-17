@@ -27,6 +27,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { WorldBuilderInspo } from '@/components/world-creator/WorldBuilderInspo';
 
 const UNIVERSE_TYPES = [
@@ -112,6 +113,7 @@ export default function WorldCreatorPage() {
     <LensShell lensId="world-creator">
       <FirstRunTour lensId="world-creator" />
       <DepthBadge lensId="world-creator" size="sm" className="ml-2" />
+      <LensTierBadge lensId="world-creator" size="sm" className="ml-2" />
       <div className="mx-auto max-w-3xl px-6 py-8 text-stone-100">
         <header className="mb-8">
           <h1 className="text-3xl font-semibold tracking-tight">Create a sub-world</h1>

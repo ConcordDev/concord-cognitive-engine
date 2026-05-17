@@ -19,6 +19,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { InsuranceChatter } from '@/components/death-insurance/InsuranceChatter';
 
 interface Contract {
@@ -84,6 +85,7 @@ export default function DeathInsurancePage() {
         <LensShell lensId="death-insurance">
       <FirstRunTour lensId="death-insurance" />
       <DepthBadge lensId="death-insurance" size="sm" className="ml-2" />
+      <LensTierBadge lensId="death-insurance" size="sm" className="ml-2" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-100">Inheritance Pact</h1>

@@ -16,6 +16,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { SentinelCves } from '@/components/sentinel/SentinelCves';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -120,6 +121,7 @@ export default function SentinelLensPage() {
       <FirstRunTour lensId="sentinel" />
       <ManifestActionBar />
       <DepthBadge lensId="sentinel" size="sm" className="ml-2" />
+      <LensTierBadge lensId="sentinel" size="sm" className="ml-2" />
     <div className="min-h-screen bg-black pb-12 text-blue-50">
       <header className="sticky top-0 z-10 border-b border-blue-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">

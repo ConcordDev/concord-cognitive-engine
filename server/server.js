@@ -624,6 +624,36 @@ registerHeartbeat("federation-outbox-pump", {
   handler: ({ db } = {}) => runFederationOutboxPump({ db }),
 });
 
+// Phase 13 (Stage D) — federation-instance-probe. Every 240 ticks (~60 min)
+// re-probes each known peer instance via NodeInfo 2.1 and flips status to
+// 'unreachable' when probes fail. Without it, federation_peer_instances
+// rows go stale and the Instances tab shows zombie peers.
+registerHeartbeat("federation-instance-probe", {
+  frequency: 240,
+  handler: async ({ db } = {}) => {
+    if (!db) return { ok: false, reason: "no_db" };
+    try {
+      const { probePeerInstance } = await import("./lib/federation-peer-discovery.js");
+      const rows = (() => {
+        try { return db.prepare(`SELECT base_url FROM federation_peer_instances`).all(); }
+        catch { return []; }
+      })();
+      const results = [];
+      for (const row of rows) {
+        try {
+          const r = await probePeerInstance(db, row.base_url);
+          results.push({ baseUrl: row.base_url, ok: r.ok });
+        } catch (e) {
+          results.push({ baseUrl: row.base_url, ok: false, error: e?.message });
+        }
+      }
+      return { ok: true, probed: results.length, results };
+    } catch (e) {
+      return { ok: false, reason: "probe_module_load_failed", error: e?.message };
+    }
+  },
+});
+
 // Layer 8: repair-cycle pain processor. Every 20 ticks (~5min) consumes
 // pending pain_signals rows for each user, grants endurance / strength /
 // agility / vitality / focus XP based on regional distribution, and grants
@@ -5740,6 +5770,11 @@ function authMiddleware(req, res, next) {
     // must be publicly resolvable so federated peers (Mastodon, etc.)
     // can discover Concord actors before any authenticated handshake.
     "/.well-known/webfinger",
+    // Phase 13 (Stage D) — NodeInfo 2.1 instance discovery. Mastodon /
+    // Lemmy / Misskey / Pleroma all fetch this to learn what software a
+    // peer runs. MUST be public so peers can probe pre-handshake.
+    "/.well-known/nodeinfo",
+    "/api/nodeinfo",
   ];
   // Public-read bypass: anon GETs to whitelisted paths skip auth. But if the
   // caller sent an Authorization header or auth cookie, run the full auth
@@ -10997,17 +11032,60 @@ register("voice","transcribe", async (ctx, input={}) => {
 
   // Local-first: whisper.cpp binary
   const bin = process.env.WHISPER_CPP_BIN || "";
-  if (bin) {
-    const audioPath = String(input.audioPath || "");
-    if (!audioPath) return { ok:false, error:"audioPath required (server-side file path)" };
-    const args = [ "-f", audioPath, "--output-txt" ];
-    const p = spawnSync(bin, args, { encoding:"utf-8" });
-    if (p.error) return { ok:false, error:String(p.error) };
-    const out = (p.stdout || "") + (p.stderr || "");
-    return { ok:true, transcript: out.trim(), source: "whisper_cpp" };
+  if (!bin) {
+    return { ok:false, error:"No transcription backend configured. Set WHISPER_CPP_BIN (local whisper.cpp)" };
+  }
+  const audioPath = String(input.audioPath || "");
+  if (!audioPath) return { ok:false, error:"audioPath required (server-side file path)" };
+  const args = [ "-f", audioPath, "--output-txt" ];
+  const p = spawnSync(bin, args, { encoding:"utf-8" });
+  if (p.error) return { ok:false, error:String(p.error) };
+  const transcript = ((p.stdout || "") + (p.stderr || "")).trim();
+  const out = { ok:true, transcript, source: "voice.transcribe.whisper_cpp" };
+
+  // Optional DTU mint — caller must opt in via `mintAsDtu: true`.
+  // Phase 13 (Stage B). Gating logic extracted into voice-dtu-gate.js
+  // so Tier-2 contract tests can pin the gates without loading server.js.
+  try {
+    const { shouldMintVoiceCaptureDtu } = await import("./lib/voice-dtu-gate.js");
+    const gate = shouldMintVoiceCaptureDtu({
+      mintAsDtu: input.mintAsDtu,
+      transcript,
+      durationSeconds: input.durationSeconds,
+      inVoiceRoom: input.inVoiceRoom,
+    });
+    if (gate.mint) {
+      const userId = ctx?.actor?.userId || ctx?.userId;
+      const db = ctx?.db || ctx?.STATE?.db;
+      if (db && userId) {
+        const dtuId = `dtu:voice:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
+        const meta = {
+          scope: "personal",
+          source_modality: "voice.transcribe",
+          duration_seconds: Number(input.durationSeconds) || 0,
+          audio_path: audioPath,
+          transcript_length: transcript.length,
+        };
+        db.prepare(`
+          INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+          VALUES (?, 'voice_capture', ?, ?, ?, 1, 0, unixepoch())
+        `).run(
+          dtuId,
+          transcript.slice(0, 80),
+          userId,
+          JSON.stringify(meta),
+        );
+        out.dtuId = dtuId;
+      }
+    } else {
+      out.dtuSkipReason = gate.reason;
+    }
+  } catch (e) {
+    // Best-effort — transcription succeeds even if DTU mint fails.
+    out.dtuMintError = e?.message || "dtu_mint_failed";
   }
 
-  return { ok:false, error:"No transcription backend configured. Set WHISPER_CPP_BIN (local whisper.cpp)" };
+  return out;
 }, { public:false });
 
 register("voice","tts", async (ctx, input={}) => {
@@ -14819,6 +14897,19 @@ if (process.env.CONCORD_DISABLE_BRAINS !== "true") {
     }
   }, 30000);
 }
+
+// Probe non-LLM modalities (STT / TTS) alongside the brains. Light: just
+// detects whether the binaries / API keys are present. Capability errors
+// surface at use-time.
+setTimeout(async () => {
+  try {
+    const { initModalities } = await import("./lib/init-modalities.js");
+    const snap = await initModalities();
+    structuredLog("info", "modalities_probed", snap);
+  } catch (e) {
+    structuredLog("warn", "modalities_probe_failed", { error: e?.message });
+  }
+}, 3500);
 
 // ── Repair Cortex Runtime Loop ────────────────────────────────────────────
 // Expose MACROS, BRAIN, STATE globally so repair cortex executors can access them.
@@ -23711,6 +23802,13 @@ try {
 // list on marketplace. Plugs into royalty cascade for citation chains.
 import registerForgeMarketplaceMacros from "./domains/forge-marketplace.js";
 registerForgeMarketplaceMacros(register);
+
+// Phase 13 (Stage C) — Agent marketplace. Mint agent manifests as DTUs,
+// list, run via capability-scoped sandbox. Citation cascade plugs into
+// the existing royalty path so downstream agents pay perpetual royalties
+// to ancestor authors.
+import registerAgentMarketplaceMacros from "./domains/agent-marketplace.js";
+registerAgentMarketplaceMacros(register);
 
 // Phase 6b — DTU Portability. Pack/validate/import a user's corpus for
 // sovereign migration to another Concord instance.
@@ -69702,6 +69800,26 @@ register("federation", "commune_status", (ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Get commune detail + member list + caller's membership flag." });
 
+// Phase 13 (Stage D) — federation peer-instance discovery macros.
+register("federation", "list_peer_instances", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const { listPeerInstances } = await import("./lib/federation-peer-discovery.js");
+    const instances = listPeerInstances(db, { all: input.all === true, limit: Number(input.limit) || 100 });
+    return { ok: true, instances };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List known peer instances (NodeInfo registry)." });
+
+register("federation", "probe_instance", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const baseUrl = String(input.baseUrl || "");
+  if (!baseUrl) return { ok: false, reason: "missing_baseUrl" };
+  try {
+    const { probePeerInstance } = await import("./lib/federation-peer-discovery.js");
+    return await probePeerInstance(db, baseUrl);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Probe a peer instance via NodeInfo 2.1." });
+
 // Phase 6.3: ActivityPub bridge (idea #21).
 register("federation", "outbox", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
@@ -70024,6 +70142,42 @@ app.get("/.well-known/webfinger", asyncHandler(async (req, res) => {
     ],
   });
 }));
+
+// ── Phase 13 (Stage D): NodeInfo 2.1 instance discovery ─────────────────
+// Mastodon, Lemmy, Misskey, Pleroma all fetch /.well-known/nodeinfo to
+// learn what software a peer runs. Using the spec means our discovery
+// works across the entire Fediverse, not just other Concord instances.
+app.get("/.well-known/nodeinfo", (_req, res) => {
+  const base = process.env.CONCORD_BASE_URL || process.env.CONCORD_INSTANCE_URL || "https://concord-os.org";
+  res.json({
+    links: [
+      { rel: "http://nodeinfo.diaspora.software/ns/schema/2.1", href: `${base}/api/nodeinfo/2.1` },
+    ],
+  });
+});
+
+app.get("/api/nodeinfo/2.1", (_req, res) => {
+  let userCount = 0;
+  try {
+    userCount = db.prepare(`SELECT COUNT(*) AS c FROM users`).get()?.c || 0;
+  } catch { /* users table may be absent in test envs */ }
+  res.json({
+    version: "2.1",
+    software: {
+      name: "concord",
+      version: process.env.CONCORD_VERSION || "5.1.0",
+      repository: "https://github.com/ryttps94jq-gif/concord-cognitive-engine",
+    },
+    protocols: ["activitypub"],
+    services: { inbound: [], outbound: [] },
+    openRegistrations: process.env.CONCORD_OPEN_REGISTRATIONS === "true",
+    usage: {
+      users: { total: userCount },
+      localPosts: 0,
+    },
+    metadata: { nodeName: process.env.CONCORD_NODE_NAME || "Concord" },
+  });
+});
 
 // ── Phase 8.5: Self-improving PR loop — reflex → forge → GitHub PR ──────────
 //

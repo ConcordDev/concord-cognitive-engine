@@ -16,6 +16,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { Coins, Loader2, AlertTriangle, RefreshCw, Trophy } from 'lucide-react';
 import { GhsaAdvisories } from '@/components/bounties/GhsaAdvisories';
 
@@ -79,6 +80,7 @@ export default function BountiesPage() {
     <LensShell lensId="bounties">
       <FirstRunTour lensId="bounties" />
       <DepthBadge lensId="bounties" size="sm" className="ml-2" />
+      <LensTierBadge lensId="bounties" size="sm" className="ml-2" />
       <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto min-h-screen">
         <header className="mb-6 sm:mb-8 flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">

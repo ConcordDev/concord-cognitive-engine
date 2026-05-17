@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { RootMetrics } from '@/components/root/RootMetrics';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -174,6 +175,7 @@ export default function RootLens() {
       <FirstRunTour lensId="root" />
       <ManifestActionBar />
       <DepthBadge lensId="root" size="sm" className="ml-2" />
+      <LensTierBadge lensId="root" size="sm" className="ml-2" />
       <LensVerticalHero lensId="root" className="mx-6 mt-4" />
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6 sm:p-8 font-mono">
       <div className="max-w-3xl mx-auto space-y-8">

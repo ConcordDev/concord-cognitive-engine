@@ -34,6 +34,8 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { AgentRoster } from '@/components/agents/AgentRoster';
+import { AgentMarketplaceCard } from '@/components/agents/AgentMarketplaceCard';
+import { AgentEarningsPanel } from '@/components/agents/AgentEarningsPanel';
 
 // --- Types ---
 interface Agent {
@@ -1173,6 +1175,17 @@ export default function AgentsLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <AgentRoster />
+      </section>
+
+      {/* Phase 13 (Stage C) — agent marketplace. Mint + list + earn through
+          the existing royalty cascade. Capability-scoped sandbox gates
+          execution at runtime. */}
+      <section data-testid="agent-marketplace-section" className="mt-6 rounded-xl border border-emerald-800/40 bg-emerald-950/10 p-4">
+        <h2 className="text-sm font-semibold text-emerald-200 mb-3">Agent marketplace</h2>
+        <AgentMarketplaceCard />
+        <div className="mt-6 pt-4 border-t border-emerald-800/30">
+          <AgentEarningsPanel />
+        </div>
       </section>
     </div>
           <SessionRail lensId="agents" hideWhenEmpty className="mt-4" />

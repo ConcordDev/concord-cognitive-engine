@@ -28,8 +28,11 @@ interface Reel {
   id: string;
   postId: string;
   userId: string;
-  videoUrl: string;
+  videoUrl: string | null;
   thumbnailUrl?: string | null;
+  audioUrl?: string | null;
+  audioDurationSeconds?: number | null;
+  mediaKind?: 'video' | 'audio' | 'unknown';
   durationSeconds: number;
   width?: number | null;
   height?: number | null;
@@ -108,7 +111,7 @@ export function ReelsFeed({ className }: ReelsFeedProps) {
 }
 
 function ReelCard({ reel, onWatched }: { reel: Reel; onWatched: () => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const [muted, setMuted] = useState(true);
   const [watchedSeconds, setWatchedSeconds] = useState(0);
   const recordedRef = useRef(false);
@@ -156,12 +159,36 @@ function ReelCard({ reel, onWatched }: { reel: Reel; onWatched: () => void }) {
 
   const ratio = reel.viewCount > 0 ? Math.round(reel.completionRate * 100) : 0;
 
+  // Phase 13 (Stage B) — audio-only reels render a waveform card instead
+  // of a <video> element. mediaKind=='audio' OR (no videoUrl AND audioUrl
+  // present) → audio render path.
+  const isAudio = (reel.mediaKind === 'audio') || (!reel.videoUrl && !!reel.audioUrl);
+
   return (
-    <article className="snap-start relative rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden">
+    <article data-testid="reel-card" data-media-kind={isAudio ? 'audio' : 'video'} className="snap-start relative rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden">
+      {isAudio ? (
+        <div className="relative aspect-[9/16] max-h-[80vh] bg-gradient-to-br from-sky-950/60 to-zinc-950 flex flex-col items-center justify-center p-6 gap-4">
+          <div className="w-24 h-24 rounded-full bg-sky-600/30 ring-4 ring-sky-500/20 flex items-center justify-center">
+            <Volume2 className="w-12 h-12 text-zinc-100" />
+          </div>
+          <div className="text-[10px] text-sky-300 font-semibold uppercase tracking-wider">Voice reel</div>
+          <audio
+            ref={(el) => { videoRef.current = el; }}
+            src={reel.audioUrl || undefined}
+            controls
+            preload="metadata"
+            className="w-full max-w-xs"
+          />
+          {/* progress bar */}
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+            <div className="h-full bg-sky-400" style={{ width: `${Math.min(100, (watchedSeconds / reel.durationSeconds) * 100)}%` }} />
+          </div>
+        </div>
+      ) : (
       <div className="relative aspect-[9/16] max-h-[80vh] bg-black">
         <video
-          ref={videoRef}
-          src={reel.videoUrl}
+          ref={(el) => { videoRef.current = el; }}
+          src={reel.videoUrl || undefined}
           poster={reel.thumbnailUrl || undefined}
           muted={muted}
           loop
@@ -182,6 +209,7 @@ function ReelCard({ reel, onWatched }: { reel: Reel; onWatched: () => void }) {
           <div className="h-full bg-white/80" style={{ width: `${Math.min(100, (watchedSeconds / reel.durationSeconds) * 100)}%` }} />
         </div>
       </div>
+      )}
 
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2 text-sm">

@@ -41,17 +41,21 @@ export default function registerReelsMacros(register) {
 
   register('reels', 'create_from_post', async (ctx, input = {}) => {
     const db = ctx?.db || ctx?.STATE?.db;
+    // Phase 13 (Stage B) — audioUrl / audioDurationSeconds make this an
+    // audio-only reel. videoUrl can be omitted in that case.
     return createReel(db, {
       reelId: String(input.reelId || ''),
       postId: String(input.postId || ''),
       userId: ctx?.actor?.userId || String(input.userId || ''),
-      videoUrl: String(input.videoUrl || ''),
+      videoUrl: input.videoUrl ? String(input.videoUrl) : null,
       thumbnailUrl: input.thumbnailUrl || null,
+      audioUrl: input.audioUrl ? String(input.audioUrl) : null,
+      audioDurationSeconds: input.audioDurationSeconds != null ? Number(input.audioDurationSeconds) : null,
       durationSeconds: Number(input.durationSeconds) || 0,
       width: Number(input.width) || null,
       height: Number(input.height) || null,
       caption: input.caption || null,
       musicAttribution: input.musicAttribution || null,
     });
-  }, { note: 'Finalize a reels publish (post must be created first)' });
+  }, { note: 'Finalize a reels publish (post must be created first; videoUrl or audioUrl required)' });
 }

@@ -14,6 +14,7 @@ import { Bookmark } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { BookmarksList } from '@/components/social/BookmarksList';
@@ -37,6 +38,7 @@ export default function SavedLensPage() {
       <FirstRunTour lensId="saved" />
       <ManifestActionBar />
       <DepthBadge lensId="saved" size="sm" className="ml-2" />
+      <LensTierBadge lensId="saved" size="sm" className="ml-2" />
 
       <div className="min-h-screen bg-lattice-void text-zinc-100">
         <header className="border-b border-zinc-800 bg-zinc-950/70">

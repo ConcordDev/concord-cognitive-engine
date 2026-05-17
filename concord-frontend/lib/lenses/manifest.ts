@@ -96,6 +96,13 @@ export interface LensManifest {
 
   /** Backend table FK target for multi-step sessions (e.g. 'war_campaigns', 'reasoning_sessions'). */
   sessionTable?: string;
+
+  /**
+   * Implementation-tier classification from docs/PHASE12_AUDIT_lens-classification.csv.
+   * SCAFFOLD lenses render a "Experimental" badge via LensTierBadge. DEEP/MODERATE/THIN
+   * render no badge — they're functional surfaces, just at varying depth.
+   */
+  tier?: 'DEEP' | 'MODERATE' | 'THIN' | 'SCAFFOLD';
 }
 
 // ---- Lens Manifests ----
@@ -153,6 +160,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: [],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: 'No bookmarks yet.',
       caption: 'Click the bookmark icon on any post or DTU to save it for later. Bookmarks live in the social substrate and are private to you.',
@@ -2178,6 +2186,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['browse', 'ask_oracle', 'expand', 'link_implementation', 'export'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: "The Answers.",
       caption: "Browse curated answers; ask the oracle; expand sections; link implementations.",
@@ -4258,6 +4267,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['list_emergents', 'recent_feed', 'legendary_skills', 'subscribe_activity', 'name_emergent'],
     category: 'social',
     dataTier: 'SIM_GRADE_A',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: "Watch identities emerge.",
       caption: "Emergent identities, birth events, lineages, legendary skills \u2014 the substrate's social formation layer.",
@@ -4302,6 +4312,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['scaffold_world', 'seed_lore', 'spawn_faction', 'register_anomaly', 'preview'],
     category: 'creative',
     dataTier: 'SIM_GRADE_A',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: "Create a world.",
       caption: "World seeds, lore templates, faction templates, NPC archetypes, anomalies.",
@@ -4324,6 +4335,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['convert_to_base6', 'convert_to_decimal', 'glyph_add', 'glyph_multiply', 'compose'],
     category: 'system',
     dataTier: 'REAL_LIVE',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: "Base-6 glyph algebra.",
       caption: "Glyph expressions, algebra sessions, conversion logs \u2014 the actual algebra under the refusal field.",
@@ -4417,6 +4429,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['list_detectors', 'run_detector', 'run_all', 'baseline_diff', 'load_budget', 'history'],
     category: 'system',
     dataTier: 'REAL_LIVE',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: "Code quality.",
       caption: "Detectors, findings, baselines, budgets, history \u2014 analyze, run, baseline-diff.",
@@ -4549,6 +4562,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['build_app', 'compose_quest', 'creative_generate'],
     category: 'creative',
     dataTier: 'SIM_GRADE_A',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: "Make something.",
       caption: "Apps, quests, creative assets \u2014 build_app, compose_quest, creative_generate.",
@@ -4681,6 +4695,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['log_fitness', 'log_sleep', 'log_mood', 'add_journal_entry', 'log_meditation', 'view_trends'],
     category: 'lifestyle',
     dataTier: 'REAL_LIVE',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: 'Your self log is empty.',
       caption: 'Log fitness, sleep, mood, journal entries, meditation. The trends view rolls up across all five streams to surface patterns.',
@@ -4703,6 +4718,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['intel_status', 'shield_status', 'semantic_status', 'list_alerts'],
     category: 'system',
     dataTier: 'REAL_LIVE',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: "Security sentinel.",
       caption: "Intel reports, shield events, semantic alerts \u2014 the security substrate.",
@@ -4821,6 +4837,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['list_components', 'render_demo', 'apply_preset', 'record_visit'],
     category: 'system',
     dataTier: 'REAL_LIVE',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: "Browse the UX suite.",
       caption: "20 absorbed components \u2014 Settings, Progress, World, Ops, Shell tabs.",
@@ -4909,6 +4926,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['register_codebase', 'run_detectors', 'view_billing', 'top_up_wallet', 'web_editor_demo', 'record_fix_decision'],
     category: 'system',
     dataTier: 'REAL_LIVE',
+    tier: 'SCAFFOLD',
     emptyState: {
       headline: "DX platform ops.",
       caption: "Codebases, findings, repair proposals, usage rows, quotas \u2014 the DX substrate.",
@@ -4934,12 +4952,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // Macros follow the canonical lens.<domain>.<op> namespace contract.
   // The names are stable namespaces — they don't require a handler at the
   // exact name; the runMacro dispatcher resolves to the actual backend.
-  { domain: 'cognitive-replay', label: 'Cognitive Replay', artifacts: ['timeline_event', 'replay_segment'], macros: { list: 'lens.cognitive-replay.list', get: 'lens.cognitive-replay.get', create: 'lens.cognitive-replay.create', update: 'lens.cognitive-replay.update', delete: 'lens.cognitive-replay.delete', run: 'lens.cognitive-replay.run', export: 'lens.cognitive-replay.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'knowledge' },
+  { domain: 'cognitive-replay', label: 'Cognitive Replay', artifacts: ['timeline_event', 'replay_segment'], macros: { list: 'lens.cognitive-replay.list', get: 'lens.cognitive-replay.get', create: 'lens.cognitive-replay.create', update: 'lens.cognitive-replay.update', delete: 'lens.cognitive-replay.delete', run: 'lens.cognitive-replay.run', export: 'lens.cognitive-replay.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'knowledge', tier: 'SCAFFOLD' },
   { domain: 'classroom', label: 'Classroom', artifacts: ['homework_submission', 'peer_review', 'academic_transcript'], macros: { list: 'lens.classroom.list', get: 'lens.classroom.get', create: 'lens.classroom.create', update: 'lens.classroom.update', delete: 'lens.classroom.delete', run: 'lens.classroom.run', export: 'lens.classroom.export' }, exports: ['json', 'pdf'], actions: ['enrol', 'submit_homework', 'peer_review', 'transcript'], category: 'knowledge' },
   { domain: 'byo-keys', label: 'BYO API Keys', artifacts: ['api_key_grant'], macros: { list: 'lens.byo-keys.list', get: 'lens.byo-keys.get', create: 'lens.byo-keys.create', update: 'lens.byo-keys.update', delete: 'lens.byo-keys.delete', run: 'lens.byo-keys.run', export: 'lens.byo-keys.export' }, exports: ['json'], actions: ['add_key', 'remove_key', 'test_key'], category: 'system' },
-  { domain: 'bounties', label: 'Bounties', artifacts: ['bounty_stake', 'autofix_proposal'], macros: { list: 'lens.bounties.list', get: 'lens.bounties.get', create: 'lens.bounties.create', update: 'lens.bounties.update', delete: 'lens.bounties.delete', run: 'lens.bounties.run', export: 'lens.bounties.export' }, exports: ['json'], actions: ['stake', 'vote', 'resolve'], category: 'social' },
-  { domain: 'death-insurance', label: 'Death-Lottery Insurance', artifacts: ['insurance_contract'], macros: { list: 'lens.death-insurance.list', get: 'lens.death-insurance.get', create: 'lens.death-insurance.create', update: 'lens.death-insurance.update', delete: 'lens.death-insurance.delete', run: 'lens.death-insurance.run', export: 'lens.death-insurance.export' }, exports: ['json'], actions: ['write_contract', 'claim'], category: 'social' },
-  { domain: 'deities', label: 'Deities', artifacts: ['player_deity', 'pilgrimage'], macros: { list: 'lens.deities.list', get: 'lens.deities.get', create: 'lens.deities.create', update: 'lens.deities.update', delete: 'lens.deities.delete', run: 'lens.deities.run', export: 'lens.deities.export' }, exports: ['json'], actions: ['compose', 'pilgrimage'], category: 'social' },
+  { domain: 'bounties', label: 'Bounties', artifacts: ['bounty_stake', 'autofix_proposal'], macros: { list: 'lens.bounties.list', get: 'lens.bounties.get', create: 'lens.bounties.create', update: 'lens.bounties.update', delete: 'lens.bounties.delete', run: 'lens.bounties.run', export: 'lens.bounties.export' }, exports: ['json'], actions: ['stake', 'vote', 'resolve'], category: 'social', tier: 'SCAFFOLD' },
+  { domain: 'death-insurance', label: 'Death-Lottery Insurance', artifacts: ['insurance_contract'], macros: { list: 'lens.death-insurance.list', get: 'lens.death-insurance.get', create: 'lens.death-insurance.create', update: 'lens.death-insurance.update', delete: 'lens.death-insurance.delete', run: 'lens.death-insurance.run', export: 'lens.death-insurance.export' }, exports: ['json'], actions: ['write_contract', 'claim'], category: 'social', tier: 'SCAFFOLD' },
+  { domain: 'deities', label: 'Deities', artifacts: ['player_deity', 'pilgrimage'], macros: { list: 'lens.deities.list', get: 'lens.deities.get', create: 'lens.deities.create', update: 'lens.deities.update', delete: 'lens.deities.delete', run: 'lens.deities.run', export: 'lens.deities.export' }, exports: ['json'], actions: ['compose', 'pilgrimage'], category: 'social', tier: 'SCAFFOLD' },
   { domain: 'dreams', label: 'Dreams', artifacts: ['dream'], macros: { list: 'lens.dreams.list', get: 'lens.dreams.get', create: 'lens.dreams.create', update: 'lens.dreams.update', delete: 'lens.dreams.delete', run: 'lens.dreams.run', export: 'lens.dreams.export' }, exports: ['json'], actions: ['publish', 'browse'], category: 'knowledge' },
   { domain: 'event-timeline', label: 'Event Timeline', artifacts: ['timeline_event'], macros: { list: 'lens.event-timeline.list', get: 'lens.event-timeline.get', create: 'lens.event-timeline.create', update: 'lens.event-timeline.update', delete: 'lens.event-timeline.delete', run: 'lens.event-timeline.run', export: 'lens.event-timeline.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'social' },
   { domain: 'expert-mode', label: 'Expert Mode', artifacts: ['expert_query', 'research_session'], macros: { list: 'lens.expert-mode.list', get: 'lens.expert-mode.get', create: 'lens.expert-mode.create', update: 'lens.expert-mode.update', delete: 'lens.expert-mode.delete', run: 'lens.expert-mode.run', export: 'lens.expert-mode.export' }, exports: ['json', 'md'], actions: ['query', 'export_session'], category: 'system' },
@@ -4949,18 +4967,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'inheritance', label: 'NPC Inheritance Market', artifacts: ['npc_inheritance_link'], macros: { list: 'lens.inheritance.list', get: 'lens.inheritance.get', create: 'lens.inheritance.create', update: 'lens.inheritance.update', delete: 'lens.inheritance.delete', run: 'lens.inheritance.run', export: 'lens.inheritance.export' }, exports: ['json'], actions: ['browse', 'lock_heir'], category: 'social' },
   { domain: 'markets', label: 'Prediction Markets', artifacts: ['prediction_market', 'market_position'], macros: { list: 'lens.markets.list', get: 'lens.markets.get', create: 'lens.markets.create', update: 'lens.markets.update', delete: 'lens.markets.delete', run: 'lens.markets.run', export: 'lens.markets.export' }, exports: ['json'], actions: ['open_market', 'place_bet'], category: 'social' },
   { domain: 'observe', label: 'Observer Mode', artifacts: ['empirical_report'], macros: { list: 'lens.observe.list', get: 'lens.observe.get', create: 'lens.observe.create', update: 'lens.observe.update', delete: 'lens.observe.delete', run: 'lens.observe.run', export: 'lens.observe.export' }, exports: ['json', 'md'], actions: ['compose_report'], category: 'knowledge' },
-  { domain: 'personas', label: 'NPC Persona Marketplace', artifacts: ['npc_persona'], macros: { list: 'lens.personas.list', get: 'lens.personas.get', create: 'lens.personas.create', update: 'lens.personas.update', delete: 'lens.personas.delete', run: 'lens.personas.run', export: 'lens.personas.export' }, exports: ['json'], actions: ['package', 'import'], category: 'creative' },
+  { domain: 'personas', label: 'NPC Persona Marketplace', artifacts: ['npc_persona'], macros: { list: 'lens.personas.list', get: 'lens.personas.get', create: 'lens.personas.create', update: 'lens.personas.update', delete: 'lens.personas.delete', run: 'lens.personas.run', export: 'lens.personas.export' }, exports: ['json'], actions: ['package', 'import'], category: 'creative', tier: 'SCAFFOLD' },
   { domain: 'psyops', label: 'NPC Psyops Detector', artifacts: ['skill_revision_anomaly'], macros: { list: 'lens.psyops.list', get: 'lens.psyops.get', create: 'lens.psyops.create', update: 'lens.psyops.update', delete: 'lens.psyops.delete', run: 'lens.psyops.run', export: 'lens.psyops.export' }, exports: ['json'], actions: ['investigate', 'quarantine'], category: 'system' },
   { domain: 'sponsorship', label: 'NPC Sponsorship', artifacts: ['npc_sponsorship', 'npc_dispatch'], macros: { list: 'lens.sponsorship.list', get: 'lens.sponsorship.get', create: 'lens.sponsorship.create', update: 'lens.sponsorship.update', delete: 'lens.sponsorship.delete', run: 'lens.sponsorship.run', export: 'lens.sponsorship.export' }, exports: ['json'], actions: ['sponsor', 'cancel'], category: 'social' },
   { domain: 'schemes', label: 'Schemes', artifacts: ['npc_scheme', 'hook_artifact'], macros: { list: 'lens.schemes.list', get: 'lens.schemes.get', create: 'lens.schemes.create', update: 'lens.schemes.update', delete: 'lens.schemes.delete', run: 'lens.schemes.run', export: 'lens.schemes.export' }, exports: ['json'], actions: ['propose', 'gather_evidence', 'move', 'abandon', 'discover_evidence'], category: 'social' },
   { domain: 'staking', label: 'CC Staking', artifacts: ['cc_stake'], macros: { list: 'lens.staking.list', get: 'lens.staking.get', create: 'lens.staking.create', update: 'lens.staking.update', delete: 'lens.staking.delete', run: 'lens.staking.run', export: 'lens.staking.export' }, exports: ['json'], actions: ['stake', 'redeem'], category: 'finance' },
-  { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'lens.sub-worlds.list', get: 'lens.sub-worlds.get', create: 'lens.sub-worlds.create', update: 'lens.sub-worlds.update', delete: 'lens.sub-worlds.delete', run: 'lens.sub-worlds.run', export: 'lens.sub-worlds.export' }, exports: ['json'], actions: ['spawn', 'travel'], category: 'knowledge' },
+  { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'lens.sub-worlds.list', get: 'lens.sub-worlds.get', create: 'lens.sub-worlds.create', update: 'lens.sub-worlds.update', delete: 'lens.sub-worlds.delete', run: 'lens.sub-worlds.run', export: 'lens.sub-worlds.export' }, exports: ['json'], actions: ['spawn', 'travel'], category: 'knowledge', tier: 'SCAFFOLD' },
   { domain: 'sync', label: 'Cross-Device Sync', artifacts: ['sync_session'], macros: { list: 'lens.sync.list', get: 'lens.sync.get', create: 'lens.sync.create', update: 'lens.sync.update', delete: 'lens.sync.delete', run: 'lens.sync.run', export: 'lens.sync.export' }, exports: ['json'], actions: ['enable', 'sync'], category: 'system' },
   { domain: 'wellness', label: 'Refusal Field Wellness', artifacts: ['active_refusal_field'], macros: { list: 'lens.wellness.list', get: 'lens.wellness.get', create: 'lens.wellness.create', update: 'lens.wellness.update', delete: 'lens.wellness.delete', run: 'lens.wellness.run', export: 'lens.wellness.export' }, exports: ['json'], actions: ['view', 'disable'], category: 'lifestyle' },
   // Phase V — game-mode dispatch targets.
-  { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'lens.crisis-ops.list', get: 'lens.crisis-ops.get', run: 'lens.crisis-ops.run' }, exports: ['json'], actions: ['active_for_player', 'resolve'], category: 'social' },
-  { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage'], macros: { list: 'lens.expedition-journal.list', get: 'lens.expedition-journal.get', run: 'lens.expedition-journal.run' }, exports: ['json'], actions: ['advance_stage', 'mark_visited'], category: 'knowledge' },
-  { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'lens.ghost-tracker.list', get: 'lens.ghost-tracker.get', run: 'lens.ghost-tracker.run' }, exports: ['json'], actions: ['residues', 'confront'], category: 'knowledge' },
+  { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'lens.crisis-ops.list', get: 'lens.crisis-ops.get', run: 'lens.crisis-ops.run' }, exports: ['json'], actions: ['active_for_player', 'resolve'], category: 'social', tier: 'SCAFFOLD' },
+  { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage'], macros: { list: 'lens.expedition-journal.list', get: 'lens.expedition-journal.get', run: 'lens.expedition-journal.run' }, exports: ['json'], actions: ['advance_stage', 'mark_visited'], category: 'knowledge', tier: 'SCAFFOLD' },
+  { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'lens.ghost-tracker.list', get: 'lens.ghost-tracker.get', run: 'lens.ghost-tracker.run' }, exports: ['json'], actions: ['residues', 'confront'], category: 'knowledge', tier: 'SCAFFOLD' },
 ];
 
 // ---- Sub-lens auto-registration ----

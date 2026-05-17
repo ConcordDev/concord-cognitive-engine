@@ -115,6 +115,32 @@ function escapeHtml(s) {
 }
 
 /**
+ * Phase 13 (Stage D) — build an Accept activity acknowledging an inbound
+ * Follow. Mastodon and friends only consider the handshake complete when
+ * they receive this; until then, the follower sees "follow pending" and
+ * no content lands in their feed.
+ *
+ * `followActivity` MUST be the original Follow as received (echoed back
+ * as `object` — that's how the spec ties the Accept to the Follow).
+ * `recipientUserId` is the local user who was followed (the actor of the
+ * Accept).
+ */
+export function composeAcceptActivity({ followActivity, recipientUserId }) {
+  if (!followActivity || followActivity.type !== "Follow") return null;
+  if (!recipientUserId) return null;
+  const actorId = `${BASE_URL}/api/federation/users/${encodeURIComponent(recipientUserId)}`;
+  const acceptId = `${actorId}/accepts/${crypto.randomBytes(8).toString("hex")}`;
+  return {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Accept",
+    id: acceptId,
+    actor: actorId,
+    object: followActivity,
+    published: new Date().toISOString(),
+  };
+}
+
+/**
  * Append an outbox row. Designed to be called fire-and-forget after
  * `mintForgeAppAsDtu` / `mintSpell` / etc. — the row sits in
  * `activitypub_outbox` and the federation tick (separate concern) can
@@ -325,6 +351,27 @@ export async function receiveActivity(db, recipientUserId, activity, headers = {
           VALUES (?, ?)
         `).run(recipientUserId, activity.actor || "");
         dispatched = "follow_recorded";
+
+        // Phase 13 (Stage D) — echo an Accept back to complete the
+        // handshake. Without this, Mastodon shows "follow pending" forever
+        // and no content reaches the follower. Resolve target inbox via
+        // a HEAD-on-actor; if we don't have one cached we still enqueue
+        // against a best-guess `${actor}/inbox` URL.
+        try {
+          const accept = composeAcceptActivity({ followActivity: activity, recipientUserId });
+          if (accept) {
+            const targetInboxUrl = (activity.actor || "").replace(/\/+$/, "") + "/inbox";
+            const outbox = await import("./federation-outbox.js");
+            outbox.enqueueOutbound(db, {
+              homeUserId: recipientUserId,
+              apActivityId: accept.id,
+              activityType: "Accept",
+              activityJson: JSON.stringify(accept),
+              targetInboxUrl,
+            });
+            dispatched = "follow_recorded+accept_enqueued";
+          }
+        } catch { /* outbox enqueue best-effort */ }
         break;
       }
       case "Undo": {

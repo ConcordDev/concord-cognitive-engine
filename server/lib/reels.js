@@ -14,22 +14,34 @@
 const COMPLETION_THRESHOLD = 0.8;
 
 export function createReel(db, {
-  reelId, postId, userId, videoUrl, thumbnailUrl = null,
+  reelId, postId, userId, videoUrl = null, thumbnailUrl = null,
+  audioUrl = null, audioDurationSeconds = null,
   durationSeconds, width = null, height = null,
   caption = null, musicAttribution = null,
 }) {
   if (!db) return { ok: false, reason: 'no_db' };
-  if (!reelId || !postId || !userId || !videoUrl || !durationSeconds) {
+  if (!reelId || !postId || !userId || !durationSeconds) {
     return { ok: false, reason: 'missing_field' };
+  }
+  // At least one media URL must be present. Phase 13 migration 201 added
+  // audio-only reels — the CHECK at the table level enforces this, but
+  // we surface a friendlier reason from here.
+  if (!videoUrl && !audioUrl) {
+    return { ok: false, reason: 'missing_media', hint: 'videoUrl or audioUrl required' };
   }
   if (durationSeconds <= 0 || durationSeconds > 60) {
     return { ok: false, reason: 'duration_out_of_range', hint: '0 < duration <= 60s' };
   }
   try {
     db.prepare(`
-      INSERT INTO reels (id, post_id, user_id, video_url, thumbnail_url, duration_seconds, width, height, caption, music_attribution)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(reelId, postId, userId, videoUrl, thumbnailUrl, durationSeconds, width, height, caption, musicAttribution);
+      INSERT INTO reels (id, post_id, user_id, video_url, thumbnail_url, audio_url, audio_duration_s, duration_seconds, width, height, caption, music_attribution)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      reelId, postId, userId,
+      videoUrl, thumbnailUrl,
+      audioUrl, audioDurationSeconds != null ? Math.round(audioDurationSeconds) : null,
+      durationSeconds, width, height, caption, musicAttribution,
+    );
     return { ok: true, reel: getReel(db, reelId)?.reel || null };
   } catch (e) {
     return { ok: false, reason: String(e?.message || e) };
@@ -122,6 +134,9 @@ function shapeReel(row) {
     userId: row.user_id,
     videoUrl: row.video_url,
     thumbnailUrl: row.thumbnail_url,
+    audioUrl: row.audio_url,
+    audioDurationSeconds: row.audio_duration_s,
+    mediaKind: row.video_url ? 'video' : (row.audio_url ? 'audio' : 'unknown'),
     durationSeconds: row.duration_seconds,
     width: row.width,
     height: row.height,

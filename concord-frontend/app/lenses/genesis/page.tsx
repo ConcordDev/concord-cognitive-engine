@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OriginExplorer } from '@/components/genesis/OriginExplorer';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -248,6 +249,7 @@ export default function GenesisLens() {
       <FirstRunTour lensId="genesis" />
       <ManifestActionBar />
       <DepthBadge lensId="genesis" size="sm" className="ml-2" />
+      <LensTierBadge lensId="genesis" size="sm" className="ml-2" />
       <LensVerticalHero lensId="genesis" className="mx-6 mt-4" />
     <div className="min-h-screen bg-gray-950 text-white p-6">
       {/* Header */}

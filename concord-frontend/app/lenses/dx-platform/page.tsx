@@ -18,6 +18,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
 
 interface OnboardingProgress {
@@ -57,6 +58,7 @@ export default function DxPlatformPage() {
     <LensShell lensId="dx-platform" asMain={false}>
       <FirstRunTour lensId="dx-platform" />
       <DepthBadge lensId="dx-platform" size="sm" className="ml-2" />
+      <LensTierBadge lensId="dx-platform" size="sm" className="ml-2" />
       <div className="p-8 max-w-4xl mx-auto space-y-8">
         <header>
           <h1 className="text-3xl font-semibold">Concord DX Platform</h1>

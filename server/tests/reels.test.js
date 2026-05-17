@@ -1,14 +1,19 @@
-// Contract test for migration 199 + server/lib/reels.js.
+// Contract test for migration 199 + migration 201 (audio-only reels)
+// + server/lib/reels.js.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { up as migrate199 } from '../migrations/199_reels.js';
+import { up as migrate201 } from '../migrations/201_reels_audio_columns.js';
 import { createReel, getReel, recordView, getReelsForUser, getReelsByUser } from '../lib/reels.js';
 
 function freshDb() {
   const db = new Database(':memory:');
   migrate199(db);
+  // Phase 13 (Stage B) — applies the audio_url + audio_duration_s
+  // schema relaxation. createReel writes those columns.
+  migrate201(db);
   return db;
 }
 

@@ -486,10 +486,16 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
     setPhase('loading');
     setError(null);
 
+    // Phase 13 (Stage B) — optionally ask the server to synthesise the
+    // greeting via Piper TTS. Setting persisted in localStorage; default
+    // off so we don't burn CPU for users who don't want it.
+    const wantsAudio = typeof window !== 'undefined'
+      && window.localStorage?.getItem('concordia:voiceDialogue') === '1';
+
     fetch(`/api/worlds/${worldId}/npcs/${npc.id}/dialogue`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ requestAudio: wantsAudio }),
     })
       .then((r) => r.json())
       .then((data) => {
@@ -504,6 +510,14 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
         setOptions(data.options || [{ label: 'Leave', key: 'goodbye' }]);
         setSubtext(data.subtext);
         setPhase('greeting');
+        // Autoplay TTS if the server returned an audioUrl. Respects the
+        // user's muted state — we don't override it.
+        if (wantsAudio && data.audioUrl && !muted) {
+          try {
+            const audio = new Audio(data.audioUrl);
+            audio.play().catch(() => { /* autoplay can be blocked; user can interact to unblock */ });
+          } catch { /* ignore */ }
+        }
       })
       .catch(() => {
         if (!cancelled) {

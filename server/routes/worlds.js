@@ -1068,6 +1068,43 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* non-fatal */ }
 
+      // 10a. (Phase 13, Stage B) Optional Piper TTS for NPC dialogue.
+      //      Caller opts in via `requestAudio: true` in the request body.
+      //      Piper-only here — ElevenLabs is reserved for player-authored
+      //      content (the quota math doesn't survive NPC chatter).
+      let audioUrl;
+      try {
+        const wantsAudio = req.body && req.body.requestAudio === true;
+        if (wantsAudio) {
+          const { MODALITY } = await import("../lib/modality-config.js");
+          if (MODALITY.tts.piper.enabled && MODALITY.tts.piper.bin && greeting) {
+            const piper = await import("node:child_process");
+            const path = await import("node:path");
+            const fs = await import("node:fs");
+            const dataDir = process.env.DATA_DIR || './data';
+            const ttsDir = path.join(dataDir, 'tts_output');
+            try { fs.mkdirSync(ttsDir, { recursive: true }); } catch { /* mkdir best-effort */ }
+            const fname = `npc-${npcId}-${Date.now()}.wav`;
+            const out = path.join(ttsDir, fname);
+            const args = MODALITY.tts.piper.voice
+              ? ["--model", MODALITY.tts.piper.voice, "--output_file", out]
+              : ["--output_file", out];
+            const p = piper.spawnSync(MODALITY.tts.piper.bin, args, {
+              input: greeting,
+              encoding: "utf-8",
+              timeout: MODALITY.tts.piper.timeoutMs,
+            });
+            if (!p.error && fs.existsSync(out)) {
+              audioUrl = `/tts_output/${fname}`;
+              MODALITY.tts.piper.stats.calls += 1;
+            } else {
+              MODALITY.tts.piper.stats.errors += 1;
+              MODALITY.tts.piper.stats.lastError = p.error?.message || 'piper_failed';
+            }
+          }
+        }
+      } catch { /* TTS is best-effort — never block dialogue */ }
+
       // 10. Return structured response
       res.json({
         ok: true, npcId, npcName,
@@ -1077,6 +1114,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         subtext: subtext || undefined,
         reputation,
         opinion: interactResult.opinion,
+        audioUrl,
       });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

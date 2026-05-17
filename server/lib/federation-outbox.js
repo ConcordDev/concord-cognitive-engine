@@ -16,6 +16,40 @@ const MAX_ATTEMPTS = 6;
 const RETRY_BACKOFF_S = [60, 300, 900, 3600, 14400, 86400]; // 1m, 5m, 15m, 1h, 4h, 1d
 const FETCH_TIMEOUT_MS = 8000;
 
+// Phase 13 (Stage D) — per-peer rate limit. Prevents cyclic Announce/Like
+// loops + protects peers from accidental hammering when the queue burst-
+// drains (which happens after a long downtime when many activities back
+// up). Configurable via env override.
+const PER_PEER_PER_MINUTE = Math.max(1, Number(process.env.CONCORD_FEDERATION_PEER_RPM) || 60);
+const _peerRateBuckets = new Map(); // origin → { windowStart: epochSec, count: int }
+
+function peerOriginOf(targetInboxUrl) {
+  try { return new URL(targetInboxUrl).origin; }
+  catch { return null; }
+}
+
+function rateLimitAllows(origin, nowSec) {
+  if (!origin) return true; // unparseable URL — let it through; failure surfaces in HTTP
+  const bucket = _peerRateBuckets.get(origin) || { windowStart: nowSec, count: 0 };
+  if (nowSec - bucket.windowStart >= 60) {
+    bucket.windowStart = nowSec;
+    bucket.count = 0;
+  }
+  if (bucket.count >= PER_PEER_PER_MINUTE) {
+    _peerRateBuckets.set(origin, bucket);
+    return false;
+  }
+  bucket.count += 1;
+  _peerRateBuckets.set(origin, bucket);
+  return true;
+}
+
+// Test-only — wipe the in-process rate buckets so the contract test can
+// exercise the boundary without waiting 60s.
+export function _resetRateBucketsForTesting() {
+  _peerRateBuckets.clear();
+}
+
 const BASE_URL = process.env.CONCORD_BASE_URL || "https://concord-os.org";
 
 /**
@@ -105,6 +139,14 @@ export async function drainOutbox(db, { limit = 25 } = {}) {
         results.push({ id: row.id, ok: false, status: 'waiting_backoff' });
         continue;
       }
+    }
+
+    // Phase 13 (Stage D) — per-peer rate limit. If this peer has hit its
+    // RPM cap, skip the row this tick; it'll be retried on the next pump.
+    const origin = peerOriginOf(row.target_inbox_url);
+    if (!rateLimitAllows(origin, now)) {
+      results.push({ id: row.id, ok: false, status: 'rate_limited', peer: origin });
+      continue;
     }
 
     db.prepare(`UPDATE federation_outbox SET status = 'in_flight', last_attempted_at = ? WHERE id = ?`).run(now, row.id);

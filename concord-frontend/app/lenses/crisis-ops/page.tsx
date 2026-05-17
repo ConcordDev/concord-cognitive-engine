@@ -14,6 +14,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensTierBadge } from '@/components/lens/LensTierBadge';
 import { FemaDisasters } from '@/components/crisis-ops/FemaDisasters';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -74,6 +75,7 @@ export default function CrisisOpsPage() {
       <FirstRunTour lensId="crisis-ops" />
       <ManifestActionBar />
       <DepthBadge lensId="crisis-ops" size="sm" className="ml-2" />
+      <LensTierBadge lensId="crisis-ops" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5">
           <h1 className="text-3xl font-semibold text-rose-300">Crisis Ops</h1>
