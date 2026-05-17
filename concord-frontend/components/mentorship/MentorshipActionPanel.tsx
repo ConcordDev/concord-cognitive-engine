@@ -11,6 +11,7 @@ import { Users, Target, MessageSquare, TrendingUp, Sparkles, Send, Globe, Wand2,
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -31,38 +32,14 @@ interface FbResult { sessions?: number; avgRating?: number; topThemes?: { theme:
 interface Milestone { phase: string; weeks: string; focus: string }
 interface PlanResult { currentSkillCount: number; targetRole: string; gaps: string[]; milestones: Milestone[]; timelineWeeks: number }
 
-const DEMO_MATCH = JSON.stringify({
-  mentor: { name: 'Maya Singh', skills: ['React', 'TypeScript', 'design systems', 'mentoring'], experience: '8 years', availability: 'weekday evenings' },
-  mentee: { name: 'Sam Park', goals: ['Learn React + TypeScript', 'Ship first design system'], preferredSchedule: 'weekday evenings' },
-}, null, 2);
-
-const DEMO_PROG = JSON.stringify({
-  goals: [
-    { name: 'Ship landing page', completed: true }, { name: 'Build component library', completed: true },
-    { name: 'Lead design review', completed: false }, { name: 'Mentor a junior', completed: false },
-  ],
-  sessions: [
-    { date: '2026-04-01', duration: 1.0 }, { date: '2026-04-08', duration: 1.0 },
-    { date: '2026-04-15', duration: 1.5 }, { date: '2026-04-22', duration: 1.0 }, { date: '2026-04-29', duration: 1.0 },
-  ],
-}, null, 2);
-
-const DEMO_FB = JSON.stringify({
-  feedback: [
-    { rating: 5, tags: ['practical', 'encouraging'], note: 'Pair-programming session unlocked the pattern' },
-    { rating: 4, tags: ['practical', 'challenging'], note: 'Code review was tough but fair' },
-    { rating: 5, tags: ['encouraging', 'strategic'], note: 'Career framing was eye-opening' },
-    { rating: 4, tags: ['practical'], note: 'Real-world examples landed well' },
-  ],
-}, null, 2);
-
+// No seeded mentor/mentee/feedback data — every input starts empty.
 export function MentorshipActionPanel() {
-  const [matchText, setMatchText] = useState(DEMO_MATCH);
-  const [progText, setProgText] = useState(DEMO_PROG);
-  const [fbText, setFbText] = useState(DEMO_FB);
-  const [currentSkills, setCurrentSkills] = useState('React, TypeScript, Git, Figma');
-  const [targetRole, setTargetRole] = useState('Senior Product Engineer');
-  const [skillGaps, setSkillGaps] = useState('System design, leading projects, mentoring others');
+  const [matchText, setMatchText] = useState('');
+  const [progText, setProgText] = useState('');
+  const [fbText, setFbText] = useState('');
+  const [currentSkills, setCurrentSkills] = useState('');
+  const [targetRole, setTargetRole] = useState('');
+  const [skillGaps, setSkillGaps] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -78,50 +55,79 @@ export function MentorshipActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actMatch() {
+    if (!matchText.trim()) { err('Paste pair JSON first.'); return; }
     try { const parsed = JSON.parse(matchText); setBusy('match'); setFeedback(null);
-      const r = await callMacro<MatchResult>('matchScore', { artifact: { data: parsed } }); if (r.ok && r.result) { setMatchResult(r.result); ok(`Match ${r.result.matchScore}/100 (${r.result.compatibility}).`); } else err(r.error ?? 'match failed');
+      const r = await callMacro<MatchResult>('matchScore', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setMatchResult(r.result); pipe.publish('mentorship.match', r.result, { label: `Match ${r.result.matchScore}` }); ok(`Match ${r.result.matchScore}/100 (${r.result.compatibility}).`); } else err(r.error ?? 'match failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid match JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actProg() {
+    if (!progText.trim()) { err('Paste progress JSON first.'); return; }
     try { const parsed = JSON.parse(progText); setBusy('prog'); setFeedback(null);
-      const r = await callMacro<ProgResult>('progressTrack', { artifact: { data: parsed } }); if (r.ok && r.result) { setProgResult(r.result); ok(`${r.result.completionRate}% complete · ${r.result.momentum}.`); } else err(r.error ?? 'prog failed');
+      const r = await callMacro<ProgResult>('progressTrack', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setProgResult(r.result); pipe.publish('mentorship.prog', r.result, { label: `Progress ${r.result.completionRate}%` }); ok(`${r.result.completionRate}% complete · ${r.result.momentum}.`); } else err(r.error ?? 'prog failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid progress JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFb() {
+    if (!fbText.trim()) { err('Paste feedback JSON first.'); return; }
     try { const parsed = JSON.parse(fbText); setBusy('fb'); setFeedback(null);
-      const r = await callMacro<FbResult>('feedbackSummary', { artifact: { data: parsed } }); if (r.ok && r.result) { setFbResult(r.result); ok(`Avg ${r.result.avgRating} · ${r.result.satisfaction}.`); } else err(r.error ?? 'fb failed');
+      const r = await callMacro<FbResult>('feedbackSummary', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setFbResult(r.result); pipe.publish('mentorship.fb', r.result, { label: `Feedback ${r.result.avgRating}/5` }); ok(`Avg ${r.result.avgRating} · ${r.result.satisfaction}.`); } else err(r.error ?? 'fb failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid feedback JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPlan() {
+    if (!currentSkills.trim() || !targetRole.trim() || !skillGaps.trim()) { err('Current skills + target role + gaps required.'); return; }
     setBusy('plan'); setFeedback(null);
-    try { const r = await callMacro<PlanResult>('developmentPlan', { artifact: { data: { currentSkills: currentSkills.split(',').map(s => s.trim()).filter(Boolean), targetRole, skillGaps: skillGaps.split(',').map(s => s.trim()).filter(Boolean) } } }); if (r.ok && r.result) { setPlanResult(r.result); ok(`${r.result.timelineWeeks}-week plan.`); } else err(r.error ?? 'plan failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<PlanResult>('developmentPlan', { artifact: { data: { currentSkills: currentSkills.split(',').map(s => s.trim()).filter(Boolean), targetRole, skillGaps: skillGaps.split(',').map(s => s.trim()).filter(Boolean) } } });
+      if (r.ok && r.result) { setPlanResult(r.result); pipe.publish('mentorship.plan', r.result, { label: `Plan ${r.result.timelineWeeks}wk → ${r.result.targetRole}` }); ok(`${r.result.timelineWeeks}-week plan.`); } else err(r.error ?? 'plan failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Mentor session — ${matchResult?.mentee ?? 'pair'}`, tags: ['mentorship', 'session', matchResult?.compatibility].filter((t): t is string => !!t), source: 'mentorship:session:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mentor: { match: matchResult, prog: progResult, fb: fbResult, plan: planResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Session DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('mentorship.mintedDtuId', id, { label: `Session DTU ${id.slice(0, 8)}…` }); ok(`Session DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🤝 Mentor recap`, '', matchResult ? `Pair: ${matchResult.mentor} ↔ ${matchResult.mentee} · match ${matchResult.matchScore}/100 (${matchResult.compatibility})` : '', progResult ? `Progress: ${progResult.completionRate}% complete · ${progResult.sessionsCompleted} sessions / ${progResult.totalHours}h · ${progResult.momentum}` : '', fbResult ? `Feedback: ${fbResult.avgRating}/5 (${fbResult.satisfaction}) · top themes: ${fbResult.topThemes?.slice(0, 3).map(t => t.theme).join(', ')}` : '', planResult ? `Plan: ${planResult.timelineWeeks}wk to ${planResult.targetRole}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🤝 Mentor recap`, '',
+      matchResult ? `Pair: ${matchResult.mentor} ↔ ${matchResult.mentee} · match ${matchResult.matchScore}/100 (${matchResult.compatibility})` : '',
+      progResult ? `Progress: ${progResult.completionRate}% complete · ${progResult.sessionsCompleted} sessions / ${progResult.totalHours}h · ${progResult.momentum}` : '',
+      fbResult ? `Feedback: ${fbResult.avgRating}/5 (${fbResult.satisfaction}) · top themes: ${fbResult.topThemes?.slice(0, 3).map(t => t.theme).join(', ')}` : '',
+      planResult ? `Plan: ${planResult.timelineWeeks}wk to ${planResult.targetRole}` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!planResult) { err('Run dev plan first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Dev plan — ${planResult.targetRole}`, tags: ['mentorship', 'devplan', 'public'], source: 'mentorship:plan:publish', meta: { visibility: 'public', consent: { allowCitations: true }, plan: planResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Dev plan — ${planResult.targetRole}`, tags: ['mentorship', 'devplan', 'public'], source: 'mentorship:plan:publish', meta: { visibility: 'public', consent: { allowCitations: true }, plan: planResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('mentorship.publishedDtuId', id, { label: `Public dev plan ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -173,6 +179,10 @@ export function MentorshipActionPanel() {
           <input type="text" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Target role" />
           <input type="text" value={skillGaps} onChange={(e) => setSkillGaps(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Skill gaps csv" />
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

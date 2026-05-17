@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { MentorshipFeed } from '@/components/mentorship/MentorshipFeed';
 import { MentorshipActionPanel } from '@/components/mentorship/MentorshipActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -615,9 +616,11 @@ export default function MentorshipLensPage() {
         <MentorshipFeed />
       </section>
 
-      <section className="mt-6">
-        <MentorshipActionPanel />
-      </section>
+      <PipingProvider>
+        <section className="mt-6">
+          <MentorshipActionPanel />
+        </section>
+      </PipingProvider>
     </div>
     </LensShell>
   );

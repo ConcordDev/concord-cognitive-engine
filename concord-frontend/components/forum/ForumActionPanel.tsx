@@ -11,6 +11,7 @@ import { MessageCircle, Shield, Activity, Hash, Sparkles, Send, Globe, Wand2, Lo
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -32,45 +33,15 @@ interface HealthResult { activeUsers: number; totalUsers: number; activityRate: 
 interface Cluster { topic: string; threads: number; share: number }
 interface TopicResult { totalThreads: number; clusters: Cluster[]; topTopic: string; uncategorized: number }
 
-const DEMO_THREAD = JSON.stringify({
-  posts: [
-    { author: 'alice', content: 'How does the recipe substrate work?' },
-    { author: 'bob', content: 'See lens-features.js for the manifest and tool-tree.js for the crafting handler.' },
-    { author: 'alice', content: 'Got it — and what about the royalty cascade?' },
-    { author: 'carol', content: 'It is in server/economy/royalty-cascade.js, max 30% of sale to ancestors.' },
-    { author: 'bob', content: 'Confirmed, see also creative-marketplace-constants.js for the rates.' },
-    { author: 'dave', content: 'Where do edits to the cascade get reviewed?' },
-  ],
-}, null, 2);
-
-const DEMO_REPORTS = JSON.stringify({
-  reports: [
-    { id: 'r1', reason: 'spam', status: 'pending', date: '2026-05-15T10:00:00Z' },
-    { id: 'r2', reason: 'spam', status: 'pending', date: '2026-05-16T14:00:00Z' },
-    { id: 'r3', reason: 'harassment', status: 'pending', date: '2026-05-12T08:00:00Z' },
-    { id: 'r4', reason: 'off-topic', status: 'resolved', date: '2026-05-14' },
-    { id: 'r5', reason: 'spam', status: 'resolved', date: '2026-05-13' },
-  ],
-}, null, 2);
-
-const DEMO_THREADS = JSON.stringify({
-  threads: [
-    { id: 't1', tags: ['recipes', 'crafting'] }, { id: 't2', tags: ['royalty', 'economics'] },
-    { id: 't3', tags: ['crafting'] }, { id: 't4', tags: ['recipes'] }, { id: 't5', tags: ['concordia'] },
-    { id: 't6', tags: ['concordia', 'combat'] }, { id: 't7', tags: ['recipes', 'crafting'] },
-    { id: 't8', tags: ['economics', 'governance'] }, { id: 't9', tags: ['concordia', 'npcs'] },
-    { id: 't10', tags: [] },
-  ],
-}, null, 2);
-
+// No seeded demo data — every input starts empty.
 export function ForumActionPanel() {
-  const [threadText, setThreadText] = useState(DEMO_THREAD);
-  const [reportsText, setReportsText] = useState(DEMO_REPORTS);
-  const [activeUsers, setActiveUsers] = useState('420');
-  const [totalUsers, setTotalUsers] = useState('3500');
-  const [postsThisWeek, setPostsThisWeek] = useState('480');
-  const [postsLastWeek, setPostsLastWeek] = useState('410');
-  const [threadsText, setThreadsText] = useState(DEMO_THREADS);
+  const [threadText, setThreadText] = useState('');
+  const [reportsText, setReportsText] = useState('');
+  const [activeUsers, setActiveUsers] = useState('');
+  const [totalUsers, setTotalUsers] = useState('');
+  const [postsThisWeek, setPostsThisWeek] = useState('');
+  const [postsLastWeek, setPostsLastWeek] = useState('');
+  const [threadsText, setThreadsText] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -86,24 +57,38 @@ export function ForumActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actThread() {
+    if (!threadText.trim()) { err('Paste thread posts JSON first.'); return; }
     try { const parsed = JSON.parse(threadText); setBusy('thread'); setFeedback(null);
-      const r = await callMacro<ThreadResult>('threadAnalysis', { artifact: { data: parsed } }); if (r.ok && r.result) { setThreadResult(r.result); ok(`${r.result.totalPosts} posts · ${r.result.uniqueAuthors} authors · ${r.result.health}.`); } else err(r.error ?? 'thread failed');
+      const r = await callMacro<ThreadResult>('threadAnalysis', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setThreadResult(r.result); pipe.publish('forum.thread', r.result, { label: `Thread ${r.result.totalPosts}p` }); ok(`${r.result.totalPosts} posts · ${r.result.uniqueAuthors} authors · ${r.result.health}.`); } else err(r.error ?? 'thread failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid thread JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMod() {
+    if (!reportsText.trim()) { err('Paste reports JSON first.'); return; }
     try { const parsed = JSON.parse(reportsText); setBusy('mod'); setFeedback(null);
-      const r = await callMacro<ModResult>('moderationQueue', { artifact: { data: parsed } }); if (r.ok && r.result) { setModResult(r.result); ok(`${r.result.pending} pending · ${r.result.urgency} urgency.`); } else err(r.error ?? 'mod failed');
+      const r = await callMacro<ModResult>('moderationQueue', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setModResult(r.result); pipe.publish('forum.mod', r.result, { label: `Queue ${r.result.pending} pend` }); ok(`${r.result.pending} pending · ${r.result.urgency} urgency.`); } else err(r.error ?? 'mod failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid reports JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actHealth() {
+    const a = parseInt(activeUsers, 10), t = parseInt(totalUsers, 10), pw = parseInt(postsThisWeek, 10), pl = parseInt(postsLastWeek, 10);
+    if (![a, t, pw, pl].every(Number.isFinite)) { err('Active / total / posts-this-week / posts-last-week all required.'); return; }
     setBusy('health'); setFeedback(null);
-    try { const r = await callMacro<HealthResult>('communityHealth', { artifact: { data: { activeUsers: parseInt(activeUsers, 10), totalUsers: parseInt(totalUsers, 10), postsThisWeek: parseInt(postsThisWeek, 10), postsLastWeek: parseInt(postsLastWeek, 10) } } }); if (r.ok && r.result) { setHealthResult(r.result); ok(`${r.result.activityRate}% active · ${r.result.health}.`); } else err(r.error ?? 'health failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<HealthResult>('communityHealth', { artifact: { data: { activeUsers: a, totalUsers: t, postsThisWeek: pw, postsLastWeek: pl } } });
+      if (r.ok && r.result) { setHealthResult(r.result); pipe.publish('forum.health', r.result, { label: `Health ${r.result.health}` }); ok(`${r.result.activityRate}% active · ${r.result.health}.`); } else err(r.error ?? 'health failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actTopic() {
+    if (!threadsText.trim()) { err('Paste threads JSON first.'); return; }
     try { const parsed = JSON.parse(threadsText); setBusy('topic'); setFeedback(null);
-      const r = await callMacro<TopicResult>('topicClustering', { artifact: { data: parsed } }); if (r.ok && r.result) { setTopicResult(r.result); ok(`Top topic: ${r.result.topTopic}.`); } else err(r.error ?? 'topic failed');
+      const r = await callMacro<TopicResult>('topicClustering', { artifact: { data: parsed } });
+      if (r.ok && r.result) { setTopicResult(r.result); pipe.publish('forum.topic', r.result, { label: `Top: ${r.result.topTopic}` }); ok(`Top topic: ${r.result.topTopic}.`); } else err(r.error ?? 'topic failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid threads JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -111,25 +96,41 @@ export function ForumActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Community report`, tags: ['forum', 'community', healthResult?.health].filter((t): t is string => !!t), source: 'forum:community:mint', meta: { visibility: 'private', consent: { allowCitations: false }, fm: { thread: threadResult, mod: modResult, health: healthResult, topic: topicResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`Community DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('forum.mintedDtuId', id, { label: `Community DTU ${id.slice(0, 8)}…` }); ok(`Community DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`💬 Community brief`, '', threadResult ? `Thread: ${threadResult.totalPosts} posts · ${threadResult.uniqueAuthors} authors · ${threadResult.health}` : '', modResult ? `Mod queue: ${modResult.pending} pending (${modResult.urgency} urgency)` : '', healthResult ? `Health: ${healthResult.activityRate}% active (${healthResult.health}) · growth ${healthResult.growthRate >= 0 ? '+' : ''}${healthResult.growthRate}%` : '', topicResult ? `Topics: top "${topicResult.topTopic}" · ${topicResult.uncategorized} uncategorized` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`💬 Community brief`, '',
+      threadResult ? `Thread: ${threadResult.totalPosts} posts · ${threadResult.uniqueAuthors} authors · ${threadResult.health}` : '',
+      modResult ? `Mod queue: ${modResult.pending} pending (${modResult.urgency} urgency)` : '',
+      healthResult ? `Health: ${healthResult.activityRate}% active (${healthResult.health}) · growth ${healthResult.growthRate >= 0 ? '+' : ''}${healthResult.growthRate}%` : '',
+      topicResult ? `Topics: top "${topicResult.topTopic}" · ${topicResult.uncategorized} uncategorized` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!healthResult) { err('Run health first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Community health card`, tags: ['forum', 'health', 'public'], source: 'forum:health:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, health: healthResult, topic: topicResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Community health card`, tags: ['forum', 'health', 'public'], source: 'forum:health:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, health: healthResult, topic: topicResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('forum.publishedDtuId', id, { label: `Public health card ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -183,6 +184,10 @@ export function ForumActionPanel() {
           </div>
           <textarea value={threadsText} onChange={(e) => setThreadsText(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono" placeholder="Threads JSON" />
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 

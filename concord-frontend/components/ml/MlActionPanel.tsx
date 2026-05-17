@@ -11,6 +11,7 @@ import { Brain, Target, BarChart3, Sliders, Sparkles, Send, Globe, Wand2, Loader
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -34,33 +35,15 @@ interface ProfileEntry { field: string; type: string; nullCount: number; nullRat
 interface ProfileResult { rows?: number; columns?: number; profile?: ProfileEntry[]; qualityScore?: number }
 interface HyperResult { modelType?: string; taskType?: string; datasetSize?: number; featureCount?: number; suggestions?: Record<string, unknown>; notes?: string[] }
 
-const DEMO_PREDS = '0,1,1,0,1,1,0,1,0,0,1,1,1,0,0';
-const DEMO_ACTS = '0,1,1,0,1,0,0,1,0,0,1,0,1,1,0';
-
-const DEMO_DATASET = JSON.stringify({
-  dataset: [
-    { age: 25, income: 35000, score: 620, default: 0 },
-    { age: 42, income: 78000, score: 740, default: 0 },
-    { age: 31, income: 52000, score: 680, default: 0 },
-    { age: 28, income: 41000, score: 580, default: 1 },
-    { age: 55, income: 95000, score: 780, default: 0 },
-    { age: 22, income: 28000, score: 550, default: 1 },
-    { age: 38, income: 64000, score: 710, default: 0 },
-    { age: 45, income: 88000, score: 760, default: 0 },
-    { age: 29, income: 38000, score: 600, default: 1 },
-    { age: 51, income: 102000, score: 800, default: 0 },
-  ],
-  target: 'default',
-}, null, 2);
-
+// No seeded predictions/dataset — every input starts empty.
 export function MlActionPanel() {
-  const [predsRaw, setPredsRaw] = useState(DEMO_PREDS);
-  const [actsRaw, setActsRaw] = useState(DEMO_ACTS);
-  const [datasetText, setDatasetText] = useState(DEMO_DATASET);
+  const [predsRaw, setPredsRaw] = useState('');
+  const [actsRaw, setActsRaw] = useState('');
+  const [datasetText, setDatasetText] = useState('');
   const [modelType, setModelType] = useState<'neural-network' | 'random-forest' | 'xgboost' | 'linear'>('neural-network');
   const [taskType, setTaskType] = useState<'classification' | 'regression'>('classification');
-  const [datasetSize, setDatasetSize] = useState('10000');
-  const [featureCount, setFeatureCount] = useState('25');
+  const [datasetSize, setDatasetSize] = useState('');
+  const [featureCount, setFeatureCount] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -80,55 +63,87 @@ export function MlActionPanel() {
     try { return JSON.parse(datasetText); } catch { return null; }
   }
 
+  const pipe = usePipe();
+  const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
+  const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
   async function actEval() {
+    if (!predsRaw.trim() || !actsRaw.trim()) { err('Predictions + actuals csv required.'); return; }
     const preds = predsRaw.split(',').map(s => s.trim()).filter(Boolean).map(s => /^[0-9.+-]+$/.test(s) ? Number(s) : s);
     const acts = actsRaw.split(',').map(s => s.trim()).filter(Boolean).map(s => /^[0-9.+-]+$/.test(s) ? Number(s) : s);
     if (preds.length === 0 || acts.length === 0) { err('Predictions + actuals required.'); return; }
     setBusy('eval'); setFeedback(null);
-    try { const r = await callMacro<EvalResult>('modelEvaluate', { artifact: { data: { predictions: preds, actuals: acts } } }); if (r.ok && r.result) { setEvalResult(r.result); ok(r.result.type === 'classification' ? `Acc ${r.result.accuracy}%.` : `R² ${r.result.r2}.`); } else err(r.error ?? 'eval failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<EvalResult>('modelEvaluate', { artifact: { data: { predictions: preds, actuals: acts } } });
+      if (r.ok && r.result) { setEvalResult(r.result); pipe.publish('ml.eval', r.result, { label: r.result.type === 'classification' ? `Acc ${r.result.accuracy}%` : `R² ${r.result.r2}` }); ok(r.result.type === 'classification' ? `Acc ${r.result.accuracy}%.` : `R² ${r.result.r2}.`); } else err(r.error ?? 'eval failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFeat() {
+    if (!datasetText.trim()) { err('Paste dataset JSON first.'); return; }
     const parsed = parseDataset(); if (!parsed) { err('Invalid dataset JSON.'); return; }
     setBusy('feat'); setFeedback(null);
-    try { const r = await callMacro<FeatResult>('featureImportance', { artifact: { data: { features: parsed.dataset, target: parsed.target } } }); if (r.ok && r.result) { setFeatResult(r.result); ok(`Top: ${r.result.topFeatures?.join(', ')}.`); } else err(r.error ?? 'feat failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<FeatResult>('featureImportance', { artifact: { data: { features: parsed.dataset, target: parsed.target } } });
+      if (r.ok && r.result) { setFeatResult(r.result); pipe.publish('ml.feat', r.result, { label: `Features: ${r.result.topFeatures?.[0]}` }); ok(`Top: ${r.result.topFeatures?.join(', ')}.`); } else err(r.error ?? 'feat failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actProfile() {
+    if (!datasetText.trim()) { err('Paste dataset JSON first.'); return; }
     const parsed = parseDataset(); if (!parsed) { err('Invalid dataset JSON.'); return; }
     setBusy('profile'); setFeedback(null);
-    try { const r = await callMacro<ProfileResult>('datasetProfile', { artifact: { data: { dataset: parsed.dataset } } }); if (r.ok && r.result) { setProfileResult(r.result); ok(`${r.result.rows} rows × ${r.result.columns} cols · quality ${r.result.qualityScore}%.`); } else err(r.error ?? 'profile failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<ProfileResult>('datasetProfile', { artifact: { data: { dataset: parsed.dataset } } });
+      if (r.ok && r.result) { setProfileResult(r.result); pipe.publish('ml.profile', r.result, { label: `EDA ${r.result.qualityScore}%` }); ok(`${r.result.rows} rows × ${r.result.columns} cols · quality ${r.result.qualityScore}%.`); } else err(r.error ?? 'profile failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actHyper() {
+    const N = parseInt(datasetSize, 10), F = parseInt(featureCount, 10);
+    if (!Number.isFinite(N) || !Number.isFinite(F)) { err('Dataset size + feature count required.'); return; }
     setBusy('hyper'); setFeedback(null);
-    try { const r = await callMacro<HyperResult>('hyperparameterSuggest', { artifact: { data: { model: modelType, task: taskType, datasetSize: parseInt(datasetSize, 10), features: parseInt(featureCount, 10) } } }); if (r.ok && r.result) { setHyperResult(r.result); ok(`Suggested for ${modelType}.`); } else err(r.error ?? 'hyper failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    try {
+      const r = await callMacro<HyperResult>('hyperparameterSuggest', { artifact: { data: { model: modelType, task: taskType, datasetSize: N, features: F } } });
+      if (r.ok && r.result) { setHyperResult(r.result); pipe.publish('ml.hyper', r.result, { label: `Hyper: ${r.result.modelType}` }); ok(`Suggested for ${modelType}.`); } else err(r.error ?? 'hyper failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `ML — ${modelType} ${taskType}`, tags: ['ml', modelType, taskType], source: 'ml:bench:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ml: { eval: evalResult, feat: featResult, profile: profileResult, hyper: hyperResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); ok(`ML DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('ml.mintedDtuId', id, { label: `ML DTU ${id.slice(0, 8)}…` }); ok(`ML DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🤖 ML bench`, '', evalResult ? (evalResult.type === 'classification' ? `Acc ${evalResult.accuracy}% · F1 ${evalResult.avgF1} · ${evalResult.samples}n` : `R² ${evalResult.r2} · RMSE ${evalResult.rmse} · ${evalResult.samples}n`) : '', featResult ? `Top features: ${featResult.topFeatures?.join(', ')}` : '', profileResult ? `Dataset quality: ${profileResult.qualityScore}% (${profileResult.rows}×${profileResult.columns})` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
-    try { const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body }); if (r.data?.ok !== false) { ok('Sent.'); setRecipient(''); } else err(r.data?.error ?? 'send failed'); }
-    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+    const body = [`🤖 ML bench`, '',
+      evalResult ? (evalResult.type === 'classification' ? `Acc ${evalResult.accuracy}% · F1 ${evalResult.avgF1} · ${evalResult.samples}n` : `R² ${evalResult.r2} · RMSE ${evalResult.rmse} · ${evalResult.samples}n`) : '',
+      featResult ? `Top features: ${featResult.topFeatures?.join(', ')}` : '',
+      profileResult ? `Dataset quality: ${profileResult.qualityScore}% (${profileResult.rows}×${profileResult.columns})` : '',
+      mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const messageId = await dmRecall.run(async () => {
+        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
+        return r.data?.message?.id as string;
+      });
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
     if (!evalResult && !profileResult) { err('Run eval/profile first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Model card — ${modelType} ${taskType}`, tags: ['ml', 'modelcard', 'public'], source: 'ml:modelcard:publish', meta: { visibility: 'public', consent: { allowCitations: true }, modelType, taskType, eval: evalResult, profile: profileResult } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (!id) { err('No DTU id.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Published ${id.slice(0, 8)}…`); } else err(pub.data?.error ?? 'publish failed');
+      const id = await publishRecall.run(async () => {
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Model card — ${modelType} ${taskType}`, tags: ['ml', 'modelcard', 'public'], source: 'ml:modelcard:publish', meta: { visibility: 'public', consent: { allowCitations: true }, modelType, taskType, eval: evalResult, profile: profileResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        if (!newId) throw new Error('No DTU id.');
+        const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        return newId as string;
+      });
+      if (id) { setPublishedDtuId(id); pipe.publish('ml.publishedDtuId', id, { label: `Public model card ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -188,6 +203,10 @@ export function MlActionPanel() {
             <input type="text" value={featureCount} onChange={(e) => setFeatureCount(e.target.value.replace(/\D/g, '') || '0')} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="features" />
           </div>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RecallSlot ctl={dmRecall} />
+            <RecallSlot ctl={publishRecall} />
+          </div>
         </div>
       </div>
 
