@@ -3516,3 +3516,13 @@
 {"generatedAt":"2026-05-17T05:54:06.347Z","key":"dtu_surface.record","total":1,"lastFiredAt":1778997048997,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
 {"generatedAt":"2026-05-17T05:54:06.347Z","key":"dtu_surface.where_used","total":1,"lastFiredAt":1778997049008,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
 {"generatedAt":"2026-05-17T05:54:06.347Z","key":"emergent.bridge.heartbeatTick","total":2,"lastFiredAt":1778997174227,"sources":{"http":0,"heartbeat":0,"internal":2,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"ingest.processQueueOnce","total":20,"lastFiredAt":1778997534034,"sources":{"http":0,"heartbeat":0,"internal":20,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"emergent.bridge.heartbeatTick","total":4,"lastFiredAt":1778997534315,"sources":{"http":0,"heartbeat":0,"internal":4,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"system.analogize","total":2,"lastFiredAt":1778997534334,"sources":{"http":0,"heartbeat":0,"internal":2,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"dtu.create","total":10,"lastFiredAt":1778997519466,"sources":{"http":0,"heartbeat":0,"internal":10,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"search.query","total":1,"lastFiredAt":1778997283540,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"persona.list","total":1,"lastFiredAt":1778997283758,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"plugin.list","total":1,"lastFiredAt":1778997283793,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"council.tally","total":1,"lastFiredAt":1778997283840,"sources":{"http":1,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"chat.respond","total":2,"lastFiredAt":1778997298297,"sources":{"http":2,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-17T05:59:06.346Z","key":"emergent.repair.agent.tick","total":1,"lastFiredAt":1778997445529,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}

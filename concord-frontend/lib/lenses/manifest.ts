@@ -4825,7 +4825,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     domain: 'sessions',
     label: 'Sessions',
     artifacts: ['session', 'session_event'],
-    macros: { list: 'sessions.list_mine', get: 'sessions.get', create: 'sessions.start', update: 'sessions.advance', delete: 'sessions.close', run: 'sessions.update_state' },
+    macros: { list: 'lens.sessions.list', get: 'lens.sessions.get', create: 'lens.sessions.create', update: 'lens.sessions.update', delete: 'lens.sessions.delete', run: 'lens.sessions.run', export: 'lens.sessions.export' },
     exports: ['json'],
     actions: ['start', 'advance', 'update_state', 'list_mine', 'get', 'close'],
     category: 'productivity',
