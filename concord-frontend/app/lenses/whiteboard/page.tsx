@@ -947,7 +947,7 @@ export default function WhiteboardLensPage() {
     <LensShell lensId="whiteboard" asMain={false}>
       <FirstRunTour lensId="whiteboard" />
       <DepthBadge lensId="whiteboard" size="sm" className="ml-2" />
-      <RivalShapePreview lensId="whiteboard" />
+      <RivalShapePreview lensId="whiteboard" defaultOpen={true} />
     <div className="h-full flex bg-lattice-bg">
       {/* ===== Sidebar ===== */}
       <aside className="w-64 border-r border-lattice-border bg-lattice-surface p-4 flex flex-col">

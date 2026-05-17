@@ -3062,7 +3062,7 @@ export default function LegalLensPage() {
     <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="legal" />
       <DepthBadge lensId="legal" size="sm" className="ml-2" />
-      <RivalShapePreview lensId="legal" />
+      <RivalShapePreview lensId="legal" defaultOpen={true} />
     <div data-lens-theme="legal" className={ds.pageContainer}>
       {/* Legal Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">

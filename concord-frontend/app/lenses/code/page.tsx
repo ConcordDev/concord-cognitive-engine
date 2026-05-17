@@ -1299,7 +1299,7 @@ export default function CodeLensPage() {
       <FirstRunTour lensId="code" />
       <ManifestActionBar />
       <DepthBadge lensId="code" size="sm" className="ml-2" />
-      <RivalShapePreview lensId="code" />
+      <RivalShapePreview lensId="code" defaultOpen={true} />
     <div data-lens-theme="code" className={`flex flex-col font-mono ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'h-full bg-[#0d1117]'}`}>
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-green-900/40 bg-[#161b22]">

@@ -1495,7 +1495,7 @@ export default function HealthcareLensPage() {
     <LensShell lensId="healthcare" asMain={false}>
       <FirstRunTour lensId="healthcare" />
       <DepthBadge lensId="healthcare" size="sm" className="ml-2" />
-      <RivalShapePreview lensId="healthcare" />
+      <RivalShapePreview lensId="healthcare" defaultOpen={true} />
     <div
       data-lens-theme="healthcare"
       className="p-6 space-y-6 bg-gradient-to-b from-blue-950/20 to-transparent"
