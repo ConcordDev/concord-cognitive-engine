@@ -3705,7 +3705,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Write poetry.",
       caption: "Poems, collections, forms, analyses, workshops \u2014 analyze, generate, export.",

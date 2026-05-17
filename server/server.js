@@ -9655,7 +9655,6 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 4 (UX completeness sprint) — real free-API wire-up.
     // External fetches go through these macros; no user data leaves the
     // server, so anonymous reads are safe.
-    astronomy: new Set(["live_apod", "live_iss", "live_neo"]),
     geology: new Set(["live_quakes_today", "live_wiki_search", "live_wiki_summary"]),
     ocean: new Set(["live_tides", "live_wiki_search", "live_wiki_summary"]),
     pharmacy: new Set(["live_label_lookup", "live_adverse_events", "live_recalls"]),
@@ -9686,11 +9685,17 @@ async function runMacro(domain, name, input, ctx) {
     research: new Set(["live_crossref", "live_openalex"]),
     linguistics: new Set(["live_datamuse", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     "creative-writing": new Set(["live_datamuse"]),
-    poetry: new Set(["live_datamuse"]),
+    poetry: new Set(["live_datamuse", "live_poetrydb"]),
     // Phase 4 (fourth wave) — Wikipedia search + summary across reference lenses.
     philosophy: new Set(["live_wiki_search", "live_wiki_summary"]),
     desert: new Set(["live_wiki_search", "live_wiki_summary"]),
-    space: new Set(["live_wiki_search", "live_wiki_summary"]),
+    space: new Set(["live_wiki_search", "live_wiki_summary", "live_spaceflight_news", "live_launches_upcoming"]),
+    // Phase 4 (fifth wave) — curated content APIs.
+    astronomy: new Set(["live_apod", "live_iss", "live_neo", "live_spaceflight_news", "live_launches_upcoming"]),
+    daily: new Set(["live_quote"]),
+    reflection: new Set(["live_quote"]),
+    pets: new Set(["live_catfact"]),
+    game: new Set(["live_trivia"]),
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
@@ -23314,6 +23319,12 @@ registerScholarlyApiMacros(register);
 // neuro / geology / space / global. Pairs two macros per lens.
 import registerWikipediaSearchMacros from "./domains/wikipedia-search.js";
 registerWikipediaSearchMacros(register);
+
+// Phase 4 (fifth wave) — curated REAL_FREE content APIs: Spaceflight
+// News + Launch Library (astronomy/space), PoetryDB (poetry), Open
+// Trivia DB (game), Quotable (daily/reflection), Cat Facts (pets).
+import registerCuratedFreeApiMacros from "./domains/curated-free-apis.js";
+registerCuratedFreeApiMacros(register);
 // Foundry (lens #66) — no-code game-builder. Builder surface
 // (registry / worldspec / publish / preview / templates / rules).
 import registerFoundryMacros from "./domains/foundry.js";

@@ -8,6 +8,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
 import { NasaLivePanel } from '@/components/astronomy/NasaLivePanel';
+import { SpaceflightNewsPanel } from '@/components/space/SpaceflightNewsPanel';
+import { UpcomingLaunchesPanel } from '@/components/space/UpcomingLaunchesPanel';
 import { AstronomyActionPanel } from '@/components/astronomy/AstronomyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -221,6 +223,11 @@ export default function AstronomyLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="astronomy" size="sm" className="ml-2" />
     <div data-lens-theme="astronomy" className="p-6 space-y-6">
+      {/* Phase 4 (fifth wave) — REAL Spaceflight News + launch schedule. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SpaceflightNewsPanel domain="astronomy" />
+        <UpcomingLaunchesPanel domain="astronomy" />
+      </div>
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Telescope className="w-8 h-8 text-indigo-400" />

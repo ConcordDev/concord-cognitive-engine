@@ -7,6 +7,8 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
+import { SpaceflightNewsPanel } from '@/components/space/SpaceflightNewsPanel';
+import { UpcomingLaunchesPanel } from '@/components/space/UpcomingLaunchesPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -273,6 +275,11 @@ export default function SpaceLensPage() {
       <DepthBadge lensId="space" size="sm" className="ml-2" />
     <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>
 
+      {/* Phase 4 (fifth wave) — REAL Spaceflight News + upcoming launches side by side. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SpaceflightNewsPanel domain="space" />
+        <UpcomingLaunchesPanel domain="space" />
+      </div>
       {/* Phase 4 (fourth wave) — REAL Wikipedia search for missions, satellites, agencies. */}
       <WikipediaSearchPanel domain="space" title="Wikipedia · space topics" />
 

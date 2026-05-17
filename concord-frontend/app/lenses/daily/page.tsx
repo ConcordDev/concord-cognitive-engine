@@ -8,6 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
+import { QuotablePanel } from '@/components/daily/QuotablePanel';
 import { DailyInspiration } from '@/components/daily/DailyInspiration';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -500,6 +501,9 @@ export default function DailyLensPage() {
               {selectedMood !== null && <span className="ml-3 text-sm text-gray-400">{MOOD_LABELS[selectedMood]}</span>}
             </div>
           </motion.div>
+
+          {/* Phase 4 (fifth wave) — REAL Quotable famous quotes for daily inspiration. */}
+          <QuotablePanel domain="daily" tag="wisdom" />
 
           {/* Journal entry */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="lens-card space-y-5">
