@@ -4822,6 +4822,28 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    domain: 'sessions',
+    label: 'Sessions',
+    artifacts: ['session', 'session_event'],
+    macros: { list: 'sessions.list_mine', get: 'sessions.get', create: 'sessions.start', update: 'sessions.advance', delete: 'sessions.close', run: 'sessions.update_state' },
+    exports: ['json'],
+    actions: ['start', 'advance', 'update_state', 'list_mine', 'get', 'close'],
+    category: 'productivity',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: "No sessions yet.",
+      caption: "Sessions persist multi-step work across visits — open a kingdoms war campaign, a research arc, a podcast season. Real, resumable.",
+      firstActionLabel: "Browse session-aware lenses",
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: "Every session belongs to a user and a lens. State is opaque JSON the lens owns." },
+        { caption: "Filter by status (open / paused / completed / abandoned); each row shows live step + transition count." },
+        { caption: "Resume jumps back to the owning lens; Complete or Abandon closes the session and emits a final event." },
+      ],
+    },
+  },
+  {
     domain: 'dx-platform',
     label: 'DX Platform',
     artifacts: ['codebase', 'finding', 'repair_proposal', 'usage_row', 'quota'],
