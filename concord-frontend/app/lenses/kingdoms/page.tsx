@@ -20,6 +20,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
 import { RealmActionPanel } from '@/components/kingdoms/RealmActionPanel';
+import { WarCampaignSession } from '@/components/kingdoms/WarCampaignSession';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { PipingProvider } from '@/components/panel-polish';
 import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
@@ -244,6 +245,8 @@ function KingdomDetail({
 
   return (
     <div className="space-y-6">
+      {/* Phase 5 — multi-session war-campaign workspace, real sessions substrate. */}
+      <WarCampaignSession kingdomId={kingdom.id} kingdomName={kingdom.name} />
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-5">
         <div className="flex items-start justify-between">
           <div>
