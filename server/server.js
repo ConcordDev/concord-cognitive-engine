@@ -10232,6 +10232,13 @@ async function runMacro(domain, name, input, ctx) {
       "project_template_list",
       "roadmap",
     ]),
+    // Browser Agent Sprint A — read-only macros (task/action/budget
+    // reads + the destructive-action check that takes no DB).
+    "browser-agent": new Set([
+      "task_get", "task_list", "actions_list",
+      "approvals_pending", "budget_get", "budget_can_start",
+      "action_check_destructive",
+    ]),
     // Calendar Sprint A+B+C — read-only macros. expand_recurring +
     // parse_rrule are pure compute. ai_parse_event has a deterministic
     // fallback path. booking_link_get + booking_link_slots are PUBLIC
@@ -24167,6 +24174,15 @@ registerCalendarAiMacros(register);
 // + world-event overlay.
 import registerCalendarMoatsMacros from "./domains/calendar-moats.js";
 registerCalendarMoatsMacros(register);
+
+// Browser Agent lens Sprint A — safety + observability (migration 220).
+// Layers on TOP of the existing browser-engine + chat-agent + agent-
+// marathon substrate (no smoking-gun fix needed — agents.js is
+// already imported). Adds approval mode, per-task cost budgets,
+// concurrent caps, per-action audit log + Operator-shutdown-lesson
+// safety gates.
+import registerBrowserAgentMacros from "./domains/browser-agent.js";
+registerBrowserAgentMacros(register);
 
 try {
   registerHeartbeat("messaging-agent-tick", {
