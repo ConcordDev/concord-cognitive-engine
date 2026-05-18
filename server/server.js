@@ -10252,6 +10252,19 @@ async function runMacro(domain, name, input, ctx) {
       "public_link_get", "public_link_list",
       "session_export",
     ]),
+    // Social Sprint A — read-only macros. post_get + reactions_list +
+    // feed_public are safe public-read (visibility is enforced inside
+    // post_get). user_posts is owner-or-public.
+    social: new Set([
+      "post_get", "user_posts", "post_edits",
+      "reactions_list", "bookmarks",
+      "followers", "following", "is_following",
+      "following_activity",
+      "notifications", "notifications_unread_count",
+      "dm_list",
+      "blocks",
+      "feed_following", "feed_public",
+    ]),
     // Browser Agent Sprint A — read-only macros (task/action/budget
     // reads + the destructive-action check that takes no DB).
     "browser-agent": new Set([
@@ -24255,6 +24268,19 @@ registerChatAiMacros(register);
 // + 5-brain council mode + public chat links + conversation export.
 import registerChatMoatsMacros from "./domains/chat-moats.js";
 registerChatMoatsMacros(register);
+
+// Social lens Sprint A — smoking-gun fix #10/10 + durable persistence
+// (migration 226). Pre-this-sprint the social lens was the ONE lens
+// with no domain macro — it bypassed register() entirely and called
+// REST routes directly, and the routes themselves stored data in
+// STATE._social Maps (lost on restart). Also fixes the critical
+// /api/social/following-activity 404 the lens page hit on every
+// pageview. New domain exposes ~30 macros (post CRUD with edit
+// history + quotes + multi-image, reactions, reposts, bookmarks,
+// follow graph, following activity, notifications, DMs, block/mute,
+// chronological feeds).
+import registerSocialMacros from "./domains/social.js";
+registerSocialMacros(register);
 
 // Browser-Agent Sprint C — schedule runner heartbeat. Every 60s scan
 // for due schedules and instantiate fresh tasks.
@@ -51157,6 +51183,25 @@ app.get("/api/social/notifications", requireAuth(), (req, res) => {
     const notifications = filtered.slice(0, limit);
     res.json({ ok: true, notifications });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Social Sprint A smoking-gun fix — /api/social/following-activity.
+// Pre-this-sprint the social lens page hit this on every pageview and
+// got a 404 every time. The audit found that no route or handler
+// existed despite the frontend depending on it. Backed by the new
+// social_following_activity table + fan-out on post create.
+app.get("/api/social/following-activity", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, reason: "auth_required" });
+    const { followingActivity } = await import("./lib/social/persistence.js");
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit, 10) || 100), 500);
+    const since = req.query.since ? parseInt(req.query.since, 10) : null;
+    const activity = followingActivity(STATE?.db, userId, { limit, since });
+    res.json({ ok: true, activity, count: activity.length });
+  } catch (err) {
+    res.status(500).json({ ok: false, reason: "server_error", error: err?.message });
+  }
 });
 
 app.get("/api/social/notifications/count", requireAuth(), (req, res) => {
