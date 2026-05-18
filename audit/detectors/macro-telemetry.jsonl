@@ -6172,3 +6172,19 @@
 {"generatedAt":"2026-05-17T23:52:28.811Z","key":"emergent.repair.agent.tick","total":1,"lastFiredAt":1779061723235,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
 {"generatedAt":"2026-05-17T23:52:28.811Z","key":"emergent.scope.globalTick","total":1,"lastFiredAt":1779061734481,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
 {"generatedAt":"2026-05-17T23:52:28.811Z","key":"system.analogize","total":1,"lastFiredAt":1779061813592,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"system.autogen","total":17,"lastFiredAt":1779062392642,"sources":{"http":0,"heartbeat":0,"internal":17,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"emergent.pipeline.run","total":50,"lastFiredAt":1779062393994,"sources":{"http":0,"heartbeat":0,"internal":50,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"system.dream","total":17,"lastFiredAt":1779062393994,"sources":{"http":0,"heartbeat":0,"internal":17,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"dtu.create","total":19,"lastFiredAt":1779062183691,"sources":{"http":0,"heartbeat":0,"internal":19,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"system.evolution","total":16,"lastFiredAt":1779062191797,"sources":{"http":0,"heartbeat":0,"internal":16,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"system.synth","total":16,"lastFiredAt":1779062392585,"sources":{"http":0,"heartbeat":0,"internal":16,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"jobs.tick","total":16,"lastFiredAt":1779062392585,"sources":{"http":0,"heartbeat":0,"internal":16,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"queue.tick","total":16,"lastFiredAt":1779062392585,"sources":{"http":0,"heartbeat":0,"internal":16,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"ingest.tick","total":16,"lastFiredAt":1779062392600,"sources":{"http":0,"heartbeat":0,"internal":16,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"crawl.tick","total":16,"lastFiredAt":1779062392600,"sources":{"http":0,"heartbeat":0,"internal":16,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"ingest.processQueueOnce","total":16,"lastFiredAt":1779062392640,"sources":{"http":0,"heartbeat":0,"internal":16,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"emergent.bridge.heartbeatTick","total":2,"lastFiredAt":1779062084868,"sources":{"http":0,"heartbeat":0,"internal":2,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"system.analogize","total":1,"lastFiredAt":1779062084872,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"dtu.cluster","total":2,"lastFiredAt":1779062157619,"sources":{"http":0,"heartbeat":0,"internal":2,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"dtu.gapPromote","total":12,"lastFiredAt":1779062158388,"sources":{"http":0,"heartbeat":0,"internal":12,"system":0}}
+{"generatedAt":"2026-05-17T23:59:54.122Z","key":"[object Object].dtu","total":12,"lastFiredAt":1779062158388,"sources":{"http":0,"heartbeat":0,"internal":0,"system":12}}
