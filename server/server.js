@@ -8617,6 +8617,13 @@ function _serializeState() {
     _autogenPipeline: STATE._autogenPipeline || null,
     // Entity growth profiles (persist across restarts)
     entityGrowthProfiles: serializeGrowthStore(),
+    // Smoking-gun cleanup I3 + I5 — entities (Personal AI Agents) and
+    // cognitive digital twins were being mutated with saveStateDebounced
+    // calls but the snapshot serializer never included them, so every
+    // restart wiped them. Now persisted (capped at 5000 entities and
+    // 10000 twins to bound the snapshot size).
+    entities: capArr(STATE.entities, 5000),
+    cognitiveDigitalTwins: Array.from(STATE.cognitiveDigitalTwins?.entries() || []).slice(-10000),
     // v4: User Universes
     userUniverses: Array.from(STATE.userUniverses.entries()).map(([userId, u]) => ({
       userId,
@@ -8800,6 +8807,23 @@ function _hydrateState(obj) {
   // Bucket 2 Gap A: hydrates the 26 STATE.<lens>Lens stores from the
   // snapshot so user data survives restart.
   if (obj.lensState) hydrateLensState(STATE, obj.lensState);
+
+  // Smoking-gun cleanup I3 + I5 — hydrate entities (Personal AI Agents)
+  // and cognitive digital twins from the snapshot.
+  if (Array.isArray(obj.entities)) {
+    if (!STATE.entities) STATE.entities = new Map();
+    STATE.entities.clear();
+    for (const e of obj.entities) if (e && e.id) STATE.entities.set(e.id, e);
+  }
+  if (Array.isArray(obj.cognitiveDigitalTwins)) {
+    if (!STATE.cognitiveDigitalTwins) STATE.cognitiveDigitalTwins = new Map();
+    STATE.cognitiveDigitalTwins.clear();
+    for (const entry of obj.cognitiveDigitalTwins) {
+      if (Array.isArray(entry) && entry.length === 2 && entry[0]) {
+        STATE.cognitiveDigitalTwins.set(entry[0], entry[1]);
+      }
+    }
+  }
 }
 
 
