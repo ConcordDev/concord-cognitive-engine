@@ -97,11 +97,20 @@ export function appendDelta(db, { boardId, userId, deltaKind, delta, clientTs, n
   if (!db || !boardId || !userId) return { ok: false, reason: "missing_args" };
   if (!deltaKind || typeof delta !== "object") return { ok: false, reason: "missing_kind_or_delta" };
   try {
+    // For navigable kinds (scene_replace / snapshot / restore) we
+    // denormalise the full scene into delta_json too, so the history
+    // restore path can recover scenes without replaying every element
+    // delta. For element-level kinds we just store the change.
+    const deltaToStore = (newScene && (deltaKind === "scene_replace" || deltaKind === "snapshot" || deltaKind === "restore"))
+      ? { ...delta, scene: newScene }
+      : delta;
     db.prepare(`
       INSERT INTO whiteboard_scene_deltas (board_id, user_id, delta_kind, delta_json, server_ts, client_ts)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(boardId, userId, deltaKind, JSON.stringify(delta).slice(0, SCENE_PREVIEW_MAX), _now(), clientTs ? Number(clientTs) : null);
-    if (newScene && (deltaKind === "scene_replace" || deltaKind === "snapshot" || deltaKind === "restore")) {
+    `).run(boardId, userId, deltaKind, JSON.stringify(deltaToStore).slice(0, SCENE_PREVIEW_MAX), _now(), clientTs ? Number(clientTs) : null);
+    // Always update scene_json when newScene is provided — element_add /
+    // _update / _delete also need the snapshot to reflect the new state.
+    if (newScene) {
       db.prepare(`UPDATE whiteboard_boards SET scene_json = ?, updated_at = ? WHERE id = ?`)
         .run(JSON.stringify(newScene).slice(0, SCENE_PREVIEW_MAX), _now(), boardId);
     } else {

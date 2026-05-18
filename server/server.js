@@ -23911,6 +23911,36 @@ registerWhiteboardCommentMacros(register);
 import registerWhiteboardMintMacros from "./domains/whiteboard-mint.js";
 registerWhiteboardMintMacros(register);
 
+// Whiteboard lens Sprint B — version history, permissions, prompt-to-
+// diagram, agent-on-canvas, voice-to-element. Agent uses migration 171
+// (agent_marathon_sessions) + heartbeat freq 4 (~1 min).
+import registerWhiteboardHistoryMacros from "./domains/whiteboard-history.js";
+registerWhiteboardHistoryMacros(register);
+import registerWhiteboardPermsMacros from "./domains/whiteboard-perms.js";
+registerWhiteboardPermsMacros(register);
+import registerWhiteboardDiagramMacros from "./domains/whiteboard-diagram.js";
+registerWhiteboardDiagramMacros(register);
+import registerWhiteboardAgentMacros from "./domains/whiteboard-agent.js";
+registerWhiteboardAgentMacros(register);
+import registerWhiteboardVoiceMacros from "./domains/whiteboard-voice.js";
+registerWhiteboardVoiceMacros(register);
+try {
+  registerHeartbeat("whiteboard-agent-tick", {
+    frequency: 4,
+    handler: async (state) => {
+      try {
+        const db = state?.db;
+        if (!db) return { ok: false, reason: "no_db" };
+        return await runMacro("whiteboard", "agent_tick", {}, { db, STATE: state });
+      } catch (err) {
+        return { ok: false, reason: "tick_error", error: err?.message };
+      }
+    },
+  });
+} catch (err) {
+  console.warn("whiteboard-agent-tick registration failed:", err?.message);
+}
+
 try {
   registerHeartbeat("code-bg-agent-tick", {
     frequency: 4,
