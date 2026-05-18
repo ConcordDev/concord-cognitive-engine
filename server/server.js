@@ -9757,6 +9757,18 @@ async function governedCall(ctx, effectName, fn){
  */
 const MACROS = new Map(); // domain -> Map(name -> fn)
 
+// Lens action registry for the legacy registerLensAction-style domains
+// (still in use by message.js / projects.js / etc.). Hoisted to here
+// from its previous declaration site ~14k lines later so the import-
+// time call `registerMessageActions(registerLensAction)` doesn't hit
+// a TDZ ReferenceError. See server.js:23988 — fixed alongside Tasks
+// Sprint validation.
+const LENS_ACTIONS = new Map(); // `${domain}.${action}` → async (ctx, artifact, params) => result
+globalThis.__concordLensActions = LENS_ACTIONS;
+function registerLensAction(domain, action, handler) {
+  LENS_ACTIONS.set(`${domain}.${action}`, handler);
+}
+
 function register(domain, name, fn, spec={}) {
   if (!MACROS.has(domain)) MACROS.set(domain, new Map());
   // Detect silent shadowing: if a macro is being registered twice
@@ -37164,15 +37176,8 @@ app.get("/api/admin/cascade-recovery", requireOwner, asyncHandler(async (req, re
   res.json({ ok: true, report });
 }));
 
-// Lens action registry for domain-specific engines
-const LENS_ACTIONS = new Map(); // `${domain}.${action}` → async (ctx, artifact, params) => result
-// Sprint 18.5 — paired with the deferred __concordLensActions assignment
-// that previously sat ~12k lines earlier and triggered a TDZ ReferenceError
-// at startup. Now assigned at the declaration site.
-globalThis.__concordLensActions = LENS_ACTIONS;
-function registerLensAction(domain, action, handler) {
-  LENS_ACTIONS.set(`${domain}.${action}`, handler);
-}
+// LENS_ACTIONS + registerLensAction now declared near MACROS at ~line 9766
+// (hoisted to fix the TDZ error that crashed boot for prior sessions).
 
 // Pipeline introspection endpoint (must be before wildcard :domain routes)
 app.get("/api/lens/pipelines", (req, res) => {
