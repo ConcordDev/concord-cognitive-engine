@@ -23744,6 +23744,12 @@ registerGlyphSpellMacros(register);
 import registerStudioMasteringMacros from "./domains/studio-mastering.js";
 registerStudioMasteringMacros(register);
 
+// Studio Sprint A — Chord Stamp Tool. Mint authored chord progressions
+// as kind='chord_progression' DTUs so the royalty cascade pays the
+// author every time another producer cites the progression.
+import registerStudioChordMacros from "./domains/studio-chord.js";
+registerStudioChordMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.

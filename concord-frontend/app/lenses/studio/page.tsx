@@ -113,6 +113,7 @@ import { AutomationView } from '@/components/studio/AutomationView';
 import { MasteringPanel } from '@/components/studio/MasteringPanel';
 import { Soundboard } from '@/components/studio/Soundboard';
 import StudioWorkbench from '@/components/studio/StudioWorkbench';
+import ChordStampTool from '@/components/studio/ChordStampTool';
 
 // ============================================================================
 // Constants & Defaults
@@ -474,6 +475,7 @@ export default function StudioLensPage() {
   // AI Assistant state
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
+  const [showChordStamp, setShowChordStamp] = useState(false);
 
   // Keep refs in sync for use in intervals / event handlers
   useEffect(() => {
@@ -1372,6 +1374,12 @@ export default function StudioLensPage() {
   const handleAiAction = useCallback(
     async (action: string, title: string) => {
       if (!project) return;
+      // Sprint A #3 — "Suggest Chords" opens the Chord Stamp Tool drawer
+      // (real authoring + mint flow) instead of a stubbed brain blurb.
+      if (action === 'suggest-chords') {
+        setShowChordStamp(true);
+        return;
+      }
       setAiLoading(action);
       setAiResult(null);
       try {
@@ -2238,6 +2246,37 @@ export default function StudioLensPage() {
           )}
         </div>
       </div>
+
+      {/* Chord Stamp Tool drawer (Sprint A #3) */}
+      <AnimatePresence>
+        {showChordStamp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 flex items-stretch justify-end"
+            onClick={() => setShowChordStamp(false)}
+          >
+            <motion.div
+              initial={{ x: 600 }}
+              animate={{ x: 0 }}
+              exit={{ x: 600 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 32 }}
+              className="w-full max-w-xl bg-black border-l border-white/10 flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <ChordStampTool
+                initialBpm={project.bpm}
+                onCancel={() => setShowChordStamp(false)}
+                onMinted={(_dtuId, title) => {
+                  showToast('success', `Minted "${title}" as a chord progression DTU`);
+                  setShowChordStamp(false);
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Add Track Modal */}
       <AnimatePresence>
