@@ -23951,6 +23951,39 @@ import registerMessagingConversationsMacros from "./domains/messaging-conversati
 registerMessagingConversationsMacros(register);
 import registerMessagingChannelsMacros from "./domains/messaging-channels.js";
 registerMessagingChannelsMacros(register);
+
+// Message lens Sprint B — AI surface + power-user features.
+// summarize / suggested_replies / compose_in_my_voice / triage / translate
+// + snippets (royalty cascade on reuse) + search (substring + semantic)
+// + slash commands + scheduled send + push notifications.
+import registerMessagingAiMacros from "./domains/messaging-ai.js";
+registerMessagingAiMacros(register);
+import registerMessagingSnippetMacros from "./domains/messaging-snippets.js";
+registerMessagingSnippetMacros(register);
+import registerMessagingSearchMacros from "./domains/messaging-search.js";
+registerMessagingSearchMacros(register);
+import registerMessagingSlashMacros from "./domains/messaging-slash.js";
+registerMessagingSlashMacros(register);
+import registerMessagingSchedulerMacros from "./domains/messaging-scheduler.js";
+registerMessagingSchedulerMacros(register);
+import registerMessagingPushMacros from "./domains/messaging-push.js";
+registerMessagingPushMacros(register);
+try {
+  registerHeartbeat("messaging-scheduler-tick", {
+    frequency: 2, // ~30s — checks every 30s for due scheduled messages
+    handler: async (state) => {
+      try {
+        const db = state?.db;
+        if (!db) return { ok: false, reason: "no_db" };
+        return await runMacro("messaging", "scheduler_tick", {}, { db, STATE: state });
+      } catch (err) {
+        return { ok: false, reason: "tick_error", error: err?.message };
+      }
+    },
+  });
+} catch (err) {
+  console.warn("messaging-scheduler-tick registration failed:", err?.message);
+}
 try {
   registerHeartbeat("whiteboard-agent-tick", {
     frequency: 4,
