@@ -23786,6 +23786,14 @@ registerStudioCreditMacros(register);
 import registerStudioDistrictMacros from "./domains/studio-district.js";
 registerStudioDistrictMacros(register);
 
+// Studio Sprint C — in-instance real-time collaboration. Two
+// producers on the same Concord instance subscribe to a session
+// room; deltas append to session_deltas (migration 205) and fan
+// out via the existing realtimeEmit pathway. Cross-instance
+// federation deferred to Phase 2 (federation outbox is wrong layer).
+import registerStudioCollabMacros from "./domains/studio-collab.js";
+registerStudioCollabMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.
