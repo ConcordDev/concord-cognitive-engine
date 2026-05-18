@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Zap, Download, Save, Activity } from 'lucide-react';
+import { Zap, Download, Save, Activity, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { emitMasteringProcessDTU, emitExportDTU } from '@/lib/daw/dtu-hooks';
+import { analyzeMastering, snapshotFromAnalysers, type MasteringAnalysisResult } from '@/lib/daw/mastering-analysis';
 import type { MasteringChain, MasteringAnalysis, ExportSettings, EffectInstance } from '@/lib/daw/types';
 
 interface MasteringPanelProps {
@@ -12,11 +13,23 @@ interface MasteringPanelProps {
   projectId: string;
   projectTitle: string;
   spectrumData: Uint8Array | null;
+  /** Tap on the master bus — used by the in-browser analyzer to
+   *  capture a 2-3s snapshot of the live mix without rendering offline. */
+  masterAnalysers?: AnalyserNode[] | null;
+  /** Sample rate of the audio context. Default 44100. */
+  sampleRate?: number;
   onUpdateChain: (chain: MasteringChain) => void;
   onAnalyze: () => void;
   onExport: (settings: ExportSettings) => void;
   isAnalyzing?: boolean;
   isExporting?: boolean;
+}
+
+interface CoachingResponse {
+  ok: boolean;
+  composer?: 'utility_brain' | 'deterministic';
+  narrative?: string;
+  suggestions?: Array<{ kind: string; severity: 'high' | 'medium' | 'low'; text: string }>;
 }
 
 function MeterBar({ value, min, max, label, unit, color = 'neon-cyan', target }: {
@@ -47,6 +60,8 @@ export function MasteringPanel({
   projectId,
   projectTitle,
   spectrumData,
+  masterAnalysers,
+  sampleRate = 44100,
   onUpdateChain,
   onAnalyze,
   onExport,
@@ -59,6 +74,76 @@ export function MasteringPanel({
   const [exportNormalize, setExportNormalize] = useState(true);
   const [exportDithering, setExportDithering] = useState(true);
   const [exportStems, setExportStems] = useState(false);
+
+  // Mastering Assistant — local BS.1770 analyser result + brain
+  // coaching narrative. Local result is what we render meters from;
+  // coaching is what the producer reads.
+  const [localAnalysis, setLocalAnalysis] = useState<MasteringAnalysisResult | null>(null);
+  const [coaching, setCoaching] = useState<CoachingResponse | null>(null);
+  const [isCoaching, setIsCoaching] = useState(false);
+
+  const runLocalAnalysisAndCoach = useCallback(async () => {
+    onAnalyze(); // keep host-side hooks (downstream meters etc.) in sync
+    if (!masterAnalysers || masterAnalysers.length === 0) {
+      // No live tap — skip analyser, ask for deterministic-only coaching
+      // if there's an upstream analysis we can repackage.
+      if (!analysis) return;
+      setIsCoaching(true);
+      try {
+        const r = await fetch('/api/lens/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            domain: 'studio',
+            name: 'coach_mastering',
+            input: {
+              targetLUFS: chain.loudnessTarget,
+              summary: {
+                integratedLUFS: analysis.integratedLUFS,
+                truePeak: analysis.truePeak,
+                dynamicRange: analysis.dynamicRange,
+                hottestBand: 'mid',
+                quietestBand: 'air',
+                imbalances: [],
+                loudnessVsTarget: analysis.integratedLUFS - chain.loudnessTarget,
+              },
+            },
+          }),
+        });
+        const json = await r.json();
+        setCoaching(json?.result || json);
+      } catch {
+        setCoaching({ ok: false });
+      } finally {
+        setIsCoaching(false);
+      }
+      return;
+    }
+    // Live tap: capture, analyse, then coach.
+    const channels = snapshotFromAnalysers(masterAnalysers);
+    const result = analyzeMastering(channels, sampleRate, { targetLUFS: chain.loudnessTarget });
+    setLocalAnalysis(result);
+    setIsCoaching(true);
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          domain: 'studio',
+          name: 'coach_mastering',
+          input: { summary: result.summary, targetLUFS: chain.loudnessTarget },
+        }),
+      });
+      const json = await r.json();
+      setCoaching(json?.result || json);
+    } catch {
+      setCoaching({ ok: false });
+    } finally {
+      setIsCoaching(false);
+    }
+  }, [analysis, chain.loudnessTarget, masterAnalysers, onAnalyze, sampleRate]);
 
   const handleExport = useCallback(() => {
     const settings: ExportSettings = {
@@ -102,12 +187,12 @@ export function MasteringPanel({
             <Save className="w-3 h-3" /> Save Chain as DTU
           </button>
           <button
-            onClick={onAnalyze}
-            disabled={isAnalyzing}
+            onClick={runLocalAnalysisAndCoach}
+            disabled={isAnalyzing || isCoaching}
             className="flex items-center gap-1 text-[10px] px-2 py-1 bg-neon-green/10 text-neon-green rounded hover:bg-neon-green/20 disabled:opacity-50"
           >
-            <Activity className={cn('w-3 h-3', isAnalyzing && 'animate-pulse')} />
-            {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+            <Activity className={cn('w-3 h-3', (isAnalyzing || isCoaching) && 'animate-pulse')} />
+            {isCoaching ? 'Coaching...' : isAnalyzing ? 'Analyzing...' : 'Analyze + Coach'}
           </button>
         </div>
       </div>
@@ -279,6 +364,59 @@ export function MasteringPanel({
           <MeterBar value={analysis.truePeak} min={-6} max={3} label="True Peak" unit="dBTP" color="neon-cyan" target={-1} />
           <MeterBar value={analysis.dynamicRange} min={0} max={20} label="Dynamic Range" unit="dB" color="neon-purple" />
           <MeterBar value={analysis.stereoCorrelation} min={-1} max={1} label="Stereo Correlation" unit="" color="neon-pink" />
+        </div>
+      )}
+
+      {/* Coaching narrative from utility brain (deterministic fallback) */}
+      {(coaching || localAnalysis) && (
+        <div className="bg-white/5 rounded-xl p-4 border border-white/10 space-y-3">
+          <div className="flex items-center gap-2">
+            <Brain className="w-3.5 h-3.5 text-neon-purple" />
+            <h3 className="text-xs font-semibold text-gray-400 uppercase">Mastering Coach</h3>
+            {coaching?.composer && (
+              <span className="text-[9px] text-gray-500">
+                ({coaching.composer === 'utility_brain' ? 'AI coach' : 'auto-readout'})
+              </span>
+            )}
+          </div>
+          {coaching?.narrative && (
+            <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-line">{coaching.narrative}</p>
+          )}
+          {coaching?.suggestions && coaching.suggestions.length > 0 && (
+            <ul className="space-y-1.5">
+              {coaching.suggestions.map((s, i) => (
+                <li key={i} className="flex items-start gap-2 text-[11px]">
+                  <span className={cn(
+                    'w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0',
+                    s.severity === 'high' ? 'bg-red-400'
+                      : s.severity === 'medium' ? 'bg-yellow-400'
+                      : 'bg-neon-green'
+                  )} />
+                  <span className="text-gray-300">{s.text}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {localAnalysis && (
+            <div className="pt-2 border-t border-white/5">
+              <div className="text-[9px] text-gray-500 uppercase mb-1.5">Per-band balance</div>
+              <div className="grid grid-cols-8 gap-1">
+                {localAnalysis.spectralBalance.map(b => (
+                  <div key={b.name} className="text-center">
+                    <div className="text-[8px] text-gray-500 capitalize">{b.name}</div>
+                    <div
+                      className={cn(
+                        'text-[9px] font-mono mt-0.5',
+                        Math.abs(b.relativeDb) >= 4 ? 'text-yellow-400' : 'text-gray-300'
+                      )}
+                    >
+                      {b.relativeDb > 0 ? '+' : ''}{b.relativeDb.toFixed(1)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

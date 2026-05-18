@@ -878,6 +878,12 @@ export class MixerEngine {
     return data;
   }
 
+  /** Master analyser node — exposed so the Mastering Assistant can
+   *  pull a `getFloatTimeDomainData` snapshot for BS.1770 analysis. */
+  getMasterAnalyser(): AnalyserNode {
+    return this.analyser;
+  }
+
   getMasterWaveformData(): Uint8Array {
     const data = new Uint8Array(this.analyser.frequencyBinCount);
     this.analyser.getByteTimeDomainData(data);

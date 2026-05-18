@@ -2044,6 +2044,8 @@ export default function StudioLensPage() {
               projectId={project.id}
               projectTitle={project.title}
               spectrumData={spectrumData}
+              masterAnalysers={mixerRef.current ? [mixerRef.current.getMasterAnalyser()] : null}
+              sampleRate={44100}
               onUpdateChain={handleUpdateMasteringChain}
               onAnalyze={handleAnalyze}
               onExport={handleExport}

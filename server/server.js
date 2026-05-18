@@ -23737,6 +23737,13 @@ registerLandClaimsMacros(register);
 import registerGlyphSpellMacros from "./domains/glyph-spells.js";
 registerGlyphSpellMacros(register);
 
+// Studio Sprint A — brain-coached mastering. Frontend ships a BS.1770
+// analysis summary; the utility brain writes a producer-readable
+// coaching narrative + actionable suggestions, deterministic fallback
+// when the brain is unavailable.
+import registerStudioMasteringMacros from "./domains/studio-mastering.js";
+registerStudioMasteringMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.
