@@ -1,16 +1,13 @@
 'use client';
 
 /**
- * /lenses/docs — Docs Sprint A.
+ * /lenses/docs — Docs Sprint A + B.
  *
  * Real document editor + page tree + comments + version history +
- * sharing + multi-cursor presence + markdown import/export.
- * Replaces the prior system-documentation viewer (which was an
- * analytics surface, not a writing tool).
- *
- * Wired to the migration-211 substrate via the `docs.*` macros
- * (server/domains/docs.js). All persistence is DB-backed; the
- * previous localStorage-only path is gone.
+ * sharing + multi-cursor presence + markdown I/O (Sprint A) + full
+ * AI surface: Ctrl-K command menu, voice dictation, Q&A panel,
+ * Custom AI Skills manager (Sprint B). Backed by migrations 211 +
+ * 212; all persistence is DB-backed.
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -25,9 +22,13 @@ import { DocBacklinksPanel } from '@/components/docs/DocBacklinksPanel';
 import { DocSharePanel } from '@/components/docs/DocSharePanel';
 import { DocPresenceBar } from '@/components/docs/DocPresenceBar';
 import { DocImportModal } from '@/components/docs/DocImportModal';
+import { DocAICommandMenu } from '@/components/docs/DocAICommandMenu';
+import { DocVoiceDictate } from '@/components/docs/DocVoiceDictate';
+import { DocQAPanel } from '@/components/docs/DocQAPanel';
+import { DocSkillsManager } from '@/components/docs/DocSkillsManager';
 import {
   Search, Plus, Share2, Clock, MessageSquare, Link2, Download, Upload,
-  Loader2, FileText, ListTree, Star,
+  Loader2, FileText, ListTree, Star, Sparkles, HelpCircle,
 } from 'lucide-react';
 
 interface Document {
@@ -43,7 +44,7 @@ interface Document {
   slug?: string | null;
 }
 
-type RightPanel = 'outline' | 'comments' | 'versions' | 'backlinks' | 'share' | null;
+type RightPanel = 'outline' | 'comments' | 'versions' | 'backlinks' | 'share' | 'qa' | null;
 
 const SAVE_DEBOUNCE_MS = 1500;
 
@@ -57,11 +58,29 @@ export default function DocsLensPage() {
   const [searchResults, setSearchResults] = useState<Document[]>([]);
   const [rightPanel, setRightPanel] = useState<RightPanel>('outline');
   const [importOpen, setImportOpen] = useState(false);
+  const [aiMenuOpen, setAiMenuOpen] = useState(false);
+  const [skillsOpen, setSkillsOpen] = useState(false);
+  const [selectionText, setSelectionText] = useState('');
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyRef = useRef(false);
+
+  // ─── Ctrl-K / Cmd-K opens AI menu ───────────────────────────────
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        // Capture selection at the moment the menu opens
+        const sel = typeof window !== 'undefined' ? window.getSelection()?.toString() || '' : '';
+        setSelectionText(sel);
+        setAiMenuOpen(true);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   // ─── Load doc list on mount ─────────────────────────────────────
   const refreshList = useCallback(async () => {
@@ -189,6 +208,33 @@ export default function DocsLensPage() {
 
   const rootDocs = useMemo(() => docs.filter((d) => !d.parent_id), [docs]);
 
+  // ─── AI menu callbacks ──────────────────────────────────────────
+  const insertAtCursor = useCallback((html: string) => {
+    // Append to current content; granular cursor-positioned insert
+    // ships in Sprint C (Tiptap commands).
+    const next = (editorContent || '') + (html || '');
+    setEditorContent(next);
+    scheduleSave(next, titleDraft);
+  }, [editorContent, titleDraft, scheduleSave]);
+
+  const replaceSelection = useCallback((text: string) => {
+    // Best-effort string replacement on the HTML. If the selection
+    // doesn't appear verbatim (edited since menu opened), append the
+    // edit at the end instead of silently dropping it.
+    if (!selectionText || !editorContent.includes(selectionText)) {
+      insertAtCursor(`<p>${text}</p>`);
+      return;
+    }
+    const next = editorContent.replace(selectionText, text);
+    setEditorContent(next);
+    scheduleSave(next, titleDraft);
+  }, [selectionText, editorContent, titleDraft, scheduleSave, insertAtCursor]);
+
+  const cursorContext = useMemo(() => {
+    // Strip HTML and grab the tail as "where the cursor is".
+    return (editorContent || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(-1500);
+  }, [editorContent]);
+
   return (
     <LensShell lensId="docs">
       <div className="flex h-[calc(100vh-3.5rem)] bg-black/40">
@@ -273,6 +319,25 @@ export default function DocsLensPage() {
                 />
                 <DocPresenceBar documentId={activeDocId!} />
                 <span className="text-xs text-white/40 mr-2">{saveStatus}</span>
+                <DocVoiceDictate documentId={activeDocId} onTranscript={insertAtCursor} />
+                <button
+                  onClick={() => {
+                    const sel = typeof window !== 'undefined' ? window.getSelection()?.toString() || '' : '';
+                    setSelectionText(sel);
+                    setAiMenuOpen(true);
+                  }}
+                  className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
+                  title="AI actions (⌘K)"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setSkillsOpen(true)}
+                  className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
+                  title="AI Skills library"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </button>
                 <button
                   onClick={manualSnapshot}
                   className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
@@ -334,14 +399,16 @@ export default function DocsLensPage() {
         {/* ─── Right panel ────────────────────────────────────────── */}
         {activeDoc && (
           <div className="w-80 border-l border-white/10 flex flex-col bg-black/60">
-            <div className="flex items-center gap-1 px-2 py-1.5 border-b border-white/10">
+            <div className="flex items-center gap-1 px-2 py-1.5 border-b border-white/10 flex-wrap">
               <RightTab icon={<ListTree className="w-3.5 h-3.5" />} label="Outline"   active={rightPanel === 'outline'}   onClick={() => setRightPanel('outline')} />
+              <RightTab icon={<HelpCircle className="w-3.5 h-3.5" />} label="Ask"       active={rightPanel === 'qa'}       onClick={() => setRightPanel('qa')} />
               <RightTab icon={<MessageSquare className="w-3.5 h-3.5" />} label="Comments" active={rightPanel === 'comments'} onClick={() => setRightPanel('comments')} />
               <RightTab icon={<Clock className="w-3.5 h-3.5" />} label="History"   active={rightPanel === 'versions'} onClick={() => setRightPanel('versions')} />
               <RightTab icon={<Link2 className="w-3.5 h-3.5" />} label="Links"     active={rightPanel === 'backlinks'} onClick={() => setRightPanel('backlinks')} />
             </div>
             <div className="flex-1 overflow-y-auto">
               {rightPanel === 'outline'   && <DocOutlinePanel documentId={activeDocId!} contentHtml={editorContent} />}
+              {rightPanel === 'qa'        && <DocQAPanel documentId={activeDocId!} onJumpToDoc={(id) => setActiveDocId(id)} />}
               {rightPanel === 'comments'  && <DocCommentsPanel documentId={activeDocId!} />}
               {rightPanel === 'versions'  && <DocVersionsPanel documentId={activeDocId!} onRestore={() => setActiveDocId(activeDocId)} />}
               {rightPanel === 'backlinks' && <DocBacklinksPanel documentId={activeDocId!} />}
@@ -360,6 +427,18 @@ export default function DocsLensPage() {
           setActiveDocId(id);
         }}
       />
+
+      <DocAICommandMenu
+        open={aiMenuOpen}
+        onClose={() => setAiMenuOpen(false)}
+        documentId={activeDocId}
+        selection={selectionText}
+        cursorContext={cursorContext}
+        onInsert={insertAtCursor}
+        onReplaceSelection={replaceSelection}
+      />
+
+      <DocSkillsManager open={skillsOpen} onClose={() => setSkillsOpen(false)} />
     </LensShell>
   );
 }

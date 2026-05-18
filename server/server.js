@@ -10176,14 +10176,16 @@ async function runMacro(domain, name, input, ctx) {
     ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
-    // Docs Sprint A — read-only document macros (writes go through
+    // Docs Sprint A+B — read-only document macros (writes go through
     // authenticated path). get_by_slug is public for published docs;
     // all others self-scope via ctx.actor.userId and gate by role.
+    // Sprint B adds skill_list/get + ai_runs_recent for the read paths.
     docs: new Set([
       "get", "get_by_slug", "list", "list_collaborated", "list_children",
       "versions", "get_version", "comments_list", "collaborators",
       "backlinks_in", "backlinks_out", "attachments_list", "search",
       "export_md", "export_html", "presence_list", "outline", "readability",
+      "skill_list", "skill_get", "ai_runs_recent",
     ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
@@ -24012,6 +24014,16 @@ registerMessagingAdaptersMacros(register);
 // presence, outline, and the legacy readability scorer.
 import registerDocsMacros from "./domains/docs.js";
 registerDocsMacros(register);
+
+// Docs lens Sprint B — AI surface (migration 212).
+// ai_compose / ai_inline_edit / ai_continue / ai_qa /
+// ai_match_style / ai_match_format / voice_transcribe / ai_image
+// + Custom AI Skills (skill_create/update/delete/list/get/run +
+// ai_runs_recent provenance trail).
+import registerDocsAiMacros from "./domains/docs-ai.js";
+registerDocsAiMacros(register);
+import registerDocsSkillsMacros from "./domains/docs-skills.js";
+registerDocsSkillsMacros(register);
 try {
   registerHeartbeat("messaging-agent-tick", {
     frequency: 4, // ~1 min
