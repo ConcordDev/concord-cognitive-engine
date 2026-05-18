@@ -23750,6 +23750,13 @@ registerStudioMasteringMacros(register);
 import registerStudioChordMacros from "./domains/studio-chord.js";
 registerStudioChordMacros(register);
 
+// Studio Sprint A — LLM-backed MIDI generators (Ableton Live 12 parity).
+// Three brain-backed macros (melody / chord progression / rhythm),
+// constrained-output JSON contract, deterministic fallback per kind,
+// each generation minted as kind='midi_generation' DTU.
+import registerStudioMidiMacros from "./domains/studio-midi.js";
+registerStudioMidiMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.

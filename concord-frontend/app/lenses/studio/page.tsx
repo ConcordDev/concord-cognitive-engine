@@ -114,6 +114,7 @@ import { MasteringPanel } from '@/components/studio/MasteringPanel';
 import { Soundboard } from '@/components/studio/Soundboard';
 import StudioWorkbench from '@/components/studio/StudioWorkbench';
 import ChordStampTool from '@/components/studio/ChordStampTool';
+import MidiGenerator from '@/components/studio/MidiGenerator';
 
 // ============================================================================
 // Constants & Defaults
@@ -476,6 +477,7 @@ export default function StudioLensPage() {
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
   const [showChordStamp, setShowChordStamp] = useState(false);
+  const [showMidiGenerator, setShowMidiGenerator] = useState(false);
 
   // Keep refs in sync for use in intervals / event handlers
   useEffect(() => {
@@ -1380,6 +1382,13 @@ export default function StudioLensPage() {
         setShowChordStamp(true);
         return;
       }
+      // Sprint A #6 — "Generate Drums" / "Sound Design" routes to the
+      // MIDI Generator drawer (brain-backed, mints kind='midi_generation'
+      // DTUs).
+      if (action === 'generate-drums' || action === 'sound-design') {
+        setShowMidiGenerator(true);
+        return;
+      }
       setAiLoading(action);
       setAiResult(null);
       try {
@@ -2271,6 +2280,38 @@ export default function StudioLensPage() {
                 onMinted={(_dtuId, title) => {
                   showToast('success', `Minted "${title}" as a chord progression DTU`);
                   setShowChordStamp(false);
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MIDI Generator drawer (Sprint A #6) */}
+      <AnimatePresence>
+        {showMidiGenerator && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 flex items-stretch justify-end"
+            onClick={() => setShowMidiGenerator(false)}
+          >
+            <motion.div
+              initial={{ x: 600 }}
+              animate={{ x: 0 }}
+              exit={{ x: 600 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 32 }}
+              className="w-full max-w-xl bg-black border-l border-white/10 flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <MidiGenerator
+                initialKey={project.key}
+                initialBpm={project.bpm}
+                onCancel={() => setShowMidiGenerator(false)}
+                onPasteIntoPianoRoll={(notes) => {
+                  showToast('success', `Generated ${notes.length} notes — paste into Piano Roll`);
+                  // Future: wire to actual selectedTrack clip's midiNotes array.
                 }}
               />
             </motion.div>
