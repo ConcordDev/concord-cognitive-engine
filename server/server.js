@@ -10407,6 +10407,16 @@ async function runMacro(domain, name, input, ctx) {
       "audit_trail_list",
       "audit_trail_verify",
     ]),
+    // Music lens Sprint A — read-only macros (public artist/album/
+    // track/playlist gets + lists). recordListen is destructive so
+    // NOT on this list.
+    music: new Set([
+      "artist_get", "artist_list", "artist_stats",
+      "album_get", "album_list",
+      "track_get", "track_list",
+      "playlist_get", "playlist_list",
+      "likes_mine",
+    ]),
     // Smoking-gun cleanup I9 — read paths for write-only audit tables
     "land-claims": new Set(["history"]),
     "npc-economy": new Set(["skill_acquisitions"]),
@@ -24496,6 +24506,14 @@ registerAccountingAiMacros(register);
 // audit-trail DTUs with SHA-256 hash chain for tamper detection.
 import registerAccountingMoatsMacros from "./domains/accounting-moats.js";
 registerAccountingMoatsMacros(register);
+
+// Music lens rebuild Sprint A — durable creator-economy substrate
+// (migration 237). Artists / albums / tracks / playlists / listens /
+// likes / follows backed by proper tables instead of in-memory state.
+// Sits alongside the legacy registerLensAction macros in
+// server/domains/music.js (audio analysis: bpm, key, chord, render).
+import registerMusicRebuildMacros from "./domains/music-rebuild.js";
+registerMusicRebuildMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,
