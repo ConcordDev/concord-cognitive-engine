@@ -23924,6 +23924,17 @@ import registerWhiteboardAgentMacros from "./domains/whiteboard-agent.js";
 registerWhiteboardAgentMacros(register);
 import registerWhiteboardVoiceMacros from "./domains/whiteboard-voice.js";
 registerWhiteboardVoiceMacros(register);
+
+// Whiteboard lens Sprint C — template marketplace, audio huddles
+// (reuses migration 200 audio_rooms substrate), cross-lens DTU embed.
+// Embed iframe + SVG snapshot routes are mounted alongside the
+// upload-image route above.
+import registerWhiteboardTemplateMacros from "./domains/whiteboard-templates.js";
+registerWhiteboardTemplateMacros(register);
+import registerWhiteboardHuddleMacros from "./domains/whiteboard-huddle.js";
+registerWhiteboardHuddleMacros(register);
+import registerWhiteboardCiteDtuMacros from "./domains/whiteboard-cite-dtu.js";
+registerWhiteboardCiteDtuMacros(register);
 try {
   registerHeartbeat("whiteboard-agent-tick", {
     frequency: 4,
@@ -47762,6 +47773,63 @@ app.get("/api/whiteboard/image/:id", asyncHandler(async (req, res) => {
   res.setHeader("content-type", row.mime || "image/png");
   res.setHeader("cache-control", "private, max-age=3600");
   res.send(fsmod.readFileSync(file));
+}));
+
+// Whiteboard Sprint C Item #17 — embed routes. Live SVG snapshot of a
+// PUBLISHED (kind='whiteboard_board') or PUBLIC-KIND board. ETag-cached
+// per updated_at so Notion/Slack/etc. embeds refresh on change without
+// hammering the server.
+app.get("/api/whiteboard/embed/:boardId.svg", asyncHandler(async (req, res) => {
+  const boardId = String(req.params.boardId || "");
+  if (!boardId) return res.status(400).json({ ok: false, reason: "boardId_required" });
+  const db = STATE?.db;
+  if (!db) return res.status(500).json({ ok: false, reason: "no_db" });
+  const row = db.prepare(`SELECT id, kind, updated_at, scene_json FROM whiteboard_boards WHERE id = ?`).get(boardId);
+  if (!row) return res.status(404).json({ ok: false, reason: "not_found" });
+  // Public embed: only published boards.
+  if (row.kind !== "published" && row.kind !== "template") {
+    return res.status(403).json({ ok: false, reason: "board_not_public", hint: "Run export_as_dtu with scope:'public' first" });
+  }
+  const etag = `"wb-${boardId}-${row.updated_at}"`;
+  if (req.headers["if-none-match"] === etag) return res.status(304).end();
+  const { renderSceneToSvg } = await import("./domains/whiteboard-mint.js");
+  let scene = { elements: [] };
+  try { scene = JSON.parse(row.scene_json || "{}"); } catch { /* fallback empty */ }
+  const svg = renderSceneToSvg(scene);
+  res.setHeader("content-type", "image/svg+xml");
+  res.setHeader("etag", etag);
+  res.setHeader("cache-control", "public, max-age=60, stale-while-revalidate=600");
+  res.send(svg);
+}));
+
+app.get("/api/whiteboard/embed/:boardId/iframe", asyncHandler(async (req, res) => {
+  const boardId = String(req.params.boardId || "");
+  if (!boardId) return res.status(400).json({ ok: false, reason: "boardId_required" });
+  const db = STATE?.db;
+  if (!db) return res.status(500).json({ ok: false, reason: "no_db" });
+  const row = db.prepare(`SELECT id, kind, title FROM whiteboard_boards WHERE id = ?`).get(boardId);
+  if (!row) return res.status(404).send("Not found");
+  if (row.kind !== "published" && row.kind !== "template") {
+    return res.status(403).send("Board not public");
+  }
+  const safeTitle = String(row.title || boardId).replace(/[<>"&']/g, (c) => ({ "<": "&lt;", ">": "&gt;", '"': "&quot;", "&": "&amp;", "'": "&#39;" }[c]));
+  // Minimal iframe-ready HTML: SVG embed + small footer with permalink.
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/><title>${safeTitle} — Concord whiteboard</title>
+<style>
+  body { margin: 0; background: #0a0a0a; color: #9ca3af; font-family: system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+  .frame { flex: 1; display: flex; align-items: center; justify-content: center; padding: 8px; }
+  .frame img { max-width: 100%; max-height: 100%; }
+  footer { padding: 6px 12px; font-size: 11px; border-top: 1px solid #1f1f1f; display: flex; align-items: center; gap: 8px; }
+  a { color: #9ca3af; text-decoration: none; }
+  a:hover { color: #fff; }
+</style></head><body>
+<div class="frame"><img src="/api/whiteboard/embed/${encodeURIComponent(boardId)}.svg" alt="${safeTitle}"/></div>
+<footer><span>${safeTitle}</span><span style="margin-left:auto">Live snapshot · refreshes on change · <a href="/lenses/whiteboard?board=${encodeURIComponent(boardId)}" target="_blank">Open in Concord</a></span></footer>
+</body></html>`;
+  res.setHeader("content-type", "text/html; charset=utf-8");
+  res.setHeader("cache-control", "public, max-age=60");
+  res.send(html);
 }));
 
 app.get("/api/digest", asyncHandler(async (req, res) => {
