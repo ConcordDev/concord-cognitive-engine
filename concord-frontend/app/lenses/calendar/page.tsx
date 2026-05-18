@@ -26,6 +26,7 @@ import { callCalendarMacro, type Calendar, type CalendarEvent } from '@/lib/api/
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import { CalendarEventDetail } from '@/components/calendar/CalendarEventDetail';
 import { CalendarEventCreate } from '@/components/calendar/CalendarEventCreate';
+import { CalendarAIMenu } from '@/components/calendar/CalendarAIMenu';
 import {
   Plus, Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon,
   ListIcon, Layout, LayoutGrid, Clock as ClockIcon, Settings, Sparkles,
@@ -43,7 +44,20 @@ export default function CalendarLensPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createOnDate, setCreateOnDate] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<'detail' | 'schedule' | 'timezone'>('detail');
+  const [aiMenuOpen, setAiMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Cmd-K opens AI menu
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setAiMenuOpen(true);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   // ─── Load calendars on mount ────────────────────────────────────
   const refreshCalendars = useCallback(async () => {
@@ -189,6 +203,13 @@ export default function CalendarLensPage() {
               <ViewBtn icon={<ListIcon className="w-3.5 h-3.5" />} active={view === 'day'} onClick={() => setView('day')} />
             </div>
             <button
+              onClick={() => setAiMenuOpen(true)}
+              className="p-1.5 rounded hover:bg-white/10 text-cyan-300/80 hover:text-cyan-300"
+              title="AI actions (⌘K)"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => { setCreateOnDate(null); setCreateOpen(true); }}
               className="px-2 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 text-xs font-medium flex items-center gap-1"
             >
@@ -236,6 +257,13 @@ export default function CalendarLensPage() {
         calendars={calendars}
         defaultDate={createOnDate}
         onCreated={() => { setCreateOpen(false); refreshEvents(); }}
+      />
+
+      <CalendarAIMenu
+        open={aiMenuOpen}
+        onClose={() => setAiMenuOpen(false)}
+        activeEvent={activeEvent}
+        onRefresh={refreshEvents}
       />
     </LensShell>
   );

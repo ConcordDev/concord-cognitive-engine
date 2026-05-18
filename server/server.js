@@ -10232,8 +10232,9 @@ async function runMacro(domain, name, input, ctx) {
       "project_template_list",
       "roadmap",
     ]),
-    // Calendar Sprint A — read-only macros. All others auth-gated +
+    // Calendar Sprint A+B — read-only macros. All others auth-gated +
     // owner-scoped. expand_recurring + parse_rrule are pure compute.
+    // ai_parse_event has a deterministic fallback path even without LLM.
     calendar: new Set([
       "calendar_list", "calendar_get",
       "event_get", "event_list",
@@ -10241,6 +10242,8 @@ async function runMacro(domain, name, input, ctx) {
       "ical_export",
       "detect_conflicts", "find_availability",
       "expand_recurring", "parse_rrule",
+      "ai_parse_event", "ai_daily_ritual", "ai_chat",
+      "semantic_search", "focus_block_list", "settings_get", "ai_runs_recent",
     ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
@@ -24141,6 +24144,14 @@ registerTasksMoatsMacros(register);
 // helpers (conflict detection + availability slots).
 import registerCalendarMacros from "./domains/calendar.js";
 registerCalendarMacros(register);
+
+// Calendar lens Sprint B — AI surface (migration 218).
+// Motion-style ai_auto_schedule + nat-lang ai_parse_event + meeting
+// prep + Sunsama-style daily ritual + meeting notes + voice→event +
+// Aki-style ai_chat + semantic_search + focus block CRUD + auto-
+// schedule settings + ai_runs_recent provenance trail.
+import registerCalendarAiMacros from "./domains/calendar-ai.js";
+registerCalendarAiMacros(register);
 try {
   registerHeartbeat("messaging-agent-tick", {
     frequency: 4, // ~1 min
