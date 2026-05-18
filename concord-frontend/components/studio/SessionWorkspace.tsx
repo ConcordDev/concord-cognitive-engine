@@ -73,6 +73,9 @@ function buildSessionModel(project: DAWProject) {
   const clips: Record<string, {
     trackId: string;
     sceneId: string;
+    /** Real DAWClip.id — needed so the studio-page session dispatcher
+     *  can resolve scene-grid launches back to the underlying clip. */
+    realClipId: string;
     assetId?: string;
     label?: string;
     hasContent: boolean;
@@ -85,6 +88,7 @@ function buildSessionModel(project: DAWProject) {
       clips[`${t.id}:${sceneId}`] = {
         trackId: t.id,
         sceneId,
+        realClipId: c.id,
         assetId: c.audioBufferId || c.id,
         label: c.name,
         hasContent: true,
@@ -121,13 +125,20 @@ export default function SessionWorkspace({
 
   // Subscribe to engine-driven clip events. The engine flips queued →
   // playing exactly at the next-bar boundary; we mirror that into the
-  // local state the grid renders against.
+  // local state the grid renders against. The engine emits with the
+  // real DAWClip.id; we map back to the scene-grid key so the UI
+  // highlights the right cell.
   useEffect(() => {
     if (!transport) return;
+    const sceneKeyFor = (trackId: string, realClipId: string): string | null => {
+      for (const [k, c] of Object.entries(clips)) {
+        if (c.trackId === trackId && c.realClipId === realClipId) return k;
+      }
+      return null;
+    };
     const offLaunched = transport.on('clipLaunched', (data) => {
-      const trackId = String(data.trackId);
-      const clipId = String(data.clipId);
-      const key = `${trackId}:${clipId}`;
+      const key = sceneKeyFor(String(data.trackId), String(data.clipId));
+      if (!key) return;
       setPlayingClipKey(key);
       setQueuedClipKeys(prev => {
         if (!prev.has(key)) return prev;
@@ -137,7 +148,8 @@ export default function SessionWorkspace({
       });
     });
     const offQueued = transport.on('clipQueued', (data) => {
-      const key = `${String(data.trackId)}:${String(data.clipId)}`;
+      const key = sceneKeyFor(String(data.trackId), String(data.clipId));
+      if (!key) return;
       setQueuedClipKeys(prev => {
         if (prev.has(key)) return prev;
         const next = new Set(prev);
@@ -150,7 +162,7 @@ export default function SessionWorkspace({
       setQueuedClipKeys(new Set());
     });
     return () => { offLaunched(); offQueued(); offAllStopped(); };
-  }, [transport]);
+  }, [transport, clips]);
 
   const handleLaunchClip = (clip: { trackId: string; sceneId: string }) => {
     const key = `${clip.trackId}:${clip.sceneId}`;
@@ -159,7 +171,10 @@ export default function SessionWorkspace({
 
     if (transport) {
       // Real audio path — engine handles quantization + state flip.
-      transport.launchClip(clip.trackId, clip.sceneId, launchQuantization);
+      // Pass the real DAWClip.id so the dispatcher can resolve it
+      // back to track.clips[].midiNotes for audio playback.
+      const realClipId = clips[key]?.realClipId || clip.sceneId;
+      transport.launchClip(clip.trackId, realClipId, launchQuantization);
       return;
     }
 
@@ -185,8 +200,9 @@ export default function SessionWorkspace({
 
     if (transport) {
       for (const key of sceneClipKeys) {
-        const [trackId, clipId] = key.split(':');
-        transport.launchClip(trackId, clipId, launchQuantization);
+        const c = clips[key];
+        if (!c) continue;
+        transport.launchClip(c.trackId, c.realClipId, launchQuantization);
       }
       return;
     }

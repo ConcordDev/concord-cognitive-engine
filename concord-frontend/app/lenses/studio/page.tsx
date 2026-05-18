@@ -432,6 +432,11 @@ export default function StudioLensPage() {
   const drumEngineRef = useRef<DrumMachineEngine | null>(null);
   const synthEnginesRef = useRef<Map<string, SynthEngine>>(new Map());
   const recorderRef = useRef<AudioRecorder | null>(null);
+  // Sprint A #5 — clips currently firing through the Session view,
+  // keyed by `${trackId}:${clipId}` → the transport beat at which the
+  // clip started. Used by the MIDI dispatcher to walk session-launched
+  // clips relative to their own launch beat.
+  const launchedClipsRef = useRef<Map<string, number>>(new Map());
 
   // DTU events
   const [dtuEvents, setDtuEvents] = useState<DTUEvent[]>([]);
@@ -541,6 +546,8 @@ export default function StudioLensPage() {
       // ---- MIDI note playback ----
       const proj = projectRef.current;
       if (proj && transportStateRef.current === 'playing') {
+        // Arrangement-view dispatch: trigger notes when transport beat
+        // crosses (clip.startBeat + note.startBeat).
         for (const track of proj.tracks) {
           if (track.type !== 'midi') continue;
           for (const clip of track.clips) {
@@ -565,8 +572,70 @@ export default function StudioLensPage() {
             }
           }
         }
+        // Session-view dispatch: parallel pass over clips fired via the
+        // Session grid (TransportEngine.launchClip). Uses each clip's
+        // launchBeat as the local-zero so clips fired mid-song still
+        // start from their own beat 0. Auto-stops at clip end unless
+        // the clip is looped. (Sprint A #5 follow-on.)
+        const launched = launchedClipsRef.current;
+        if (launched.size > 0) {
+          for (const [key, launchBeat] of launched) {
+            const [trackId, clipId] = key.split(':');
+            const track = proj.tracks.find(t => t.id === trackId);
+            const clip = track?.clips.find(c => c.id === clipId);
+            if (!track || !clip || track.type !== 'midi' || !clip.midiNotes) {
+              launched.delete(key);
+              continue;
+            }
+            const local = beat - launchBeat;
+            const len = clip.lengthBeats || 4;
+            if (local < 0) continue;
+            if (local >= len) {
+              if (clip.looped) {
+                // Re-anchor for the next loop pass.
+                launched.set(key, launchBeat + (clip.loopLength || len));
+              } else {
+                launched.delete(key);
+                transportRef.current?.stopClip(trackId, clipId);
+              }
+              continue;
+            }
+            for (const note of clip.midiNotes) {
+              if (Math.abs(note.startBeat - local) < 0.125) {
+                let synth = synthEnginesRef.current.get(track.id);
+                if (!synth) {
+                  synth = new SynthEngine(DEFAULT_SYNTH_PRESETS[0]);
+                  const mixerInput = mixerRef.current?.getChannelInput(track.id);
+                  if (mixerInput) synth.connect(mixerInput);
+                  synthEnginesRef.current.set(track.id, synth);
+                }
+                synth.noteOn(note.pitch, note.velocity);
+                const durationSec = note.lengthBeats / (proj.bpm / 60);
+                setTimeout(() => synth!.noteOff(note.pitch), durationSec * 1000);
+              }
+            }
+          }
+        }
       }
     });
+
+    // Subscribe to TransportEngine's session-clip events so we know
+    // which clips are firing + at what transport beat they started.
+    const unsubLaunched = transportRef.current.on('clipLaunched', (data) => {
+      const trackId = String(data.trackId);
+      const clipId = String(data.clipId);
+      const beat = typeof data.beat === 'number' ? data.beat : 0;
+      launchedClipsRef.current.set(`${trackId}:${clipId}`, beat);
+    });
+    const unsubStopped = transportRef.current.on('clipStopped', (data) => {
+      const trackId = String(data.trackId);
+      const clipId = String(data.clipId);
+      launchedClipsRef.current.delete(`${trackId}:${clipId}`);
+    });
+    const unsubAllStopped = transportRef.current.on('allClipsStopped', () => {
+      launchedClipsRef.current.clear();
+    });
+    void unsubLaunched; void unsubStopped; void unsubAllStopped;
 
     const unsubDTU = dtuHooks.subscribe((event) => {
       setDtuEvents((prev) => [...prev.slice(-200), event]);
