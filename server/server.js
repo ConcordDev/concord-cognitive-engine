@@ -23824,6 +23824,27 @@ registerCodeGitMacros(register);
 import registerCodeEngineMacros from "./domains/code-engine.js";
 registerCodeEngineMacros(register);
 
+// Code lens Sprint B — Item #6: edit → test → fix → retry agent loop.
+// Real plan / apply / run-tests round-trip. Each iteration mints a
+// kind='code_agent_step' DTU; the full session mints kind=
+// 'code_agent_session' citing all step DTUs.
+import registerCodeAgentMacros from "./domains/code-agent.js";
+registerCodeAgentMacros(register);
+
+// Code lens Sprint B — Item #8: AGENTS.md substrate + project memory.
+// Real DB-backed memory table (migration 206) with publish-as-DTU
+// and AGENTS.md disk round-trip (read + write). Secret-scan rejects
+// publish if API keys / tokens / private keys are detected.
+import registerCodeMemoryMacros from "./domains/code-memory.js";
+registerCodeMemoryMacros(register);
+
+// Code lens Sprint B — Item #9: slash command parser + custom skills.
+// Built-ins dispatch to real macros (test, commit, branch, diff,
+// status, log, memory, loop, spec, index, search). Custom skills
+// stored as kind='code_skill' DTUs.
+import registerCodeSlashMacros from "./domains/code-slash.js";
+registerCodeSlashMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.

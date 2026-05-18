@@ -504,6 +504,17 @@ export default function registerCodeActions(registerLensAction) {
     const prompt = String(params.prompt || "").trim();
     const files = Array.isArray(params.files) ? params.files : [];
     const maxEdits = Math.min(Math.max(Number(params.maxEdits) || 6, 1), 12);
+    // Code Sprint B #7 — Architect + Editor split (Aider parity).
+    // architectBrain plans abstract changes ("what changes and why");
+    // editorBrain materialises per-file `after` content. Saves token
+    // cost (cheaper editor model) AND reduces error rate (architect
+    // is constrained to higher-level reasoning).
+    const architectBrain = String(params.architectBrain || "conscious");
+    const editorBrain = String(params.editorBrain || params.architectBrain || "conscious");
+    const useSplit = params.architectBrain && params.editorBrain && architectBrain !== editorBrain;
+    // Sprint B #8 — when the caller passes systemContext (active
+    // project memory bundle), prepend it to the architect prompt.
+    const systemContext = String(params.systemContext || "").trim();
 
     if (!prompt) return { ok: false, error: "prompt required" };
     if (files.length === 0) return { ok: false, error: "no files provided as context" };
@@ -517,7 +528,7 @@ export default function registerCodeActions(registerLensAction) {
       content: String(f.content || "").slice(0, 8000),
     }));
 
-    const sys = `You are a senior software engineer producing a multi-file edit plan.
+    const editorSchemaSys = `You are a senior software engineer producing a multi-file edit plan.
 RESPOND ONLY WITH A JSON OBJECT — no prose before or after.
 Schema:
 {
@@ -543,18 +554,47 @@ Rules:
       `## ${f.filename} (${f.language}, idx=${f.idx})\n\`\`\`${f.language}\n${f.content}\n\`\`\``
     ).join("\n\n");
 
-    const userMsg = `Files in the workspace:\n\n${manifestPrompt}\n\n---\n\nInstruction: ${prompt}\n\nReturn ONLY the JSON object.`;
+    // Architect pass — only when split is requested. Produces a short
+    // abstract plan that the editor then turns into file edits.
+    let architectPlan = null;
+    if (useSplit) {
+      const architectSys = `You are a senior software architect.
+Produce a TERSE plan for the following multi-file change. Format:
+- 1-3 bullet "intent" lines (what changes and why)
+- a "files" list: for each file you intend to touch, one line
+  with filename + one-sentence intent. Touch at most ${maxEdits} files.
+
+DO NOT output code. DO NOT output JSON. Output plain text.`;
+      const architectUser = (systemContext ? `${systemContext}\n\n---\n\n` : "") +
+        `Files in the workspace:\n\n${manifestPrompt}\n\n---\n\nInstruction: ${prompt}`;
+      try {
+        const aRes = await withTimeout(ctx.llm.chat({
+          messages: [{ role: "system", content: architectSys }, { role: "user", content: architectUser }],
+          temperature: 0.2, maxTokens: 800, slot: architectBrain,
+        }), MULTI_FILE_PLAN_TIMEOUT_MS);
+        architectPlan = String(aRes?.text || aRes?.content || aRes?.message?.content || "").trim();
+      } catch (e) {
+        // Architect failure → fall through to single-pass with editor brain.
+        architectPlan = null;
+      }
+    }
+
+    const editorUserBase = (systemContext ? `${systemContext}\n\n---\n\n` : "") +
+      `Files in the workspace:\n\n${manifestPrompt}\n\n---\n\nInstruction: ${prompt}`;
+    const editorUser = architectPlan
+      ? `${editorUserBase}\n\n---\n\nArchitect plan to follow:\n${architectPlan}\n\nReturn ONLY the JSON object.`
+      : `${editorUserBase}\n\nReturn ONLY the JSON object.`;
 
     let raw = "";
     try {
       const llmRes = await withTimeout(ctx.llm.chat({
         messages: [
-          { role: "system", content: sys },
-          { role: "user", content: userMsg },
+          { role: "system", content: editorSchemaSys },
+          { role: "user", content: editorUser },
         ],
         temperature: 0.1,
         maxTokens: 4096,
-        slot: "conscious",
+        slot: editorBrain,
       }), MULTI_FILE_PLAN_TIMEOUT_MS);
       raw = String(llmRes?.text || llmRes?.content || llmRes?.message?.content || "");
     } catch (e) {
@@ -563,7 +603,7 @@ Rules:
 
     const parsed = extractJsonObject(raw);
     if (!parsed || !Array.isArray(parsed.edits)) {
-      return { ok: false, error: "could not parse plan", raw: raw.slice(0, 500) };
+      return { ok: false, error: "could not parse plan", raw: raw.slice(0, 500), architectPlan };
     }
 
     const validatedEdits = [];
@@ -586,7 +626,15 @@ Rules:
       if (validatedEdits.length >= maxEdits) break;
     }
 
-    return { ok: true, result: { edits: validatedEdits, prompt, totalFiles: files.length, planned: parsed.edits.length, accepted: validatedEdits.length } };
+    return {
+      ok: true,
+      result: {
+        edits: validatedEdits, prompt, totalFiles: files.length,
+        planned: parsed.edits.length, accepted: validatedEdits.length,
+        brain: { architect: useSplit ? architectBrain : null, editor: editorBrain, split: useSplit },
+        architectPlan,
+      },
+    };
   });
 
   /**

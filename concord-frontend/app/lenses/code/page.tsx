@@ -32,6 +32,7 @@ import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
 import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
 import { SourceControlPanel } from '@/components/code/SourceControlPanel';
 import { RepoIndexPanel } from '@/components/code/RepoIndexPanel';
+import { ProjectMemoryPanel } from '@/components/code/ProjectMemoryPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Files as MTabFiles, Search as MTabSearch, GitBranch as MTabSC,
@@ -1110,6 +1111,39 @@ export default function CodeLensPage() {
     const ac = new AbortController();
     aiChatAbortRef.current = ac;
     setAiChatPending(true);
+
+    // Sprint B #9 — slash commands. Intercept `/cmd args` lines and
+    // route them through code.slash_dispatch instead of the LLM
+    // chat path. Real macro dispatch; the response surfaces as an
+    // assistant message with the parsed envelope.
+    if (text.startsWith('/')) {
+      try {
+        const projectPath = typeof window !== 'undefined'
+          ? window.localStorage.getItem('concord:code:repoPath') || '.'
+          : '.';
+        const openFiles = tabs.map((t) => ({
+          scriptId: t.id, filename: t.name, language: t.language, content: t.content,
+        }));
+        const changedFiles = tabs.filter((t) => t.isDirty).map((t) => t.name);
+        const res = await api.post('/api/lens/run', {
+          domain: 'code', action: 'slash_dispatch',
+          input: { line: text, dispatchCtx: { projectPath, openFiles, changedFiles, defaultRunner: 'npm' } },
+        });
+        const result = res.data?.result || res.data;
+        const reply = result?.ok
+          ? `\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\``
+          : `Slash error: ${result?.reason || 'unknown'}${result?.name ? ` (${result.name})` : ''}`;
+        const assistantMsg: ChatMsg = { role: 'assistant', content: reply, ts: Date.now() };
+        setAiChatHistory([...next, assistantMsg]);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'slash dispatch failed';
+        setAiChatHistory([...next, { role: 'assistant', content: `Slash error: ${msg}`, ts: Date.now() }]);
+      } finally {
+        setAiChatPending(false);
+      }
+      return;
+    }
+
     try {
       const lang = activeTab.language || 'javascript';
       const sys = `You are a senior ${lang} engineer pair-programming with the user. When you propose code, wrap it in \`\`\`${lang} fences. Be concise and direct.`;
@@ -1750,6 +1784,15 @@ export default function CodeLensPage() {
                   />
                 )}
                 {activity === 'repoIndex' && <RepoIndexPanel />}
+                {activity === 'memory' && (
+                  <ProjectMemoryPanel
+                    projectPath={
+                      typeof window !== 'undefined'
+                        ? window.localStorage.getItem('concord:code:repoPath') || '.'
+                        : '.'
+                    }
+                  />
+                )}
                 {activity === 'search' && (
                   <div className="p-4 text-xs text-gray-400 space-y-2">
                     <p>Use ⌘⇧F to open project search modal.</p>
