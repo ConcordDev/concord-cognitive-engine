@@ -23984,6 +23984,32 @@ try {
 } catch (err) {
   console.warn("messaging-scheduler-tick registration failed:", err?.message);
 }
+
+// Message lens Sprint C — huddles, DTU cite, channel agents, adapters.
+import registerMessagingHuddleMacros from "./domains/messaging-huddle.js";
+registerMessagingHuddleMacros(register);
+import registerMessagingCiteMacros from "./domains/messaging-cite.js";
+registerMessagingCiteMacros(register);
+import registerMessagingAgentMacros from "./domains/messaging-agent.js";
+registerMessagingAgentMacros(register);
+import registerMessagingAdaptersMacros from "./domains/messaging-adapters.js";
+registerMessagingAdaptersMacros(register);
+try {
+  registerHeartbeat("messaging-agent-tick", {
+    frequency: 4, // ~1 min
+    handler: async (state) => {
+      try {
+        const db = state?.db;
+        if (!db) return { ok: false, reason: "no_db" };
+        return await runMacro("messaging", "agent_tick", {}, { db, STATE: state });
+      } catch (err) {
+        return { ok: false, reason: "tick_error", error: err?.message };
+      }
+    },
+  });
+} catch (err) {
+  console.warn("messaging-agent-tick registration failed:", err?.message);
+}
 try {
   registerHeartbeat("whiteboard-agent-tick", {
     frequency: 4,
@@ -47901,6 +47927,58 @@ app.post("/api/messages/upload-attachment", express.raw({ type: ["image/*", "aud
     ok: true, id, dtuId, kind: "message_attachment",
     url: `/api/messages/attachment/${id}`,
     bytes: buf.length, mime,
+  });
+}));
+
+// Message lens Sprint C #21 — voice note upload. Persists alongside
+// attachments + mints kind='voice_message' DTU. Frontend reuses the
+// VoiceDictateButton component (code lens Sprint C, whiteboard Sprint B).
+app.post("/api/messages/upload-voice-note", express.raw({ type: "audio/*", limit: "25mb" }), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, reason: "auth_required" });
+  const buf = req.body;
+  if (!buf || !buf.length) return res.status(400).json({ ok: false, reason: "empty_body" });
+  const mime = String(req.get("content-type") || "audio/webm");
+  const ext = (() => {
+    const m = mime.match(/^audio\/([a-zA-Z0-9._+-]+)/);
+    if (!m) return "webm";
+    return m[1].split(";")[0].split("+")[0].replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "webm";
+  })();
+  const conversationId = req.query.conversation_id ? String(req.query.conversation_id).slice(0, 200) : null;
+  const durationSec = parseFloat(String(req.query.duration_sec || "0")) || 0;
+  const fsmod = await import("node:fs");
+  const pathmod = await import("node:path");
+  const cryptomod = await import("node:crypto");
+  const dir = pathmod.resolve("./data/message-attachments");
+  try { fsmod.mkdirSync(dir, { recursive: true }); } catch { /* dir exists */ }
+  const id = `mat_${cryptomod.randomUUID()}`;
+  const fileName = `${id}.${ext}`;
+  const file = pathmod.join(dir, fileName);
+  try { fsmod.writeFileSync(file, buf); }
+  catch (err) { return res.status(500).json({ ok: false, reason: "write_failed", error: err?.message }); }
+  const db = STATE?.db;
+  let dtuId = null;
+  if (db) {
+    dtuId = `voice_message:${cryptomod.randomUUID()}`;
+    try {
+      db.prepare(`
+        INSERT INTO dtus (id, kind, title, creator_id, meta_json, created_at)
+        VALUES (?, 'voice_message', ?, ?, ?, unixepoch())
+      `).run(dtuId, `Voice note (${durationSec.toFixed(1)}s, ${(buf.length / 1024).toFixed(1)} KB)`, userId, JSON.stringify({
+        type: "voice_message", path: file, mime, bytes: buf.length, duration_sec: durationSec, conversation_id: conversationId,
+      }));
+      db.prepare(`
+        INSERT INTO message_attachments (id, owner_id, conversation_id, path, mime, bytes, dtu_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
+      `).run(id, userId, conversationId, fileName, mime, buf.length, dtuId);
+    } catch (err) {
+      return res.status(500).json({ ok: false, reason: "db_insert_failed", error: err?.message });
+    }
+  }
+  res.json({
+    ok: true, id, dtuId, kind: "voice_message",
+    url: `/api/messages/attachment/${id}`,
+    bytes: buf.length, mime, durationSec,
   });
 }));
 
