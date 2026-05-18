@@ -5,6 +5,7 @@ import { Zap, Download, Save, Activity, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { emitMasteringProcessDTU, emitExportDTU } from '@/lib/daw/dtu-hooks';
 import { analyzeMastering, snapshotFromAnalysers, type MasteringAnalysisResult } from '@/lib/daw/mastering-analysis';
+import AudioLoggerPanel from './AudioLoggerPanel';
 import type { MasteringChain, MasteringAnalysis, ExportSettings, EffectInstance } from '@/lib/daw/types';
 
 interface MasteringPanelProps {
@@ -419,6 +420,10 @@ export function MasteringPanel({
           )}
         </div>
       )}
+
+      {/* Always-on Audio Logger (Sprint C #8) — captures master bus
+          into a local IndexedDB rolling buffer, opt-in + privacy-safe. */}
+      <AudioLoggerPanel masterAnalyser={masterAnalysers?.[0]} />
 
       {/* Spectrum */}
       {spectrumData && (
