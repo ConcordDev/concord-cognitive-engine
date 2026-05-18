@@ -1,495 +1,513 @@
 // server/domains/docs.js
-// Domain actions for documentation management: readability scoring,
-// cross-reference analysis, and semantic version diffing.
+//
+// Docs lens Sprint A — real document substrate (migration 211).
+//
+// Replaces the legacy registerLensAction-style readability-only
+// scaffold (never imported into server.js, 5/5 smoking-gun streak).
+// Now exposes ~30 macros covering CRUD, page tree, version history,
+// comments, collaborators, sharing, backlinks, attachments, search,
+// markdown import/export, presence, outline, plus the legacy
+// readability analyser preserved as `docs.readability`.
 
-export default function registerDocsActions(registerLensAction) {
-  /**
-   * readabilityScore
-   * Compute readability metrics: Flesch-Kincaid, Gunning Fog, Coleman-Liau,
-   * SMOG, plus a custom technical readability index.
-   * artifact.data.text = string (the document text)
-   */
-  registerLensAction("docs", "readabilityScore", (ctx, artifact, _params) => {
-    const text = artifact.data?.text || "";
-    if (text.length === 0) {
-      return { ok: true, result: { message: "No text provided." } };
+import { randomUUID } from "node:crypto";
+import {
+  createDocument, getDocument, getDocumentBySlug, updateDocument,
+  softDelete, restore, listForOwner, listForCollaborator, listChildren,
+  snapshotVersion, listVersions, getVersion, restoreVersion,
+  addComment, listComments, resolveComment,
+  hasRole, inviteCollaborator, revokeCollaborator, listCollaborators,
+  listOutgoingLinks, listIncomingLinks, listAttachments, searchUserDocs,
+} from "../lib/docs/persistence.js";
+import { htmlToMarkdown, markdownToHtml, extractOutline } from "../lib/docs/markdown.js";
+
+function _resolveDb(ctx) { return ctx?.db || ctx?.STATE?.db || globalThis._concordSTATE?.db || null; }
+function _actor(ctx) { return ctx?.actor?.userId || ctx?.userId || null; }
+function _emit(event, payload) {
+  try { globalThis._concordREALTIME?.io?.to(`doc:${payload.documentId}`).emit(event, payload); }
+  catch { /* best effort */ }
+}
+
+export default function registerDocsMacros(register) {
+
+  // ---------- CRUD ----------
+
+  register("docs", "create", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const r = createDocument(db, {
+      ownerId: userId,
+      title: input.title,
+      parentId: input.parentId || null,
+      worldId: input.worldId || null,
+      kind: input.kind || "doc",
+      visibility: input.visibility || "private",
+      icon: input.icon || null,
+      contentHtml: input.contentHtml || "",
+    });
+    if (r.ok) _emit("doc:created", { documentId: r.id, ownerId: userId });
+    return r;
+  }, { destructive: true, note: "Create a new document (auto-owner)" });
+
+  register("docs", "get", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db) return { ok: false, reason: "no_db" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    const doc = getDocument(db, id);
+    if (!doc) return { ok: false, reason: "not_found" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    return { ok: true, document: doc };
+  }, { note: "Get a single document by id" });
+
+  register("docs", "get_by_slug", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    if (!db) return { ok: false, reason: "no_db" };
+    const slug = String(input.slug || "");
+    if (!slug) return { ok: false, reason: "slug_required" };
+    const doc = getDocumentBySlug(db, slug);
+    if (!doc) return { ok: false, reason: "not_found" };
+    if (doc.visibility !== "public") {
+      const userId = _actor(ctx);
+      if (!hasRole(db, doc.id, userId, "viewer")) return { ok: false, reason: "forbidden" };
     }
+    return { ok: true, document: doc };
+  }, { note: "Get a published document by slug (public)" });
 
-    // Tokenization helpers
-    function countSyllables(word) {
-      word = word.toLowerCase().replace(/[^a-z]/g, "");
-      if (word.length <= 2) return 1;
-      // Remove trailing silent e
-      word = word.replace(/e$/, "");
-      const vowelGroups = word.match(/[aeiouy]+/g);
-      const count = vowelGroups ? vowelGroups.length : 1;
-      return Math.max(1, count);
-    }
-
-    // Split into sentences
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    const sentenceCount = Math.max(1, sentences.length);
-
-    // Split into words
-    const words = text.split(/\s+/).filter(w => w.replace(/[^a-z0-9]/gi, "").length > 0);
-    const wordCount = Math.max(1, words.length);
-
-    // Character count (letters only)
-    const charCount = text.replace(/[^a-z0-9]/gi, "").length;
-
-    // Syllable counts
-    const syllableCounts = words.map(w => countSyllables(w));
-    const totalSyllables = syllableCounts.reduce((s, c) => s + c, 0);
-    const polysyllabicWords = syllableCounts.filter(c => c >= 3).length;
-
-    // Complex words (3+ syllables, not proper nouns or compound hyphenated)
-    const complexWords = words.filter((w, i) => {
-      const syl = syllableCounts[i];
-      if (syl < 3) return false;
-      // Exclude common suffixes that inflate syllable count
-      const lower = w.toLowerCase();
-      if (lower.endsWith("ing") || lower.endsWith("ed") || lower.endsWith("es")) {
-        return syl >= 4;
+  register("docs", "update", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    if (!hasRole(db, id, userId, "editor")) return { ok: false, reason: "forbidden" };
+    const r = updateDocument(db, id, input);
+    if (r.ok) {
+      _emit("doc:updated", {
+        documentId: id, by: userId, ts: Date.now(),
+        title: r.row?.title, wordCount: r.row?.word_count,
+      });
+      if (input.contentHtml !== undefined && input.snapshot !== false) {
+        snapshotVersion(db, { documentId: id, authorId: userId, reason: "auto" });
       }
-      return true;
-    }).length;
+    }
+    return r;
+  }, { destructive: true, note: "Update title/content/icon/visibility/parent (editor+)" });
 
-    // Average calculations
+  register("docs", "delete", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    const r = softDelete(db, id, userId);
+    if (r.ok) _emit("doc:deleted", { documentId: id });
+    return r;
+  }, { destructive: true, note: "Soft-delete a document (owner/admin)" });
+
+  register("docs", "restore", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    return restore(db, String(input.id || ""), userId);
+  }, { destructive: true, note: "Restore a soft-deleted document (owner)" });
+
+  register("docs", "list", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const docs = listForOwner(db, userId, {
+      kind: input.kind,
+      parentId: input.parentId === null ? "ROOT" : input.parentId,
+      limit: Math.min(Number(input.limit) || 200, 500),
+    });
+    return { ok: true, documents: docs, count: docs.length };
+  }, { note: "List my documents (owner) with optional kind/parent filters" });
+
+  register("docs", "list_collaborated", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const docs = listForCollaborator(db, userId, { limit: Math.min(Number(input.limit) || 100, 200) });
+    return { ok: true, documents: docs, count: docs.length };
+  }, { note: "List documents I'm a collaborator on (any role)" });
+
+  register("docs", "list_children", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const parentId = String(input.parentId || "");
+    if (!parentId) return { ok: false, reason: "parentId_required" };
+    if (!hasRole(db, parentId, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    return { ok: true, children: listChildren(db, parentId, { limit: Math.min(Number(input.limit) || 200, 500) }) };
+  }, { note: "List child pages under a parent (page tree)" });
+
+  register("docs", "move", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    if (!hasRole(db, id, userId, "editor")) return { ok: false, reason: "forbidden" };
+    let cursor = input.parentId;
+    while (cursor) {
+      if (cursor === id) return { ok: false, reason: "cycle_detected" };
+      const p = db.prepare(`SELECT parent_id FROM documents WHERE id = ?`).get(cursor);
+      cursor = p?.parent_id;
+    }
+    return updateDocument(db, id, { parentId: input.parentId || null });
+  }, { destructive: true, note: "Reparent a document (with cycle check)" });
+
+  // ---------- Versions ----------
+
+  register("docs", "snapshot", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    if (!hasRole(db, id, userId, "editor")) return { ok: false, reason: "forbidden" };
+    return snapshotVersion(db, {
+      documentId: id, authorId: userId,
+      label: input.label || null, reason: "manual",
+    });
+  }, { destructive: true, note: "Create a manual version snapshot (editor+)" });
+
+  register("docs", "versions", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    return { ok: true, versions: listVersions(db, id, { limit: Math.min(Number(input.limit) || 50, 200) }) };
+  }, { note: "List version snapshots for a doc" });
+
+  register("docs", "get_version", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const versionId = Number(input.versionId);
+    if (!versionId) return { ok: false, reason: "versionId_required" };
+    const v = getVersion(db, versionId);
+    if (!v) return { ok: false, reason: "not_found" };
+    if (!hasRole(db, v.document_id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    return { ok: true, version: v };
+  }, { note: "Get a specific version snapshot" });
+
+  register("docs", "restore_version", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const r = restoreVersion(db, {
+      documentId: String(input.id || ""),
+      versionId: Number(input.versionId),
+      actorId: userId,
+    });
+    if (r.ok) _emit("doc:version-restored", { documentId: input.id, by: userId, versionId: input.versionId });
+    return r;
+  }, { destructive: true, note: "Restore a previous version (creates a pre-restore snapshot first)" });
+
+  // ---------- Comments ----------
+
+  register("docs", "comment_add", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const r = addComment(db, {
+      documentId: String(input.documentId || ""),
+      authorId: userId,
+      body: input.body,
+      threadId: input.threadId || null,
+      selectionAnchor: input.selectionAnchor ?? null,
+      selectionFocus: input.selectionFocus ?? null,
+      selectionText: input.selectionText || null,
+    });
+    if (r.ok) _emit("doc:comment-added", {
+      documentId: input.documentId, commentId: r.id, threadId: r.threadId,
+      authorId: userId, body: input.body, ts: Date.now(),
+    });
+    return r;
+  }, { destructive: true, note: "Add a comment (or thread reply via threadId)" });
+
+  register("docs", "comments_list", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.documentId || "");
+    if (!id) return { ok: false, reason: "documentId_required" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    return { ok: true, comments: listComments(db, id, { onlyUnresolved: !!input.onlyUnresolved }) };
+  }, { note: "List comments for a doc (optionally unresolved-only)" });
+
+  register("docs", "comment_resolve", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const r = resolveComment(db, { commentId: String(input.commentId || ""), actorId: userId });
+    if (r.ok) _emit("doc:comment-resolved", { commentId: input.commentId, by: userId });
+    return r;
+  }, { destructive: true, note: "Resolve a comment (editor+)" });
+
+  // ---------- Collaborators / permissions ----------
+
+  register("docs", "invite", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const r = inviteCollaborator(db, {
+      documentId: String(input.documentId || ""),
+      userId: String(input.userId || ""),
+      role: input.role || "editor",
+      invitedBy: userId,
+    });
+    if (r.ok) _emit("doc:collaborator-added", { documentId: input.documentId, userId: input.userId, role: input.role });
+    return r;
+  }, { destructive: true, note: "Invite a user (admin+)" });
+
+  register("docs", "revoke", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const r = revokeCollaborator(db, {
+      documentId: String(input.documentId || ""),
+      userId: String(input.userId || ""),
+      actorId: userId,
+    });
+    if (r.ok) _emit("doc:collaborator-revoked", { documentId: input.documentId, userId: input.userId });
+    return r;
+  }, { destructive: true, note: "Revoke a collaborator (admin+, cannot revoke owner)" });
+
+  register("docs", "collaborators", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.documentId || "");
+    if (!id) return { ok: false, reason: "documentId_required" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    return { ok: true, collaborators: listCollaborators(db, id) };
+  }, { note: "List collaborators for a doc" });
+
+  register("docs", "publish", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    if (!hasRole(db, id, userId, "admin")) return { ok: false, reason: "forbidden" };
+    const slug = input.slug ? String(input.slug) : `pub-${randomUUID().slice(0, 12)}`;
+    const r = updateDocument(db, id, { visibility: "public", slug });
+    if (r.ok) _emit("doc:published", { documentId: id, slug: r.row?.slug });
+    return r;
+  }, { destructive: true, note: "Make a doc public via slug (admin+)" });
+
+  register("docs", "unpublish", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    if (!hasRole(db, id, userId, "admin")) return { ok: false, reason: "forbidden" };
+    const r = updateDocument(db, id, { visibility: "private", slug: null });
+    if (r.ok) _emit("doc:unpublished", { documentId: id });
+    return r;
+  }, { destructive: true, note: "Unpublish a doc (admin+)" });
+
+  // ---------- Backlinks ----------
+
+  register("docs", "backlinks_in", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.documentId || "");
+    if (!id) return { ok: false, reason: "documentId_required" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    return { ok: true, incoming: listIncomingLinks(db, id) };
+  }, { note: "List incoming backlinks (which docs reference this one)" });
+
+  register("docs", "backlinks_out", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.documentId || "");
+    if (!id) return { ok: false, reason: "documentId_required" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    return { ok: true, outgoing: listOutgoingLinks(db, id) };
+  }, { note: "List outgoing links (which docs/DTUs this one references)" });
+
+  // ---------- Attachments ----------
+
+  register("docs", "attachments_list", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.documentId || "");
+    if (!id) return { ok: false, reason: "documentId_required" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    return { ok: true, attachments: listAttachments(db, id) };
+  }, { note: "List attachments for a doc" });
+
+  // ---------- Search ----------
+
+  register("docs", "search", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const q = String(input.query || "").trim();
+    if (q.length < 2) return { ok: true, results: [] };
+    return { ok: true, results: searchUserDocs(db, { ownerId: userId, query: q, limit: Math.min(Number(input.limit) || 25, 100) }) };
+  }, { note: "Search my docs by title or markdown body (substring)" });
+
+  // ---------- Markdown import / export ----------
+
+  register("docs", "export_md", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    const doc = getDocument(db, id);
+    if (!doc) return { ok: false, reason: "not_found" };
+    const md = `# ${doc.title}\n\n${doc.content_md || htmlToMarkdown(doc.content_html)}`;
+    return { ok: true, markdown: md, filename: `${(doc.title || "untitled").replace(/[^a-z0-9-]+/gi, "-")}.md` };
+  }, { note: "Export a document as Markdown" });
+
+  register("docs", "export_html", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    const doc = getDocument(db, id);
+    if (!doc) return { ok: false, reason: "not_found" };
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${doc.title}</title>
+<style>body{font-family:system-ui,-apple-system,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;line-height:1.6;}h1,h2,h3{margin-top:1.5em}pre{background:#f5f5f5;padding:1em;border-radius:6px;overflow-x:auto}code{font-family:ui-monospace,monospace}blockquote{border-left:4px solid #ddd;margin:0;padding-left:1em;color:#555}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:0.4em 0.8em}</style>
+</head><body><h1>${doc.title}</h1>${doc.content_html}</body></html>`;
+    return { ok: true, html, filename: `${(doc.title || "untitled").replace(/[^a-z0-9-]+/gi, "-")}.html` };
+  }, { note: "Export a document as standalone HTML" });
+
+  register("docs", "import_md", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const md = String(input.markdown || "");
+    if (!md.trim()) return { ok: false, reason: "markdown_required" };
+    let title = input.title || "Imported";
+    let body = md;
+    const h1 = md.match(/^#\s+(.+)$/m);
+    if (h1) {
+      title = h1[1].trim();
+      body = md.replace(h1[0], "").trim();
+    }
+    const html = markdownToHtml(body);
+    const r = createDocument(db, {
+      ownerId: userId, title, kind: "doc", visibility: "private", contentHtml: html,
+    });
+    if (r.ok) {
+      snapshotVersion(db, { documentId: r.id, authorId: userId, reason: "import", label: "Imported from Markdown" });
+      _emit("doc:imported", { documentId: r.id, kind: "md" });
+    }
+    return r;
+  }, { destructive: true, note: "Import a Markdown file as a new document" });
+
+  // ---------- Presence (transient in STATE) ----------
+
+  register("docs", "presence_update", async (ctx, input = {}) => {
+    const userId = _actor(ctx);
+    if (!userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.documentId || "");
+    if (!id) return { ok: false, reason: "documentId_required" };
+    const state = ctx?.STATE || globalThis._concordSTATE || {};
+    if (!state.docPresence) state.docPresence = new Map();
+    if (!state.docPresence.has(id)) state.docPresence.set(id, new Map());
+    const docMap = state.docPresence.get(id);
+    docMap.set(userId, {
+      userId,
+      cursorPos: Number(input.cursorPos || 0),
+      selectionAnchor: input.selectionAnchor ?? null,
+      selectionFocus: input.selectionFocus ?? null,
+      color: input.color || null,
+      label: input.label || null,
+      lastSeen: Date.now(),
+    });
+    _emit("doc:presence", { documentId: id, userId, ...docMap.get(userId) });
+    return { ok: true };
+  }, { note: "Update my cursor + selection presence (broadcast to others)" });
+
+  register("docs", "presence_list", async (ctx, input = {}) => {
+    const userId = _actor(ctx);
+    if (!userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.documentId || "");
+    const state = ctx?.STATE || globalThis._concordSTATE || {};
+    const docMap = state?.docPresence?.get(id);
+    if (!docMap) return { ok: true, presence: [] };
+    const cutoff = Date.now() - 60_000;
+    const present = [];
+    for (const [uid, info] of docMap) {
+      if (info.lastSeen < cutoff) docMap.delete(uid);
+      else present.push(info);
+    }
+    return { ok: true, presence: present };
+  }, { note: "List currently-present users on a doc (60s window)" });
+
+  // ---------- Outline ----------
+
+  register("docs", "outline", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    if (!hasRole(db, id, userId, "viewer")) return { ok: false, reason: "forbidden" };
+    const doc = getDocument(db, id);
+    if (!doc) return { ok: false, reason: "not_found" };
+    return { ok: true, outline: extractOutline(doc.content_html) };
+  }, { note: "Extract h1/h2/h3 outline from a doc" });
+
+  // ---------- Legacy readability score (preserved from old domain) ----------
+
+  register("docs", "readability", async (_ctx, input = {}) => {
+    const text = String(input.text || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (!text) return { ok: true, result: { message: "No text provided." } };
+
+    function countSyllables(w) {
+      w = w.toLowerCase().replace(/[^a-z]/g, "");
+      if (w.length <= 2) return 1;
+      w = w.replace(/e$/, "");
+      const g = w.match(/[aeiouy]+/g);
+      return Math.max(1, g ? g.length : 1);
+    }
+    const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+    const words = text.split(/\s+/).filter((w) => /[a-z]/i.test(w));
+    const sentenceCount = Math.max(1, sentences.length);
+    const wordCount = Math.max(1, words.length);
+    const syllableCounts = words.map(countSyllables);
+    const totalSyllables = syllableCounts.reduce((s, c) => s + c, 0);
+    const complexWords = syllableCounts.filter((c) => c >= 3).length;
     const avgWordsPerSentence = wordCount / sentenceCount;
     const avgSyllablesPerWord = totalSyllables / wordCount;
-    const avgCharsPerWord = charCount / wordCount;
-
-    // 1. Flesch-Kincaid Reading Ease
     const fleschReadingEase = 206.835 - 1.015 * avgWordsPerSentence - 84.6 * avgSyllablesPerWord;
-
-    // 2. Flesch-Kincaid Grade Level
     const fleschKincaidGrade = 0.39 * avgWordsPerSentence + 11.8 * avgSyllablesPerWord - 15.59;
-
-    // 3. Gunning Fog Index
     const gunningFog = 0.4 * (avgWordsPerSentence + 100 * (complexWords / wordCount));
-
-    // 4. Coleman-Liau Index
-    const L = (charCount / wordCount) * 100; // avg letters per 100 words
-    const S = (sentenceCount / wordCount) * 100; // avg sentences per 100 words
-    const colemanLiau = 0.0588 * L - 0.296 * S - 15.8;
-
-    // 5. SMOG Index
-    const smog = sentenceCount >= 3
-      ? 1.0430 * Math.sqrt(polysyllabicWords * (30 / sentenceCount)) + 3.1291
-      : 0;
-
-    // 6. Automated Readability Index
-    const ari = 4.71 * avgCharsPerWord + 0.5 * avgWordsPerSentence - 21.43;
-
-    // 7. Custom Technical Readability Index
-    // Penalizes: jargon density, abbreviation density, long sentences, passive voice
-    const abbreviations = (text.match(/\b[A-Z]{2,}\b/g) || []).length;
-    const abbreviationDensity = abbreviations / wordCount;
-    const longSentences = sentences.filter(s => s.split(/\s+/).length > 30).length;
-    const longSentenceRatio = longSentences / sentenceCount;
-    // Passive voice detection (simple heuristic)
-    const passiveMatches = text.match(/\b(is|are|was|were|been|being|be)\s+\w+ed\b/gi) || [];
-    const passiveRatio = passiveMatches.length / sentenceCount;
-    // Code-like tokens
-    const codeTokens = (text.match(/[{}[\]<>()=;|&]/g) || []).length;
-    const codeDensity = codeTokens / Math.max(1, charCount);
-
-    const technicalIndex = Math.max(0, Math.min(100,
-      70
-      - abbreviationDensity * 200
-      - longSentenceRatio * 30
-      - passiveRatio * 15
-      + (fleschReadingEase > 50 ? 10 : 0)
-      - codeDensity * 500
-      - (avgSyllablesPerWord > 2 ? (avgSyllablesPerWord - 2) * 20 : 0)
-    ));
-
-    const r = (v) => Math.round(v * 100) / 100;
-
-    // Overall grade level (average of grade-level metrics)
-    const gradeLevels = [fleschKincaidGrade, gunningFog, colemanLiau, ari].filter(v => v > 0);
-    const avgGradeLevel = gradeLevels.length > 0
-      ? gradeLevels.reduce((s, v) => s + v, 0) / gradeLevels.length
-      : 0;
-
-    // Reading time estimate (average adult reads ~250 wpm)
-    const readingTimeMinutes = wordCount / 250;
-
+    const colemanLiau = 0.0588 * ((text.replace(/[^a-z]/gi, "").length / wordCount) * 100)
+      - 0.296 * ((sentenceCount / wordCount) * 100) - 15.8;
+    const smog = 1.0430 * Math.sqrt(complexWords * (30 / sentenceCount)) + 3.1291;
     return {
       ok: true,
       result: {
-        metrics: {
-          fleschReadingEase: r(fleschReadingEase),
-          fleschKincaidGrade: r(fleschKincaidGrade),
-          gunningFog: r(gunningFog),
-          colemanLiau: r(colemanLiau),
-          smog: r(smog),
-          automatedReadabilityIndex: r(ari),
-          technicalReadabilityIndex: r(technicalIndex),
-        },
-        summary: {
-          averageGradeLevel: r(avgGradeLevel),
-          difficulty: avgGradeLevel > 16 ? "post-graduate" : avgGradeLevel > 12 ? "college" : avgGradeLevel > 8 ? "high-school" : avgGradeLevel > 5 ? "middle-school" : "elementary",
-          fleschCategory: fleschReadingEase >= 90 ? "very easy" : fleschReadingEase >= 70 ? "easy" : fleschReadingEase >= 50 ? "fairly easy" : fleschReadingEase >= 30 ? "difficult" : "very difficult",
-          readingTimeMinutes: r(readingTimeMinutes),
-        },
-        statistics: {
-          wordCount,
-          sentenceCount,
-          characterCount: charCount,
-          syllableCount: totalSyllables,
-          avgWordsPerSentence: r(avgWordsPerSentence),
-          avgSyllablesPerWord: r(avgSyllablesPerWord),
-          avgCharsPerWord: r(avgCharsPerWord),
-          complexWordCount: complexWords,
-          complexWordPercentage: r((complexWords / wordCount) * 100),
-          polysyllabicWordCount: polysyllabicWords,
-        },
-        technicalIndicators: {
-          abbreviationCount: abbreviations,
-          abbreviationDensity: r(abbreviationDensity * 100),
-          longSentenceCount: longSentences,
-          longSentencePercentage: r(longSentenceRatio * 100),
-          passiveVoiceInstances: passiveMatches.length,
-          passiveVoicePercentage: r(passiveRatio * 100),
-        },
+        wordCount, sentenceCount,
+        avgWordsPerSentence: Math.round(avgWordsPerSentence * 10) / 10,
+        avgSyllablesPerWord: Math.round(avgSyllablesPerWord * 100) / 100,
+        complexWords,
+        fleschReadingEase: Math.round(fleschReadingEase * 10) / 10,
+        fleschKincaidGrade: Math.round(fleschKincaidGrade * 10) / 10,
+        gunningFog: Math.round(gunningFog * 10) / 10,
+        colemanLiau: Math.round(colemanLiau * 10) / 10,
+        smog: Math.round(smog * 10) / 10,
       },
     };
-  });
-
-  /**
-   * crossReference
-   * Analyze cross-references in documentation. Build reference graph,
-   * detect broken links, circular references, and orphan pages.
-   * artifact.data.pages = [{ id, title, content?, links: [targetId], backlinks?: [sourceId] }]
-   */
-  registerLensAction("docs", "crossReference", (ctx, artifact, _params) => {
-    const pages = artifact.data?.pages || [];
-    if (pages.length === 0) {
-      return { ok: true, result: { message: "No pages provided." } };
-    }
-
-    const pageIds = new Set(pages.map(p => p.id));
-    const adjacency = {}; // id -> [targetIds]
-    const inbound = {};   // id -> [sourceIds]
-
-    for (const page of pages) {
-      adjacency[page.id] = page.links || [];
-      if (!inbound[page.id]) inbound[page.id] = [];
-      for (const target of (page.links || [])) {
-        if (!inbound[target]) inbound[target] = [];
-        inbound[target].push(page.id);
-      }
-    }
-
-    // Broken links: targets that don't exist
-    const brokenLinks = [];
-    for (const page of pages) {
-      for (const target of (page.links || [])) {
-        if (!pageIds.has(target)) {
-          brokenLinks.push({ source: page.id, target, sourceTitle: page.title });
-        }
-      }
-    }
-
-    // Orphan pages: no inbound links (except from broken refs)
-    const orphanPages = pages.filter(p => {
-      const inboundLinks = (inbound[p.id] || []).filter(src => pageIds.has(src));
-      return inboundLinks.length === 0;
-    }).map(p => ({ id: p.id, title: p.title }));
-
-    // Dead-end pages: no outbound links
-    const deadEndPages = pages.filter(p => (p.links || []).length === 0)
-      .map(p => ({ id: p.id, title: p.title }));
-
-    // Circular references: detect cycles via DFS
-    const cycles = [];
-    const globalVisited = new Set();
-
-    function findCycles(startId) {
-      const stack = [{ node: startId, path: [startId] }];
-      const localVisited = new Set();
-
-      while (stack.length > 0) {
-        const { node, path } = stack.pop();
-        localVisited.add(node);
-
-        for (const neighbor of (adjacency[node] || [])) {
-          if (!pageIds.has(neighbor)) continue;
-          if (neighbor === startId && path.length > 1) {
-            // Found a cycle
-            const cyclePath = [...path, neighbor];
-            const cycleKey = [...cyclePath].sort().join(",");
-            if (!globalVisited.has(cycleKey)) {
-              globalVisited.add(cycleKey);
-              cycles.push({ path: cyclePath, length: path.length });
-            }
-          } else if (!localVisited.has(neighbor) && path.length < 20) {
-            stack.push({ node: neighbor, path: [...path, neighbor] });
-          }
-        }
-      }
-    }
-
-    for (const page of pages) {
-      findCycles(page.id);
-    }
-
-    // Compute page importance via simplified PageRank (10 iterations)
-    const n = pages.length;
-    const dampingFactor = 0.85;
-    let pageRank = {};
-    for (const page of pages) {
-      pageRank[page.id] = 1 / n;
-    }
-
-    for (let iter = 0; iter < 10; iter++) {
-      const newRank = {};
-      for (const page of pages) {
-        let inboundScore = 0;
-        const sources = (inbound[page.id] || []).filter(s => pageIds.has(s));
-        for (const src of sources) {
-          const outDegree = (adjacency[src] || []).filter(t => pageIds.has(t)).length;
-          if (outDegree > 0) {
-            inboundScore += pageRank[src] / outDegree;
-          }
-        }
-        newRank[page.id] = (1 - dampingFactor) / n + dampingFactor * inboundScore;
-      }
-      pageRank = newRank;
-    }
-
-    // Page connectivity stats
-    const pageStats = pages.map(p => {
-      const outLinks = (p.links || []).filter(t => pageIds.has(t)).length;
-      const inLinks = (inbound[p.id] || []).filter(s => pageIds.has(s)).length;
-      return {
-        id: p.id,
-        title: p.title,
-        outboundLinks: outLinks,
-        inboundLinks: inLinks,
-        totalConnections: outLinks + inLinks,
-        pageRank: Math.round(pageRank[p.id] * 10000) / 10000,
-        isOrphan: inLinks === 0,
-        isDeadEnd: outLinks === 0,
-      };
-    }).sort((a, b) => b.pageRank - a.pageRank);
-
-    // Graph density
-    const maxEdges = n * (n - 1);
-    const actualEdges = pages.reduce((s, p) => s + (p.links || []).filter(t => pageIds.has(t)).length, 0);
-    const density = maxEdges > 0 ? Math.round((actualEdges / maxEdges) * 10000) / 10000 : 0;
-
-    return {
-      ok: true,
-      result: {
-        totalPages: pages.length,
-        totalLinks: actualEdges,
-        graphDensity: density,
-        brokenLinks: { count: brokenLinks.length, items: brokenLinks.slice(0, 30) },
-        circularReferences: { count: cycles.length, items: cycles.slice(0, 20) },
-        orphanPages: { count: orphanPages.length, items: orphanPages },
-        deadEndPages: { count: deadEndPages.length, items: deadEndPages },
-        pageRankings: pageStats.slice(0, 20),
-        healthScore: Math.max(0, Math.round(100
-          - brokenLinks.length * 5
-          - orphanPages.length * 3
-          - cycles.length * 8
-          - (density < 0.05 ? 15 : 0)
-        )),
-      },
-    };
-  });
-
-  /**
-   * versionDiff
-   * Semantic diff between document versions: paragraph-level diff with
-   * move detection, compute change significance score.
-   * artifact.data.oldVersion = { text, title?, version? }
-   * artifact.data.newVersion = { text, title?, version? }
-   */
-  registerLensAction("docs", "versionDiff", (ctx, artifact, _params) => {
-    const oldDoc = artifact.data?.oldVersion || {};
-    const newDoc = artifact.data?.newVersion || {};
-    const oldText = oldDoc.text || "";
-    const newText = newDoc.text || "";
-
-    if (!oldText && !newText) {
-      return { ok: true, result: { message: "No document versions provided." } };
-    }
-
-    // Split into paragraphs
-    function splitParagraphs(text) {
-      return text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
-    }
-
-    const oldParas = splitParagraphs(oldText);
-    const newParas = splitParagraphs(newText);
-
-    // Compute paragraph fingerprints for move detection
-    function fingerprint(para) {
-      const words = para.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
-      return words.sort().join(" ");
-    }
-
-    // Compute similarity between two paragraphs (word-level Jaccard)
-    function paragraphSimilarity(a, b) {
-      const wordsA = new Set(a.toLowerCase().split(/\s+/));
-      const wordsB = new Set(b.toLowerCase().split(/\s+/));
-      let intersection = 0;
-      for (const w of wordsA) if (wordsB.has(w)) intersection++;
-      const union = new Set([...wordsA, ...wordsB]).size;
-      return union > 0 ? intersection / union : 0;
-    }
-
-    // LCS-based diff on paragraphs
-    const m = oldParas.length;
-    const n = newParas.length;
-
-    // Build similarity matrix
-    const simMatrix = [];
-    for (let i = 0; i < m; i++) {
-      simMatrix[i] = [];
-      for (let j = 0; j < n; j++) {
-        simMatrix[i][j] = paragraphSimilarity(oldParas[i], newParas[j]);
-      }
-    }
-
-    // LCS to find matched paragraphs (similarity > 0.5 counts as match)
-    const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-    for (let i = 1; i <= m; i++) {
-      for (let j = 1; j <= n; j++) {
-        if (simMatrix[i - 1][j - 1] > 0.5) {
-          dp[i][j] = dp[i - 1][j - 1] + 1;
-        } else {
-          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-        }
-      }
-    }
-
-    // Backtrack to find alignment
-    const changes = [];
-    const matchedOld = new Set();
-    const matchedNew = new Set();
-    let i = m, j = n;
-    const alignments = [];
-
-    while (i > 0 && j > 0) {
-      if (simMatrix[i - 1][j - 1] > 0.5 && dp[i][j] === dp[i - 1][j - 1] + 1) {
-        alignments.unshift({ oldIdx: i - 1, newIdx: j - 1, similarity: simMatrix[i - 1][j - 1] });
-        matchedOld.add(i - 1);
-        matchedNew.add(j - 1);
-        i--; j--;
-      } else if (dp[i - 1][j] > dp[i][j - 1]) {
-        i--;
-      } else {
-        j--;
-      }
-    }
-
-    // Identify modifications (matched but not identical)
-    for (const align of alignments) {
-      const sim = Math.round(align.similarity * 1000) / 1000;
-      if (sim < 1.0) {
-        changes.push({
-          type: "modified",
-          oldIndex: align.oldIdx,
-          newIndex: align.newIdx,
-          similarity: sim,
-          oldPreview: oldParas[align.oldIdx].slice(0, 120),
-          newPreview: newParas[align.newIdx].slice(0, 120),
-        });
-      } else {
-        changes.push({
-          type: "unchanged",
-          oldIndex: align.oldIdx,
-          newIndex: align.newIdx,
-        });
-      }
-    }
-
-    // Detect moves: unmatched paragraphs with high similarity to another unmatched paragraph
-    const unmatchedOld = [];
-    const unmatchedNew = [];
-    for (let k = 0; k < m; k++) if (!matchedOld.has(k)) unmatchedOld.push(k);
-    for (let k = 0; k < n; k++) if (!matchedNew.has(k)) unmatchedNew.push(k);
-
-    const moves = [];
-    const movedOld = new Set();
-    const movedNew = new Set();
-
-    for (const oi of unmatchedOld) {
-      let bestMatch = -1;
-      let bestSim = 0.6; // threshold for move detection
-      for (const ni of unmatchedNew) {
-        if (movedNew.has(ni)) continue;
-        const sim = paragraphSimilarity(oldParas[oi], newParas[ni]);
-        if (sim > bestSim) {
-          bestSim = sim;
-          bestMatch = ni;
-        }
-      }
-      if (bestMatch >= 0) {
-        moves.push({
-          type: "moved",
-          oldIndex: oi,
-          newIndex: bestMatch,
-          similarity: Math.round(bestSim * 1000) / 1000,
-          preview: oldParas[oi].slice(0, 120),
-        });
-        movedOld.add(oi);
-        movedNew.add(bestMatch);
-      }
-    }
-
-    // Remaining unmatched = deletions and additions
-    const deletions = unmatchedOld
-      .filter(k => !movedOld.has(k))
-      .map(k => ({ type: "deleted", oldIndex: k, preview: oldParas[k].slice(0, 120) }));
-
-    const additions = unmatchedNew
-      .filter(k => !movedNew.has(k))
-      .map(k => ({ type: "added", newIndex: k, preview: newParas[k].slice(0, 120) }));
-
-    // Compute change significance score
-    const totalParas = Math.max(m, n, 1);
-    const modifiedCount = changes.filter(c => c.type === "modified").length;
-    const unchangedCount = changes.filter(c => c.type === "unchanged").length;
-
-    // Weight: deletions and additions are more significant than modifications
-    const significanceScore = Math.min(100, Math.round(
-      (deletions.length * 3 + additions.length * 3 + modifiedCount * 2 + moves.length * 1) / totalParas * 25
-    ));
-
-    // Word-level stats
-    const oldWords = oldText.split(/\s+/).length;
-    const newWords = newText.split(/\s+/).length;
-    const wordDelta = newWords - oldWords;
-
-    return {
-      ok: true,
-      result: {
-        versions: {
-          old: { title: oldDoc.title, version: oldDoc.version, paragraphs: m, wordCount: oldWords },
-          new: { title: newDoc.title, version: newDoc.version, paragraphs: n, wordCount: newWords },
-        },
-        wordDelta,
-        changeSignificance: significanceScore,
-        significanceLabel: significanceScore >= 70 ? "major revision" : significanceScore >= 40 ? "moderate changes" : significanceScore >= 15 ? "minor edits" : "minimal changes",
-        summary: {
-          unchanged: unchangedCount,
-          modified: modifiedCount,
-          added: additions.length,
-          deleted: deletions.length,
-          moved: moves.length,
-        },
-        changes: [
-          ...changes.filter(c => c.type !== "unchanged"),
-          ...moves,
-          ...deletions,
-          ...additions,
-        ],
-      },
-    };
-  });
+  }, { note: "Readability scoring (Flesch-Kincaid, Gunning Fog, Coleman-Liau, SMOG)" });
 }

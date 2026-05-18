@@ -10176,6 +10176,15 @@ async function runMacro(domain, name, input, ctx) {
     ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
+    // Docs Sprint A — read-only document macros (writes go through
+    // authenticated path). get_by_slug is public for published docs;
+    // all others self-scope via ctx.actor.userId and gate by role.
+    docs: new Set([
+      "get", "get_by_slug", "list", "list_collaborated", "list_children",
+      "versions", "get_version", "comments_list", "collaborators",
+      "backlinks_in", "backlinks_out", "attachments_list", "search",
+      "export_md", "export_html", "presence_list", "outline", "readability",
+    ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
     // state that's already running so frontends can render it.
@@ -23994,6 +24003,15 @@ import registerMessagingAgentMacros from "./domains/messaging-agent.js";
 registerMessagingAgentMacros(register);
 import registerMessagingAdaptersMacros from "./domains/messaging-adapters.js";
 registerMessagingAdaptersMacros(register);
+
+// Docs lens Sprint A — real document substrate (migration 211).
+// Smoking-gun fix: domains/docs.js (legacy registerLensAction
+// scaffold, never imported) replaced with ~30 register()-style
+// macros covering CRUD, page tree, versions, comments, collaborators,
+// publish, backlinks, attachments, search, MD import/export,
+// presence, outline, and the legacy readability scorer.
+import registerDocsMacros from "./domains/docs.js";
+registerDocsMacros(register);
 try {
   registerHeartbeat("messaging-agent-tick", {
     frequency: 4, // ~1 min
@@ -47846,6 +47864,86 @@ app.get("/api/whiteboard/image/:id", asyncHandler(async (req, res) => {
   const file = pathmod.join(dir, row.path);
   if (!fsmod.existsSync(file)) return res.status(410).json({ ok: false, reason: "file_gone" });
   res.setHeader("content-type", row.mime || "image/png");
+  res.setHeader("cache-control", "private, max-age=3600");
+  res.send(fsmod.readFileSync(file));
+}));
+
+// Docs Sprint A — image upload + import/export routes. Mirrors the
+// whiteboard upload pattern: raw body with a content-type matcher,
+// persists to data/doc-attachments/, mints a 'doc_image' DTU, writes
+// a row in document_attachments scoped to the doc. Returns the
+// public /api/docs-asset/:id URL the editor can drop into <img src>.
+app.post("/api/docs/upload-image", express.raw({ type: "image/*", limit: "10mb" }), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, reason: "auth_required" });
+  const buf = req.body;
+  if (!buf || !buf.length) return res.status(400).json({ ok: false, reason: "empty_body" });
+  const mime = String(req.get("content-type") || "image/png");
+  const ext = mime.split("/")[1]?.split(";")[0] || "png";
+  if (!/^[a-zA-Z0-9]{2,8}$/.test(ext)) return res.status(400).json({ ok: false, reason: "invalid_mime" });
+  const documentId = req.query.document_id ? String(req.query.document_id).slice(0, 200) : null;
+  if (!documentId) return res.status(400).json({ ok: false, reason: "document_id_required" });
+  const db = STATE?.db;
+  if (!db) return res.status(500).json({ ok: false, reason: "no_db" });
+  const { hasRole, recordAttachment } = await import("./lib/docs/persistence.js");
+  if (!hasRole(db, documentId, userId, "editor")) return res.status(403).json({ ok: false, reason: "forbidden" });
+  const fsmod = await import("node:fs");
+  const pathmod = await import("node:path");
+  const cryptomod = await import("node:crypto");
+  const dir = pathmod.resolve("./data/doc-attachments");
+  try { fsmod.mkdirSync(dir, { recursive: true }); } catch { /* exists */ }
+  const id = `dimg_${cryptomod.randomUUID()}`;
+  const fileName = `${id}.${ext}`;
+  const file = pathmod.join(dir, fileName);
+  try { fsmod.writeFileSync(file, buf); }
+  catch (err) { return res.status(500).json({ ok: false, reason: "write_failed", error: err?.message }); }
+  const url = `/api/docs-asset/${id}`;
+  const att = recordAttachment(db, {
+    documentId, uploaderId: userId, kind: "image", url,
+    alt: req.query.alt ? String(req.query.alt).slice(0, 200) : null,
+    byteSize: buf.length, mimeType: mime,
+  });
+  // Mint a kind='doc_image' DTU so the upload becomes citable.
+  let dtuId = null;
+  try {
+    dtuId = `doc_image:${cryptomod.randomUUID()}`;
+    db.prepare(`
+      INSERT INTO dtus (id, kind, title, creator_id, meta_json, created_at)
+      VALUES (?, 'doc_image', ?, ?, ?, unixepoch())
+    `).run(dtuId, `Doc image (${(buf.length / 1024).toFixed(1)} KB)`, userId, JSON.stringify({
+      type: "doc_image", path: file, mime, bytes: buf.length, document_id: documentId, attachment_id: att.id,
+    }));
+  } catch { /* DTU mint best-effort */ }
+  res.json({ ok: true, id, attachmentId: att.id, dtuId, url, bytes: buf.length, mime });
+}));
+
+// Read path for uploaded doc images. Cached private; viewable to anyone
+// with viewer+ role on the parent doc (or by anyone for public docs).
+app.get("/api/docs-asset/:id", asyncHandler(async (req, res) => {
+  const id = String(req.params.id || "");
+  if (!/^dimg_[a-f0-9-]+$/i.test(id)) return res.status(400).json({ ok: false, reason: "invalid_id" });
+  const db = STATE?.db;
+  if (!db) return res.status(500).json({ ok: false, reason: "no_db" });
+  const row = db.prepare(`
+    SELECT a.url, a.mime_type, a.document_id, d.visibility
+    FROM document_attachments a
+    INNER JOIN documents d ON d.id = a.document_id
+    WHERE a.id = ?
+  `).get(id);
+  if (!row) return res.status(404).json({ ok: false, reason: "not_found" });
+  if (row.visibility !== "public") {
+    const userId = req.user?.id;
+    const { hasRole } = await import("./lib/docs/persistence.js");
+    if (!hasRole(db, row.document_id, userId, "viewer")) return res.status(403).json({ ok: false, reason: "forbidden" });
+  }
+  const fsmod = await import("node:fs");
+  const pathmod = await import("node:path");
+  const dir = pathmod.resolve("./data/doc-attachments");
+  // Stored on disk under the same id as the URL slug.
+  const candidates = fsmod.existsSync(dir) ? fsmod.readdirSync(dir).filter((f) => f.startsWith(id + ".")) : [];
+  if (!candidates.length) return res.status(410).json({ ok: false, reason: "file_gone" });
+  const file = pathmod.join(dir, candidates[0]);
+  res.setHeader("content-type", row.mime_type || "image/png");
   res.setHeader("cache-control", "private, max-age=3600");
   res.send(fsmod.readFileSync(file));
 }));
