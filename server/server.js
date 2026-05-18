@@ -9194,8 +9194,25 @@ try {
 }
 
 // Seed default feed sources (idempotent — only adds if STATE.feeds is empty)
+// Smoking-gun cleanup I2 — feeds are now durable in feed_sources
+// (migration 233). Hydrate the in-memory shim from DB on first seed
+// so a restart doesn't clobber prior state, and persist new seeds.
 {
   if (!STATE.feeds) STATE.feeds = new Map();
+  // Hydrate from DB if present
+  if (STATE?.db && STATE.feeds.size === 0) {
+    try {
+      const rows = STATE.db.prepare(`SELECT id, url, title, kind, active, last_fetched_at, item_count, created_by, created_at FROM feed_sources`).all();
+      for (const r of rows) {
+        STATE.feeds.set(r.id, {
+          id: r.id, url: r.url, name: r.title, domain: null, kind: r.kind,
+          active: !!r.active, lastFetchedAt: r.last_fetched_at ? new Date(r.last_fetched_at * 1000).toISOString() : null,
+          itemCount: r.item_count, createdBy: r.created_by,
+          createdAt: r.created_at ? new Date(r.created_at * 1000).toISOString() : nowISO(),
+        });
+      }
+    } catch { /* table may not exist in tests */ }
+  }
   if (STATE.feeds.size === 0) {
     const seedFeeds = [
       // News / General
@@ -9220,6 +9237,15 @@ try {
     ];
     for (const sf of seedFeeds) {
       STATE.feeds.set(sf.id, { ...sf, active: true, lastFetchedAt: null, itemCount: 0, createdBy: "system", createdAt: nowISO() });
+      // Smoking-gun cleanup I2 — persist seed feeds to feed_sources
+      if (STATE?.db) {
+        try {
+          STATE.db.prepare(`
+            INSERT OR IGNORE INTO feed_sources (id, url, title, kind, active, item_count, created_by, created_at)
+            VALUES (?, ?, ?, 'rss', 1, 0, 'system', unixepoch())
+          `).run(sf.id, sf.url, sf.name);
+        } catch { /* table may be missing in tests */ }
+      }
     }
     structuredLog("info", "seed_feeds_registered", { count: seedFeeds.length });
     saveStateDebounced();
@@ -48966,6 +48992,15 @@ app.post("/api/feeds/register", requireAuth(), (req, res) => {
   };
   if (!STATE.feeds) STATE.feeds = new Map();
   STATE.feeds.set(id, feed);
+  // Smoking-gun cleanup I2 — persist to feed_sources (migration 233)
+  if (STATE?.db) {
+    try {
+      STATE.db.prepare(`
+        INSERT INTO feed_sources (id, url, title, kind, active, item_count, created_by, created_at)
+        VALUES (?, ?, ?, 'rss', 1, 0, ?, unixepoch())
+      `).run(id, feed.url, feed.name, feed.createdBy);
+    } catch { /* table may be missing */ }
+  }
   saveStateDebounced();
   res.json({ ok: true, feed });
 });
@@ -51257,13 +51292,28 @@ app.get("/api/loaf/status", (_req, res) => {
 });
 
 // Consent update
-app.post("/api/consent/update", requireAuth(), (req, res) => {
+app.post("/api/consent/update", requireAuth(), async (req, res) => {
   try {
     const { action, granted } = req.body || {};
     if (!action) return res.status(400).json({ ok: false, error: "action required" });
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    // Smoking-gun cleanup I4 — STATE.consent was in-memory only. Route
+    // through server/lib/consent.js which writes to user_consent table
+    // (migration 032) with audit log. Map shim is updated for legacy
+    // readers; DB is the source of truth.
     if (!STATE.consent) STATE.consent = new Map();
-    const key = `${req.user?.id}:${action}`;
+    const key = `${userId}:${action}`;
     STATE.consent.set(key, { granted: !!granted, updatedAt: nowISO() });
+    if (STATE?.db) {
+      try {
+        const { grantConsent, revokeConsent } = await import("./lib/consent.js");
+        const ip = req.ip || req.connection?.remoteAddress;
+        const userAgent = req.headers?.["user-agent"];
+        if (granted) grantConsent(STATE.db, userId, action, { ip, userAgent });
+        else revokeConsent(STATE.db, userId, action, { ip, userAgent });
+      } catch (e) { /* consent.js may reject invalid action enum; that's the correct behavior */ }
+    }
     res.json({ ok: true, consent: { action, granted: !!granted } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
