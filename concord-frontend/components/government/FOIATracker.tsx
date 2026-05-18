@@ -70,7 +70,7 @@ export function FOIATracker() {
     } catch (e) { console.error('[FOIA] save failed', e); }
   }
 
-  function useTemplate(t: typeof TEMPLATES[0]) {
+  function applyTemplate(t: typeof TEMPLATES[0]) {
     setDraftAgency(t.agency);
     setDraftSubject(t.title);
     setDraftBody(t.body);
@@ -102,7 +102,7 @@ export function FOIATracker() {
           <div className="flex items-center gap-2 flex-wrap text-[10px]">
             <span className="text-gray-500 uppercase tracking-wider">Templates:</span>
             {TEMPLATES.map(t => (
-              <button key={t.title} onClick={() => useTemplate(t)} className="px-2 py-0.5 rounded border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10">
+              <button key={t.title} onClick={() => applyTemplate(t)} className="px-2 py-0.5 rounded border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10">
                 {t.title}
               </button>
             ))}

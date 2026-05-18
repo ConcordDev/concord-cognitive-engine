@@ -84,7 +84,7 @@ describe("world — share link primitive", () => {
 
   it("share-links-list returns recent links sorted by createdAt desc", async () => {
     call("share-link-create", ctxA, { worldId: "w1" });
-    await new Promise((r) => setTimeout(r, 2));
+    await new Promise((r) => { setTimeout(r, 2); });
     call("share-link-create", ctxA, { worldId: "w2" });
     const list = call("share-links-list", ctxA);
     assert.equal(list.result.links.length, 2);

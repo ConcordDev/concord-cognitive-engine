@@ -9826,7 +9826,7 @@ async function runMacro(domain, name, input, ctx) {
     art: new Set(["live_met_search"]),
     gallery: new Set(["live_met_search"]),
     // arXiv wire-up — one macro per domain pre-filtered to that arXiv category.
-    physics: new Set(["live_arxiv"]),
+    physics: new Set(["live_arxiv", "status", "constants", "models"]),
     quantum: new Set(["live_arxiv"]),
     robotics: new Set(["live_arxiv"]),
     // Phase 4 cont'd — bio + neuro also get PubMed; chem also gets PubChem.
@@ -9852,7 +9852,7 @@ async function runMacro(domain, name, input, ctx) {
     paper: new Set(["live_openlibrary", "live_crossref", "live_openalex"]),
     education: new Set(["live_openlibrary", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     // Phase 4 (third wave) — scholarly + language wires.
-    research: new Set(["live_crossref", "live_openalex"]),
+    research: new Set(["live_crossref", "live_openalex", "list", "get", "results", "report", "metrics", "conduct"]),
     linguistics: new Set(["live_datamuse", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     "creative-writing": new Set(["live_datamuse"]),
     poetry: new Set(["live_datamuse", "live_poetrydb"]),
@@ -9862,8 +9862,8 @@ async function runMacro(domain, name, input, ctx) {
     space: new Set(["live_wiki_search", "live_wiki_summary", "live_spaceflight_news", "live_launches_upcoming", "live_iss_pass"]),
     // Phase 4 (fifth wave) — curated content APIs.
     astronomy: new Set(["live_apod", "live_iss", "live_neo", "live_spaceflight_news", "live_launches_upcoming", "live_iss_pass"]),
-    daily: new Set(["live_quote"]),
-    reflection: new Set(["live_quote"]),
+    daily: new Set(["live_quote", "list", "get"]),
+    reflection: new Set(["live_quote", "status", "list"]),
     pets: new Set(["live_catfact", "live_dog"]),
     // Phase 4 (sixth wave) — civic / postal / finance reference wires.
     finance: new Set(["live_worldbank", "live_fred_series"]),
@@ -9899,7 +9899,7 @@ async function runMacro(domain, name, input, ctx) {
     metacognition: new Set(["status", "predictions"]),
     metalearning: new Set(["strategies", "status"]),
     reasoning: new Set(["chains", "steps", "status"]),
-    reflection: new Set(["status", "list"]),
+    // reflection: merged into the entry at ~9866 to fix no-dupe-keys (was silently dropping live_quote).
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
     // (The dx domain is registered later in this file with the
@@ -9982,17 +9982,17 @@ async function runMacro(domain, name, input, ctx) {
     srs: new Set(["status", "get"]),
     skill: new Set(["gaps"]),
     schema: new Set(["get", "list"]),
-    daily: new Set(["list", "get"]),
+    // daily: merged into the entry at ~9865 to fix no-dupe-keys.
     digest: new Set(["get", "list"]),
     // Extended domains (three-gate audit)
-    research: new Set(["list", "get", "results", "report", "metrics", "conduct"]),
+    // research: merged into the entry at ~9855 to fix no-dupe-keys.
     quest: new Set(["list", "get", "active", "progress", "metrics"]),
     teaching: new Set(["list", "get", "profile", "metrics", "expertise"]),
     creative: new Set(["list", "get", "exhibition", "metrics", "profile", "masterworks", "registry", "domains", "generate", "create", "run"]),
     culture: new Set(["status", "traditions", "values", "stories", "metrics", "identity"]),
     trust: new Set(["get", "network", "metrics"]),
     federation: new Set(["status", "peers", "commune_list", "commune_status", "peer_list", "outbox", "actor", "inbox"]),
-    physics: new Set(["status", "constants", "models"]),
+    // physics: merged into the entry at ~9829 to fix no-dupe-keys.
     reproduction: new Set(["compatible-pairs", "status"]),
     lineage: new Set(["tree", "get"]),
     rights: new Set(["list", "get", "profile", "status", "metrics"]),
@@ -17172,17 +17172,12 @@ function selectProductionAction(lens, entity) {
  */
 function buildProductionPrompt({ lens, action, actionDesc, context, entity, schema, exemplar }) {
   let prompt = TASK_PROMPTS.professionalLensSpecialist({ lens, action, actionDesc, schema, exemplar });
-  // Allow caller to extend prompt below (existing logic). The registry
-  // function already includes schema + exemplar if supplied, so the
-  // legacy if-blocks are no-ops when those params are present. Kept here
-  // for callers that pass schema/exemplar after this point in the flow.
-  if (false && schema) {
-    prompt += `\n\nSCHEMA:\n${JSON.stringify(schema, null, 2)}`;
-  }
-
-  if (false && exemplar) {
-    prompt += `\n\nEXAMPLE OF HIGH-QUALITY OUTPUT:\n${JSON.stringify(exemplar, null, 2).slice(0, 2000)}`;
-  }
+  // Schema + exemplar were merged into the registry function above; the
+  // legacy direct-prompt blocks here are dead (verified by Phase 12 audit).
+  // Removed to fix no-constant-condition; reintroduce only if a new caller
+  // path skips the registry wrapper.
+  // if (schema)   { prompt += `\n\nSCHEMA:\n${JSON.stringify(schema, null, 2)}`; }
+  // if (exemplar) { prompt += `\n\nEXAMPLE OF HIGH-QUALITY OUTPUT:\n${JSON.stringify(exemplar, null, 2).slice(0, 2000)}`; }
 
   if (context) {
     prompt += `\n\nDOMAIN CONTEXT FROM SUBSTRATE:\n${typeof context === "string" ? context.slice(0, 800) : JSON.stringify(context).slice(0, 800)}`;
@@ -21956,14 +21951,13 @@ Rules for tool use:
   }
 
   // Surface compute-preflight provenance so the frontend can render the
-  // "Concord computed this" badge. Only includes capability metadata, not
-  // the full result payload (already in the prompt the brain saw).
-  const _computedSurface = (typeof _computeGroundTruth !== 'undefined' && _computeGroundTruth)
-    ? {
-        capabilities: _computeGroundTruth.capabilities || [],
-        engineCount: (_computeGroundTruth.results || []).length,
-      }
-    : null;
+  // "Concord computed this" badge. Currently always null because
+  // `_computeGroundTruth` lives in a deeper try-scope (line ~21564) and
+  // isn't threaded out — the typeof-guard pattern that used to live here
+  // looked correct but the linter (rightly) flagged the cross-scope read
+  // as no-undef. When chat-compute-preflight starts threading its result
+  // outward, replace this with the real surface object.
+  const _computedSurface = null;
 
   // Strategy: strip ``` fenced code blocks + `inline code` first so we
   // don't pick up identifiers in code samples. Then pattern-match the
@@ -40369,6 +40363,7 @@ app.get("/api/entity/:entityId/profile", asyncHandler(async (req, res) => {
 app.get("/api/admin/endpoints", requireRole("admin", "sovereign"), async (req, res) => {
   try {
     const { buildRouteInventory } = await import("./lib/route-inventory.js");
+    const url = await import("node:url");
     const here = path.dirname(url.fileURLToPath(import.meta.url));
     const force = String(req.query.force || "") === "1";
     const inv = buildRouteInventory({
@@ -49705,8 +49700,6 @@ app.post("/api/social/bookmark", requireAuth(), (req, res) => {
 // citation-weighted), empty when no matches — no fake suggestions.
 app.get("/api/social/mention-search", (req, res) => {
   try {
-
-    // eslint-disable-next-line no-restricted-syntax
     const viewerId = req.user?.id || req.query.viewerId || "anon";
     const q = String(req.query.q || "");
     const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 10));

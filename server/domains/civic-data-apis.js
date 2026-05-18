@@ -131,7 +131,7 @@ export default function registerCivicDataApiMacros(register) {
     const count = Math.min(Math.max(Number(input.count) || 6, 1), 25);
     const breed = String(input.breed || "").trim().toLowerCase();
     const url = breed
-      ? `https://dog.ceo/api/breed/${encodeURIComponent(breed.replace(/[^a-z\-]/g, ""))}/images/random/${count}`
+      ? `https://dog.ceo/api/breed/${encodeURIComponent(breed.replace(/[^a-z-]/g, ""))}/images/random/${count}`
       : `https://dog.ceo/api/breeds/image/random/${count}`;
     try {
       const data = await fetchJsonWithTimeout(url);
