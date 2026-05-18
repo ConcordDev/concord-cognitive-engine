@@ -23772,6 +23772,13 @@ registerStudioPlayerMacros(register);
 import registerStudioTechniqueMacros from "./domains/studio-techniques.js";
 registerStudioTechniqueMacros(register);
 
+// Studio Sprint B — Production credits. Hire a producer (human or
+// emergent) on your track, credit them when the work ships, route
+// a partial royalty share through the cascade. Requires migration
+// 204_producer_credits.js.
+import registerStudioCreditMacros from "./domains/studio-credits.js";
+registerStudioCreditMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.
