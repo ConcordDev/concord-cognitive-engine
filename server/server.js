@@ -97,6 +97,24 @@ registerHeartbeat("fauna-spawner", {
 import { runCreatureFlockCycle } from "./emergent/creature-flock-cycle.js";
 import { LruMap, LruSet } from "./lib/lru-map.js";
 import { serializeLensState, hydrateLensState, LENS_STATE_KEYS } from "./lib/lens-state-persistence.js";
+// Smoking-gun cleanup sprint 2 — DB-backed replacements for the
+// STATE.gameProfiles / STATE.customPersonas / STATE.councilProposals
+// Maps. Migration 231 created the tables; these helpers do the swap.
+import {
+  getGameProfileRow as _smpGetGameProfileRow,
+  upsertGameProfile as _smpUpsertGameProfile,
+  allGameProfiles as _smpAllGameProfiles,
+  hydrateGameProfilesMap as _smpHydrateGameProfilesMap,
+  upsertCustomPersona as _smpUpsertCustomPersona,
+  deleteCustomPersona as _smpDeleteCustomPersona,
+  allCustomPersonas as _smpAllCustomPersonas,
+  hydrateCustomPersonasMap as _smpHydrateCustomPersonasMap,
+  getCouncilProposalRow as _smpGetCouncilProposalRow,
+  upsertCouncilProposal as _smpUpsertCouncilProposal,
+  allCouncilProposals as _smpAllCouncilProposals,
+  hydrateCouncilProposalsMap as _smpHydrateCouncilProposalsMap,
+  expireOverdueProposals as _smpExpireOverdueProposals,
+} from "./lib/state-map-persistence.js";
 registerHeartbeat("creature-flock-cycle", {
   frequency: 4,
   handler: runCreatureFlockCycle,
@@ -24364,6 +24382,38 @@ registerSocialAiMacros(register);
 import registerSocialMoatsMacros from "./domains/social-moats.js";
 registerSocialMoatsMacros(register);
 
+// Smoking-gun cleanup C4 — council proposal expiry sweep. The 7-day
+// window from server.js:42104 is the governance safety valve;
+// without a sweep, expired pending proposals would block the council
+// forever. Heartbeat every 60s (frequency 4) — cheap UPDATE that
+// flips overdue rows to status='expired'.
+try {
+  registerHeartbeat("council-proposal-expiry", {
+    frequency: 4,
+    handler: async () => {
+      const db = STATE?.db;
+      if (!db) return { ok: false, reason: "no_db" };
+      try {
+        const expired = _smpExpireOverdueProposals(db);
+        // Refresh in-memory shim status flags
+        if (expired > 0 && STATE.councilProposals) {
+          for (const [id, p] of STATE.councilProposals.entries()) {
+            if (p.status === "pending" && p.expiresAt && new Date(p.expiresAt) <= new Date()) {
+              p.status = "expired";
+              STATE.councilProposals.set(id, p);
+            }
+          }
+        }
+        return { ok: true, expired };
+      } catch (err) {
+        return { ok: true, expired: 0, reason: "sweep_unavailable", note: err?.message };
+      }
+    },
+  });
+} catch (err) {
+  try { console.warn("[council-proposal-expiry] registration failed:", err?.message); } catch { /* ok */ }
+}
+
 // Social Sprint C — federation outbox processor heartbeat. Every
 // 60s pass scans for new outbox entries + advances them to sent.
 // The runtime ActivityPub POST is a stub at this stage; the state
@@ -32049,47 +32099,11 @@ import createCityRoutes from "./routes/city.js";
 try { app.use("/api/city", createCityRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "city_routes_skip", { error: e.message }); }
 
 // ── City Streaming Macros ─────────────────────────────────────────────────────
-
-register("city", "startStream", (ctx, input={}) => {
-  const userId = ctx?.actor?.userId;
-  if (!userId) return { ok: false, error: "auth required" };
-  const stream = cityStreaming.startStream(userId, { cityId: input.cityId, title: input.title });
-  realtimeEmit("city:stream-started", { streamId: stream.id, creatorId: userId, cityId: stream.cityId, title: stream.title });
-  return { ok: true, stream };
-});
-
-register("city", "endStream", (ctx, input={}) => {
-  const userId = ctx?.actor?.userId;
-  if (!userId) return { ok: false, error: "auth required" };
-  try {
-    const summary = cityStreaming.endStream(userId);
-    realtimeEmit("city:stream-ended", { streamId: summary.streamId, creatorId: userId, duration: summary.duration, dtusCreated: summary.dtusCreated, salesMade: summary.salesMade });
-    return { ok: true, summary };
-  } catch (e) { return { ok: false, error: e.message }; }
-});
-
-register("city", "followStream", (ctx, input={}) => {
-  const viewerId = ctx?.actor?.userId || "anon";
-  cityStreaming.followStream(input.streamId, viewerId);
-  return { ok: true };
-});
-
-register("city", "unfollowStream", (ctx, input={}) => {
-  const viewerId = ctx?.actor?.userId || "anon";
-  cityStreaming.unfollowStream(input.streamId, viewerId);
-  return { ok: true };
-});
-
-register("city", "listStreams", (ctx, input={}) => {
-  const streams = cityStreaming.listActiveStreams(input.cityId);
-  return { ok: true, streams, count: streams.length };
-});
-
-register("city", "getStream", (ctx, input={}) => {
-  const userId = ctx?.actor?.userId;
-  const stream = cityStreaming.getActiveStream(userId || input.userId);
-  return { ok: true, stream: stream || null };
-});
+// Smoking-gun fix I6 — extracted to server/domains/city.js for consistency
+// with every other lens. Dependencies (cityStreaming + realtimeEmit) are
+// passed through so the domain module stays import-clean.
+import registerCityMacros from "./domains/city.js";
+registerCityMacros(register, { cityStreaming, realtimeEmit });
 
 // ── City Streaming REST Endpoints ─────────────────────────────────────────────
 
@@ -34191,7 +34205,13 @@ register("council", "credibility", (ctx, input) => {
 // (state bootstrap), but their handlers are unreachable through the
 // dispatcher. The duplicate is marked intentional so the register()
 // warning stays quiet.
+// Smoking-gun cleanup C3 — custom personas are now durable in
+// custom_personas (migration 231). Each mutation writes to DB; the
+// Map shim is hydrated from DB on first read.
 if (!STATE.customPersonas) STATE.customPersonas = new Map();
+if (STATE?.db && STATE.customPersonas.size === 0) {
+  try { _smpHydrateCustomPersonasMap(STATE.db, STATE.customPersonas); } catch { /* table may not exist in test envs */ }
+}
 
 register("persona", "create", (ctx, input) => {
   const { name, description, style, traits } = input;
@@ -34216,6 +34236,7 @@ register("persona", "create", (ctx, input) => {
   };
 
   STATE.customPersonas.set(persona.id, persona);
+  if (STATE?.db) _smpUpsertCustomPersona(STATE.db, persona);
   saveStateDebounced();
 
   return { ok: true, persona };
@@ -34232,7 +34253,12 @@ register("persona", "list", (_ctx, _input) => {
     { id: "historian", name: "Historian", description: "Historical context and precedent", builtin: true },
     { id: "economist", name: "Economist", description: "Economic analysis and trade-offs", builtin: true }
   ];
-  const custom = Array.from(STATE.customPersonas.values());
+  // Smoking-gun cleanup C3 — DB-first read; falls back to Map shim
+  let custom = [];
+  if (STATE?.db) {
+    try { custom = _smpAllCustomPersonas(STATE.db); } catch { /* fall through */ }
+  }
+  if (custom.length === 0) custom = Array.from(STATE.customPersonas.values());
   return { ok: true, personas: [...builtIn, ...custom], builtInCount: builtIn.length, customCount: custom.length };
 }, { note: "intentional_shadow_ok" });
 
@@ -34248,6 +34274,7 @@ register("persona", "update", (ctx, input) => {
   persona.updatedAt = nowISO();
 
   STATE.customPersonas.set(persona.id, persona);
+  if (STATE?.db) _smpUpsertCustomPersona(STATE.db, persona);
   saveStateDebounced();
 
   return { ok: true, persona };
@@ -34256,6 +34283,7 @@ register("persona", "update", (ctx, input) => {
 register("persona", "delete", (ctx, input) => {
   if (!STATE.customPersonas.has(input.id)) return { ok: false, error: "Persona not found" };
   STATE.customPersonas.delete(input.id);
+  if (STATE?.db) _smpDeleteCustomPersona(STATE.db, input.id);
   saveStateDebounced();
   return { ok: true, deleted: input.id };
 });
@@ -42111,7 +42139,13 @@ function getUserEntities(userId) {
 
 // ── Council Promotion (only path to global scope) ───────────────────────────
 
+// Smoking-gun cleanup C4 — council proposals are durable in
+// council_proposals (migration 231). Each mutation persists; the Map
+// shim is hydrated on startup. Expiry sweep runs in a heartbeat.
 if (!STATE.councilProposals) STATE.councilProposals = new Map();
+if (STATE?.db && STATE.councilProposals.size === 0) {
+  try { _smpHydrateCouncilProposalsMap(STATE.db, STATE.councilProposals); } catch { /* table may not exist in tests */ }
+}
 
 app.post("/api/council/propose-promotion", requireAuth(), async (req, res) => {
   try {
@@ -42141,6 +42175,7 @@ app.post("/api/council/propose-promotion", requireAuth(), async (req, res) => {
     };
 
     STATE.councilProposals.set(proposal.id, proposal);
+    if (STATE?.db) _smpUpsertCouncilProposal(STATE.db, proposal);
     if (REALTIME?.io) REALTIME.io.emit("council:proposal", { proposal });
     saveStateDebounced();
     res.json({ ok: true, proposal });
@@ -42155,7 +42190,13 @@ app.post("/api/council/vote", requireAuth(), (req, res) => {
     const { proposalId, vote } = req.body;
     if (!["approve", "reject"].includes(vote)) return res.status(400).json({ ok: false, error: "Vote must be approve or reject" });
 
-    const proposal = STATE.councilProposals?.get(proposalId);
+    // Smoking-gun cleanup C4 — DB-first hydration. If proposal isn't
+    // in the Map shim (e.g. another process / new restart), try DB.
+    let proposal = STATE.councilProposals?.get(proposalId);
+    if (!proposal && STATE?.db) {
+      proposal = _smpGetCouncilProposalRow(STATE.db, proposalId);
+      if (proposal) STATE.councilProposals.set(proposalId, proposal);
+    }
     if (!proposal || proposal.status !== "pending") return res.status(404).json({ ok: false, error: "Proposal not found or closed" });
     if (proposal.proposedBy === userId) return res.status(400).json({ ok: false, error: "Cannot vote on own proposal" });
 
@@ -42187,6 +42228,7 @@ app.post("/api/council/vote", requireAuth(), (req, res) => {
       if (REALTIME?.io) REALTIME.io.emit("council:vote", { proposal, result: "rejected" });
     }
 
+    if (STATE?.db) _smpUpsertCouncilProposal(STATE.db, proposal);
     saveStateDebounced();
     res.json({ ok: true, proposal });
   } catch (e) {
@@ -42196,9 +42238,16 @@ app.post("/api/council/vote", requireAuth(), (req, res) => {
 
 app.get("/api/council/proposals", (req, res) => {
   const status = req.query.status || null;
-  let proposals = Array.from(STATE.councilProposals?.values() || []);
-  if (status) proposals = proposals.filter(p => p.status === status);
-  proposals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  // Smoking-gun cleanup C4 — DB-first
+  let proposals = [];
+  if (STATE?.db) {
+    try { proposals = _smpAllCouncilProposals(STATE.db, { status }); } catch { /* fall through */ }
+  }
+  if (proposals.length === 0) {
+    proposals = Array.from(STATE.councilProposals?.values() || []);
+    if (status) proposals = proposals.filter(p => p.status === status);
+    proposals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
   res.json({ ok: true, proposals: proposals.slice(0, 50) });
 });
 
@@ -49504,12 +49553,29 @@ app.post("/api/ml/deploy/:modelId", (req, res) => {
 // Game/gamification endpoints - computed from real DTU activity
 if (!STATE.gameProfiles) STATE.gameProfiles = new Map();
 
+// Smoking-gun cleanup C2 — game profiles are durable in
+// game_profiles (migration 231). DB-first read; Map shim hydrated
+// on first miss; persist on mutation via persistGameProfile().
 function getGameProfile(userId) {
   if (!userId) userId = "anon";
   if (!STATE.gameProfiles.has(userId)) {
+    const db = STATE?.db;
+    if (db) {
+      const row = _smpGetGameProfileRow(db, userId);
+      if (row) {
+        STATE.gameProfiles.set(userId, row);
+        return row;
+      }
+    }
     STATE.gameProfiles.set(userId, { userId, xp: 0, level: 1, badges: [], streak: 0, lastActivityAt: null });
   }
   return STATE.gameProfiles.get(userId);
+}
+
+function persistGameProfile(profile) {
+  if (!profile?.userId) return;
+  const db = STATE?.db;
+  if (db) _smpUpsertGameProfile(db, profile);
 }
 
 // Smoking-gun cleanup — council votes are durable in council_dtu_votes
@@ -49567,6 +49633,7 @@ app.get("/api/game/profile", (req, res) => {
   profile.badges = achievements.filter(a => a.earned).map(a => a.id);
   profile.stats = { dtus: dtuCount, megas: megaCount, hypers: hyperCount, votes: voteCount, questsCompleted: profile.questsCompleted || 0 };
   profile.lastActivityAt = profile.lastActivityAt || null;
+  persistGameProfile(profile); // Smoking-gun cleanup C2 — persist
   res.json({ ok: true, profile });
 });
 
@@ -49597,7 +49664,11 @@ app.get("/api/game/challenges", (req, res) => {
 app.get("/api/game/leaderboard", (req, res) => {
   // Build leaderboard from game profiles, recomputing XP live
   if (!STATE.gameProfiles) STATE.gameProfiles = new Map();
-  // Ensure all known users are represented
+  // Smoking-gun cleanup C2 — hydrate from DB so leaderboard isn't
+  // empty post-restart
+  if (STATE?.db && STATE.gameProfiles.size === 0) {
+    _smpHydrateGameProfilesMap(STATE.db, STATE.gameProfiles);
+  }
   const knownUsers = new Set(Array.from(STATE.gameProfiles.keys()));
   dtusArray().forEach(d => { if (d.authorId) knownUsers.add(d.authorId); if (d.source) knownUsers.add(d.source); });
   for (const uid of knownUsers) {
@@ -49607,6 +49678,7 @@ app.get("/api/game/leaderboard", (req, res) => {
     p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + ((p.questsCompleted || 0) * 100);
     p.level = Math.floor(Math.sqrt(p.xp / 100)) + 1;
     p.badges = computeAchievements(uid).filter(a => a.earned).map(a => a.id);
+    persistGameProfile(p);
   }
   const entries = Array.from(STATE.gameProfiles.values())
     .map(p => ({ userId: p.userId, xp: p.xp || 0, level: p.level || 1, badges: (p.badges || []).length, badgeList: p.badges || [] }))
@@ -49629,6 +49701,7 @@ app.post("/api/game/quests/:questId/complete", (req, res) => {
     profile.questsCompleted = (profile.questsCompleted || 0) + 1;
     // Level up every 1000 XP
     profile.level = Math.floor(profile.xp / 1000) + 1;
+    persistGameProfile(profile); // Smoking-gun cleanup C2 — persist
     res.json({ ok: true, profile });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });

@@ -249,12 +249,13 @@ export default function registerHealthcareActions(registerLensAction) {
   });
 
   /**
-   * generateSummary
+   * generate (Smoking-gun fix C5 — was registered as `generateSummary` but
+   * frontend calls `generate` at page.tsx:1041. The macro was unreachable.)
    * Create a consolidated patient summary from encounters, labs, and
    * treatments stored in artifact.data.
    * Expects artifact.data.encounters, artifact.data.labs, artifact.data.treatments.
    */
-  registerLensAction("healthcare", "generateSummary", (ctx, artifact, params) => {
+  registerLensAction("healthcare", "generate", (ctx, artifact, params) => {
     const encounters = artifact.data.encounters || [];
     const labs = artifact.data.labs || [];
     const treatments = artifact.data.treatments || [];
