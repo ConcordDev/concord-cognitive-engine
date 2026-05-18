@@ -10232,6 +10232,15 @@ async function runMacro(domain, name, input, ctx) {
       "project_template_list",
       "roadmap",
     ]),
+    // Chat Sprint A — read-only macros. memory_recall is auth-gated
+    // but the per-request shape makes it safe to surface here too.
+    chat: new Set([
+      "memory_recall", "memory_list",
+      "project_get", "project_list", "project_list_dtus",
+      "persona_get", "persona_list",
+      "prompt_list",
+      "branch_list",
+    ]),
     // Browser Agent Sprint A — read-only macros (task/action/budget
     // reads + the destructive-action check that takes no DB).
     "browser-agent": new Set([
@@ -24202,6 +24211,28 @@ registerBrowserAgentAiMacros(register);
 // finished runs as browser_run DTUs + cross-lens cite cascade.
 import registerBrowserAgentMoatsMacros from "./domains/browser-agent-moats.js";
 registerBrowserAgentMoatsMacros(register);
+
+// Chat lens Sprint A — smoking-gun fix #9/10 + memory + projects +
+// personas substrate (migration 223).
+//
+// 1. Smoking-gun: server/domains/chat.js (760 LOC, 21 legacy
+//    registerLensAction handlers, 70+ passing tests in
+//    tests/chat-domain-parity.test.js) was NEVER imported into
+//    server.js. The full implementations of Projects, Prompts
+//    Library, Thread Search, Branches (fork-from-message), and
+//    Scheduled Tasks were sitting dead. Tests passed because they
+//    imported the file directly; the production server never saw
+//    it. Wired here.
+//
+// 2. New register()-style chat-extras adds the missing 2026
+//    surface: persistent semantic memory (ChatGPT Memory parity),
+//    Claude-Projects-style persistent workspaces with attached
+//    DTUs, custom personas (Custom GPTs parity), prompt library,
+//    fork branches with audit trail.
+import registerChatActions from "./domains/chat.js";
+registerChatActions(registerLensAction);
+import registerChatExtrasMacros from "./domains/chat-extras.js";
+registerChatExtrasMacros(register);
 
 // Browser-Agent Sprint C — schedule runner heartbeat. Every 60s scan
 // for due schedules and instantiate fresh tasks.
