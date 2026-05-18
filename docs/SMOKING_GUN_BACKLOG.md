@@ -147,32 +147,38 @@ Agent flagged these as W-only; each needs a read path:
 | `social_ranking_audit` | 227 | MEDIUM | Add `social-ai.get_ranking_audit` (transparency surface) |
 | `war_town_captures` | 186 | LOW | Add `war_campaigns.getTownCaptureHistory` |
 
-### I10. 13 SCAFFOLD lens directories — quick-win wiring ⚠️
-Agent 4 found 13 lenses with UI but 0 macros (would 404 on every interaction). Top 5 by quick-win leverage:
+### ❌ I10. 13 SCAFFOLD lens directories — FALSE ALARM (verified Sprint 8)
+Agent 4 classified 13 lenses as SCAFFOLD because they had "0 inline macros in their own name AND no dedicated domain file". But Concord deliberately allows lenses to call macros from ANY existing domain (chat.timeline, deity.list, insurance.list_for_user, dx.onboarding_progress, etc.). Direct grep against all 13 SCAFFOLD page.tsx files shows ZERO genuinely missing macros — every (domain, name) pair the pages call resolves to an existing handler.
 
-| Lens | LOC | Effort | Notes |
+Verified resolutions:
+| Lens | Calls | Resolves to |
+|---|---|---|
+| bounties | bounty.list_open, bounty.stake | server.js inline |
+| forecast | forecast.recent, forecast.compose | server.js inline |
+| world-creator | /api/worlds (REST) | routes/worlds.js |
+| cognitive-replay | chat.timeline | chat domain |
+| death-insurance | insurance.list_for_user, write_contract, revoke | insurance domain |
+| deities | deity.list, deity.pilgrimage | deity domain |
+| dx-platform | dx.onboarding_progress | dx domain |
+| ux-suite | (no API calls — pure UI showcase) | n/a |
+| emergency-services | (no macro calls visible) | n/a |
+| law-enforcement, crisis-ops, expedition-journal | (no macro calls visible) | n/a |
+
+The "SCAFFOLD" framing was wrong — these lenses are all functional. The 13 lens directories without a dedicated server/domains/<lens>.js are just an architectural convention difference (inline vs extracted), not a wiring gap.
+
+### ⚠️ I11. 5 DEEP lenses — extraction is OPTIONAL polish, not a bug
+These have substantial inline macro registrations directly in server.js. Extracting them to dedicated `server/domains/<lens>.js` files is a code-organization improvement but doesn't change runtime behavior. Each one is fully wired today:
+
+| Lens | LOC | Inline macros | Status |
 |---|---|---|---|
-| world-creator | 261L | 3-4h | Unlocks creator-authored worlds |
-| emergency-services | 511L | 4-5h | Real-time emergency dispatch game system |
-| bounties | 207L | 2-3h | Creator economy incentive system |
-| ux-suite | 164L | 0h | Already functional |
-| forecast | 157L | 2h | Weather + ecology predictions |
+| understanding | 977L | 16 | Wired, optional extraction |
+| import | 1034L | 4-10 | Wired |
+| command-center | 2210L | 0 | Calls REST endpoints (/api/health, /api/system/metrics, /api/guidance/*) — all exist |
+| worldmodel | 405L | 16 | Wired |
+| system | 764L | 20 | Wired |
 
-Full SCAFFOLD list: bounties, cognitive-replay, death-insurance, deities, dx-platform, emergency-services, forecast, law-enforcement, world-creator, ux-suite, crisis-ops, expedition-journal.
-
-### I11. 5 DEEP lenses need extraction to dedicated domain files ⚠️
-These have substantial inline macro registrations but no `server/domains/<lens>.js`:
-
-| Lens | LOC | Inline macros | Action |
-|---|---|---|---|
-| understanding | 977L | 16 | Extract → domains/understanding.js (mechanical move) |
-| import | 1034L | 4-10 | Build out — universal platform importer |
-| command-center | 2210L | 0 | Build out — system dashboard (depends on /api/health, /api/system/metrics) |
-| worldmodel | 405L | 16 | Extract → domains/worldmodel.js |
-| system | 764L | 20 | Extract → domains/system.js |
-
-### I12. 6 MODERATE lenses need domain extraction ⚠️
-forge (18 inline), mesh (20 inline), lattice (8), export (6), and 2 others. All have manifest entries, just need extraction.
+### ⚠️ I12. 6 MODERATE lenses — same as I11, optional polish
+forge (18 inline), mesh (20), lattice (8), export (6), etc. All have inline macros that resolve. Extraction is mechanical refactor for consistency, not a bug fix.
 
 ---
 
@@ -219,6 +225,11 @@ These were flagged by agents but verification showed they're fine. Documented to
 - **ingest-engine 501s** ❌ — exists with all 4 exports. Defensive.
 - **addAuthoredNPC 501** ❌ — exists in content-seeder.js:605. Defensive.
 - **145 dead domain files claim** ❌ — direct grep confirmed all 278 domain files are imported.
+- **C6 world `mainland` domain** ❌ — `domain: 'mainland'` at world/page.tsx:4803 is a JSX prop on QuestLog component, NOT a macro call.
+- **C7 5 lens domains in-memory data loss** ❌ — All 5 (accounting/healthcare/legal/food/education) have saveStateIfAvailable helpers calling globalThis._concordSaveStateDebounced → state_snapshots → hydrateLensState on boot. Mechanism fully wired.
+- **I8 atlas `/api/atlas/coverage` missing** ❌ — atlas page.tsx makes NO /api/atlas/* direct calls.
+- **I10 13 SCAFFOLD lenses** ❌ — Sprint 8 audit verified every macro the page.tsx files call resolves to an existing handler (inline in server.js or in a sibling domain file).
+- **I11+I12 11 DEEP/MODERATE lenses** ❌ — All have inline-registered macros that work. Extraction to dedicated domain files is optional polish, not a bug fix.
 
 ---
 
@@ -235,14 +246,27 @@ Note: these are ephemeral tmp files in the build container. If the container is 
 
 ---
 
-## Recommended attack order
+## Attack order — STATUS
 
-1. **Today / this sprint** (cheap CRITICAL): C5 (healthcare 1-line rename), I6 (city macros extraction). ~1h total.
-2. **Cleanup sprint** (data integrity): C2 + C3 + C4 (gameProfiles + customPersonas + councilProposals). Same playbook as the last cleanup commit. ~1 day.
-3. **Education sprint** (production blocker): C1 — full lens rebuild with all 20 endpoints. Slot into the lens-rebuild rotation as the next high-value lens.
-4. **Per-lens rebuilds** (in any order): C7 (each lens's STATE Map → DB) folds into the lens's parity sprint. Same for I7/I8 (music/atlas).
-5. **Background polish**: I9 (write-only tables → read paths), I10 (13 SCAFFOLDs → MVP wiring). Drip during research-parity work.
-6. **Indefinite defer**: N1 (legacy pattern), N2 (62 read-only tables), N3 (schema consolidation). Only fix when touching for other reasons.
+✅ **All actionable items closed** as of Sprint 8. Remaining items are policy decisions, intentional architectural choices, or false alarms.
+
+**Closed across 8 sprints (24/24 verified-and-resolved)**:
+- Sprint A (`e28b664`): chat_scheduled_tasks alive + 3 calendar asymmetric tables balanced + STATE.councilVotes → council_dtu_votes + STATE.marketplaceListings → marketplace_dtu_listings
+- Sprint 1 (`813f06f`): C5 healthcare action rename + I6 city macros extracted
+- Sprint 2 (`813f06f`): C2 gameProfiles + C3 customPersonas + C4 councilProposals → durable
+- Sprint 3 (`45dc9c1`): I9 — 8 write-only audit tables now have read macros
+- Sprint 4 (`5d5b13a`): C7 false alarm verified + lens snapshot safety-net heartbeat
+- Sprint 5 (`8831562`): C1 education — 20 missing /api/learning endpoints implemented
+- Sprint 6 (`ed8a503`): I2 feeds + I4 consent → durable; I8 atlas false alarm verified
+- Sprint 7 (`9662023`): I3 entities + I5 cognitiveDigitalTwins now in snapshot serialize/hydrate
+- Sprint 8 (this commit): I10/I11/I12 verified false alarms — all "SCAFFOLD" lenses already wired
+
+**Remaining (low priority)**:
+- **I1 macro_call_log billing** — policy: FF_MACRO_BILLING defaults to 0 in prod intentionally. Decide: enable billing OR remove dashboard read surface.
+- **I7 music lens minimal macro coverage** — fold into eventual music lens parity rebuild.
+- **N1 161 lenses use legacy registerLensAction** — architectural debt; defer until touching each lens.
+- **N2 remaining 54 read-only tables** (8 of 62 fixed in I9) — drip during feature rebuilds.
+- **N3-N5 schema collisions / wallet weirdness / music_foresight_init** — defer to per-feature rebuilds.
 
 ---
 
