@@ -23935,6 +23935,22 @@ import registerWhiteboardHuddleMacros from "./domains/whiteboard-huddle.js";
 registerWhiteboardHuddleMacros(register);
 import registerWhiteboardCiteDtuMacros from "./domains/whiteboard-cite-dtu.js";
 registerWhiteboardCiteDtuMacros(register);
+
+// Message lens Sprint A — smoking-gun fix: domains/message.js (237 LOC
+// of saved/search/react/voice macros) was authored but NEVER imported.
+// Same pattern as the dark crypto.js / whiteboard.js / code-engine.js
+// before fixes. Wires it into the legacy lens-action dispatcher.
+import registerMessageActions from "./domains/message.js";
+registerMessageActions(registerLensAction);
+
+// Message lens Sprint A — group DMs + channels + threads + reactions
+// + pins + bookmarks + drafts + snooze + typing + presence. Real
+// migration 209 substrate via lib/messaging/persistence.js. STATE
+// remains the hot cache for /api/social/dm; new code paths go DB-first.
+import registerMessagingConversationsMacros from "./domains/messaging-conversations.js";
+registerMessagingConversationsMacros(register);
+import registerMessagingChannelsMacros from "./domains/messaging-channels.js";
+registerMessagingChannelsMacros(register);
 try {
   registerHeartbeat("whiteboard-agent-tick", {
     frequency: 4,
@@ -47800,6 +47816,87 @@ app.get("/api/whiteboard/embed/:boardId.svg", asyncHandler(async (req, res) => {
   res.setHeader("etag", etag);
   res.setHeader("cache-control", "public, max-age=60, stale-while-revalidate=600");
   res.send(svg);
+}));
+
+// Message lens Sprint A #7 — file / image / arbitrary attachment upload.
+// Same pattern as whiteboard upload-image / studio upload-audio-capture.
+// 50 MB cap; participant-only auth via req.user; mints
+// kind='message_attachment' DTU + writes to message_attachments table.
+app.post("/api/messages/upload-attachment", express.raw({ type: ["image/*", "audio/*", "video/*", "application/*", "text/*"], limit: "50mb" }), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, reason: "auth_required" });
+  const buf = req.body;
+  if (!buf || !buf.length) return res.status(400).json({ ok: false, reason: "empty_body" });
+  const mime = String(req.get("content-type") || "application/octet-stream");
+  const ext = (() => {
+    const m = mime.match(/^([a-zA-Z]+)\/([a-zA-Z0-9._+-]+)/);
+    if (!m) return "bin";
+    const sub = m[2].split(";")[0].split("+")[0];
+    return sub.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "bin";
+  })();
+  const conversationId = req.query.conversation_id ? String(req.query.conversation_id).slice(0, 200) : null;
+  const fsmod = await import("node:fs");
+  const pathmod = await import("node:path");
+  const cryptomod = await import("node:crypto");
+  const dir = pathmod.resolve("./data/message-attachments");
+  try { fsmod.mkdirSync(dir, { recursive: true }); } catch { /* dir exists */ }
+  const id = `mat_${cryptomod.randomUUID()}`;
+  const fileName = `${id}.${ext}`;
+  const file = pathmod.join(dir, fileName);
+  try { fsmod.writeFileSync(file, buf); }
+  catch (err) { return res.status(500).json({ ok: false, reason: "write_failed", error: err?.message }); }
+  const db = STATE?.db;
+  let dtuId = null;
+  if (db) {
+    dtuId = `message_attachment:${cryptomod.randomUUID()}`;
+    try {
+      db.prepare(`
+        INSERT INTO dtus (id, kind, title, creator_id, meta_json, created_at)
+        VALUES (?, 'message_attachment', ?, ?, ?, unixepoch())
+      `).run(dtuId, `${mime} (${(buf.length / 1024).toFixed(1)} KB)`, userId, JSON.stringify({
+        type: "message_attachment", path: file, mime, bytes: buf.length, conversation_id: conversationId,
+      }));
+      db.prepare(`
+        INSERT INTO message_attachments (id, owner_id, conversation_id, path, mime, bytes, dtu_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
+      `).run(id, userId, conversationId, fileName, mime, buf.length, dtuId);
+    } catch (err) {
+      return res.status(500).json({ ok: false, reason: "db_insert_failed", error: err?.message });
+    }
+  }
+  res.json({
+    ok: true, id, dtuId, kind: "message_attachment",
+    url: `/api/messages/attachment/${id}`,
+    bytes: buf.length, mime,
+  });
+}));
+
+// Read path for uploaded attachments. Participant-only — checks the
+// conversation_participants table for the requesting user.
+app.get("/api/messages/attachment/:id", asyncHandler(async (req, res) => {
+  const id = String(req.params.id || "");
+  if (!/^mat_[a-f0-9-]+$/i.test(id)) return res.status(400).json({ ok: false, reason: "invalid_id" });
+  const db = STATE?.db;
+  if (!db) return res.status(500).json({ ok: false, reason: "no_db" });
+  const row = db.prepare(`SELECT owner_id, conversation_id, path, mime FROM message_attachments WHERE id = ?`).get(id);
+  if (!row) return res.status(404).json({ ok: false, reason: "not_found" });
+  const userId = req.user?.id;
+  // Owner can always read; otherwise must be a participant.
+  if (row.owner_id !== userId) {
+    if (!userId) return res.status(401).json({ ok: false, reason: "auth_required" });
+    if (row.conversation_id) {
+      const ok = db.prepare(`SELECT 1 FROM conversation_participants WHERE conversation_id = ? AND user_id = ?`).get(row.conversation_id, userId);
+      if (!ok) return res.status(403).json({ ok: false, reason: "forbidden" });
+    }
+  }
+  const fsmod = await import("node:fs");
+  const pathmod = await import("node:path");
+  const dir = pathmod.resolve("./data/message-attachments");
+  const file = pathmod.join(dir, row.path);
+  if (!fsmod.existsSync(file)) return res.status(410).json({ ok: false, reason: "file_gone" });
+  res.setHeader("content-type", row.mime || "application/octet-stream");
+  res.setHeader("cache-control", "private, max-age=3600");
+  res.send(fsmod.readFileSync(file));
 }));
 
 app.get("/api/whiteboard/embed/:boardId/iframe", asyncHandler(async (req, res) => {
