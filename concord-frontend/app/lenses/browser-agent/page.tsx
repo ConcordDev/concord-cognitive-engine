@@ -24,9 +24,12 @@ import { BrowserBudgetSettings } from '@/components/browser-agent/BrowserBudgetS
 import { BrowserPlanPreview } from '@/components/browser-agent/BrowserPlanPreview';
 import { BrowserCostDashboard } from '@/components/browser-agent/BrowserCostDashboard';
 import { BrowserVoiceTask } from '@/components/browser-agent/BrowserVoiceTask';
+import { BrowserSchedulesPanel } from '@/components/browser-agent/BrowserSchedulesPanel';
+import { BrowserTemplatePicker } from '@/components/browser-agent/BrowserTemplatePicker';
+import { BrowserMintModal } from '@/components/browser-agent/BrowserMintModal';
 import {
   Plus, Loader2, Bot, Zap, Settings as SettingsIcon, ShieldAlert,
-  ListChecks, BarChart3, Sparkles,
+  ListChecks, BarChart3, Sparkles, Repeat, Bookmark, Coins,
 } from 'lucide-react';
 
 export default function BrowserAgentLensPage() {
@@ -39,6 +42,9 @@ export default function BrowserAgentLensPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [planTaskId, setPlanTaskId] = useState<string | null>(null);
   const [costOpen, setCostOpen] = useState(false);
+  const [schedulesOpen, setSchedulesOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [mintOpen, setMintOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refreshTasks = useCallback(async () => {
@@ -110,6 +116,8 @@ export default function BrowserAgentLensPage() {
             </h2>
             <div className="flex items-center gap-1">
               <BrowserVoiceTask onCreated={refreshTasks} />
+              <button onClick={() => setTemplatesOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-white/70" title="Templates"><Bookmark className="w-4 h-4" /></button>
+              <button onClick={() => setSchedulesOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-white/70" title="Schedules"><Repeat className="w-4 h-4" /></button>
               <button onClick={() => setCostOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-white/70" title="Cost dashboard">
                 <BarChart3 className="w-4 h-4" />
               </button>
@@ -152,13 +160,18 @@ export default function BrowserAgentLensPage() {
                   <ListChecks className="w-3 h-3" /> Plan
                 </button>
                 {["completed","failed","cancelled","budget_exceeded"].includes(activeTask.status) && (
-                  <button
-                    onClick={async () => { const r = await callBrowserAgentMacro<{ id?: string }>('ai_reschedule', { taskId: activeTask.id }); if (r.ok) { refreshTasks(); setActiveTaskId(r.id || null); } }}
-                    className="px-2 py-1 text-xs rounded bg-white/5 hover:bg-white/10 text-white/70 flex items-center gap-1"
-                    title="Re-run this task (Devin-style)"
-                  >
-                    <Sparkles className="w-3 h-3" /> Re-run
-                  </button>
+                  <>
+                    <button
+                      onClick={async () => { const r = await callBrowserAgentMacro<{ id?: string }>('ai_reschedule', { taskId: activeTask.id }); if (r.ok) { refreshTasks(); setActiveTaskId(r.id || null); } }}
+                      className="px-2 py-1 text-xs rounded bg-white/5 hover:bg-white/10 text-white/70 flex items-center gap-1"
+                      title="Re-run this task (Devin-style)"
+                    >
+                      <Sparkles className="w-3 h-3" /> Re-run
+                    </button>
+                    <button onClick={() => setMintOpen(true)} className="px-2 py-1 text-xs rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 flex items-center gap-1" title="Mint as DTU">
+                      <Coins className="w-3 h-3" /> Mint
+                    </button>
+                  </>
                 )}
                 <span className="text-xs text-white/40 uppercase">{activeTask.status}</span>
               </>
@@ -224,6 +237,23 @@ export default function BrowserAgentLensPage() {
       <BrowserCostDashboard
         open={costOpen}
         onClose={() => setCostOpen(false)}
+      />
+
+      <BrowserSchedulesPanel
+        open={schedulesOpen}
+        onClose={() => setSchedulesOpen(false)}
+      />
+
+      <BrowserTemplatePicker
+        open={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        onApplied={(taskId) => { setTemplatesOpen(false); refreshTasks(); setActiveTaskId(taskId); }}
+      />
+
+      <BrowserMintModal
+        open={mintOpen}
+        onClose={() => setMintOpen(false)}
+        task={activeTask}
       />
     </LensShell>
   );

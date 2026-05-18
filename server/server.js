@@ -10240,6 +10240,9 @@ async function runMacro(domain, name, input, ctx) {
       "action_check_destructive",
       // Sprint B read-only AI: plan list + cost dashboard + AI ledger
       "plan_list", "cost_dashboard", "ai_runs_recent",
+      // Sprint C read-only moats: template list + schedule list +
+      // chain list + mint status
+      "template_list", "schedule_list", "chain_list", "task_mint_status",
     ]),
     // Calendar Sprint A+B+C — read-only macros. expand_recurring +
     // parse_rrule are pure compute. ai_parse_event has a deterministic
@@ -24192,6 +24195,61 @@ registerBrowserAgentMacros(register);
 // "if it works keep doing it" reschedule + ai_runs_recent.
 import registerBrowserAgentAiMacros from "./domains/browser-agent-ai.js";
 registerBrowserAgentAiMacros(register);
+
+// Browser Agent lens Sprint C — concord-native moats (migration 222).
+// Browser-agent templates publishable as agent_spec DTUs + scheduled
+// recurring runs (Devin-style 'keep doing it') + task chaining + mint
+// finished runs as browser_run DTUs + cross-lens cite cascade.
+import registerBrowserAgentMoatsMacros from "./domains/browser-agent-moats.js";
+registerBrowserAgentMoatsMacros(register);
+
+// Browser-Agent Sprint C — schedule runner heartbeat. Every 60s scan
+// for due schedules and instantiate fresh tasks.
+try {
+  registerHeartbeat("browser-agent-schedule-runner", {
+    frequency: 4, // every 4 ticks * 15s = 60s
+    handler: async () => {
+      const db = STATE?.db;
+      if (!db) return { ok: false, reason: "no_db" };
+      const now = Math.floor(Date.now() / 1000);
+      const due = db.prepare(`
+        SELECT * FROM browser_task_schedules
+        WHERE enabled = 1 AND next_run_at <= ?
+        ORDER BY next_run_at ASC LIMIT 50
+      `).all(now);
+      const { createTask } = await import("./lib/browser-agent/audit.js");
+      const { computeNextRun } = await import("./domains/browser-agent-moats.js")
+        .then((m) => ({ computeNextRun: m.computeNextRun || null }))
+        .catch(() => ({ computeNextRun: null }));
+      let fired = 0;
+      for (const s of due) {
+        try {
+          const r = createTask(db, {
+            userId: s.user_id,
+            title: `${s.title} (${new Date(now * 1000).toISOString().slice(0, 16)})`,
+            goal: s.goal, startingUrl: s.starting_url,
+            approvalMode: s.approval_mode, maxSteps: s.max_steps,
+            maxCostCents: s.max_cost_cents,
+          });
+          if (r.ok) {
+            const nextTs = (computeNextRun ? computeNextRun(s.cadence_kind, s.cadence_param, now) : now + 86400);
+            db.prepare(`
+              UPDATE browser_task_schedules
+              SET last_run_at = ?, last_task_id = ?, run_count = run_count + 1, next_run_at = ?, updated_at = ?
+              WHERE id = ?
+            `).run(now, r.id, nextTs, now, s.id);
+            fired++;
+          }
+        } catch (err) {
+          try { console.warn("[browser-agent-schedule-runner]", s.id, err?.message); } catch { /* ok */ }
+        }
+      }
+      return { ok: true, fired, considered: due.length };
+    },
+  });
+} catch (err) {
+  try { console.warn("[browser-agent-schedule-runner] registration failed:", err?.message); } catch { /* ok */ }
+}
 
 try {
   registerHeartbeat("messaging-agent-tick", {
