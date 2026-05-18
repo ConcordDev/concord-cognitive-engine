@@ -23765,6 +23765,13 @@ registerStudioMidiMacros(register);
 import registerStudioPlayerMacros from "./domains/studio-players.js";
 registerStudioPlayerMacros(register);
 
+// Studio Sprint B — Production technique citation lineage. Mint a
+// documented technique as kind='production_technique' DTU; cite the
+// technique on a track so the royalty cascade pays the author every
+// time the citing track sells or gets cited downstream.
+import registerStudioTechniqueMacros from "./domains/studio-techniques.js";
+registerStudioTechniqueMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.
