@@ -10264,6 +10264,10 @@ async function runMacro(domain, name, input, ctx) {
       "dm_list",
       "blocks",
       "feed_following", "feed_public",
+      // Sprint B: classification + algo + ranked feed read-only macros
+      "classification_get", "algo_list",
+      "feed_ranked", "ranking_explain",
+      "ai_runs_recent",
     ]),
     // Browser Agent Sprint A — read-only macros (task/action/budget
     // reads + the destructive-action check that takes no DB).
@@ -24281,6 +24285,15 @@ registerChatMoatsMacros(register);
 // chronological feeds).
 import registerSocialMacros from "./domains/social.js";
 registerSocialMacros(register);
+
+// Social lens Sprint B — AI surface (migration 227). 5-brain content
+// classifier (8 positive axes + 5 negative) + inverse-X ranker as
+// OOTB algo + Bluesky-Attie-parity custom feed DTU substrate +
+// algorithmic transparency ("why am I seeing this?" via
+// ranking_explain). Concord's structural advantage: no ad business,
+// so the OOTB ranker can actually be inverse-X without conflict.
+import registerSocialAiMacros from "./domains/social-ai.js";
+registerSocialAiMacros(register);
 
 // Browser-Agent Sprint C — schedule runner heartbeat. Every 60s scan
 // for due schedules and instantiate fresh tasks.
