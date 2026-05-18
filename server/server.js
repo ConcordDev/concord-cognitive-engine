@@ -10400,6 +10400,12 @@ async function runMacro(domain, name, input, ctx) {
       "narratives_list",
       "receipt_extractions_pending",
       "ai_runs_recent",
+      // Sprint C reads
+      "statement_mints_list",
+      "template_browse",
+      "consolidations_list",
+      "audit_trail_list",
+      "audit_trail_verify",
     ]),
     // Smoking-gun cleanup I9 — read paths for write-only audit tables
     "land-claims": new Set(["history"]),
@@ -24482,6 +24488,14 @@ registerAccountingRebuildMacros(register);
 // extraction via LLaVA vision with deterministic fallback.
 import registerAccountingAiMacros from "./domains/accounting-ai.js";
 registerAccountingAiMacros(register);
+
+// Accounting lens rebuild Sprint C — concord moats (migration 236).
+// Mint statements as DTUs + cross-lens cite cascade, accountant
+// marketplace (CoA templates + budget templates + rule packs +
+// royalty cascade on adoption), multi-entity consolidation P&L,
+// audit-trail DTUs with SHA-256 hash chain for tamper detection.
+import registerAccountingMoatsMacros from "./domains/accounting-moats.js";
+registerAccountingMoatsMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,
