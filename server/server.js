@@ -23858,6 +23858,46 @@ registerCodeSpecMacros(register);
 // kind='agent_spec' DTUs via the Phase 13 marketplace.
 import registerCodeBackgroundMacros from "./domains/code-background.js";
 registerCodeBackgroundMacros(register);
+
+// Code lens Sprint D — full GitHub API connector. Real @octokit/rest;
+// token from GH_TOKEN/GITHUB_TOKEN env or per-call. 16 macros covering
+// issues / PRs / reviews / Actions / search / branches / rate limit.
+import registerCodeGithubMacros from "./domains/code-github.js";
+registerCodeGithubMacros(register);
+
+// Code lens Sprint D — real ML embeddings + semantic search. Ollama
+// /api/embeddings (nomic-embed-text default), Float32 BLOB storage
+// in code_embeddings (migration 207), cosine-similarity scan.
+import registerCodeEmbeddingMacros from "./domains/code-embeddings.js";
+registerCodeEmbeddingMacros(register);
+
+// Code lens Sprint D — code intelligence (LSP-equivalent for TS/JS via
+// TypeScript Compiler API; ripgrep fallback for other languages).
+// Definition / references / hover / symbols / diagnostics.
+import registerCodeIntelMacros from "./domains/code-intel.js";
+registerCodeIntelMacros(register);
+
+// Code lens Sprint D — cross-instance background agent federation.
+// bg_delegate ships the task to a peer Concord; bg_delegate_poll_tick
+// pulls peer status every 30s; bg_delegate_status reads back.
+import registerCodeFederationMacros from "./domains/code-federation.js";
+registerCodeFederationMacros(register);
+try {
+  registerHeartbeat("code-bg-delegate-poll", {
+    frequency: 2, // ~30s
+    handler: async (state) => {
+      try {
+        const db = state?.db;
+        if (!db) return { ok: false, reason: "no_db" };
+        return await runMacro("code", "bg_delegate_poll_tick", {}, { db, STATE: state });
+      } catch (err) {
+        return { ok: false, reason: "tick_error", error: err?.message };
+      }
+    },
+  });
+} catch (err) {
+  console.warn("code-bg-delegate-poll registration failed:", err?.message);
+}
 try {
   registerHeartbeat("code-bg-agent-tick", {
     frequency: 4,

@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@octokit/rest": "^21.1.1",
     "@sentry/node": "^10.50.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^2.4.3",

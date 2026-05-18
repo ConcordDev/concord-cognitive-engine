@@ -1,0 +1,66 @@
+{
+  "name": "concord-code",
+  "displayName": "Concord Code",
+  "description": "Concord cognitive OS in VS Code — real test runs, real git, AI edits, background agents, AGENTS.md memory, spec-driven mode. Every action mints a citable DTU; every published agent/spec/memory earns royalties when others cite it.",
+  "version": "0.1.0",
+  "publisher": "concord",
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": ["AI", "Other", "Programming Languages"],
+  "keywords": ["ai", "concord", "agent", "spec-driven", "royalty"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "concord.runTests",       "title": "Concord: Run tests" },
+      { "command": "concord.aiEdit",         "title": "Concord: AI edit selection" },
+      { "command": "concord.gitCommit",      "title": "Concord: Real git commit" },
+      { "command": "concord.gitStatus",      "title": "Concord: Real git status" },
+      { "command": "concord.memoryAdd",      "title": "Concord: Add project memory" },
+      { "command": "concord.memoryList",     "title": "Concord: List project memory" },
+      { "command": "concord.specCreate",     "title": "Concord: Create spec" },
+      { "command": "concord.specToPlan",     "title": "Concord: Generate plan from spec" },
+      { "command": "concord.agentLoopRun",   "title": "Concord: Run agent loop (edit → test → fix)" },
+      { "command": "concord.bgStart",        "title": "Concord: Start background agent" },
+      { "command": "concord.bgList",         "title": "Concord: List background agents" },
+      { "command": "concord.semanticSearch", "title": "Concord: Semantic search patterns" },
+      { "command": "concord.ingestRepo",     "title": "Concord: Ingest this repo into code-engine" }
+    ],
+    "configuration": {
+      "title": "Concord Code",
+      "properties": {
+        "concord.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:5050",
+          "description": "Concord server URL"
+        },
+        "concord.apiToken": {
+          "type": "string",
+          "default": "",
+          "description": "Bearer token for the Concord API (from /lenses/settings or the BYO key drawer)"
+        },
+        "concord.defaultRunner": {
+          "type": "string",
+          "default": "npm",
+          "enum": ["npm", "pytest", "cargo", "jest", "go", "mocha", "vitest", "tap"],
+          "description": "Default test runner for /run_tests calls"
+        }
+      }
+    },
+    "keybindings": [
+      { "command": "concord.aiEdit",   "key": "ctrl+k", "mac": "cmd+k", "when": "editorTextFocus" },
+      { "command": "concord.runTests", "key": "ctrl+shift+t", "mac": "cmd+shift+t" }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/vscode": "^1.92.0",
+    "typescript": "^5.4.0"
+  }
+}
