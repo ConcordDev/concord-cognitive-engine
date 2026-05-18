@@ -10232,9 +10232,11 @@ async function runMacro(domain, name, input, ctx) {
       "project_template_list",
       "roadmap",
     ]),
-    // Calendar Sprint A+B — read-only macros. All others auth-gated +
-    // owner-scoped. expand_recurring + parse_rrule are pure compute.
-    // ai_parse_event has a deterministic fallback path even without LLM.
+    // Calendar Sprint A+B+C — read-only macros. expand_recurring +
+    // parse_rrule are pure compute. ai_parse_event has a deterministic
+    // fallback path. booking_link_get + booking_link_slots are PUBLIC
+    // read (they take a slug; no auth needed). bridge_* surface task /
+    // sprint / world data into calendar shape (auth-gated inside).
     calendar: new Set([
       "calendar_list", "calendar_get",
       "event_get", "event_list",
@@ -10244,6 +10246,10 @@ async function runMacro(domain, name, input, ctx) {
       "expand_recurring", "parse_rrule",
       "ai_parse_event", "ai_daily_ritual", "ai_chat",
       "semantic_search", "focus_block_list", "settings_get", "ai_runs_recent",
+      "agent_list",
+      "event_mint_status",
+      "booking_link_list", "booking_link_get", "booking_link_slots",
+      "bridge_tasks", "bridge_sprints", "bridge_world_events",
     ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
@@ -24152,6 +24158,16 @@ registerCalendarMacros(register);
 // schedule settings + ai_runs_recent provenance trail.
 import registerCalendarAiMacros from "./domains/calendar-ai.js";
 registerCalendarAiMacros(register);
+
+// Calendar lens Sprint C — concord-native moats (migration 219).
+// Calendar-bound agents publishable as agent_spec DTUs + event mint
+// as event_spec DTU + cross-lens cite cascade + Calendly-style
+// booking links (with slot computation + public book endpoint) +
+// project↔calendar bridge (task_due / sprint_window virtual events)
+// + world-event overlay.
+import registerCalendarMoatsMacros from "./domains/calendar-moats.js";
+registerCalendarMoatsMacros(register);
+
 try {
   registerHeartbeat("messaging-agent-tick", {
     frequency: 4, // ~1 min
@@ -48082,6 +48098,42 @@ app.get("/api/docs-asset/:id", asyncHandler(async (req, res) => {
 }));
 
 // Whiteboard Sprint C Item #17 — embed routes. Live SVG snapshot of a
+// Calendar Sprint C — public iCal subscription feed. URL pattern:
+//   GET /api/calendar/feed/:token.ics
+// returns an RFC 5545 .ics for any active calendar_subscriptions row.
+// Subscribable from Google / Apple / Outlook / Fantastical as a
+// read-only external calendar.
+app.get("/api/calendar/feed/:token.ics", asyncHandler(async (req, res) => {
+  const token = String(req.params.token || "");
+  if (!token) return res.status(400).send("token required");
+  const db = STATE?.db;
+  if (!db) return res.status(500).send("no_db");
+  const sub = db.prepare(`SELECT * FROM calendar_subscriptions WHERE id = ? AND active = 1`).get(token);
+  if (!sub) return res.status(404).send("subscription not found");
+  const { listEventsInRange } = await import("./lib/calendar/persistence.js");
+  const { eventsToIcs } = await import("./lib/calendar/ical.js");
+  const calIds = sub.calendar_ids_json ? (() => { try { return JSON.parse(sub.calendar_ids_json); } catch { return null; } })() : null;
+  const now = Math.floor(Date.now() / 1000);
+  const rows = listEventsInRange(db, {
+    ownerId: sub.owner_id, calendarIds: calIds,
+    windowStartTs: now - 30 * 86400, windowEndTs: now + 365 * 86400, limit: 5000,
+  });
+  const events = rows.map((r) => ({
+    id: r.id, title: sub.visibility === "busy_only" ? "Busy" : r.title,
+    description: sub.visibility === "busy_only" ? null : r.description_html,
+    location: sub.visibility === "busy_only" ? null : r.location,
+    startAt: r.start_at, endAt: r.end_at, allDay: !!r.all_day, rrule: r.rrule,
+    externalUid: r.external_uid,
+  }));
+  const out = eventsToIcs(events, { calendarName: "Concord Calendar", tz: "UTC" });
+  // Bookkeeping
+  try { db.prepare(`UPDATE calendar_subscriptions SET last_accessed_at = ?, access_count = access_count + 1 WHERE id = ?`).run(now, token); } catch { /* ok */ }
+  res.setHeader("content-type", "text/calendar; charset=utf-8");
+  res.setHeader("content-disposition", `inline; filename=concord-${token.slice(0, 8)}.ics`);
+  res.setHeader("cache-control", "public, max-age=300");
+  res.send(out.ics);
+}));
+
 // PUBLISHED (kind='whiteboard_board') or PUBLIC-KIND board. ETag-cached
 // per updated_at so Notion/Slack/etc. embeds refresh on change without
 // hammering the server.

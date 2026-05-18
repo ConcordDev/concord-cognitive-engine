@@ -27,9 +27,11 @@ import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import { CalendarEventDetail } from '@/components/calendar/CalendarEventDetail';
 import { CalendarEventCreate } from '@/components/calendar/CalendarEventCreate';
 import { CalendarAIMenu } from '@/components/calendar/CalendarAIMenu';
+import { CalendarBookingPanel } from '@/components/calendar/CalendarBookingPanel';
 import {
   Plus, Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon,
   ListIcon, Layout, LayoutGrid, Clock as ClockIcon, Settings, Sparkles,
+  Link2, Briefcase, Globe2,
 } from 'lucide-react';
 
 type ViewMode = 'month' | 'week' | 'day';
@@ -45,6 +47,11 @@ export default function CalendarLensPage() {
   const [createOnDate, setCreateOnDate] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<'detail' | 'schedule' | 'timezone'>('detail');
   const [aiMenuOpen, setAiMenuOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bridgeTasks, setBridgeTasks] = useState(true);
+  const [bridgeSprints, setBridgeSprints] = useState(true);
+  const [bridgeWorld, setBridgeWorld] = useState(false);
+  const [bridgeEvents, setBridgeEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Cmd-K opens AI menu
@@ -111,19 +118,45 @@ export default function CalendarLensPage() {
 
   useEffect(() => { refreshEvents(); }, [refreshEvents]);
 
-  // ─── Translate events into CalendarView shape ───────────────────
-  const viewEvents = useMemo(() => events.map((e) => {
-    const startDate = new Date(e.start_at * 1000);
-    const time = e.all_day ? undefined : startDate.toISOString().slice(11, 16);
-    return {
-      id: e.instance_id || e.id,
-      title: e.title,
-      date: startDate.toISOString().slice(0, 10),
-      time,
-      color: e.color || calendars.find((c) => c.id === e.calendar_id)?.color || '#22d3ee',
-      type: 'event' as const,
-    };
-  }), [events, calendars]);
+  // ─── Cross-lens bridge events ───────────────────────────────────
+  const refreshBridges = useCallback(async () => {
+    const combined: CalendarEvent[] = [];
+    const args = { windowStartTs: window.startTs, windowEndTs: window.endTs };
+    try {
+      if (bridgeTasks) {
+        const r = await callCalendarMacro<{ events?: CalendarEvent[] }>('bridge_tasks', args);
+        if (r?.events) combined.push(...r.events);
+      }
+      if (bridgeSprints) {
+        const r = await callCalendarMacro<{ events?: CalendarEvent[] }>('bridge_sprints');
+        if (r?.events) combined.push(...r.events.filter((e) => e.start_at < window.endTs && e.end_at > window.startTs));
+      }
+      if (bridgeWorld) {
+        const r = await callCalendarMacro<{ events?: CalendarEvent[] }>('bridge_world_events', args);
+        if (r?.events) combined.push(...r.events);
+      }
+    } catch (e) { console.error('bridges', e); }
+    setBridgeEvents(combined);
+  }, [bridgeTasks, bridgeSprints, bridgeWorld, window]);
+
+  useEffect(() => { refreshBridges(); }, [refreshBridges]);
+
+  // ─── Translate events + bridge events into CalendarView shape ──
+  const viewEvents = useMemo(() => {
+    const all = [...events, ...bridgeEvents];
+    return all.map((e) => {
+      const startDate = new Date(e.start_at * 1000);
+      const time = e.all_day ? undefined : startDate.toISOString().slice(11, 16);
+      return {
+        id: e.instance_id || e.id,
+        title: e.title,
+        date: startDate.toISOString().slice(0, 10),
+        time,
+        color: e.color || calendars.find((c) => c.id === e.calendar_id)?.color || '#22d3ee',
+        type: 'event' as const,
+      };
+    });
+  }, [events, bridgeEvents, calendars]);
 
   const activeEvent = useMemo(() => {
     if (!activeEventId) return null;
@@ -202,6 +235,9 @@ export default function CalendarLensPage() {
               <ViewBtn icon={<Layout className="w-3.5 h-3.5" />} active={view === 'week'} onClick={() => setView('week')} />
               <ViewBtn icon={<ListIcon className="w-3.5 h-3.5" />} active={view === 'day'} onClick={() => setView('day')} />
             </div>
+            <button onClick={() => setBridgeTasks((b) => !b)} className={`p-1.5 rounded hover:bg-white/10 ${bridgeTasks ? 'text-cyan-300' : 'text-white/40'}`} title="Show task due dates"><Briefcase className="w-4 h-4" /></button>
+            <button onClick={() => setBridgeWorld((b) => !b)} className={`p-1.5 rounded hover:bg-white/10 ${bridgeWorld ? 'text-violet-300' : 'text-white/40'}`} title="Show Concordia world events"><Globe2 className="w-4 h-4" /></button>
+            <button onClick={() => setBookingOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-white/70" title="Booking links"><Link2 className="w-4 h-4" /></button>
             <button
               onClick={() => setAiMenuOpen(true)}
               className="p-1.5 rounded hover:bg-white/10 text-cyan-300/80 hover:text-cyan-300"
@@ -264,6 +300,12 @@ export default function CalendarLensPage() {
         onClose={() => setAiMenuOpen(false)}
         activeEvent={activeEvent}
         onRefresh={refreshEvents}
+      />
+
+      <CalendarBookingPanel
+        open={bookingOpen}
+        onClose={() => setBookingOpen(false)}
+        calendars={calendars}
       />
     </LensShell>
   );
