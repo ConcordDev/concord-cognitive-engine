@@ -27,9 +27,13 @@ import { TaskCommandPalette } from '@/components/tasks/TaskCommandPalette';
 import { SprintPanel } from '@/components/tasks/SprintPanel';
 import { TaskAIMenu } from '@/components/tasks/TaskAIMenu';
 import { TaskVoiceCapture } from '@/components/tasks/TaskVoiceCapture';
-import { Plus, ListIcon, Layout, Calendar, Loader2, Filter, Search, FolderPlus, Sparkles } from 'lucide-react';
+import { TaskTimelineView } from '@/components/tasks/TaskTimelineView';
+import { ProjectMintModal } from '@/components/tasks/ProjectMintModal';
+import { ProjectImportModal } from '@/components/tasks/ProjectImportModal';
+import { ProjectTemplatePicker } from '@/components/tasks/ProjectTemplatePicker';
+import { Plus, ListIcon, Layout, Calendar, GitBranch, Loader2, Filter, Search, FolderPlus, Sparkles, Coins, Upload, Bookmark } from 'lucide-react';
 
-type ViewKind = 'list' | 'board' | 'calendar';
+type ViewKind = 'list' | 'board' | 'calendar' | 'timeline';
 
 export default function TasksLensPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -45,6 +49,9 @@ export default function TasksLensPage() {
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [aiMenuOpen, setAiMenuOpen] = useState(false);
+  const [mintOpen, setMintOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // ─── Load projects on mount ─────────────────────────────────────
@@ -132,20 +139,30 @@ export default function TasksLensPage() {
             <p className="text-lg mb-2">No projects yet</p>
             <p className="text-sm">Create your first project to start tracking tasks.</p>
           </div>
-          <button
-            onClick={() => setCreateProjectOpen(true)}
-            className="px-4 py-2 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 text-sm flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> New project
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCreateProjectOpen(true)}
+              className="px-4 py-2 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 text-sm flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Blank project
+            </button>
+            <button
+              onClick={() => setTemplatePickerOpen(true)}
+              className="px-4 py-2 rounded bg-white/10 hover:bg-white/15 text-white text-sm flex items-center gap-2"
+            >
+              <Bookmark className="w-4 h-4" /> From template
+            </button>
+          </div>
         </div>
         <ProjectCreateModal
           open={createProjectOpen}
           onClose={() => setCreateProjectOpen(false)}
-          onCreated={(id) => {
-            setCreateProjectOpen(false);
-            refreshProjects();
-          }}
+          onCreated={() => { setCreateProjectOpen(false); refreshProjects(); }}
+        />
+        <ProjectTemplatePicker
+          open={templatePickerOpen}
+          onClose={() => setTemplatePickerOpen(false)}
+          onApplied={() => { setTemplatePickerOpen(false); refreshProjects(); }}
         />
       </LensShell>
     );
@@ -201,7 +218,14 @@ export default function TasksLensPage() {
               <ViewBtn icon={<ListIcon className="w-3.5 h-3.5" />} active={view === 'list'} onClick={() => setView('list')} />
               <ViewBtn icon={<Layout className="w-3.5 h-3.5" />} active={view === 'board'} onClick={() => setView('board')} />
               <ViewBtn icon={<Calendar className="w-3.5 h-3.5" />} active={view === 'calendar'} onClick={() => setView('calendar')} />
+              <ViewBtn icon={<GitBranch className="w-3.5 h-3.5" />} active={view === 'timeline'} onClick={() => setView('timeline')} />
             </div>
+            <button onClick={() => setImportOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-white/70" title="Import CSV">
+              <Upload className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => setMintOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-amber-300/80 hover:text-amber-300" title="Mint as DTU">
+              <Coins className="w-3.5 h-3.5" />
+            </button>
             <button
               onClick={() => setCreateTaskOpen(true)}
               className="px-2 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 text-xs font-medium flex items-center gap-1"
@@ -232,6 +256,9 @@ export default function TasksLensPage() {
             )}
             {workflow && view === 'calendar' && (
               <TaskCalendarView tasks={tasks} onSelect={setActiveTaskId} />
+            )}
+            {workflow && view === 'timeline' && activeProject && (
+              <TaskTimelineView projectId={activeProject.id} onSelect={setActiveTaskId} />
             )}
           </div>
 
@@ -283,6 +310,19 @@ export default function TasksLensPage() {
         project={activeProject}
         task={activeTask}
         onRefresh={refreshTasks}
+      />
+
+      {activeProject && (
+        <>
+          <ProjectMintModal open={mintOpen} onClose={() => setMintOpen(false)} projectId={activeProject.id} />
+          <ProjectImportModal open={importOpen} onClose={() => setImportOpen(false)} projectId={activeProject.id} onImported={refreshTasks} />
+        </>
+      )}
+
+      <ProjectTemplatePicker
+        open={templatePickerOpen}
+        onClose={() => setTemplatePickerOpen(false)}
+        onApplied={(pid) => { setTemplatePickerOpen(false); refreshProjects(); }}
       />
     </LensShell>
   );

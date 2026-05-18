@@ -10213,6 +10213,12 @@ async function runMacro(domain, name, input, ctx) {
       // routing through the LLM — it scores in-memory and returns.
       "ai_prioritize", "ai_standup", "semantic_search",
       "triage_rule_list", "ai_runs_recent",
+      // Sprint C — moats: read-only agent list + mint status + template
+      // list + roadmap computation + pack export. All gate-by-role.
+      "agent_list",
+      "project_mint_status", "project_export_pack",
+      "project_template_list",
+      "roadmap",
     ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
@@ -24095,6 +24101,15 @@ registerTasksViewsMacros(register);
 // + triage rule CRUD + ai_runs_recent provenance trail.
 import registerTasksAiMacros from "./domains/tasks-ai.js";
 registerTasksAiMacros(register);
+
+// Tasks lens Sprint C — concord-native moats (migration 216).
+// Project-bound agents publishable as agent_spec DTUs + project mint
+// as project_spec DTU + cross-lens cite cascade + portable pack
+// export + project templates (4 seeded defaults: software/sprint/
+// onboarding/launch) + CSV importers (Linear/Jira/Asana/generic) +
+// roadmap / timeline with critical path.
+import registerTasksMoatsMacros from "./domains/tasks-moats.js";
+registerTasksMoatsMacros(register);
 try {
   registerHeartbeat("messaging-agent-tick", {
     frequency: 4, // ~1 min
