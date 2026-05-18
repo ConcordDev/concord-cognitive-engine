@@ -10208,6 +10208,11 @@ async function runMacro(domain, name, input, ctx) {
       "time_entries",
       "comment_list", "participant_list", "attachment_list", "link_list",
       "view_list", "view_get",
+      // Sprint B — read-only AI macros (prioritize + standup + search +
+      // triage rules + run ledger). ai_prioritize is read-only despite
+      // routing through the LLM — it scores in-memory and returns.
+      "ai_prioritize", "ai_standup", "semantic_search",
+      "triage_rule_list", "ai_runs_recent",
     ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
@@ -24083,6 +24088,13 @@ import registerTasksCollabMacros from "./domains/tasks-collab.js";
 registerTasksCollabMacros(register);
 import registerTasksViewsMacros from "./domains/tasks-views.js";
 registerTasksViewsMacros(register);
+
+// Tasks lens Sprint B — AI surface (migration 215).
+// ai_compose_plan / ai_breakdown / ai_prioritize / ai_standup /
+// ai_triage / ai_voice_to_task / ai_tone_polish / semantic_search
+// + triage rule CRUD + ai_runs_recent provenance trail.
+import registerTasksAiMacros from "./domains/tasks-ai.js";
+registerTasksAiMacros(register);
 try {
   registerHeartbeat("messaging-agent-tick", {
     frequency: 4, // ~1 min

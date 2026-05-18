@@ -25,7 +25,9 @@ import { TaskCreateModal } from '@/components/tasks/TaskCreateModal';
 import { ProjectCreateModal } from '@/components/tasks/ProjectCreateModal';
 import { TaskCommandPalette } from '@/components/tasks/TaskCommandPalette';
 import { SprintPanel } from '@/components/tasks/SprintPanel';
-import { Plus, ListIcon, Layout, Calendar, Loader2, Filter, Search, FolderPlus } from 'lucide-react';
+import { TaskAIMenu } from '@/components/tasks/TaskAIMenu';
+import { TaskVoiceCapture } from '@/components/tasks/TaskVoiceCapture';
+import { Plus, ListIcon, Layout, Calendar, Loader2, Filter, Search, FolderPlus, Sparkles } from 'lucide-react';
 
 type ViewKind = 'list' | 'board' | 'calendar';
 
@@ -42,6 +44,7 @@ export default function TasksLensPage() {
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [aiMenuOpen, setAiMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // ─── Load projects on mount ─────────────────────────────────────
@@ -92,6 +95,10 @@ export default function TasksLensPage() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'i' && activeProject) {
         e.preventDefault();
         setCreateTaskOpen(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j' && activeProject) {
+        e.preventDefault();
+        setAiMenuOpen(true);
       }
     };
     document.addEventListener('keydown', onKey);
@@ -182,6 +189,14 @@ export default function TasksLensPage() {
             >
               ⌘K
             </button>
+            <TaskVoiceCapture projectId={activeProject?.id || null} onCreated={refreshTasks} />
+            <button
+              onClick={() => setAiMenuOpen(true)}
+              className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
+              title="AI actions (⌘J)"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
             <div className="flex items-center gap-0.5 bg-white/5 rounded p-0.5">
               <ViewBtn icon={<ListIcon className="w-3.5 h-3.5" />} active={view === 'list'} onClick={() => setView('list')} />
               <ViewBtn icon={<Layout className="w-3.5 h-3.5" />} active={view === 'board'} onClick={() => setView('board')} />
@@ -260,6 +275,14 @@ export default function TasksLensPage() {
         onClose={() => setCommandOpen(false)}
         onJumpToTask={(id) => { setActiveTaskId(id); setCommandOpen(false); }}
         onJumpToProject={(p) => { setActiveProject(p); setCommandOpen(false); }}
+      />
+
+      <TaskAIMenu
+        open={aiMenuOpen}
+        onClose={() => setAiMenuOpen(false)}
+        project={activeProject}
+        task={activeTask}
+        onRefresh={refreshTasks}
       />
     </LensShell>
   );
