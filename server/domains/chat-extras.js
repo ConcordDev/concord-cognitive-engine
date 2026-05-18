@@ -242,4 +242,117 @@ export default function registerChatExtrasMacros(register) {
     if (!db || !userId) return { ok: false, reason: "auth_required" };
     return { ok: true, branches: listBranches(db, String(input.sessionId || "")) };
   }, { note: "List branches off / into a session" });
+
+  // Smoking-gun cleanup — chat_scheduled_tasks was completely dead
+  // (0 reads, 0 writes). The migration created the table for recurring
+  // chat tasks (Tasks parity) but the CRUD never landed. These five
+  // macros wire it up. The runner heartbeat is added in server.js.
+
+  register("chat", "scheduled_create", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const title = String(input.title || "").trim();
+    const prompt = String(input.prompt || "").trim();
+    if (!title || !prompt) return { ok: false, reason: "title_and_prompt_required" };
+    const cadenceKind = ["every_n_hours","daily","weekly","once_at"].includes(input.cadenceKind) ? input.cadenceKind : "every_n_hours";
+    const cadenceParam = String(input.cadenceParam || "24");
+    const nextRunAt = computeNextRunAt(cadenceKind, cadenceParam, Math.floor(Date.now() / 1000));
+    const id = `chsched:${cryptoRandom()}`;
+    db.prepare(`
+      INSERT INTO chat_scheduled_tasks (id, owner_id, project_id, persona_id, title, prompt, cadence_kind, cadence_param, next_run_at, enabled, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, userId,
+      input.projectId || null,
+      input.personaId || null,
+      title.slice(0, 200), prompt.slice(0, 8000),
+      cadenceKind, cadenceParam, nextRunAt,
+      input.enabled === false ? 0 : 1,
+      Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000));
+    return { ok: true, id, nextRunAt };
+  }, { destructive: true, note: "Create a scheduled chat task (Tasks parity)" });
+
+  register("chat", "scheduled_list", async (ctx) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const rows = db.prepare(`SELECT * FROM chat_scheduled_tasks WHERE owner_id = ? ORDER BY enabled DESC, next_run_at ASC`).all(userId);
+    return { ok: true, tasks: rows };
+  }, { note: "List my scheduled chat tasks" });
+
+  register("chat", "scheduled_update", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    if (!id) return { ok: false, reason: "id_required" };
+    const cur = db.prepare(`SELECT owner_id, cadence_kind, cadence_param FROM chat_scheduled_tasks WHERE id = ?`).get(id);
+    if (!cur) return { ok: false, reason: "not_found" };
+    if (cur.owner_id !== userId) return { ok: false, reason: "forbidden" };
+    const sets = [], args = [];
+    if (input.title !== undefined) { sets.push("title = ?"); args.push(String(input.title).slice(0, 200)); }
+    if (input.prompt !== undefined) { sets.push("prompt = ?"); args.push(String(input.prompt).slice(0, 8000)); }
+    if (input.enabled !== undefined) { sets.push("enabled = ?"); args.push(input.enabled ? 1 : 0); }
+    if (input.cadenceKind && ["every_n_hours","daily","weekly","once_at"].includes(input.cadenceKind)) {
+      sets.push("cadence_kind = ?"); args.push(input.cadenceKind);
+      const param = input.cadenceParam !== undefined ? String(input.cadenceParam) : cur.cadence_param;
+      sets.push("cadence_param = ?"); args.push(param);
+      sets.push("next_run_at = ?"); args.push(computeNextRunAt(input.cadenceKind, param, Math.floor(Date.now() / 1000)));
+    } else if (input.cadenceParam !== undefined) {
+      sets.push("cadence_param = ?"); args.push(String(input.cadenceParam));
+      sets.push("next_run_at = ?"); args.push(computeNextRunAt(cur.cadence_kind, String(input.cadenceParam), Math.floor(Date.now() / 1000)));
+    }
+    if (sets.length === 0) return { ok: false, reason: "nothing_to_update" };
+    sets.push("updated_at = ?"); args.push(Math.floor(Date.now() / 1000));
+    args.push(id);
+    db.prepare(`UPDATE chat_scheduled_tasks SET ${sets.join(", ")} WHERE id = ?`).run(...args);
+    return { ok: true };
+  }, { destructive: true, note: "Update a scheduled chat task (cadence change recomputes next_run_at)" });
+
+  register("chat", "scheduled_delete", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const id = String(input.id || "");
+    const r = db.prepare(`DELETE FROM chat_scheduled_tasks WHERE id = ? AND owner_id = ?`).run(id, userId);
+    return { ok: r.changes > 0 };
+  }, { destructive: true, note: "Delete a scheduled chat task" });
+
+  register("chat", "scheduled_due", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const limit = Math.min(Math.max(1, Number(input.limit) || 50), 500);
+    const now = Math.floor(Date.now() / 1000);
+    const rows = db.prepare(`
+      SELECT * FROM chat_scheduled_tasks
+      WHERE enabled = 1 AND next_run_at <= ?
+      ORDER BY next_run_at ASC LIMIT ?
+    `).all(now, limit);
+    return { ok: true, due: rows, count: rows.length };
+  }, { note: "Due scheduled chat tasks across all users — fed to the runner heartbeat" });
+}
+
+function cryptoRandom() {
+  // crypto.randomUUID without a top-level import (lazy)
+  // — uses node:crypto if available, otherwise a Math.random fallback
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require("node:crypto").randomUUID();
+  } catch {
+    return `r${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  }
+}
+
+function computeNextRunAt(kind, param, nowSec) {
+  switch (kind) {
+    case "every_n_hours": {
+      const hours = Math.max(1, Math.min(720, Number(param) || 24));
+      return nowSec + hours * 3600;
+    }
+    case "daily": return nowSec + 86400;
+    case "weekly": return nowSec + 7 * 86400;
+    case "once_at": return Math.max(nowSec, Number(param) || nowSec);
+    default: return nowSec + 86400;
+  }
 }

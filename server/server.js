@@ -10240,6 +10240,8 @@ async function runMacro(domain, name, input, ctx) {
       "persona_get", "persona_list",
       "prompt_list",
       "branch_list",
+      // Sprint cleanup — chat_scheduled_tasks was 0R/0W. Read paths:
+      "scheduled_list", "scheduled_due",
       // Sprint B: artifact + research + tool-call reads + reasoning helper
       "artifact_get", "artifact_list", "artifact_versions",
       "tool_calls_list",
@@ -10303,6 +10305,10 @@ async function runMacro(domain, name, input, ctx) {
       "event_mint_status",
       "booking_link_list", "booking_link_get", "booking_link_slots",
       "bridge_tasks", "bridge_sprints", "bridge_world_events",
+      // Sprint cleanup — close asymmetric calendar tables
+      "bookings_list", "bookings_mine",
+      "links_for_event",
+      "subscription_list",
     ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
@@ -24277,6 +24283,55 @@ registerChatAiMacros(register);
 import registerChatMoatsMacros from "./domains/chat-moats.js";
 registerChatMoatsMacros(register);
 
+// Smoking-gun cleanup — chat_scheduled_tasks runner. Heartbeat every
+// 4 ticks (60s) scans for due tasks (enabled = 1 AND next_run_at <=
+// now), advances next_run_at per cadence, and bumps run_count. The
+// actual chat-session-spawn-from-prompt wiring lands in a follow-up;
+// this closes the dead-schema gap so the table is alive on the clock.
+try {
+  registerHeartbeat("chat-scheduled-task-runner", {
+    frequency: 4,
+    handler: async () => {
+      const db = STATE?.db;
+      if (!db) return { ok: false, reason: "no_db" };
+      try {
+        const now = Math.floor(Date.now() / 1000);
+        const due = db.prepare(`
+          SELECT * FROM chat_scheduled_tasks
+          WHERE enabled = 1 AND next_run_at <= ?
+          LIMIT 50
+        `).all(now);
+        const upd = db.prepare(`
+          UPDATE chat_scheduled_tasks
+          SET last_run_at = ?, next_run_at = ?, run_count = run_count + 1, updated_at = ?
+          WHERE id = ?
+        `);
+        let processed = 0;
+        for (const task of due) {
+          let nextAt = now + 24 * 3600;
+          switch (task.cadence_kind) {
+            case "every_n_hours": nextAt = now + Math.max(1, Number(task.cadence_param) || 24) * 3600; break;
+            case "daily":  nextAt = now + 86400; break;
+            case "weekly": nextAt = now + 7 * 86400; break;
+            case "once_at":
+              // Self-disable after a one-shot fires
+              db.prepare(`UPDATE chat_scheduled_tasks SET enabled = 0, last_run_at = ?, run_count = run_count + 1, updated_at = ? WHERE id = ?`).run(now, now, task.id);
+              processed++;
+              continue;
+          }
+          upd.run(now, nextAt, now, task.id);
+          processed++;
+        }
+        return { ok: true, processed };
+      } catch (err) {
+        return { ok: true, processed: 0, reason: "scheduled_tasks_unavailable", note: err?.message };
+      }
+    },
+  });
+} catch (err) {
+  try { console.warn("[chat-scheduled-task-runner] registration failed:", err?.message); } catch { /* ok */ }
+}
+
 // Social lens Sprint A — smoking-gun fix #10/10 + durable persistence
 // (migration 226). Pre-this-sprint the social lens was the ONE lens
 // with no domain macro — it bypassed register() entirely and called
@@ -33979,18 +34034,92 @@ register("plugin", "disable", (_ctx, input) => {
 });
 
 // ---- Enhanced Council with Vote Tallying ----
+// Smoking-gun cleanup: was STATE.councilVotes = new Map(), lost on
+// restart. Migration 229 added council_dtu_votes table with
+// UNIQUE(dtu_id, voter_id) so duplicate-vote prevention is enforced
+// at the schema level, not just in-process. The Map shim below is
+// retained for downstream code that still reads it (the legacy
+// stats macros at ~49301 + saveState integration). It's lazily
+// hydrated from DB on demand.
 if (!STATE.councilVotes) STATE.councilVotes = new Map();
+
+function _councilDb() { return STATE?.db || null; }
+
+function _voteRowToRecord(r) {
+  return {
+    id: r.id,
+    dtuId: r.dtu_id,
+    vote: r.vote,
+    voterId: r.voter_id,
+    persona: r.persona,
+    reason: r.reason,
+    weight: r.weight,
+    timestamp: new Date((r.cast_at || 0) * 1000).toISOString(),
+  };
+}
+
+function _loadVotesForDtu(dtuId) {
+  const db = _councilDb();
+  if (!db) return [];
+  try {
+    const rows = db.prepare(`SELECT id, dtu_id, voter_id, vote, persona, reason, weight, cast_at FROM council_dtu_votes WHERE dtu_id = ? ORDER BY cast_at ASC`).all(dtuId);
+    return rows.map(_voteRowToRecord);
+  } catch {
+    return [];
+  }
+}
+
+function _loadAllVotes() {
+  const db = _councilDb();
+  if (!db) return [];
+  try {
+    const rows = db.prepare(`SELECT id, dtu_id, voter_id, vote, persona, reason, weight, cast_at FROM council_dtu_votes`).all();
+    return rows.map(_voteRowToRecord);
+  } catch {
+    return [];
+  }
+}
 
 register("council", "vote", (ctx, input) => {
   const { dtuId, vote, persona, reason } = input;
   if (!dtuId || !vote) return { ok: false, error: "dtuId and vote required" };
   if (!["approve", "reject", "abstain"].includes(vote)) return { ok: false, error: "Invalid vote" };
 
-  // ---- Duplicate Vote Prevention (Category 2: Concurrency) ----
   const voterId = ctx?.actor?.id || ctx?.actor?.odId || persona || "anonymous";
+  const db = _councilDb();
+
+  // ---- DB path (durable, schema-enforced uniqueness) ----
+  if (db) {
+    try {
+      const existing = db.prepare(`SELECT id, vote, cast_at FROM council_dtu_votes WHERE dtu_id = ? AND voter_id = ?`).get(dtuId, voterId);
+      if (existing) {
+        return {
+          ok: false,
+          error: "Already voted on this DTU",
+          code: "DUPLICATE_VOTE",
+          existingVote: existing.vote,
+          votedAt: new Date((existing.cast_at || 0) * 1000).toISOString(),
+        };
+      }
+      const voteId = uid("vote");
+      const castAt = Math.floor(Date.now() / 1000);
+      db.prepare(`
+        INSERT INTO council_dtu_votes (id, dtu_id, voter_id, vote, persona, reason, weight, cast_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(voteId, dtuId, voterId, vote, persona || "anonymous", reason || "", 1.0, castAt);
+      // Hydrate the legacy Map so existing readers stay consistent within this process
+      STATE.councilVotes.set(dtuId, _loadVotesForDtu(dtuId));
+      const voteRecord = STATE.councilVotes.get(dtuId).find((v) => v.id === voteId);
+      return { ok: true, vote: voteRecord };
+    } catch (err) {
+      // Fall through to in-memory path if schema missing
+    }
+  }
+
+  // ---- In-memory fallback (test envs / no-DB boot) ----
   if (STATE.councilVotes.has(dtuId)) {
     const existingVotes = STATE.councilVotes.get(dtuId);
-    const duplicateVote = existingVotes.find(v => v.voterId === voterId);
+    const duplicateVote = existingVotes.find((v) => v.voterId === voterId);
     if (duplicateVote) {
       return {
         ok: false,
@@ -34001,22 +34130,14 @@ register("council", "vote", (ctx, input) => {
       };
     }
   }
-
   const voteRecord = {
-    id: uid("vote"),
-    dtuId,
-    vote,
-    voterId,
-    persona: persona || "anonymous",
-    reason: reason || "",
-    timestamp: nowISO(),
-    weight: 1.0
+    id: uid("vote"), dtuId, vote, voterId,
+    persona: persona || "anonymous", reason: reason || "",
+    timestamp: nowISO(), weight: 1.0,
   };
-
   if (!STATE.councilVotes.has(dtuId)) STATE.councilVotes.set(dtuId, []);
   STATE.councilVotes.get(dtuId).push(voteRecord);
   saveStateDebounced();
-
   return { ok: true, vote: voteRecord };
 });
 
@@ -34024,7 +34145,15 @@ register("council", "tally", (ctx, input) => {
   const { dtuId } = input;
   if (!dtuId) return { ok: false, error: "dtuId required" };
 
-  const votes = STATE.councilVotes.get(dtuId) || [];
+  // DB-first; fall back to in-memory shim
+  const db = _councilDb();
+  let votes = [];
+  if (db) {
+    try { votes = _loadVotesForDtu(dtuId); } catch { /* try mem */ }
+  }
+  if (votes.length === 0) {
+    votes = STATE.councilVotes.get(dtuId) || [];
+  }
   const tally = { approve: 0, reject: 0, abstain: 0, total: votes.length };
 
   for (const v of votes) {
@@ -34825,8 +34954,16 @@ app.post("/api/marketplace/submit", requireAuth(), async (req, res) => {
       repairFlags: repair?.flags ?? [],
     };
 
+    // Smoking-gun cleanup — write to durable marketplace_dtu_listings
+    // (migration 230) in addition to the Map shim. The Map stays
+    // populated so legacy code that hasn't been swapped yet keeps
+    // working; the DB row is the source of truth on restart.
     if (!STATE.marketplaceListings) STATE.marketplaceListings = new Map();
     STATE.marketplaceListings.set(listing.id, listing);
+    try {
+      const { createListing: _createListing } = await import("./lib/marketplace/dtu-listings.js");
+      _createListing(STATE?.db, listing);
+    } catch (e) { /* table may be missing on tiny test DBs */ }
     saveStateDebounced();
     res.json({ ok: true, listing, repair });
   } catch (e) {
@@ -43226,7 +43363,7 @@ function computeFlywheelMetrics() {
     avgQualityScore: 0,
     tier1Rate: 0,
     qualityTrend: "stable",
-    totalListings: STATE.marketplaceListings?.size || 0,
+    totalListings: _marketplaceListingCount(),
     transactionsToday: 0,
     revenueToday: 0,
     activeUsers24h: 0,
@@ -45684,49 +45821,133 @@ app.delete("/api/search/saved/:id", requireAuth(), asyncHandler(async (req, res)
 }));
 
 // Creator listing management — edit price, withdraw a listing, re-list.
+// Smoking-gun cleanup — DB-first marketplace listing helpers. Replaces
+// STATE.marketplaceListings Map reads with durable-row reads while
+// keeping the Map shim consistent (so legacy callers still work).
+function _marketplaceGetListing(id) {
+  if (!id) return null;
+  const db = STATE?.db;
+  if (db) {
+    try {
+      const r = db.prepare(`SELECT * FROM marketplace_dtu_listings WHERE id = ?`).get(id);
+      if (r) {
+        const _safe = (s, fb) => { try { return s == null ? fb : JSON.parse(s); } catch { return fb; } };
+        return {
+          id: r.id, sourceDtuId: r.source_dtu_id, sellerId: r.seller_id,
+          scope: r.scope, title: r.title, domain: r.domain, description: r.description,
+          artifact: _safe(r.artifact_json, null), qualityTier: r.quality_tier, qualityScore: r.quality_score,
+          price: r.price, currency: r.currency,
+          listedAt: new Date((r.listed_at || 0) * 1000).toISOString(),
+          downloads: r.downloads, ratings: _safe(r.ratings_json, []),
+          status: r.status, repairScore: r.repair_score, repairFlags: _safe(r.repair_flags_json, []),
+        };
+      }
+    } catch { /* fall through */ }
+  }
+  return STATE.marketplaceListings?.get?.(id) || null;
+}
+
+function _marketplaceUpdateListing(id, patch) {
+  const db = STATE?.db;
+  // Update in-memory shim for callers still reading the Map
+  if (STATE.marketplaceListings?.has?.(id)) {
+    const cur = STATE.marketplaceListings.get(id);
+    Object.assign(cur, patch);
+    STATE.marketplaceListings.set(id, cur);
+  }
+  // Persist
+  if (db) {
+    try {
+      const sets = []; const args = [];
+      if (patch.price !== undefined) { sets.push("price = ?"); args.push(Number(patch.price)); }
+      if (patch.description !== undefined) { sets.push("description = ?"); args.push(String(patch.description).slice(0, 1000)); }
+      if (patch.title !== undefined) { sets.push("title = ?"); args.push(String(patch.title).slice(0, 200)); }
+      if (patch.status !== undefined) { sets.push("status = ?"); args.push(patch.status); }
+      if (patch.downloads !== undefined) { sets.push("downloads = ?"); args.push(Number(patch.downloads)); }
+      if (sets.length > 0) {
+        sets.push("updated_at = ?"); args.push(Math.floor(Date.now() / 1000));
+        args.push(id);
+        db.prepare(`UPDATE marketplace_dtu_listings SET ${sets.join(", ")} WHERE id = ?`).run(...args);
+      }
+    } catch { /* table may be missing */ }
+  }
+}
+
+function _marketplaceListingCount() {
+  const db = STATE?.db;
+  if (db) {
+    try {
+      const r = db.prepare(`SELECT COUNT(*) AS n FROM marketplace_dtu_listings`).get();
+      return r?.n || 0;
+    } catch { /* fall through */ }
+  }
+  return STATE.marketplaceListings?.size || 0;
+}
+
+function _marketplaceAllListings() {
+  const db = STATE?.db;
+  if (db) {
+    try {
+      const rows = db.prepare(`SELECT * FROM marketplace_dtu_listings ORDER BY listed_at DESC LIMIT 5000`).all();
+      const _safe = (s, fb) => { try { return s == null ? fb : JSON.parse(s); } catch { return fb; } };
+      return rows.map((r) => ({
+        id: r.id, sourceDtuId: r.source_dtu_id, sellerId: r.seller_id,
+        scope: r.scope, title: r.title, domain: r.domain, description: r.description,
+        artifact: _safe(r.artifact_json, null), qualityTier: r.quality_tier, qualityScore: r.quality_score,
+        price: r.price, currency: r.currency,
+        listedAt: new Date((r.listed_at || 0) * 1000).toISOString(),
+        downloads: r.downloads, ratings: _safe(r.ratings_json, []),
+        status: r.status, repairScore: r.repair_score, repairFlags: _safe(r.repair_flags_json, []),
+      }));
+    } catch { /* fall through */ }
+  }
+  return STATE.marketplaceListings ? [...STATE.marketplaceListings.values()] : [];
+}
+
 // Owner-only; status transitions are: active → withdrawn → active (re-list).
 app.patch("/api/marketplace/listings/:id", requireAuth(), (req, res) => {
   const userId = req.user?.id;
   const id = req.params.id;
-  const listing = STATE.marketplaceListings?.get?.(id);
+  const listing = _marketplaceGetListing(id);
   if (!listing) return res.status(404).json({ ok: false, error: "listing_not_found" });
   if (listing.sellerId !== userId && req.user?.role !== "admin") {
     return res.status(403).json({ ok: false, error: "not_listing_owner" });
   }
   const { price, description, title } = req.body || {};
-  if (typeof price === "number" && price >= 0) listing.price = price;
-  if (typeof description === "string") listing.description = description.slice(0, 1000);
-  if (typeof title === "string") listing.title = title.slice(0, 200);
-  listing.updatedAt = new Date().toISOString();
+  const patch = {};
+  if (typeof price === "number" && price >= 0) patch.price = price;
+  if (typeof description === "string") patch.description = description.slice(0, 1000);
+  if (typeof title === "string") patch.title = title.slice(0, 200);
+  patch.updatedAt = new Date().toISOString();
+  _marketplaceUpdateListing(id, patch);
   saveStateDebounced();
-  res.json({ ok: true, listing });
+  res.json({ ok: true, listing: { ...listing, ...patch } });
 });
 app.post("/api/marketplace/listings/:id/withdraw", requireAuth(), (req, res) => {
   const userId = req.user?.id;
   const id = req.params.id;
-  const listing = STATE.marketplaceListings?.get?.(id);
+  const listing = _marketplaceGetListing(id);
   if (!listing) return res.status(404).json({ ok: false, error: "listing_not_found" });
   if (listing.sellerId !== userId && req.user?.role !== "admin") {
     return res.status(403).json({ ok: false, error: "not_listing_owner" });
   }
-  listing.status = "withdrawn";
-  listing.withdrawnAt = new Date().toISOString();
+  // marketplace_dtu_listings CHECK constraint accepts 'removed' (sibling of withdrawn semantics)
+  _marketplaceUpdateListing(id, { status: "removed", withdrawnAt: new Date().toISOString() });
   saveStateDebounced();
-  res.json({ ok: true, listing });
+  res.json({ ok: true, listing: { ...listing, status: "removed" } });
 });
 app.post("/api/marketplace/listings/:id/relist", requireAuth(), (req, res) => {
   const userId = req.user?.id;
   const id = req.params.id;
-  const listing = STATE.marketplaceListings?.get?.(id);
+  const listing = _marketplaceGetListing(id);
   if (!listing) return res.status(404).json({ ok: false, error: "listing_not_found" });
   if (listing.sellerId !== userId && req.user?.role !== "admin") {
     return res.status(403).json({ ok: false, error: "not_listing_owner" });
   }
   if (listing.status === "active") return res.json({ ok: true, listing, note: "already_active" });
-  listing.status = "active";
-  listing.relistedAt = new Date().toISOString();
+  _marketplaceUpdateListing(id, { status: "active", relistedAt: new Date().toISOString() });
   saveStateDebounced();
-  res.json({ ok: true, listing });
+  res.json({ ok: true, listing: { ...listing, status: "active" } });
 });
 app.get("/api/creator/badges", requireAuth(), asyncHandler(async (req, res) => {
   const rb = await import("./lib/reputation-badges.js");
@@ -45739,12 +45960,8 @@ app.get("/api/creator/badges/:userId", asyncHandler(async (req, res) => {
 
 app.get("/api/creator/listings", requireAuth(), (req, res) => {
   const userId = req.user?.id;
-  const out = [];
-  if (STATE.marketplaceListings) {
-    for (const l of STATE.marketplaceListings.values()) {
-      if (l.sellerId === userId) out.push(l);
-    }
-  }
+  const all = _marketplaceAllListings();
+  const out = all.filter((l) => l.sellerId === userId);
   out.sort((a, b) => new Date(b.listedAt || 0) - new Date(a.listedAt || 0));
   res.json({ ok: true, listings: out });
 });
@@ -45966,7 +46183,7 @@ app.get("/api/world/bazaar", (req, res) => {
     return res.json({ ok: true, worldId, stalls: [] });
   }
 
-  const all = STATE.marketplaceListings ? [...STATE.marketplaceListings.values()] : [];
+  const all = _marketplaceAllListings();
   const active = all.filter(l => l.status === "active");
   // Sort: dream-promoted first by promotionScore, then user listings by downloads.
   active.sort((a, b) => {
@@ -46041,8 +46258,9 @@ app.post("/api/quests/materialize-chain", requireAuth(), asyncHandler(async (req
 app.get("/api/marketplace/dream-promoted", (req, res) => {
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   const out = [];
-  if (!STATE.marketplaceListings) return res.json({ ok: true, listings: [] });
-  for (const l of STATE.marketplaceListings.values()) {
+  const allListings = _marketplaceAllListings();
+  if (allListings.length === 0) return res.json({ ok: true, listings: [] });
+  for (const l of allListings) {
     if (l.promotionSource === "dream_cycle" && l.status === "active") {
       out.push({
         id: l.id,
@@ -49294,11 +49512,37 @@ function getGameProfile(userId) {
   return STATE.gameProfiles.get(userId);
 }
 
+// Smoking-gun cleanup — council votes are durable in council_dtu_votes
+// since migration 229. Prefer DB count, fall back to in-memory shim
+// (test envs / no-DB boot).
+function _voteCountForUser(userId) {
+  const db = STATE?.db;
+  if (db) {
+    try {
+      const r = db.prepare(`SELECT COUNT(*) AS n FROM council_dtu_votes WHERE voter_id = ?`).get(userId);
+      return r?.n || 0;
+    } catch { /* fall through */ }
+  }
+  return Array.from(STATE.councilVotes?.values() || []).flat().filter((v) => v.voterId === userId).length;
+}
+
+function _voteCountForUserSince(userId, sinceMs) {
+  const db = STATE?.db;
+  if (db) {
+    try {
+      const sinceSec = Math.floor(sinceMs / 1000);
+      const r = db.prepare(`SELECT COUNT(*) AS n FROM council_dtu_votes WHERE voter_id = ? AND cast_at >= ?`).get(userId, sinceSec);
+      return r?.n || 0;
+    } catch { /* fall through */ }
+  }
+  return Array.from(STATE.councilVotes?.values() || []).flat().filter((v) => v.voterId === userId && new Date(v.timestamp).getTime() >= sinceMs).length;
+}
+
 function computeAchievements(userId) {
   const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
   const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
   const hyperCount = dtusArray().filter(d => d.tier === "hyper" && (d.authorId === userId || d.source === userId)).length;
-  const voteCount = Array.from(STATE.councilVotes?.values() || []).flat().filter(v => v.voterId === userId).length;
+  const voteCount = _voteCountForUser(userId);
   return [
     { id: "first_dtu", name: "First Thought", description: "Create your first DTU", earned: dtuCount >= 1, progress: Math.min(dtuCount, 1) },
     { id: "ten_dtus", name: "Prolific Thinker", description: "Create 10 DTUs", earned: dtuCount >= 10, progress: Math.min(dtuCount, 10) },
@@ -49316,7 +49560,7 @@ app.get("/api/game/profile", (req, res) => {
   const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
   const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
   const hyperCount = dtusArray().filter(d => d.tier === "hyper" && (d.authorId === userId || d.source === userId)).length;
-  const voteCount = Array.from(STATE.councilVotes?.values() || []).flat().filter(v => v.voterId === userId).length;
+  const voteCount = _voteCountForUser(userId);
   profile.xp = (dtuCount * 10) + (megaCount * 50) + (hyperCount * 100) + (voteCount * 5) + ((profile.questsCompleted || 0) * 100);
   profile.level = Math.floor(Math.sqrt(profile.xp / 100)) + 1;
   const achievements = computeAchievements(userId);
@@ -49340,7 +49584,7 @@ app.get("/api/game/challenges", (req, res) => {
   const dtuCount = STATE.dtus.size;
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const todayDtus = dtusArray().filter(d => (d.authorId === userId || d.source === userId) && new Date(d.createdAt) >= todayStart).length;
-  const todayVotes = Array.from(STATE.councilVotes?.values() || []).flat().filter(v => v.voterId === userId && new Date(v.timestamp) >= todayStart).length;
+  const todayVotes = _voteCountForUserSince(userId, todayStart.getTime());
   const challenges = [
     { id: "daily_create", name: "Daily Creator", description: "Create 3 DTUs today", target: 3, progress: Math.min(todayDtus, 3), reward: 30 },
     { id: "tag_master", name: "Tag Master", description: "Add tags to 5 DTUs", target: 5, progress: Math.min(dtusArray().filter(d => (d.authorId === userId || d.source === userId) && d.tags?.length > 0).length, 5), reward: 25 },

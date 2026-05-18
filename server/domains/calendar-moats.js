@@ -376,6 +376,145 @@ export default function registerCalendarMoatsMacros(register) {
     return { ok: r.changes > 0 };
   }, { destructive: true, note: "Delete a booking link" });
 
+  // Smoking-gun cleanup — calendar_booking_slots was WRITE-ONLY. The
+  // booking_confirm macro inserts rows but nothing ever queried them,
+  // so the link owner could never see who booked. These two reads
+  // close the loop.
+  register("calendar", "bookings_list", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const linkId = String(input.linkId || "");
+    if (!linkId) return { ok: false, reason: "linkId_required" };
+    const link = db.prepare(`SELECT owner_id FROM calendar_booking_links WHERE id = ?`).get(linkId);
+    if (!link) return { ok: false, reason: "not_found" };
+    if (link.owner_id !== userId) return { ok: false, reason: "forbidden" };
+    const limit = Math.min(Math.max(1, Number(input.limit) || 100), 500);
+    const rows = db.prepare(`
+      SELECT id, booking_link_id, event_id, guest_name, guest_email, message, created_at
+      FROM calendar_booking_slots WHERE booking_link_id = ? ORDER BY created_at DESC LIMIT ?
+    `).all(linkId, limit);
+    return { ok: true, bookings: rows, count: rows.length };
+  }, { note: "Bookings against one of MY booking links — closes the write-only gap on calendar_booking_slots" });
+
+  register("calendar", "bookings_mine", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const limit = Math.min(Math.max(1, Number(input.limit) || 100), 500);
+    const rows = db.prepare(`
+      SELECT s.id, s.booking_link_id, s.event_id, s.guest_name, s.guest_email, s.message, s.created_at,
+             l.title AS link_title
+      FROM calendar_booking_slots s
+      INNER JOIN calendar_booking_links l ON l.id = s.booking_link_id
+      WHERE l.owner_id = ?
+      ORDER BY s.created_at DESC LIMIT ?
+    `).all(userId, limit);
+    return { ok: true, bookings: rows, count: rows.length };
+  }, { note: "All bookings across all of MY booking links" });
+
+  // Smoking-gun cleanup — calendar_links + calendar_subscriptions were
+  // READ-ONLY. calendar-ai.js#meeting_prep reads links to enrich the
+  // briefing context; iCal feed handler in server.js reads subscription
+  // tokens to authenticate. Neither table had a code path that
+  // INSERTed rows, so the read code always returned empty. Below are
+  // the missing write paths.
+
+  register("calendar", "link_create", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const eventId = String(input.eventId || "");
+    const targetKind = String(input.targetKind || "");
+    if (!eventId || !targetKind) return { ok: false, reason: "eventId_and_targetKind_required" };
+    const allowed = ["task","doc","dtu","lens","external","project","sprint","world_event","huddle"];
+    if (!allowed.includes(targetKind)) return { ok: false, reason: "invalid_target_kind" };
+    const evt = db.prepare(`SELECT calendar_id FROM calendar_events WHERE id = ?`).get(eventId);
+    if (!evt) return { ok: false, reason: "event_not_found" };
+    const cal = db.prepare(`SELECT owner_id FROM calendars WHERE id = ?`).get(evt.calendar_id);
+    if (!cal || cal.owner_id !== userId) return { ok: false, reason: "forbidden" };
+    const r = db.prepare(`
+      INSERT INTO calendar_links (event_id, target_kind, target_id, target_uri, target_label, created_by, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(eventId, targetKind,
+      input.targetId ? String(input.targetId).slice(0, 200) : null,
+      input.targetUri ? String(input.targetUri).slice(0, 2000) : null,
+      input.targetLabel ? String(input.targetLabel).slice(0, 240) : null,
+      userId, _now());
+    return { ok: true, id: r.lastInsertRowid };
+  }, { destructive: true, note: "Link an event to a task/doc/dtu/lens/etc — feeds meeting_prep briefings" });
+
+  register("calendar", "link_delete", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const linkId = Number(input.id);
+    if (!linkId) return { ok: false, reason: "id_required" };
+    const r = db.prepare(`DELETE FROM calendar_links WHERE id = ? AND created_by = ?`).run(linkId, userId);
+    return { ok: r.changes > 0 };
+  }, { destructive: true, note: "Remove a link from an event" });
+
+  register("calendar", "links_for_event", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const eventId = String(input.eventId || "");
+    if (!eventId) return { ok: false, reason: "eventId_required" };
+    const links = db.prepare(`SELECT * FROM calendar_links WHERE event_id = ? ORDER BY created_at DESC`).all(eventId);
+    return { ok: true, links };
+  }, { note: "Links attached to one event" });
+
+  register("calendar", "subscription_create", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const visibility = ["busy_only","full"].includes(input.visibility) ? input.visibility : "busy_only";
+    const calendarIds = Array.isArray(input.calendarIds) ? input.calendarIds.filter((id) => typeof id === "string") : null;
+    // Verify caller owns all listed calendars (if specified)
+    if (calendarIds && calendarIds.length > 0) {
+      const placeholders = calendarIds.map(() => "?").join(", ");
+      const mine = db.prepare(`SELECT COUNT(*) AS n FROM calendars WHERE owner_id = ? AND id IN (${placeholders})`).get(userId, ...calendarIds);
+      if (mine.n !== calendarIds.length) return { ok: false, reason: "forbidden" };
+    }
+    const token = `subs:${randomUUID()}`;
+    db.prepare(`
+      INSERT INTO calendar_subscriptions (id, owner_id, calendar_ids_json, visibility, active, access_count, created_at)
+      VALUES (?, ?, ?, ?, 1, 0, ?)
+    `).run(token, userId, calendarIds ? JSON.stringify(calendarIds) : null, visibility, _now());
+    const feedPath = `/calendars/feed/${token}.ics`;
+    return { ok: true, token, feedPath, visibility };
+  }, { destructive: true, note: "Create an iCal subscription token (closes the read-only gap on calendar_subscriptions)" });
+
+  register("calendar", "subscription_list", async (ctx) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const rows = db.prepare(`SELECT id, calendar_ids_json, visibility, active, last_accessed_at, access_count, created_at FROM calendar_subscriptions WHERE owner_id = ? ORDER BY created_at DESC`).all(userId);
+    return {
+      ok: true,
+      subscriptions: rows.map((r) => ({
+        token: r.id,
+        feedPath: `/calendars/feed/${r.id}.ics`,
+        calendarIds: r.calendar_ids_json ? JSON.parse(r.calendar_ids_json) : null,
+        visibility: r.visibility,
+        active: !!r.active,
+        lastAccessedAt: r.last_accessed_at,
+        accessCount: r.access_count,
+        createdAt: r.created_at,
+      })),
+    };
+  }, { note: "List my iCal subscription tokens" });
+
+  register("calendar", "subscription_revoke", async (ctx, input = {}) => {
+    const db = _resolveDb(ctx);
+    const userId = _actor(ctx);
+    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    const token = String(input.token || input.id || "");
+    if (!token) return { ok: false, reason: "token_required" };
+    const r = db.prepare(`UPDATE calendar_subscriptions SET active = 0 WHERE id = ? AND owner_id = ?`).run(token, userId);
+    return { ok: r.changes > 0 };
+  }, { destructive: true, note: "Disable an iCal subscription token (won't delete history)" });
+
   // ─── Project ↔ calendar bridge ──────────────────────────────────
   // Surfaces task due dates + sprint windows as virtual calendar
   // events. Non-destructive — these don't insert into calendar_events,
