@@ -40393,6 +40393,17 @@ try {
   logger.info('[routes] /api/learning mounted');
 } catch (e) { console.error('[routes] learning mount failed:', e); }
 
+// Smoking-gun cleanup C1 — Education lens rebuild (migration 232).
+// 20 /api/learning/* endpoints the lens page calls but the original
+// server never had. This mounts AFTER the legacy createLearningRouter
+// so any URL collisions resolve to the legacy implementation first
+// (graceful — only the 20 missing endpoints land here).
+try {
+  const { default: createLearningRebuildRoutes } = await import("./routes/learning-rebuild.js");
+  app.use("/api/learning", createLearningRebuildRoutes({ STATE, requireAuth }));
+  logger.info('[routes] /api/learning rebuild routes mounted (20 endpoints)');
+} catch (e) { console.error('[routes] learning-rebuild mount failed:', e); }
+
 // ── Domain-Specific Action Manifest ─────────────────────────────────────────
 // ~450 domain-specific actions across 113 lenses, each routed to the
 // appropriate brain: U=utility(3b), S=subconscious(1.5b), R=repair(0.5b), C=conscious(7b)
