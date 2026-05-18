@@ -33,6 +33,9 @@ import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
 import { SourceControlPanel } from '@/components/code/SourceControlPanel';
 import { RepoIndexPanel } from '@/components/code/RepoIndexPanel';
 import { ProjectMemoryPanel } from '@/components/code/ProjectMemoryPanel';
+import { SpecDrivenPanel } from '@/components/code/SpecDrivenPanel';
+import { BackgroundAgentsPanel } from '@/components/code/BackgroundAgentsPanel';
+import VoiceDictateButton from '@/components/code/VoiceDictateButton';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Files as MTabFiles, Search as MTabSearch, GitBranch as MTabSC,
@@ -1793,6 +1796,24 @@ export default function CodeLensPage() {
                     }
                   />
                 )}
+                {activity === 'spec' && (
+                  <SpecDrivenPanel
+                    projectPath={
+                      typeof window !== 'undefined'
+                        ? window.localStorage.getItem('concord:code:repoPath') || '.'
+                        : '.'
+                    }
+                  />
+                )}
+                {activity === 'background' && (
+                  <BackgroundAgentsPanel
+                    projectPath={
+                      typeof window !== 'undefined'
+                        ? window.localStorage.getItem('concord:code:repoPath') || '.'
+                        : '.'
+                    }
+                  />
+                )}
                 {activity === 'search' && (
                   <div className="p-4 text-xs text-gray-400 space-y-2">
                     <p>Use ⌘⇧F to open project search modal.</p>
@@ -2388,19 +2409,25 @@ export default function CodeLensPage() {
               <kbd className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">esc</kbd>
             </div>
             <div className="p-4 space-y-3">
-              <input
-                ref={aiEditInputRef}
-                type="text"
-                value={aiEditPrompt}
-                onChange={(e) => setAiEditPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !aiEditPending) { e.preventDefault(); runAiEdit(); }
-                  if (e.key === 'Escape') { setAiEditOpen(false); setAiEditResult(null); }
-                }}
-                placeholder="Describe the change… e.g. add error handling, convert to async, extract to function"
-                className="w-full px-3 py-2.5 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/60"
-                autoFocus
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  ref={aiEditInputRef}
+                  type="text"
+                  value={aiEditPrompt}
+                  onChange={(e) => setAiEditPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !aiEditPending) { e.preventDefault(); runAiEdit(); }
+                    if (e.key === 'Escape') { setAiEditOpen(false); setAiEditResult(null); }
+                  }}
+                  placeholder="Describe the change… e.g. add error handling, convert to async, extract to function"
+                  className="flex-1 px-3 py-2.5 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/60"
+                  autoFocus
+                />
+                <VoiceDictateButton
+                  onTranscript={(text) => setAiEditPrompt((prev) => prev ? `${prev} ${text}` : text)}
+                  disabled={aiEditPending}
+                />
+              </div>
               {aiEditError && (
                 <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-400">{aiEditError}</div>
               )}

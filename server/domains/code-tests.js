@@ -35,11 +35,14 @@ async function _mintTestRunDtu(db, userId, result, parentEditDtuId) {
     if (parentEditDtuId) {
       try {
         const { registerCitation } = await import("../economy/royalty-cascade.js");
-        await registerCitation({
-          db, citingDtuId: id, citedDtuId: parentEditDtuId,
-          citerUserId: userId,
-          parentDtu: { visibility: "public" },
-        });
+        const parent = db.prepare("SELECT creator_id FROM dtus WHERE id = ?").get(parentEditDtuId);
+        if (parent?.creator_id) {
+          registerCitation(db, {
+            childId: id, parentId: parentEditDtuId,
+            creatorId: userId, parentCreatorId: parent.creator_id,
+            parentDtu: { visibility: "public" },
+          });
+        }
       } catch { /* cascade best-effort */ }
     }
     return id;

@@ -94,6 +94,8 @@ function authorizeToolCall(req, toolName) {
  */
 export default function createMCPRouter({
   LENS_ACTIONS,
+  MACROS,                  // Code Sprint C #12: also expose register()-style macros
+  runMacro,                // Dispatcher for the above
   DOMAIN_ACTION_MANIFEST = {},
   makeCtx,
   STATE,
@@ -106,6 +108,8 @@ export default function createMCPRouter({
 
   const mcpServer = createMCPServer({
     lensActions: LENS_ACTIONS,
+    macros: MACROS,
+    runMacro,
     actionManifest: DOMAIN_ACTION_MANIFEST,
     makeCtx,
     lensArtifacts: STATE?.lensArtifacts,

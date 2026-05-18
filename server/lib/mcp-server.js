@@ -93,9 +93,11 @@ function buildDescription(domain, action, manifestEntry) {
  */
 export function createMCPServer({
   lensActions,
+  macros,                  // Optional: register()-based MACROS map (domain → Map(name → {fn, spec}))
   actionManifest = {},
   makeCtx,
   lensArtifacts,
+  runMacro,                // Optional: when provided, register()-style macros dispatch through this
 } = {}) {
   if (!lensActions) throw new Error("mcp-server: lensActions map is required");
   if (!makeCtx) throw new Error("mcp-server: makeCtx function is required");
@@ -150,7 +152,21 @@ export function createMCPServer({
     const PAGE_SIZE = 200;
     const offset = params?.cursor ? parseInt(params.cursor, 10) || 0 : 0;
 
-    const keys = Array.from(lensActions.keys());
+    // Merge both registries — older registerLensAction macros (LENS_ACTIONS)
+    // AND newer register() macros (MACROS). The MCP client sees ONE
+    // unified tool catalogue regardless of registration style.
+    const lensKeys = Array.from(lensActions.keys());
+    const macroKeys = [];
+    if (macros) {
+      for (const [domain, perDomain] of macros.entries()) {
+        for (const name of perDomain.keys()) {
+          const key = `${domain}.${name}`;
+          // De-dupe: if a key is in both, lens wins (older + more stable).
+          if (!lensActions.has(key)) macroKeys.push(key);
+        }
+      }
+    }
+    const keys = [...lensKeys, ...macroKeys].sort();
     const total = keys.length;
     const page = keys.slice(offset, offset + PAGE_SIZE);
 
@@ -158,10 +174,19 @@ export function createMCPServer({
       const [domain, ...rest] = key.split(".");
       const action = rest.join(".");
       const manifestEntry = manifestIndex.get(key);
-
+      // For register()-style macros, surface the spec.note as the
+      // description when no manifest entry exists.
+      let registerSpec = null;
+      if (!manifestEntry && macros) {
+        const perDomain = macros.get(domain);
+        const entry = perDomain?.get(action);
+        if (entry?.spec) registerSpec = entry.spec;
+      }
       return {
         name: key,
-        description: buildDescription(domain, action, manifestEntry),
+        description: manifestEntry
+          ? buildDescription(domain, action, manifestEntry)
+          : (registerSpec?.note ? `${domain}.${action} — ${registerSpec.note}` : `${domain}.${action}`),
         inputSchema: buildInputSchema(domain, action, manifestEntry),
       };
     });
@@ -188,12 +213,30 @@ export function createMCPServer({
     }
 
     const handler = lensActions.get(name);
-    if (!handler) {
-      throw makeRPCError(INVALID_PARAMS, `Unknown tool: ${name}`);
-    }
-
     const [domain, ...rest] = name.split(".");
     const action = rest.join(".");
+
+    // register()-style macros take a different shape: (ctx, input) → result.
+    // When the tool is in `macros` but not in `lensActions`, dispatch via
+    // runMacro so the same allow-listing + spec metadata still applies.
+    if (!handler) {
+      if (macros && runMacro) {
+        const perDomain = macros.get(domain);
+        if (perDomain && perDomain.has(action)) {
+          const ctx = makeCtx(req || null);
+          try {
+            const result = await runMacro(domain, action, args, ctx);
+            return {
+              content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result, null, 2) }],
+              isError: result?.ok === false,
+            };
+          } catch (err) {
+            throw makeRPCError(-32603, err?.message || "Macro dispatch failed");
+          }
+        }
+      }
+      throw makeRPCError(INVALID_PARAMS, `Unknown tool: ${name}`);
+    }
 
     // Build execution context
     const ctx = makeCtx(req || null);

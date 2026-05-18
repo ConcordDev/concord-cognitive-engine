@@ -23845,6 +23845,36 @@ registerCodeMemoryMacros(register);
 import registerCodeSlashMacros from "./domains/code-slash.js";
 registerCodeSlashMacros(register);
 
+// Code lens Sprint C — Item #10: spec-driven development. Three
+// macros: spec_create / spec_to_plan / plan_to_code form a 4-deep
+// citation chain (spec → plan → session → step) so the original
+// spec author earns royalties forever from every downstream build.
+import registerCodeSpecMacros from "./domains/code-spec.js";
+registerCodeSpecMacros(register);
+
+// Code lens Sprint C — Item #11: async background coding agents.
+// Reuses migration 171 (agent_marathon_sessions). Heartbeat-driven
+// one-step-per-tick at frequency 4 (~1 min). Publishable as
+// kind='agent_spec' DTUs via the Phase 13 marketplace.
+import registerCodeBackgroundMacros from "./domains/code-background.js";
+registerCodeBackgroundMacros(register);
+try {
+  registerHeartbeat("code-bg-agent-tick", {
+    frequency: 4,
+    handler: async (state) => {
+      try {
+        const db = state?.db;
+        if (!db) return { ok: false, reason: "no_db" };
+        return await runMacro("code", "bg_tick", {}, { db, STATE: state });
+      } catch (err) {
+        return { ok: false, reason: "tick_error", error: err?.message };
+      }
+    },
+  });
+} catch (err) {
+  console.warn("code-bg-agent-tick registration failed:", err?.message);
+}
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.
@@ -40463,7 +40493,7 @@ try {
 
 // ── MCP (Model Context Protocol) Server ──────────────────────────────────────
 // Must be registered after LENS_ACTIONS and DOMAIN_ACTION_MANIFEST are populated.
-const mcpRouter = createMCPRouter({ LENS_ACTIONS, DOMAIN_ACTION_MANIFEST, makeCtx, STATE });
+const mcpRouter = createMCPRouter({ LENS_ACTIONS, MACROS, runMacro, DOMAIN_ACTION_MANIFEST, makeCtx, STATE });
 mcpRouter.register(app);
 structuredLog("info", "mcp_server_initialized", { toolCount: LENS_ACTIONS.size });
 
