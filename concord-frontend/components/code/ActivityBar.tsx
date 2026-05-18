@@ -1,9 +1,9 @@
 'use client';
 
-import { Files, Search, GitBranch, Bug, Settings, Boxes, Sparkles, Terminal as TerminalIcon } from 'lucide-react';
+import { Files, Search, GitBranch, Bug, Settings, Boxes, Sparkles, Terminal as TerminalIcon, Database as DbIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type Activity = 'files' | 'search' | 'sourceControl' | 'snippets' | 'debug' | 'extensions' | 'settings' | 'terminal' | 'agent';
+export type Activity = 'files' | 'search' | 'sourceControl' | 'snippets' | 'debug' | 'extensions' | 'settings' | 'terminal' | 'agent' | 'repoIndex';
 
 interface ActivityBarProps {
   active: Activity;
@@ -18,6 +18,7 @@ const ITEMS: Array<{ id: Activity; icon: typeof Files; label: string; hotkey?: s
   { id: 'debug',         icon: Bug,           label: 'Run & debug',    hotkey: '⌃⇧D' },
   { id: 'extensions',    icon: Boxes,         label: 'Extensions',     hotkey: '⌘⇧X' },
   { id: 'snippets',      icon: Sparkles,      label: 'Snippets' },
+  { id: 'repoIndex',     icon: DbIcon,        label: 'Repo index',     hotkey: '⌘⇧I' },
   { id: 'terminal',      icon: TerminalIcon,  label: 'Terminal',       hotkey: '⌃`' },
   { id: 'agent',         icon: Sparkles,      label: 'AI agent' },
 ];

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Sparkles, X, Check, RotateCcw, Loader2, FileCode, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Sparkles, X, Check, RotateCcw, Loader2, FileCode, ChevronDown, ChevronRight, Scissors } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import { structuredPatch, type Hunk } from 'diff';
 import { cn } from '@/lib/utils';
 
 const MonacoDiffViewer = dynamic(() => import('./MonacoDiffViewer'), { ssr: false });
@@ -18,13 +19,20 @@ export interface MultiFileEdit {
   status?: 'pending' | 'accepted' | 'rejected';
 }
 
+// Sprint A #3 — per-hunk acceptance map. Mirrors the
+// `code.multi-file-apply` macro's `hunkAcceptance` shape.
+// `{ [scriptId]: { [hunkIndex]: boolean } }`. When set, the backend
+// applies ONLY the marked-true hunks, leaving the rest of the file
+// unchanged.
+export type HunkAcceptance = Record<string, Record<number, boolean>>;
+
 interface MultiFileAgentReviewProps {
   open: boolean;
   onClose: () => void;
   prompt: string;
   edits: MultiFileEdit[];
   loading?: boolean;
-  onApply: (acceptedEdits: MultiFileEdit[]) => Promise<void>;
+  onApply: (acceptedEdits: MultiFileEdit[], hunkAcceptance: HunkAcceptance) => Promise<void>;
   onRegenerate?: () => void;
 }
 
@@ -32,6 +40,47 @@ export function MultiFileAgentReview({ open, onClose, prompt, edits, loading, on
   const [statuses, setStatuses] = useState<Record<string, 'pending' | 'accepted' | 'rejected'>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set(edits[0] ? [keyFor(edits[0])] : []));
   const [applying, setApplying] = useState(false);
+  // Sprint A #3 — per-hunk accept/reject. Keyed by scriptId so it maps
+  // 1:1 to the backend's `hunkAcceptance` param. When a file has no
+  // per-hunk state, file-level accept/reject still applies.
+  const [hunkState, setHunkState] = useState<HunkAcceptance>({});
+  const [hunksShown, setHunksShown] = useState<Set<string>>(new Set());
+
+  // Compute hunks per edit on demand (memo).
+  const hunksByKey = useMemo(() => {
+    const map = new Map<string, Hunk[]>();
+    for (const e of edits) {
+      const k = keyFor(e);
+      const patch = structuredPatch('a', 'b', e.before || '', e.after || '', '', '');
+      map.set(k, patch?.hunks ?? []);
+    }
+    return map;
+  }, [edits]);
+
+  function toggleHunk(scriptId: string, idx: number) {
+    setHunkState((prev) => {
+      const file = { ...(prev[scriptId] || {}) };
+      file[idx] = !file[idx];
+      return { ...prev, [scriptId]: file };
+    });
+  }
+
+  function acceptAllHunks(scriptId: string, hunks: Hunk[]) {
+    setHunkState((prev) => {
+      const file: Record<number, boolean> = {};
+      for (let i = 0; i < hunks.length; i++) file[i] = true;
+      return { ...prev, [scriptId]: file };
+    });
+  }
+
+  function rejectAllHunks(scriptId: string) {
+    setHunkState((prev) => {
+      const file: Record<number, boolean> = {};
+      // Mark explicit false rather than undefined so any "default to true"
+      // logic upstream doesn't silently re-accept.
+      return { ...prev, [scriptId]: file };
+    });
+  }
 
   const setStatus = (k: string, s: 'pending' | 'accepted' | 'rejected') => {
     setStatuses(prev => ({ ...prev, [k]: s }));
@@ -63,7 +112,7 @@ export function MultiFileAgentReview({ open, onClose, prompt, edits, loading, on
     if (accepted.length === 0) return;
     setApplying(true);
     try {
-      await onApply(accepted);
+      await onApply(accepted, hunkState);
       onClose();
     } finally {
       setApplying(false);
@@ -207,6 +256,71 @@ export function MultiFileAgentReview({ open, onClose, prompt, edits, loading, on
                         {e.reason && isOpen && (
                           <p className="px-12 pb-2 text-[11px] text-purple-300 italic">{e.reason}</p>
                         )}
+                        {isOpen && e.scriptId && (() => {
+                          const hunks = hunksByKey.get(k) ?? [];
+                          const fileHunkState = hunkState[e.scriptId!] || {};
+                          const acceptedHunkCount = Object.values(fileHunkState).filter(Boolean).length;
+                          const hunksOpen = hunksShown.has(k);
+                          return (
+                            <div className="px-12 pb-2">
+                              <button
+                                onClick={() => setHunksShown((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(k)) next.delete(k); else next.add(k);
+                                  return next;
+                                })}
+                                className="text-[11px] text-cyan-300 hover:text-cyan-200 inline-flex items-center gap-1"
+                              >
+                                <Scissors className="w-3 h-3" />
+                                {hunksOpen ? 'Hide hunks' : `Per-hunk review · ${acceptedHunkCount}/${hunks.length} accepted`}
+                              </button>
+                              {hunksOpen && (
+                                <div className="mt-2 space-y-1">
+                                  <div className="flex gap-2 text-[10px]">
+                                    <button
+                                      onClick={() => acceptAllHunks(e.scriptId!, hunks)}
+                                      className="px-2 py-0.5 rounded border border-green-500/40 text-green-400 hover:bg-green-500/10"
+                                    >Accept all hunks</button>
+                                    <button
+                                      onClick={() => rejectAllHunks(e.scriptId!)}
+                                      className="px-2 py-0.5 rounded border border-red-500/40 text-red-400 hover:bg-red-500/10"
+                                    >Reject all hunks</button>
+                                  </div>
+                                  {hunks.length === 0 ? (
+                                    <p className="text-[10px] text-gray-500">No hunks detected (file may be identical).</p>
+                                  ) : (
+                                    hunks.map((h, idx) => {
+                                      const checked = !!fileHunkState[idx];
+                                      return (
+                                        <label
+                                          key={idx}
+                                          className={cn(
+                                            'flex items-start gap-2 p-2 rounded border text-[10px] cursor-pointer',
+                                            checked
+                                              ? 'bg-green-500/10 border-green-500/40'
+                                              : 'bg-white/[0.02] border-white/10 hover:border-white/20'
+                                          )}
+                                        >
+                                          <input
+                                            type="checkbox" checked={checked}
+                                            onChange={() => toggleHunk(e.scriptId!, idx)}
+                                            className="mt-0.5 accent-green-400"
+                                          />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="font-mono text-cyan-300">
+                                              @@ -{h.oldStart},{h.oldLines} +{h.newStart},{h.newLines} @@
+                                            </div>
+                                            <pre className="font-mono text-[10px] mt-1 whitespace-pre-wrap text-gray-300 max-h-24 overflow-y-auto">{h.lines.slice(0, 16).join('\n')}{h.lines.length > 16 ? `\n…(+${h.lines.length - 16} more lines)` : ''}</pre>
+                                          </div>
+                                        </label>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {isOpen && (
                           <div className="px-4 pb-3">
                             <MonacoDiffViewer

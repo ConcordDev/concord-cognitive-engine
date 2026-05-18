@@ -31,12 +31,13 @@ import SettingsPanel, { loadSettings as loadCodeSettings, DEFAULT_SETTINGS as DE
 import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
 import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
 import { SourceControlPanel } from '@/components/code/SourceControlPanel';
+import { RepoIndexPanel } from '@/components/code/RepoIndexPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Files as MTabFiles, Search as MTabSearch, GitBranch as MTabSC,
   BookOpen as MTabSnip, Terminal as MTabTerm, Sparkles as MTabAgent,
 } from 'lucide-react';
-import MultiFileAgentReview, { type MultiFileEdit } from '@/components/code/MultiFileAgentReview';
+import MultiFileAgentReview, { type MultiFileEdit, type HunkAcceptance } from '@/components/code/MultiFileAgentReview';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
@@ -1229,13 +1230,19 @@ export default function CodeLensPage() {
     }
   }, [tabs, savedScripts]);
 
-  const applyMultiFileAgent = useCallback(async (accepted: MultiFileEdit[]) => {
+  const applyMultiFileAgent = useCallback(async (accepted: MultiFileEdit[], hunkAcceptance: HunkAcceptance = {}) => {
     if (accepted.length === 0) return;
     try {
       await api.post('/api/lens/run', {
         domain: 'code',
         action: 'multi-file-apply',
-        input: { edits: accepted.map(e => ({ scriptId: e.scriptId, filename: e.filename, language: e.language, after: e.after, reason: e.reason })) },
+        input: {
+          edits: accepted.map(e => ({ scriptId: e.scriptId, filename: e.filename, language: e.language, after: e.after, reason: e.reason })),
+          // Sprint A #3 — when any per-hunk choices were made, the
+          // backend applies only the accepted hunks. Files not present
+          // in `hunkAcceptance` apply whole.
+          hunkAcceptance,
+        },
       });
       // Reflect the edits in any open tabs immediately
       setTabs(prev => prev.map(t => {
@@ -1735,8 +1742,14 @@ export default function CodeLensPage() {
                     onJumpToTab={(tid) => setActiveTabId(tid)}
                     onCommitAll={commitWorkingTree}
                     onRefresh={refetchDTUs}
+                    realGitRepoPath={
+                      typeof window !== 'undefined'
+                        ? window.localStorage.getItem('concord:code:repoPath') || '.'
+                        : '.'
+                    }
                   />
                 )}
+                {activity === 'repoIndex' && <RepoIndexPanel />}
                 {activity === 'search' && (
                   <div className="p-4 text-xs text-gray-400 space-y-2">
                     <p>Use ⌘⇧F to open project search modal.</p>

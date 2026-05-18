@@ -23802,6 +23802,28 @@ registerStudioCollabMacros(register);
 import registerStudioStemMacros from "./domains/studio-stems.js";
 registerStudioStemMacros(register);
 
+// Code lens Sprint A — Item #1: real test runner (spawn-sync,
+// env-allowlisted binaries via CONCORD_TEST_RUNNERS, per-runner
+// output parser). Closes the biggest single gap vs every 2026
+// rival (Cursor / Windsurf / Copilot Workspace / Claude Code /
+// Aider / Zed / Codex all ship real test execution + auto-retry).
+import registerCodeTestMacros from "./domains/code-tests.js";
+registerCodeTestMacros(register);
+
+// Code lens Sprint A — Item #2: real git wrapper (spawn-sync git,
+// env-gated by CONCORD_GIT_ENABLED, strict arg validation, no shell
+// interpolation). Commits mint as kind='code_commit' DTU.
+import registerCodeGitMacros from "./domains/code-git.js";
+registerCodeGitMacros(register);
+
+// Code lens Sprint A — Item #5: wire the dark code-engine. The 1,786
+// LOC server/lib/code-engine.js was unused (no route, no UI). This
+// surface exposes ingest_repo / search_patterns / list_megas /
+// engine_stats macros and mints kind='code_pattern' DTUs per extracted
+// pattern so authors earn royalties when others cite their patterns.
+import registerCodeEngineMacros from "./domains/code-engine.js";
+registerCodeEngineMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.

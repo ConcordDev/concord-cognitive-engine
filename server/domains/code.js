@@ -8,6 +8,9 @@
 //      — new in the parity sprint. Touch STATE.dtus + ctx.llm where appropriate.
 
 import vm from "node:vm";
+import fs from "node:fs";
+import path from "node:path";
+import { structuredPatch, applyPatch } from "diff";
 
 const SNIPPET_KIND = "code_snippet";
 const SNAPSHOT_KIND = "code_snapshot_bundle";
@@ -604,6 +607,32 @@ Rules:
     const applied = [];
     const skipped = [];
 
+    // Code Sprint A #3 — per-hunk acceptance. When the caller passes
+    // `hunkAcceptance: { [scriptId]: { [hunkIndex]: boolean } }`, we
+    // walk the file diff, keep only accepted hunks, and synthesize a
+    // new "after" by replaying them against the original. When no
+    // hunkAcceptance is passed, we accept the whole edit as before.
+    const hunkAcceptance = params.hunkAcceptance && typeof params.hunkAcceptance === "object"
+      ? params.hunkAcceptance
+      : null;
+
+    // Code Sprint A #4 — persist applied edits to disk. Env-gated by
+    // CONCORD_CODE_PERSIST_TO_DISK; workspace root pinned by
+    // CONCORD_CODE_WORKSPACE_ROOT; path traversal rejected.
+    const shouldPersist = String(process.env.CONCORD_CODE_PERSIST_TO_DISK || "").toLowerCase() === "true"
+      || process.env.CONCORD_CODE_PERSIST_TO_DISK === "1";
+    const workspaceRoot = path.resolve(process.env.CONCORD_CODE_WORKSPACE_ROOT || process.cwd());
+
+    function _applyAcceptedHunks(before, after, acceptanceMap) {
+      const patch = structuredPatch("a", "b", before || "", after || "", "", "");
+      if (!patch || !patch.hunks?.length) return after; // no diff -> nothing to filter
+      const acceptedHunks = patch.hunks.filter((_h, i) => acceptanceMap?.[i] === true);
+      if (acceptedHunks.length === 0) return before; // nothing accepted -> unchanged
+      const synthetic = { ...patch, hunks: acceptedHunks };
+      const applied = applyPatch(before || "", synthetic);
+      return typeof applied === "string" ? applied : null;
+    }
+
     for (const e of edits) {
       const scriptId = e?.scriptId;
       if (!scriptId) {
@@ -620,7 +649,20 @@ Rules:
         continue;
       }
       const prev = dtu.machine?.code || dtu.data?.content || "";
-      const next = typeof e.after === "string" ? e.after : "";
+      let next = typeof e.after === "string" ? e.after : "";
+
+      if (hunkAcceptance && hunkAcceptance[scriptId]) {
+        const filtered = _applyAcceptedHunks(prev, next, hunkAcceptance[scriptId]);
+        if (filtered === null) {
+          skipped.push({ filename: e.filename, reason: "hunk_filter_failed" });
+          continue;
+        }
+        next = filtered;
+        if (next === prev) {
+          skipped.push({ filename: e.filename, reason: "no_hunks_accepted" });
+          continue;
+        }
+      }
       if (!next.trim()) {
         skipped.push({ filename: e.filename, reason: "empty after" });
         continue;
@@ -636,13 +678,29 @@ Rules:
       dtu.machine.code = next;
       if (dtu.data) dtu.data.content = next;
       dtu.updatedAt = new Date().toISOString();
-      applied.push({ scriptId, filename: e.filename, bytes: next.length, revision: dtu.machine.revisions.length });
+      const appliedEntry = { scriptId, filename: e.filename, bytes: next.length, revision: dtu.machine.revisions.length };
+
+      if (shouldPersist && e.filename && typeof e.filename === "string" && !e.filename.includes("..")) {
+        const abs = path.resolve(workspaceRoot, e.filename);
+        if (abs === workspaceRoot || abs.startsWith(workspaceRoot + path.sep)) {
+          try {
+            fs.mkdirSync(path.dirname(abs), { recursive: true });
+            fs.writeFileSync(abs, next, "utf-8");
+            appliedEntry.persistedToDisk = abs;
+          } catch (err) {
+            appliedEntry.persistError = err?.message || String(err);
+          }
+        } else {
+          appliedEntry.persistError = "path_outside_workspace";
+        }
+      }
+      applied.push(appliedEntry);
     }
 
     if (typeof globalThis._concordSaveStateDebounced === "function") {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
-    return { ok: true, result: { applied, skipped } };
+    return { ok: true, result: { applied, skipped, persistEnabled: shouldPersist } };
   });
 
   /**
