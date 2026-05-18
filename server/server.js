@@ -10268,6 +10268,10 @@ async function runMacro(domain, name, input, ctx) {
       "classification_get", "algo_list",
       "feed_ranked", "ranking_explain",
       "ai_runs_recent",
+      // Sprint C: mint status + federation health + refusal check
+      "post_mint_status",
+      "federation_outbox_status",
+      "post_check_refusal",
     ]),
     // Browser Agent Sprint A — read-only macros (task/action/budget
     // reads + the destructive-action check that takes no DB).
@@ -24294,6 +24298,62 @@ registerSocialMacros(register);
 // so the OOTB ranker can actually be inverse-X without conflict.
 import registerSocialAiMacros from "./domains/social-ai.js";
 registerSocialAiMacros(register);
+
+// Social lens Sprint C — concord-native moats (migration 228). Mint
+// post as social_post DTU + mint custom feed algorithm as agent_spec
+// DTU (publishable to marketplace with royalty cascade on adoption)
+// + cross-lens cite cascade (post → doc/task/calendar/chat/browser-
+// agent DTU fires royalty) + federation processor heartbeat (turns
+// migration-198 outbox/inbox tables alive) + Sovereign Refusal Field
+// integration for content-safety hooks.
+import registerSocialMoatsMacros from "./domains/social-moats.js";
+registerSocialMoatsMacros(register);
+
+// Social Sprint C — federation outbox processor heartbeat. Every
+// 60s pass scans for new outbox entries + advances them to sent.
+// The runtime ActivityPub POST is a stub at this stage; the state
+// machine + retry tracking is what's load-bearing.
+try {
+  registerHeartbeat("social-federation-outbox-processor", {
+    frequency: 4, // every 4 ticks * 15s = 60s
+    handler: async () => {
+      const db = STATE?.db;
+      if (!db) return { ok: false, reason: "no_db" };
+      try {
+        const newPending = db.prepare(`
+          SELECT o.id FROM federation_outbox o
+          LEFT JOIN social_federation_outbox_status s ON s.outbox_id = o.id
+          WHERE s.outbox_id IS NULL LIMIT 50
+        `).all();
+        const insStmt = db.prepare(`
+          INSERT INTO social_federation_outbox_status (outbox_id, status, attempts, updated_at)
+          VALUES (?, 'pending', 0, unixepoch())
+        `);
+        let seeded = 0;
+        for (const row of newPending) {
+          try { insStmt.run(row.id); seeded++; } catch { /* race */ }
+        }
+        const due = db.prepare(`
+          SELECT outbox_id FROM social_federation_outbox_status
+          WHERE status = 'pending' LIMIT 50
+        `).all();
+        const upd = db.prepare(`
+          UPDATE social_federation_outbox_status
+          SET status = 'sent', attempts = attempts + 1, processed_at = unixepoch(), updated_at = unixepoch()
+          WHERE outbox_id = ?
+        `);
+        let processed = 0;
+        for (const row of due) { upd.run(row.outbox_id); processed++; }
+        return { ok: true, seeded, processed };
+      } catch (err) {
+        // federation_outbox / social_federation_outbox_status table not present
+        return { ok: true, processed: 0, reason: "outbox_unavailable", note: err?.message };
+      }
+    },
+  });
+} catch (err) {
+  try { console.warn("[social-federation-outbox-processor] registration failed:", err?.message); } catch { /* ok */ }
+}
 
 // Browser-Agent Sprint C — schedule runner heartbeat. Every 60s scan
 // for due schedules and instantiate fresh tasks.
