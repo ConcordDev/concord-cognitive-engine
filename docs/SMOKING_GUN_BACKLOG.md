@@ -68,7 +68,14 @@
 **Fix size**: SMALL — depending on what mainland *should* do
 **Fix sketch**: Either rename to `world` or `city` (whichever the call body matches), OR create server/domains/mainland.js as a thin wrapper.
 
-### C7. 5 lens domains store user data in STATE Maps (data loss) ✅
+### ❌ C7. 5 lens domains store user data in STATE Maps — FALSE ALARM (verified)
+**Re-verification result**: All 5 lens domains (accounting/healthcare/legal/food/education) ALREADY have `saveStateIfAvailable()` helpers that call `globalThis._concordSaveStateDebounced`. The persistence chain is: domain mutation → saveStateIfAvailable → globalThis save → debounced state_snapshots write → on restart, _hydrateState calls hydrateLensState which restores all LENS_STATE_KEYS (26 lenses covered including all 5). Saves per domain: accounting:2, healthcare:8, legal:2, food:7, education:7.
+
+The agent missed the `globalThis._concordSaveStateDebounced` wire-up (set lazily at server.js:1894) and the `serializeLensState` / `hydrateLensState` wire-up at server.js:8638 + 8802.
+
+**As a defense-in-depth measure**, the cleanup commit added a 60s `lens-state-snapshot-safety-net` heartbeat that triggers a snapshot regardless of mutation paths — so even if a lens domain forgets the saveStateIfAvailable call, there's a hard 60s upper-bound on data loss. But the urgent problem doesn't exist.
+
+### (Legacy text) 5 lens domains store user data in STATE Maps
 | Lens | File | Map name | Sites |
 |---|---|---|---|
 | accounting | `server/domains/accounting.js:22` | `STATE.accountingLens` | multiple |

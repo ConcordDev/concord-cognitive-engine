@@ -24395,6 +24395,37 @@ registerSocialMoatsMacros(register);
 import registerAuditReadsMacros from "./domains/audit-reads.js";
 registerAuditReadsMacros(register);
 
+// Smoking-gun cleanup C7 — periodic snapshot safety net. The
+// lens-state-persistence machinery (lib/lens-state-persistence.js,
+// serializeLensState wired into _serializeState at server.js:8638)
+// already covers all 26 LENS_STATE_KEYS via the state_snapshots
+// table — but it only fires when other code paths call
+// saveStateDebounced(). If a user works exclusively in (e.g.) the
+// accounting / healthcare / legal / food / education lens with no
+// other state-mutating action, data CAN persist long enough to be
+// lost on restart. This heartbeat closes that gap by triggering a
+// snapshot every 4 ticks (~60s) when there's pending lens state to
+// persist. The debounce inside saveStateDebounced collapses multiple
+// triggers so this is cheap.
+try {
+  registerHeartbeat("lens-state-snapshot-safety-net", {
+    frequency: 4,
+    handler: async () => {
+      try {
+        if (typeof saveStateDebounced === "function") {
+          saveStateDebounced();
+          return { ok: true, triggered: true };
+        }
+        return { ok: true, triggered: false, reason: "saveStateDebounced_unavailable" };
+      } catch (err) {
+        return { ok: true, triggered: false, reason: "snapshot_failed", note: err?.message };
+      }
+    },
+  });
+} catch (err) {
+  try { console.warn("[lens-state-snapshot-safety-net] registration failed:", err?.message); } catch { /* ok */ }
+}
+
 // Smoking-gun cleanup C4 — council proposal expiry sweep. The 7-day
 // window from server.js:42104 is the governance safety valve;
 // without a sweep, expired pending proposals would block the council
