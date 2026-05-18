@@ -33,6 +33,16 @@ export async function resumeAudioContext(): Promise<void> {
 // Transport Engine
 // ============================================================================
 
+export type ClipQuantization = 'none' | '1' | '1/2' | '1/4' | '1/8' | '1/16';
+
+export interface LaunchedClip {
+  trackId: string;
+  clipId: string;
+  launchBeat: number;     // wall-clock-beat the clip *will* start at
+  scheduledAt: number;    // when the launch was queued
+  quantization: ClipQuantization;
+}
+
 export class TransportEngine {
   private config: TransportConfig;
   private state: TransportState = 'stopped';
@@ -43,6 +53,8 @@ export class TransportEngine {
   private scheduleInterval: number = 25; // ms
   private listeners: Map<string, Set<(data: Record<string, unknown>) => void>> = new Map();
   private _currentBeat: number = 0;
+  private queuedClips: Map<string, LaunchedClip> = new Map(); // key = `${trackId}:${clipId}`
+  private playingClips: Map<string, LaunchedClip> = new Map();
 
   constructor(config: Partial<TransportConfig> = {}) {
     this.config = {
@@ -174,9 +186,87 @@ export class TransportEngine {
           this.playMetronomeClick(beat % this.config.timeSignature[0] < 0.01);
         }
       }
+      // Promote queued clips whose launchBeat has been reached.
+      // We iterate explicitly so we can mutate the map.
+      if (this.queuedClips.size > 0) {
+        for (const [key, qc] of this.queuedClips) {
+          if (beat >= qc.launchBeat) {
+            this.queuedClips.delete(key);
+            this.playingClips.set(key, { ...qc, launchBeat: beat });
+            this.emit('clipLaunched', { trackId: qc.trackId, clipId: qc.clipId, beat });
+          }
+        }
+      }
       this.schedulerTimer = window.setTimeout(tick, this.scheduleInterval);
     };
     tick();
+  }
+
+  /**
+   * Ableton-style clip launch: queues the clip to start at the next
+   * boundary defined by `quantization` ('1' = next bar, '1/4' = next
+   * beat, 'none' = immediate). Transport is auto-started if stopped so
+   * launching the first clip plays the project.
+   */
+  launchClip(trackId: string, clipId: string, quantization: ClipQuantization = '1'): LaunchedClip {
+    if (this.state === 'stopped' || this.state === 'paused') {
+      this.play();
+    }
+    const now = this.currentBeat;
+    const launchBeat = this.computeLaunchBeat(now, quantization);
+    const key = `${trackId}:${clipId}`;
+    const launched: LaunchedClip = {
+      trackId, clipId, launchBeat,
+      scheduledAt: getAudioContext().currentTime,
+      quantization,
+    };
+    if (launchBeat <= now + 1e-6) {
+      // Immediate or already-past boundary: fire now.
+      this.playingClips.set(key, launched);
+      this.emit('clipLaunched', { trackId, clipId, beat: now });
+    } else {
+      this.queuedClips.set(key, launched);
+      this.emit('clipQueued', { trackId, clipId, launchBeat });
+    }
+    return launched;
+  }
+
+  /** Cancel a pending or playing clip. Returns true if anything was cancelled. */
+  stopClip(trackId: string, clipId: string): boolean {
+    const key = `${trackId}:${clipId}`;
+    const wasQueued = this.queuedClips.delete(key);
+    const wasPlaying = this.playingClips.delete(key);
+    if (wasQueued || wasPlaying) {
+      this.emit('clipStopped', { trackId, clipId });
+    }
+    return wasQueued || wasPlaying;
+  }
+
+  /** Stop every queued + playing clip. Does not stop the transport. */
+  stopAllClips(): void {
+    if (this.queuedClips.size === 0 && this.playingClips.size === 0) return;
+    this.queuedClips.clear();
+    this.playingClips.clear();
+    this.emit('allClipsStopped', {});
+  }
+
+  getQueuedClips(): LaunchedClip[] { return [...this.queuedClips.values()]; }
+  getPlayingClips(): LaunchedClip[] { return [...this.playingClips.values()]; }
+
+  /**
+   * Round `now` up to the next boundary in the chosen subdivision.
+   * `none` returns `now` (launch immediately).
+   */
+  private computeLaunchBeat(now: number, quantization: ClipQuantization): number {
+    if (quantization === 'none') return now;
+    const beatsPerBar = this.config.timeSignature[0];
+    const step = quantization === '1' ? beatsPerBar
+      : quantization === '1/2' ? beatsPerBar / 2
+      : quantization === '1/4' ? 1
+      : quantization === '1/8' ? 0.5
+      : 0.25;
+    if (step <= 0) return now;
+    return Math.ceil((now + 1e-6) / step) * step;
   }
 
   private stopScheduler(): void {

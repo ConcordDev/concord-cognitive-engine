@@ -1784,6 +1784,7 @@ export default function StudioLensPage() {
               onUpdateTrack={(id, patch) => handleUpdateTrack(id, patch)}
               onTempoChange={(newBpm) => updateProject((p) => ({ ...p, bpm: newBpm }))}
               onStopAll={handleStop}
+              transport={transportRef.current}
             />
           )}
 
@@ -1819,6 +1820,7 @@ export default function StudioLensPage() {
               masterBus={project.masterBus}
               selectedTrackId={selectedTrackId}
               spectrumData={spectrumData}
+              projectId={project.id}
               onSelectTrack={setSelectedTrackId}
               onUpdateTrack={(trackId, data) => {
                 handleUpdateTrack(trackId, data);

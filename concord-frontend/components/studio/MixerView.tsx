@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { Headphones, Send, X } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { Headphones, Send, X, Pin, PinOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWTrack, MasterBus } from '@/lib/daw/types';
 
@@ -10,12 +10,39 @@ interface MixerViewProps {
   masterBus: MasterBus;
   selectedTrackId: string | null;
   spectrumData: Uint8Array | null;
+  projectId?: string;
   onSelectTrack: (id: string) => void;
   onUpdateTrack: (trackId: string, data: Partial<DAWTrack>) => void;
   onToggleEffect: (trackId: string, effectId: string) => void;
   onAddEffect: (trackId: string) => void;
   onRemoveEffect: (trackId: string, effectId: string) => void;
   onMasterVolumeChange: (volume: number) => void;
+}
+
+// Track Pin (Item #7, Pro Tools 2026.4 parity) — keeps a channel strip
+// glued to the left edge of the mixer so it stays visible while you
+// scroll a wide session. localStorage-keyed per project so the pin
+// state survives reloads. The session-DTU meta_json mirror is left
+// to a follow-on so we don't have to thread the save path here.
+const PIN_STORAGE_PREFIX = 'concord:studio:pinned-tracks:';
+function readPinned(projectId?: string): Set<string> {
+  if (!projectId || typeof window === 'undefined') return new Set();
+  try {
+    const raw = window.localStorage.getItem(PIN_STORAGE_PREFIX + projectId);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.filter((s) => typeof s === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+function writePinned(projectId: string | undefined, pinned: Set<string>): void {
+  if (!projectId || typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(PIN_STORAGE_PREFIX + projectId, JSON.stringify([...pinned]));
+  } catch {
+    /* quota or private-mode — skip */
+  }
 }
 
 function VUMeter({ value, peak }: { value: number; peak?: number }) {
@@ -45,7 +72,9 @@ function VUMeter({ value, peak }: { value: number; peak?: number }) {
 function ChannelStrip({
   track,
   isSelected,
+  isPinned,
   onSelect,
+  onTogglePin,
   onUpdate,
   onToggleEffect,
   onAddEffect,
@@ -53,7 +82,9 @@ function ChannelStrip({
 }: {
   track: DAWTrack;
   isSelected: boolean;
+  isPinned: boolean;
   onSelect: () => void;
+  onTogglePin: () => void;
   onUpdate: (data: Partial<DAWTrack>) => void;
   onToggleEffect: (effectId: string) => void;
   onAddEffect: () => void;
@@ -72,15 +103,30 @@ function ChannelStrip({
 
   return (
     <div
+      data-pinned={isPinned ? 'true' : 'false'}
       onClick={onSelect}
       className={cn(
         'w-[88px] flex-shrink-0 bg-black/40 rounded-lg border p-2 flex flex-col items-center gap-1 cursor-pointer transition-colors',
-        isSelected ? 'border-neon-cyan/40 bg-neon-cyan/5' : 'border-white/10 hover:border-white/20'
+        isSelected ? 'border-neon-cyan/40 bg-neon-cyan/5' : 'border-white/10 hover:border-white/20',
+        isPinned && 'sticky left-0 z-10 ring-1 ring-neon-cyan/40 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
       )}
     >
-      {/* Color indicator + name */}
-      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: track.color }} />
-      <span className="text-[10px] font-medium truncate w-full text-center">{track.name}</span>
+      {/* Header row: color chip + name + pin button */}
+      <div className="w-full flex items-center gap-1">
+        <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: track.color }} />
+        <span className="text-[10px] font-medium truncate flex-1 text-center">{track.name}</span>
+        <button
+          onClick={e => { e.stopPropagation(); onTogglePin(); }}
+          className={cn(
+            'p-0.5 rounded transition-colors flex-shrink-0',
+            isPinned ? 'text-neon-cyan' : 'text-gray-600 hover:text-white'
+          )}
+          aria-label={isPinned ? 'Unpin track' : 'Pin track'}
+          title={isPinned ? 'Unpin from left edge' : 'Pin to left edge'}
+        >
+          {isPinned ? <Pin className="w-2.5 h-2.5 fill-current" /> : <PinOff className="w-2.5 h-2.5" />}
+        </button>
+      </div>
 
       {/* Mute / Solo */}
       <div className="flex gap-1">
@@ -190,6 +236,7 @@ export function MixerView({
   masterBus,
   selectedTrackId,
   spectrumData,
+  projectId,
   onSelectTrack,
   onUpdateTrack,
   onToggleEffect,
@@ -197,16 +244,40 @@ export function MixerView({
   onRemoveEffect,
   onMasterVolumeChange,
 }: MixerViewProps) {
+  const [pinned, setPinned] = useState<Set<string>>(() => readPinned(projectId));
+  useEffect(() => { setPinned(readPinned(projectId)); }, [projectId]);
+
+  const togglePin = useCallback((trackId: string) => {
+    setPinned(prev => {
+      const next = new Set(prev);
+      if (next.has(trackId)) next.delete(trackId); else next.add(trackId);
+      writePinned(projectId, next);
+      return next;
+    });
+  }, [projectId]);
+
+  // Pinned tracks render first (left edge), unpinned follow in their
+  // original project order.
+  const orderedTracks = useMemo(() => {
+    if (pinned.size === 0) return tracks;
+    const pin: DAWTrack[] = [];
+    const rest: DAWTrack[] = [];
+    for (const t of tracks) (pinned.has(t.id) ? pin : rest).push(t);
+    return [...pin, ...rest];
+  }, [tracks, pinned]);
+
   return (
     <div className="flex-1 overflow-x-auto p-3">
       <div className="flex gap-2 min-w-max items-stretch">
         {/* Channel strips */}
-        {tracks.map(track => (
+        {orderedTracks.map(track => (
           <ChannelStrip
             key={track.id}
             track={track}
             isSelected={selectedTrackId === track.id}
+            isPinned={pinned.has(track.id)}
             onSelect={() => onSelectTrack(track.id)}
+            onTogglePin={() => togglePin(track.id)}
             onUpdate={(data) => onUpdateTrack(track.id, data)}
             onToggleEffect={(effectId) => onToggleEffect(track.id, effectId)}
             onAddEffect={() => onAddEffect(track.id)}

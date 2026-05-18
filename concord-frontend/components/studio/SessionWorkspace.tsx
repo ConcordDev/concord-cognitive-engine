@@ -21,12 +21,13 @@
 // `application/x-concord-asset` JSON; cells in SessionView receive
 // the drop and call onDropAsset(clipKey, payload).
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { SessionView } from '@/components/music/SessionView';
 import SessionBrowserRail from './SessionBrowserRail';
 import SessionInspectorRail from './SessionInspectorRail';
 import MixerPeekStrip from './MixerPeekStrip';
 import type { DAWTrack, DAWProject } from '@/lib/daw/types';
+import type { TransportEngine, ClipQuantization } from '@/lib/daw/engine';
 
 interface SessionWorkspaceProps {
   project: DAWProject;
@@ -36,6 +37,16 @@ interface SessionWorkspaceProps {
   onUpdateTrack: (id: string, patch: Partial<DAWTrack>) => void;
   onTempoChange?: (bpm: number) => void;
   onStopAll?: () => void;
+  /**
+   * Live transport engine. When passed, clip launches are routed
+   * through `transport.launchClip(...)` and the engine drives
+   * playing/queued state via `clipLaunched` / `clipQueued` events.
+   * If omitted, we fall back to the visual setTimeout simulation
+   * (covers the read-only preview case).
+   */
+  transport?: TransportEngine | null;
+  /** Quantization for clip launches. Defaults to '1' (next bar) per Ableton. */
+  launchQuantization?: ClipQuantization;
 }
 
 // Synthesize a flat clip lookup from the project's tracks.
@@ -93,6 +104,8 @@ export default function SessionWorkspace({
   onUpdateTrack,
   onTempoChange,
   onStopAll,
+  transport,
+  launchQuantization = '1',
 }: SessionWorkspaceProps) {
   const { tracks, scenes, clips } = useMemo(() => buildSessionModel(project), [project]);
 
@@ -106,19 +119,56 @@ export default function SessionWorkspace({
     ? (project.tracks || []).find(t => t.id === selectedTrackId) || null
     : null;
 
+  // Subscribe to engine-driven clip events. The engine flips queued →
+  // playing exactly at the next-bar boundary; we mirror that into the
+  // local state the grid renders against.
+  useEffect(() => {
+    if (!transport) return;
+    const offLaunched = transport.on('clipLaunched', (data) => {
+      const trackId = String(data.trackId);
+      const clipId = String(data.clipId);
+      const key = `${trackId}:${clipId}`;
+      setPlayingClipKey(key);
+      setQueuedClipKeys(prev => {
+        if (!prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    });
+    const offQueued = transport.on('clipQueued', (data) => {
+      const key = `${String(data.trackId)}:${String(data.clipId)}`;
+      setQueuedClipKeys(prev => {
+        if (prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.add(key);
+        return next;
+      });
+    });
+    const offAllStopped = transport.on('allClipsStopped', () => {
+      setPlayingClipKey(undefined);
+      setQueuedClipKeys(new Set());
+    });
+    return () => { offLaunched(); offQueued(); offAllStopped(); };
+  }, [transport]);
+
   const handleLaunchClip = (clip: { trackId: string; sceneId: string }) => {
     const key = `${clip.trackId}:${clip.sceneId}`;
     setSelectedClipKey(key);
     onSelectTrack(clip.trackId);
-    // Ableton-style "queue at next bar". For now, set queued; the
-    // audio engine wire-up (lib/daw/engine.ts) will flip to playing
-    // on the next bar tick.
+
+    if (transport) {
+      // Real audio path — engine handles quantization + state flip.
+      transport.launchClip(clip.trackId, clip.sceneId, launchQuantization);
+      return;
+    }
+
+    // Engine-less preview path (read-only / mock). Visual-only.
     setQueuedClipKeys(prev => {
       const next = new Set(prev);
       next.add(key);
       return next;
     });
-    // Simulate "launches on next bar" — flip after a beat duration
     const beatMs = Math.max(50, 60_000 / Math.max(60, bpm));
     setTimeout(() => {
       setPlayingClipKey(key);
@@ -131,8 +181,16 @@ export default function SessionWorkspace({
   };
 
   const handleLaunchScene = (scene: { id: string }) => {
-    // Fire every clip in the scene
     const sceneClipKeys = Object.keys(clips).filter(k => k.endsWith(`:${scene.id}`));
+
+    if (transport) {
+      for (const key of sceneClipKeys) {
+        const [trackId, clipId] = key.split(':');
+        transport.launchClip(trackId, clipId, launchQuantization);
+      }
+      return;
+    }
+
     setQueuedClipKeys(new Set(sceneClipKeys));
     const beatMs = Math.max(50, 60_000 / Math.max(60, bpm));
     setTimeout(() => {
@@ -155,6 +213,7 @@ export default function SessionWorkspace({
             onLaunchClip={handleLaunchClip}
             onLaunchScene={handleLaunchScene}
             onStopAll={() => {
+              transport?.stopAllClips();
               setPlayingClipKey(undefined);
               setQueuedClipKeys(new Set());
               onStopAll?.();
