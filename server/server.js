@@ -23794,6 +23794,14 @@ registerStudioDistrictMacros(register);
 import registerStudioCollabMacros from "./domains/studio-collab.js";
 registerStudioCollabMacros(register);
 
+// Studio Sprint C — stem splitter via Demucs. Gated on DEMUCS_BIN
+// being installed (probed at boot in init-modalities.js). When
+// available, splits the input audio into 4 stems and mints each
+// as a kind='audio_stem' DTU linked back to the parent audio via
+// the royalty cascade.
+import registerStudioStemMacros from "./domains/studio-stems.js";
+registerStudioStemMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.

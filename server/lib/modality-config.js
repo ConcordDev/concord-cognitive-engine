@@ -46,6 +46,20 @@ export const MODALITY = {
       stats: { calls: 0, errors: 0, lastError: null },
     },
   },
+
+  // Sprint C #4 — stem splitting (Demucs / Open-Unmix backend).
+  // Reads DEMUCS_BIN at boot, stays disabled until the binary is
+  // present. Mirrors STT/TTS shape so init-modalities probes uniformly.
+  stems: {
+    backend: "demucs",
+    binEnv: "DEMUCS_BIN",
+    bin: process.env.DEMUCS_BIN || "",
+    enabled: false,
+    role: "audio stem separation (vocal / drums / bass / other)",
+    timeoutMs: Number(process.env.DEMUCS_TIMEOUT_MS) || 180_000,
+    cacheDir: process.env.DEMUCS_CACHE_DIR || "./data/stems-cache",
+    stats: { calls: 0, errors: 0, lastError: null },
+  },
 };
 
 /**
@@ -83,4 +97,9 @@ export function getModalitySnapshot() {
  */
 export function ttsAvailable() {
   return MODALITY.tts.piper.enabled || MODALITY.tts.elevenlabs.enabled;
+}
+
+/** Stem splitter availability — true when Demucs binary probed OK. */
+export function stemsAvailable() {
+  return !!MODALITY.stems.enabled;
 }

@@ -7,6 +7,7 @@ import { emitMasteringProcessDTU, emitExportDTU } from '@/lib/daw/dtu-hooks';
 import { analyzeMastering, snapshotFromAnalysers, type MasteringAnalysisResult } from '@/lib/daw/mastering-analysis';
 import AudioLoggerPanel from './AudioLoggerPanel';
 import ChordDetectionPanel from './ChordDetectionPanel';
+import StemSplitterPanel from './StemSplitterPanel';
 import type { MasteringChain, MasteringAnalysis, ExportSettings, EffectInstance } from '@/lib/daw/types';
 
 interface MasteringPanelProps {
@@ -430,6 +431,10 @@ export function MasteringPanel({
           matching, top-3 candidates with confidence bars. Accuracy lifts
           when the harmonic stem from Item #4's splitter feeds this. */}
       <ChordDetectionPanel masterAnalyser={masterAnalysers?.[0]} sampleRate={sampleRate} />
+
+      {/* Stem splitter (Sprint C #4) — Demucs-backed when DEMUCS_BIN is
+          set; renders an honest "not installed" path otherwise. */}
+      <StemSplitterPanel />
 
       {/* Spectrum */}
       {spectrumData && (

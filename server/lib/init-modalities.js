@@ -40,16 +40,24 @@ export async function initModalities() {
   // boot; we don't burn API quota probing on startup).
   MODALITY.tts.elevenlabs.enabled = !!MODALITY.tts.elevenlabs.apiKey;
 
+  // Stems — Demucs binary present + executable (Sprint C #4).
+  const demucsBin = MODALITY.stems?.bin;
+  if (MODALITY.stems) {
+    MODALITY.stems.enabled = isExecutableFile(demucsBin);
+  }
+
   return {
     stt: MODALITY.stt.enabled,
     tts_piper: MODALITY.tts.piper.enabled,
     tts_elevenlabs: MODALITY.tts.elevenlabs.enabled,
+    stems: MODALITY.stems?.enabled || false,
     sttSource: MODALITY.stt.enabled ? "whisper_cpp" : "none",
     ttsSource: MODALITY.tts.piper.enabled
       ? "piper"
       : MODALITY.tts.elevenlabs.enabled
         ? "elevenlabs"
         : "none",
+    stemsSource: MODALITY.stems?.enabled ? "demucs" : "none",
   };
 }
 
@@ -57,10 +65,11 @@ export async function initModalities() {
  * Test-only override. Test files inject fake state by passing
  * { stt: bool, ttsPiper: bool, ttsElevenLabs: bool }.
  */
-export function _testForceModalityState({ stt, ttsPiper, ttsElevenLabs }) {
+export function _testForceModalityState({ stt, ttsPiper, ttsElevenLabs, stems }) {
   if (stt !== undefined) MODALITY.stt.enabled = !!stt;
   if (ttsPiper !== undefined) MODALITY.tts.piper.enabled = !!ttsPiper;
   if (ttsElevenLabs !== undefined) MODALITY.tts.elevenlabs.enabled = !!ttsElevenLabs;
+  if (stems !== undefined && MODALITY.stems) MODALITY.stems.enabled = !!stems;
 }
 
 export { isExecutableFile as _isExecutableFile_forTesting };
