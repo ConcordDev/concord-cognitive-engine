@@ -1,5 +1,99 @@
 // server/domains/whiteboard.js
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
+import {
+  upsertBoard as _dbUpsertBoard,
+  getBoard as _dbGetBoard,
+  listBoardsForOwner as _dbListForOwner,
+  listBoardsForParticipant as _dbListForParticipant,
+  deleteBoard as _dbDeleteBoard,
+  appendDelta as _dbAppendDelta,
+  inviteParticipant as _dbInvite,
+  hasRole as _dbHasRole,
+} from "../lib/whiteboard/persistence.js";
+import { embedText as _embedText } from "../lib/code/embeddings.js";
+
+function _resolveDb(ctx) {
+  return ctx?.db || ctx?.STATE?.db || globalThis._concordSTATE?.db || null;
+}
+
+// Sprint A #3 — semantic k-means on sticky text embeddings. Real Ollama
+// (defaults to nomic-embed-text); k computed via simple elbow heuristic
+// (sqrt(N/2), clamped 2..8). Returns clusterId per element + per-cluster
+// centroid label (the closest sticky's text). Falls back to spatial
+// proximity when embeddings aren't reachable.
+async function _semanticCluster(elements, { k: kOverride } = {}) {
+  const textOf = (el) => String(el.text || el.label || "").trim();
+  const items = elements.map((el, i) => ({ id: el.id || `el-${i}`, text: textOf(el), el }))
+    .filter((it) => it.text.length > 0);
+  if (items.length === 0) return { ok: false, reason: "no_text_elements" };
+  if (items.length === 1) return { ok: true, clusters: [{ clusterId: 0, label: items[0].text.slice(0, 60), elements: [items[0].id] }] };
+  const vectors = [];
+  for (const it of items) {
+    const e = await _embedText(it.text);
+    if (!e.ok) return { ok: false, reason: "embed_failed", error: e.reason || e.error };
+    vectors.push(e.vector);
+  }
+  const dim = vectors[0].length;
+  const k = Math.max(2, Math.min(8, Number(kOverride) || Math.round(Math.sqrt(items.length / 2)) || 2));
+  // k-means++ seeding
+  const centroids = [vectors[Math.floor(Math.random() * vectors.length)].slice()];
+  while (centroids.length < k) {
+    const dists = vectors.map((v) => Math.min(...centroids.map((c) => _l2sq(v, c))));
+    const sum = dists.reduce((s, d) => s + d, 0) || 1;
+    let r = Math.random() * sum;
+    let idx = 0;
+    for (let i = 0; i < dists.length; i++) { r -= dists[i]; if (r <= 0) { idx = i; break; } }
+    centroids.push(vectors[idx].slice());
+  }
+  // 20 iterations is plenty for sticky-note count we expect
+  let assignments = new Array(items.length).fill(0);
+  for (let iter = 0; iter < 20; iter++) {
+    let changed = 0;
+    for (let i = 0; i < vectors.length; i++) {
+      let best = 0, bestD = Infinity;
+      for (let c = 0; c < k; c++) {
+        const d = _l2sq(vectors[i], centroids[c]);
+        if (d < bestD) { bestD = d; best = c; }
+      }
+      if (assignments[i] !== best) { assignments[i] = best; changed++; }
+    }
+    if (changed === 0) break;
+    // Recompute centroids
+    const sums = Array.from({ length: k }, () => new Array(dim).fill(0));
+    const counts = new Array(k).fill(0);
+    for (let i = 0; i < vectors.length; i++) {
+      counts[assignments[i]]++;
+      const v = vectors[i];
+      const s = sums[assignments[i]];
+      for (let d = 0; d < dim; d++) s[d] += v[d];
+    }
+    for (let c = 0; c < k; c++) {
+      if (counts[c] === 0) continue;
+      for (let d = 0; d < dim; d++) centroids[c][d] = sums[c][d] / counts[c];
+    }
+  }
+  const clusters = Array.from({ length: k }, (_, i) => ({ clusterId: i, label: "", elements: [] }));
+  for (let i = 0; i < items.length; i++) clusters[assignments[i]].elements.push(items[i].id);
+  // Label each cluster with the text closest to its centroid
+  for (let c = 0; c < k; c++) {
+    if (clusters[c].elements.length === 0) continue;
+    const memberIdx = items.map((_, i) => i).filter((i) => assignments[i] === c);
+    let bestI = memberIdx[0], bestD = Infinity;
+    for (const i of memberIdx) {
+      const d = _l2sq(vectors[i], centroids[c]);
+      if (d < bestD) { bestD = d; bestI = i; }
+    }
+    clusters[c].label = items[bestI].text.slice(0, 60);
+  }
+  return { ok: true, clusters: clusters.filter((c) => c.elements.length > 0) };
+}
+
+function _l2sq(a, b) {
+  const n = Math.min(a.length, b.length);
+  let s = 0;
+  for (let i = 0; i < n; i++) { const d = a[i] - b[i]; s += d * d; }
+  return s;
+}
 
 export default function registerWhiteboardActions(registerLensAction) {
   registerLensAction("whiteboard", "vision", async (ctx, artifact, _params) => {
@@ -49,10 +143,23 @@ export default function registerWhiteboardActions(registerLensAction) {
     return { ok: true, result: { totalElements: elements.length, overlaps: overlaps.length, overlapPairs: overlaps.slice(0, 20), gridSize, elementsSnapped: movedCount, suggestions: snapped.filter(s => s.moved), alignmentScore: Math.round(((elements.length - movedCount) / elements.length) * 100) } };
   });
 
-  registerLensAction("whiteboard", "clusterGroup", (ctx, artifact, _params) => {
+  registerLensAction("whiteboard", "clusterGroup", async (ctx, artifact, params = {}) => {
     const elements = artifact.data?.elements || [];
     const threshold = parseFloat(artifact.data?.threshold) || 100;
     if (elements.length === 0) return { ok: true, result: { message: "Add elements to detect clusters." } };
+
+    // Sprint A #3 — semantic mode. Real Ollama embeddings + k-means
+    // (per-sticky text). Returns thematic clusters with auto-labels.
+    // Falls through to the spatial-proximity BFS below when mode is
+    // omitted or set to 'spatial', so this is strictly additive.
+    const mode = String(params.mode || artifact.data?.mode || "spatial");
+    if (mode === "semantic") {
+      const r = await _semanticCluster(elements, { k: params.k });
+      if (r.ok) {
+        return { ok: true, result: { mode: "semantic", totalElements: elements.length, clusterCount: r.clusters.length, clusters: r.clusters, singletons: r.clusters.filter((c) => c.elements.length === 1).length } };
+      }
+      return { ok: false, reason: r.reason, error: r.error };
+    }
     const positions = elements.map((el, i) => ({
       id: el.id || `el-${i}`, x: parseFloat(el.x) || 0, y: parseFloat(el.y) || 0, cluster: -1,
     }));
@@ -198,57 +305,117 @@ export default function registerWhiteboardActions(registerLensAction) {
 
   // ── Board snapshots (per-user persistence) ──
 
+  // Sprint A #1 — DB-backed boards. STATE remains the hot cache, but
+  // the source of truth is now migration 208's whiteboard_boards table.
+  // Reads union the DB rows + STATE so older sessions still see their
+  // in-memory boards before persistence migration ran.
   registerLensAction("whiteboard", "board-list", (ctx, _artifact, _params = {}) => {
-    const s = getWhiteboardState();
-    if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
-    const map = s.boards.get(userId);
-    if (!map) return { ok: true, result: { boards: [] } };
-    const boards = Array.from(map.values())
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .map(({ scene, ...meta }) => ({ ...meta, elementCount: Array.isArray(scene?.elements) ? scene.elements.length : 0 }));
+    const db = _resolveDb(ctx);
+    const fromDb = db
+      ? _dbListForOwner(db, userId, { kind: "private" }).map((r) => ({
+          id: r.id, title: r.title, createdAt: new Date((r.created_at || 0) * 1000).toISOString(),
+          updatedAt: new Date((r.updated_at || 0) * 1000).toISOString(),
+          elementCount: 0, source: "db",
+        }))
+      : [];
+    const s = getWhiteboardState();
+    const fromState = s?.boards.get(userId)
+      ? Array.from(s.boards.get(userId).values()).map(({ scene, ...meta }) => ({
+          ...meta, elementCount: Array.isArray(scene?.elements) ? scene.elements.length : 0, source: "state",
+        }))
+      : [];
+    const seen = new Set();
+    const boards = [...fromDb, ...fromState].filter((b) => { if (seen.has(b.id)) return false; seen.add(b.id); return true; })
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     return { ok: true, result: { boards } };
   });
 
   registerLensAction("whiteboard", "board-save", (ctx, _artifact, params = {}) => {
-    const s = getWhiteboardState();
-    if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const id = params.id ? String(params.id) : nextWbId("board");
-    const title = String(params.title || "Untitled board").slice(0, 80);
+    const title = String(params.title || "Untitled board").slice(0, 200);
     const scene = params.scene && typeof params.scene === "object" ? params.scene : { elements: [], appState: {} };
-    if (!s.boards.has(userId)) s.boards.set(userId, new Map());
-    const existing = s.boards.get(userId).get(id);
-    const board = {
-      id, title, scene,
-      createdAt: existing?.createdAt || nowIsoWb(),
-      updatedAt: nowIsoWb(),
-    };
-    s.boards.get(userId).set(id, board);
-    saveWhiteboardState();
-    return { ok: true, result: { board } };
+    // Real DB persistence (Sprint A #1).
+    const db = _resolveDb(ctx);
+    let dbRow = null;
+    if (db) {
+      const r = _dbUpsertBoard(db, { id, ownerId: userId, title, kind: "private", scene });
+      if (r.ok) {
+        dbRow = r.row;
+        // Append a scene_replace delta so version history can replay.
+        _dbAppendDelta(db, { boardId: id, userId, deltaKind: "scene_replace", delta: { sceneVersion: 1 }, newScene: scene, clientTs: params.clientTs });
+      }
+    }
+    // Hot cache (kept for backwards-compat with anything reading
+    // STATE directly).
+    const s = getWhiteboardState();
+    if (s) {
+      if (!s.boards.has(userId)) s.boards.set(userId, new Map());
+      const existing = s.boards.get(userId).get(id);
+      const board = { id, title, scene, createdAt: existing?.createdAt || nowIsoWb(), updatedAt: nowIsoWb() };
+      s.boards.get(userId).set(id, board);
+      saveWhiteboardState();
+      return { ok: true, result: { board, persistedToDb: !!dbRow } };
+    }
+    return { ok: true, result: { board: { id, title, scene, updatedAt: nowIsoWb() }, persistedToDb: !!dbRow } };
   });
 
   registerLensAction("whiteboard", "board-load", (ctx, _artifact, params = {}) => {
-    const s = getWhiteboardState();
-    if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const id = String(params.id || "");
-    const map = s.boards.get(userId);
-    if (!map || !map.has(id)) return { ok: false, error: "not found" };
-    return { ok: true, result: { board: map.get(id) } };
+    const db = _resolveDb(ctx);
+    if (db) {
+      const row = _dbGetBoard(db, id);
+      if (row) {
+        // Owner-only by default; participants can also load via shared path.
+        if (row.owner_id === userId || _dbHasRole(db, id, userId, "viewer")) {
+          return { ok: true, result: { board: {
+            id: row.id, title: row.title, scene: row.scene,
+            createdAt: new Date((row.created_at || 0) * 1000).toISOString(),
+            updatedAt: new Date((row.updated_at || 0) * 1000).toISOString(),
+            source: "db",
+          } } };
+        }
+      }
+    }
+    // Fallback: STATE
+    const s = getWhiteboardState();
+    if (s) {
+      const map = s.boards.get(userId);
+      if (map?.has(id)) return { ok: true, result: { board: map.get(id) } };
+    }
+    return { ok: false, error: "not found" };
   });
 
   registerLensAction("whiteboard", "board-delete", (ctx, _artifact, params = {}) => {
-    const s = getWhiteboardState();
-    if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const id = String(params.id || "");
-    const map = s.boards.get(userId);
-    if (!map || !map.has(id)) return { ok: false, error: "not found" };
-    map.delete(id);
+    const db = _resolveDb(ctx);
+    let dbDeleted = 0;
+    if (db) dbDeleted = _dbDeleteBoard(db, id, userId).deleted || 0;
+    const s = getWhiteboardState();
+    let stateDeleted = false;
+    if (s) {
+      const map = s.boards.get(userId);
+      if (map?.has(id)) { map.delete(id); stateDeleted = true; }
+    }
+    if (!dbDeleted && !stateDeleted) return { ok: false, error: "not found" };
     saveWhiteboardState();
-    return { ok: true, result: { deleted: id } };
+    return { ok: true, result: { deleted: id, dbDeleted: !!dbDeleted, stateDeleted } };
+  });
+
+  // Sprint A #1 — invite via DB (used by Sprint B permissions). Owner-only.
+  registerLensAction("whiteboard", "participant-invite", (ctx, _artifact, params = {}) => {
+    const userId = wbActor(ctx);
+    const db = _resolveDb(ctx);
+    if (!db) return { ok: false, error: "db_unavailable" };
+    const boardId = String(params.boardId || "");
+    const targetUserId = String(params.userId || "");
+    const role = String(params.role || "editor");
+    if (!boardId || !targetUserId) return { ok: false, error: "boardId and userId required" };
+    if (!_dbHasRole(db, boardId, userId, "admin")) return { ok: false, error: "forbidden" };
+    return _dbInvite(db, { boardId, userId: targetUserId, role, invitedBy: userId });
   });
 
   // ── Voting sessions ──

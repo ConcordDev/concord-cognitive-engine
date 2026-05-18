@@ -23898,6 +23898,19 @@ try {
 } catch (err) {
   console.warn("code-bg-delegate-poll registration failed:", err?.message);
 }
+
+// Whiteboard lens Sprint A — three new register()-style domains.
+// Item #2 + #4 brainstorm + summarize (real subconscious + utility brain
+// calls with deterministic fallback); Item #5 comments + threads +
+// reactions on real migration-208 tables; Item #7 DTU export with
+// real SVG render.
+import registerWhiteboardAiMacros from "./domains/whiteboard-ai.js";
+registerWhiteboardAiMacros(register);
+import registerWhiteboardCommentMacros from "./domains/whiteboard-comments.js";
+registerWhiteboardCommentMacros(register);
+import registerWhiteboardMintMacros from "./domains/whiteboard-mint.js";
+registerWhiteboardMintMacros(register);
+
 try {
   registerHeartbeat("code-bg-agent-tick", {
     frequency: 4,
@@ -37661,6 +37674,14 @@ registerLensAction("graph", "merge", (ctx, artifact, params) => {
 });
 
 // === Whiteboard (Collaboration) ===
+// Sprint A — mount the dark domain file (was authored but never
+// imported; same smoking-gun pattern as the dark crypto.js + dark
+// code-engine). 21 existing macros + 4 new Sprint A board macros
+// (DB-backed board-save/load/list/delete + participant-invite + a
+// real semantic clusterGroup mode) all surface through here.
+import registerWhiteboardActions from "./domains/whiteboard.js";
+registerWhiteboardActions(registerLensAction);
+
 registerLensAction("whiteboard", "render", (ctx, artifact, params) => {
   return { ok: true, render: { boardId: artifact.id, format: params.format || "png", renderedAt: nowISO() } };
 });
@@ -47644,6 +47665,73 @@ app.post("/api/dtus/upload-audio-capture", express.raw({ type: "audio/*", limit:
     }
   }
   res.json({ ok: true, dtuId: id, kind: "audio_capture", path: file, bytes: buf.length });
+}));
+
+// Whiteboard Sprint A #6 — image upload. Producer drops/pastes/clicks
+// an image; we persist to data/whiteboard-images/, mint a kind=
+// 'whiteboard_image' DTU, and write a row in whiteboard_images so the
+// board can reference it by id. Owner-scoped via req.user.
+app.post("/api/whiteboard/upload-image", express.raw({ type: "image/*", limit: "10mb" }), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, reason: "auth_required" });
+  const buf = req.body;
+  if (!buf || !buf.length) return res.status(400).json({ ok: false, reason: "empty_body" });
+  const mime = String(req.get("content-type") || "image/png");
+  const ext = mime.split("/")[1]?.split(";")[0] || "png";
+  if (!/^[a-zA-Z0-9]{2,8}$/.test(ext)) return res.status(400).json({ ok: false, reason: "invalid_mime" });
+  const boardId = req.query.board_id ? String(req.query.board_id).slice(0, 200) : null;
+  const fsmod = await import("node:fs");
+  const pathmod = await import("node:path");
+  const cryptomod = await import("node:crypto");
+  const dir = pathmod.resolve("./data/whiteboard-images");
+  try { fsmod.mkdirSync(dir, { recursive: true }); } catch { /* dir exists */ }
+  const id = `wbi_${cryptomod.randomUUID()}`;
+  const fileName = `${id}.${ext}`;
+  const file = pathmod.join(dir, fileName);
+  try { fsmod.writeFileSync(file, buf); }
+  catch (err) { return res.status(500).json({ ok: false, reason: "write_failed", error: err?.message }); }
+  const db = STATE?.db;
+  let dtuId = null;
+  if (db) {
+    dtuId = `whiteboard_image:${cryptomod.randomUUID()}`;
+    try {
+      db.prepare(`
+        INSERT INTO dtus (id, kind, title, creator_id, meta_json, created_at)
+        VALUES (?, 'whiteboard_image', ?, ?, ?, unixepoch())
+      `).run(dtuId, `Whiteboard image (${(buf.length / 1024).toFixed(1)} KB)`, userId, JSON.stringify({
+        type: "whiteboard_image", path: file, mime, bytes: buf.length, board_id: boardId,
+      }));
+      db.prepare(`
+        INSERT INTO whiteboard_images (id, owner_id, board_id, path, mime, bytes, dtu_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
+      `).run(id, userId, boardId, fileName, mime, buf.length, dtuId);
+    } catch (err) {
+      return res.status(500).json({ ok: false, reason: "db_insert_failed", error: err?.message });
+    }
+  }
+  res.json({
+    ok: true, id, dtuId, kind: "whiteboard_image",
+    url: `/api/whiteboard/image/${id}`,
+    bytes: buf.length, mime,
+  });
+}));
+
+// Read path for uploaded whiteboard images.
+app.get("/api/whiteboard/image/:id", asyncHandler(async (req, res) => {
+  const id = String(req.params.id || "");
+  if (!/^wbi_[a-f0-9-]+$/i.test(id)) return res.status(400).json({ ok: false, reason: "invalid_id" });
+  const db = STATE?.db;
+  if (!db) return res.status(500).json({ ok: false, reason: "no_db" });
+  const row = db.prepare(`SELECT owner_id, board_id, path, mime FROM whiteboard_images WHERE id = ?`).get(id);
+  if (!row) return res.status(404).json({ ok: false, reason: "not_found" });
+  const fsmod = await import("node:fs");
+  const pathmod = await import("node:path");
+  const dir = pathmod.resolve("./data/whiteboard-images");
+  const file = pathmod.join(dir, row.path);
+  if (!fsmod.existsSync(file)) return res.status(410).json({ ok: false, reason: "file_gone" });
+  res.setHeader("content-type", row.mime || "image/png");
+  res.setHeader("cache-control", "private, max-age=3600");
+  res.send(fsmod.readFileSync(file));
 }));
 
 app.get("/api/digest", asyncHandler(async (req, res) => {
