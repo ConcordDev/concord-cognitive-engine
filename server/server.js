@@ -10240,6 +10240,11 @@ async function runMacro(domain, name, input, ctx) {
       "persona_get", "persona_list",
       "prompt_list",
       "branch_list",
+      // Sprint B: artifact + research + tool-call reads + reasoning helper
+      "artifact_get", "artifact_list", "artifact_versions",
+      "tool_calls_list",
+      "research_get", "research_list",
+      "ai_reasoning_trace",
     ]),
     // Browser Agent Sprint A — read-only macros (task/action/budget
     // reads + the destructive-action check that takes no DB).
@@ -24233,6 +24238,11 @@ import registerChatActions from "./domains/chat.js";
 registerChatActions(registerLensAction);
 import registerChatExtrasMacros from "./domains/chat-extras.js";
 registerChatExtrasMacros(register);
+
+// Chat lens Sprint B — Canvas/Artifacts + Deep Research + tool-call
+// audit + structured output + auto-extract memory (migration 224).
+import registerChatAiMacros from "./domains/chat-ai.js";
+registerChatAiMacros(register);
 
 // Browser-Agent Sprint C — schedule runner heartbeat. Every 60s scan
 // for due schedules and instantiate fresh tasks.
