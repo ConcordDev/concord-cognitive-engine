@@ -9997,7 +9997,7 @@ async function runMacro(domain, name, input, ctx) {
     history: new Set(["live_wiki_otd", "live_wiki_search", "live_wiki_summary"]),
     agents: new Set(["list", "get", "status"]),
     personas: new Set(["list", "get"]),
-    affect: new Set(["state", "events", "health", "system", "policy"]),
+    affect: new Set(["state", "events", "health", "system", "policy", "affect_history"]),
     attention: new Set(["status", "get"]),
     metacognition: new Set(["status", "predictions"]),
     metalearning: new Set(["strategies", "status"]),
@@ -10332,7 +10332,14 @@ async function runMacro(domain, name, input, ctx) {
     // premonitions, dreams). All read-only — they expose simulation
     // state that's already running so frontends can render it.
     refusal: new Set(["strength", "composition", "fields_for_world", "is_compound"]),
-    npc: new Set(["eavesdrop", "schedule", "for_world"]),
+    npc: new Set(["eavesdrop", "schedule", "for_world", "ambition_log"]),
+    // Smoking-gun cleanup I9 — read paths for write-only audit tables
+    "land-claims": new Set(["history"]),
+    "npc-economy": new Set(["skill_acquisitions"]),
+    procgen: new Set(["user_visits"]),
+    "social-ai": new Set(["get_ranking_audit"]),
+    "war-campaigns": new Set(["town_capture_history"]),
+    classroom: new Set(["list_submissions"]),
     forward_sim: new Set(["predictions_for_player", "predictions_for_subject", "active"]),
     dream: new Set(["recent_for_player", "history", "list_for_player"]),
     fidelity: new Set(["drift", "summary"]),
@@ -24381,6 +24388,12 @@ registerSocialAiMacros(register);
 // integration for content-safety hooks.
 import registerSocialMoatsMacros from "./domains/social-moats.js";
 registerSocialMoatsMacros(register);
+
+// Smoking-gun cleanup I9 — read paths for 8 write-only audit tables.
+// Each table had INSERTs but no SELECTs; dashboards lied / achievements
+// blocked / transparency surfaces missing. One macro per table.
+import registerAuditReadsMacros from "./domains/audit-reads.js";
+registerAuditReadsMacros(register);
 
 // Smoking-gun cleanup C4 — council proposal expiry sweep. The 7-day
 // window from server.js:42104 is the governance safety valve;
