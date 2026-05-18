@@ -10383,6 +10383,18 @@ async function runMacro(domain, name, input, ctx) {
     // state that's already running so frontends can render it.
     refusal: new Set(["strength", "composition", "fields_for_world", "is_compound"]),
     npc: new Set(["eavesdrop", "schedule", "for_world", "ambition_log"]),
+    // Accounting lens Sprint A — read-only macros (auth-gated inside the
+    // macro; ownership check on entity_id). Read macros from the new
+    // register()-pattern domain only — the legacy registerLensAction
+    // macros in server/domains/accounting.js stay on their own path.
+    accounting: new Set([
+      "entity_list",
+      "account_list", "account_get",
+      "journal_list", "journal_get",
+      "invoice_list", "invoice_get",
+      "trial_balance", "balance_sheet", "profit_loss", "invoice_aging",
+      "budget_variance",
+    ]),
     // Smoking-gun cleanup I9 — read paths for write-only audit tables
     "land-claims": new Set(["history"]),
     "npc-economy": new Set(["skill_acquisitions"]),
@@ -24444,6 +24456,17 @@ registerSocialMoatsMacros(register);
 // blocked / transparency surfaces missing. One macro per table.
 import registerAuditReadsMacros from "./domains/audit-reads.js";
 registerAuditReadsMacros(register);
+
+// Accounting lens rebuild Sprint A — durable persistence (migration
+// 234) + register()-pattern macros alongside the legacy
+// registerLensAction in server/domains/accounting.js. Adds the
+// QuickBooks/Xero parity surface: multi-entity accounting, CoA CRUD,
+// double-entry JE post (transactional + balanced enforcement), invoice
+// CRUD with partial-payment status ladder, trial balance, balance
+// sheet (auto-rolling P&L into retained earnings), profit & loss,
+// AR aging buckets, budgets with variance.
+import registerAccountingRebuildMacros from "./domains/accounting-rebuild.js";
+registerAccountingRebuildMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,
