@@ -10238,6 +10238,8 @@ async function runMacro(domain, name, input, ctx) {
       "task_get", "task_list", "actions_list",
       "approvals_pending", "budget_get", "budget_can_start",
       "action_check_destructive",
+      // Sprint B read-only AI: plan list + cost dashboard + AI ledger
+      "plan_list", "cost_dashboard", "ai_runs_recent",
     ]),
     // Calendar Sprint A+B+C — read-only macros. expand_recurring +
     // parse_rrule are pure compute. ai_parse_event has a deterministic
@@ -24183,6 +24185,13 @@ registerCalendarMoatsMacros(register);
 // safety gates.
 import registerBrowserAgentMacros from "./domains/browser-agent.js";
 registerBrowserAgentMacros(register);
+
+// Browser Agent lens Sprint B — AI surface (migration 221).
+// Plan-preview-before-execute + voice-task-spec + LLM-driven step
+// orchestrator + post-run summary + cost dashboard + Devin-style
+// "if it works keep doing it" reschedule + ai_runs_recent.
+import registerBrowserAgentAiMacros from "./domains/browser-agent-ai.js";
+registerBrowserAgentAiMacros(register);
 
 try {
   registerHeartbeat("messaging-agent-tick", {

@@ -21,8 +21,12 @@ import { BrowserActionStream } from '@/components/browser-agent/BrowserActionStr
 import { BrowserCostMeter } from '@/components/browser-agent/BrowserCostMeter';
 import { BrowserApprovalsPanel } from '@/components/browser-agent/BrowserApprovalsPanel';
 import { BrowserBudgetSettings } from '@/components/browser-agent/BrowserBudgetSettings';
+import { BrowserPlanPreview } from '@/components/browser-agent/BrowserPlanPreview';
+import { BrowserCostDashboard } from '@/components/browser-agent/BrowserCostDashboard';
+import { BrowserVoiceTask } from '@/components/browser-agent/BrowserVoiceTask';
 import {
   Plus, Loader2, Bot, Zap, Settings as SettingsIcon, ShieldAlert,
+  ListChecks, BarChart3, Sparkles,
 } from 'lucide-react';
 
 export default function BrowserAgentLensPage() {
@@ -33,6 +37,8 @@ export default function BrowserAgentLensPage() {
   const [budget, setBudget] = useState<(BrowserBudget & { dailySpentCents?: number; monthlySpentCents?: number; concurrentActive?: number }) | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [planTaskId, setPlanTaskId] = useState<string | null>(null);
+  const [costOpen, setCostOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refreshTasks = useCallback(async () => {
@@ -102,9 +108,15 @@ export default function BrowserAgentLensPage() {
             <h2 className="text-sm font-semibold text-white/80 flex items-center gap-2">
               <Bot className="w-4 h-4 text-cyan-400" /> Browser tasks
             </h2>
-            <button onClick={() => setCreateOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-white/70" title="New task">
-              <Plus className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <BrowserVoiceTask onCreated={refreshTasks} />
+              <button onClick={() => setCostOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-white/70" title="Cost dashboard">
+                <BarChart3 className="w-4 h-4" />
+              </button>
+              <button onClick={() => setCreateOpen(true)} className="p-1.5 rounded hover:bg-white/10 text-white/70" title="New task">
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <BrowserTaskList
             tasks={tasks}
@@ -136,6 +148,18 @@ export default function BrowserAgentLensPage() {
                   'bg-white/30'
                 }`} />
                 <h2 className="text-sm font-semibold text-white flex-1 truncate">{activeTask.title}</h2>
+                <button onClick={() => setPlanTaskId(activeTask.id)} className="px-2 py-1 text-xs rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 flex items-center gap-1" title="Plan preview">
+                  <ListChecks className="w-3 h-3" /> Plan
+                </button>
+                {["completed","failed","cancelled","budget_exceeded"].includes(activeTask.status) && (
+                  <button
+                    onClick={async () => { const r = await callBrowserAgentMacro<{ id?: string }>('ai_reschedule', { taskId: activeTask.id }); if (r.ok) { refreshTasks(); setActiveTaskId(r.id || null); } }}
+                    className="px-2 py-1 text-xs rounded bg-white/5 hover:bg-white/10 text-white/70 flex items-center gap-1"
+                    title="Re-run this task (Devin-style)"
+                  >
+                    <Sparkles className="w-3 h-3" /> Re-run
+                  </button>
+                )}
                 <span className="text-xs text-white/40 uppercase">{activeTask.status}</span>
               </>
             ) : (
@@ -188,6 +212,18 @@ export default function BrowserAgentLensPage() {
           refreshTasks();
           refreshBudget();
         }}
+      />
+
+      <BrowserPlanPreview
+        open={planTaskId !== null}
+        taskId={planTaskId}
+        onClose={() => setPlanTaskId(null)}
+        onApproved={() => { refreshTasks(); }}
+      />
+
+      <BrowserCostDashboard
+        open={costOpen}
+        onClose={() => setCostOpen(false)}
       />
     </LensShell>
   );
