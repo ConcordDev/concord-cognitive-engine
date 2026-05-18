@@ -23779,6 +23779,13 @@ registerStudioTechniqueMacros(register);
 import registerStudioCreditMacros from "./domains/studio-credits.js";
 registerStudioCreditMacros(register);
 
+// Studio Sprint C — cross-lens audio-to-world hooks. Composers list
+// tracks as district soundscapes; event hosts attach a soundscape
+// to their event; world-events.js#endEvent mints the per-attendee
+// CC micro-credit to the composer.
+import registerStudioDistrictMacros from "./domains/studio-district.js";
+registerStudioDistrictMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.

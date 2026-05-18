@@ -204,6 +204,37 @@ export async function endEvent(eventId, userId = null) {
           });
         }
       }
+
+      // Sprint C #13 — soundscape composer micro-credit. When the event
+      // has `meta.soundscape_track_dtu_id` set, the composer earns a
+      // small CC payout per attendee. refId is scoped to the event +
+      // composer so a re-run never double-mints.
+      const soundscapeId = event.meta?.soundscape_track_dtu_id;
+      if (mintCoins && db && soundscapeId && event.attendees.size > 0) {
+        try {
+          const trackRow = db.prepare("SELECT creator_id FROM dtus WHERE id = ?").get(soundscapeId);
+          if (trackRow?.creator_id) {
+            const perAttendee = Number(event.meta.soundscape_cc_per_attendee) > 0
+              ? Number(event.meta.soundscape_cc_per_attendee)
+              : 0.01;                       // default 0.01 CC / attendee
+            const total = perAttendee * event.attendees.size;
+            if (total > 0) {
+              mintCoins(db, {
+                amount: total, userId: trackRow.creator_id,
+                refId: `event_soundscape:${eventId}:${trackRow.creator_id}`,
+              });
+              if (io) {
+                io.to(`user:${trackRow.creator_id}`).emit("studio:soundscape-paid", {
+                  eventId, eventTitle: event.title,
+                  amount: total, attendees: event.attendees.size,
+                });
+              }
+            }
+          }
+        } catch (err) {
+          if (typeof console !== "undefined") console.warn("[world-events] soundscape credit failed", { eventId, err: err?.message });
+        }
+      }
     }
   } catch { /* reward distribution best-effort */ }
 
