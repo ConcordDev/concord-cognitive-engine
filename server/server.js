@@ -10232,6 +10232,16 @@ async function runMacro(domain, name, input, ctx) {
       "project_template_list",
       "roadmap",
     ]),
+    // Calendar Sprint A — read-only macros. All others auth-gated +
+    // owner-scoped. expand_recurring + parse_rrule are pure compute.
+    calendar: new Set([
+      "calendar_list", "calendar_get",
+      "event_get", "event_list",
+      "attendee_list", "reminders_pending",
+      "ical_export",
+      "detect_conflicts", "find_availability",
+      "expand_recurring", "parse_rrule",
+    ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
     // state that's already running so frontends can render it.
@@ -24122,6 +24132,15 @@ registerTasksAiMacros(register);
 // roadmap / timeline with critical path.
 import registerTasksMoatsMacros from "./domains/tasks-moats.js";
 registerTasksMoatsMacros(register);
+
+// Calendar lens Sprint A — real Motion-shape substrate (migration 217).
+// Smoking-gun fix #8/8: domains/calendar.js (292 LOC of RFC 5545 iCal
+// compliance, never imported) rewritten with register() pattern and
+// ~25 macros: calendar + event CRUD, RRULE expansion + per-instance
+// overrides, attendees + RSVP, reminders, iCal I/O, scheduling
+// helpers (conflict detection + availability slots).
+import registerCalendarMacros from "./domains/calendar.js";
+registerCalendarMacros(register);
 try {
   registerHeartbeat("messaging-agent-tick", {
     frequency: 4, // ~1 min
