@@ -10194,6 +10194,21 @@ async function runMacro(domain, name, input, ctx) {
       "mint_status", "cited_dtus", "export_dtu_pack",
       "semantic_search", "embed_validate", "embed_render_svg",
     ]),
+    // Tasks Sprint A — read-only macros (all writes require auth +
+    // role check inside the handler). search self-scopes by user
+    // membership; list/get/etc all hasProjectRole-guarded.
+    tasks: new Set([
+      "project_get", "project_get_by_key", "project_list", "project_members",
+      "task_get", "task_list", "task_assigned_to_me", "task_subtasks",
+      "task_history", "search",
+      "workflow_list",
+      "custom_field_list",
+      "sprint_list", "sprint_burndown",
+      "labels_for_project",
+      "time_entries",
+      "comment_list", "participant_list", "attachment_list", "link_list",
+      "view_list", "view_get",
+    ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
     // state that's already running so frontends can render it.
@@ -24048,6 +24063,26 @@ import registerDocsMintMacros from "./domains/docs-mint.js";
 registerDocsMintMacros(register);
 import registerDocsExtrasMacros from "./domains/docs-extras.js";
 registerDocsExtrasMacros(register);
+
+// Tasks lens Sprint A — Jira-customisable substrate (migration 214).
+// Smoking-gun fix: domains/projects.js (4 pure-math macros, legacy
+// registerLensAction pattern, never imported into server.js — 6/6
+// smoking-gun streak) stays as analytics-only; the new authoritative
+// surface is domains/tasks*.js with ~35 macros covering projects +
+// tasks (Linear/Jira shape), per-project customisable workflows +
+// custom fields, sprints + burndown, multi-assignee participants,
+// dependencies + history audit, comments + attachments + cross-app
+// links, labels + time tracking, saved views.
+import registerTasksMacros from "./domains/tasks.js";
+registerTasksMacros(register);
+import registerTasksWorkflowMacros from "./domains/tasks-workflow.js";
+registerTasksWorkflowMacros(register);
+import registerTasksSprintMacros from "./domains/tasks-sprint.js";
+registerTasksSprintMacros(register);
+import registerTasksCollabMacros from "./domains/tasks-collab.js";
+registerTasksCollabMacros(register);
+import registerTasksViewsMacros from "./domains/tasks-views.js";
+registerTasksViewsMacros(register);
 try {
   registerHeartbeat("messaging-agent-tick", {
     frequency: 4, // ~1 min
