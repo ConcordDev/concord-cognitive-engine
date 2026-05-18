@@ -26,9 +26,12 @@ import { DocAICommandMenu } from '@/components/docs/DocAICommandMenu';
 import { DocVoiceDictate } from '@/components/docs/DocVoiceDictate';
 import { DocQAPanel } from '@/components/docs/DocQAPanel';
 import { DocSkillsManager } from '@/components/docs/DocSkillsManager';
+import { DocTemplatePicker } from '@/components/docs/DocTemplatePicker';
+import { DocAgentPanel } from '@/components/docs/DocAgentPanel';
+import { DocMintModal } from '@/components/docs/DocMintModal';
 import {
   Search, Plus, Share2, Clock, MessageSquare, Link2, Download, Upload,
-  Loader2, FileText, ListTree, Star, Sparkles, HelpCircle,
+  Loader2, FileText, ListTree, Star, Sparkles, HelpCircle, Bookmark, Bot, Coins,
 } from 'lucide-react';
 
 interface Document {
@@ -44,7 +47,7 @@ interface Document {
   slug?: string | null;
 }
 
-type RightPanel = 'outline' | 'comments' | 'versions' | 'backlinks' | 'share' | 'qa' | null;
+type RightPanel = 'outline' | 'comments' | 'versions' | 'backlinks' | 'share' | 'qa' | 'agents' | null;
 
 const SAVE_DEBOUNCE_MS = 1500;
 
@@ -60,6 +63,8 @@ export default function DocsLensPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [aiMenuOpen, setAiMenuOpen] = useState(false);
   const [skillsOpen, setSkillsOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [mintOpen, setMintOpen] = useState(false);
   const [selectionText, setSelectionText] = useState('');
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -251,6 +256,13 @@ export default function DocsLensPage() {
                 <Plus className="w-4 h-4" />
               </button>
               <button
+                onClick={() => setTemplatesOpen(true)}
+                className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
+                title="Template library"
+              >
+                <Bookmark className="w-4 h-4" />
+              </button>
+              <button
                 onClick={() => setImportOpen(true)}
                 className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
                 title="Import Markdown"
@@ -346,6 +358,13 @@ export default function DocsLensPage() {
                   <Star className="w-4 h-4" />
                 </button>
                 <button
+                  onClick={() => setMintOpen(true)}
+                  className="p-1.5 rounded hover:bg-white/10 text-amber-300/80 hover:text-amber-300"
+                  title="Mint as DTU"
+                >
+                  <Coins className="w-4 h-4" />
+                </button>
+                <button
                   onClick={exportMd}
                   className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
                   title="Export Markdown"
@@ -402,6 +421,7 @@ export default function DocsLensPage() {
             <div className="flex items-center gap-1 px-2 py-1.5 border-b border-white/10 flex-wrap">
               <RightTab icon={<ListTree className="w-3.5 h-3.5" />} label="Outline"   active={rightPanel === 'outline'}   onClick={() => setRightPanel('outline')} />
               <RightTab icon={<HelpCircle className="w-3.5 h-3.5" />} label="Ask"       active={rightPanel === 'qa'}       onClick={() => setRightPanel('qa')} />
+              <RightTab icon={<Bot className="w-3.5 h-3.5" />} label="Agents"   active={rightPanel === 'agents'} onClick={() => setRightPanel('agents')} />
               <RightTab icon={<MessageSquare className="w-3.5 h-3.5" />} label="Comments" active={rightPanel === 'comments'} onClick={() => setRightPanel('comments')} />
               <RightTab icon={<Clock className="w-3.5 h-3.5" />} label="History"   active={rightPanel === 'versions'} onClick={() => setRightPanel('versions')} />
               <RightTab icon={<Link2 className="w-3.5 h-3.5" />} label="Links"     active={rightPanel === 'backlinks'} onClick={() => setRightPanel('backlinks')} />
@@ -409,6 +429,7 @@ export default function DocsLensPage() {
             <div className="flex-1 overflow-y-auto">
               {rightPanel === 'outline'   && <DocOutlinePanel documentId={activeDocId!} contentHtml={editorContent} />}
               {rightPanel === 'qa'        && <DocQAPanel documentId={activeDocId!} onJumpToDoc={(id) => setActiveDocId(id)} />}
+              {rightPanel === 'agents'    && <DocAgentPanel documentId={activeDocId!} />}
               {rightPanel === 'comments'  && <DocCommentsPanel documentId={activeDocId!} />}
               {rightPanel === 'versions'  && <DocVersionsPanel documentId={activeDocId!} onRestore={() => setActiveDocId(activeDocId)} />}
               {rightPanel === 'backlinks' && <DocBacklinksPanel documentId={activeDocId!} />}
@@ -439,6 +460,21 @@ export default function DocsLensPage() {
       />
 
       <DocSkillsManager open={skillsOpen} onClose={() => setSkillsOpen(false)} />
+
+      <DocTemplatePicker
+        open={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        currentDocId={activeDocId}
+        onApplied={(id) => { setTemplatesOpen(false); refreshList(); setActiveDocId(id); }}
+      />
+
+      {activeDocId && (
+        <DocMintModal
+          open={mintOpen}
+          onClose={() => setMintOpen(false)}
+          documentId={activeDocId}
+        />
+      )}
     </LensShell>
   );
 }

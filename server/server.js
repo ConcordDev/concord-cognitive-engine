@@ -10176,16 +10176,23 @@ async function runMacro(domain, name, input, ctx) {
     ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
-    // Docs Sprint A+B — read-only document macros (writes go through
+    // Docs Sprint A+B+C — read-only document macros (writes go through
     // authenticated path). get_by_slug is public for published docs;
     // all others self-scope via ctx.actor.userId and gate by role.
-    // Sprint B adds skill_list/get + ai_runs_recent for the read paths.
+    // Sprint B adds skill_list/get + ai_runs_recent. Sprint C adds
+    // template list/get, database list/rows, agent list, mint status,
+    // cited DTUs, semantic search, embed validate/render.
     docs: new Set([
       "get", "get_by_slug", "list", "list_collaborated", "list_children",
       "versions", "get_version", "comments_list", "collaborators",
       "backlinks_in", "backlinks_out", "attachments_list", "search",
       "export_md", "export_html", "presence_list", "outline", "readability",
       "skill_list", "skill_get", "ai_runs_recent",
+      "template_list", "template_get",
+      "database_list_for_doc", "database_rows",
+      "agent_list",
+      "mint_status", "cited_dtus", "export_dtu_pack",
+      "semantic_search", "embed_validate", "embed_render_svg",
     ]),
     // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
     // premonitions, dreams). All read-only — they expose simulation
@@ -24024,6 +24031,23 @@ import registerDocsAiMacros from "./domains/docs-ai.js";
 registerDocsAiMacros(register);
 import registerDocsSkillsMacros from "./domains/docs-skills.js";
 registerDocsSkillsMacros(register);
+
+// Docs lens Sprint C — embeds + agents + moats (migration 213).
+// Templates (5 macros) + Notion-DB-style structured pages
+// (database_create / update / list / row CRUD / rows) + page-bound
+// agents publishable as agent_spec DTUs (5 macros) + concord-native
+// mint-as-DTU + cross-lens cite cascade + DTU pack export (5 macros)
+// + semantic workspace search + embed validate/render (3 macros).
+import registerDocsTemplatesMacros from "./domains/docs-templates.js";
+registerDocsTemplatesMacros(register);
+import registerDocsDatabasesMacros from "./domains/docs-databases.js";
+registerDocsDatabasesMacros(register);
+import registerDocsAgentsMacros from "./domains/docs-agents.js";
+registerDocsAgentsMacros(register);
+import registerDocsMintMacros from "./domains/docs-mint.js";
+registerDocsMintMacros(register);
+import registerDocsExtrasMacros from "./domains/docs-extras.js";
+registerDocsExtrasMacros(register);
 try {
   registerHeartbeat("messaging-agent-tick", {
     frequency: 4, // ~1 min

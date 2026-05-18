@@ -1,0 +1,177 @@
+'use client';
+
+/**
+ * DocMintModal — concord-native moat. Mint a doc as a citable DTU
+ * with configurable royalty rate. Once minted, the doc shows a
+ * citation count, can be cited cross-lens (firing the royalty
+ * cascade), and can be exported as a portable .cnd.json pack.
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { callDocsMacro } from '@/lib/api/docs';
+import { Coins, X, Loader2, Download, Sparkles, Check } from 'lucide-react';
+
+interface Mint {
+  document_id: string;
+  dtu_id: string;
+  royalty_rate: number;
+  visibility: string;
+  citation_count: number;
+  minted_at: number;
+}
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  documentId: string;
+}
+
+export function DocMintModal({ open, onClose, documentId }: Props) {
+  const [mint, setMint] = useState<Mint | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [royaltyRate, setRoyaltyRate] = useState(0.21);
+  const [visibility, setVisibility] = useState<'workspace'|'public'|'published'>('workspace');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await callDocsMacro<{ minted?: boolean; mint?: Mint }>('mint_status', { documentId });
+      setMint(r?.minted ? r.mint || null : null);
+      if (r?.mint) {
+        setRoyaltyRate(r.mint.royalty_rate);
+        setVisibility(r.mint.visibility as 'workspace'|'public'|'published');
+      }
+    } catch (e) { console.error('mint_status', e); }
+    finally { setLoading(false); }
+  }, [documentId]);
+
+  useEffect(() => { if (open) load(); }, [open, load]);
+
+  const mintIt = useCallback(async () => {
+    setBusy(true);
+    try {
+      const r = await callDocsMacro<{ dtuId?: string }>('mint_as_dtu', {
+        documentId, royaltyRate, visibility,
+      });
+      if (r?.ok) load();
+    } finally { setBusy(false); }
+  }, [documentId, royaltyRate, visibility, load]);
+
+  const exportPack = useCallback(async () => {
+    setBusy(true);
+    try {
+      const r = await callDocsMacro<{ pack?: object; filename?: string }>('export_dtu_pack', { documentId });
+      if (!r?.ok || !r.pack) return;
+      const blob = new Blob([JSON.stringify(r.pack, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = r.filename || 'doc.cnd.json';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } finally { setBusy(false); }
+  }, [documentId]);
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+      <div className="bg-zinc-900 border border-amber-400/30 rounded-lg w-full max-w-lg flex flex-col">
+        <div className="flex items-center justify-between p-3 border-b border-white/10">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <Coins className="w-4 h-4 text-amber-400" /> Mint as DTU
+          </h3>
+          <button onClick={onClose} className="p-1 rounded hover:bg-white/10 text-white/60">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-3">
+          {loading ? (
+            <div className="flex items-center justify-center h-24 text-white/40">
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+          ) : mint ? (
+            <>
+              <div className="bg-green-500/10 border border-green-400/30 rounded p-3 space-y-1 text-sm">
+                <div className="flex items-center gap-2 text-green-300 font-medium">
+                  <Check className="w-4 h-4" /> Minted
+                </div>
+                <div className="text-xs text-white/60 font-mono break-all">{mint.dtu_id}</div>
+                <div className="text-xs text-white/80 grid grid-cols-2 gap-y-1 gap-x-3 mt-2">
+                  <div>Royalty: <span className="text-amber-300">{(mint.royalty_rate * 100).toFixed(1)}%</span></div>
+                  <div>Visibility: <span className="text-cyan-300">{mint.visibility}</span></div>
+                  <div>Citations: <span className="text-white">{mint.citation_count}</span></div>
+                  <div>Minted: <span className="text-white/60">{new Date(mint.minted_at * 1000).toLocaleDateString()}</span></div>
+                </div>
+              </div>
+              <button
+                onClick={exportPack}
+                disabled={busy}
+                className="w-full py-2 rounded bg-white/10 hover:bg-white/15 text-white text-sm flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" /> Export as DTU pack (.cnd.json)
+              </button>
+              <p className="text-xs text-white/40">
+                Includes ancestry chain + royalty inheritance metadata.
+                Importable on any Concord instance.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-white/70">
+                Mint this document as a citable DTU. Once minted, other docs and
+                lenses can <code className="text-cyan-300">cite_dtu</code> it; downstream
+                sales walk the ancestry chain through the royalty cascade engine.
+              </p>
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-white/40 mb-1">
+                  Royalty rate (caller's share on cited remixes)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range" min="0" max="0.3" step="0.005"
+                    value={royaltyRate}
+                    onChange={(e) => setRoyaltyRate(Number(e.target.value))}
+                    className="flex-1 accent-amber-400"
+                  />
+                  <span className="text-amber-300 font-mono text-sm w-16 text-right">
+                    {(royaltyRate * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <p className="text-xs text-white/40 mt-1">
+                  Capped at 30% (concord constitutional invariant).
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-white/40 mb-1">
+                  Visibility
+                </label>
+                <select
+                  value={visibility}
+                  onChange={(e) => setVisibility(e.target.value as 'workspace'|'public'|'published')}
+                  className="w-full px-2 py-1.5 text-sm bg-white/5 border border-white/10 rounded text-white"
+                >
+                  <option value="workspace" className="bg-black">workspace (org-visible)</option>
+                  <option value="public" className="bg-black">public (anyone can cite)</option>
+                  <option value="published" className="bg-black">published (marketplace-discoverable)</option>
+                </select>
+              </div>
+              <button
+                onClick={mintIt}
+                disabled={busy}
+                className="w-full py-2 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-40"
+              >
+                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Mint as DTU
+              </button>
+              <p className="text-xs text-white/40">
+                Requires admin role on the document. Mint is one-way per doc
+                (rate + visibility editable later via separate macros).
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
