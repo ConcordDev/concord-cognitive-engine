@@ -10245,6 +10245,12 @@ async function runMacro(domain, name, input, ctx) {
       "tool_calls_list",
       "research_get", "research_list",
       "ai_reasoning_trace",
+      // Sprint C: mint status + council read + public-link read +
+      // session export + public link list (auth-gated inside).
+      "session_mint_status",
+      "council_get",
+      "public_link_get", "public_link_list",
+      "session_export",
     ]),
     // Browser Agent Sprint A — read-only macros (task/action/budget
     // reads + the destructive-action check that takes no DB).
@@ -24243,6 +24249,12 @@ registerChatExtrasMacros(register);
 // audit + structured output + auto-extract memory (migration 224).
 import registerChatAiMacros from "./domains/chat-ai.js";
 registerChatAiMacros(register);
+
+// Chat lens Sprint C — concord-native moats (migration 225). Mint
+// chat session as DTU + cross-lens cite cascade + persona marketplace
+// + 5-brain council mode + public chat links + conversation export.
+import registerChatMoatsMacros from "./domains/chat-moats.js";
+registerChatMoatsMacros(register);
 
 // Browser-Agent Sprint C — schedule runner heartbeat. Every 60s scan
 // for due schedules and instantiate fresh tasks.
