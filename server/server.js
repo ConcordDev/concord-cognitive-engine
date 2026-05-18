@@ -10394,6 +10394,12 @@ async function runMacro(domain, name, input, ctx) {
       "invoice_list", "invoice_get",
       "trial_balance", "balance_sheet", "profit_loss", "invoice_aging",
       "budget_variance",
+      // Sprint B reads
+      "categorize_rules_list",
+      "anomaly_list",
+      "narratives_list",
+      "receipt_extractions_pending",
+      "ai_runs_recent",
     ]),
     // Smoking-gun cleanup I9 — read paths for write-only audit tables
     "land-claims": new Set(["history"]),
@@ -24467,6 +24473,15 @@ registerAuditReadsMacros(register);
 // AR aging buckets, budgets with variance.
 import registerAccountingRebuildMacros from "./domains/accounting-rebuild.js";
 registerAccountingRebuildMacros(register);
+
+// Accounting lens rebuild Sprint B — AI surface (migration 235).
+// Categorization rules with rule→deterministic→LLM cascade, anomaly
+// scan (unbalanced JE + Benford's law + round-number cluster +
+// duplicate-invoice + negative-equity), narrative composer with
+// per-tone prose (plain/executive/accountant/tax/founder), receipt
+// extraction via LLaVA vision with deterministic fallback.
+import registerAccountingAiMacros from "./domains/accounting-ai.js";
+registerAccountingAiMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,
