@@ -1055,6 +1055,70 @@ export default function StudioLensPage() {
     [updateProject, selectedTrackId]
   );
 
+  // Sprint A #6 + Sprint B #1 — deposit generator output as a real
+  // clip on the active MIDI track. Converts MIDI ticks (480/beat) to
+  // beats so the existing beat-aligned MIDI dispatcher (line ~544)
+  // picks the notes up automatically once transport is playing.
+  // Creates a new MIDI track when none is selected.
+  const handlePasteGeneratedNotes = useCallback(
+    (
+      notes: Array<{ tick: number; pitch: number; velocity: number; duration: number }>,
+      opts: { title?: string; ticksPerBeat?: number } = {},
+    ) => {
+      if (!notes || notes.length === 0) return;
+      const tpb = opts.ticksPerBeat ?? 480;
+      const title = opts.title || `Generated clip ${new Date().toLocaleTimeString()}`;
+      updateProject((p) => {
+        let targetTrackId = selectedTrackId;
+        let tracks = p.tracks;
+        let target = tracks.find((t) => t.id === targetTrackId && t.type === 'midi');
+        if (!target) {
+          target = createDefaultTrack(`Generated ${p.tracks.length + 1}`, 'midi', p.tracks.length);
+          mixerRef.current?.addChannel(target.id);
+          tracks = [...tracks, target];
+          targetTrackId = target.id;
+        }
+        const maxTick = Math.max(...notes.map((n) => n.tick + n.duration));
+        const lengthBeats = Math.max(1, maxTick / tpb);
+        const clipId = `clip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const clip = {
+          id: clipId,
+          name: title,
+          type: 'midi' as const,
+          trackId: target.id,
+          startBeat: 0,
+          lengthBeats,
+          offset: 0,
+          color: target.color,
+          looped: false,
+          loopLength: lengthBeats,
+          fadeIn: 0,
+          fadeOut: 0,
+          gain: 0,
+          pitch: 0,
+          reversed: false,
+          timeStretch: 1,
+          midiNotes: notes.map((n, i) => ({
+            id: `note_${clipId}_${i}`,
+            pitch: n.pitch,
+            velocity: n.velocity,
+            startBeat: n.tick / tpb,
+            lengthBeats: Math.max(1 / 16, n.duration / tpb),
+            channel: 0,
+          })),
+        };
+        const nextTracks = tracks.map((t) =>
+          t.id === target!.id ? { ...t, clips: [...t.clips, clip] } : t,
+        );
+        setSelectedTrackId(target!.id);
+        setSelectedClipId(clipId);
+        return { ...p, tracks: nextTracks };
+      });
+      showToast('success', `${notes.length} notes pasted as a clip — hit play to hear it`);
+    },
+    [selectedTrackId, updateProject]
+  );
+
   // ---- Synth engine helper ----
   const getOrCreateSynth = useCallback(
     (trackId: string): SynthEngine => {
@@ -2326,8 +2390,9 @@ export default function StudioLensPage() {
                 trackMood={project.genre || undefined}
                 onCancel={() => setShowSessionPlayers(false)}
                 onPasteIntoTrack={(notes, playerId) => {
-                  showToast('success', `Pattern from ${playerId.slice(-8)} ready — ${notes.length} notes`);
-                  // Future: append notes to the selected track's active clip.
+                  handlePasteGeneratedNotes(notes, {
+                    title: `Player ${playerId.slice(-8)} pattern`,
+                  });
                 }}
               />
             </motion.div>
@@ -2358,8 +2423,8 @@ export default function StudioLensPage() {
                 initialBpm={project.bpm}
                 onCancel={() => setShowMidiGenerator(false)}
                 onPasteIntoPianoRoll={(notes) => {
-                  showToast('success', `Generated ${notes.length} notes — paste into Piano Roll`);
-                  // Future: wire to actual selectedTrack clip's midiNotes array.
+                  handlePasteGeneratedNotes(notes, { title: 'Generated MIDI clip' });
+                  setShowMidiGenerator(false);
                 }}
               />
             </motion.div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useRef, useCallback, useState, useMemo } from 'react';
 import { Headphones, Send, X, Pin, PinOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWTrack, MasterBus } from '@/lib/daw/types';
@@ -19,31 +19,10 @@ interface MixerViewProps {
   onMasterVolumeChange: (volume: number) => void;
 }
 
-// Track Pin (Item #7, Pro Tools 2026.4 parity) — keeps a channel strip
-// glued to the left edge of the mixer so it stays visible while you
-// scroll a wide session. localStorage-keyed per project so the pin
-// state survives reloads. The session-DTU meta_json mirror is left
-// to a follow-on so we don't have to thread the save path here.
-const PIN_STORAGE_PREFIX = 'concord:studio:pinned-tracks:';
-function readPinned(projectId?: string): Set<string> {
-  if (!projectId || typeof window === 'undefined') return new Set();
-  try {
-    const raw = window.localStorage.getItem(PIN_STORAGE_PREFIX + projectId);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr.filter((s) => typeof s === 'string') : []);
-  } catch {
-    return new Set();
-  }
-}
-function writePinned(projectId: string | undefined, pinned: Set<string>): void {
-  if (!projectId || typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(PIN_STORAGE_PREFIX + projectId, JSON.stringify([...pinned]));
-  } catch {
-    /* quota or private-mode — skip */
-  }
-}
+// Track Pin (Item #7, Pro Tools 2026.4 parity) — sticks the channel
+// strip to the left edge of the mixer so it stays visible while you
+// scroll a wide session. Source of truth is `DAWTrack.pinned`, which
+// rides through the existing project-save path with no extra wiring.
 
 function VUMeter({ value, peak }: { value: number; peak?: number }) {
   const height = Math.max(0, Math.min(100, ((value + 60) / 66) * 100));
@@ -236,7 +215,7 @@ export function MixerView({
   masterBus,
   selectedTrackId,
   spectrumData,
-  projectId,
+  projectId: _projectId,   // kept for forward-compat with the localStorage-era API
   onSelectTrack,
   onUpdateTrack,
   onToggleEffect,
@@ -244,27 +223,21 @@ export function MixerView({
   onRemoveEffect,
   onMasterVolumeChange,
 }: MixerViewProps) {
-  const [pinned, setPinned] = useState<Set<string>>(() => readPinned(projectId));
-  useEffect(() => { setPinned(readPinned(projectId)); }, [projectId]);
-
+  void _projectId;
   const togglePin = useCallback((trackId: string) => {
-    setPinned(prev => {
-      const next = new Set(prev);
-      if (next.has(trackId)) next.delete(trackId); else next.add(trackId);
-      writePinned(projectId, next);
-      return next;
-    });
-  }, [projectId]);
+    const t = tracks.find(t => t.id === trackId);
+    onUpdateTrack(trackId, { pinned: !t?.pinned });
+  }, [tracks, onUpdateTrack]);
 
   // Pinned tracks render first (left edge), unpinned follow in their
   // original project order.
   const orderedTracks = useMemo(() => {
-    if (pinned.size === 0) return tracks;
+    if (!tracks.some(t => t.pinned)) return tracks;
     const pin: DAWTrack[] = [];
     const rest: DAWTrack[] = [];
-    for (const t of tracks) (pinned.has(t.id) ? pin : rest).push(t);
+    for (const t of tracks) (t.pinned ? pin : rest).push(t);
     return [...pin, ...rest];
-  }, [tracks, pinned]);
+  }, [tracks]);
 
   return (
     <div className="flex-1 overflow-x-auto p-3">
@@ -275,7 +248,7 @@ export function MixerView({
             key={track.id}
             track={track}
             isSelected={selectedTrackId === track.id}
-            isPinned={pinned.has(track.id)}
+            isPinned={!!track.pinned}
             onSelect={() => onSelectTrack(track.id)}
             onTogglePin={() => togglePin(track.id)}
             onUpdate={(data) => onUpdateTrack(track.id, data)}

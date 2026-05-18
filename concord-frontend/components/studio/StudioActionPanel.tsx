@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import {
   Music, Disc, Plus, Sliders, Clock, Sparkles, Send, Globe, Wand2,
-  Loader2, Check, AlertTriangle, Headphones,
+  Loader2, Check, AlertTriangle, Headphones, Volume2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -31,7 +31,7 @@ interface RenderResult { estimatedMinutes?: number; sizeMb?: number; format?: st
 interface TimelineResult { milestones?: Array<{ name: string; targetDate: string; status: string }>; criticalPath?: string[] }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'create' | 'addTrack' | 'addEffect' | 'render' | 'timeline' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'create' | 'addTrack' | 'addEffect' | 'render' | 'timeline' | 'mint' | 'dm' | 'publish' | 'agent' | 'soundscape';
 
 function pickMessage(e: unknown): string {
   const ax = e as { response?: { data?: { error?: string } }; message?: string };
@@ -205,6 +205,29 @@ export function StudioActionPanel() {
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
+  // Sprint C #13 — list this project's published DTU as a district
+  // soundscape. The composer earns per-attendee CC every time an event
+  // in that district fires endEvent.
+  async function actSoundscape() {
+    if (!publishedDtuId) { err('Publish a release first — soundscape requires a public DTU.'); return; }
+    setBusy('soundscape'); setFeedback(null);
+    try {
+      const districtId = (typeof window !== 'undefined'
+        ? window.prompt('District id (default concordia-hub):', 'concordia-hub')
+        : 'concordia-hub') || 'concordia-hub';
+      const priceStr = typeof window !== 'undefined'
+        ? window.prompt('CC per attendee (0.001–1.0, default 0.01):', '0.01')
+        : '0.01';
+      const r = await callMacro<{ listing: { district_id: string; cc_per_attendee: number } }>(
+        'list_for_district',
+        { track_dtuId: publishedDtuId, district_id: districtId, cc_per_attendee: parseFloat(priceStr || '0.01') },
+      );
+      if (r.ok && r.result?.listing) {
+        ok(`Listed in ${r.result.listing.district_id} @ ${r.result.listing.cc_per_attendee} CC/attendee.`);
+      } else err(r.reason || r.error || 'list failed');
+    } catch (e) { err(pickMessage(e)); }
+    finally { setBusy(null); }
+  }
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
@@ -231,6 +254,7 @@ export function StudioActionPanel() {
     { id: 'mint',      label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private project DTU',                                  icon: Sparkles,    accent: '#3b82f6', handler: actMint },
     { id: 'dm',        label: 'DM',         desc: 'Send project brief',                            icon: Send,        accent: '#ec4899', handler: actDm },
     { id: 'publish',   label: publishedDtuId ? 'Published' : 'Publish',  desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public release DTU + federation',          icon: Globe,       accent: '#15803d', handler: actPublish,     disabled: !currentProjectId },
+    { id: 'soundscape',label: 'Soundscape', desc: 'List as district soundscape (earns per visit)', icon: Volume2,     accent: '#0ea5e9', handler: actSoundscape,  disabled: !publishedDtuId },
     { id: 'agent',     label: 'Mix moves',  desc: 'Agent: 3 mix-finalization moves',               icon: Wand2,       accent: '#a855f7', handler: actAgent },
   ];
 

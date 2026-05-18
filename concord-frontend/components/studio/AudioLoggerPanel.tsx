@@ -75,17 +75,22 @@ export default function AudioLoggerPanel({ masterAnalyser }: AudioLoggerPanelPro
       const startMs = latestMs - seconds * 1000;
       const result = await saveSegmentToWav(startMs, latestMs);
       if (!result) { setError('No audio in that window.'); return; }
-      // Promote as draft DTU via dtu mint endpoint (best-effort —
-      // dev server has dtu.create as a STATE-only mint, so this
-      // double-writes nothing harmful).
-      const fd = new FormData();
-      fd.append('file', result.blob, `${title.replace(/\s+/g, '_')}.wav`);
-      fd.append('title', title);
-      fd.append('kind', 'audio_capture');
-      fd.append('duration_sec', String(result.durationSec));
+      // POST the WAV bytes as audio/wav to the upload endpoint
+      // (matches express.raw({type:'audio/*'}) on the server).
+      const qs = `?title=${encodeURIComponent(title)}&duration_sec=${result.durationSec.toFixed(2)}`;
       try {
-        await fetch('/api/dtus/upload-audio-capture', { method: 'POST', credentials: 'include', body: fd });
-      } catch { /* upload optional */ }
+        const r = await fetch('/api/dtus/upload-audio-capture' + qs, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'audio/wav' },
+          body: result.blob,
+        });
+        const json = await r.json();
+        if (!json?.ok) { setError(json?.reason || 'upload_failed'); return; }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'upload_failed');
+        return;
+      }
       setSavedToast(`Saved ${seconds}s as draft: ${title}`);
       setTimeout(() => setSavedToast(null), 4000);
     } catch (e) {

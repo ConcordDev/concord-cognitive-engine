@@ -47496,6 +47496,43 @@ app.post("/api/vision/analyze", express.raw({ type: "image/*", limit: "20mb" }),
   res.json(result);
 }));
 
+// Sprint C #8 — Audio Logger save-segment upload. Producer's local
+// IndexedDB ring buffer (lib/daw/audio-logger.ts) slices a WAV and
+// POSTs it here; we persist to data/audio-captures/ + mint a
+// kind='audio_capture' DTU. Owner-scoped via req.user.
+app.post("/api/dtus/upload-audio-capture", express.raw({ type: "audio/*", limit: "50mb" }), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, reason: "auth_required" });
+  const buf = req.body;
+  if (!buf || !buf.length) return res.status(400).json({ ok: false, reason: "empty_body" });
+  const title = String(req.query.title || `Audio capture ${new Date().toISOString()}`).slice(0, 200);
+  const durationSec = parseFloat(String(req.query.duration_sec || "0")) || 0;
+  const fsmod = await import("node:fs");
+  const pathmod = await import("node:path");
+  const cryptomod = await import("node:crypto");
+  const dir = pathmod.resolve("./data/audio-captures");
+  try { fsmod.mkdirSync(dir, { recursive: true }); } catch { /* dir exists */ }
+  const id = `acap_${cryptomod.randomUUID()}`;
+  const file = pathmod.join(dir, `${id}.wav`);
+  try { fsmod.writeFileSync(file, buf); }
+  catch (err) { return res.status(500).json({ ok: false, reason: "write_failed", error: err?.message }); }
+  const db = STATE?.db;
+  if (db) {
+    try {
+      db.prepare(`
+        INSERT INTO dtus (id, kind, title, creator_id, meta_json, created_at)
+        VALUES (?, 'audio_capture', ?, ?, ?, unixepoch())
+      `).run(id, title, userId, JSON.stringify({
+        type: "audio_capture", audio_path: file,
+        duration_sec: durationSec, bytes: buf.length, source: "audio_logger",
+      }));
+    } catch (err) {
+      return res.status(500).json({ ok: false, reason: "dtu_insert_failed", error: err?.message });
+    }
+  }
+  res.json({ ok: true, dtuId: id, kind: "audio_capture", path: file, bytes: buf.length });
+}));
+
 app.get("/api/digest", asyncHandler(async (req, res) => {
   const result = await generateDailyDigest(req.query.date);
   res.json(result);

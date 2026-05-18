@@ -16,25 +16,23 @@ interface ChordDetectionPanelProps {
   masterAnalyser?: AnalyserNode | null;
   sampleRate?: number;
   autoRefreshMs?: number;     // 0 = manual only
+  /** Optional URL/path of the harmonic 'other' stem from the stem
+   *  splitter (Sprint C #4). When set, the panel surfaces a "Use
+   *  harmonic stem (more accurate)" toggle that bypasses the
+   *  master-bus snapshot path. */
+  harmonicStemUrl?: string;
 }
 
 export default function ChordDetectionPanel({
-  masterAnalyser, sampleRate = 44100, autoRefreshMs = 1500,
+  masterAnalyser, sampleRate = 44100, autoRefreshMs = 1500, harmonicStemUrl,
 }: ChordDetectionPanelProps) {
   const [candidates, setCandidates] = useState<ChordCandidate[]>([]);
   const [live, setLive] = useState(false);
   const [history, setHistory] = useState<ChordCandidate[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [useStem, setUseStem] = useState(!!harmonicStemUrl);
 
-  const snapshot = useCallback(() => {
-    if (!masterAnalyser) {
-      setError('No master analyser available.');
-      return;
-    }
-    setError(null);
-    const buf = new Float32Array(masterAnalyser.fftSize);
-    masterAnalyser.getFloatTimeDomainData(buf);
-    const result = analyzeSnapshot(buf, sampleRate);
+  const pushCandidates = useCallback((result: ChordCandidate[]) => {
     setCandidates(result);
     if (result[0] && result[0].confidence > 0.4) {
       setHistory(prev => {
@@ -44,7 +42,51 @@ export default function ChordDetectionPanel({
         return next.length > 16 ? next.slice(next.length - 16) : next;
       });
     }
-  }, [masterAnalyser, sampleRate]);
+  }, []);
+
+  // Snapshot mode A: live master-bus analyser.
+  const snapshotLive = useCallback(() => {
+    if (!masterAnalyser) {
+      setError('No master analyser available.');
+      return;
+    }
+    setError(null);
+    const buf = new Float32Array(masterAnalyser.fftSize);
+    masterAnalyser.getFloatTimeDomainData(buf);
+    pushCandidates(analyzeSnapshot(buf, sampleRate));
+  }, [masterAnalyser, sampleRate, pushCandidates]);
+
+  // Snapshot mode B: decode the harmonic stem URL once + analyse a
+  // 750ms window from the start. More accurate because the splitter
+  // already stripped percussion + vocals.
+  const snapshotStem = useCallback(async () => {
+    if (!harmonicStemUrl) return;
+    setError(null);
+    try {
+      const resp = await fetch(harmonicStemUrl, { credentials: 'include' });
+      const buf = await resp.arrayBuffer();
+      const Ctx = (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+      const ctx = new Ctx({ sampleRate });
+      const decoded = await ctx.decodeAudioData(buf);
+      // Mono downmix of the first ~750ms.
+      const samples = Math.min(decoded.length, Math.round(decoded.sampleRate * 0.75));
+      const mono = new Float32Array(samples);
+      const channels = decoded.numberOfChannels;
+      for (let c = 0; c < channels; c++) {
+        const ch = decoded.getChannelData(c);
+        for (let i = 0; i < samples; i++) mono[i] += ch[i] / channels;
+      }
+      pushCandidates(analyzeSnapshot(mono, decoded.sampleRate));
+      try { ctx.close(); } catch { /* ctx cleanup best-effort */ }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'stem_decode_failed');
+    }
+  }, [harmonicStemUrl, sampleRate, pushCandidates]);
+
+  const snapshot = useCallback(() => {
+    if (useStem && harmonicStemUrl) snapshotStem();
+    else snapshotLive();
+  }, [useStem, harmonicStemUrl, snapshotStem, snapshotLive]);
 
   useEffect(() => {
     if (!live || !autoRefreshMs) return;
@@ -88,6 +130,17 @@ export default function ChordDetectionPanel({
         <div className="flex items-center gap-2 text-[10px] text-red-300 bg-red-500/10 p-2 rounded">
           <AlertCircle className="w-3 h-3" /> {error}
         </div>
+      )}
+
+      {harmonicStemUrl && (
+        <label className="flex items-center gap-2 text-[10px] text-gray-400 bg-neon-cyan/5 border border-neon-cyan/20 rounded px-2 py-1.5 cursor-pointer">
+          <input
+            type="checkbox" checked={useStem}
+            onChange={e => setUseStem(e.target.checked)}
+            className="accent-neon-cyan"
+          />
+          <span>Use harmonic stem (more accurate) — bypasses the noisy master bus</span>
+        </label>
       )}
 
       {candidates.length === 0 ? (

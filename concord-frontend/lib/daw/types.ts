@@ -40,6 +40,10 @@ export interface DAWTrack {
   solo: boolean;
   armed: boolean;
   frozen: boolean;
+  /** Pro Tools Track Pin — sticks the channel strip to the left edge of
+   *  the mixer so it stays visible while scrolling. Persists with the
+   *  project, not just localStorage. (Studio Sprint A #7) */
+  pinned?: boolean;
   height: number; // px
   instrumentId: string | null;
   effectChain: EffectInstance[];
