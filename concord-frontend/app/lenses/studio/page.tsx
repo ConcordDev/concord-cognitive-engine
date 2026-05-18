@@ -45,6 +45,7 @@ import {
   PlayCircle,
   StopCircle,
   Upload,
+  Users,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 
@@ -115,6 +116,7 @@ import { Soundboard } from '@/components/studio/Soundboard';
 import StudioWorkbench from '@/components/studio/StudioWorkbench';
 import ChordStampTool from '@/components/studio/ChordStampTool';
 import MidiGenerator from '@/components/studio/MidiGenerator';
+import SessionPlayerPanel from '@/components/studio/SessionPlayerPanel';
 
 // ============================================================================
 // Constants & Defaults
@@ -478,6 +480,7 @@ export default function StudioLensPage() {
   const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
   const [showChordStamp, setShowChordStamp] = useState(false);
   const [showMidiGenerator, setShowMidiGenerator] = useState(false);
+  const [showSessionPlayers, setShowSessionPlayers] = useState(false);
 
   // Keep refs in sync for use in intervals / event handlers
   useEffect(() => {
@@ -1389,6 +1392,11 @@ export default function StudioLensPage() {
         setShowMidiGenerator(true);
         return;
       }
+      // Sprint B #1 — Session Players hub.
+      if (action === 'session-players') {
+        setShowSessionPlayers(true);
+        return;
+      }
       setAiLoading(action);
       setAiResult(null);
       try {
@@ -2154,6 +2162,13 @@ export default function StudioLensPage() {
                     desc: 'Match reference track tone',
                     action: 'reference-match',
                   },
+                  {
+                    icon: Users,
+                    color: 'neon-purple',
+                    title: 'Session Players',
+                    desc: 'Hire/train AI Drummer · Bass · Keys · Synth',
+                    action: 'session-players',
+                  },
                 ].map((item, i) => (
                   <button
                     key={i}
@@ -2280,6 +2295,39 @@ export default function StudioLensPage() {
                 onMinted={(_dtuId, title) => {
                   showToast('success', `Minted "${title}" as a chord progression DTU`);
                   setShowChordStamp(false);
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Session Players drawer (Sprint B #1) */}
+      <AnimatePresence>
+        {showSessionPlayers && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 flex items-stretch justify-end"
+            onClick={() => setShowSessionPlayers(false)}
+          >
+            <motion.div
+              initial={{ x: 700 }}
+              animate={{ x: 0 }}
+              exit={{ x: 700 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 32 }}
+              className="w-full max-w-2xl bg-black border-l border-white/10 flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <SessionPlayerPanel
+                bpm={project.bpm}
+                trackKey={project.key}
+                trackMood={project.genre || undefined}
+                onCancel={() => setShowSessionPlayers(false)}
+                onPasteIntoTrack={(notes, playerId) => {
+                  showToast('success', `Pattern from ${playerId.slice(-8)} ready — ${notes.length} notes`);
+                  // Future: append notes to the selected track's active clip.
                 }}
               />
             </motion.div>

@@ -23757,6 +23757,14 @@ registerStudioChordMacros(register);
 import registerStudioMidiMacros from "./domains/studio-midi.js";
 registerStudioMidiMacros(register);
 
+// Studio Sprint B — AI Session Players (Logic Pro 11 parity). Per-role
+// brain-backed pattern composers (drummer / bass / keys / synth) with
+// mentorship feedback that biases future generations. Players are
+// publishable as kind='agent_spec' DTUs so other producers can hire
+// them — royalty cascade flows back to the trainer.
+import registerStudioPlayerMacros from "./domains/studio-players.js";
+registerStudioPlayerMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.
