@@ -141,11 +141,55 @@
 - **Sprint B (AI surface)**: Migration 241 — symptom triage (FDA-disclaimer-mandated), drug interaction check via RxNorm-style IDs, clinical summary composer, lab anomaly detection. ALL invocations logged to health_ai_runs with HIPAA-compliant fields.
 - **Sprint C (moats)**: Migration 242 — health DTU mints + cross-lens cite + SMART on FHIR import/export + DPC subscription billing.
 
-### Out of scope (would warrant separate audit)
-- ICD-10 / SNOMED CT code lookup (would require subscription to UMLS or third-party API)
-- Pharmacy fulfillment integration (Surescripts is the network; requires contract)
-- Insurance claims (837 EDI format; outside Concord's value prop)
-- DICOM imaging (separate stack from FHIR)
+## Wallet lens (May 2026 research)
+
+### Compliance reality (load-bearing — design constraint)
+- **Money Transmitter License (MTL)** is required per-state for any custodial money movement (crypto OR fiat). Only Montana exempts. Costs $30K-$525K+ per state, takes 6-18 months. **49-state coverage = $1-25M and years of regulatory work.** [Money Transmitter Licensing Guide](https://www.ridgewayfs.com/money-transmitter-license-guide/), [Money Transmitter License 2026 Requirements](https://www.innreg.com/blog/money-transmitter-license-steps-and-requirements)
+- **Non-custodial wallets** where users control private keys may fall OUTSIDE MTL scope. So does "Agent of the Payee" for some flows. [Cogent Law MTL Guide](https://cogentlaw.com/money-transmitter-licensing-what-fintechs-and-crypto-companies-need-to-know-article/)
+- **California VC (Virtual Currency) regime starts 2026** — separate licensing for digital assets.
+- **CONCORD'S POSTURE**: Concord Coin IS Concord's own internal currency (no MTL needed for issuing your own credit unit, same model as airline miles or Stripe credits). External crypto wallets are CONNECTED not custodied. ACH transfers are routed via licensed partners (Stripe/Plaid have the licenses).
+
+### Payment substrate (May 2026)
+- **Coinbase Commerce → Coinbase Business merger** by March 31, 2026. New stack: Stablecoin Checkout (gasless, MetaMask/Phantom/Coinbase Wallet support) + Ecommerce Engine (authorization/refunds/ledgering) + Commerce Payments Protocol (smart-contract escrow). [Coinbase transition](https://help.coinbase.com/en/transitioning-from-coinbase-commerce-to-coinbase-business)
+- **USDC (Circle)** is the audit-grade stablecoin (cash + treasury bills backing). USDT (Tether) is the volume leader.
+- **Blaze** = Venmo-equivalent for USDC cross-border. [Best Stablecoin Payment Providers 2026](https://www.cobo.com/post/2026-guide-to-the-most-reliable-stablecoin-payments-providers)
+
+### Account aggregation: Plaid
+- **Plaid: $546M ARR 2025 (up 40%)**, $6.1B valuation Apr 2025, $8B Feb 2026. Multi-rail routing across ACH + FedNow + RTP + Same Day ACH. [Plaid revenue](https://sacra.com/c/plaid/), [Plaid open finance](https://plaid.com/solutions/open-finance/)
+- **30%+ of institutions** prioritize open finance; data-privacy concerns + regulatory uncertainty are the brake.
+
+### Real-time payment rails (US)
+- **FedNow** (Federal Reserve) is live and adoption growing.
+- **RTP** (The Clearing House) is the existing real-time network.
+- **They are NOT interoperable** — payment companies sell "intelligent routing" as the differentiator. [American Banker FedNow](https://www.americanbanker.com/payments/news/with-fednow-live-banks-hone-in-on-uses-for-real-time-payments)
+
+### Smart wallet primitives
+- **EIP-4337 Account Abstraction** — smart contract wallets, gasless via Paymasters, social recovery, programmable security. Coinbase's Onchain Summer 2024 onboarded ~1M wallets with subsidized gas. [ERC-4337 spec](https://eips.ethereum.org/EIPS/eip-4337), [What is ERC-4337 (Alchemy)](https://www.alchemy.com/overviews/what-is-account-abstraction)
+- **EIP-7702** — alternative production path for account abstraction.
+
+### Concord-moat opportunities
+1. **Non-custodial WalletConnect/EIP-4337 surface** — connect external wallets, never custody. Avoids MTL liability for crypto. User keeps social recovery via their wallet provider.
+2. **Concord Coin = internal credit unit** — already exists via economy_ledger. No MTL needed (own currency).
+3. **Plaid-style account aggregation** — read-only bank links. No fund movement = no MTL. Show user full financial picture: Concord Coin + linked banks + connected crypto wallets.
+4. **Multi-rail intelligent routing** — when transferring to external banks, pick fastest rail (FedNow/RTP/Same Day ACH/standard ACH). Same UX abstraction Plaid sells as a product.
+5. **USDC stablecoin gateway** — via Coinbase Stablecoin Checkout protocol. Gasless. User-controlled.
+6. **Every-transaction-as-DTU receipt** — concord moat: each payment generates a citable receipt DTU. Tax records become portable. Lineage = audit trail.
+7. **Recurring billing consolidation** — DPC subscriptions (healthcare), creator royalties (music), platform subscriptions. One wallet surface manages all.
+8. **Inverse-X spending nudges** — instead of Cash App's nudge-to-spend, default to nudge-to-save / nudge-to-creator-tip. No ad business = no engagement-bait conflict.
+9. **Open-banking export** — patient-owned-data parallel for finance. User exports full financial history (Quicken/Mint replacement).
+10. **Creator payment surface** — when sending money to a Concord creator, optionally cite the source content (royalty cascade fires; "I'm tipping you for THIS track").
+
+### Sprint plan (research-grounded)
+- **Sprint A (substrate)**: Migration 243 — wallet_accounts (linked external accounts), wallet_balances_snapshot (cached aggregated balances), wallet_transactions (unified transaction log across all sources), wallet_recurring (subscriptions), wallet_categories, wallet_rails_config. NON-CUSTODIAL by design: external accounts store credentials_ref (Plaid/WalletConnect token ID), never the keys themselves.
+- **Sprint B (AI)**: Migration 244 — categorize transactions (Plaid-style + LLM), spending anomaly detection (vs user's baseline + Benford analog), subscription discovery from transaction patterns, tax-prep narrative composer with sources.
+- **Sprint C (moats)**: Migration 245 — transaction-as-DTU receipt mint + cite cascade, multi-rail intelligent routing, open-banking export, inverse-X spending nudges, creator-tip surface with content-cite cascade.
+
+### Out of scope (defer indefinitely)
+- Actually OBTAINING MTL coverage (multi-million-dollar legal project; partner with already-licensed payment processor instead)
+- Custodial crypto storage (regulatory risk too high; user keeps keys via external wallet)
+- Direct ACH origination (use Stripe/Plaid's existing licenses)
+- Card issuing (separate regulatory regime; partner with Marqeta or similar)
+- KYC/AML for fiat (use Stripe/Plaid pass-through)
 
 ---
 

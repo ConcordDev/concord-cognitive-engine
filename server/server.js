@@ -10414,6 +10414,17 @@ async function runMacro(domain, name, input, ctx) {
     // consent-gated AND audit-logged inside the macro. publicReadDomains
     // entry just bypasses the auth-middleware (Gate 2 vs Gate 1).
     // ALL destructive macros (write/grant/revoke) intentionally NOT here.
+    // Wallet lens Sprint A — auth-gated read macros. Destructive
+    // (link/disconnect/ingest/categorize/cancel/rails_update) NOT here.
+    wallet: new Set([
+      "account_list", "account_get",
+      "balance_unified",
+      "tx_list",
+      "recurring_list",
+      "category_list",
+      "rails_get",
+      "spending_summary",
+    ]),
     healthcare: new Set([
       "patient_get", "patient_list_mine",
       "condition_list", "medication_list",
@@ -24602,6 +24613,15 @@ registerHealthAiMacros(register);
 // Primary Care patterns (see docs/LENS_RESEARCH_NOTES.md healthcare).
 import registerHealthMoatsMacros from "./domains/healthcare-moats.js";
 registerHealthMoatsMacros(register);
+
+// Wallet lens rebuild Sprint A — non-custodial-by-design aggregation
+// substrate (migration 243). Research-grounded: MTL coverage is
+// $30K-$525K per state × 49 states so Concord stays non-custodial;
+// Concord Coin balance lives in economy_ledger; external accounts
+// are read-only via Plaid/WalletConnect (credentials_ref never holds
+// private keys). See docs/LENS_RESEARCH_NOTES.md wallet section.
+import registerWalletRebuildMacros from "./domains/wallet-rebuild.js";
+registerWalletRebuildMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,
