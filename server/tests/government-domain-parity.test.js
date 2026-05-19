@@ -204,3 +204,147 @@ describe("regression: pre-existing analytical macros still work", () => {
     assert.equal(r.result.onTime, true);
   });
 });
+
+// ── Full-app parity (SeeClickFix 311 + Accela Civic 2026) ──────
+
+describe("government.departments-*", () => {
+  it("add / list / delete cycle per-user scoped", () => {
+    const d = call("departments-add", ctxA, { name: "Public Works", shortCode: "dpw", categories: ["pothole", "streetlight_out"] });
+    assert.equal(d.ok, true);
+    assert.equal(d.result.department.shortCode, "DPW");
+    assert.equal(call("departments-list", ctxA, {}).result.departments.length, 1);
+    assert.equal(call("departments-list", ctxB, {}).result.departments.length, 0);
+    assert.equal(call("departments-delete", ctxA, { id: d.result.department.id }).ok, true);
+  });
+  it("rejects empty name", () => {
+    assert.equal(call("departments-add", ctxA, { name: "" }).ok, false);
+  });
+});
+
+describe("government.service-requests-* (311)", () => {
+  it("create / assign / update-status cycle with reference number", () => {
+    const d = call("departments-add", ctxA, { name: "DPW", shortCode: "dpw" });
+    const r = call("service-requests-create", ctxA, { category: "pothole", description: "Big hole on Main St", lat: 42.36, lng: -71.05, reporterName: "Citizen A", reporterEmail: "a@x" });
+    assert.equal(r.ok, true);
+    assert.match(r.result.request.referenceNumber, /^SR-/);
+    assert.equal(r.result.request.status, "submitted");
+    const assigned = call("service-requests-assign", ctxA, { id: r.result.request.id, departmentId: d.result.department.id });
+    assert.equal(assigned.result.request.status, "assigned");
+    assert.equal(assigned.result.request.assignedDepartmentName, "DPW");
+    const closed = call("service-requests-update-status", ctxA, { id: r.result.request.id, status: "closed_resolved", note: "Patched 2026-05-05" });
+    assert.equal(closed.result.request.status, "closed_resolved");
+    assert.ok(closed.result.request.closedAt);
+  });
+  it("rejects invalid category and missing lat/lng", () => {
+    assert.equal(call("service-requests-create", ctxA, { category: "ufo_sighting", description: "X", lat: 1, lng: 1 }).ok, false);
+    assert.equal(call("service-requests-create", ctxA, { category: "pothole", description: "X" }).ok, false);
+  });
+  it("filters by status and category", () => {
+    call("service-requests-create", ctxA, { category: "pothole", description: "A", lat: 1, lng: 1 });
+    call("service-requests-create", ctxA, { category: "streetlight_out", description: "B", lat: 1, lng: 1 });
+    assert.equal(call("service-requests-list", ctxA, { category: "pothole" }).result.requests.length, 1);
+  });
+});
+
+describe("government.routing-rules-* (auto-assign by category)", () => {
+  it("rule auto-assigns on create", () => {
+    const dpw = call("departments-add", ctxA, { name: "DPW", shortCode: "dpw" });
+    call("routing-rules-set", ctxA, { category: "pothole", departmentId: dpw.result.department.id });
+    const r = call("service-requests-create", ctxA, { category: "pothole", description: "X", lat: 1, lng: 1 });
+    assert.equal(r.result.request.status, "assigned");
+    assert.equal(r.result.request.assignedDepartmentId, dpw.result.department.id);
+  });
+  it("rejects bad category / unknown dept", () => {
+    assert.equal(call("routing-rules-set", ctxA, { category: "ufo", departmentId: "x" }).ok, false);
+    assert.equal(call("routing-rules-set", ctxA, { category: "pothole", departmentId: "nope" }).ok, false);
+  });
+});
+
+describe("government.permits-* (Accela-shape lifecycle)", () => {
+  it("apply / pay / approve / issue cycle", () => {
+    const p = call("permits-apply", ctxA, { applicantName: "Bob Builder", applicantEmail: "b@x", kind: "building_residential", description: "Add deck", feeUsd: 250 });
+    assert.equal(p.ok, true);
+    assert.match(p.result.permit.recordNumber, /^PMT-/);
+    assert.equal(p.result.permit.status, "applied");
+    const paid = call("permits-pay-fee", ctxA, { id: p.result.permit.id });
+    assert.equal(paid.result.permit.status, "under_review");
+    const approved = call("permits-approve", ctxA, { id: p.result.permit.id });
+    assert.equal(approved.result.permit.status, "approved");
+    const issued = call("permits-issue", ctxA, { id: p.result.permit.id, validForDays: 180 });
+    assert.equal(issued.result.permit.status, "issued");
+    assert.ok(issued.result.permit.expiresAt);
+  });
+  it("approve before payment rejected", () => {
+    const p = call("permits-apply", ctxA, { applicantName: "X", applicantEmail: "x@x", kind: "fence" });
+    assert.equal(call("permits-approve", ctxA, { id: p.result.permit.id }).ok, false);
+  });
+  it("deny captures reason", () => {
+    const p = call("permits-apply", ctxA, { applicantName: "X", applicantEmail: "x@x", kind: "fence" });
+    const denied = call("permits-deny", ctxA, { id: p.result.permit.id, reason: "Wrong zone" });
+    assert.equal(denied.result.permit.status, "denied");
+    assert.equal(denied.result.permit.denialReason, "Wrong zone");
+  });
+});
+
+describe("government.inspections-* (linked to permits)", () => {
+  it("schedule + complete with result", () => {
+    const p = call("permits-apply", ctxA, { applicantName: "X", applicantEmail: "x@x", kind: "building" });
+    const i = call("inspections-schedule", ctxA, { permitId: p.result.permit.id, kind: "framing", date: "2026-06-01", inspectorName: "Insp1" });
+    assert.equal(i.ok, true);
+    const done = call("inspections-complete", ctxA, { id: i.result.inspection.id, result: "pass", notes: "OK" });
+    assert.equal(done.result.inspection.result, "pass");
+  });
+  it("rejects bad result", () => {
+    const p = call("permits-apply", ctxA, { applicantName: "X", applicantEmail: "x@x", kind: "building" });
+    const i = call("inspections-schedule", ctxA, { permitId: p.result.permit.id, kind: "final", date: "2026-06-01" });
+    assert.equal(call("inspections-complete", ctxA, { id: i.result.inspection.id, result: "maybe" }).ok, false);
+  });
+});
+
+describe("government.assets-* (street infrastructure)", () => {
+  it("add / list / log-maintenance / delete cycle", () => {
+    const a = call("assets-add", ctxA, { kind: "streetlight", label: "SL-001 Main & Elm", lat: 42.36, lng: -71.05 });
+    assert.equal(a.ok, true);
+    assert.equal(a.result.asset.condition, "good");
+    const log = call("assets-log-maintenance", ctxA, { id: a.result.asset.id, work: "Replaced bulb", crew: "DPW-3", condition: "good" });
+    assert.equal(log.result.asset.maintenanceLog.length, 1);
+    assert.ok(log.result.asset.lastInspectedAt);
+    assert.equal(call("assets-list", ctxA, { kind: "streetlight" }).result.assets.length, 1);
+    assert.equal(call("assets-delete", ctxA, { id: a.result.asset.id }).ok, true);
+  });
+  it("rejects invalid kind / missing coords", () => {
+    assert.equal(call("assets-add", ctxA, { kind: "ufo", lat: 1, lng: 1 }).ok, false);
+    assert.equal(call("assets-add", ctxA, { kind: "streetlight" }).ok, false);
+  });
+});
+
+describe("government.open-data-search (data.gov CKAN)", () => {
+  it("rejects empty query", async () => {
+    const r = await call("open-data-search", ctxA, { query: "" });
+    assert.equal(r.ok, false);
+  });
+  it("returns honest error on network failure", async () => {
+    const r = await call("open-data-search", ctxA, { query: "potholes" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /unreachable|network/);
+  });
+});
+
+describe("government.dashboard-summary (CityGovShell data source)", () => {
+  it("aggregates 311 + permits + assets + departments", () => {
+    const ctxC = { actor: { userId: "user_gov_dash" }, userId: "user_gov_dash" };
+    call("departments-add", ctxC, { name: "DPW", shortCode: "dpw" });
+    const r = call("service-requests-create", ctxC, { category: "pothole", description: "X", lat: 1, lng: 1 });
+    call("service-requests-update-status", ctxC, { id: r.result.request.id, status: "closed_resolved" });
+    call("service-requests-create", ctxC, { category: "trash_missed", description: "Y", lat: 1, lng: 1 });
+    call("permits-apply", ctxC, { applicantName: "X", applicantEmail: "x@x", kind: "building" });
+    call("assets-add", ctxC, { kind: "streetlight", lat: 1, lng: 1, condition: "broken" });
+    const d = call("dashboard-summary", ctxC, {});
+    assert.equal(d.result.totalServiceRequests, 2);
+    assert.equal(d.result.openRequests, 1);
+    assert.equal(d.result.closed30d, 1);
+    assert.equal(d.result.permitCount, 1);
+    assert.equal(d.result.assetCount, 1);
+    assert.equal(d.result.brokenAssets, 1);
+  });
+});
