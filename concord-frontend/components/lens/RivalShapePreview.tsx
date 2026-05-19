@@ -32,8 +32,9 @@ import { TmsShell } from '@/components/logistics/TmsShell';
 import { AgFarmShell } from '@/components/agriculture/AgFarmShell';
 import { DawShell } from '@/components/studio/DawShell';
 import { AvShell } from '@/components/aviation/AvShell';
+import { CityGovShell } from '@/components/government/CityGovShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture' | 'studio' | 'aviation';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture' | 'studio' | 'aviation' | 'government';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -51,6 +52,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   agriculture: 'John Deere / FieldView shape',
   studio: 'Logic Pro / Ableton Live shape',
   aviation: 'ForeFlight / FlightAware shape',
+  government: 'SeeClickFix / Accela shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -61,7 +63,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation', 'government'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -109,6 +111,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'agriculture': return <AgriculturePreview />;
     case 'studio': return <StudioPreview />;
     case 'aviation': return <AviationPreview />;
+    case 'government': return <GovernmentPreview />;
   }
 }
 
@@ -599,6 +602,73 @@ function AviationPreview() {
       aircraft={aircraft.map(a => ({ id: String(a.id || ''), tail: String(a.tail || ''), make: String(a.make || ''), model: String(a.model || ''), hobbsHours: Number(a.hobbsHours) || 0, cruiseKts: Number(a.cruiseKts) || 0, fuelBurnGph: Number(a.fuelBurnGph) || 0 }))}
       tracks={tracks.map(t => ({ id: String(t.id || ''), tail: t.tail as string, from: t.from as string, to: t.to as string, endedAt: t.endedAt as string, totalDistanceNm: Number(t.totalDistanceNm) || 0 }))}
       currency={currency ? (currency as never) : undefined}
+    />
+  );
+}
+
+/* ── Government: hydrate from dashboard-summary + 311 + permits + assets ── */
+
+function GovernmentPreview() {
+  const [d, setD] = useState<Record<string, unknown> | null>(null);
+  const [requests, setRequests] = useState<Array<Record<string, unknown>>>([]);
+  const [permits, setPermits] = useState<Array<Record<string, unknown>>>([]);
+  const [assets, setAssets] = useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      try {
+        const [s, sr, pm, ast] = await Promise.all([
+          api.post('/api/lens/run', { domain: 'government', action: 'dashboard-summary', input: {} }).catch(() => null),
+          api.post('/api/lens/run', { domain: 'government', action: 'service-requests-list', input: {} }).catch(() => null),
+          api.post('/api/lens/run', { domain: 'government', action: 'permits-list', input: {} }).catch(() => null),
+          api.post('/api/lens/run', { domain: 'government', action: 'assets-list', input: {} }).catch(() => null),
+        ]);
+        setD((s?.data?.result as Record<string, unknown>) || {});
+        setRequests(((sr?.data?.result?.requests || []) as Array<Record<string, unknown>>).slice(0, 8));
+        setPermits(((pm?.data?.result?.permits || []) as Array<Record<string, unknown>>).slice(0, 8));
+        setAssets(((ast?.data?.result?.assets || []) as Array<Record<string, unknown>>).slice(0, 8));
+      } catch { /* empty state */ }
+      finally { setLoading(false); }
+    })();
+  }, []);
+  if (loading) return <PreviewLoading />;
+  return (
+    <CityGovShell
+      totalServiceRequests={(d?.totalServiceRequests as number) || 0}
+      openRequests={(d?.openRequests as number) || 0}
+      closed30d={(d?.closed30d as number) || 0}
+      avgResolutionDays={(d?.avgResolutionDays as number) || 0}
+      permitCount={(d?.permitCount as number) || 0}
+      scheduledInspections={(d?.scheduledInspections as number) || 0}
+      departmentCount={(d?.departmentCount as number) || 0}
+      assetCount={(d?.assetCount as number) || 0}
+      brokenAssets={(d?.brokenAssets as number) || 0}
+      requests={requests.map(r => ({
+        id: String(r.id || ''),
+        referenceNumber: String(r.referenceNumber || ''),
+        category: String(r.category || ''),
+        description: String(r.description || ''),
+        status: String(r.status || ''),
+        priority: ((r.priority as string) || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
+        assignedDepartmentName: (r.assignedDepartmentName as string) || null,
+        createdAt: String(r.createdAt || new Date().toISOString()),
+        lat: Number(r.lat) || undefined,
+        lng: Number(r.lng) || undefined,
+      }))}
+      permits={permits.map(p => ({
+        id: String(p.id || ''),
+        recordNumber: String(p.recordNumber || ''),
+        kind: String(p.kind || ''),
+        applicantName: String(p.applicantName || ''),
+        status: String(p.status || ''),
+        feeUsd: Number(p.feeUsd) || 0,
+      }))}
+      assets={assets.map(a => ({
+        id: String(a.id || ''),
+        kind: String(a.kind || ''),
+        label: String(a.label || ''),
+        condition: ((a.condition as string) || 'good') as 'good' | 'fair' | 'poor' | 'broken',
+      }))}
     />
   );
 }
