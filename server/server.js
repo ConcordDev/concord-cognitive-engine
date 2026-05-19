@@ -10430,6 +10430,13 @@ async function runMacro(domain, name, input, ctx) {
       "subscription_predictions_list",
       "cashflow_recent",
       "ai_runs_recent",
+      // Sprint C moats reads (destructive mints/tips/routes/exports NOT here)
+      "transaction_mints_list",
+      "creator_tips_received",
+      "creator_tips_sent",
+      "rails_routes_recent",
+      "export_bundles_list",
+      "export_bundle_get",
     ]),
     healthcare: new Set([
       "patient_get", "patient_list_mine",
@@ -24636,6 +24643,13 @@ registerWalletRebuildMacros(register);
 // 90-day; 2026 differentiator). Tax-summary composer.
 import registerWalletAiMacros from "./domains/wallet-ai.js";
 registerWalletAiMacros(register);
+
+// Wallet lens Sprint C — concord moats (migration 245). Patreon-killer
+// creator tips (0% Concord platform fee + 0% Concord-Coin processing).
+// Plaid-style multi-rail intelligent routing. Open-banking export
+// (5 formats × 5 scopes). Transaction-as-DTU portable receipts.
+import registerWalletMoatsMacros from "./domains/wallet-moats.js";
+registerWalletMoatsMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,
