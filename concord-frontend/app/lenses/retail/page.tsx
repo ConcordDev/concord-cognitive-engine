@@ -82,6 +82,16 @@ import RetailWorkbench from '@/components/retail/RetailWorkbench';
 import { LivePosTerminal } from '@/components/retail/LivePosTerminal';
 import { RetailActionPanel } from '@/components/retail/RetailActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
+import CustomersPanel from '@/components/retail/CustomersPanel';
+import DiscountsManager from '@/components/retail/DiscountsManager';
+import AbandonedCartsPanel from '@/components/retail/AbandonedCartsPanel';
+import ShippingZonesEditor from '@/components/retail/ShippingZonesEditor';
+import GiftCardsPanel from '@/components/retail/GiftCardsPanel';
+import RefundsPanel from '@/components/retail/RefundsPanel';
+import CollectionsPanel from '@/components/retail/CollectionsPanel';
+import InventoryTransfers from '@/components/retail/InventoryTransfers';
+import SalesAnalytics from '@/components/retail/SalesAnalytics';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1872,6 +1882,8 @@ export default function RetailLensPage() {
       <FirstRunTour lensId="retail" />
       <DepthBadge lensId="retail" size="sm" className="ml-2" />
     <div data-lens-theme="retail" className={ds.pageContainer}>
+      <RivalShapePreview lensId="retail" defaultOpen={true} />
+      <ShopifyWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -2039,5 +2051,56 @@ export default function RetailLensPage() {
           <AutoActionStrip domain="retail" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="retail" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Shopify-parity workbench section                                    */
+/* ------------------------------------------------------------------ */
+
+function ShopifyWorkbenchSection() {
+  const [active, setActive] = useState<'analytics' | 'customers' | 'discounts' | 'abandoned' | 'shipping' | 'gift' | 'refunds' | 'collections' | 'transfers'>('analytics');
+  const TABS = [
+    { id: 'analytics', label: 'Analytics' },
+    { id: 'customers', label: 'Customers' },
+    { id: 'discounts', label: 'Discounts' },
+    { id: 'abandoned', label: 'Abandoned' },
+    { id: 'shipping', label: 'Shipping' },
+    { id: 'gift', label: 'Gift cards' },
+    { id: 'refunds', label: 'Refunds' },
+    { id: 'collections', label: 'Collections' },
+    { id: 'transfers', label: 'Transfers' },
+  ] as const;
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider">Shopify-parity workbench</h2>
+      <nav className="flex items-center gap-1 border-b border-emerald-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={cn(
+              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition',
+              active === t.id
+                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
+                : 'text-gray-500 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent'
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div>
+        {active === 'analytics' && <SalesAnalytics />}
+        {active === 'customers' && <CustomersPanel />}
+        {active === 'discounts' && <DiscountsManager />}
+        {active === 'abandoned' && <AbandonedCartsPanel />}
+        {active === 'shipping' && <ShippingZonesEditor />}
+        {active === 'gift' && <GiftCardsPanel />}
+        {active === 'refunds' && <RefundsPanel />}
+        {active === 'collections' && <CollectionsPanel />}
+        {active === 'transfers' && <InventoryTransfers />}
+      </div>
+    </section>
   );
 }

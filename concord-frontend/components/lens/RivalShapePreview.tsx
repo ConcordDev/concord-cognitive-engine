@@ -24,8 +24,9 @@ import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { EHRShell } from '@/components/healthcare/EHRShell';
 import { FinanceShell } from '@/components/finance/FinanceShell';
 import { RealtorShell } from '@/components/realestate/RealtorShell';
+import { ShopifyShell } from '@/components/retail/ShopifyShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -36,6 +37,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   healthcare: 'Epic EHR shape',
   finance: 'Robinhood / Monarch shape',
   realestate: 'Zillow / Redfin shape',
+  retail: 'Shopify admin shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -47,7 +49,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -93,6 +95,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'healthcare': return <HealthcarePreview />;
     case 'finance': return <FinancePreview />;
     case 'realestate': return <RealEstatePreview />;
+    case 'retail': return <RetailPreview />;
   }
 }
 
@@ -335,6 +338,31 @@ function RealEstatePreview() {
         { id: 'a3', kind: 'favourite', label: 'Saved 6815 Burnet Ln', timestamp: new Date(today - 86400_000).toISOString() },
         { id: 'a4', kind: 'message', label: 'Agent Jane Doe replied to your inquiry', timestamp: new Date(today - 172800_000).toISOString() },
         { id: 'a5', kind: 'open_house', label: 'Open house this Saturday · 8201 Mesa Dr', timestamp: new Date(today - 259200_000).toISOString() },
+      ]}
+    />
+  );
+}
+
+function RetailPreview() {
+  const [nav, setNav] = React.useState<React.ComponentProps<typeof ShopifyShell>['activeNav']>('home');
+  const today = Date.now();
+  return (
+    <ShopifyShell
+      activeNav={nav}
+      onNavChange={setNav}
+      storeName="Concord Coffee Co."
+      revenueToday={2840.50}
+      ordersToday={37}
+      conversionRate={3.42}
+      visitors={1842}
+      revenue7dSeries={[1840, 2230, 1980, 2640, 2120, 3010, 2840]}
+      recentOrders={[
+        { id: 'o1', number: 'ORD-01042', customer: 'Aria Voss', total: 124.50, status: 'paid', itemCount: 3, timestamp: new Date(today - 600_000).toISOString() },
+        { id: 'o2', number: 'ORD-01041', customer: 'Mira Solé', total: 89.00, status: 'fulfilled', itemCount: 2, timestamp: new Date(today - 3600_000).toISOString() },
+        { id: 'o3', number: 'ORD-01040', customer: 'Vex Quinn', total: 312.40, status: 'paid', itemCount: 7, timestamp: new Date(today - 7200_000).toISOString() },
+        { id: 'o4', number: 'ORD-01039', customer: 'Guest', total: 42.80, status: 'pending', itemCount: 1, timestamp: new Date(today - 14400_000).toISOString() },
+        { id: 'o5', number: 'ORD-01038', customer: 'Dr Sael', total: 198.25, status: 'fulfilled', itemCount: 4, timestamp: new Date(today - 28800_000).toISOString() },
+        { id: 'o6', number: 'ORD-01037', customer: 'Orin Kade', total: 76.00, status: 'refunded', itemCount: 2, timestamp: new Date(today - 43200_000).toISOString() },
       ]}
     />
   );
