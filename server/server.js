@@ -10424,6 +10424,12 @@ async function runMacro(domain, name, input, ctx) {
       "category_list",
       "rails_get",
       "spending_summary",
+      // Sprint B AI reads (destructive scans/composers NOT here)
+      "categorize_rules_list",
+      "anomaly_list",
+      "subscription_predictions_list",
+      "cashflow_recent",
+      "ai_runs_recent",
     ]),
     healthcare: new Set([
       "patient_get", "patient_list_mine",
@@ -24622,6 +24628,14 @@ registerHealthMoatsMacros(register);
 // private keys). See docs/LENS_RESEARCH_NOTES.md wallet section.
 import registerWalletRebuildMacros from "./domains/wallet-rebuild.js";
 registerWalletRebuildMacros(register);
+
+// Wallet lens Sprint B — AI surface (migration 244). Categorization
+// rules + deterministic patterns + LLM cascade (Copilot Money ~93%
+// target). Spending anomaly scan (spike + duplicate + outlier).
+// Subscription discovery (Monarch parity). Cashflow forecast (30/60/
+// 90-day; 2026 differentiator). Tax-summary composer.
+import registerWalletAiMacros from "./domains/wallet-ai.js";
+registerWalletAiMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,

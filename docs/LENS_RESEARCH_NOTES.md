@@ -184,6 +184,26 @@
 - **Sprint B (AI)**: Migration 244 — categorize transactions (Plaid-style + LLM), spending anomaly detection (vs user's baseline + Benford analog), subscription discovery from transaction patterns, tax-prep narrative composer with sources.
 - **Sprint C (moats)**: Migration 245 — transaction-as-DTU receipt mint + cite cascade, multi-rail intelligent routing, open-banking export, inverse-X spending nudges, creator-tip surface with content-cite cascade.
 
+### Sprint B + C research additions (AI categorization + creator tipping)
+
+**AI personal finance benchmarks (May 2026)**
+- **Copilot Money**: ~93% first-pass categorization accuracy with a private per-user ML model. Apple-only (no Android / web / Windows). [Copilot vs Monarch (Origin)](https://useorigin.com/resources/blog/copilot-vs-monarch-which-is-better-for-your-financial-life)
+- **Monarch Money** ($9.99/mo): 80%+ behavioral accuracy after 10-14 days + 20+ tagged transactions. AI sorts transactions, predicts cash flow, spots repeat subscriptions. Best for couples. [Monarch + Copilot + Cleo comparison](https://canaltecnotudo.com/en/the-new-wave-of-ai-financial-assistants-how-apps-like-copilot-money-cleo-and-monarch-are-transforming-budgeting-in-2025-2026/)
+- **Cleo**: conversational AI for younger users. Automated savings + spending categorization + overdraft protection. [Apps Like Cleo 2026](https://getfinny.app/blog/apps-like-cleo)
+- **Market shift 2025-2026**: static budgeting apps → AI assistants that predict + warn + recommend in real time.
+- **Concord targets**: deterministic + LLM hybrid + user-feedback loop = 80%+ accuracy floor, ~93% on second pass after rules learned.
+
+**Creator tipping market (load-bearing for moat positioning)**
+- **Patreon (Aug 2025)**: collapsed to flat **10% platform fee for new creators** (legacy 5-8% phased out). Plus 2.9% + $0.30 processing. Net take = ~12-13%. [Patreon membership tiers](https://www.monacocpa.cpa/industries/content-creators/patreon-membership-taxes)
+- **Ko-fi**: 0% on one-time donations / 5% on memberships. No monthly fee. Ko-fi Gold $6/mo = 0% platform fee. + 2.9% processing. [Ko-fi vs Buy Me a Coffee 2026](https://talks.co/p/kofi-vs-buy-me-a-coffee/)
+- **Buy Me a Coffee**: 5% flat all transactions. + 2.9% processing. [BMC Pricing 2026](https://www.schoolmaker.com/blog/buy-me-a-coffee-pricing)
+- **All add 2.9% + $0.30** payment processing.
+- **CONCORD MOAT**: 0% platform fee + 0% processing on Concord Coin tips (internal ledger; no external processor needed). Patreon-killer pricing for the Concord-native creator economy. External rails (USD/USDC) only incur the processing fee.
+
+### Sprint B + C concrete plan
+- **Sprint B**: Migration 244 — wallet_categorization_rules / wallet_anomalies / wallet_subscription_predictions / wallet_cashflow_forecasts / wallet_ai_runs. Macros: tx_categorize_suggest (rule→deterministic→LLM cascade), anomaly_scan (spending spike + duplicate charge + Benford), subscription_discover (pattern-match), cashflow_forecast (30/60/90-day projection), tax_prep_compose.
+- **Sprint C**: Migration 245 — wallet_transaction_mints (per-transaction DTU receipt) / wallet_creator_tips (with content cite cascade) / wallet_rail_routes (audit of rail decisions) / wallet_export_bundles (open-banking export). Macros: transaction_mint, transaction_cite_dtu, creator_tip (0% fee for Concord Coin internal — Patreon-killer pricing), rails_route_simulate, export_bundle.
+
 ### Out of scope (defer indefinitely)
 - Actually OBTAINING MTL coverage (multi-million-dollar legal project; partner with already-licensed payment processor instead)
 - Custodial crypto storage (regulatory risk too high; user keeps keys via external wallet)
