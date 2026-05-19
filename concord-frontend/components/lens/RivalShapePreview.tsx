@@ -23,8 +23,9 @@ import { InboxShell } from '@/components/message/InboxShell';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { EHRShell } from '@/components/healthcare/EHRShell';
 import { FinanceShell } from '@/components/finance/FinanceShell';
+import { RealtorShell } from '@/components/realestate/RealtorShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -34,6 +35,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   whiteboard: 'tldraw / Miro shape',
   healthcare: 'Epic EHR shape',
   finance: 'Robinhood / Monarch shape',
+  realestate: 'Zillow / Redfin shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -45,7 +47,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -90,6 +92,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'whiteboard': return <WhiteboardPreview />;
     case 'healthcare': return <HealthcarePreview />;
     case 'finance': return <FinancePreview />;
+    case 'realestate': return <RealEstatePreview />;
   }
 }
 
@@ -302,6 +305,36 @@ function FinancePreview() {
         { id: 'a3', kind: 'dividend', label: 'Quarterly distribution', amount: 142.18, asset: 'SCHD', timestamp: new Date(today - 172800_000).toISOString() },
         { id: 'a4', kind: 'deposit', label: 'Payroll', amount: 4250, timestamp: new Date(today - 259200_000).toISOString() },
         { id: 'a5', kind: 'sell', label: 'Tax-loss harvest', amount: 1840, asset: 'META', timestamp: new Date(today - 432000_000).toISOString() },
+      ]}
+    />
+  );
+}
+
+function RealEstatePreview() {
+  const [q, setQ] = React.useState('3 bed condo under $750k in Austin');
+  const today = Date.now();
+  return (
+    <RealtorShell
+      query={q}
+      onQueryChange={setQ}
+      filterChips={['3+ bed', 'Condo', '< $750K', 'Austin', 'Pool', 'Garage']}
+      totalCount={148}
+      medianPrice={612000}
+      favouriteCount={7}
+      upcomingTourCount={2}
+      listings={[
+        { id: 'l1', address: '2401 East 6th St #12', city: 'Austin', state: 'TX', zip: '78702', price: 545000, beds: 2, baths: 2, sqft: 1240, status: 'for_sale', daysOnMarket: 3, hotScore: 82, favourited: true },
+        { id: 'l2', address: '4112 Bull Creek Rd', city: 'Austin', state: 'TX', zip: '78731', price: 725000, beds: 3, baths: 2, sqft: 1820, status: 'for_sale', daysOnMarket: 12, hotScore: 58 },
+        { id: 'l3', address: '8201 Mesa Dr', city: 'Austin', state: 'TX', zip: '78759', price: 689000, beds: 3, baths: 2, sqft: 1560, status: 'pending', daysOnMarket: 28, hotScore: 45 },
+        { id: 'l4', address: '6815 Burnet Ln', city: 'Austin', state: 'TX', zip: '78757', price: 612000, beds: 3, baths: 2, sqft: 1480, status: 'for_sale', daysOnMarket: 5, hotScore: 71, favourited: true },
+        { id: 'l5', address: '1100 South Lamar #205', city: 'Austin', state: 'TX', zip: '78704', price: 489000, beds: 1, baths: 1, sqft: 820, status: 'for_sale', daysOnMarket: 1, hotScore: 88 },
+      ]}
+      activity={[
+        { id: 'a1', kind: 'price_drop', label: '4112 Bull Creek dropped $15K', timestamp: new Date(today - 3600_000).toISOString() },
+        { id: 'a2', kind: 'tour', label: 'Tour confirmed for 2401 East 6th St', timestamp: new Date(today - 7200_000).toISOString() },
+        { id: 'a3', kind: 'favourite', label: 'Saved 6815 Burnet Ln', timestamp: new Date(today - 86400_000).toISOString() },
+        { id: 'a4', kind: 'message', label: 'Agent Jane Doe replied to your inquiry', timestamp: new Date(today - 172800_000).toISOString() },
+        { id: 'a5', kind: 'open_house', label: 'Open house this Saturday · 8201 Mesa Dr', timestamp: new Date(today - 259200_000).toISOString() },
       ]}
     />
   );
