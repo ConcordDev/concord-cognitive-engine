@@ -10427,6 +10427,12 @@ async function runMacro(domain, name, input, ctx) {
       "interaction_alerts_list",
       "lab_anomalies_list",
       "summaries_recent",
+      // Sprint C moats reads — mint + import + export + DPC + cite (destructive triggers NOT here)
+      "record_mints_list",
+      "fhir_imports_list",
+      "fhir_exports_list",
+      "dpc_list",
+      "cross_lens_cites_list",
     ]),
     music: new Set([
       "artist_get", "artist_list", "artist_stats",
@@ -24588,6 +24594,14 @@ registerHealthRebuildMacros(register);
 // flags emergencies for review.
 import registerHealthAiMacros from "./domains/healthcare-ai.js";
 registerHealthAiMacros(register);
+
+// Healthcare lens rebuild Sprint C — concord moats (migration 242):
+// patient-owned portable health DTUs + SMART on FHIR import/export +
+// DPC subscription billing + cross-lens cite cascade. Each macro is
+// research-grounded against FHIR R4/R5, HTI-1, USCDI v3, and Direct
+// Primary Care patterns (see docs/LENS_RESEARCH_NOTES.md healthcare).
+import registerHealthMoatsMacros from "./domains/healthcare-moats.js";
+registerHealthMoatsMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,
