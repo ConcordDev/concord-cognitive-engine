@@ -27,8 +27,9 @@ import { RealtorShell } from '@/components/realestate/RealtorShell';
 import { ShopifyShell } from '@/components/retail/ShopifyShell';
 import { ClassroomShell } from '@/components/education/ClassroomShell';
 import { DispatchShell } from '@/components/trades/DispatchShell';
+import { TmsShell } from '@/components/logistics/TmsShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -42,6 +43,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   retail: 'Shopify admin shape',
   education: 'Khan / Coursera shape',
   trades: 'ServiceTitan / Jobber shape',
+  logistics: 'Project44 / SAP TMS shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -53,7 +55,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -102,6 +104,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'retail': return <RetailPreview />;
     case 'education': return <EducationPreview />;
     case 'trades': return <TradesPreview />;
+    case 'logistics': return <LogisticsPreview />;
   }
 }
 
@@ -439,6 +442,39 @@ function TradesPreview() {
         { id: 'q1', title: 'Bathroom remodel', total: 8400, status: 'sent' },
         { id: 'q2', title: 'Roof repair', total: 2150, status: 'sent' },
         { id: 'q3', title: 'Panel upgrade', total: 3600, status: 'sent' },
+      ]}
+    />
+  );
+}
+
+function LogisticsPreview() {
+  return (
+    <TmsShell
+      totalShipments={142}
+      inTransit={38}
+      onTimePct={96}
+      exceptions={3}
+      deliveredToday={24}
+      shipments={[
+        { id: 's1', trackingNumber: '1ZAB12345678', origin: 'Austin, TX', destination: 'Boston, MA', mode: 'parcel', carrierCode: 'FDX', status: 'in_transit', estimatedDelivery: null },
+        { id: 's2', trackingNumber: '1ZCD23456789', origin: 'Dallas, TX', destination: 'Atlanta, GA', mode: 'ftl', carrierCode: 'KNX', status: 'out_for_delivery', estimatedDelivery: null },
+        { id: 's3', trackingNumber: '1ZEF34567890', origin: 'LA, CA', destination: 'Phoenix, AZ', mode: 'ltl', carrierCode: 'XPO', status: 'in_transit', estimatedDelivery: null },
+        { id: 's4', trackingNumber: '1ZGH45678901', origin: 'Shanghai', destination: 'Long Beach, CA', mode: 'ocean', carrierCode: 'MSC', status: 'in_transit', estimatedDelivery: null },
+        { id: 's5', trackingNumber: '1ZIJ56789012', origin: 'Chicago, IL', destination: 'Denver, CO', mode: 'parcel', carrierCode: 'UPS', status: 'delivered', estimatedDelivery: null },
+        { id: 's6', trackingNumber: '1ZKL67890123', origin: 'Memphis, TN', destination: 'Seattle, WA', mode: 'air', carrierCode: 'FDX', status: 'exception', estimatedDelivery: null },
+      ]}
+      vehicles={[
+        { id: 'v1', number: 'T-101', status: 'in_use', kind: 'tractor' },
+        { id: 'v2', number: 'T-102', status: 'available', kind: 'box_truck' },
+        { id: 'v3', number: 'T-103', status: 'in_use', kind: 'tractor' },
+        { id: 'v4', number: 'V-201', status: 'maintenance', kind: 'van' },
+        { id: 'v5', number: 'TR-301', status: 'in_use', kind: 'trailer' },
+      ]}
+      appointments={[
+        { id: 'a1', dockName: 'Dock 3', date: new Date().toISOString().slice(0, 10), startTime: '08:00', truckNumber: 'T-101', kind: 'delivery', status: 'scheduled' },
+        { id: 'a2', dockName: 'Dock 5', date: new Date().toISOString().slice(0, 10), startTime: '10:30', truckNumber: 'T-103', kind: 'pickup', status: 'scheduled' },
+        { id: 'a3', dockName: 'Dock 1', date: new Date().toISOString().slice(0, 10), startTime: '13:15', truckNumber: 'KNX-44', kind: 'delivery', status: 'scheduled' },
+        { id: 'a4', dockName: 'Dock 7', date: new Date().toISOString().slice(0, 10), startTime: '15:00', truckNumber: 'XPO-12', kind: 'pickup', status: 'scheduled' },
       ]}
     />
   );

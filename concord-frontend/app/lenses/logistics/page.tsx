@@ -12,6 +12,16 @@ import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
 import ShipmentTracker from '@/components/logistics/ShipmentTracker';
 import RouteOptimizer from '@/components/logistics/RouteOptimizer';
 import WarehouseInventory from '@/components/logistics/WarehouseInventory';
+import ShipmentsPanel from '@/components/logistics/ShipmentsPanel';
+import CarriersPanel from '@/components/logistics/CarriersPanel';
+import RateQuoter from '@/components/logistics/RateQuoter';
+import PickupsPanel from '@/components/logistics/PickupsPanel';
+import DockAppointmentsPanel from '@/components/logistics/DockAppointmentsPanel';
+import FleetVehiclesPanel from '@/components/logistics/FleetVehiclesPanel';
+import LoadBoardPanel from '@/components/logistics/LoadBoardPanel';
+import DeliveryProofPanel from '@/components/logistics/DeliveryProofPanel';
+import ShipmentEventsTimeline from '@/components/logistics/ShipmentEventsTimeline';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Truck as MTabTruck, Users as MTabDriver, Package as MTabShip,
@@ -2111,6 +2121,10 @@ export default function LogisticsLensPage() {
     <LensShell lensId="logistics" asMain={false}>
       <FirstRunTour lensId="logistics" />
       <DepthBadge lensId="logistics" size="sm" className="ml-2" />
+      <div className="px-4 mt-2">
+        <RivalShapePreview lensId="logistics" defaultOpen={true} />
+        <TmsWorkbenchSection />
+      </div>
     <LensPageShell
       domain="logistics"
       title="Transportation &amp; Logistics"
@@ -2783,5 +2797,56 @@ export default function LogisticsLensPage() {
             onSelect={(id) => setMode(id as ModeTab)}
           />
     </LensShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  FedEx / Project44 / SAP TMS-parity workbench section                */
+/* ------------------------------------------------------------------ */
+
+function TmsWorkbenchSection() {
+  const [active, setActive] = useState<'shipments' | 'carriers' | 'rates' | 'pickups' | 'docks' | 'fleet' | 'loads' | 'pod' | 'events'>('shipments');
+  const TABS = [
+    { id: 'shipments', label: 'Shipments' },
+    { id: 'carriers', label: 'Carriers' },
+    { id: 'rates', label: 'Rate quoter' },
+    { id: 'pickups', label: 'Pickups' },
+    { id: 'docks', label: 'Dock appts' },
+    { id: 'fleet', label: 'Fleet' },
+    { id: 'loads', label: 'Load board' },
+    { id: 'pod', label: 'POD' },
+    { id: 'events', label: 'EDI events' },
+  ] as const;
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-cyan-300 uppercase tracking-wider">FedEx/Project44-parity workbench</h2>
+      <nav className="flex items-center gap-1 border-b border-cyan-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={
+              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
+              (active === t.id
+                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
+                : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div>
+        {active === 'shipments' && <ShipmentsPanel />}
+        {active === 'carriers' && <CarriersPanel />}
+        {active === 'rates' && <RateQuoter />}
+        {active === 'pickups' && <PickupsPanel />}
+        {active === 'docks' && <DockAppointmentsPanel />}
+        {active === 'fleet' && <FleetVehiclesPanel />}
+        {active === 'loads' && <LoadBoardPanel />}
+        {active === 'pod' && <DeliveryProofPanel />}
+        {active === 'events' && <ShipmentEventsTimeline />}
+      </div>
+    </section>
   );
 }
