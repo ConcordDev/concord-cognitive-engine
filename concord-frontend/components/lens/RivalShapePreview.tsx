@@ -33,8 +33,9 @@ import { AgFarmShell } from '@/components/agriculture/AgFarmShell';
 import { DawShell } from '@/components/studio/DawShell';
 import { AvShell } from '@/components/aviation/AvShell';
 import { CityGovShell } from '@/components/government/CityGovShell';
+import { ClimateShell } from '@/components/environment/ClimateShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture' | 'studio' | 'aviation' | 'government';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture' | 'studio' | 'aviation' | 'government' | 'environment';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -53,6 +54,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   studio: 'Logic Pro / Ableton Live shape',
   aviation: 'ForeFlight / FlightAware shape',
   government: 'SeeClickFix / Accela shape',
+  environment: 'Watershed / Persefoni shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -63,7 +65,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation', 'government'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation', 'government', 'environment'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -112,6 +114,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'studio': return <StudioPreview />;
     case 'aviation': return <AviationPreview />;
     case 'government': return <GovernmentPreview />;
+    case 'environment': return <EnvironmentPreview />;
   }
 }
 
@@ -668,6 +671,65 @@ function GovernmentPreview() {
         kind: String(a.kind || ''),
         label: String(a.label || ''),
         condition: ((a.condition as string) || 'good') as 'good' | 'fair' | 'poor' | 'broken',
+      }))}
+    />
+  );
+}
+
+/* ── Environment: hydrate from dashboard-summary + targets + activities ── */
+
+function EnvironmentPreview() {
+  const [d, setD] = useState<Record<string, unknown> | null>(null);
+  const [targets, setTargets] = useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      try {
+        const [s, t] = await Promise.all([
+          api.post('/api/lens/run', { domain: 'environment', action: 'dashboard-summary', input: {} }).catch(() => null),
+          api.post('/api/lens/run', { domain: 'environment', action: 'targets-list', input: {} }).catch(() => null),
+        ]);
+        setD((s?.data?.result as Record<string, unknown>) || {});
+        const list = (t?.data?.result?.targets || []) as Array<Record<string, unknown>>;
+        const enriched: Array<Record<string, unknown>> = [];
+        for (const tgt of list.slice(0, 3)) {
+          const p = await api.post('/api/lens/run', { domain: 'environment', action: 'targets-progress', input: { id: tgt.id } }).catch(() => null);
+          const prog = p?.data?.result as { reductionAchievedPct?: number; expectedReductionPct?: number; onTrack?: boolean } | undefined;
+          enriched.push({ ...tgt, achievedPct: prog?.reductionAchievedPct || 0, expectedPct: prog?.expectedReductionPct || 0, onTrack: prog?.onTrack || false });
+        }
+        setTargets(enriched);
+      } catch { /* empty state */ }
+      finally { setLoading(false); }
+    })();
+  }, []);
+  if (loading) return <PreviewLoading />;
+  return (
+    <ClimateShell
+      currentYear={String(d?.currentYear || new Date().getFullYear())}
+      ytdTotalCo2eTonnes={(d?.ytdTotalCo2eTonnes as number) || 0}
+      ytdScope1={(d?.ytdScope1 as number) || 0}
+      ytdScope2={(d?.ytdScope2 as number) || 0}
+      ytdScope3={(d?.ytdScope3 as number) || 0}
+      lastYearTotal={(d?.lastYearTotal as number) || 0}
+      yoyPct={(d?.yoyPct as number) || 0}
+      activityCount={(d?.activityCount as number) || 0}
+      supplierCount={(d?.supplierCount as number) || 0}
+      supplierResponseRate={(d?.supplierResponseRate as number) || 0}
+      supplierReportedTonnes={(d?.supplierReportedTonnes as number) || 0}
+      activeTargets={(d?.activeTargets as number) || 0}
+      activeProjects={(d?.activeProjects as number) || 0}
+      recsRetiredMwh={(d?.recsRetiredMwh as number) || 0}
+      offsetsRetiredTonnes={(d?.offsetsRetiredTonnes as number) || 0}
+      netEmissionsTonnes={(d?.netEmissionsTonnes as number) || 0}
+      topTargets={targets.map(t => ({
+        id: String(t.id || ''),
+        name: String(t.name || ''),
+        baseYear: Number(t.baseYear) || 2020,
+        targetYear: Number(t.targetYear) || 2030,
+        reductionPct: Number(t.reductionPct) || 0,
+        onTrack: Boolean(t.onTrack),
+        achievedPct: Number(t.achievedPct) || 0,
+        expectedPct: Number(t.expectedPct) || 0,
       }))}
     />
   );
