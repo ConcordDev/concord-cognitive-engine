@@ -112,6 +112,7 @@ import {
 
 // Studio UI components
 import { TransportBar } from '@/components/studio/TransportBar';
+import { MetronomePlayer } from '@/components/studio/MetronomePlayer';
 import { ArrangementView } from '@/components/studio/ArrangementView';
 import { PianoRoll } from '@/components/studio/PianoRoll';
 import { MixerView } from '@/components/studio/MixerView';
@@ -1612,6 +1613,12 @@ export default function StudioLensPage() {
       className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
       data-lens-theme="studio"
     >
+      <MetronomePlayer
+        enabled={project.transport.metronome}
+        playing={transportState === 'playing' || transportState === 'recording'}
+        bpm={project.bpm}
+        beatsPerBar={project.timeSignature?.[0] || 4}
+      />
       {/* Transport Bar */}
       <TransportBar
         transportState={transportState}

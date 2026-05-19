@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, Loader2, TrendingUp, DollarSign, Package, Users } from 'lucide-react';
+import { BarChart3, Loader2, TrendingUp, DollarSign, Package } from 'lucide-react';
 import { api } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface RevDay { date: string; revenue: number; orderCount: number }
 interface TopProd { sku: string; name: string; qty: number; revenue: number }
@@ -36,7 +36,8 @@ export function SalesAnalytics() {
     finally { setLoading(false); }
   }
 
-  const maxRev = Math.max(1, ...revSeries.map(d => d.revenue));
+  const chartData = revSeries.map(d => ({ date: d.date.slice(5), revenue: d.revenue, orders: d.orderCount }));
+  const topChartData = top.slice(0, 8).map(p => ({ name: p.name.length > 14 ? p.name.slice(0, 13) + '…' : p.name, revenue: Math.round(p.revenue), qty: p.qty }));
 
   return (
     <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
@@ -60,19 +61,25 @@ export function SalesAnalytics() {
 
           <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
             <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">Revenue · last 30 days</div>
-            <div className="flex items-end gap-px h-24">
-              {revSeries.map((d, i) => (
-                <div key={d.date} className="flex-1" title={`${d.date}: $${d.revenue.toFixed(0)} (${d.orderCount} orders)`}>
-                  <div
-                    className={cn('w-full transition', d.revenue > 0 ? 'bg-emerald-400/70 hover:bg-emerald-500' : 'bg-white/5')}
-                    style={{ height: `${(d.revenue / maxRev) * 100}%`, minHeight: 1 }}
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.55} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#ffffff10" strokeDasharray="2 4" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#94a3b8' }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v) => `$${v}`} />
+                  <Tooltip
+                    contentStyle={{ background: '#0d1117', border: '1px solid #ffffff20', fontSize: 11 }}
+                    formatter={(v, k) => k === 'revenue' ? [`$${Number(v).toFixed(0)}`, 'Revenue'] : [String(v), 'Orders']}
                   />
-                </div>
-              ))}
-            </div>
-            <div className="mt-1 flex justify-between text-[9px] text-gray-500">
-              <span>{revSeries[0]?.date.slice(5)}</span>
-              <span>{revSeries[revSeries.length - 1]?.date.slice(5)}</span>
+                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={1.5} fill="url(#revGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -81,16 +88,20 @@ export function SalesAnalytics() {
             {top.length === 0 ? (
               <div className="py-3 text-center text-xs text-gray-500">No sales yet</div>
             ) : (
-              <ul className="space-y-1">
-                {top.map((p, i) => (
-                  <li key={p.sku} className="flex items-center gap-2 text-xs">
-                    <span className="text-gray-500 font-mono w-5 text-right">{i + 1}.</span>
-                    <span className="text-white truncate flex-1">{p.name}</span>
-                    <span className="text-gray-400 font-mono">{p.qty}×</span>
-                    <span className="text-emerald-300 font-mono tabular-nums w-20 text-right">${p.revenue.toFixed(0)}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topChartData} layout="vertical" margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
+                    <CartesianGrid stroke="#ffffff10" strokeDasharray="2 4" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v) => `$${v}`} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#cbd5e1' }} width={90} />
+                    <Tooltip
+                      contentStyle={{ background: '#0d1117', border: '1px solid #ffffff20', fontSize: 11 }}
+                      formatter={(v, k) => k === 'revenue' ? [`$${Number(v).toFixed(0)}`, 'Revenue'] : [String(v), 'Qty']}
+                    />
+                    <Bar dataKey="revenue" fill="#10b981" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         </div>

@@ -21,6 +21,7 @@ import BillsCalendar from '@/components/finance/BillsCalendar';
 import GoalsTracker from '@/components/finance/GoalsTracker';
 import RecurringInvestments from '@/components/finance/RecurringInvestments';
 import HoldingsManager from '@/components/finance/HoldingsManager';
+import AllocationPie from '@/components/finance/AllocationPie';
 import DividendTracker from '@/components/finance/DividendTracker';
 import SpendingInsights from '@/components/finance/SpendingInsights';
 import CategorisationRules from '@/components/finance/CategorisationRules';
@@ -2264,7 +2265,7 @@ export default function FinanceLensPage() {
       {viewMode === 'retirement' && <div className="space-y-4"><RetirementSimulator /></div>}
       {viewMode === 'subscriptions' && <div className="space-y-4"><SubscriptionDetector /></div>}
       {viewMode === 'accounts' && <div className="space-y-4"><AccountsPanel /></div>}
-      {viewMode === 'holdings' && <div className="space-y-4"><HoldingsManager /></div>}
+      {viewMode === 'holdings' && <div className="space-y-4"><div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><div className="lg:col-span-2"><HoldingsManager /></div><div><AllocationPie /></div></div></div>}
       {viewMode === 'dividends' && <div className="space-y-4"><DividendTracker /></div>}
       {viewMode === 'recurring' && <div className="space-y-4"><RecurringInvestments /></div>}
       {viewMode === 'bills' && <div className="space-y-4"><BillsCalendar /></div>}

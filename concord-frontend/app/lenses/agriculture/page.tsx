@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
+const FarmMapPanel = dynamic(() => import('@/components/agriculture/FarmMapPanel'), { ssr: false });
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -1998,8 +1999,9 @@ export default function AgricultureLensPage() {
 /* ------------------------------------------------------------------ */
 
 function DeereWorkbenchSection() {
-  const [active, setActive] = useState<'equipment' | 'zones' | 'prescriptions' | 'passes' | 'nitrogen' | 'imagery' | 'tankmix' | 'workorders' | 'grain'>('equipment');
+  const [active, setActive] = useState<'map' | 'equipment' | 'zones' | 'prescriptions' | 'passes' | 'nitrogen' | 'imagery' | 'tankmix' | 'workorders' | 'grain'>('map');
   const TABS = [
+    { id: 'map', label: 'Farm map' },
     { id: 'equipment', label: 'Equipment' },
     { id: 'zones', label: 'Zones' },
     { id: 'prescriptions', label: 'Prescriptions' },
@@ -2030,6 +2032,7 @@ function DeereWorkbenchSection() {
         ))}
       </nav>
       <div>
+        {active === 'map' && <FarmMapPanel />}
         {active === 'equipment' && <EquipmentPanel />}
         {active === 'zones' && <ZonesPanel />}
         {active === 'prescriptions' && <PrescriptionsPanel />}

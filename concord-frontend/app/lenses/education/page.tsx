@@ -14,6 +14,7 @@ import { EducationActionPanel } from '@/components/education/EducationActionPane
 import { PipingProvider } from '@/components/panel-polish';
 import CoursesCatalog, { type Course as EduCourse } from '@/components/education/CoursesCatalog';
 import EnrollmentsPanel from '@/components/education/EnrollmentsPanel';
+import LessonPlayer from '@/components/education/LessonPlayer';
 import SkillTree from '@/components/education/SkillTree';
 import StreakDashboard from '@/components/education/StreakDashboard';
 import CertificatesPanel from '@/components/education/CertificatesPanel';
@@ -4650,12 +4651,13 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 /* ------------------------------------------------------------------ */
 
 function KhanCourseraWorkbenchSection() {
-  const [active, setActive] = useState<'dashboard' | 'catalog' | 'enrolled' | 'skills' | 'certs' | 'assignments' | 'notes' | 'discussions'>('dashboard');
+  const [active, setActive] = useState<'dashboard' | 'catalog' | 'enrolled' | 'player' | 'skills' | 'certs' | 'assignments' | 'notes' | 'discussions'>('dashboard');
   const [activeCourse, setActiveCourse] = useState<EduCourse | null>(null);
   const TABS = [
     { id: 'dashboard', label: 'Progress' },
     { id: 'catalog', label: 'Catalog' },
     { id: 'enrolled', label: 'My courses' },
+    { id: 'player', label: 'Player' },
     { id: 'skills', label: 'Skills' },
     { id: 'certs', label: 'Certificates' },
     { id: 'assignments', label: 'Assignments' },
@@ -4684,7 +4686,8 @@ function KhanCourseraWorkbenchSection() {
       <div>
         {active === 'dashboard' && <StreakDashboard />}
         {active === 'catalog' && <CoursesCatalog onEnroll={(c) => { setActiveCourse(c); setActive('enrolled'); }} onSelect={setActiveCourse} />}
-        {active === 'enrolled' && <EnrollmentsPanel onSelectCourse={(cid) => setActiveCourse({ id: cid } as EduCourse)} />}
+        {active === 'enrolled' && <EnrollmentsPanel onSelectCourse={(cid) => { setActiveCourse({ id: cid } as EduCourse); setActive('player'); }} />}
+        {active === 'player' && <LessonPlayer />}
         {active === 'skills' && <SkillTree />}
         {active === 'certs' && <CertificatesPanel />}
         {active === 'assignments' && <AssignmentsBoard courseId={activeCourse?.id} />}
