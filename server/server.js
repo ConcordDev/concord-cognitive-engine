@@ -10410,6 +10410,18 @@ async function runMacro(domain, name, input, ctx) {
     // Music lens Sprint A — read-only macros (public artist/album/
     // track/playlist gets + lists). recordListen is destructive so
     // NOT on this list.
+    // Healthcare lens Sprint A — every read is auth-gated AND
+    // consent-gated AND audit-logged inside the macro. publicReadDomains
+    // entry just bypasses the auth-middleware (Gate 2 vs Gate 1).
+    // ALL destructive macros (write/grant/revoke) intentionally NOT here.
+    healthcare: new Set([
+      "patient_get", "patient_list_mine",
+      "condition_list", "medication_list",
+      "allergy_list", "immunization_list",
+      "observation_list", "appointment_list",
+      "provider_search",
+      "consent_list", "audit_log",
+    ]),
     music: new Set([
       "artist_get", "artist_list", "artist_stats",
       "album_get", "album_list",
@@ -24548,6 +24560,20 @@ registerMusicAiMacros(register);
 //   - Funkwhale-compatible ActivityPub federation
 import registerMusicMoatsMacros from "./domains/music-moats.js";
 registerMusicMoatsMacros(register);
+
+// Healthcare lens rebuild Sprint A — FHIR-aligned durable substrate
+// (migration 240) with HIPAA-compliant consent layer + audit log
+// baked in. Sits alongside legacy registerLensAction macros in
+// server/domains/healthcare.js (symptom-triage, drug-interaction,
+// SOAP, vision). Research-grounded: see docs/LENS_RESEARCH_NOTES.md
+//   - FHIR R4/R5 Patient/Condition/Medication/Allergy/Immunization/
+//     Observation/Procedure/Encounter resource shapes
+//   - 21st Century Cures Act compliance via Cures-Act-shape DTUs
+//   - HIPAA AI rules: audit log captures prompt + model + workflow
+//   - CommonHealth 7-resource baseline (allergies/conditions/
+//     immunizations/labs/medications/procedures/vitals)
+import registerHealthRebuildMacros from "./domains/healthcare-rebuild.js";
+registerHealthRebuildMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,

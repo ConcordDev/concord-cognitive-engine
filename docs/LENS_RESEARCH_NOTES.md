@@ -97,12 +97,55 @@
 5. **AI-music attribution** — when a track has source='generative', lineage MUST cite training-data DTUs (Musical AI parity).
 6. **Cross-lens cite** — track cites referenced from chat / doc / calendar / world events fire royalty cascade.
 
-### Deferred to later sprints
-- Real audio fingerprint analysis (Musiio-equivalent — would need actual audio processing)
-- "First Fans" early-adopter mechanic
-- Genre-specific surfaces (Apple Music Classical is its own product)
-- GNN social-graph recommender layer
-- Real-time radio session quality computation
+## Healthcare lens (May 2026 research)
+
+### Source landscape
+- **Epic MyChart** leads patient portals: 90.2 KLAS score, 150M+ users, cross-system record sharing, AI message drafts, Apple Health integration. [Epic vs Cerner 2026](https://www.tactionsoft.com/blog/cerner-vs-epic/)
+- **FHIR R4 → R5** transition. HTI-1 final rule effective **Jan 15, 2025**. USCDI v3 baseline **Jan 1, 2026**. SMART App Launch v2 replaced v1 as required authz standard. FHIR R6 expected late 2026. [FHIR R4 vs R5 vs R6 Comparison](https://www.health-samurai.io/articles/fhir-r4-vs-fhir-r5-choosing-the-right-version-for-your-implementation), [FHIR Implementation Guide 2025](https://www.sprypt.com/blog/fhir-guide)
+- **CommonHealth** (Android answer to Apple Health Records) — SDK supports allergies, conditions, immunizations, lab results, medications, procedures, vitals (the 7 core resource types). PIN/biometric encryption, explicit consent for every access. [CommonHealth Developers](https://www.commonhealth.org/developers)
+- **Apple Health Records** — uses FHIR as underlying standard, SMART for one-time auth. 500+ hospitals support it. [Apple Health Records via FHIR R4](https://www.healthcare.digital/single-post/apple-health-fhir-r4-and-the-future-of-medical-records)
+- **21st Century Cures Act** mandates open FHIR APIs for certified EHRs → patient-facing apps CAN pull records from any portal. [Cures Act compliance](https://topflightapps.com/ideas/get-patient-health-records/)
+
+### Compliance reality (load-bearing)
+- **HIPAA AI rules update (Jan 2025)** — AI tools interacting with ePHI MUST log:
+  - Prompt content
+  - Model versions
+  - Automated workflows
+  - **6+ year retention** required
+  - [HIPAA Audit Log Requirements 2025](https://www.kiteworks.com/hipaa-compliance/hipaa-audit-log-requirements/), [HIPAA Audit Checklist 2026](https://www.hipaajournal.com/hipaa-audit-checklist/)
+- **HIPAA Security Rule** — audit logs must track: who accessed PHI, when, what actions, what specific data viewed. Revocation must be actionable without delay.
+- **FDA stance on LLM clinical decision support** (CRITICAL):
+  - "LLMs are not intended for clinical decision-making but providers are adopting them anyway"
+  - "Generative AI can hallucinate, so rigorous guardrails will be needed"
+  - January 2026 FDA CDS guidance + August 2025 AI change-control plans
+  - 1000+ AI/ML-enabled medical devices cleared as of early 2025
+  - [FDA AI healthcare risks PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC12140231/), [FDA Digital Health Guidance 2026](https://intuitionlabs.ai/articles/fda-digital-health-technology-guidance-requirements)
+
+### Disruption pattern: Direct Primary Care (DPC)
+- 2,800+ DPC practices in US as of early 2026. $50-150/mo per member. No insurance billing.
+- **Healthie + SimplePractice** are the dominant DPC software platforms.
+- DPC model = subscription billing + secure messaging + appointment scheduling + telehealth — Concord can match natively without insurance complexity.
+- [DPC software comparison](https://zipdo.co/best/direct-primary-care-software/), [SimplePractice vs Healthie](https://www.gethealthie.com/healthie-vs-simple-practice)
+
+### Concord-moat opportunities (research-grounded)
+1. **Patient-owned portable record** — every health resource is a DTU. Cures-Act-compliant by design. Patient revokes consent → DTU access blocked; lineage preserved.
+2. **HIPAA-compliant AI audit log natively** — our existing AI-run ledger pattern (proven on social/accounting/music) already records prompt+model+source. Just retain 6+ years per HIPAA. Use enforced.
+3. **FDA-compliant guardrails** — every clinical-content macro returns mandatory "Not for diagnosis. Consult a licensed provider" disclaimer. Citation of sources required. Repair Brain pre-flight on every LLM clinical output to flag potential hallucinations.
+4. **SMART on FHIR app surface** — import records from Epic/Cerner/Athena via patient OAuth consent. Export back out as FHIR Bundle. Apple Health Records + CommonHealth compatible.
+5. **DPC subscription billing layer** — recurring concord-coin subscription on top of provider relationship. Telehealth video room + secure messaging + appointment scheduling.
+6. **Cross-lens cite** — medication ↔ task (refill reminder), encounter ↔ calendar (follow-up), symptom ↔ chat (telehealth conversation), lab result ↔ doc (specialist letter).
+7. **AI training consent for health DTUs** — opt-in only (default OFF). Per HIPAA + research-ethics norms.
+
+### Sprint plan
+- **Sprint A (substrate)**: Migration 240 — FHIR-aligned 7-resource substrate (patients/conditions/medications/allergies/immunizations/observations/procedures + encounters/providers/appointments/audit_log/consent_grants). 25+ macros.
+- **Sprint B (AI surface)**: Migration 241 — symptom triage (FDA-disclaimer-mandated), drug interaction check via RxNorm-style IDs, clinical summary composer, lab anomaly detection. ALL invocations logged to health_ai_runs with HIPAA-compliant fields.
+- **Sprint C (moats)**: Migration 242 — health DTU mints + cross-lens cite + SMART on FHIR import/export + DPC subscription billing.
+
+### Out of scope (would warrant separate audit)
+- ICD-10 / SNOMED CT code lookup (would require subscription to UMLS or third-party API)
+- Pharmacy fulfillment integration (Surescripts is the network; requires contract)
+- Insurance claims (837 EDI format; outside Concord's value prop)
+- DICOM imaging (separate stack from FHIR)
 
 ---
 
