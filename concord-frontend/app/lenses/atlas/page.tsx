@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { AtlasSection } from '@/components/atlas/AtlasSection';
 import { OsmGeocodePanel } from '@/components/atlas/OsmGeocodePanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -158,6 +159,9 @@ export default function AtlasLensPage() {
       <FirstRunTour lensId="atlas" />
       <ManifestActionBar />
       <DepthBadge lensId="atlas" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <AtlasSection />
+      </div>
     <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
       {/* Phase 4 — REAL OpenStreetMap Nominatim search. Tier-1 honest live geocode. */}
       <OsmGeocodePanel />
