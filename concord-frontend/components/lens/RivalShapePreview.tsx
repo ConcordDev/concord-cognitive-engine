@@ -25,8 +25,9 @@ import { EHRShell } from '@/components/healthcare/EHRShell';
 import { FinanceShell } from '@/components/finance/FinanceShell';
 import { RealtorShell } from '@/components/realestate/RealtorShell';
 import { ShopifyShell } from '@/components/retail/ShopifyShell';
+import { ClassroomShell } from '@/components/education/ClassroomShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -38,6 +39,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   finance: 'Robinhood / Monarch shape',
   realestate: 'Zillow / Redfin shape',
   retail: 'Shopify admin shape',
+  education: 'Khan / Coursera shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -49,7 +51,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -96,6 +98,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'finance': return <FinancePreview />;
     case 'realestate': return <RealEstatePreview />;
     case 'retail': return <RetailPreview />;
+    case 'education': return <EducationPreview />;
   }
 }
 
@@ -363,6 +366,30 @@ function RetailPreview() {
         { id: 'o4', number: 'ORD-01039', customer: 'Guest', total: 42.80, status: 'pending', itemCount: 1, timestamp: new Date(today - 14400_000).toISOString() },
         { id: 'o5', number: 'ORD-01038', customer: 'Dr Sael', total: 198.25, status: 'fulfilled', itemCount: 4, timestamp: new Date(today - 28800_000).toISOString() },
         { id: 'o6', number: 'ORD-01037', customer: 'Orin Kade', total: 76.00, status: 'refunded', itemCount: 2, timestamp: new Date(today - 43200_000).toISOString() },
+      ]}
+    />
+  );
+}
+
+function EducationPreview() {
+  return (
+    <ClassroomShell
+      streak={12}
+      energyPoints={42850}
+      level={7}
+      pointsToday={185}
+      dailyGoalPoints={300}
+      proficientSkills={34}
+      totalSkills={89}
+      certificates={4}
+      enrolledCourses={[
+        { id: 'c1', title: 'Linear Algebra: From Vectors to Tensors', instructor: 'Dr Sael · Concord U', progressPct: 62, totalLessons: 24, completedLessons: 15, category: 'math' },
+        { id: 'c2', title: 'Intro to Machine Learning', instructor: 'Andrew Ng · Coursera', progressPct: 28, totalLessons: 18, completedLessons: 5, category: 'data' },
+        { id: 'c3', title: 'Writing Compelling Fiction', instructor: 'Mira Solé', progressPct: 88, totalLessons: 12, completedLessons: 11, category: 'humanities' },
+      ]}
+      recommendedCourses={[
+        { id: 'r1', title: 'Statistics for Data Science', instructor: 'Dr Orin · MIT OCW', progressPct: 0, totalLessons: 32, completedLessons: 0, category: 'data' },
+        { id: 'r2', title: 'Calculus Foundations', instructor: 'Khan Academy', progressPct: 0, totalLessons: 48, completedLessons: 0, category: 'math' },
       ]}
     />
   );

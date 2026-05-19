@@ -12,6 +12,15 @@ import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
 import { DictionaryPanel } from '@/components/linguistics/DictionaryPanel';
 import { EducationActionPanel } from '@/components/education/EducationActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
+import CoursesCatalog, { type Course as EduCourse } from '@/components/education/CoursesCatalog';
+import EnrollmentsPanel from '@/components/education/EnrollmentsPanel';
+import SkillTree from '@/components/education/SkillTree';
+import StreakDashboard from '@/components/education/StreakDashboard';
+import CertificatesPanel from '@/components/education/CertificatesPanel';
+import AssignmentsBoard from '@/components/education/AssignmentsBoard';
+import LessonNotes from '@/components/education/LessonNotes';
+import CourseDiscussions from '@/components/education/CourseDiscussions';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1309,6 +1318,8 @@ export default function EducationLensPage() {
       <FirstRunTour lensId="education" />
       <DepthBadge lensId="education" size="sm" className="ml-2" />
     <div data-lens-theme="education" className="p-6 space-y-6 bg-gradient-to-b from-amber-950/10 to-transparent">
+      <RivalShapePreview lensId="education" defaultOpen={true} />
+      <KhanCourseraWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -4633,3 +4644,54 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Khan / Coursera-parity workbench section                            */
+/* ------------------------------------------------------------------ */
+
+function KhanCourseraWorkbenchSection() {
+  const [active, setActive] = useState<'dashboard' | 'catalog' | 'enrolled' | 'skills' | 'certs' | 'assignments' | 'notes' | 'discussions'>('dashboard');
+  const [activeCourse, setActiveCourse] = useState<EduCourse | null>(null);
+  const TABS = [
+    { id: 'dashboard', label: 'Progress' },
+    { id: 'catalog', label: 'Catalog' },
+    { id: 'enrolled', label: 'My courses' },
+    { id: 'skills', label: 'Skills' },
+    { id: 'certs', label: 'Certificates' },
+    { id: 'assignments', label: 'Assignments' },
+    { id: 'notes', label: 'Notes' },
+    { id: 'discussions', label: 'Discussions' },
+  ] as const;
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-amber-300 uppercase tracking-wider">Khan/Coursera-parity workbench</h2>
+      <nav className="flex items-center gap-1 border-b border-amber-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={
+              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
+              (active === t.id
+                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
+                : 'text-gray-500 hover:text-amber-300 hover:bg-amber-900/10 border border-transparent')
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div>
+        {active === 'dashboard' && <StreakDashboard />}
+        {active === 'catalog' && <CoursesCatalog onEnroll={(c) => { setActiveCourse(c); setActive('enrolled'); }} onSelect={setActiveCourse} />}
+        {active === 'enrolled' && <EnrollmentsPanel onSelectCourse={(cid) => setActiveCourse({ id: cid } as EduCourse)} />}
+        {active === 'skills' && <SkillTree />}
+        {active === 'certs' && <CertificatesPanel />}
+        {active === 'assignments' && <AssignmentsBoard courseId={activeCourse?.id} />}
+        {active === 'notes' && <LessonNotes />}
+        {active === 'discussions' && <CourseDiscussions courseId={activeCourse?.id} />}
+      </div>
+    </section>
+  );
+}
+
