@@ -28,8 +28,9 @@ import { ShopifyShell } from '@/components/retail/ShopifyShell';
 import { ClassroomShell } from '@/components/education/ClassroomShell';
 import { DispatchShell } from '@/components/trades/DispatchShell';
 import { TmsShell } from '@/components/logistics/TmsShell';
+import { AgFarmShell } from '@/components/agriculture/AgFarmShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -44,6 +45,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   education: 'Khan / Coursera shape',
   trades: 'ServiceTitan / Jobber shape',
   logistics: 'Project44 / SAP TMS shape',
+  agriculture: 'John Deere / FieldView shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -55,7 +57,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -105,6 +107,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'education': return <EducationPreview />;
     case 'trades': return <TradesPreview />;
     case 'logistics': return <LogisticsPreview />;
+    case 'agriculture': return <AgriculturePreview />;
   }
 }
 
@@ -475,6 +478,44 @@ function LogisticsPreview() {
         { id: 'a2', dockName: 'Dock 5', date: new Date().toISOString().slice(0, 10), startTime: '10:30', truckNumber: 'T-103', kind: 'pickup', status: 'scheduled' },
         { id: 'a3', dockName: 'Dock 1', date: new Date().toISOString().slice(0, 10), startTime: '13:15', truckNumber: 'KNX-44', kind: 'delivery', status: 'scheduled' },
         { id: 'a4', dockName: 'Dock 7', date: new Date().toISOString().slice(0, 10), startTime: '15:00', truckNumber: 'XPO-12', kind: 'pickup', status: 'scheduled' },
+      ]}
+    />
+  );
+}
+
+function AgriculturePreview() {
+  return (
+    <AgFarmShell
+      totalFields={12}
+      totalAcres={1840}
+      equipmentCount={8}
+      equipmentWorking={5}
+      seasonYieldBushels={284000}
+      avgYieldPerAcre={205}
+      grainStored={142000}
+      grainCapacity={200000}
+      grainUtilizationPct={71}
+      fields={[
+        { id: 'f1', name: 'North 80', acreage: 80, currentCrop: 'corn' },
+        { id: 'f2', name: 'South 120', acreage: 120, currentCrop: 'soybeans' },
+        { id: 'f3', name: 'River Bend', acreage: 200, currentCrop: 'corn' },
+        { id: 'f4', name: 'Hilltop', acreage: 160, currentCrop: 'wheat' },
+        { id: 'f5', name: 'Bottom 40', acreage: 40, currentCrop: 'alfalfa' },
+        { id: 'f6', name: 'West Quarter', acreage: 160, currentCrop: 'corn' },
+      ]}
+      equipment={[
+        { id: 'e1', name: '8R 410', kind: 'tractor', status: 'working', fuelLevelPct: 78 },
+        { id: 'e2', name: 'S7 800', kind: 'combine', status: 'working', fuelLevelPct: 92 },
+        { id: 'e3', name: 'DB60 planter', kind: 'planter', status: 'idle', fuelLevelPct: 100 },
+        { id: 'e4', name: 'R4060 sprayer', kind: 'sprayer', status: 'working', fuelLevelPct: 64 },
+        { id: 'e5', name: '8R 310', kind: 'tractor', status: 'working', fuelLevelPct: 18 },
+        { id: 'e6', name: 'DJI Agras', kind: 'drone', status: 'idle', fuelLevelPct: 100 },
+      ]}
+      workOrders={[
+        { id: 'w1', operation: 'Apply UAN-32 sidedress', kind: 'fertilize', status: 'scheduled', scheduledFor: new Date().toISOString().slice(0, 10) },
+        { id: 'w2', operation: 'Scout for tar spot', kind: 'scouting', status: 'scheduled', scheduledFor: new Date().toISOString().slice(0, 10) },
+        { id: 'w3', operation: 'Harvest South 120 beans', kind: 'harvest', status: 'completed', scheduledFor: null },
+        { id: 'w4', operation: 'Tank-mix burndown', kind: 'spraying', status: 'scheduled', scheduledFor: null },
       ]}
     />
   );
