@@ -714,5 +714,518 @@ export default function registerLogisticsActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Full-app parity: FedEx + Project44 + SAP TMS 2026 ─────────────
+
+  function uidLog(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function logActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function ensureLogState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.logisticsLens) STATE.logisticsLens = {};
+    return STATE.logisticsLens;
+  }
+  function ensureLogBucket(state, key, userId) {
+    if (!state[key]) state[key] = new Map();
+    if (!state[key].has(userId)) state[key].set(userId, []);
+    return state[key].get(userId);
+  }
+  function saveLogState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function hashLog(s) {
+    let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return h;
+  }
+
+  // ── Shipments CRUD ────────────────────────────────────────────
+
+  registerLensAction("logistics", "shipments-create", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const origin = String(params.origin || "").trim();
+    const destination = String(params.destination || "").trim();
+    if (!origin || !destination) return { ok: false, error: "origin and destination required" };
+    const carrierId = String(params.carrierId || "");
+    const mode = ["parcel", "ltl", "ftl", "ocean", "air", "intermodal", "drayage"].includes(params.mode) ? params.mode : "parcel";
+    const weightLbs = Math.max(0, Number(params.weightLbs) || 0);
+    const shipment = {
+      id: uidLog("shp"),
+      trackingNumber: `1Z${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+      origin, destination, carrierId, mode, weightLbs,
+      dimensions: params.dimensions || null,
+      serviceLevel: String(params.serviceLevel || "standard"),
+      status: "label_created",
+      createdAt: new Date().toISOString(),
+      estimatedDelivery: params.estimatedDelivery || null,
+      actualDelivery: null,
+      poNumber: String(params.poNumber || ""),
+      consignee: String(params.consignee || ""),
+    };
+    ensureLogBucket(s, "shipments", userId).push(shipment);
+    saveLogState();
+    return { ok: true, result: { shipment } };
+  });
+
+  registerLensAction("logistics", "shipments-get", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const shipment = ensureLogBucket(s, "shipments", userId).find(x => x.id === id || x.trackingNumber === id);
+    if (!shipment) return { ok: false, error: "shipment not found" };
+    return { ok: true, result: { shipment } };
+  });
+
+  registerLensAction("logistics", "shipments-delete", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureLogBucket(s, "shipments", userId);
+    const idx = list.findIndex(x => x.id === id);
+    if (idx < 0) return { ok: false, error: "shipment not found" };
+    list.splice(idx, 1);
+    saveLogState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("logistics", "shipments-set-status", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const status = ["label_created", "picked_up", "in_transit", "out_for_delivery", "delivered", "exception", "returned"].includes(params.status) ? params.status : null;
+    if (!status) return { ok: false, error: "invalid status" };
+    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === id);
+    if (!shp) return { ok: false, error: "shipment not found" };
+    shp.status = status;
+    if (status === "delivered") shp.actualDelivery = new Date().toISOString();
+    // Log event
+    ensureLogBucket(s, "shipmentEvents", userId).push({
+      id: uidLog("evt"), shipmentId: id, kind: status,
+      timestamp: new Date().toISOString(), location: String(params.location || ""),
+    });
+    saveLogState();
+    return { ok: true, result: { shipment: shp } };
+  });
+
+  // ── Carriers ──────────────────────────────────────────────────
+
+  registerLensAction("logistics", "carriers-list", (ctx, _a, _p = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const carriers = ensureLogBucket(s, "carriers", userId);
+    return { ok: true, result: { carriers } };
+  });
+
+  registerLensAction("logistics", "carriers-add", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const name = String(params.name || "").trim();
+    const code = String(params.code || "").trim().toUpperCase();
+    if (!name || !code) return { ok: false, error: "name and code required" };
+    const carrier = {
+      id: uidLog("car"), name, code,
+      scac: String(params.scac || "").toUpperCase(),
+      modes: Array.isArray(params.modes) ? params.modes : ["parcel"],
+      accountNumber: String(params.accountNumber || ""),
+      apiKey: params.apiKey ? "[redacted]" : null,
+      active: true,
+      createdAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "carriers", userId).push(carrier);
+    saveLogState();
+    return { ok: true, result: { carrier } };
+  });
+
+  registerLensAction("logistics", "carriers-delete", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureLogBucket(s, "carriers", userId);
+    const idx = list.findIndex(c => c.id === id);
+    if (idx < 0) return { ok: false, error: "carrier not found" };
+    list.splice(idx, 1);
+    saveLogState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Rate quoting (multi-carrier compare, deterministic) ───────
+
+  registerLensAction("logistics", "rates-quote", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const origin = String(params.origin || "").trim();
+    const destination = String(params.destination || "").trim();
+    const weightLbs = Math.max(0.1, Number(params.weightLbs) || 1);
+    const mode = ["parcel", "ltl", "ftl"].includes(params.mode) ? params.mode : "parcel";
+    if (!origin || !destination) return { ok: false, error: "origin and destination required" };
+    const carriers = ensureLogBucket(s, "carriers", userId);
+    if (carriers.length === 0) return { ok: false, error: "no carriers configured (use carriers-add first)" };
+    const baseDist = Math.abs(hashLog(origin + destination)) % 2500 + 50;
+    const quotes = carriers.filter(c => c.modes.includes(mode)).map(c => {
+      const carrierFactor = ((Math.abs(hashLog(c.code)) % 30) + 85) / 100;
+      const rateBase = mode === "parcel" ? (weightLbs * 0.85 + 8) : mode === "ltl" ? (weightLbs * 0.18 + 80) : 1.85 * baseDist;
+      const rate = Math.round(rateBase * carrierFactor * 100) / 100;
+      const transitDays = mode === "parcel" ? 1 + Math.floor(baseDist / 800) : mode === "ltl" ? 2 + Math.floor(baseDist / 500) : 1 + Math.floor(baseDist / 600);
+      return {
+        carrierId: c.id, carrierName: c.name, carrierCode: c.code,
+        rateUsd: rate,
+        transitDays,
+        serviceLevel: mode === "parcel" ? (transitDays <= 1 ? "next_day" : transitDays <= 2 ? "2_day" : "ground") : "standard",
+        guaranteed: transitDays <= 2,
+      };
+    }).sort((a, b) => a.rateUsd - b.rateUsd);
+    return {
+      ok: true,
+      result: { quotes, origin, destination, weightLbs, mode, distanceMi: baseDist },
+    };
+  });
+
+  // ── Pickup scheduling ─────────────────────────────────────────
+
+  registerLensAction("logistics", "pickups-list", (ctx, _a, _p = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const pickups = ensureLogBucket(s, "pickups", userId);
+    return { ok: true, result: { pickups } };
+  });
+
+  registerLensAction("logistics", "pickups-schedule", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const carrierId = String(params.carrierId || "");
+    const address = String(params.address || "").trim();
+    const date = String(params.date || "").slice(0, 10);
+    if (!carrierId || !address || !date) return { ok: false, error: "carrierId, address, date required" };
+    const carriers = ensureLogBucket(s, "carriers", userId);
+    const carrier = carriers.find(c => c.id === carrierId);
+    if (!carrier) return { ok: false, error: "carrier not found" };
+    const pickup = {
+      id: uidLog("pkp"), carrierId, carrierName: carrier.name,
+      address, date,
+      timeWindow: String(params.timeWindow || "9am-5pm"),
+      packageCount: Math.max(1, Number(params.packageCount) || 1),
+      status: "scheduled",
+      confirmationNumber: `PKP${Math.floor(Math.random() * 9_000_000) + 1_000_000}`,
+      createdAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "pickups", userId).push(pickup);
+    saveLogState();
+    return { ok: true, result: { pickup } };
+  });
+
+  registerLensAction("logistics", "pickups-cancel", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const pickup = ensureLogBucket(s, "pickups", userId).find(p => p.id === id);
+    if (!pickup) return { ok: false, error: "pickup not found" };
+    pickup.status = "cancelled";
+    saveLogState();
+    return { ok: true, result: { pickup } };
+  });
+
+  // ── Proof of delivery (signature/photo/GPS) ───────────────────
+
+  registerLensAction("logistics", "delivery-confirm", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = String(params.shipmentId || "");
+    if (!shipmentId) return { ok: false, error: "shipmentId required" };
+    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === shipmentId);
+    if (!shp) return { ok: false, error: "shipment not found" };
+    const pod = {
+      id: uidLog("pod"), shipmentId,
+      signatureName: String(params.signatureName || ""),
+      signatureUrl: params.signatureUrl || null,
+      photoUrl: params.photoUrl || null,
+      gpsLat: params.gpsLat != null ? Number(params.gpsLat) : null,
+      gpsLng: params.gpsLng != null ? Number(params.gpsLng) : null,
+      deliveredAt: new Date().toISOString(),
+      receivedBy: String(params.receivedBy || params.signatureName || ""),
+    };
+    ensureLogBucket(s, "pods", userId).push(pod);
+    shp.status = "delivered";
+    shp.actualDelivery = pod.deliveredAt;
+    shp.podId = pod.id;
+    saveLogState();
+    return { ok: true, result: { pod, shipment: shp } };
+  });
+
+  registerLensAction("logistics", "pods-list", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = params.shipmentId ? String(params.shipmentId) : null;
+    const all = ensureLogBucket(s, "pods", userId);
+    const filtered = shipmentId ? all.filter(p => p.shipmentId === shipmentId) : all;
+    return { ok: true, result: { pods: filtered.slice().reverse() } };
+  });
+
+  // ── Dock appointments + scheduling (Project44-style) ──────────
+
+  registerLensAction("logistics", "docks-list", (ctx, _a, _p = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const docks = ensureLogBucket(s, "docks", userId);
+    return { ok: true, result: { docks } };
+  });
+
+  registerLensAction("logistics", "docks-create", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const name = String(params.name || "").trim();
+    const facility = String(params.facility || "").trim();
+    if (!name || !facility) return { ok: false, error: "name and facility required" };
+    const dock = {
+      id: uidLog("dock"), name, facility,
+      kind: ["loading", "unloading", "cross_dock"].includes(params.kind) ? params.kind : "loading",
+      status: "available",
+      hoursStart: String(params.hoursStart || "06:00"),
+      hoursEnd: String(params.hoursEnd || "22:00"),
+      createdAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "docks", userId).push(dock);
+    saveLogState();
+    return { ok: true, result: { dock } };
+  });
+
+  registerLensAction("logistics", "dock-appointments-list", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const date = params.date ? String(params.date).slice(0, 10) : null;
+    const all = ensureLogBucket(s, "dockAppointments", userId);
+    const filtered = date ? all.filter(a => a.date === date) : all;
+    return { ok: true, result: { appointments: filtered } };
+  });
+
+  registerLensAction("logistics", "dock-appointments-book", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const dockId = String(params.dockId || "");
+    const date = String(params.date || "").slice(0, 10);
+    const startTime = String(params.startTime || "");
+    const durationMin = Math.max(15, Number(params.durationMin) || 60);
+    if (!dockId || !date || !startTime) return { ok: false, error: "dockId, date, startTime required" };
+    const dock = ensureLogBucket(s, "docks", userId).find(d => d.id === dockId);
+    if (!dock) return { ok: false, error: "dock not found" };
+    // Check for conflicts
+    const existing = ensureLogBucket(s, "dockAppointments", userId).filter(a => a.dockId === dockId && a.date === date && a.status === "scheduled");
+    const newStart = parseInt(startTime.split(":")[0]) * 60 + parseInt(startTime.split(":")[1] || "0");
+    const newEnd = newStart + durationMin;
+    for (const ex of existing) {
+      const exStart = parseInt(ex.startTime.split(":")[0]) * 60 + parseInt(ex.startTime.split(":")[1] || "0");
+      const exEnd = exStart + ex.durationMin;
+      if (newStart < exEnd && newEnd > exStart) {
+        return { ok: false, error: `slot conflicts with existing appointment ${ex.startTime}` };
+      }
+    }
+    const apt = {
+      id: uidLog("dap"), dockId, dockName: dock.name, date, startTime, durationMin,
+      carrierId: params.carrierId ? String(params.carrierId) : null,
+      shipmentId: params.shipmentId ? String(params.shipmentId) : null,
+      truckNumber: String(params.truckNumber || ""),
+      kind: ["pickup", "delivery"].includes(params.kind) ? params.kind : "delivery",
+      status: "scheduled",
+      createdAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "dockAppointments", userId).push(apt);
+    saveLogState();
+    return { ok: true, result: { appointment: apt } };
+  });
+
+  registerLensAction("logistics", "dock-appointments-cancel", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const apt = ensureLogBucket(s, "dockAppointments", userId).find(a => a.id === id);
+    if (!apt) return { ok: false, error: "appointment not found" };
+    apt.status = "cancelled";
+    saveLogState();
+    return { ok: true, result: { appointment: apt } };
+  });
+
+  // ── Fleet vehicles ────────────────────────────────────────────
+
+  registerLensAction("logistics", "fleet-vehicles-list", (ctx, _a, _p = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const vehicles = ensureLogBucket(s, "fleetVehicles", userId);
+    return { ok: true, result: { vehicles } };
+  });
+
+  registerLensAction("logistics", "fleet-vehicles-add", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const number = String(params.number || "").trim();
+    if (!number) return { ok: false, error: "number (truck/unit number) required" };
+    const vehicle = {
+      id: uidLog("veh"), number,
+      kind: ["box_truck", "tractor", "trailer", "van", "pickup"].includes(params.kind) ? params.kind : "box_truck",
+      make: String(params.make || ""),
+      model: String(params.model || ""),
+      year: Number(params.year) || null,
+      vin: String(params.vin || ""),
+      mileage: Math.max(0, Number(params.mileage) || 0),
+      fuelType: String(params.fuelType || "diesel"),
+      capacityLbs: Math.max(0, Number(params.capacityLbs) || 0),
+      status: "available",
+      assignedDriverId: null,
+      lat: params.lat != null ? Number(params.lat) : null,
+      lng: params.lng != null ? Number(params.lng) : null,
+      lastMaintenanceMileage: 0,
+      addedAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "fleetVehicles", userId).push(vehicle);
+    saveLogState();
+    return { ok: true, result: { vehicle } };
+  });
+
+  registerLensAction("logistics", "fleet-vehicles-update-status", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const status = ["available", "in_use", "maintenance", "out_of_service"].includes(params.status) ? params.status : null;
+    if (!status) return { ok: false, error: "valid status required" };
+    const vehicle = ensureLogBucket(s, "fleetVehicles", userId).find(v => v.id === id);
+    if (!vehicle) return { ok: false, error: "vehicle not found" };
+    vehicle.status = status;
+    if (params.mileage != null) vehicle.mileage = Math.max(vehicle.mileage, Number(params.mileage));
+    if (params.lat != null) vehicle.lat = Number(params.lat);
+    if (params.lng != null) vehicle.lng = Number(params.lng);
+    saveLogState();
+    return { ok: true, result: { vehicle } };
+  });
+
+  registerLensAction("logistics", "fleet-vehicles-delete", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureLogBucket(s, "fleetVehicles", userId);
+    const idx = list.findIndex(v => v.id === id);
+    if (idx < 0) return { ok: false, error: "vehicle not found" };
+    list.splice(idx, 1);
+    saveLogState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Load board (DAT-shape FTL marketplace) ────────────────────
+
+  registerLensAction("logistics", "loads-list", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const status = params.status ? String(params.status) : null;
+    const all = ensureLogBucket(s, "loads", userId);
+    const loads = status ? all.filter(l => l.status === status) : all;
+    return { ok: true, result: { loads } };
+  });
+
+  registerLensAction("logistics", "loads-post", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const origin = String(params.origin || "").trim();
+    const destination = String(params.destination || "").trim();
+    const ratePerMile = Number(params.ratePerMile);
+    const weightLbs = Math.max(0, Number(params.weightLbs) || 0);
+    if (!origin || !destination) return { ok: false, error: "origin and destination required" };
+    if (!Number.isFinite(ratePerMile) || ratePerMile <= 0) return { ok: false, error: "ratePerMile must be > 0" };
+    const load = {
+      id: uidLog("load"), origin, destination, ratePerMile, weightLbs,
+      equipment: String(params.equipment || "dry_van"),
+      pickupDate: params.pickupDate || null,
+      deliveryDate: params.deliveryDate || null,
+      commodity: String(params.commodity || ""),
+      status: "available",
+      bids: [],
+      postedAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "loads", userId).push(load);
+    saveLogState();
+    return { ok: true, result: { load } };
+  });
+
+  registerLensAction("logistics", "loads-bid", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const amount = Number(params.amount);
+    const carrierId = String(params.carrierId || "");
+    if (!id || !carrierId) return { ok: false, error: "id and carrierId required" };
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const load = ensureLogBucket(s, "loads", userId).find(l => l.id === id);
+    if (!load) return { ok: false, error: "load not found" };
+    if (load.status !== "available") return { ok: false, error: `load is ${load.status}` };
+    load.bids.push({ carrierId, amount, bidAt: new Date().toISOString() });
+    saveLogState();
+    return { ok: true, result: { load } };
+  });
+
+  registerLensAction("logistics", "loads-accept-bid", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const carrierId = String(params.carrierId || "");
+    const load = ensureLogBucket(s, "loads", userId).find(l => l.id === id);
+    if (!load) return { ok: false, error: "load not found" };
+    const bid = load.bids.find(b => b.carrierId === carrierId);
+    if (!bid) return { ok: false, error: "bid from that carrier not found" };
+    load.status = "booked";
+    load.bookedCarrierId = carrierId;
+    load.bookedAt = new Date().toISOString();
+    load.bookedAmount = bid.amount;
+    saveLogState();
+    return { ok: true, result: { load } };
+  });
+
+  // ── Shipment events stream (EDI-shape) ────────────────────────
+
+  registerLensAction("logistics", "shipment-events", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = params.shipmentId ? String(params.shipmentId) : null;
+    const all = ensureLogBucket(s, "shipmentEvents", userId);
+    const events = shipmentId ? all.filter(e => e.shipmentId === shipmentId) : all;
+    return { ok: true, result: { events: events.slice().reverse() } };
+  });
+
+  // ── Dashboard summary (TmsShell data source) ──────────────────
+
+  registerLensAction("logistics", "dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipments = ensureLogBucket(s, "shipments", userId);
+    const carriers = ensureLogBucket(s, "carriers", userId);
+    const vehicles = ensureLogBucket(s, "fleetVehicles", userId);
+    const pickups = ensureLogBucket(s, "pickups", userId);
+    const docks = ensureLogBucket(s, "docks", userId);
+    const loads = ensureLogBucket(s, "loads", userId);
+    const today = new Date().toISOString().slice(0, 10);
+    const inTransit = shipments.filter(s => s.status === "in_transit" || s.status === "out_for_delivery").length;
+    const deliveredToday = shipments.filter(s => (s.actualDelivery || "").slice(0, 10) === today).length;
+    const exceptions = shipments.filter(s => s.status === "exception").length;
+    const onTimePct = (() => {
+      const completed = shipments.filter(s => s.status === "delivered" && s.estimatedDelivery);
+      if (completed.length === 0) return 100;
+      const onTime = completed.filter(s => new Date(s.actualDelivery).getTime() <= new Date(s.estimatedDelivery).getTime() + 12 * 3600_000);
+      return Math.round((onTime.length / completed.length) * 100);
+    })();
+    return {
+      ok: true,
+      result: {
+        totalShipments: shipments.length,
+        inTransit,
+        deliveredToday,
+        exceptions,
+        onTimePct,
+        carrierCount: carriers.length,
+        vehicles: vehicles.length,
+        vehiclesInUse: vehicles.filter(v => v.status === "in_use").length,
+        pickupsToday: pickups.filter(p => p.date === today && p.status === "scheduled").length,
+        dockCount: docks.length,
+        loadsAvailable: loads.filter(l => l.status === "available").length,
+        loadsBooked: loads.filter(l => l.status === "booked").length,
+      },
+    };
+  });
 };
 
