@@ -13,6 +13,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { CodeWorkbenchSection } from '@/components/code/CodeWorkbenchSection';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -1308,6 +1309,9 @@ export default function CodeLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="code" size="sm" className="ml-2" />
       <RivalShapePreview lensId="code" defaultOpen={true} />
+      <div className="px-4 mt-3">
+        <CodeWorkbenchSection />
+      </div>
     <div data-lens-theme="code" className={`flex flex-col font-mono ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'h-full bg-[#0d1117]'}`}>
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-green-900/40 bg-[#161b22]">

@@ -684,6 +684,531 @@ Rules:
       return { ok: true, result: { completion: "" } };
     }
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Cursor / VS Code 2026 parity — virtual workspace + projects,
+  //  files CRUD, agent tasks (Composer parity), inline chat / edit,
+  //  test gen, virtual git, code explain / refactor / format.
+  // ═══════════════════════════════════════════════════════════════
+
+  function getWorkspaceState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.codeWorkspace) {
+      STATE.codeWorkspace = {
+        projects: new Map(),   // userId -> Array<Project>
+        files: new Map(),      // userId -> Map<projectId, Map<path, FileBlob>>
+        agentTasks: new Map(), // userId -> Array<AgentTask>
+        gitState: new Map(),   // userId -> Map<projectId, GitState>
+        chatThreads: new Map(),// userId -> Array<ChatThread>
+        seq: new Map(),        // userId -> { proj, task, thread }
+      };
+    }
+    return STATE.codeWorkspace;
+  }
+  function saveWS() { if (typeof globalThis._concordSaveStateDebounced === 'function') { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function aidC(ctx) { return ctx?.actor?.userId || ctx?.userId || 'anon'; }
+  function uidC(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function isoC() { return new Date().toISOString(); }
+  function bucketC(m, k) { if (!m.has(k)) m.set(k, []); return m.get(k); }
+  function ensureFiles(s, userId, projectId) {
+    if (!s.files.has(userId)) s.files.set(userId, new Map());
+    const userFiles = s.files.get(userId);
+    if (!userFiles.has(projectId)) userFiles.set(projectId, new Map());
+    return userFiles.get(projectId);
+  }
+  function ensureGit(s, userId, projectId) {
+    if (!s.gitState.has(userId)) s.gitState.set(userId, new Map());
+    const userGit = s.gitState.get(userId);
+    if (!userGit.has(projectId)) userGit.set(projectId, { branch: 'main', branches: ['main'], staged: new Set(), modified: new Set(), log: [], head: null });
+    return userGit.get(projectId);
+  }
+  function ensureSeqC(s, userId) {
+    if (!s.seq.has(userId)) s.seq.set(userId, { proj: 1, task: 1, thread: 1, commit: 1 });
+    const seq = s.seq.get(userId);
+    for (const k of ['proj','task','thread','commit']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    return seq;
+  }
+  function langFromPath(p) {
+    const ext = (p.split('.').pop() || '').toLowerCase();
+    const m = { ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript', py: 'python', rs: 'rust', go: 'go', java: 'java', cpp: 'cpp', c: 'c', md: 'markdown', json: 'json', yml: 'yaml', yaml: 'yaml', html: 'html', css: 'css', sh: 'shell', sql: 'sql' };
+    return m[ext] || 'plaintext';
+  }
+
+  // ── Projects (virtual workspaces) ──────────────────────────────
+
+  registerLensAction("code", "projects-list", (ctx, _a, _p = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { projects: bucketC(s.projects, aidC(ctx)) } };
+  });
+
+  registerLensAction("code", "projects-create", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const seq = ensureSeqC(s, userId);
+    const proj = {
+      id: uidC("proj"),
+      number: `P-${String(seq.proj).padStart(4, "0")}`,
+      name,
+      description: String(params.description || ""),
+      language: String(params.language || ""),
+      createdAt: isoC(),
+      lastOpenedAt: isoC(),
+    };
+    seq.proj++;
+    bucketC(s.projects, userId).push(proj);
+    // Seed initial files if requested.
+    if (params.scaffold === 'node-ts') {
+      const files = ensureFiles(s, userId, proj.id);
+      files.set('package.json', { content: JSON.stringify({ name: name.toLowerCase().replace(/\s+/g, '-'), version: '0.1.0', type: 'module', scripts: { dev: 'tsx src/index.ts' } }, null, 2), modifiedAt: isoC() });
+      files.set('src/index.ts', { content: "// Welcome to your project.\nexport function main() {\n  console.log('hello');\n}\n\nmain();\n", modifiedAt: isoC() });
+      files.set('README.md', { content: `# ${name}\n\n${params.description || ''}\n`, modifiedAt: isoC() });
+      files.set('tsconfig.json', { content: JSON.stringify({ compilerOptions: { target: 'es2022', module: 'esnext', strict: true } }, null, 2), modifiedAt: isoC() });
+    }
+    saveWS();
+    return { ok: true, result: { project: proj } };
+  });
+
+  registerLensAction("code", "projects-delete", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const id = String(params.id || "");
+    const list = bucketC(s.projects, userId);
+    const i = list.findIndex(p => p.id === id);
+    if (i < 0) return { ok: false, error: "project not found" };
+    list.splice(i, 1);
+    if (s.files.has(userId)) s.files.get(userId).delete(id);
+    if (s.gitState.has(userId)) s.gitState.get(userId).delete(id);
+    saveWS();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Files CRUD ─────────────────────────────────────────────────
+
+  registerLensAction("code", "files-tree", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    if (!projectId) return { ok: false, error: "projectId required" };
+    const files = ensureFiles(s, userId, projectId);
+    // Build tree from paths
+    const paths = Array.from(files.keys()).sort();
+    const tree = [];
+    for (const p of paths) {
+      tree.push({ path: p, language: langFromPath(p), size: files.get(p).content.length, modifiedAt: files.get(p).modifiedAt });
+    }
+    return { ok: true, result: { tree, count: tree.length } };
+  });
+
+  registerLensAction("code", "files-read", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const path = String(params.path || "");
+    if (!projectId || !path) return { ok: false, error: "projectId + path required" };
+    const files = ensureFiles(s, userId, projectId);
+    if (!files.has(path)) return { ok: false, error: "file not found" };
+    const file = files.get(path);
+    return { ok: true, result: { path, content: file.content, language: langFromPath(path), modifiedAt: file.modifiedAt } };
+  });
+
+  registerLensAction("code", "files-write", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const path = String(params.path || "");
+    if (!projectId || !path) return { ok: false, error: "projectId + path required" };
+    if (typeof params.content !== 'string') return { ok: false, error: "content (string) required" };
+    if (params.content.length > 1_000_000) return { ok: false, error: "file too large (>1MB)" };
+    const files = ensureFiles(s, userId, projectId);
+    const wasExisting = files.has(path);
+    files.set(path, { content: params.content, modifiedAt: isoC() });
+    // Track as modified in git
+    const git = ensureGit(s, userId, projectId);
+    git.modified.add(path);
+    saveWS();
+    return { ok: true, result: { path, language: langFromPath(path), bytes: params.content.length, created: !wasExisting } };
+  });
+
+  registerLensAction("code", "files-delete", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const path = String(params.path || "");
+    const files = ensureFiles(s, userId, projectId);
+    if (!files.has(path)) return { ok: false, error: "file not found" };
+    files.delete(path);
+    const git = ensureGit(s, userId, projectId);
+    git.modified.add(path); // deletion is a modification for the next commit
+    saveWS();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  registerLensAction("code", "files-rename", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const from = String(params.from || "");
+    const to = String(params.to || "");
+    if (!from || !to) return { ok: false, error: "from + to required" };
+    const files = ensureFiles(s, userId, projectId);
+    if (!files.has(from)) return { ok: false, error: "source file not found" };
+    if (files.has(to)) return { ok: false, error: "target path exists" };
+    const file = files.get(from);
+    files.delete(from);
+    files.set(to, { ...file, modifiedAt: isoC() });
+    const git = ensureGit(s, userId, projectId);
+    git.modified.add(to);
+    git.modified.add(from);
+    saveWS();
+    return { ok: true, result: { from, to } };
+  });
+
+  // ── Virtual Git (project-scoped) ──────────────────────────────
+
+  registerLensAction("code", "git-status", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    if (!projectId) return { ok: false, error: "projectId required" };
+    const git = ensureGit(s, userId, projectId);
+    return {
+      ok: true,
+      result: {
+        branch: git.branch,
+        branches: git.branches,
+        modified: Array.from(git.modified),
+        staged: Array.from(git.staged),
+        head: git.head,
+        clean: git.modified.size === 0 && git.staged.size === 0,
+      },
+    };
+  });
+
+  registerLensAction("code", "git-stage", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const git = ensureGit(s, userId, projectId);
+    const paths = Array.isArray(params.paths) ? params.paths.map(String) : (params.path ? [String(params.path)] : Array.from(git.modified));
+    for (const p of paths) {
+      if (git.modified.has(p)) {
+        git.modified.delete(p);
+        git.staged.add(p);
+      }
+    }
+    saveWS();
+    return { ok: true, result: { staged: Array.from(git.staged), modified: Array.from(git.modified) } };
+  });
+
+  registerLensAction("code", "git-unstage", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const git = ensureGit(s, aidC(ctx), String(params.projectId || ""));
+    const paths = Array.isArray(params.paths) ? params.paths.map(String) : Array.from(git.staged);
+    for (const p of paths) {
+      if (git.staged.has(p)) { git.staged.delete(p); git.modified.add(p); }
+    }
+    saveWS();
+    return { ok: true, result: { staged: Array.from(git.staged), modified: Array.from(git.modified) } };
+  });
+
+  registerLensAction("code", "git-commit", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const message = String(params.message || "").trim();
+    if (!message) return { ok: false, error: "commit message required" };
+    const git = ensureGit(s, userId, projectId);
+    if (git.staged.size === 0) return { ok: false, error: "nothing staged" };
+    const seq = ensureSeqC(s, userId);
+    const commit = {
+      id: uidC("commit").slice(0, 12),
+      message,
+      paths: Array.from(git.staged),
+      author: userId,
+      branch: git.branch,
+      committedAt: isoC(),
+      parent: git.head,
+      number: `C-${String(seq.commit).padStart(5, "0")}`,
+    };
+    seq.commit++;
+    git.log.unshift(commit);
+    git.head = commit.id;
+    git.staged.clear();
+    saveWS();
+    return { ok: true, result: { commit } };
+  });
+
+  registerLensAction("code", "git-log", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const git = ensureGit(s, aidC(ctx), String(params.projectId || ""));
+    return { ok: true, result: { log: git.log.slice(0, Number(params.limit) || 50) } };
+  });
+
+  registerLensAction("code", "git-branch-create", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const git = ensureGit(s, aidC(ctx), String(params.projectId || ""));
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "branch name required" };
+    if (git.branches.includes(name)) return { ok: false, error: "branch exists" };
+    git.branches.push(name);
+    if (params.checkout) git.branch = name;
+    saveWS();
+    return { ok: true, result: { branches: git.branches, current: git.branch } };
+  });
+
+  registerLensAction("code", "git-checkout", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const git = ensureGit(s, aidC(ctx), String(params.projectId || ""));
+    const branch = String(params.branch || "");
+    if (!git.branches.includes(branch)) return { ok: false, error: "branch not found" };
+    git.branch = branch;
+    saveWS();
+    return { ok: true, result: { branch: git.branch } };
+  });
+
+  // ── Agent tasks (Cursor Composer / Agent mode parity) ─────────
+
+  registerLensAction("code", "agent-tasks-list", (ctx, _a, _p = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { tasks: bucketC(s.agentTasks, aidC(ctx)).slice().sort((a, b) => b.startedAt.localeCompare(a.startedAt)) } };
+  });
+
+  registerLensAction("code", "agent-task-start", async (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const prompt = String(params.prompt || "").trim();
+    if (!projectId || !prompt) return { ok: false, error: "projectId + prompt required" };
+    const project = bucketC(s.projects, userId).find(p => p.id === projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const seq = ensureSeqC(s, userId);
+    const task = {
+      id: uidC("task"),
+      number: `T-${String(seq.task).padStart(5, "0")}`,
+      projectId,
+      prompt,
+      status: 'running',
+      startedAt: isoC(),
+      finishedAt: null,
+      plan: [],
+      steps: [],
+      filesChanged: [],
+    };
+    seq.task++;
+    bucketC(s.agentTasks, userId).push(task);
+    saveWS();
+
+    // Compose deterministic plan from prompt keywords (no brain required).
+    const tokens = prompt.toLowerCase();
+    const plan = [];
+    if (/refactor|rename|extract|inline/.test(tokens)) plan.push({ action: 'refactor', summary: 'Refactor target identifiers / extract helper.' });
+    if (/test|spec|coverage/.test(tokens)) plan.push({ action: 'tests', summary: 'Add or update tests for affected modules.' });
+    if (/fix|bug|error/.test(tokens)) plan.push({ action: 'fix', summary: 'Locate failing path + apply minimal fix.' });
+    if (/add|implement|feature|create/.test(tokens)) plan.push({ action: 'implement', summary: 'Implement the requested feature across affected files.' });
+    if (/docs|comment|readme/.test(tokens)) plan.push({ action: 'docs', summary: 'Update documentation / README / inline comments.' });
+    if (plan.length === 0) plan.push({ action: 'analyze', summary: 'Analyze codebase and propose changes.' });
+    task.plan = plan;
+
+    // Try brain enhancement (multi-file-plan already exists — we don't re-execute it here, the task is the surface).
+    const brain = ctx?.llm?.chat;
+    if (typeof brain === 'function') {
+      try {
+        const files = ensureFiles(s, userId, projectId);
+        const sampleFiles = Array.from(files.keys()).slice(0, 8);
+        const fileContext = sampleFiles.map(p => `--- ${p} ---\n${files.get(p).content.slice(0, 800)}`).join('\n\n');
+        const r = await brain({
+          messages: [
+            { role: 'system', content: "You are a coding agent. Output ONLY JSON: {\"plan\":[{\"action\":\"...\",\"summary\":\"...\"}]}. Be specific about which files to change. Use only facts from the snapshot." },
+            { role: 'user', content: `Project ${project.name}.\n\nFile snapshot:\n${fileContext}\n\nUser request: ${prompt}` },
+          ],
+          temperature: 0.2,
+          maxTokens: 1500,
+        });
+        const text = String(r?.content || r?.text || '').trim();
+        const parsed = extractJsonCode(text);
+        if (parsed?.plan && Array.isArray(parsed.plan)) {
+          task.plan = parsed.plan.slice(0, 12).map(p => ({ action: String(p.action || ''), summary: String(p.summary || '') }));
+          task.source = 'brain';
+        } else task.source = 'deterministic_brain_unparseable';
+      } catch (e) {
+        task.source = 'deterministic_after_brain_error';
+        task.error = String(e?.message || e);
+      }
+    } else task.source = 'deterministic';
+
+    saveWS();
+    return { ok: true, result: { task } };
+  });
+
+  registerLensAction("code", "agent-task-finish", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const task = bucketC(s.agentTasks, aidC(ctx)).find(t => t.id === String(params.id || ""));
+    if (!task) return { ok: false, error: "task not found" };
+    task.status = ['completed','cancelled','failed'].includes(params.status) ? params.status : 'completed';
+    task.finishedAt = isoC();
+    if (Array.isArray(params.filesChanged)) task.filesChanged = params.filesChanged.map(String);
+    if (Array.isArray(params.steps)) task.steps = params.steps;
+    saveWS();
+    return { ok: true, result: { task } };
+  });
+
+  // ── Inline edit (Cursor cmd-K parity) ─────────────────────────
+
+  registerLensAction("code", "inline-edit", async (ctx, _a, params = {}) => {
+    const original = String(params.code || "");
+    const instruction = String(params.instruction || "").trim();
+    if (!original || !instruction) return { ok: false, error: "code + instruction required" };
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== 'function') return { ok: false, error: "brain unavailable — inline edit requires LLM" };
+    try {
+      const lang = String(params.language || "plaintext");
+      const r = await brain({
+        messages: [
+          { role: 'system', content: `You are inside a code editor. The user is highlighting code and asking for an edit. Reply with ONLY the new code — no fences, no prose, no explanation. Preserve the language (${lang}) and indentation. Do not add or remove imports unless asked.` },
+          { role: 'user', content: `Selection:\n${original}\n\nInstruction: ${instruction}` },
+        ],
+        temperature: 0.1,
+        maxTokens: 4000,
+      });
+      const text = String(r?.content || r?.text || '').trim();
+      const stripped = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+      return { ok: true, result: { edited: stripped, original, instruction } };
+    } catch (e) {
+      return { ok: false, error: `inline edit failed: ${e?.message || e}` };
+    }
+  });
+
+  // ── Explain / refactor / test-generate / format ──────────────
+
+  registerLensAction("code", "explain", async (ctx, _a, params = {}) => {
+    const code = String(params.code || "");
+    if (!code) return { ok: false, error: "code required" };
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== 'function') {
+      const lines = code.split('\n').length;
+      return { ok: true, result: { explanation: `[deterministic] ${lines}-line ${langFromPath(params.path || '')} snippet. No LLM available to provide deeper analysis.`, source: 'deterministic' } };
+    }
+    try {
+      const r = await brain({
+        messages: [
+          { role: 'system', content: "Explain what this code does in 2-4 sentences. Be concrete about inputs/outputs and any side effects. Plain English, no fluff." },
+          { role: 'user', content: code },
+        ],
+        temperature: 0.2, maxTokens: 600,
+      });
+      const text = String(r?.content || r?.text || '').trim();
+      return { ok: true, result: { explanation: text || 'No explanation generated.', source: 'brain' } };
+    } catch (e) { return { ok: false, error: `explain failed: ${e?.message || e}` }; }
+  });
+
+  registerLensAction("code", "refactor-suggest", async (ctx, _a, params = {}) => {
+    const code = String(params.code || "");
+    const goal = String(params.goal || "Improve readability and maintainability");
+    if (!code) return { ok: false, error: "code required" };
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== 'function') return { ok: false, error: "brain unavailable" };
+    try {
+      const r = await brain({
+        messages: [
+          { role: 'system', content: `Refactor the given code to: ${goal}. Reply with ONLY the refactored code — no prose. Preserve behavior. Match the language and style.` },
+          { role: 'user', content: code },
+        ],
+        temperature: 0.1, maxTokens: 4000,
+      });
+      const text = String(r?.content || r?.text || '').trim();
+      const stripped = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+      return { ok: true, result: { refactored: stripped, original: code, goal } };
+    } catch (e) { return { ok: false, error: `refactor failed: ${e?.message || e}` }; }
+  });
+
+  registerLensAction("code", "test-generate", async (ctx, _a, params = {}) => {
+    const code = String(params.code || "");
+    const framework = String(params.framework || "node:test");
+    if (!code) return { ok: false, error: "code required" };
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== 'function') return { ok: false, error: "brain unavailable" };
+    try {
+      const r = await brain({
+        messages: [
+          { role: 'system', content: `Write unit tests for this code using ${framework}. Reply with ONLY the test file content — no prose, no fences. Cover happy path + edge cases + error handling. Use real assertions.` },
+          { role: 'user', content: code },
+        ],
+        temperature: 0.2, maxTokens: 4000,
+      });
+      const text = String(r?.content || r?.text || '').trim();
+      const stripped = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+      return { ok: true, result: { tests: stripped, framework } };
+    } catch (e) { return { ok: false, error: `test gen failed: ${e?.message || e}` }; }
+  });
+
+  registerLensAction("code", "format-code", (_ctx, _a, params = {}) => {
+    // Minimal whitespace normalization. Real prettier requires a runtime — kept deterministic.
+    const code = String(params.code || "");
+    if (!code) return { ok: false, error: "code required" };
+    const lang = String(params.language || langFromPath(params.path || ""));
+    // Normalize: tabs → 2 spaces, trim trailing whitespace, ensure final newline, collapse 3+ blank lines.
+    let out = code.replace(/\t/g, '  ');
+    out = out.split('\n').map(l => l.replace(/\s+$/, '')).join('\n');
+    out = out.replace(/\n{3,}/g, '\n\n');
+    if (!out.endsWith('\n')) out += '\n';
+    return { ok: true, result: { formatted: out, language: lang, bytesIn: code.length, bytesOut: out.length } };
+  });
+
+  // ── Find references (file-grep across project) ───────────────
+
+  registerLensAction("code", "find-references", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const symbol = String(params.symbol || "").trim();
+    if (!projectId || !symbol) return { ok: false, error: "projectId + symbol required" };
+    const files = ensureFiles(s, userId, projectId);
+    const refs = [];
+    const re = new RegExp(`\\b${symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+    for (const [path, blob] of files) {
+      const lines = blob.content.split('\n');
+      lines.forEach((line, i) => {
+        if (re.test(line)) refs.push({ path, line: i + 1, snippet: line.trim().slice(0, 200) });
+        re.lastIndex = 0;
+      });
+    }
+    return { ok: true, result: { symbol, references: refs.slice(0, 200), count: refs.length } };
+  });
+
+  // ── Dashboard summary ─────────────────────────────────────────
+
+  registerLensAction("code", "workspace-summary", (ctx, _a, _p = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projects = bucketC(s.projects, userId);
+    let fileCount = 0;
+    for (const proj of projects) {
+      const files = s.files.get(userId)?.get(proj.id);
+      if (files) fileCount += files.size;
+    }
+    const tasks = bucketC(s.agentTasks, userId);
+    const runningTasks = tasks.filter(t => t.status === 'running').length;
+    let dirtyProjects = 0;
+    const userGit = s.gitState.get(userId);
+    if (userGit) {
+      for (const g of userGit.values()) {
+        if (g.modified.size > 0 || g.staged.size > 0) dirtyProjects++;
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        projectCount: projects.length,
+        fileCount,
+        runningTasks,
+        completedTasks: tasks.filter(t => t.status === 'completed').length,
+        dirtyProjects,
+      },
+    };
+  });
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────
