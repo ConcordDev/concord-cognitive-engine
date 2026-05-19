@@ -388,4 +388,526 @@ export default function registerRealEstateActions(registerLensAction) {
       return { ok: false, error: `neighborhood stats failed: ${e?.message || "network"}` };
     }
   });
+
+  // ─── Full-app parity: Zillow/Redfin 2026 ────────────────────────────
+  //
+  // Adds: listings CRUD + search, favourites, tours, AVM (Zestimate-shape),
+  // school + walk + commute scores, hot-home algorithm, AI conversational
+  // search parser, side-by-side comparison, agent messaging, open houses,
+  // property notes, dashboard summary.
+
+  function uidRE(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function ensureREBucket(s, key, userId) {
+    if (!s[key]) s[key] = new Map();
+    if (!s[key].has(userId)) s[key].set(userId, []);
+    return s[key].get(userId);
+  }
+  function hashRE(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    return h;
+  }
+
+  // ── Listings CRUD ──────────────────────────────────────────────
+
+  registerLensAction("realestate", "listings-list", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const all = ensureREBucket(s, "listings", userId);
+    const sortBy = ["newest", "price_asc", "price_desc", "beds", "sqft"].includes(params.sortBy) ? params.sortBy : "newest";
+    const sorted = [...all].sort((a, b) => {
+      if (sortBy === "price_asc") return a.price - b.price;
+      if (sortBy === "price_desc") return b.price - a.price;
+      if (sortBy === "beds") return b.beds - a.beds;
+      if (sortBy === "sqft") return b.sqft - a.sqft;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return { ok: true, result: { listings: sorted, total: sorted.length } };
+  });
+
+  registerLensAction("realestate", "listings-add", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const address = String(params.address || "").trim();
+    const price = Number(params.price);
+    if (!address) return { ok: false, error: "address required" };
+    if (!Number.isFinite(price) || price <= 0) return { ok: false, error: "price required" };
+    const listing = {
+      id: uidRE("lst"),
+      address,
+      city: String(params.city || ""),
+      state: String(params.state || ""),
+      zip: String(params.zip || ""),
+      price,
+      beds: Math.max(0, Number(params.beds) || 0),
+      baths: Math.max(0, Number(params.baths) || 0),
+      sqft: Math.max(0, Number(params.sqft) || 0),
+      lotSqft: Math.max(0, Number(params.lotSqft) || 0),
+      yearBuilt: Number(params.yearBuilt) || null,
+      kind: ["single_family", "condo", "townhouse", "multi_family", "land"].includes(params.kind) ? params.kind : "single_family",
+      status: ["for_sale", "pending", "sold", "off_market"].includes(params.status) ? params.status : "for_sale",
+      daysOnMarket: Math.max(0, Number(params.daysOnMarket) || 0),
+      description: String(params.description || ""),
+      lat: params.lat != null ? Number(params.lat) : null,
+      lng: params.lng != null ? Number(params.lng) : null,
+      imageUrl: String(params.imageUrl || ""),
+      priceHistory: Array.isArray(params.priceHistory) ? params.priceHistory : [{ date: new Date().toISOString().slice(0, 10), price, kind: "listed" }],
+      createdAt: new Date().toISOString(),
+    };
+    ensureREBucket(s, "listings", userId).push(listing);
+    saveREState();
+    return { ok: true, result: { listing } };
+  });
+
+  registerLensAction("realestate", "listings-get", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const id = String(params.id || "");
+    const all = ensureREBucket(s, "listings", userId);
+    const listing = all.find(l => l.id === id);
+    if (!listing) return { ok: false, error: "listing not found" };
+    return { ok: true, result: { listing } };
+  });
+
+  registerLensAction("realestate", "listings-delete", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const id = String(params.id || "");
+    const all = ensureREBucket(s, "listings", userId);
+    const idx = all.findIndex(l => l.id === id);
+    if (idx < 0) return { ok: false, error: "listing not found" };
+    all.splice(idx, 1);
+    saveREState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("realestate", "listings-search", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const all = ensureREBucket(s, "listings", userId);
+    const f = params.filters || {};
+    const minPrice = Number(f.minPrice) || 0;
+    const maxPrice = Number(f.maxPrice) || Infinity;
+    const minBeds = Number(f.minBeds) || 0;
+    const minBaths = Number(f.minBaths) || 0;
+    const minSqft = Number(f.minSqft) || 0;
+    const kinds = Array.isArray(f.kinds) ? f.kinds : null;
+    const city = f.city ? String(f.city).toLowerCase() : null;
+    const status = f.status || null;
+    const matches = all.filter(l => {
+      if (l.price < minPrice || l.price > maxPrice) return false;
+      if (l.beds < minBeds) return false;
+      if (l.baths < minBaths) return false;
+      if (l.sqft < minSqft) return false;
+      if (kinds && !kinds.includes(l.kind)) return false;
+      if (city && !l.city.toLowerCase().includes(city)) return false;
+      if (status && l.status !== status) return false;
+      return true;
+    });
+    return { ok: true, result: { matches, total: matches.length, filters: f } };
+  });
+
+  // ── Favourites ─────────────────────────────────────────────────
+
+  registerLensAction("realestate", "favourites-list", (ctx, _a, _p = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const favIds = ensureREBucket(s, "favourites", userId);
+    const all = ensureREBucket(s, "listings", userId);
+    const favourites = favIds
+      .map(id => all.find(l => l.id === id))
+      .filter(Boolean);
+    return { ok: true, result: { favourites, ids: favIds } };
+  });
+
+  registerLensAction("realestate", "favourites-toggle", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const favIds = ensureREBucket(s, "favourites", userId);
+    const idx = favIds.indexOf(id);
+    if (idx >= 0) { favIds.splice(idx, 1); saveREState(); return { ok: true, result: { id, favourited: false } }; }
+    favIds.push(id); saveREState();
+    return { ok: true, result: { id, favourited: true } };
+  });
+
+  // ── Tour scheduling ────────────────────────────────────────────
+
+  registerLensAction("realestate", "tours-list", (ctx, _a, _p = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const tours = ensureREBucket(s, "tours", userId);
+    return { ok: true, result: { tours } };
+  });
+
+  registerLensAction("realestate", "tours-request", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const listingId = String(params.listingId || "");
+    const date = String(params.date || "").slice(0, 10);
+    const time = String(params.time || "12:00");
+    const kind = ["in_person", "video", "self_tour"].includes(params.kind) ? params.kind : "in_person";
+    if (!listingId || !date) return { ok: false, error: "listingId and date required" };
+    const tour = {
+      id: uidRE("tour"), listingId, date, time, kind,
+      status: "requested",
+      requestedAt: new Date().toISOString(),
+      notes: String(params.notes || ""),
+    };
+    ensureREBucket(s, "tours", userId).push(tour);
+    saveREState();
+    return { ok: true, result: { tour } };
+  });
+
+  registerLensAction("realestate", "tours-cancel", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const id = String(params.id || "");
+    const tours = ensureREBucket(s, "tours", userId);
+    const t = tours.find(x => x.id === id);
+    if (!t) return { ok: false, error: "tour not found" };
+    t.status = "cancelled";
+    saveREState();
+    return { ok: true, result: { tour: t } };
+  });
+
+  // ── AVM / Zestimate-shape valuation ────────────────────────────
+
+  registerLensAction("realestate", "avm-estimate", (_ctx, _a, params = {}) => {
+    const sqft = Math.max(0, Number(params.sqft) || 0);
+    const beds = Math.max(0, Number(params.beds) || 0);
+    const baths = Math.max(0, Number(params.baths) || 0);
+    const yearBuilt = Number(params.yearBuilt) || 1990;
+    const lotSqft = Math.max(0, Number(params.lotSqft) || 0);
+    const zipMedian = Math.max(0, Number(params.zipMedianPpsf) || 240);
+    const condition = ["excellent", "good", "fair", "poor"].includes(params.condition) ? params.condition : "good";
+    if (sqft <= 0) return { ok: false, error: "sqft must be > 0" };
+    const conditionMult = { excellent: 1.10, good: 1.00, fair: 0.90, poor: 0.78 }[condition];
+    const ageYears = Math.max(0, new Date().getFullYear() - yearBuilt);
+    const ageDepreciation = Math.max(0.7, 1 - ageYears * 0.004);
+    const bedBathBoost = 1 + (beds * 0.01) + (baths * 0.015);
+    const lotPremium = lotSqft > 0 ? Math.min(0.10, lotSqft / 100000) : 0;
+    const baseValue = sqft * zipMedian * conditionMult * ageDepreciation * bedBathBoost * (1 + lotPremium);
+    const lowEstimate = baseValue * 0.92;
+    const highEstimate = baseValue * 1.08;
+    const errorPct = 0.02;
+    const monthlyRent = Math.round(baseValue * 0.005);
+    return {
+      ok: true,
+      result: {
+        estimate: Math.round(baseValue),
+        lowEstimate: Math.round(lowEstimate),
+        highEstimate: Math.round(highEstimate),
+        confidenceErrorPct: errorPct,
+        pricePerSqft: Math.round(baseValue / sqft),
+        rentEstimate: monthlyRent,
+        inputs: { sqft, beds, baths, yearBuilt, lotSqft, condition, zipMedianPpsf: zipMedian },
+        factors: { conditionMult, ageDepreciation: Math.round(ageDepreciation * 100) / 100, bedBathBoost: Math.round(bedBathBoost * 100) / 100, lotPremium: Math.round(lotPremium * 100) / 100 },
+        notes: "Deterministic AVM. Replace zipMedianPpsf with live market data for production accuracy.",
+      },
+    };
+  });
+
+  // ── School ratings (deterministic seeded heuristic) ────────────
+
+  registerLensAction("realestate", "school-ratings", (_ctx, _a, params = {}) => {
+    const address = String(params.address || "").trim();
+    if (!address) return { ok: false, error: "address required" };
+    const seed = Math.abs(hashRE(address));
+    const seedRand = (offset) => ((seed >> offset) & 0xff) / 255;
+    const elementaryScore = Math.round(3 + seedRand(0) * 7);
+    const middleScore = Math.round(3 + seedRand(4) * 7);
+    const highScore = Math.round(3 + seedRand(8) * 7);
+    const schools = [
+      { kind: "elementary", name: `${address.split(",")[0].split(" ").pop()} Elementary`, rating: elementaryScore, distance: Math.round(seedRand(12) * 20) / 10 },
+      { kind: "middle", name: `${address.split(",")[0].split(" ").pop()} Middle School`, rating: middleScore, distance: Math.round(seedRand(16) * 30) / 10 },
+      { kind: "high", name: `${address.split(",")[0].split(" ").pop()} High School`, rating: highScore, distance: Math.round(seedRand(20) * 40) / 10 },
+    ];
+    const avgRating = (elementaryScore + middleScore + highScore) / 3;
+    return {
+      ok: true,
+      result: {
+        schools,
+        averageRating: Math.round(avgRating * 10) / 10,
+        districtName: `${address.split(",").slice(-2, -1)[0]?.trim() || "Local"} School District`,
+        notes: "Deterministic seeded ratings; wire GreatSchools API for live data.",
+      },
+    };
+  });
+
+  // ── Walk / Transit / Bike score ────────────────────────────────
+
+  registerLensAction("realestate", "walk-score", (_ctx, _a, params = {}) => {
+    const address = String(params.address || "").trim();
+    if (!address) return { ok: false, error: "address required" };
+    const seed = Math.abs(hashRE(address + "walk"));
+    const walk = Math.round((seed & 0xff) / 255 * 100);
+    const transit = Math.round(((seed >> 8) & 0xff) / 255 * 100);
+    const bike = Math.round(((seed >> 16) & 0xff) / 255 * 100);
+    const desc = (s) => s >= 90 ? "Walker's Paradise" : s >= 70 ? "Very Walkable" : s >= 50 ? "Somewhat Walkable" : s >= 25 ? "Car-Dependent" : "Car-Required";
+    return {
+      ok: true,
+      result: {
+        walkScore: walk, walkDesc: desc(walk),
+        transitScore: transit, transitDesc: desc(transit).replace("Walk", "Transit"),
+        bikeScore: bike, bikeDesc: desc(bike).replace("Walker", "Biker"),
+        notes: "Deterministic seeded scores; wire WalkScore API for live data.",
+      },
+    };
+  });
+
+  // ── Commute estimate ───────────────────────────────────────────
+
+  registerLensAction("realestate", "commute-estimate", (_ctx, _a, params = {}) => {
+    const from = String(params.from || "").trim();
+    const to = String(params.to || "").trim();
+    const mode = ["drive", "transit", "bike", "walk"].includes(params.mode) ? params.mode : "drive";
+    if (!from || !to) return { ok: false, error: "from and to required" };
+    const seed = Math.abs(hashRE(`${from}|${to}`));
+    const baseMinutes = 12 + (seed % 60);
+    const multiplier = mode === "drive" ? 1.0 : mode === "transit" ? 1.8 : mode === "bike" ? 2.4 : 4.0;
+    const minutes = Math.round(baseMinutes * multiplier);
+    const distanceMi = Math.round(baseMinutes * 0.6 * 10) / 10;
+    return {
+      ok: true,
+      result: {
+        minutes, distanceMi, mode,
+        rushHourMinutes: Math.round(minutes * 1.4),
+        notes: "Deterministic seeded estimate; wire Google Distance Matrix or HERE for live routing.",
+      },
+    };
+  });
+
+  // ── Hot-home algorithm (Redfin-shape) ──────────────────────────
+
+  registerLensAction("realestate", "hot-score", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const id = String(params.listingId || "");
+    if (!id) return { ok: false, error: "listingId required" };
+    const listing = ensureREBucket(s, "listings", userId).find(l => l.id === id);
+    if (!listing) return { ok: false, error: "listing not found" };
+    let score = 50;
+    if (listing.daysOnMarket < 3) score += 25;
+    else if (listing.daysOnMarket < 7) score += 15;
+    else if (listing.daysOnMarket > 30) score -= 15;
+    else if (listing.daysOnMarket > 60) score -= 25;
+    const hist = listing.priceHistory || [];
+    if (hist.length >= 2) {
+      const first = hist[0].price;
+      const last = hist[hist.length - 1].price;
+      if (last < first) score -= 10;
+    }
+    const tours = ensureREBucket(s, "tours", userId).filter(t => t.listingId === id);
+    score += Math.min(20, tours.length * 5);
+    const favIds = ensureREBucket(s, "favourites", userId);
+    if (favIds.includes(id)) score += 5;
+    score = Math.max(0, Math.min(100, score));
+    const tag = score >= 80 ? "🔥 Very hot" : score >= 65 ? "🔥 Hot" : score >= 45 ? "Warm" : "Cooling";
+    return { ok: true, result: { listingId: id, score, tag, daysOnMarket: listing.daysOnMarket, tourCount: tours.length } };
+  });
+
+  // ── AI conversational search parser ────────────────────────────
+
+  registerLensAction("realestate", "parse-search-query", (_ctx, _a, params = {}) => {
+    const query = String(params.query || "").toLowerCase();
+    if (!query.trim()) return { ok: false, error: "query required" };
+    const filters = {};
+    let bedM = query.match(/(\d+)\s*\+?\s*(?:bed|br|bedroom)/);
+    if (bedM) filters.minBeds = Number(bedM[1]);
+    let bathM = query.match(/(\d+)\s*\+?\s*(?:bath|ba|bathroom)/);
+    if (bathM) filters.minBaths = Number(bathM[1]);
+    let priceUnder = query.match(/under\s*\$?(\d+)\s*(k|m)?/);
+    if (priceUnder) filters.maxPrice = Number(priceUnder[1]) * (priceUnder[2] === "m" ? 1_000_000 : priceUnder[2] === "k" ? 1_000 : 1);
+    let priceOver = query.match(/over\s*\$?(\d+)\s*(k|m)?/);
+    if (priceOver) filters.minPrice = Number(priceOver[1]) * (priceOver[2] === "m" ? 1_000_000 : priceOver[2] === "k" ? 1_000 : 1);
+    let sqftM = query.match(/(\d+)\s*\+?\s*(?:sq\s*ft|sqft|square\s*feet)/);
+    if (sqftM) filters.minSqft = Number(sqftM[1]);
+    const kinds = [];
+    if (/condo/.test(query)) kinds.push("condo");
+    if (/townhouse|townhome/.test(query)) kinds.push("townhouse");
+    if (/single\s*family|sfh|house/.test(query)) kinds.push("single_family");
+    if (/multi\s*family|duplex|triplex/.test(query)) kinds.push("multi_family");
+    if (kinds.length > 0) filters.kinds = kinds;
+    let cityM = query.match(/\bin\s+([a-z][a-z\s]{1,30}?)(?=\s+(?:with|near|and|under|over|that|having)|[,.]|$)/);
+    if (cityM) filters.city = cityM[1].trim();
+    const tags = [];
+    if (/pool/.test(query)) tags.push("pool");
+    if (/garage/.test(query)) tags.push("garage");
+    if (/yard|backyard/.test(query)) tags.push("yard");
+    if (/walkable|walk\s*score/.test(query)) tags.push("walkable");
+    if (/good\s*schools?/.test(query)) tags.push("good_schools");
+    return {
+      ok: true,
+      result: { filters, tags, query, parsedFieldCount: Object.keys(filters).length + tags.length },
+    };
+  });
+
+  // ── Side-by-side comparison ────────────────────────────────────
+
+  registerLensAction("realestate", "compare", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const ids = Array.isArray(params.ids) ? params.ids.slice(0, 4) : [];
+    if (ids.length < 2) return { ok: false, error: "at least 2 listing ids required" };
+    const all = ensureREBucket(s, "listings", userId);
+    const listings = ids.map(id => all.find(l => l.id === id)).filter(Boolean);
+    if (listings.length < 2) return { ok: false, error: "could not resolve listings" };
+    const rows = [
+      { field: "Price", values: listings.map(l => l.price) },
+      { field: "Beds", values: listings.map(l => l.beds) },
+      { field: "Baths", values: listings.map(l => l.baths) },
+      { field: "Sqft", values: listings.map(l => l.sqft) },
+      { field: "$/Sqft", values: listings.map(l => l.sqft > 0 ? Math.round(l.price / l.sqft) : null) },
+      { field: "Year built", values: listings.map(l => l.yearBuilt) },
+      { field: "Days on market", values: listings.map(l => l.daysOnMarket) },
+      { field: "Kind", values: listings.map(l => l.kind) },
+    ];
+    return { ok: true, result: { listings, rows } };
+  });
+
+  // ── Agent messaging ────────────────────────────────────────────
+
+  registerLensAction("realestate", "agents-list", (ctx, _a, _p = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const agents = ensureREBucket(s, "agents", userId);
+    return { ok: true, result: { agents } };
+  });
+
+  registerLensAction("realestate", "agents-add", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const agent = {
+      id: uidRE("agent"), name,
+      brokerage: String(params.brokerage || ""),
+      phone: String(params.phone || ""),
+      email: String(params.email || ""),
+      rating: Math.max(0, Math.min(5, Number(params.rating) || 5)),
+      reviewCount: Math.max(0, Number(params.reviewCount) || 0),
+      addedAt: new Date().toISOString(),
+    };
+    ensureREBucket(s, "agents", userId).push(agent);
+    saveREState();
+    return { ok: true, result: { agent } };
+  });
+
+  registerLensAction("realestate", "agent-message", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const agentId = String(params.agentId || "");
+    const text = String(params.text || "").trim();
+    if (!agentId || !text) return { ok: false, error: "agentId and text required" };
+    const msg = {
+      id: uidRE("msg"), agentId, text,
+      from: "user",
+      timestamp: new Date().toISOString(),
+      listingId: params.listingId ? String(params.listingId) : null,
+    };
+    ensureREBucket(s, "messages", userId).push(msg);
+    saveREState();
+    return { ok: true, result: { message: msg } };
+  });
+
+  registerLensAction("realestate", "messages-list", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const agentId = params.agentId ? String(params.agentId) : null;
+    const all = ensureREBucket(s, "messages", userId);
+    const messages = agentId ? all.filter(m => m.agentId === agentId) : all;
+    return { ok: true, result: { messages } };
+  });
+
+  // ── Open house calendar ────────────────────────────────────────
+
+  registerLensAction("realestate", "open-houses-upcoming", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const days = Math.max(1, Math.min(30, Number(params.days) || 14));
+    const all = ensureREBucket(s, "listings", userId).filter(l => l.status === "for_sale");
+    const today = new Date();
+    const events = all.map(l => {
+      const offset = Math.abs(hashRE(l.id)) % days;
+      const date = new Date(today.getTime() + offset * 86400000);
+      const startHour = 11 + (Math.abs(hashRE(l.id + "h")) % 4);
+      return {
+        listingId: l.id,
+        address: l.address,
+        date: date.toISOString().slice(0, 10),
+        startTime: `${startHour}:00`,
+        endTime: `${startHour + 2}:00`,
+        price: l.price,
+      };
+    }).sort((a, b) => a.date.localeCompare(b.date));
+    return { ok: true, result: { events, days } };
+  });
+
+  // ── Per-listing private notes ──────────────────────────────────
+
+  registerLensAction("realestate", "notes-list", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const listingId = params.listingId ? String(params.listingId) : null;
+    const all = ensureREBucket(s, "notes", userId);
+    const notes = listingId ? all.filter(n => n.listingId === listingId) : all;
+    return { ok: true, result: { notes } };
+  });
+
+  registerLensAction("realestate", "notes-save", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const listingId = String(params.listingId || "");
+    const text = String(params.text || "").trim();
+    if (!listingId || !text) return { ok: false, error: "listingId and text required" };
+    const note = {
+      id: uidRE("note"), listingId, text,
+      timestamp: new Date().toISOString(),
+    };
+    ensureREBucket(s, "notes", userId).push(note);
+    saveREState();
+    return { ok: true, result: { note } };
+  });
+
+  registerLensAction("realestate", "notes-delete", (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const id = String(params.id || "");
+    const notes = ensureREBucket(s, "notes", userId);
+    const idx = notes.findIndex(n => n.id === id);
+    if (idx < 0) return { ok: false, error: "note not found" };
+    notes.splice(idx, 1);
+    saveREState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Dashboard summary (RealtorShell data source) ───────────────
+
+  registerLensAction("realestate", "dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const listings = ensureREBucket(s, "listings", userId);
+    const favIds = ensureREBucket(s, "favourites", userId);
+    const tours = ensureREBucket(s, "tours", userId);
+    const searches = s.searches?.get(userId) ? Array.from(s.searches.get(userId).values()) : [];
+    const messages = ensureREBucket(s, "messages", userId);
+    const forSale = listings.filter(l => l.status === "for_sale");
+    const medianPrice = forSale.length > 0
+      ? [...forSale.map(l => l.price)].sort((a, b) => a - b)[Math.floor(forSale.length / 2)]
+      : 0;
+    return {
+      ok: true,
+      result: {
+        totalListings: listings.length,
+        forSaleCount: forSale.length,
+        favouriteCount: favIds.length,
+        upcomingTourCount: tours.filter(t => t.status === "requested").length,
+        savedSearchCount: searches.length,
+        unreadMessageCount: messages.length,
+        medianListPrice: medianPrice,
+      },
+    };
+  });
 };
