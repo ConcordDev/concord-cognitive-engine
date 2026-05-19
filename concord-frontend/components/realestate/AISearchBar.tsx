@@ -11,13 +11,6 @@ interface Parsed {
   parsedFieldCount: number;
 }
 
-const SAMPLES = [
-  '3 bed 2 bath condo under $500k in Austin',
-  '4 bedroom house with pool over $750k',
-  '2 bed townhouse near good schools in Dallas',
-  'single family home under $1m with yard',
-];
-
 export function AISearchBar({ onParsed }: { onParsed?: (p: Parsed) => void }) {
   const [query, setQuery] = useState('');
   const [parsed, setParsed] = useState<Parsed | null>(null);
@@ -54,12 +47,6 @@ export function AISearchBar({ onParsed }: { onParsed?: (p: Parsed) => void }) {
         </button>
       </form>
       <div className="p-3 space-y-2">
-        <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
-          <span className="text-gray-500 uppercase tracking-wider">Try:</span>
-          {SAMPLES.map(s => (
-            <button key={s} onClick={() => parse(s)} className="px-2 py-0.5 rounded-full bg-white/5 text-gray-300 hover:bg-violet-500/20 hover:text-violet-200 border border-white/10">{s}</button>
-          ))}
-        </div>
         {parsed && (
           <div className="rounded-md border border-violet-500/30 bg-violet-500/5 p-3 text-xs">
             <div className="text-[10px] uppercase tracking-wider text-violet-300 mb-1.5">Parsed → {parsed.parsedFieldCount} field{parsed.parsedFieldCount === 1 ? '' : 's'}</div>

@@ -23,36 +23,18 @@ interface Insights {
   topShrink: Trend[];
 }
 
-interface InputTx { date: string; description: string; amount: number; category?: string }
-
-const DEMO_TX: InputTx[] = [
-  { date: '2026-03-01', description: 'Whole Foods', amount: 87, category: 'Groceries' },
-  { date: '2026-03-04', description: 'Trader Joe', amount: 65, category: 'Groceries' },
-  { date: '2026-03-08', description: 'Whole Foods', amount: 102, category: 'Groceries' },
-  { date: '2026-03-12', description: 'Blue Bottle', amount: 6.5, category: 'Dining' },
-  { date: '2026-03-15', description: 'Uber', amount: 24, category: 'Transportation' },
-  { date: '2026-03-20', description: 'Comcast', amount: 80, category: 'Bills' },
-  { date: '2026-04-02', description: 'Whole Foods', amount: 145, category: 'Groceries' },
-  { date: '2026-04-06', description: 'Whole Foods', amount: 220, category: 'Groceries' },
-  { date: '2026-04-10', description: 'Trader Joe', amount: 180, category: 'Groceries' },
-  { date: '2026-04-12', description: 'Blue Bottle', amount: 7, category: 'Dining' },
-  { date: '2026-04-18', description: 'United Airlines', amount: 540, category: 'Travel' },
-  { date: '2026-04-22', description: 'Comcast', amount: 80, category: 'Bills' },
-];
-
 export function SpendingInsights() {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
-  const [useDemo, setUseDemo] = useState(true);
 
-  useEffect(() => { refresh(useDemo); }, [useDemo]);
+  useEffect(() => { refresh(); }, []);
 
-  async function refresh(demo: boolean) {
+  async function refresh() {
     setLoading(true);
     try {
       const res = await api.post('/api/lens/run', {
         domain: 'finance', action: 'spending-insights',
-        input: demo ? { transactions: DEMO_TX } : {},
+        input: {},
       });
       setInsights(res.data?.result || null);
     } catch (e) { console.error('[Spending] insights failed', e); }
@@ -64,10 +46,7 @@ export function SpendingInsights() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Spending insights</span>
-        <label className="ml-auto text-[10px] text-gray-500 inline-flex items-center gap-1.5 cursor-pointer">
-          <input type="checkbox" checked={useDemo} onChange={e => setUseDemo(e.target.checked)} className="accent-cyan-500" />
-          demo data
-        </label>
+        <span className="ml-auto text-[10px] text-gray-500">your real transactions</span>
       </header>
 
       {loading ? (
