@@ -1,0 +1,86 @@
+'use client';
+
+/**
+ * EtsyShell — Etsy Shop Manager-shape sidebar chrome.
+ *
+ * Top nav (Etsy's): Home / Listings / Orders / Stats / Marketing /
+ * Finances / Tools. Includes a header strip with the user's shop name
+ * + currency for quick context.
+ */
+
+import React from 'react';
+import { Home, Tag, Package, BarChart3, Megaphone, Wallet, Wrench, Search, Sparkles, Store } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+export type ShopNav = 'home' | 'listings' | 'orders' | 'stats' | 'visibility' | 'marketing' | 'insights' | 'tools' | 'shop';
+
+interface NavItem { id: ShopNav; label: string; icon: typeof Home; badge?: number | string }
+
+const NAV: NavItem[] = [
+  { id: 'home',       label: 'Home',          icon: Home },
+  { id: 'listings',   label: 'Listings',      icon: Tag },
+  { id: 'orders',     label: 'Orders',        icon: Package },
+  { id: 'stats',      label: 'Stats',         icon: BarChart3 },
+  { id: 'visibility', label: 'Search visibility', icon: Search },
+  { id: 'marketing',  label: 'Marketing',     icon: Megaphone },
+  { id: 'insights',   label: 'Insights',      icon: Sparkles },
+  { id: 'tools',      label: 'Tools',         icon: Wrench },
+  { id: 'shop',       label: 'Shop settings', icon: Store },
+];
+
+export interface EtsyShellProps {
+  activeNav: ShopNav;
+  onNavChange: (n: ShopNav) => void;
+  badges?: Partial<Record<ShopNav, number | string>>;
+  shopName?: string;
+  currency?: string;
+  children: React.ReactNode;
+}
+
+export function EtsyShell({ activeNav, onNavChange, badges = {}, shopName, currency, children }: EtsyShellProps) {
+  return (
+    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
+      <aside className="w-48 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
+        <header className="px-3 py-3 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-orange-400" />
+            <span className="text-xs font-semibold text-gray-200">Shop Manager</span>
+          </div>
+          {shopName && (
+            <div className="mt-1 text-[10px] text-gray-500 truncate">{shopName} · {currency || 'USD'}</div>
+          )}
+        </header>
+        <nav className="flex-1 overflow-y-auto py-2">
+          <ul>
+            {NAV.map(n => {
+              const Icon = n.icon;
+              const active = activeNav === n.id;
+              const badge = badges[n.id];
+              return (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    onClick={() => onNavChange(n.id)}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
+                      active ? 'bg-orange-500/10 text-orange-200 border-l-2 border-orange-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.04] border-l-2 border-transparent',
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span className="truncate flex-1 text-left">{n.label}</span>
+                    {badge !== undefined && badge !== 0 && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] bg-orange-500/20 text-orange-300 font-mono">{badge}</span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      </aside>
+      <main className="flex-1 overflow-y-auto p-4">{children}</main>
+    </div>
+  );
+}
+
+export default EtsyShell;

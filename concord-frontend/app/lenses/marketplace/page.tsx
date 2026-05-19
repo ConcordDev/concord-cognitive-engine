@@ -13,6 +13,7 @@ import { MarketplaceActionPanel } from '@/components/marketplace/MarketplaceActi
 import { PipingProvider } from '@/components/panel-polish';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { BandcampGrid } from '@/components/marketplace/BandcampGrid';
+import { EtsySection } from '@/components/marketplace/EtsySection';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -1310,6 +1311,9 @@ export default function MarketplaceLensPage() {
     <LensShell lensId="marketplace" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="marketplace" />
       <DepthBadge lensId="marketplace" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <EtsySection />
+      </div>
     <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
       {/* ---- Header ---- */}
       <div className="flex items-center justify-between">
