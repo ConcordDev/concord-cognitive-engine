@@ -231,3 +231,199 @@ describe("regression: pre-existing analytical macros still work", () => {
     assert.ok(ACTIONS.size > 12);
   });
 });
+
+// ── Full-app parity (Khan + Coursera 2026) ────────────────────────
+
+describe("education.courses-* (CRUD + search)", () => {
+  it("create / list / get / delete cycle, per-user scoped", () => {
+    const a = call("courses-create", ctxA, { title: "Intro to ML", description: "fundamentals", category: "data", instructor: "Dr Sael" });
+    assert.equal(a.ok, true);
+    const id = a.result.course.id;
+    assert.equal(call("courses-list", ctxA, {}).result.courses.length, 1);
+    assert.equal(call("courses-list", ctxB, {}).result.courses.length, 0);
+    assert.equal(call("courses-get", ctxA, { id }).result.course.title, "Intro to ML");
+    assert.equal(call("courses-delete", ctxA, { id }).ok, true);
+  });
+  it("rejects empty title", () => {
+    assert.equal(call("courses-create", ctxA, { title: "" }).ok, false);
+  });
+  it("search matches title / description / category / instructor", () => {
+    call("courses-create", ctxA, { title: "Linear Algebra", category: "math" });
+    call("courses-create", ctxA, { title: "Calculus II", category: "math" });
+    call("courses-create", ctxA, { title: "Intro Biology", category: "science" });
+    const r = call("courses-search", ctxA, { query: "math" });
+    assert.equal(r.result.matches.length, 2);
+  });
+  it("list filters by category", () => {
+    call("courses-create", ctxA, { title: "A", category: "math" });
+    call("courses-create", ctxA, { title: "B", category: "science" });
+    assert.equal(call("courses-list", ctxA, { category: "math" }).result.courses.length, 1);
+  });
+});
+
+describe("education.lessons-* (within course)", () => {
+  it("create + list + complete cycle, per-course", () => {
+    const c = call("courses-create", ctxA, { title: "Course 1" });
+    const cid = c.result.course.id;
+    const l = call("lessons-create", ctxA, { courseId: cid, title: "Lesson 1", kind: "video", durationMin: 12 });
+    assert.equal(l.ok, true);
+    assert.equal(call("lessons-list", ctxA, { courseId: cid }).result.lessons.length, 1);
+    const comp = call("lessons-complete", ctxA, { courseId: cid, lessonId: l.result.lesson.id });
+    assert.equal(comp.ok, true);
+    assert.equal(comp.result.pointsAwarded, 50);
+  });
+  it("rejects bad input", () => {
+    assert.equal(call("lessons-create", ctxA, { courseId: "", title: "X" }).ok, false);
+    assert.equal(call("lessons-list", ctxA, { courseId: "nope" }).ok, false);
+  });
+});
+
+describe("education.enrollments-* (with progress calc)", () => {
+  it("enroll / list / unenroll with progress %", () => {
+    const c = call("courses-create", ctxA, { title: "C" });
+    const cid = c.result.course.id;
+    const l1 = call("lessons-create", ctxA, { courseId: cid, title: "L1" });
+    const l2 = call("lessons-create", ctxA, { courseId: cid, title: "L2" });
+    call("lessons-create", ctxA, { courseId: cid, title: "L3" });
+    const e = call("enrollments-enroll", ctxA, { courseId: cid });
+    assert.equal(e.ok, true);
+    call("lessons-complete", ctxA, { courseId: cid, lessonId: l1.result.lesson.id });
+    call("lessons-complete", ctxA, { courseId: cid, lessonId: l2.result.lesson.id });
+    const list = call("enrollments-list", ctxA, {});
+    assert.equal(list.result.enrollments[0].progressPct, 67);
+    assert.equal(list.result.enrollments[0].completedLessons, 2);
+    assert.equal(call("enrollments-unenroll", ctxA, { id: e.result.enrollment.id }).ok, true);
+  });
+  it("double-enroll rejected", () => {
+    const c = call("courses-create", ctxA, { title: "C" });
+    call("enrollments-enroll", ctxA, { courseId: c.result.course.id });
+    assert.equal(call("enrollments-enroll", ctxA, { courseId: c.result.course.id }).ok, false);
+  });
+});
+
+describe("education.skills-* (Khan-style mastery)", () => {
+  it("practice success advances mastery: not_started -> attempted -> familiar -> proficient -> mastered", () => {
+    const s = call("skills-create", ctxA, { name: "Pythagoras", subject: "math" });
+    const id = s.result.skill.id;
+    assert.equal(call("skills-practice", ctxA, { id, success: true }).result.skill.mastery, "attempted");
+    assert.equal(call("skills-practice", ctxA, { id, success: true }).result.skill.mastery, "familiar");
+    assert.equal(call("skills-practice", ctxA, { id, success: true }).result.skill.mastery, "proficient");
+    const last = call("skills-practice", ctxA, { id, success: true });
+    assert.equal(last.result.skill.mastery, "mastered");
+    assert.equal(last.result.pointsAwarded, 200);
+  });
+  it("failed practice demotes one level (down to familiar)", () => {
+    const s = call("skills-create", ctxA, { name: "X" });
+    const id = s.result.skill.id;
+    call("skills-practice", ctxA, { id, success: true });
+    call("skills-practice", ctxA, { id, success: true });
+    call("skills-practice", ctxA, { id, success: true });
+    const fail = call("skills-practice", ctxA, { id, success: false });
+    assert.equal(fail.result.skill.mastery, "familiar");
+  });
+  it("tree returns per-mastery-level counts", () => {
+    call("skills-create", ctxA, { name: "A" });
+    call("skills-create", ctxA, { name: "B" });
+    const tree = call("skills-tree", ctxA, {});
+    assert.equal(tree.result.counts.not_started, 2);
+  });
+});
+
+describe("education.gamification-status (streaks + points + level)", () => {
+  it("totals + streak + level from points/skills", () => {
+    call("points-award", ctxA, { amount: 100, source: "test" });
+    call("points-award", ctxA, { amount: 50, source: "test" });
+    const s = call("skills-create", ctxA, { name: "X" });
+    call("skills-practice", ctxA, { id: s.result.skill.id, success: true });
+    call("skills-practice", ctxA, { id: s.result.skill.id, success: true });
+    call("skills-practice", ctxA, { id: s.result.skill.id, success: true });
+    const r = call("gamification-status", ctxA, {});
+    assert.ok(r.result.totalPoints >= 150);
+    assert.equal(r.result.streak, 1);
+    assert.equal(r.result.level, 1);
+    assert.equal(r.result.skillPoints, 1);
+  });
+});
+
+describe("education.certificates-* (issue after course complete)", () => {
+  it("blocks issue until all lessons completed", () => {
+    const c = call("courses-create", ctxA, { title: "C", institution: "Concord U" });
+    const cid = c.result.course.id;
+    const l1 = call("lessons-create", ctxA, { courseId: cid, title: "L1" });
+    call("lessons-create", ctxA, { courseId: cid, title: "L2" });
+    const r1 = call("certificates-issue", ctxA, { courseId: cid });
+    assert.equal(r1.ok, false);
+    call("lessons-complete", ctxA, { courseId: cid, lessonId: l1.result.lesson.id });
+    const r2 = call("certificates-issue", ctxA, { courseId: cid });
+    assert.equal(r2.ok, false);
+  });
+  it("issues certificate with verification code when course complete", () => {
+    const c = call("courses-create", ctxA, { title: "C" });
+    const cid = c.result.course.id;
+    const l = call("lessons-create", ctxA, { courseId: cid, title: "L1" });
+    call("lessons-complete", ctxA, { courseId: cid, lessonId: l.result.lesson.id });
+    const cert = call("certificates-issue", ctxA, { courseId: cid });
+    assert.equal(cert.ok, true);
+    assert.match(cert.result.certificate.verificationCode, /^CERT-/);
+  });
+});
+
+describe("education.assignments-* (Coursera-style with peer review)", () => {
+  it("create / submit / peer-review cycle", () => {
+    const c = call("courses-create", ctxA, { title: "C" });
+    const a = call("assignments-create", ctxA, { courseId: c.result.course.id, title: "A1", peerReviewCount: 3, maxPoints: 100 });
+    assert.equal(a.ok, true);
+    const sub = call("assignments-submit", ctxA, { assignmentId: a.result.assignment.id, text: "my answer" });
+    assert.equal(sub.result.submission.status, "awaiting_peer_review");
+    const review = call("assignments-peer-review", ctxA, { submissionId: sub.result.submission.id, score: 85, feedback: "good" });
+    assert.equal(review.result.submission.peerReviews.length, 1);
+    assert.equal(review.result.submission.peerReviews[0].score, 85);
+  });
+  it("rejects missing fields", () => {
+    assert.equal(call("assignments-submit", ctxA, { assignmentId: "x", text: "" }).ok, false);
+    assert.equal(call("assignments-peer-review", ctxA, { submissionId: "", feedback: "x" }).ok, false);
+  });
+});
+
+describe("education.notes-* (per-lesson with video timestamp)", () => {
+  it("save / list / delete cycle, scoped by lessonId", () => {
+    const n = call("notes-save", ctxA, { lessonId: "less_1", text: "important", timestampSec: 142 });
+    assert.equal(n.ok, true);
+    assert.equal(n.result.note.videoTimestampSec, 142);
+    assert.equal(call("notes-list", ctxA, { lessonId: "less_1" }).result.notes.length, 1);
+    assert.equal(call("notes-list", ctxA, { lessonId: "less_2" }).result.notes.length, 0);
+    assert.equal(call("notes-delete", ctxA, { id: n.result.note.id }).ok, true);
+  });
+});
+
+describe("education.discussions-* (forums)", () => {
+  it("post / list / upvote / reply", () => {
+    const p = call("discussions-post", ctxA, { courseId: "c_1", text: "How does X work?" });
+    assert.equal(p.ok, true);
+    call("discussions-post", ctxA, { courseId: "c_1", text: "Like this!", replyTo: p.result.post.id });
+    assert.equal(call("discussions-list", ctxA, { courseId: "c_1" }).result.discussions.length, 2);
+    const up = call("discussions-upvote", ctxA, { id: p.result.post.id });
+    assert.equal(up.result.upvotes, 1);
+  });
+});
+
+describe("education.dashboard-summary (ClassroomShell data source)", () => {
+  it("aggregates courses + enrollments + skills + certs + points", () => {
+    const c = call("courses-create", ctxA, { title: "C" });
+    const l = call("lessons-create", ctxA, { courseId: c.result.course.id, title: "L" });
+    call("enrollments-enroll", ctxA, { courseId: c.result.course.id });
+    call("lessons-complete", ctxA, { courseId: c.result.course.id, lessonId: l.result.lesson.id });
+    const sk = call("skills-create", ctxA, { name: "S" });
+    call("skills-practice", ctxA, { id: sk.result.skill.id, success: true });
+    call("skills-practice", ctxA, { id: sk.result.skill.id, success: true });
+    call("skills-practice", ctxA, { id: sk.result.skill.id, success: true });
+    const r = call("dashboard-summary", ctxA, {});
+    assert.equal(r.result.totalCourses, 1);
+    assert.equal(r.result.enrolledCount, 1);
+    assert.equal(r.result.completedLessons, 1);
+    assert.equal(r.result.totalSkills, 1);
+    assert.equal(r.result.proficientSkills, 1);
+    assert.ok(r.result.totalPoints > 0);
+    assert.equal(r.result.streak, 1);
+  });
+});
