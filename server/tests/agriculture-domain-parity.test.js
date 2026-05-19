@@ -163,3 +163,175 @@ describe("agriculture — STATE unavailable path", () => {
     assert.match(r.error, /STATE unavailable/);
   });
 });
+
+// ── Full-app parity (John Deere Ops Center + FieldView 2026) ───
+
+describe("agriculture.equipment-* (machine fleet + telemetry)", () => {
+  it("add / list / update-telemetry / delete cycle", () => {
+    const a = call("equipment-add", ctxA, { name: "8R 410", kind: "tractor", make: "John Deere", year: 2024 });
+    assert.equal(a.ok, true);
+    assert.equal(a.result.equipment.status, "idle");
+    assert.equal(call("equipment-list", ctxA, {}).result.equipment.length, 1);
+    const u = call("equipment-update-telemetry", ctxA, { id: a.result.equipment.id, lat: 42.1, lng: -93.5, speedMph: 4.8, fuelLevelPct: 78, status: "working" });
+    assert.equal(u.result.equipment.status, "working");
+    assert.equal(u.result.equipment.fuelLevelPct, 78);
+    assert.equal(call("equipment-delete", ctxA, { id: a.result.equipment.id }).ok, true);
+  });
+  it("rejects empty name", () => {
+    assert.equal(call("equipment-add", ctxA, { name: "" }).ok, false);
+  });
+});
+
+describe("agriculture.zones-* (field zones)", () => {
+  it("create / list / delete cycle, scoped by fieldId", () => {
+    const z1 = call("zones-create", ctxA, { fieldId: "f1", name: "North high", productivityClass: "high", areaAcres: 24, soilType: "loam" });
+    assert.equal(z1.ok, true);
+    call("zones-create", ctxA, { fieldId: "f1", name: "South low", productivityClass: "low" });
+    call("zones-create", ctxA, { fieldId: "f2", name: "Other" });
+    assert.equal(call("zones-list", ctxA, { fieldId: "f1" }).result.zones.length, 2);
+    assert.equal(call("zones-delete", ctxA, { id: z1.result.zone.id }).ok, true);
+  });
+  it("rejects missing fieldId/name", () => {
+    assert.equal(call("zones-create", ctxA, { fieldId: "", name: "X" }).ok, false);
+  });
+});
+
+describe("agriculture.prescriptions-* (variable-rate scripts)", () => {
+  it("create / approve / delete cycle with avg rate calc", () => {
+    const r = call("prescriptions-create", ctxA, {
+      fieldId: "f1", product: "UAN-32", kind: "nitrogen",
+      zoneRates: [{ zoneId: "z1", rate: 180 }, { zoneId: "z2", rate: 140 }, { zoneId: "z3", rate: 100 }],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.prescription.avgRate, 140);
+    assert.equal(r.result.prescription.status, "draft");
+    const a = call("prescriptions-approve", ctxA, { id: r.result.prescription.id });
+    assert.equal(a.result.prescription.status, "approved");
+    assert.equal(call("prescriptions-delete", ctxA, { id: r.result.prescription.id }).ok, true);
+  });
+  it("flat-rate prescription works", () => {
+    const r = call("prescriptions-create", ctxA, { fieldId: "f1", product: "Seed", kind: "seed", flatRate: 34000 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.prescription.flatRate, 34000);
+  });
+});
+
+describe("agriculture.planting-passes + harvest-passes", () => {
+  it("planting log records pass with seeding rate", () => {
+    const p = call("planting-log", ctxA, { fieldId: "f1", crop: "corn", variety: "DKC65-95", seedingRate: 34000, depthInches: 2, acresPlanted: 80 });
+    assert.equal(p.ok, true);
+    assert.equal(p.result.pass.crop, "corn");
+    assert.equal(call("planting-passes", ctxA, { fieldId: "f1" }).result.passes.length, 1);
+  });
+  it("harvest log computes yieldPerAcre", () => {
+    const h = call("harvest-log", ctxA, { fieldId: "f1", crop: "corn", acresHarvested: 80, yieldBushels: 16000, moisturePct: 15.5 });
+    assert.equal(h.ok, true);
+    assert.equal(h.result.pass.yieldPerAcre, 200);
+    assert.match(h.result.pass.ticketNumber, /^TKT-/);
+  });
+  it("rejects zero acres on harvest", () => {
+    assert.equal(call("harvest-log", ctxA, { fieldId: "f1", crop: "corn", acresHarvested: 0, yieldBushels: 100 }).ok, false);
+  });
+});
+
+describe("agriculture.nitrogen-plans + apply", () => {
+  it("create plan / apply / track remaining", () => {
+    const p = call("nitrogen-plan-create", ctxA, { fieldId: "f1", targetLbsPerAcre: 180, crop: "corn" });
+    assert.equal(p.ok, true);
+    assert.equal(p.result.plan.remaining, 180);
+    const a1 = call("nitrogen-apply", ctxA, { planId: p.result.plan.id, lbsPerAcre: 50, timing: "preplant" });
+    assert.equal(a1.result.plan.totalApplied, 50);
+    assert.equal(a1.result.plan.remaining, 130);
+    const a2 = call("nitrogen-apply", ctxA, { planId: p.result.plan.id, lbsPerAcre: 60, timing: "sidedress" });
+    assert.equal(a2.result.plan.totalApplied, 110);
+    assert.equal(a2.result.plan.remaining, 70);
+  });
+  it("rejects invalid input", () => {
+    assert.equal(call("nitrogen-plan-create", ctxA, { fieldId: "", targetLbsPerAcre: 100 }).ok, false);
+    assert.equal(call("nitrogen-plan-create", ctxA, { fieldId: "f1", targetLbsPerAcre: 0 }).ok, false);
+  });
+});
+
+describe("agriculture.imagery-* (satellite + drone)", () => {
+  it("attach / list, scoped by fieldId", () => {
+    call("imagery-attach", ctxA, { fieldId: "f1", url: "/a.tif", source: "drone", kind: "ndvi" });
+    call("imagery-attach", ctxA, { fieldId: "f1", url: "/b.tif", source: "satellite", kind: "rgb" });
+    call("imagery-attach", ctxA, { fieldId: "f2", url: "/c.tif" });
+    assert.equal(call("imagery-list", ctxA, { fieldId: "f1" }).result.imagery.length, 2);
+  });
+  it("rejects missing url", () => {
+    assert.equal(call("imagery-attach", ctxA, { fieldId: "f1", url: "" }).ok, false);
+  });
+});
+
+describe("agriculture.tank-mixes-* (mix builder)", () => {
+  it("create + list", () => {
+    const m = call("tank-mix-create", ctxA, {
+      name: "Spring burndown",
+      components: [{ product: "Roundup PowerMax", ratePerAcre: 32, costPerAcre: 8 }, { product: "Atrazine", ratePerAcre: 16, costPerAcre: 5 }],
+      carrierGalPerAcre: 15,
+    });
+    assert.equal(m.ok, true);
+    assert.equal(m.result.mix.totalCostPerAcre, 13);
+    assert.equal(m.result.mix.compatible, true);
+  });
+  it("rejects empty components", () => {
+    assert.equal(call("tank-mix-create", ctxA, { name: "X", components: [] }).ok, false);
+  });
+});
+
+describe("agriculture.work-orders-*", () => {
+  it("create / complete cycle", () => {
+    const o = call("work-orders-create", ctxA, { fieldId: "f1", operation: "Apply UAN sidedress", kind: "fertilize", scheduledFor: "2026-06-15" });
+    assert.equal(o.ok, true);
+    assert.equal(o.result.order.status, "scheduled");
+    const c = call("work-orders-complete", ctxA, { id: o.result.order.id, notes: "applied 60 lbs/ac" });
+    assert.equal(c.result.order.status, "completed");
+  });
+});
+
+describe("agriculture.grain-bins-* (storage)", () => {
+  it("create / load / unload cycle", () => {
+    const b = call("grain-bins-create", ctxA, { name: "Bin A", capacityBushels: 50000, crop: "corn" });
+    assert.equal(b.ok, true);
+    assert.equal(b.result.bin.currentBushels, 0);
+    const load = call("grain-bins-load", ctxA, { id: b.result.bin.id, bushels: 30000 });
+    assert.equal(load.result.bin.currentBushels, 30000);
+    const overload = call("grain-bins-load", ctxA, { id: b.result.bin.id, bushels: 30000 });
+    assert.equal(overload.ok, false);
+    const unload = call("grain-bins-unload", ctxA, { id: b.result.bin.id, bushels: 10000 });
+    assert.equal(unload.result.bin.currentBushels, 20000);
+    const overdraw = call("grain-bins-unload", ctxA, { id: b.result.bin.id, bushels: 100000 });
+    assert.equal(overdraw.ok, false);
+  });
+  it("rejects invalid capacity", () => {
+    assert.equal(call("grain-bins-create", ctxA, { name: "X", capacityBushels: 0 }).ok, false);
+  });
+});
+
+describe("agriculture.dashboard-summary (AgFarmShell data source)", () => {
+  it("aggregates fields + equipment + work orders + harvest + bins", () => {
+    const ctxC = { actor: { userId: "user_dash" }, userId: "user_dash" };
+    call("field-create", ctxC, { name: "F1", acreage: 80, currentCrop: "corn", lat: 42, lng: -93 });
+    call("field-create", ctxC, { name: "F2", acreage: 120, currentCrop: "soybeans", lat: 42, lng: -93 });
+    call("equipment-add", ctxC, { name: "8R" });
+    const eq = call("equipment-add", ctxC, { name: "S7" });
+    call("equipment-update-telemetry", ctxC, { id: eq.result.equipment.id, status: "working" });
+    call("work-orders-create", ctxC, { fieldId: "f1", operation: "Spray" });
+    const fields = call("field-list", ctxC, {}).result.fields;
+    const fieldId = fields[0].id;
+    call("harvest-log", ctxC, { fieldId, crop: "corn", acresHarvested: 80, yieldBushels: 16000 });
+    const bin = call("grain-bins-create", ctxC, { name: "B", capacityBushels: 20000 });
+    call("grain-bins-load", ctxC, { id: bin.result.bin.id, bushels: 10000 });
+    const d = call("dashboard-summary", ctxC, {});
+    assert.equal(d.result.totalFields, 2);
+    assert.equal(d.result.totalAcres, 200);
+    assert.equal(d.result.equipmentCount, 2);
+    assert.equal(d.result.equipmentWorking, 1);
+    assert.equal(d.result.scheduledWorkOrders, 1);
+    assert.equal(d.result.seasonYieldBushels, 16000);
+    assert.equal(d.result.avgYieldPerAcre, 80);
+    assert.equal(d.result.grainStored, 10000);
+    assert.equal(d.result.grainUtilizationPct, 50);
+  });
+});
