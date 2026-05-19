@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Package, Plus, Trash2, Loader2, ArrowRight } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+
+const ShipmentsMap = dynamic(() => import('./ShipmentsMap').then(m => m.ShipmentsMap), { ssr: false });
 
 interface Shipment {
   id: string; trackingNumber: string; origin: string; destination: string;
@@ -76,6 +79,10 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
         <span className="ml-auto text-[10px] text-gray-500">{shipments.length}</span>
         <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
+
+      <div className="border-b border-white/10">
+        <ShipmentsMap shipments={shipments} className="h-64 w-full" />
+      </div>
 
       {creating && (
         <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">

@@ -11,11 +11,14 @@
  */
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Search, MapPin, Heart, Calendar, MessageSquare, Star,
   BedDouble, Bath, Maximize2, TrendingUp, ChevronRight, Filter,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const ListingsMap = dynamic(() => import('./ListingsMap').then(m => m.ListingsMap), { ssr: false });
 
 export interface RealtorListing {
   id: string;
@@ -32,6 +35,8 @@ export interface RealtorListing {
   imageUrl?: string;
   hotScore?: number;
   favourited?: boolean;
+  lat?: number;
+  lng?: number;
 }
 
 export interface RealtorActivity {
@@ -107,32 +112,10 @@ export function RealtorShell({
         <Tile icon={Calendar} label="Tours" value={String(upcomingTourCount)} />
       </div>
 
-      {/* Two-column: map placeholder + listings rail */}
+      {/* Two-column: real Leaflet map + listings rail */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-        {/* Map placeholder (Zillow-shape) */}
-        <section className="lg:col-span-2 rounded-lg border border-white/10 bg-gradient-to-br from-emerald-900/15 to-cyan-900/10 min-h-[320px] relative overflow-hidden">
-          <div className="absolute inset-0 grid grid-cols-6 grid-rows-6 opacity-20">
-            {Array.from({ length: 36 }).map((_, i) => (
-              <div key={i} className={cn('border border-white/5', i % 7 === 0 && 'bg-cyan-500/20')} />
-            ))}
-          </div>
-          {listings.slice(0, 8).map((l, i) => {
-            const left = 12 + (Math.abs(hashLight(l.id)) % 70);
-            const top = 14 + (Math.abs(hashLight(l.id + 'y')) % 65);
-            return (
-              <button
-                key={l.id}
-                type="button"
-                onClick={() => onSelectListing?.(l)}
-                className="absolute -translate-x-1/2 -translate-y-full text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-cyan-500 text-black hover:bg-cyan-400 transition shadow-lg"
-                style={{ left: `${left}%`, top: `${top}%` }}
-                title={l.address}
-              >
-                {fmtPrice(l.price)}
-              </button>
-            );
-          })}
-          <div className="absolute bottom-2 left-2 text-[10px] text-gray-400 font-mono uppercase tracking-wider">Map · {listings.length} pins</div>
+        <section className="lg:col-span-2 rounded-lg border border-white/10 overflow-hidden">
+          <ListingsMap listings={listings} onSelect={onSelectListing} className="h-[320px] w-full" />
         </section>
 
         {/* Listings rail (Redfin-shape cards) */}
@@ -239,12 +222,6 @@ function Tile({ icon: Icon, label, value }: TileProps) {
       <div className="text-base font-mono tabular-nums text-white">{value}</div>
     </div>
   );
-}
-
-function hashLight(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  return h;
 }
 
 export default RealtorShell;

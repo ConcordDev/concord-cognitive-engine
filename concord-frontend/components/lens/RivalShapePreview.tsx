@@ -261,6 +261,8 @@ function RealEstatePreview() {
         sqft: Number(l.sqft) || 0,
         status: ((l.status as string) || 'for_sale') as 'for_sale' | 'pending' | 'sold' | 'off_market',
         daysOnMarket: Number(l.daysOnMarket) || 0,
+        lat: l.lat != null ? Number(l.lat) : undefined,
+        lng: l.lng != null ? Number(l.lng) : undefined,
       }))}
       activity={[]}
     />

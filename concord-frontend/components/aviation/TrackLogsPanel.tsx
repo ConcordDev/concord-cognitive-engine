@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { MapPin, Play, Square, Loader2, Activity } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+
+const TrackMap = dynamic(() => import('./TrackMap').then(m => m.TrackMap), { ssr: false });
 
 interface Track {
   id: string; aircraftId: string; tail: string; from: string | null; to: string | null;
@@ -67,6 +70,11 @@ export function TrackLogsPanel() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Track logs · GPS recording</span>
         <span className="ml-auto text-[10px] text-gray-500">{tracks.filter(t => !t.endedAt).length} active</span>
       </header>
+
+      <div className="border-b border-white/10">
+        <TrackMap tracks={tracks} className="h-64 w-full" />
+      </div>
+
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
         <select value={form.aircraftId} onChange={e => setForm({ ...form, aircraftId: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">Aircraft…</option>

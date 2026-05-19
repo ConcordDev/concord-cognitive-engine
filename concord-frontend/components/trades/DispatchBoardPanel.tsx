@@ -43,6 +43,31 @@ export function DispatchBoardPanel() {
     return d.getHours();
   }
 
+  async function assignJob(jobId: string, techId: string | null) {
+    if (techId == null) return;
+    try {
+      await api.post('/api/lens/run', { domain: 'trades', action: 'job-assign', input: { id: jobId, tech: techId } });
+      await refresh();
+    } catch (e) { console.error('[Dispatch] assign', e); }
+  }
+
+  function onDragStart(e: React.DragEvent, jobId: string, fromTechId: string | null) {
+    e.dataTransfer.setData('jobId', jobId);
+    if (fromTechId) e.dataTransfer.setData('fromTechId', fromTechId);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  function onDropOnTech(e: React.DragEvent, techId: string) {
+    e.preventDefault();
+    const jobId = e.dataTransfer.getData('jobId');
+    if (jobId) assignJob(jobId, techId);
+  }
+
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
@@ -67,7 +92,7 @@ export function DispatchBoardPanel() {
             </thead>
             <tbody className="divide-y divide-white/5">
               {rows.map(r => (
-                <tr key={r.tech.id} className="hover:bg-white/[0.02]">
+                <tr key={r.tech.id} className="hover:bg-white/[0.02]" onDragOver={onDragOver} onDrop={(e) => onDropOnTech(e, r.tech.id)}>
                   <td className="px-3 py-2 sticky left-0 bg-[#0d1117]">
                     <div className="text-sm text-white">{r.tech.name}</div>
                     <div className="text-[9px] uppercase text-gray-500">{r.tech.status.replace('_', ' ')}</div>
@@ -77,7 +102,12 @@ export function DispatchBoardPanel() {
                     return (
                       <td key={h} className="px-0.5 py-1">
                         {job ? (
-                          <div className={cn('rounded px-1 py-0.5 text-[10px] font-medium truncate cursor-pointer', PRIORITY[job.priority || 'normal'])} title={`${job.customerName} · ${job.description}`}>
+                          <div
+                            draggable
+                            onDragStart={(e) => onDragStart(e, job.id, r.tech.id)}
+                            className={cn('rounded px-1 py-0.5 text-[10px] font-medium truncate cursor-move select-none', PRIORITY[job.priority || 'normal'])}
+                            title={`${job.customerName} · ${job.description} (drag to reassign)`}
+                          >
                             {job.customerName}
                           </div>
                         ) : (
@@ -95,10 +125,18 @@ export function DispatchBoardPanel() {
 
       {unassigned.length > 0 && (
         <div className="px-3 py-2 border-t border-white/5 bg-white/[0.02]">
-          <div className="text-[10px] uppercase tracking-wider text-amber-400 mb-1">Unassigned · {unassigned.length}</div>
+          <div className="text-[10px] uppercase tracking-wider text-amber-400 mb-1">Unassigned · {unassigned.length} <span className="text-gray-500 normal-case">(drag to a tech row to assign)</span></div>
           <div className="flex flex-wrap gap-1">
             {unassigned.map(j => (
-              <span key={j.id} className={cn('text-[10px] px-1.5 py-0.5 rounded', PRIORITY[j.priority || 'normal'])} title={j.description}>{j.customerName}</span>
+              <span
+                key={j.id}
+                draggable
+                onDragStart={(e) => onDragStart(e, j.id, null)}
+                className={cn('text-[10px] px-1.5 py-0.5 rounded cursor-move select-none', PRIORITY[j.priority || 'normal'])}
+                title={`${j.description} — drag onto a tech row`}
+              >
+                {j.customerName}
+              </span>
             ))}
           </div>
         </div>

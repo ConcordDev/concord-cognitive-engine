@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Megaphone, Plus, Loader2, MapPin, CheckCircle } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+
+const ServiceRequestsMap = dynamic(() => import('./ServiceRequestsMap').then(m => m.ServiceRequestsMap), { ssr: false });
 
 interface Request {
   id: string; referenceNumber: string; category: string; description: string;
@@ -84,6 +87,10 @@ export function ServiceRequestsPanel() {
           {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
         </select>
       </header>
+
+      <div className="border-b border-white/10">
+        <ServiceRequestsMap requests={filter ? requests.filter(r => r.status === filter) : requests} className="h-64 w-full" />
+      </div>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
         <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
