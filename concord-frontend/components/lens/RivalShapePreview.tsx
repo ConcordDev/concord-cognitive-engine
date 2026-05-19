@@ -26,8 +26,9 @@ import { FinanceShell } from '@/components/finance/FinanceShell';
 import { RealtorShell } from '@/components/realestate/RealtorShell';
 import { ShopifyShell } from '@/components/retail/ShopifyShell';
 import { ClassroomShell } from '@/components/education/ClassroomShell';
+import { DispatchShell } from '@/components/trades/DispatchShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -40,6 +41,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   realestate: 'Zillow / Redfin shape',
   retail: 'Shopify admin shape',
   education: 'Khan / Coursera shape',
+  trades: 'ServiceTitan / Jobber shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -51,7 +53,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -99,6 +101,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'realestate': return <RealEstatePreview />;
     case 'retail': return <RetailPreview />;
     case 'education': return <EducationPreview />;
+    case 'trades': return <TradesPreview />;
   }
 }
 
@@ -390,6 +393,52 @@ function EducationPreview() {
       recommendedCourses={[
         { id: 'r1', title: 'Statistics for Data Science', instructor: 'Dr Orin · MIT OCW', progressPct: 0, totalLessons: 32, completedLessons: 0, category: 'data' },
         { id: 'r2', title: 'Calculus Foundations', instructor: 'Khan Academy', progressPct: 0, totalLessons: 48, completedLessons: 0, category: 'math' },
+      ]}
+    />
+  );
+}
+
+function TradesPreview() {
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <DispatchShell
+      date={today}
+      jobsToday={11}
+      techsTotal={6}
+      techsOnJob={4}
+      revenueToday={4280}
+      avgRating={4.7}
+      rows={[
+        { tech: { id: 't1', name: 'Mike Plumber', status: 'on_site' }, jobs: [
+          { id: 'j1', customerName: 'Aria V.', description: 'Leak repair', hour: 9, status: 'on_site', priority: 'high' },
+          { id: 'j2', customerName: 'Concord Cafe', description: 'Drain clear', hour: 13, status: 'dispatched', priority: 'normal' },
+        ]},
+        { tech: { id: 't2', name: 'Sam Electrician', status: 'on_route' }, jobs: [
+          { id: 'j3', customerName: 'Vex Quinn', description: 'Panel upgrade', hour: 10, status: 'dispatched', priority: 'normal' },
+          { id: 'j4', customerName: 'Mira S.', description: 'EV charger', hour: 14, status: 'unassigned', priority: 'low' },
+        ]},
+        { tech: { id: 't3', name: 'Jane HVAC', status: 'available' }, jobs: [
+          { id: 'j5', customerName: 'Orin K.', description: 'AC service', hour: 11, status: 'dispatched', priority: 'high' },
+        ]},
+        { tech: { id: 't4', name: 'Carl Roofer', status: 'on_site' }, jobs: [
+          { id: 'j6', customerName: 'Dr Sael', description: 'Storm damage', hour: 8, status: 'on_site', priority: 'emergency' },
+          { id: 'j7', customerName: 'Acme Corp', description: 'Inspection', hour: 15, status: 'dispatched', priority: 'normal' },
+        ]},
+        { tech: { id: 't5', name: 'Pat Painter', status: 'break' }, jobs: [] },
+        { tech: { id: 't6', name: 'Sky Glazier', status: 'off' }, jobs: [] },
+      ]}
+      unassigned={[
+        { id: 'u1', customerName: 'Walk-in client', description: 'Quote request', hour: 16, status: 'unassigned', priority: 'low' },
+        { id: 'u2', customerName: 'Returning cust', description: 'Yearly service', hour: 17, status: 'unassigned', priority: 'normal' },
+      ]}
+      pendingBookings={[
+        { id: 'b1', customerName: 'Sara M.', serviceType: 'Plumbing', preferredDate: '2026-05-20' },
+        { id: 'b2', customerName: 'Joe T.', serviceType: 'HVAC tune-up', preferredDate: null },
+      ]}
+      pendingQuotes={[
+        { id: 'q1', title: 'Bathroom remodel', total: 8400, status: 'sent' },
+        { id: 'q2', title: 'Roof repair', total: 2150, status: 'sent' },
+        { id: 'q3', title: 'Panel upgrade', total: 3600, status: 'sent' },
       ]}
     />
   );
