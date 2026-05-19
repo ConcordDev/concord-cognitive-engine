@@ -462,4 +462,386 @@ export default function registerWhiteboardActions(registerLensAction) {
     const total = tally.reduce((s2, t) => s2 + t.count, 0);
     return { ok: true, result: { tally, total } };
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Miro + FigJam 2026 parity — AI cluster, AI summarize+action items,
+  //  AI generate board from prompt, comments per element, expanded templates.
+  // ═══════════════════════════════════════════════════════════════
+
+  function ensureCommentsBucket(s) {
+    if (!s.comments) s.comments = new Map(); // userId -> Map<boardId, Map<elementId, Array<Comment>>>
+    return s.comments;
+  }
+
+  // Look up a board the caller owns OR is a participant in (so shared boards work too).
+  function findBoardForUser(s, userId, boardId) {
+    const own = s.boards.get(userId)?.get(boardId);
+    if (own) return { board: own, scope: 'own' };
+    const shared = s.sharedBoards.get(boardId);
+    if (shared && (shared.ownerId === userId || (shared.participants && shared.participants.has(userId)))) {
+      return { board: shared, scope: 'shared' };
+    }
+    return null;
+  }
+
+  // Tiny BFS clusterer over text similarity (token overlap). Deterministic without brain.
+  function clusterShapesByText(shapes, maxThemes = 6) {
+    const stickies = shapes.filter(sh => sh.kind === 'sticky' && (sh.text || '').trim());
+    if (stickies.length < 2) return [];
+    function tokens(t) { return new Set(String(t || '').toLowerCase().split(/[\s,.;:!?]+/).filter(w => w.length >= 3)); }
+    const tokSets = new Map(stickies.map(sh => [sh.id, tokens(sh.text)]));
+    function jaccard(a, b) { if (!a.size || !b.size) return 0; let inter = 0; for (const x of a) if (b.has(x)) inter++; const union = a.size + b.size - inter; return inter / union; }
+    const visited = new Set();
+    const clusters = [];
+    const THRESHOLD = 0.2;
+    for (const sh of stickies) {
+      if (visited.has(sh.id)) continue;
+      const queue = [sh.id];
+      const members = [];
+      while (queue.length) {
+        const cur = queue.shift();
+        if (visited.has(cur)) continue;
+        visited.add(cur);
+        members.push(cur);
+        const curTok = tokSets.get(cur);
+        for (const other of stickies) {
+          if (visited.has(other.id)) continue;
+          if (jaccard(curTok, tokSets.get(other.id)) >= THRESHOLD) queue.push(other.id);
+        }
+      }
+      // Top-3 most common tokens form the theme label.
+      const wordCounts = new Map();
+      for (const id of members) for (const t of tokSets.get(id)) wordCounts.set(t, (wordCounts.get(t) || 0) + 1);
+      const themeWords = Array.from(wordCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([w]) => w);
+      clusters.push({ theme: themeWords.join(' / ') || 'untitled cluster', memberIds: members, size: members.length });
+    }
+    clusters.sort((a, b) => b.size - a.size);
+    return clusters.slice(0, maxThemes);
+  }
+
+  registerLensAction("whiteboard", "ai-cluster-stickies", async (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const shapes = Array.isArray(lookup.board.scene?.elements) ? lookup.board.scene.elements : [];
+    const stickies = shapes.filter(sh => sh.kind === 'sticky');
+    if (stickies.length < 2) return { ok: true, result: { clusters: [], source: 'deterministic', message: "Need at least 2 sticky notes to cluster." } };
+
+    const deterministic = clusterShapesByText(shapes);
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== 'function') return { ok: true, result: { clusters: deterministic, source: 'deterministic' } };
+
+    // Brain enhancement: ask for theme labels for the deterministic groupings (don't let the brain invent new shapes).
+    try {
+      const stickyMap = new Map(stickies.map(sh => [sh.id, sh.text || '']));
+      const groupsText = deterministic.map((c, i) => `Group ${i + 1}: ${c.memberIds.map(id => `"${(stickyMap.get(id) || '').slice(0, 80)}"`).join(', ')}`).join('\n');
+      const r = await brain({
+        messages: [
+          { role: 'system', content: "You name brainstorming sticky-note clusters. Output ONLY JSON: {\"themes\":[\"label1\",\"label2\",...]} with one label per group, ≤ 4 words each. Use only the sticky note text provided — do not invent items." },
+          { role: 'user', content: groupsText },
+        ],
+        temperature: 0.3, maxTokens: 400,
+      });
+      const text = String(r?.content || r?.text || '').trim();
+      const parsed = JSON.parse((text.match(/\{[\s\S]*\}/) || ['{}'])[0]);
+      if (Array.isArray(parsed.themes)) {
+        for (let i = 0; i < deterministic.length && i < parsed.themes.length; i++) {
+          deterministic[i].theme = String(parsed.themes[i] || deterministic[i].theme).slice(0, 60);
+        }
+        return { ok: true, result: { clusters: deterministic, source: 'brain' } };
+      }
+    } catch (_e) {}
+    return { ok: true, result: { clusters: deterministic, source: 'deterministic_after_brain_error' } };
+  });
+
+  registerLensAction("whiteboard", "ai-summarize-board", async (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const shapes = Array.isArray(lookup.board.scene?.elements) ? lookup.board.scene.elements : [];
+    if (shapes.length === 0) return { ok: true, result: { summary: "(board is empty)", actionItems: [], source: 'deterministic' } };
+    const stickies = shapes.filter(sh => sh.kind === 'sticky' && sh.text);
+    const frames = shapes.filter(sh => sh.kind === 'rect' || sh.kind === 'frame');
+    const transcript = stickies.map(sh => `· ${sh.text}`).join('\n');
+
+    function deterministic() {
+      const summary = `Board "${lookup.board.title || 'untitled'}" has ${shapes.length} element(s) (${stickies.length} sticky notes${frames.length ? `, ${frames.length} frame${frames.length === 1 ? '' : 's'}` : ''}).`;
+      // Extract any imperative-looking sticky as a candidate action item.
+      const items = stickies
+        .filter(sh => /\b(do|build|ship|fix|need|should|must|todo|to do|next step|action)\b/i.test(sh.text))
+        .slice(0, 10)
+        .map(sh => ({ text: sh.text.trim().slice(0, 200), owner: ((sh.text.match(/@(\w+)/) || [])[1]) || null, sourceShapeId: sh.id }));
+      return { summary, actionItems: items };
+    }
+
+    const brain = ctx?.llm?.chat;
+    const base = deterministic();
+    if (typeof brain !== 'function') return { ok: true, result: { ...base, source: 'deterministic' } };
+    try {
+      const r = await brain({
+        messages: [
+          { role: 'system', content: "Summarize this brainstorming board in 2-3 short sentences and extract action items. Output ONLY JSON: {\"summary\":\"...\",\"actionItems\":[{\"text\":\"...\",\"owner\":\"@name or null\"}]}. Use only the sticky note text provided." },
+          { role: 'user', content: transcript.slice(0, 8000) },
+        ],
+        temperature: 0.2, maxTokens: 1000,
+      });
+      const text = String(r?.content || r?.text || '').trim();
+      const parsed = JSON.parse((text.match(/\{[\s\S]*\}/) || ['{}'])[0]);
+      return {
+        ok: true,
+        result: {
+          summary: String(parsed.summary || base.summary).slice(0, 2000),
+          actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems.slice(0, 10).map(x => ({ text: String(x.text || ''), owner: x.owner || null })) : base.actionItems,
+          source: 'brain',
+        },
+      };
+    } catch (_e) {
+      return { ok: true, result: { ...base, source: 'deterministic_after_brain_error' } };
+    }
+  });
+
+  // AI generate a starter board from a prompt — Miro/FigJam 2026 hero.
+  registerLensAction("whiteboard", "ai-generate-board", async (ctx, _a, params = {}) => {
+    const prompt = String(params.prompt || "").trim();
+    if (!prompt) return { ok: false, error: "prompt required" };
+    const kind = ['brainstorm','retro','okr','user_journey','flowchart','swot'].includes(params.kind) ? params.kind : 'brainstorm';
+
+    function deterministicScaffold() {
+      // Build a real scene of sticky notes / frames based on kind.
+      const elements = [];
+      let id = 0;
+      const next = () => `gen_${Date.now().toString(36)}_${id++}`;
+      const stickyAt = (x, y, color, text) => ({ id: next(), kind: 'sticky', x, y, w: 180, h: 120, color, text });
+      const frameAt = (x, y, w, h, label) => ({ id: next(), kind: 'rect', x, y, w, h, color: '#0d1117', text: label });
+      if (kind === 'retro') {
+        elements.push(frameAt(0, 0, 360, 600, 'Went well'));
+        elements.push(frameAt(360, 0, 360, 600, 'Could improve'));
+        elements.push(frameAt(720, 0, 360, 600, 'Action items'));
+        elements.push(stickyAt(20, 60, '#bbf7d0', `Re: ${prompt} — what worked`));
+        elements.push(stickyAt(380, 60, '#fef08a', `Re: ${prompt} — what got in the way`));
+        elements.push(stickyAt(740, 60, '#fbcfe8', `Re: ${prompt} — next step`));
+      } else if (kind === 'okr') {
+        elements.push(frameAt(0, 0, 720, 200, 'Objective'));
+        elements.push(stickyAt(20, 60, '#bae6fd', prompt));
+        elements.push(frameAt(0, 220, 360, 380, 'Key result 1'));
+        elements.push(frameAt(360, 220, 360, 380, 'Key result 2'));
+      } else if (kind === 'user_journey') {
+        const stages = ['Awareness','Consideration','Decision','Onboarding','Use','Retention'];
+        stages.forEach((label, i) => {
+          elements.push(frameAt(i * 220, 0, 200, 360, label));
+          elements.push(stickyAt(i * 220 + 10, 60, '#fed7aa', `${label}: re ${prompt}`));
+        });
+      } else if (kind === 'flowchart') {
+        ['Start','Step 1','Step 2','Decision','End'].forEach((label, i) => {
+          elements.push(stickyAt(i * 200, 100, '#bae6fd', `${label} — ${prompt}`));
+        });
+      } else if (kind === 'swot') {
+        elements.push(frameAt(0, 0, 360, 300, 'Strengths'));
+        elements.push(frameAt(360, 0, 360, 300, 'Weaknesses'));
+        elements.push(frameAt(0, 300, 360, 300, 'Opportunities'));
+        elements.push(frameAt(360, 300, 360, 300, 'Threats'));
+        elements.push(stickyAt(20, 60, '#bbf7d0', prompt));
+      } else {
+        // brainstorm fallback — 6 sticky notes in a grid
+        const colors = ['#fef08a', '#fbcfe8', '#bae6fd', '#bbf7d0', '#fed7aa', '#d1d5db'];
+        for (let i = 0; i < 6; i++) {
+          elements.push(stickyAt((i % 3) * 200, Math.floor(i / 3) * 160, colors[i % colors.length], i === 0 ? prompt : `Idea ${i + 1}`));
+        }
+      }
+      return { elements, appState: { kind, generatedFrom: prompt } };
+    }
+
+    const base = deterministicScaffold();
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== 'function') return { ok: true, result: { scene: base, kind, source: 'deterministic' } };
+    try {
+      const r = await brain({
+        messages: [
+          { role: 'system', content: `You are a workshop facilitator. Given a topic, suggest 6-10 brainstorm sticky-note bullet points. Output ONLY JSON: {"stickies":["text1","text2","..."]}. Each text ≤ 120 chars. Use only the topic provided.` },
+          { role: 'user', content: `Topic: ${prompt}\nFormat: ${kind}` },
+        ],
+        temperature: 0.5, maxTokens: 800,
+      });
+      const text = String(r?.content || r?.text || '').trim();
+      const parsed = JSON.parse((text.match(/\{[\s\S]*\}/) || ['{}'])[0]);
+      if (Array.isArray(parsed.stickies)) {
+        const colors = ['#fef08a', '#fbcfe8', '#bae6fd', '#bbf7d0', '#fed7aa', '#d1d5db'];
+        const enhanced = parsed.stickies.slice(0, 12).map((t, i) => ({
+          id: `gen_${Date.now().toString(36)}_${i}`,
+          kind: 'sticky',
+          x: (i % 4) * 200,
+          y: Math.floor(i / 4) * 160,
+          w: 180, h: 120,
+          color: colors[i % colors.length],
+          text: String(t).slice(0, 120),
+        }));
+        // Replace deterministic stickies with brain output; keep any frames from deterministic.
+        const frames = base.elements.filter(e => e.kind === 'rect');
+        return { ok: true, result: { scene: { elements: [...frames, ...enhanced], appState: { kind, generatedFrom: prompt } }, kind, source: 'brain' } };
+      }
+    } catch (_e) {}
+    return { ok: true, result: { scene: base, kind, source: 'deterministic_after_brain_error' } };
+  });
+
+  // ── Comments per element ─────────────────────────────────────
+
+  registerLensAction("whiteboard", "comments-list", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const elementId = params.elementId ? String(params.elementId) : null;
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const cBucket = ensureCommentsBucket(s);
+    // Comments are stored per-board (not per-viewer) so they're shared.
+    if (!cBucket.has(boardId)) cBucket.set(boardId, new Map());
+    const elementMap = cBucket.get(boardId);
+    if (elementId) {
+      return { ok: true, result: { comments: elementMap.get(elementId) || [] } };
+    }
+    const all = {};
+    for (const [eid, list] of elementMap) all[eid] = list;
+    return { ok: true, result: { comments: all } };
+  });
+
+  registerLensAction("whiteboard", "comments-add", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const elementId = String(params.elementId || "");
+    const body = String(params.body || "").trim();
+    if (!boardId || !elementId || !body) return { ok: false, error: "boardId + elementId + body required" };
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const cBucket = ensureCommentsBucket(s);
+    if (!cBucket.has(boardId)) cBucket.set(boardId, new Map());
+    const elementMap = cBucket.get(boardId);
+    if (!elementMap.has(elementId)) elementMap.set(elementId, []);
+    const comment = {
+      id: nextWbId('cmt'),
+      boardId, elementId,
+      authorId: userId,
+      authorName: String(params.authorName || ctx?.actor?.displayName || userId),
+      body,
+      createdAt: nowIsoWb(),
+      resolved: false,
+    };
+    elementMap.get(elementId).push(comment);
+    saveWhiteboardState();
+    return { ok: true, result: { comment } };
+  });
+
+  registerLensAction("whiteboard", "comments-resolve", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const id = String(params.id || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const cBucket = ensureCommentsBucket(s);
+    const elementMap = cBucket.get(boardId);
+    if (!elementMap) return { ok: false, error: "comment not found" };
+    for (const list of elementMap.values()) {
+      const c = list.find(x => x.id === id);
+      if (c) { c.resolved = true; c.resolvedAt = nowIsoWb(); saveWhiteboardState(); return { ok: true, result: { comment: c } }; }
+    }
+    return { ok: false, error: "comment not found" };
+  });
+
+  registerLensAction("whiteboard", "comments-delete", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const id = String(params.id || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const cBucket = ensureCommentsBucket(s);
+    const elementMap = cBucket.get(boardId);
+    if (!elementMap) return { ok: false, error: "comment not found" };
+    for (const list of elementMap.values()) {
+      const i = list.findIndex(x => x.id === id);
+      if (i >= 0) {
+        if (list[i].authorId !== userId) return { ok: false, error: "only author can delete" };
+        list.splice(i, 1);
+        saveWhiteboardState();
+        return { ok: true, result: { deleted: true } };
+      }
+    }
+    return { ok: false, error: "comment not found" };
+  });
+
+  // ── Export ────────────────────────────────────────────────────
+
+  registerLensAction("whiteboard", "board-export-json", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const cBucket = ensureCommentsBucket(s);
+    const elementMap = cBucket.get(boardId) || new Map();
+    const commentsObj = {};
+    for (const [eid, list] of elementMap) commentsObj[eid] = list;
+    return {
+      ok: true,
+      result: {
+        export: {
+          format: 'concord-whiteboard/v1',
+          board: {
+            id: lookup.board.id,
+            title: lookup.board.title,
+            scene: lookup.board.scene,
+            createdAt: lookup.board.createdAt,
+            updatedAt: lookup.board.updatedAt,
+          },
+          comments: commentsObj,
+          exportedAt: nowIsoWb(),
+        },
+      },
+    };
+  });
+
+  // ── Workspace summary ────────────────────────────────────────
+
+  registerLensAction("whiteboard", "workspace-summary", (ctx, _a, _p = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boards = s.boards.get(userId);
+    const boardCount = boards ? boards.size : 0;
+    let elementCount = 0;
+    let stickyCount = 0;
+    if (boards) {
+      for (const b of boards.values()) {
+        const els = Array.isArray(b.scene?.elements) ? b.scene.elements : [];
+        elementCount += els.length;
+        stickyCount += els.filter(el => el.kind === 'sticky').length;
+      }
+    }
+    let sharedCount = 0;
+    for (const board of s.sharedBoards.values()) {
+      if (board.ownerId === userId || (board.participants && board.participants.has(userId))) sharedCount++;
+    }
+    const cBucket = ensureCommentsBucket(s);
+    let openCommentCount = 0;
+    if (boards) {
+      for (const id of boards.keys()) {
+        const elementMap = cBucket.get(id);
+        if (elementMap) for (const list of elementMap.values()) openCommentCount += list.filter(c => !c.resolved).length;
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        boardCount,
+        elementCount,
+        stickyCount,
+        sharedCount,
+        openCommentCount,
+      },
+    };
+  });
 }
