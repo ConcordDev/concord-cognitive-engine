@@ -29,8 +29,9 @@ import { ClassroomShell } from '@/components/education/ClassroomShell';
 import { DispatchShell } from '@/components/trades/DispatchShell';
 import { TmsShell } from '@/components/logistics/TmsShell';
 import { AgFarmShell } from '@/components/agriculture/AgFarmShell';
+import { DawShell } from '@/components/studio/DawShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture' | 'studio';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -46,6 +47,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   trades: 'ServiceTitan / Jobber shape',
   logistics: 'Project44 / SAP TMS shape',
   agriculture: 'John Deere / FieldView shape',
+  studio: 'Logic Pro / Ableton Live shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -57,7 +59,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -108,6 +110,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'trades': return <TradesPreview />;
     case 'logistics': return <LogisticsPreview />;
     case 'agriculture': return <AgriculturePreview />;
+    case 'studio': return <StudioPreview />;
   }
 }
 
@@ -516,6 +519,50 @@ function AgriculturePreview() {
         { id: 'w2', operation: 'Scout for tar spot', kind: 'scouting', status: 'scheduled', scheduledFor: new Date().toISOString().slice(0, 10) },
         { id: 'w3', operation: 'Harvest South 120 beans', kind: 'harvest', status: 'completed', scheduledFor: null },
         { id: 'w4', operation: 'Tank-mix burndown', kind: 'spraying', status: 'scheduled', scheduledFor: null },
+      ]}
+    />
+  );
+}
+
+function StudioPreview() {
+  const [isPlaying, setPlaying] = React.useState(true);
+  const [isRecording, setRecording] = React.useState(false);
+  return (
+    <DawShell
+      projectName="Concord Anthem"
+      bpm={128}
+      timeSignatureNum={4}
+      timeSignatureDen={4}
+      isPlaying={isPlaying}
+      isRecording={isRecording}
+      positionBeats={12.5}
+      onPlay={() => setPlaying(p => !p)}
+      onRecord={() => setRecording(r => !r)}
+      tracks={[
+        { id: 't1', name: 'Kick', kind: 'drum', colour: '#fb7185' },
+        { id: 't2', name: 'Bass', kind: 'midi', colour: '#a78bfa', solo: true },
+        { id: 't3', name: 'Chords', kind: 'midi', colour: '#22d3ee' },
+        { id: 't4', name: 'Lead', kind: 'midi', colour: '#fbbf24', armed: true },
+        { id: 't5', name: 'Vox', kind: 'audio', colour: '#34d399' },
+        { id: 't6', name: 'Pad', kind: 'midi', colour: '#f472b6', muted: true },
+        { id: 't7', name: 'Reverb Bus', kind: 'bus', colour: '#94a3b8' },
+      ]}
+      clips={[
+        { id: 'c1', trackId: 't1', name: 'Kick A', kind: 'drum', startBeats: 0, lengthBeats: 16, colour: '#fb7185' },
+        { id: 'c2', trackId: 't1', name: 'Kick B', kind: 'drum', startBeats: 16, lengthBeats: 16, colour: '#fb7185' },
+        { id: 'c3', trackId: 't2', name: 'Bass riff', kind: 'midi', startBeats: 4, lengthBeats: 12, colour: '#a78bfa' },
+        { id: 'c4', trackId: 't2', name: 'Bass drop', kind: 'midi', startBeats: 20, lengthBeats: 8, colour: '#a78bfa' },
+        { id: 'c5', trackId: 't3', name: 'Verse chords', kind: 'midi', startBeats: 0, lengthBeats: 16, colour: '#22d3ee' },
+        { id: 'c6', trackId: 't3', name: 'Chorus', kind: 'midi', startBeats: 16, lengthBeats: 16, colour: '#22d3ee' },
+        { id: 'c7', trackId: 't4', name: 'Lead hook', kind: 'midi', startBeats: 8, lengthBeats: 8, colour: '#fbbf24' },
+        { id: 'c8', trackId: 't5', name: 'Vox take 3', kind: 'audio', startBeats: 12, lengthBeats: 18, colour: '#34d399' },
+      ]}
+      scenes={[
+        { id: 's1', name: 'Intro' },
+        { id: 's2', name: 'Verse' },
+        { id: 's3', name: 'Chorus' },
+        { id: 's4', name: 'Drop' },
+        { id: 's5', name: 'Outro' },
       ]}
     />
   );
