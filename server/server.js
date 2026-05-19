@@ -10421,6 +10421,12 @@ async function runMacro(domain, name, input, ctx) {
       "observation_list", "appointment_list",
       "provider_search",
       "consent_list", "audit_log",
+      // Sprint B AI surface reads — destructive triggers (triage/check/scan/compose) NOT here
+      "ai_runs_recent",
+      "triages_list",
+      "interaction_alerts_list",
+      "lab_anomalies_list",
+      "summaries_recent",
     ]),
     music: new Set([
       "artist_get", "artist_list", "artist_stats",
@@ -24574,6 +24580,14 @@ registerMusicMoatsMacros(register);
 //     immunizations/labs/medications/procedures/vitals)
 import registerHealthRebuildMacros from "./domains/healthcare-rebuild.js";
 registerHealthRebuildMacros(register);
+
+// Healthcare lens rebuild Sprint B — AI surface with FDA + HIPAA
+// guardrails (migration 241). Every clinical-content macro returns
+// a mandatory "Not for diagnosis" disclaimer, logs prompt + model +
+// tokens + sources to health_ai_runs (HIPAA Jan 2025 AI rules), and
+// flags emergencies for review.
+import registerHealthAiMacros from "./domains/healthcare-ai.js";
+registerHealthAiMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,
