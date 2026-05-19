@@ -17,6 +17,17 @@ import InvestmentCheckup from '@/components/finance/InvestmentCheckup';
 import TaxEstimator from '@/components/finance/TaxEstimator';
 import RetirementSimulator from '@/components/finance/RetirementSimulator';
 import SubscriptionDetector from '@/components/finance/SubscriptionDetector';
+import BillsCalendar from '@/components/finance/BillsCalendar';
+import GoalsTracker from '@/components/finance/GoalsTracker';
+import RecurringInvestments from '@/components/finance/RecurringInvestments';
+import HoldingsManager from '@/components/finance/HoldingsManager';
+import DividendTracker from '@/components/finance/DividendTracker';
+import SpendingInsights from '@/components/finance/SpendingInsights';
+import CategorisationRules from '@/components/finance/CategorisationRules';
+import TaxLossHarvester from '@/components/finance/TaxLossHarvester';
+import AccountsPanel from '@/components/finance/AccountsPanel';
+import FinanceAssistant from '@/components/finance/FinanceAssistant';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { useTilePush } from '@/hooks/useTilePush';
@@ -61,6 +72,14 @@ import {
   Calculator,
   PiggyBank,
   Repeat,
+  Calendar as CalendarIcon,
+  Briefcase,
+  Coins,
+  BarChart3 as InsightsIcon,
+  Filter as FilterIcon,
+  Scissors,
+  Building2,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -139,7 +158,7 @@ interface NewsItem {
 }
 
 type TimeRange = '1H' | '24H' | '7D' | '30D' | '90D' | '1Y' | 'ALL';
-type ViewMode = 'overview' | 'trade' | 'orders' | 'alerts' | 'news' | 'networth' | 'budget' | 'checkup' | 'taxes' | 'retirement' | 'subscriptions';
+type ViewMode = 'overview' | 'trade' | 'orders' | 'alerts' | 'news' | 'networth' | 'budget' | 'checkup' | 'taxes' | 'retirement' | 'subscriptions' | 'bills' | 'goals' | 'recurring' | 'holdings' | 'dividends' | 'insights' | 'rules' | 'taxloss' | 'accounts' | 'assistant';
 type ChartType = 'line' | 'candle' | 'area';
 
 /** Hook: animates a number from 0 to `target` over `duration` ms on mount / when target changes. */
@@ -1796,6 +1815,7 @@ export default function FinanceLensPage() {
       <FirstRunTour lensId="finance" />
       <DepthBadge lensId="finance" size="sm" className="ml-2" />
     <div data-lens-theme="finance" className="p-6 space-y-6 bg-[#0c0f14] font-mono">
+      <RivalShapePreview lensId="finance" defaultOpen={true} />
       {/* Phase 4 (sixth wave) — REAL World Bank country indicators. */}
       <WorldBankPanel domain="finance" />
       <header className="flex items-center justify-between">
@@ -2199,11 +2219,21 @@ export default function FinanceLensPage() {
             { id: 'alerts', label: 'Alerts', icon: Bell },
             { id: 'news', label: 'News', icon: Newspaper },
             { id: 'networth', label: 'Net worth', icon: TrendingUp },
+            { id: 'accounts', label: 'Accounts', icon: Building2 },
+            { id: 'holdings', label: 'Holdings', icon: Briefcase },
+            { id: 'dividends', label: 'Dividends', icon: Coins },
+            { id: 'recurring', label: 'Recurring', icon: Repeat },
             { id: 'budget', label: 'Budget', icon: Wallet },
-            { id: 'checkup', label: 'Checkup', icon: Target },
+            { id: 'bills', label: 'Bills', icon: CalendarIcon },
+            { id: 'goals', label: 'Goals', icon: Target },
+            { id: 'insights', label: 'Insights', icon: InsightsIcon },
+            { id: 'rules', label: 'Rules', icon: FilterIcon },
+            { id: 'taxloss', label: 'Tax-loss', icon: Scissors },
             { id: 'taxes', label: 'Taxes', icon: Calculator },
             { id: 'retirement', label: 'Retirement', icon: PiggyBank },
+            { id: 'checkup', label: 'Checkup', icon: Target },
             { id: 'subscriptions', label: 'Subscriptions', icon: Repeat },
+            { id: 'assistant', label: 'Assistant', icon: Sparkles },
           ] as const
         ).map((item) => (
           <button
@@ -2233,6 +2263,16 @@ export default function FinanceLensPage() {
       {viewMode === 'taxes' && <div className="space-y-4"><TaxEstimator /></div>}
       {viewMode === 'retirement' && <div className="space-y-4"><RetirementSimulator /></div>}
       {viewMode === 'subscriptions' && <div className="space-y-4"><SubscriptionDetector /></div>}
+      {viewMode === 'accounts' && <div className="space-y-4"><AccountsPanel /></div>}
+      {viewMode === 'holdings' && <div className="space-y-4"><HoldingsManager /></div>}
+      {viewMode === 'dividends' && <div className="space-y-4"><DividendTracker /></div>}
+      {viewMode === 'recurring' && <div className="space-y-4"><RecurringInvestments /></div>}
+      {viewMode === 'bills' && <div className="space-y-4"><BillsCalendar /></div>}
+      {viewMode === 'goals' && <div className="space-y-4"><GoalsTracker /></div>}
+      {viewMode === 'insights' && <div className="space-y-4"><SpendingInsights /></div>}
+      {viewMode === 'rules' && <div className="space-y-4"><CategorisationRules /></div>}
+      {viewMode === 'taxloss' && <div className="space-y-4"><TaxLossHarvester /></div>}
+      {viewMode === 'assistant' && <div className="space-y-4"><FinanceAssistant /></div>}
       {viewMode === 'news' && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold">Market News & Analysis</h2>

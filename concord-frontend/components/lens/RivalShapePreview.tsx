@@ -22,8 +22,9 @@ import { DocsShell } from '@/components/legal/DocsShell';
 import { InboxShell } from '@/components/message/InboxShell';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { EHRShell } from '@/components/healthcare/EHRShell';
+import { FinanceShell } from '@/components/finance/FinanceShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -32,6 +33,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   message: 'Gmail shape',
   whiteboard: 'tldraw / Miro shape',
   healthcare: 'Epic EHR shape',
+  finance: 'Robinhood / Monarch shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -43,7 +45,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -87,6 +89,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'message': return <MessagePreview />;
     case 'whiteboard': return <WhiteboardPreview />;
     case 'healthcare': return <HealthcarePreview />;
+    case 'finance': return <FinancePreview />;
   }
 }
 
@@ -265,6 +268,42 @@ function HealthcarePreview() {
         </ul>
       </EHRShell>
     </div>
+  );
+}
+
+function FinancePreview() {
+  const today = Date.now();
+  const sparkData = Array.from({ length: 60 }, (_, i) => 100000 + Math.sin(i * 0.15) * 4000 + Math.cos(i * 0.07) * 2500 + i * 200);
+  return (
+    <FinanceShell
+      netWorth={142850.32}
+      netWorthDelta={2483.12}
+      netWorthDeltaPct={1.77}
+      range="1M"
+      sparkline={sparkData}
+      buyingPower={18420}
+      budgetUsedPct={62}
+      holdings={[
+        { id: 'vti', symbol: 'VTI', name: 'Vanguard Total Stock', kind: 'etf', shares: 245, price: 248.32, value: 60838, changePct: 1.42, sparkline: [240, 242, 241, 244, 246, 245, 248] },
+        { id: 'vxus', symbol: 'VXUS', name: 'Vanguard Total Intl', kind: 'etf', shares: 180, price: 62.18, value: 11192, changePct: -0.32, sparkline: [63, 62.8, 62.5, 62.1, 62.3, 62.0, 62.18] },
+        { id: 'aapl', symbol: 'AAPL', name: 'Apple Inc', kind: 'stock', shares: 50, price: 218.42, value: 10921, changePct: 2.18, sparkline: [210, 212, 215, 213, 216, 217, 218.42] },
+        { id: 'cc', symbol: 'CC', name: 'Concord Coin', kind: 'cc', shares: 12480, price: 1.04, value: 12979, changePct: 4.62, sparkline: [0.95, 0.98, 0.99, 1.01, 1.0, 1.03, 1.04] },
+        { id: 'btc', symbol: 'BTC', name: 'Bitcoin', kind: 'crypto', shares: 0.18, price: 87420, value: 15736, changePct: -1.84, sparkline: [89000, 88500, 88200, 87900, 87800, 87600, 87420] },
+      ]}
+      watchlist={[
+        { id: 'nvda', symbol: 'NVDA', name: 'NVIDIA', price: 142.18, changePct: 3.42 },
+        { id: 'msft', symbol: 'MSFT', name: 'Microsoft', price: 422.50, changePct: 0.84 },
+        { id: 'tsla', symbol: 'TSLA', name: 'Tesla', price: 218.32, changePct: -2.14 },
+        { id: 'spy', symbol: 'SPY', name: 'S&P 500', price: 582.12, changePct: 0.62 },
+      ]}
+      activity={[
+        { id: 'a1', kind: 'royalty', label: 'DTU cascade gen 3', amount: 24.50, asset: 'CC', timestamp: new Date(today - 3600_000).toISOString() },
+        { id: 'a2', kind: 'buy', label: 'DCA monthly', amount: 500, asset: 'VTI', timestamp: new Date(today - 86400_000).toISOString() },
+        { id: 'a3', kind: 'dividend', label: 'Quarterly distribution', amount: 142.18, asset: 'SCHD', timestamp: new Date(today - 172800_000).toISOString() },
+        { id: 'a4', kind: 'deposit', label: 'Payroll', amount: 4250, timestamp: new Date(today - 259200_000).toISOString() },
+        { id: 'a5', kind: 'sell', label: 'Tax-loss harvest', amount: 1840, asset: 'META', timestamp: new Date(today - 432000_000).toISOString() },
+      ]}
+    />
   );
 }
 
