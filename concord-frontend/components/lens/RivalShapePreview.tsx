@@ -31,8 +31,9 @@ import { DispatchShell } from '@/components/trades/DispatchShell';
 import { TmsShell } from '@/components/logistics/TmsShell';
 import { AgFarmShell } from '@/components/agriculture/AgFarmShell';
 import { DawShell } from '@/components/studio/DawShell';
+import { AvShell } from '@/components/aviation/AvShell';
 
-type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture' | 'studio';
+type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture' | 'studio' | 'aviation';
 
 const RIVAL_LABELS: Record<SupportedLens, string> = {
   code: 'VS Code shape',
@@ -49,6 +50,7 @@ const RIVAL_LABELS: Record<SupportedLens, string> = {
   logistics: 'Project44 / SAP TMS shape',
   agriculture: 'John Deere / FieldView shape',
   studio: 'Logic Pro / Ableton Live shape',
+  aviation: 'ForeFlight / FlightAware shape',
 };
 
 export interface RivalShapePreviewProps {
@@ -59,7 +61,7 @@ export interface RivalShapePreviewProps {
 
 export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio'] as const).includes(lensId as SupportedLens);
+  const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
   const label = RIVAL_LABELS[lensId as SupportedLens];
 
@@ -106,6 +108,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'logistics': return <LogisticsPreview />;
     case 'agriculture': return <AgriculturePreview />;
     case 'studio': return <StudioPreview />;
+    case 'aviation': return <AviationPreview />;
   }
 }
 
@@ -556,6 +559,46 @@ function StudioPreview() {
         muted: Boolean(c.muted),
       }))}
       scenes={scenes.map(s => ({ id: String(s.id || ''), name: String(s.name || '') }))}
+    />
+  );
+}
+
+/* ── Aviation: hydrate from dashboard-summary + aircraft + tracks + currency ── */
+
+function AviationPreview() {
+  const [d, setD] = useState<Record<string, unknown> | null>(null);
+  const [aircraft, setAircraft] = useState<Array<Record<string, unknown>>>([]);
+  const [tracks, setTracks] = useState<Array<Record<string, unknown>>>([]);
+  const [currency, setCurrency] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      try {
+        const [s, ac, tr, cur] = await Promise.all([
+          api.post('/api/lens/run', { domain: 'aviation', action: 'dashboard-summary', input: {} }).catch(() => null),
+          api.post('/api/lens/run', { domain: 'aviation', action: 'aircraft-list', input: {} }).catch(() => null),
+          api.post('/api/lens/run', { domain: 'aviation', action: 'track-logs-list', input: {} }).catch(() => null),
+          api.post('/api/lens/run', { domain: 'aviation', action: 'currency-status', input: {} }).catch(() => null),
+        ]);
+        setD((s?.data?.result as Record<string, unknown>) || {});
+        setAircraft((ac?.data?.result?.aircraft || []) as Array<Record<string, unknown>>);
+        setTracks(((tr?.data?.result?.tracks || []) as Array<Record<string, unknown>>).slice(0, 8));
+        setCurrency((cur?.data?.result as Record<string, unknown>) || null);
+      } catch { /* empty state */ }
+      finally { setLoading(false); }
+    })();
+  }, []);
+  if (loading) return <PreviewLoading />;
+  return (
+    <AvShell
+      totalHours={(d?.totalHours as number) || 0}
+      hours30d={(d?.hours30d as number) || 0}
+      aircraftCount={(d?.aircraftCount as number) || 0}
+      activeTracks={(d?.activeTracks as number) || 0}
+      totalFlights={(d?.totalFlights as number) || 0}
+      aircraft={aircraft.map(a => ({ id: String(a.id || ''), tail: String(a.tail || ''), make: String(a.make || ''), model: String(a.model || ''), hobbsHours: Number(a.hobbsHours) || 0, cruiseKts: Number(a.cruiseKts) || 0, fuelBurnGph: Number(a.fuelBurnGph) || 0 }))}
+      tracks={tracks.map(t => ({ id: String(t.id || ''), tail: t.tail as string, from: t.from as string, to: t.to as string, endedAt: t.endedAt as string, totalDistanceNm: Number(t.totalDistanceNm) || 0 }))}
+      currency={currency ? (currency as never) : undefined}
     />
   );
 }
