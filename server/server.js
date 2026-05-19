@@ -10421,6 +10421,12 @@ async function runMacro(domain, name, input, ctx) {
       "recommendation_explain",
       "recommendations_recent",
       "ai_runs_recent",
+      // Sprint C reads
+      "track_derivatives",
+      "ai_training_sources_for",
+      "concord_friday_status",
+      "concord_fridays_list",
+      "federation_outbox_status",
     ]),
     // Smoking-gun cleanup I9 — read paths for write-only audit tables
     "land-claims": new Set(["history"]),
@@ -24529,6 +24535,19 @@ registerMusicRebuildMacros(register);
 // Hybrid (content + behavioral + social) matches 2024-25 academic SOTA.
 import registerMusicAiMacros from "./domains/music-ai.js";
 registerMusicAiMacros(register);
+
+// Music lens rebuild Sprint C — concord moats (migration 239). Each
+// moat grounded in May 2026 research (docs/LENS_RESEARCH_NOTES.md):
+//   - Track DTU mints with EIP-2981-style royalty (default 10%, cap 30%)
+//   - Derivative attribution (ClearBeats parity — "industry's biggest
+//     unsolved problem" solved natively via DTU cite cascade)
+//   - Playlist curator mints (Concord-only moat — Spotify pays curators 0%)
+//   - AI-training-source citation (Musical AI parity; opt-in consent
+//     per Bandcamp's banned-AI / Subvert's consent stance)
+//   - Concord Fridays: 8 days/year 0%-take, exact 2026 Bandcamp calendar
+//   - Funkwhale-compatible ActivityPub federation
+import registerMusicMoatsMacros from "./domains/music-moats.js";
+registerMusicMoatsMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,

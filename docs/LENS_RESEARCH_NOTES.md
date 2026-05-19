@@ -53,13 +53,56 @@
 - **Implication for Concord**: our hybrid deterministic + LLM + behavioral scorer is on-trend. GNN edge for a future sprint when we have enough scene/social-graph density to train on.
 - Source: [arXiv: Content filtering methods for music recommendation (July 2025)](https://arxiv.org/html/2507.02282v1), [Springer: Hybrid music recommendation with GNN](https://link.springer.com/article/10.1007/s11257-024-09410-4)
 
-### What's NOT in scope yet (Sprint C+ candidates)
+### Sprint C research additions (2026-05-18 — done before building)
+
+**Sound.xyz / Audius (on-chain royalty precedent)**
+- Sound.xyz uses **EIP-2981** smart-contract royalty standard. Default 10% on secondary market sales. Splits configurable across multiple wallet addresses.
+- Audius = decentralized music streaming on open-source audio protocol across multiple blockchains.
+- Both demonstrate the artists-retain-most-primary-and-earn-on-secondary model. Concord's royalty-cascade engine is the equivalent (without the blockchain — built on DTU lineage instead).
+- Source: [Sound.xyz Explained](https://nftplazas.com/sound-xyz-music-nft-marketplace/), [Chainlink: How Music NFTs Can Reshape the Music Industry](https://chain.link/education-hub/music-nfts)
+
+**ClearBeats — industry's biggest unsolved problem**
+- Quote: "Derivative works clearance with accurate rights attribution at scale" — explicitly called out as the music industry's biggest challenge.
+- **Concord already has the substrate to solve this**: every cover/sample/interpolation is a derivative DTU that cites the parent DTU. Royalty cascade automatically routes a share of every derivative's revenue back through the lineage chain.
+- **Sprint C will expose this as the load-bearing music moat** — track DTU mints with auto-derivative-attribution.
+- Source: [ClearBeats: Derivative Works Clearance announcement](https://www.recordoftheday.com/news-and-press/clearbeats-solves-music-industrys-biggest-challenge-derivative-works-clearance-with-accurate-rights-attribution-at-scale)
+
+**ISRC per derivative**
+- Every cover / sample / interpolation gets its own ISRC. Required for any sample-license activation.
+- Concord's DTU id natively serves this role (every derivative is its own DTU; lineage preserved via dtu_citations).
+- Source: [Tracklib: Do I need an ISRC for sample license](https://support.tracklib.com/hc/en-us/articles/14949819945244-Do-I-need-to-have-an-ISRC-in-order-to-get-my-sample-license), [Usemogul: ISRC Codes for Music 2026 Essential Guide](https://www.usemogul.com/post/isrc-codes-for-music)
+
+**Funkwhale + Soundstorm (ActivityPub federation precedent)**
+- Funkwhale = self-hosted music server speaking ActivityPub. Already exists, already federated.
+- Soundstorm = audio-oriented federated social network on ActivityPub.
+- **Sprint C plan**: Concord music exports as ActivityPub Note objects with audio_url enclosure → compatible with Funkwhale subscribers out of the box.
+- Source: [Funkwhale (etke.cc)](https://etke.cc/help/extras/funkwhale/), [Fediverse.Party](https://fediverse.party/en/miscellaneous/)
+
+**Subvert + market shift away from corporate-extractive platforms**
+- Subvert = cooperative-owned Bandcamp successor founded by Austin Robey post-Songtradr-acquisition. Worker + artist owned.
+- Bandcamp BANNED AI music in 2025-2026. Subvert is consent-based AI.
+- Musical AI = attribution layer for generative AI; verifies which copyrights trained a model + splits payments.
+- **Implication for Concord**: position concord music as cooperative-aligned + AI-consent-aware natively. When a track is AI-generated, lineage cites training-source DTUs automatically (Musical AI parity built in).
+- Source: [EDM: Bandcamp Successor Subvert](https://edm.com/industry/collectively-owned-bandcamp-successor-subvert/), [Vinyl Culture: Bandcamp's AI Music Ban](https://vinylculture.substack.com/p/the-battle-for-musics-soul-from-bandcamps)
+
+**Royalty corrections from prior search**
+- Bandcamp actually gives 85-90% to artists (not 82%). Even more artist-friendly than first-pass research suggested.
+- Source: [Bandcamp Review & Best Alternatives in 2026](https://www.creatoreconomytools.com/tool/bandcamp)
+
+### Sprint C plan (research-grounded)
+1. **Track DTU mints** — every track gets a DTU on publish. Royalty rate default 10% (matches Sound.xyz / EIP-2981), capped 30% (matches our marketplace ceiling). Cover/sample/remix = derivative DTU citing parent → cite cascade routes payments automatically. ClearBeats problem solved natively.
+2. **Playlist curator DTU mints** — playlist as DTU, curator earns derived royalty on track plays from that playlist (Bandcamp doesn't have this; Concord moat).
+3. **Concord Fridays** — 8 days/year (Feb 6, Mar 6, May 1, Aug 7, Sep 4, Oct 2, Nov 6, Dec 4 in 2026 — match Bandcamp's exact schedule for fan-familiar UX) where music marketplace platform fee waives to 0. Heartbeat checks date + flips a flag.
+4. **ActivityPub federation export** — tracks emit ActivityPub Note objects with audio_url enclosure. Compatible with Funkwhale subscribers.
+5. **AI-music attribution** — when a track has source='generative', lineage MUST cite training-data DTUs (Musical AI parity).
+6. **Cross-lens cite** — track cites referenced from chat / doc / calendar / world events fire royalty cascade.
+
+### Deferred to later sprints
 - Real audio fingerprint analysis (Musiio-equivalent — would need actual audio processing)
-- Shazam-tag-equivalent external recognition signal (Concord's cross-lens cite cascade could play this role)
 - "First Fans" early-adopter mechanic
-- Genre-specific surfaces (Apple Music Classical is its own product — Concord could do same for classical / jazz / experimental)
+- Genre-specific surfaces (Apple Music Classical is its own product)
 - GNN social-graph recommender layer
-- Real-time radio session quality computation (currently approximated via opts.sessionSeedScore)
+- Real-time radio session quality computation
 
 ---
 
