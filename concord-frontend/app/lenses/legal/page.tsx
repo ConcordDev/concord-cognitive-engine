@@ -9,6 +9,7 @@ import { LayoutDashboard as MobileTabDash, Briefcase as MobileTabCase, FileText 
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ClioSection } from '@/components/legal/ClioSection';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import ContractAnalyzer from '@/components/legal/ContractAnalyzer';
 import { LegalActionPanel } from '@/components/legal/LegalActionPanel';
@@ -3074,6 +3075,9 @@ export default function LegalLensPage() {
       <FirstRunTour lensId="legal" />
       <DepthBadge lensId="legal" size="sm" className="ml-2" />
       <RivalShapePreview lensId="legal" defaultOpen={true} />
+      <div className="px-4 mt-3">
+        <ClioSection />
+      </div>
     <div data-lens-theme="legal" className={ds.pageContainer}>
       {/* Legal Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">

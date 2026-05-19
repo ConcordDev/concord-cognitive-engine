@@ -226,7 +226,21 @@ export default function registerLegalActions(registerLensAction) {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
     if (!STATE.legalLens) STATE.legalLens = { cases: new Map() };
-    return STATE.legalLens;
+    const s = STATE.legalLens;
+    // Phase 2 (Clio-parity) backfills — append-only, never break older buckets.
+    if (!s.matters)      s.matters      = new Map();
+    if (!s.contacts)     s.contacts     = new Map();
+    if (!s.timeEntries)  s.timeEntries  = new Map();
+    if (!s.timers)       s.timers       = new Map();
+    if (!s.trustAccts)   s.trustAccts   = new Map();
+    if (!s.trustTxns)    s.trustTxns    = new Map();
+    if (!s.invoices)     s.invoices     = new Map();
+    if (!s.documents)    s.documents    = new Map();
+    if (!s.templates)    s.templates    = new Map();
+    if (!s.esignEnv)     s.esignEnv     = new Map();
+    if (!s.calendar)     s.calendar     = new Map();
+    if (!s.seq)          s.seq          = new Map();
+    return s;
   }
   function saveLegalState() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
@@ -308,6 +322,940 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     } catch (e) {
       return { ok: true, result: { answer: `Error: ${e?.message || "unknown"}. Consult an attorney.`, jurisdiction, citations: [], caveats: ["AI request failed."] } };
     }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Clio 2026 parity — matter management, contacts, time tracking,
+  // IOLTA trust accounting, document automation, e-signature,
+  // court-rules-aware deadline calculator, Manage AI features.
+  // ═══════════════════════════════════════════════════════════════
+
+  function aid(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function uid(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function isoNow() { return new Date().toISOString(); }
+  function isoDay() { return new Date().toISOString().slice(0, 10); }
+  function ensureBucket(m, userId) { if (!m.has(userId)) m.set(userId, []); return m.get(userId); }
+  function ensureSeqLegal(s, userId) {
+    if (!s.seq.has(userId)) s.seq.set(userId, { mat: 1, party: 1, te: 1, inv: 1, doc: 1, env: 1, ev: 1, ta: 1 });
+    const seq = s.seq.get(userId);
+    for (const k of ['mat','party','te','inv','doc','env','ev','ta']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    return seq;
+  }
+
+  const MATTER_TYPES = ['litigation','transactional','family','probate','criminal','employment','ip','real_estate','corporate','immigration','tax','bankruptcy','other'];
+  const MATTER_STATUSES = ['intake','open','pending','closed','archived'];
+  const CONTACT_KINDS = ['client','opposing_party','opposing_counsel','witness','court','expert','other'];
+
+  // ── Matters ────────────────────────────────────────────────────
+
+  registerLensAction("legal", "matters-list", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const status = params.status && MATTER_STATUSES.includes(params.status) ? params.status : null;
+    const list = ensureBucket(s.matters, userId);
+    const filtered = status ? list.filter(m => m.status === status) : list;
+    return { ok: true, result: { matters: filtered.slice().sort((a, b) => (b.openedAt || '').localeCompare(a.openedAt || '')) } };
+  });
+
+  registerLensAction("legal", "matters-create", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const seq = ensureSeqLegal(s, userId);
+    const matter = {
+      id: uid("matter"),
+      number: `MAT-${String(seq.mat).padStart(5, "0")}`,
+      name,
+      clientId: params.clientId ? String(params.clientId) : null,
+      clientName: String(params.clientName || ""),
+      matterType: MATTER_TYPES.includes(params.matterType) ? params.matterType : 'other',
+      status: 'open',
+      jurisdiction: String(params.jurisdiction || ""),
+      court: String(params.court || ""),
+      caseNumber: String(params.caseNumber || ""),
+      hourlyRate: Number(params.hourlyRate) || 0,
+      flatFee: Number(params.flatFee) || 0,
+      billingType: ['hourly','flat','contingency','pro_bono'].includes(params.billingType) ? params.billingType : 'hourly',
+      openedAt: isoDay(),
+      closedAt: null,
+      description: String(params.description || "").slice(0, 1000),
+      partyIds: Array.isArray(params.partyIds) ? params.partyIds.map(String) : [],
+    };
+    seq.mat++;
+    ensureBucket(s.matters, userId).push(matter);
+    saveLegalState();
+    return { ok: true, result: { matter } };
+  });
+
+  registerLensAction("legal", "matters-update", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const id = String(params.id || "");
+    const m = ensureBucket(s.matters, aid(ctx)).find(x => x.id === id);
+    if (!m) return { ok: false, error: "matter not found" };
+    for (const k of ['name','clientName','jurisdiction','court','caseNumber','description']) {
+      if (typeof params[k] === 'string') m[k] = params[k];
+    }
+    for (const k of ['hourlyRate','flatFee']) {
+      if (Number.isFinite(Number(params[k]))) m[k] = Number(params[k]);
+    }
+    if (MATTER_TYPES.includes(params.matterType)) m.matterType = params.matterType;
+    if (MATTER_STATUSES.includes(params.status)) m.status = params.status;
+    if (['hourly','flat','contingency','pro_bono'].includes(params.billingType)) m.billingType = params.billingType;
+    if (Array.isArray(params.partyIds)) m.partyIds = params.partyIds.map(String);
+    saveLegalState();
+    return { ok: true, result: { matter: m } };
+  });
+
+  registerLensAction("legal", "matters-close", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = ensureBucket(s.matters, aid(ctx)).find(x => x.id === String(params.id || ""));
+    if (!m) return { ok: false, error: "matter not found" };
+    m.status = 'closed';
+    m.closedAt = isoDay();
+    saveLegalState();
+    return { ok: true, result: { matter: m } };
+  });
+
+  registerLensAction("legal", "matters-detail", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const id = String(params.id || "");
+    const m = ensureBucket(s.matters, userId).find(x => x.id === id);
+    if (!m) return { ok: false, error: "matter not found" };
+    const contacts = ensureBucket(s.contacts, userId);
+    const parties = (m.partyIds || []).map(pid => contacts.find(c => c.id === pid)).filter(Boolean);
+    const time = ensureBucket(s.timeEntries, userId).filter(t => t.matterId === id);
+    const totalBilled = time.filter(t => t.status === 'billed').reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalUnbilled = time.filter(t => t.status === 'unbilled').reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalHours = time.reduce((sum, t) => sum + (t.hours || 0), 0);
+    const invoices = ensureBucket(s.invoices, userId).filter(i => i.matterId === id);
+    const documents = ensureBucket(s.documents, userId).filter(d => d.matterId === id);
+    const trustBalance = (() => {
+      const txns = ensureBucket(s.trustTxns, userId).filter(t => t.matterId === id);
+      return txns.reduce((sum, t) => sum + (t.kind === 'deposit' ? t.amount : -t.amount), 0);
+    })();
+    const events = ensureBucket(s.calendar, userId).filter(e => e.matterId === id);
+    return {
+      ok: true,
+      result: {
+        matter: m,
+        parties,
+        time,
+        invoices,
+        documents,
+        events,
+        totals: { billed: totalBilled, unbilled: totalUnbilled, hours: totalHours, trustBalance },
+      },
+    };
+  });
+
+  // ── Contacts (clients, opposing parties, etc) ──────────────────
+
+  registerLensAction("legal", "contacts-list", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const kind = CONTACT_KINDS.includes(params.kind) ? params.kind : null;
+    const list = ensureBucket(s.contacts, aid(ctx));
+    const filtered = kind ? list.filter(c => c.kind === kind) : list;
+    return { ok: true, result: { contacts: filtered.slice().sort((a, b) => a.name.localeCompare(b.name)) } };
+  });
+
+  registerLensAction("legal", "contacts-create", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const seq = ensureSeqLegal(s, userId);
+    const c = {
+      id: uid("party"),
+      number: `P-${String(seq.party).padStart(5, "0")}`,
+      name,
+      kind: CONTACT_KINDS.includes(params.kind) ? params.kind : 'client',
+      email: String(params.email || "").trim(),
+      phone: String(params.phone || "").trim(),
+      organization: String(params.organization || "").trim(),
+      address: String(params.address || "").trim(),
+      notes: String(params.notes || "").slice(0, 1000),
+      createdAt: isoNow(),
+    };
+    seq.party++;
+    ensureBucket(s.contacts, userId).push(c);
+    saveLegalState();
+    return { ok: true, result: { contact: c } };
+  });
+
+  registerLensAction("legal", "contacts-update", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = ensureBucket(s.contacts, aid(ctx)).find(x => x.id === String(params.id || ""));
+    if (!c) return { ok: false, error: "contact not found" };
+    for (const k of ['name','email','phone','organization','address','notes']) {
+      if (typeof params[k] === 'string') c[k] = params[k];
+    }
+    if (CONTACT_KINDS.includes(params.kind)) c.kind = params.kind;
+    saveLegalState();
+    return { ok: true, result: { contact: c } };
+  });
+
+  registerLensAction("legal", "contacts-delete", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.contacts, aid(ctx));
+    const i = list.findIndex(c => c.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "contact not found" };
+    list.splice(i, 1);
+    saveLegalState();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Conflict check (real STATE-backed) ────────────────────────
+
+  registerLensAction("legal", "conflict-search", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const query = String(params.name || params.query || "").trim().toLowerCase();
+    if (!query) return { ok: false, error: "name or query required" };
+    const contacts = ensureBucket(s.contacts, userId);
+    const matters = ensureBucket(s.matters, userId);
+    const matches = [];
+    for (const c of contacts) {
+      const hay = `${c.name} ${c.organization} ${c.email}`.toLowerCase();
+      if (hay.includes(query)) {
+        const relatedMatters = matters.filter(m => (m.partyIds || []).includes(c.id) || (m.clientId === c.id) || (m.clientName || '').toLowerCase().includes(c.name.toLowerCase()));
+        matches.push({ kind: 'contact', contact: c, matters: relatedMatters });
+      }
+    }
+    for (const m of matters) {
+      const hay = `${m.name} ${m.clientName} ${m.caseNumber}`.toLowerCase();
+      if (hay.includes(query) && !matches.some(x => x.kind === 'matter' && x.matter.id === m.id)) {
+        matches.push({ kind: 'matter', matter: m });
+      }
+    }
+    return { ok: true, result: { query, hits: matches.length, matches, hasConflict: matches.length > 0 } };
+  });
+
+  // ── Time tracking ──────────────────────────────────────────────
+
+  registerLensAction("legal", "time-entries-list", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matterId = params.matterId ? String(params.matterId) : null;
+    const status = ['unbilled','billed','non_billable','all'].includes(params.status) ? params.status : 'all';
+    const list = ensureBucket(s.timeEntries, userId);
+    let filtered = list;
+    if (matterId) filtered = filtered.filter(t => t.matterId === matterId);
+    if (status !== 'all') filtered = filtered.filter(t => t.status === status);
+    return { ok: true, result: { entries: filtered.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')) } };
+  });
+
+  registerLensAction("legal", "time-entries-create", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matterId = String(params.matterId || "");
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+    if (!matter) return { ok: false, error: "matter not found" };
+    const hours = Number(params.hours);
+    if (!Number.isFinite(hours) || hours <= 0) return { ok: false, error: "hours must be > 0" };
+    const seq = ensureSeqLegal(s, userId);
+    const billable = params.billable !== false;
+    const rate = Number.isFinite(Number(params.rate)) && Number(params.rate) > 0 ? Number(params.rate) : (matter.hourlyRate || 0);
+    const entry = {
+      id: uid("te"),
+      number: `TE-${String(seq.te).padStart(6, "0")}`,
+      matterId,
+      matterName: matter.name,
+      date: String(params.date || isoDay()),
+      description: String(params.description || "").slice(0, 500),
+      hours,
+      rate,
+      amount: billable ? Math.round(hours * rate * 100) / 100 : 0,
+      status: billable ? 'unbilled' : 'non_billable',
+      activityCode: String(params.activityCode || ""),
+      createdAt: isoNow(),
+      invoiceId: null,
+    };
+    seq.te++;
+    ensureBucket(s.timeEntries, userId).push(entry);
+    saveLegalState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("legal", "time-entries-delete", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.timeEntries, aid(ctx));
+    const i = list.findIndex(t => t.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "entry not found" };
+    if (list[i].status === 'billed') return { ok: false, error: "cannot delete a billed entry" };
+    list.splice(i, 1);
+    saveLegalState();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // Multiple concurrent timers (Clio-parity).
+  registerLensAction("legal", "timer-start", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matterId = String(params.matterId || "");
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+    if (!matter) return { ok: false, error: "matter not found" };
+    const timer = {
+      id: uid("timer"),
+      matterId, matterName: matter.name,
+      description: String(params.description || ""),
+      startedAt: isoNow(),
+      elapsedSec: 0,
+    };
+    ensureBucket(s.timers, userId).push(timer);
+    saveLegalState();
+    return { ok: true, result: { timer } };
+  });
+
+  registerLensAction("legal", "timer-stop", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const timers = ensureBucket(s.timers, userId);
+    const i = timers.findIndex(t => t.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "timer not found" };
+    const timer = timers[i];
+    const elapsedMs = Date.now() - new Date(timer.startedAt).getTime();
+    const hours = Math.max(0.01, Math.round((elapsedMs / 3_600_000) * 100) / 100);
+    timers.splice(i, 1);
+    // Auto-create time entry from timer
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === timer.matterId);
+    if (!matter) {
+      saveLegalState();
+      return { ok: true, result: { timer, stoppedNoEntry: true } };
+    }
+    const seq = ensureSeqLegal(s, userId);
+    const rate = matter.hourlyRate || 0;
+    const entry = {
+      id: uid("te"),
+      number: `TE-${String(seq.te).padStart(6, "0")}`,
+      matterId: timer.matterId,
+      matterName: timer.matterName,
+      date: isoDay(),
+      description: timer.description || `Auto from timer ${timer.id}`,
+      hours,
+      rate,
+      amount: Math.round(hours * rate * 100) / 100,
+      status: 'unbilled',
+      activityCode: "",
+      createdAt: isoNow(),
+      invoiceId: null,
+      fromTimer: true,
+    };
+    seq.te++;
+    ensureBucket(s.timeEntries, userId).push(entry);
+    saveLegalState();
+    return { ok: true, result: { timer, entry, hours } };
+  });
+
+  registerLensAction("legal", "timer-list", (ctx, _a, _p = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.timers, aid(ctx)).map(t => ({
+      ...t,
+      elapsedSec: Math.floor((Date.now() - new Date(t.startedAt).getTime()) / 1000),
+    }));
+    return { ok: true, result: { timers: list } };
+  });
+
+  // ── IOLTA Trust Accounting ─────────────────────────────────────
+
+  registerLensAction("legal", "trust-account-create", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const name = String(params.name || "Operating Trust (IOLTA)").trim();
+    const accountNumber = String(params.accountNumber || `IOLTA-${Date.now().toString(36).slice(-6)}`);
+    const seq = ensureSeqLegal(s, userId);
+    const account = {
+      id: uid("trustacct"),
+      number: `TA-${String(seq.ta).padStart(3, "0")}`,
+      name,
+      accountNumber,
+      bankName: String(params.bankName || ""),
+      isIOLTA: params.isIOLTA !== false,
+      bankStatementBalance: 0,    // user-entered for 3-way recon
+      createdAt: isoNow(),
+    };
+    seq.ta++;
+    ensureBucket(s.trustAccts, userId).push(account);
+    saveLegalState();
+    return { ok: true, result: { account } };
+  });
+
+  registerLensAction("legal", "trust-accounts-list", (ctx, _a, _p = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { accounts: ensureBucket(s.trustAccts, aid(ctx)) } };
+  });
+
+  registerLensAction("legal", "trust-deposit", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const accountId = String(params.accountId || "");
+    const matterId = String(params.matterId || "");
+    const amount = Number(params.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const acct = ensureBucket(s.trustAccts, userId).find(a => a.id === accountId);
+    if (!acct) return { ok: false, error: "trust account not found" };
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+    if (!matter) return { ok: false, error: "matter not found" };
+    const txn = {
+      id: uid("trtxn"),
+      accountId, matterId, matterName: matter.name,
+      clientId: matter.clientId, clientName: matter.clientName,
+      kind: 'deposit',
+      amount,
+      memo: String(params.memo || "Retainer/deposit"),
+      date: String(params.date || isoDay()),
+      checkNumber: String(params.checkNumber || ""),
+      createdAt: isoNow(),
+    };
+    ensureBucket(s.trustTxns, userId).push(txn);
+    saveLegalState();
+    return { ok: true, result: { txn } };
+  });
+
+  registerLensAction("legal", "trust-disburse", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const accountId = String(params.accountId || "");
+    const matterId = String(params.matterId || "");
+    const amount = Number(params.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const acct = ensureBucket(s.trustAccts, userId).find(a => a.id === accountId);
+    if (!acct) return { ok: false, error: "trust account not found" };
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+    if (!matter) return { ok: false, error: "matter not found" };
+    // ENFORCE: cannot overdraw client's trust balance.
+    const txns = ensureBucket(s.trustTxns, userId).filter(t => t.matterId === matterId);
+    const clientBal = txns.reduce((sum, t) => sum + (t.kind === 'deposit' ? t.amount : -t.amount), 0);
+    if (amount > clientBal) {
+      return { ok: false, error: `IOLTA violation: client trust balance is $${clientBal.toFixed(2)}, cannot disburse $${amount.toFixed(2)}.` };
+    }
+    const txn = {
+      id: uid("trtxn"),
+      accountId, matterId, matterName: matter.name,
+      clientId: matter.clientId, clientName: matter.clientName,
+      kind: 'disbursement',
+      amount,
+      memo: String(params.memo || "Disbursement"),
+      payee: String(params.payee || ""),
+      date: String(params.date || isoDay()),
+      checkNumber: String(params.checkNumber || ""),
+      invoiceId: params.invoiceId ? String(params.invoiceId) : null,
+      createdAt: isoNow(),
+    };
+    ensureBucket(s.trustTxns, userId).push(txn);
+    saveLegalState();
+    return { ok: true, result: { txn } };
+  });
+
+  registerLensAction("legal", "trust-balance", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const accountId = params.accountId ? String(params.accountId) : null;
+    const matterId = params.matterId ? String(params.matterId) : null;
+    let txns = ensureBucket(s.trustTxns, userId);
+    if (accountId) txns = txns.filter(t => t.accountId === accountId);
+    if (matterId) txns = txns.filter(t => t.matterId === matterId);
+    const total = txns.reduce((sum, t) => sum + (t.kind === 'deposit' ? t.amount : -t.amount), 0);
+    // per-matter ledger
+    const byMatter = new Map();
+    for (const t of txns) {
+      const mk = t.matterId;
+      const cur = byMatter.get(mk) || { matterId: mk, matterName: t.matterName, clientName: t.clientName, deposits: 0, disbursements: 0, balance: 0 };
+      if (t.kind === 'deposit') cur.deposits += t.amount; else cur.disbursements += t.amount;
+      cur.balance = cur.deposits - cur.disbursements;
+      byMatter.set(mk, cur);
+    }
+    return { ok: true, result: { total, byMatter: Array.from(byMatter.values()), txnCount: txns.length } };
+  });
+
+  registerLensAction("legal", "trust-reconcile", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const accountId = String(params.accountId || "");
+    const acct = ensureBucket(s.trustAccts, userId).find(a => a.id === accountId);
+    if (!acct) return { ok: false, error: "trust account not found" };
+    if (Number.isFinite(Number(params.bankBalance))) {
+      acct.bankStatementBalance = Number(params.bankBalance);
+      acct.lastReconcileAt = isoDay();
+      saveLegalState();
+    }
+    const txns = ensureBucket(s.trustTxns, userId).filter(t => t.accountId === accountId);
+    const bookBalance = txns.reduce((sum, t) => sum + (t.kind === 'deposit' ? t.amount : -t.amount), 0);
+    // Sum of client ledgers (third leg).
+    const clientLedgerTotal = (() => {
+      const byMatter = new Map();
+      for (const t of txns) {
+        byMatter.set(t.matterId, (byMatter.get(t.matterId) || 0) + (t.kind === 'deposit' ? t.amount : -t.amount));
+      }
+      return Array.from(byMatter.values()).reduce((s, v) => s + v, 0);
+    })();
+    const bankBalance = acct.bankStatementBalance || 0;
+    const reconciled = Math.abs(bookBalance - clientLedgerTotal) < 0.01 && Math.abs(bookBalance - bankBalance) < 0.01;
+    return {
+      ok: true,
+      result: {
+        accountId,
+        bookBalance,
+        clientLedgerTotal,
+        bankBalance,
+        bookVsClient: bookBalance - clientLedgerTotal,
+        bookVsBank: bookBalance - bankBalance,
+        reconciled,
+        warnings: [
+          Math.abs(bookBalance - clientLedgerTotal) > 0.01 ? "Book vs client ledger out of balance — investigate matters" : null,
+          Math.abs(bookBalance - bankBalance) > 0.01 ? "Book vs bank out of balance — match deposits/checks" : null,
+        ].filter(Boolean),
+      },
+    };
+  });
+
+  // ── Invoices (matter-scoped, from time entries) ────────────────
+
+  registerLensAction("legal", "invoices-from-time", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matterId = String(params.matterId || "");
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+    if (!matter) return { ok: false, error: "matter not found" };
+    const entries = ensureBucket(s.timeEntries, userId).filter(t => t.matterId === matterId && t.status === 'unbilled');
+    if (entries.length === 0) return { ok: false, error: "no unbilled time entries for this matter" };
+    const subtotal = entries.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const tax = Number(params.taxRate) > 0 ? Math.round(subtotal * Number(params.taxRate) * 100) / 100 : 0;
+    const seq = ensureSeqLegal(s, userId);
+    const invoice = {
+      id: uid("inv"),
+      number: `INV-${String(seq.inv).padStart(5, "0")}`,
+      matterId, matterName: matter.name,
+      clientId: matter.clientId, clientName: matter.clientName,
+      issuedAt: isoDay(),
+      dueAt: String(params.dueAt || new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)),
+      lineItemIds: entries.map(e => e.id),
+      lineItems: entries.map(e => ({ entryId: e.id, date: e.date, description: e.description, hours: e.hours, rate: e.rate, amount: e.amount })),
+      subtotal,
+      taxRate: Number(params.taxRate) || 0,
+      tax,
+      total: subtotal + tax,
+      status: 'open',
+      paidAt: null,
+    };
+    seq.inv++;
+    for (const e of entries) { e.status = 'billed'; e.invoiceId = invoice.id; }
+    ensureBucket(s.invoices, userId).push(invoice);
+    saveLegalState();
+    return { ok: true, result: { invoice } };
+  });
+
+  registerLensAction("legal", "invoices-list", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const status = ['open','paid','all'].includes(params.status) ? params.status : 'all';
+    const matterId = params.matterId ? String(params.matterId) : null;
+    let list = ensureBucket(s.invoices, userId);
+    if (status !== 'all') list = list.filter(i => i.status === status);
+    if (matterId) list = list.filter(i => i.matterId === matterId);
+    return { ok: true, result: { invoices: list.slice().sort((a, b) => (b.issuedAt || '').localeCompare(a.issuedAt || '')) } };
+  });
+
+  registerLensAction("legal", "invoices-mark-paid", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = ensureBucket(s.invoices, aid(ctx)).find(i => i.id === String(params.id || ""));
+    if (!inv) return { ok: false, error: "invoice not found" };
+    inv.status = 'paid';
+    inv.paidAt = String(params.paidAt || isoDay());
+    inv.paidVia = String(params.paidVia || "manual");
+    saveLegalState();
+    return { ok: true, result: { invoice: inv } };
+  });
+
+  // ── Documents (templates + generated) ─────────────────────────
+
+  registerLensAction("legal", "doc-templates-list", (ctx, _a, _p = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const list = ensureBucket(s.templates, userId);
+    if (list.length === 0) {
+      // seed a few canonical templates so users see something on first run.
+      const seed = [
+        { name: "Engagement Letter", body: "Dear {{client_name}},\n\nThis letter confirms our agreement to represent you in {{matter_name}}. Our hourly rate is {{hourly_rate}}.\n\nSincerely,\n{{attorney_name}}", kind: 'letter' },
+        { name: "Demand Letter", body: "To {{opposing_party}},\n\nMy client, {{client_name}}, demands {{relief_sought}} regarding {{matter_name}}. Please respond within 14 days.\n\n{{attorney_name}}", kind: 'letter' },
+        { name: "Settlement Agreement", body: "SETTLEMENT AGREEMENT\n\nThis agreement is between {{client_name}} and {{opposing_party}}, dated {{today}}, in re: {{matter_name}}.\n\nTerms: ...", kind: 'agreement' },
+      ];
+      for (const tpl of seed) {
+        list.push({ id: uid("tpl"), createdAt: isoNow(), ...tpl });
+      }
+      saveLegalState();
+    }
+    return { ok: true, result: { templates: list } };
+  });
+
+  registerLensAction("legal", "doc-templates-create", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = String(params.name || "").trim();
+    const body = String(params.body || "").trim();
+    if (!name || !body) return { ok: false, error: "name and body required" };
+    const tpl = {
+      id: uid("tpl"),
+      name,
+      body,
+      kind: String(params.kind || 'document'),
+      createdAt: isoNow(),
+    };
+    ensureBucket(s.templates, aid(ctx)).push(tpl);
+    saveLegalState();
+    return { ok: true, result: { template: tpl } };
+  });
+
+  registerLensAction("legal", "doc-generate", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const templateId = String(params.templateId || "");
+    const matterId = String(params.matterId || "");
+    const tpl = ensureBucket(s.templates, userId).find(t => t.id === templateId);
+    if (!tpl) return { ok: false, error: "template not found" };
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+    if (!matter) return { ok: false, error: "matter not found" };
+    const parties = (matter.partyIds || []).map(pid => ensureBucket(s.contacts, userId).find(c => c.id === pid)).filter(Boolean);
+    const opposingParty = parties.find(p => p.kind === 'opposing_party')?.name || (params.opposing_party || "");
+    const mergeData = {
+      client_name: matter.clientName || (parties.find(p => p.kind === 'client')?.name) || "[CLIENT]",
+      matter_name: matter.name,
+      case_number: matter.caseNumber || "[CASE]",
+      hourly_rate: matter.hourlyRate ? `$${matter.hourlyRate}/hr` : "[RATE]",
+      opposing_party: opposingParty || "[OPPOSING PARTY]",
+      relief_sought: String(params.relief_sought || "[RELIEF]"),
+      attorney_name: String(params.attorney_name || ctx?.actor?.fullName || "[ATTORNEY]"),
+      today: isoDay(),
+      ...(params.merge && typeof params.merge === 'object' ? params.merge : {}),
+    };
+    const body = tpl.body.replace(/\{\{(\w+)\}\}/g, (_match, key) => {
+      const val = mergeData[key];
+      return val !== undefined && val !== null ? String(val) : `{{${key}}}`;
+    });
+    const seq = ensureSeqLegal(s, userId);
+    const doc = {
+      id: uid("doc"),
+      number: `DOC-${String(seq.doc).padStart(5, "0")}`,
+      name: `${tpl.name} — ${matter.name}`,
+      matterId, matterName: matter.name,
+      templateId,
+      templateName: tpl.name,
+      body,
+      version: 1,
+      status: 'draft',
+      createdAt: isoNow(),
+    };
+    seq.doc++;
+    ensureBucket(s.documents, userId).push(doc);
+    saveLegalState();
+    return { ok: true, result: { document: doc } };
+  });
+
+  registerLensAction("legal", "documents-list", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const matterId = params.matterId ? String(params.matterId) : null;
+    let list = ensureBucket(s.documents, aid(ctx));
+    if (matterId) list = list.filter(d => d.matterId === matterId);
+    return { ok: true, result: { documents: list.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')) } };
+  });
+
+  // ── E-signature envelope ──────────────────────────────────────
+
+  registerLensAction("legal", "esign-envelope-create", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const documentId = String(params.documentId || "");
+    const doc = ensureBucket(s.documents, userId).find(d => d.id === documentId);
+    if (!doc) return { ok: false, error: "document not found" };
+    const recipients = Array.isArray(params.recipients) ? params.recipients : [];
+    if (recipients.length === 0) return { ok: false, error: "recipients required" };
+    const seq = ensureSeqLegal(s, userId);
+    const envelope = {
+      id: uid("env"),
+      number: `ENV-${String(seq.env).padStart(5, "0")}`,
+      documentId,
+      documentName: doc.name,
+      matterId: doc.matterId,
+      recipients: recipients.map((r, i) => ({
+        id: `${uid("rcpt")}_${i}`,
+        name: String(r.name || ""),
+        email: String(r.email || ""),
+        role: String(r.role || "signer"),
+        status: 'pending',
+        signedAt: null,
+        token: Math.random().toString(36).slice(2, 16),
+      })),
+      status: 'sent',
+      createdAt: isoNow(),
+      sentAt: isoNow(),
+      completedAt: null,
+      esignActDisclosure: "Consents recorded under E-SIGN Act 15 USC § 7001 + UETA § 7.",
+    };
+    seq.env++;
+    ensureBucket(s.esignEnv, userId).push(envelope);
+    doc.status = 'sent_for_signature';
+    saveLegalState();
+    return { ok: true, result: { envelope } };
+  });
+
+  registerLensAction("legal", "esign-envelope-sign", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const envelopeId = String(params.envelopeId || "");
+    const recipientId = String(params.recipientId || "");
+    const env = ensureBucket(s.esignEnv, userId).find(e => e.id === envelopeId);
+    if (!env) return { ok: false, error: "envelope not found" };
+    const r = env.recipients.find(x => x.id === recipientId);
+    if (!r) return { ok: false, error: "recipient not found" };
+    if (r.status === 'signed') return { ok: false, error: "recipient already signed" };
+    r.status = 'signed';
+    r.signedAt = isoNow();
+    r.ip = String(params.ip || "");
+    r.userAgent = String(params.userAgent || "");
+    if (env.recipients.every(x => x.status === 'signed')) {
+      env.status = 'completed';
+      env.completedAt = isoNow();
+      const doc = ensureBucket(s.documents, userId).find(d => d.id === env.documentId);
+      if (doc) doc.status = 'signed';
+    }
+    saveLegalState();
+    return { ok: true, result: { envelope: env } };
+  });
+
+  registerLensAction("legal", "esign-envelopes-list", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const status = ['sent','completed','all'].includes(params.status) ? params.status : 'all';
+    let list = ensureBucket(s.esignEnv, aid(ctx));
+    if (status !== 'all') list = list.filter(e => e.status === status);
+    return { ok: true, result: { envelopes: list.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')) } };
+  });
+
+  // ── Calendar / deadlines + court-rules deadline calc ──────────
+
+  registerLensAction("legal", "calendar-list", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const matterId = params.matterId ? String(params.matterId) : null;
+    let list = ensureBucket(s.calendar, aid(ctx));
+    if (matterId) list = list.filter(e => e.matterId === matterId);
+    return { ok: true, result: { events: list.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')) } };
+  });
+
+  registerLensAction("legal", "calendar-create", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const date = String(params.date || isoDay());
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    const seq = ensureSeqLegal(s, userId);
+    const event = {
+      id: uid("ev"),
+      number: `EV-${String(seq.ev).padStart(5, "0")}`,
+      matterId: params.matterId ? String(params.matterId) : null,
+      title,
+      kind: ['deadline','hearing','meeting','filing','other'].includes(params.kind) ? params.kind : 'deadline',
+      date,
+      time: String(params.time || ""),
+      location: String(params.location || ""),
+      description: String(params.description || ""),
+      sourceRule: String(params.sourceRule || ""),
+      createdAt: isoNow(),
+    };
+    seq.ev++;
+    ensureBucket(s.calendar, userId).push(event);
+    saveLegalState();
+    return { ok: true, result: { event } };
+  });
+
+  // Court rules deadline calculator. Supports federal civil + a few state rules.
+  // Returns the calendar date for a deadline N days after a trigger event,
+  // accounting for weekends and major federal holidays (FRCP 6(a)).
+  registerLensAction("legal", "court-rules-deadline", (ctx, _a, params = {}) => {
+    const trigger = String(params.triggerDate || isoDay());
+    const rule = String(params.rule || "").toLowerCase();
+    const jurisdiction = String(params.jurisdiction || "US-Federal");
+    // Rule library (days from trigger). The number is the deadline-from-event
+    // statutory window. All "days" here are calendar days per FRCP 6(a)(1)
+    // except where noted. State-specific rules can be added by extending this map.
+    const RULES = {
+      'frcp-12-answer':           { days: 21, name: "FRCP 12(a)(1)(A) — Answer to complaint" },
+      'frcp-12-answer-removed':   { days: 7,  name: "FRCP 81(c)(2) — Answer after removal" },
+      'frcp-12-motion':           { days: 21, name: "FRCP 12 — Motion to dismiss" },
+      'frcp-26-conference':       { days: 21, name: "FRCP 26(f) — Discovery conference" },
+      'frcp-26-disclosures':      { days: 14, name: "FRCP 26(a)(1)(C) — Initial disclosures" },
+      'frcp-33-interrogatories':  { days: 30, name: "FRCP 33(b)(2) — Answer interrogatories" },
+      'frcp-34-rfp':              { days: 30, name: "FRCP 34(b)(2) — Respond to RFP" },
+      'frcp-36-rfa':              { days: 30, name: "FRCP 36(a)(3) — Respond to RFA" },
+      'frcp-56-msj-response':     { days: 21, name: "FRCP 56 — MSJ response (local rule typical)" },
+      'frap-4-notice-appeal':     { days: 30, name: "FRAP 4(a)(1)(A) — Notice of appeal (civil)" },
+      'us-statute-limitations-tort': { days: 365 * 2, name: "Generic 2-year tort SOL (state-specific)" },
+    };
+    if (!RULES[rule]) return { ok: false, error: `unknown rule. Supported: ${Object.keys(RULES).join(', ')}` };
+    const start = new Date(trigger);
+    if (isNaN(start.getTime())) return { ok: false, error: "triggerDate invalid" };
+    // Federal holidays (FRCP 6(a)(6)(A)).
+    const year = start.getFullYear();
+    function nthWeekday(year, month, dow, n) { let d = new Date(Date.UTC(year, month, 1)); let count = 0; while (d.getUTCMonth() === month) { if (d.getUTCDay() === dow) { count++; if (count === n) return d.toISOString().slice(0, 10); } d.setUTCDate(d.getUTCDate() + 1); } return null; }
+    function lastWeekday(year, month, dow) { let d = new Date(Date.UTC(year, month + 1, 0)); while (d.getUTCDay() !== dow) d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); }
+    const holidays = new Set([
+      `${year}-01-01`, `${year}-07-04`, `${year}-11-11`, `${year}-12-25`,                    // fixed
+      nthWeekday(year, 0, 1, 3),                                                              // MLK 3rd Mon Jan
+      nthWeekday(year, 1, 1, 3),                                                              // Presidents 3rd Mon Feb
+      lastWeekday(year, 4, 1),                                                                // Memorial last Mon May
+      `${year}-06-19`,                                                                        // Juneteenth
+      nthWeekday(year, 8, 1, 1),                                                              // Labor 1st Mon Sep
+      nthWeekday(year, 9, 1, 2),                                                              // Columbus 2nd Mon Oct
+      nthWeekday(year, 10, 4, 4),                                                             // Thanksgiving 4th Thu Nov
+    ].filter(Boolean));
+    let d = new Date(start);
+    d.setUTCDate(d.getUTCDate() + RULES[rule].days);
+    // FRCP 6(a)(1)(C): roll to next business day if deadline lands on weekend/holiday.
+    while (d.getUTCDay() === 0 || d.getUTCDay() === 6 || holidays.has(d.toISOString().slice(0, 10))) {
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+    return {
+      ok: true,
+      result: {
+        rule,
+        ruleName: RULES[rule].name,
+        jurisdiction,
+        triggerDate: trigger,
+        rawDeadline: new Date(new Date(trigger).getTime() + RULES[rule].days * 86_400_000).toISOString().slice(0, 10),
+        adjustedDeadline: d.toISOString().slice(0, 10),
+        rolledForward: d.toISOString().slice(0, 10) !== new Date(new Date(trigger).getTime() + RULES[rule].days * 86_400_000).toISOString().slice(0, 10),
+        days: RULES[rule].days,
+      },
+    };
+  });
+
+  // ── Clio "Manage AI" parity — matter update + court-doc → calendar ─
+
+  registerLensAction("legal", "ai-matter-update", async (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matterId = String(params.matterId || "");
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+    if (!matter) return { ok: false, error: "matter not found" };
+    // Build a deterministic activity digest first.
+    const cutoff = String(params.since || new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10));
+    const recentTime = ensureBucket(s.timeEntries, userId).filter(t => t.matterId === matterId && t.date >= cutoff);
+    const recentDocs = ensureBucket(s.documents, userId).filter(d => d.matterId === matterId && (d.createdAt || '').slice(0, 10) >= cutoff);
+    const recentEvents = ensureBucket(s.calendar, userId).filter(e => e.matterId === matterId && e.date >= cutoff);
+    const recentInvoices = ensureBucket(s.invoices, userId).filter(i => i.matterId === matterId && (i.issuedAt || '') >= cutoff);
+    const trustTxns = ensureBucket(s.trustTxns, userId).filter(t => t.matterId === matterId && t.date >= cutoff);
+    const hoursRecent = recentTime.reduce((sum, t) => sum + (t.hours || 0), 0);
+    const billed = recentTime.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const context = `Matter ${matter.name} (${matter.number}, ${matter.matterType}). Since ${cutoff}: ${recentTime.length} time entries (${hoursRecent.toFixed(2)} hrs, $${billed.toFixed(2)}), ${recentDocs.length} documents created, ${recentEvents.length} calendar events, ${recentInvoices.length} invoices issued, ${trustTxns.length} trust transactions.`;
+    const deterministic = `Update on ${matter.name} since ${cutoff}: We have logged ${hoursRecent.toFixed(1)} hours of work. ${recentDocs.length > 0 ? `Drafted ${recentDocs.length} document(s) including ${recentDocs.slice(0, 2).map(d => d.name).join(', ')}.` : ''} ${recentEvents.length > 0 ? `Upcoming/recent ${recentEvents.length} event(s).` : ''} ${recentInvoices.length > 0 ? `Issued ${recentInvoices.length} invoice(s) totaling $${recentInvoices.reduce((s, i) => s + i.total, 0).toFixed(2)}.` : ''}`.trim();
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== 'function') {
+      return { ok: true, result: { summary: deterministic, context, source: 'deterministic' } };
+    }
+    try {
+      const r = await brain({
+        messages: [
+          { role: 'system', content: "You are a legal assistant drafting a brief client update. Reply in 2-3 short professional sentences. Use only facts from the snapshot. Do not provide legal advice." },
+          { role: 'user', content: `Snapshot: ${context}\n\nDraft the client update.` },
+        ],
+        temperature: 0.2,
+        maxTokens: 300,
+      });
+      const summary = String(r?.content || r?.text || r || '').trim();
+      return { ok: true, result: { summary: summary || deterministic, context, source: summary ? 'brain' : 'deterministic' } };
+    } catch (e) {
+      return { ok: true, result: { summary: deterministic, context, source: 'deterministic_after_brain_error', error: String(e) } };
+    }
+  });
+
+  // Parse a court document body for deadline language → suggest calendar events.
+  registerLensAction("legal", "ai-court-doc-to-calendar", (ctx, _a, params = {}) => {
+    const text = String(params.text || "").slice(0, 12000);
+    if (!text || text.length < 40) return { ok: false, error: "text too short" };
+    // Deterministic regex pass — pull "within N days" / "by [date]" phrases.
+    const suggestions = [];
+    const triggerDate = String(params.triggerDate || isoDay());
+    const within = /within\s+(\d{1,3})\s+days?(?:\s+of\s+([^.,;]+))?/gi;
+    let m;
+    while ((m = within.exec(text)) !== null) {
+      const days = parseInt(m[1], 10);
+      if (days > 0 && days <= 730) {
+        const d = new Date(triggerDate);
+        d.setUTCDate(d.getUTCDate() + days);
+        suggestions.push({
+          kind: 'deadline',
+          source: 'within_clause',
+          days,
+          context: text.slice(Math.max(0, m.index - 60), Math.min(text.length, m.index + 120)).trim(),
+          suggestedDate: d.toISOString().slice(0, 10),
+        });
+      }
+    }
+    const byDate = /by\s+(?:on\s+or\s+before\s+)?([A-Z][a-z]+ \d{1,2},?\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/g;
+    while ((m = byDate.exec(text)) !== null) {
+      const parsed = new Date(m[1]);
+      if (!isNaN(parsed.getTime())) {
+        suggestions.push({
+          kind: 'deadline',
+          source: 'by_date',
+          context: text.slice(Math.max(0, m.index - 60), Math.min(text.length, m.index + 120)).trim(),
+          suggestedDate: parsed.toISOString().slice(0, 10),
+        });
+      }
+    }
+    // Find every month-day-year and ISO date; classify as 'hearing' if surrounding text mentions hearing/trial/conference.
+    const allDates = /([A-Z][a-z]+ \d{1,2},?\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/g;
+    const seen = new Set(suggestions.map(s => s.suggestedDate));
+    while ((m = allDates.exec(text)) !== null) {
+      const parsed = new Date(m[1]);
+      if (isNaN(parsed.getTime())) continue;
+      const dayKey = parsed.toISOString().slice(0, 10);
+      if (seen.has(dayKey)) continue;
+      const ctx = text.slice(Math.max(0, m.index - 80), Math.min(text.length, m.index + 80)).toLowerCase();
+      if (/hearing|trial|conference/.test(ctx)) {
+        seen.add(dayKey);
+        suggestions.push({
+          kind: 'hearing',
+          source: 'hearing_clause',
+          context: text.slice(Math.max(0, m.index - 60), Math.min(text.length, m.index + 120)).trim(),
+          suggestedDate: dayKey,
+        });
+      }
+    }
+    return { ok: true, result: { suggestions, count: suggestions.length, triggerDate } };
+  });
+
+  // ── Dashboard summary ─────────────────────────────────────────
+
+  registerLensAction("legal", "dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matters = ensureBucket(s.matters, userId);
+    const time = ensureBucket(s.timeEntries, userId);
+    const invoices = ensureBucket(s.invoices, userId);
+    const trustTxns = ensureBucket(s.trustTxns, userId);
+    const calendar = ensureBucket(s.calendar, userId);
+    const timers = ensureBucket(s.timers, userId);
+    const today = isoDay();
+    const openMatters = matters.filter(m => m.status === 'open' || m.status === 'pending' || m.status === 'intake').length;
+    const unbilledTime = time.filter(t => t.status === 'unbilled').reduce((sum, t) => sum + (t.amount || 0), 0);
+    const unbilledHours = time.filter(t => t.status === 'unbilled').reduce((sum, t) => sum + (t.hours || 0), 0);
+    const openInvTotal = invoices.filter(i => i.status === 'open').reduce((sum, i) => sum + (i.total || 0), 0);
+    const overdueCount = invoices.filter(i => i.status === 'open' && (i.dueAt || '') < today).length;
+    const trustBalance = trustTxns.reduce((sum, t) => sum + (t.kind === 'deposit' ? t.amount : -t.amount), 0);
+    const upcoming = calendar.filter(e => e.date >= today).slice(0, 5);
+    return {
+      ok: true,
+      result: {
+        openMatters,
+        unbilledHours: Math.round(unbilledHours * 100) / 100,
+        unbilledTime: Math.round(unbilledTime),
+        openInvTotal: Math.round(openInvTotal),
+        overdueInvoices: overdueCount,
+        trustBalance: Math.round(trustBalance),
+        runningTimers: timers.length,
+        upcomingEvents: upcoming,
+        contactCount: ensureBucket(s.contacts, userId).length,
+      },
+    };
   });
 };
 
