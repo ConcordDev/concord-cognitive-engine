@@ -705,4 +705,492 @@ export default function registerAviationActions(registerLensAction) {
     saveAviationState();
     return { ok: true, result: { deleted: id } };
   });
+
+  // ─── Full-app parity: ForeFlight + FlightAware 2026 ─────────────────
+
+  function uidAv(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function ensureAvBucket(state, key, userId) {
+    if (!state[key]) state[key] = new Map();
+    if (!state[key].has(userId)) state[key].set(userId, []);
+    return state[key].get(userId);
+  }
+
+  // ── Aircraft profiles ────────────────────────────────────────
+
+  registerLensAction("aviation", "aircraft-list", (ctx, _a, _p = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const aircraft = ensureAvBucket(s, "aircraft", userId);
+    return { ok: true, result: { aircraft } };
+  });
+
+  registerLensAction("aviation", "aircraft-add", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const tail = String(params.tail || "").trim().toUpperCase();
+    const make = String(params.make || "").trim();
+    const model = String(params.model || "").trim();
+    if (!tail || !make || !model) return { ok: false, error: "tail, make, model required" };
+    const ac = {
+      id: uidAv("ac"), tail, make, model,
+      year: Number(params.year) || null,
+      kind: ["single_engine_piston", "multi_engine_piston", "turboprop", "jet", "helicopter", "light_sport", "experimental"].includes(params.kind) ? params.kind : "single_engine_piston",
+      icaoType: String(params.icaoType || ""),
+      cruiseKts: Math.max(0, Number(params.cruiseKts) || 110),
+      fuelBurnGph: Math.max(0, Number(params.fuelBurnGph) || 8),
+      fuelCapacityGal: Math.max(0, Number(params.fuelCapacityGal) || 50),
+      maxTakeoffWeightLbs: Math.max(0, Number(params.maxTakeoffWeightLbs) || 2400),
+      emptyWeightLbs: Math.max(0, Number(params.emptyWeightLbs) || 1500),
+      hobbsHours: Math.max(0, Number(params.hobbsHours) || 0),
+      tachHours: Math.max(0, Number(params.tachHours) || 0),
+      addedAt: new Date().toISOString(),
+    };
+    ensureAvBucket(s, "aircraft", userId).push(ac);
+    saveAviationState();
+    return { ok: true, result: { aircraft: ac } };
+  });
+
+  registerLensAction("aviation", "aircraft-update", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const id = String(params.id || "");
+    const ac = ensureAvBucket(s, "aircraft", userId).find(a => a.id === id);
+    if (!ac) return { ok: false, error: "aircraft not found" };
+    for (const key of ["cruiseKts", "fuelBurnGph", "fuelCapacityGal", "hobbsHours", "tachHours"]) {
+      if (params[key] != null) ac[key] = Math.max(0, Number(params[key]));
+    }
+    saveAviationState();
+    return { ok: true, result: { aircraft: ac } };
+  });
+
+  registerLensAction("aviation", "aircraft-delete", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAvBucket(s, "aircraft", userId);
+    const idx = list.findIndex(a => a.id === id);
+    if (idx < 0) return { ok: false, error: "aircraft not found" };
+    list.splice(idx, 1);
+    saveAviationState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Pilot logbook ────────────────────────────────────────────
+
+  registerLensAction("aviation", "logbook-list", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const aircraftId = params.aircraftId ? String(params.aircraftId) : null;
+    const all = ensureAvBucket(s, "logbook", userId);
+    const entries = aircraftId ? all.filter(e => e.aircraftId === aircraftId) : all;
+    return { ok: true, result: { entries: entries.slice().reverse() } };
+  });
+
+  registerLensAction("aviation", "logbook-add", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const aircraftId = String(params.aircraftId || "");
+    const date = String(params.date || "").slice(0, 10);
+    const from = String(params.from || "").toUpperCase();
+    const to = String(params.to || "").toUpperCase();
+    const totalHours = Number(params.totalHours);
+    if (!aircraftId || !date || !from || !to) return { ok: false, error: "aircraftId, date, from, to required" };
+    if (!Number.isFinite(totalHours) || totalHours <= 0) return { ok: false, error: "totalHours > 0 required" };
+    const entry = {
+      id: uidAv("log"), aircraftId, date, from, to, totalHours,
+      route: Array.isArray(params.route) ? params.route : [from, to],
+      pic: Math.max(0, Number(params.pic) || 0),
+      sic: Math.max(0, Number(params.sic) || 0),
+      crossCountry: Math.max(0, Number(params.crossCountry) || 0),
+      night: Math.max(0, Number(params.night) || 0),
+      instrument: Math.max(0, Number(params.instrument) || 0),
+      simulated: Math.max(0, Number(params.simulated) || 0),
+      dayLandings: Math.max(0, Math.floor(Number(params.dayLandings) || 0)),
+      nightLandings: Math.max(0, Math.floor(Number(params.nightLandings) || 0)),
+      approaches: Array.isArray(params.approaches) ? params.approaches : [],
+      conditions: ["VFR", "MVFR", "IFR", "LIFR"].includes(params.conditions) ? params.conditions : "VFR",
+      remarks: String(params.remarks || ""),
+      createdAt: new Date().toISOString(),
+    };
+    ensureAvBucket(s, "logbook", userId).push(entry);
+    // Auto-roll Hobbs on the aircraft
+    const ac = ensureAvBucket(s, "aircraft", userId).find(a => a.id === aircraftId);
+    if (ac) {
+      ac.hobbsHours = Math.round((ac.hobbsHours + totalHours) * 10) / 10;
+    }
+    saveAviationState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("aviation", "logbook-delete", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAvBucket(s, "logbook", userId);
+    const idx = list.findIndex(e => e.id === id);
+    if (idx < 0) return { ok: false, error: "log entry not found" };
+    list.splice(idx, 1);
+    saveAviationState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("aviation", "logbook-totals", (ctx, _a, _p = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const entries = ensureAvBucket(s, "logbook", userId);
+    const sum = (key) => Math.round(entries.reduce((s, e) => s + (Number(e[key]) || 0), 0) * 10) / 10;
+    const totalLandings = entries.reduce((s, e) => s + (e.dayLandings || 0) + (e.nightLandings || 0), 0);
+    return {
+      ok: true,
+      result: {
+        totalHours: sum("totalHours"),
+        pic: sum("pic"),
+        sic: sum("sic"),
+        crossCountry: sum("crossCountry"),
+        night: sum("night"),
+        instrument: sum("instrument"),
+        simulated: sum("simulated"),
+        totalFlights: entries.length,
+        totalLandings,
+        nightLandings: entries.reduce((s, e) => s + (e.nightLandings || 0), 0),
+      },
+    };
+  });
+
+  // ── Currency tracking (BFR / IPC / medical / 90-day) ────────
+
+  registerLensAction("aviation", "currency-status", (ctx, _a, _p = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const events = ensureAvBucket(s, "currencyEvents", userId);
+    const logbook = ensureAvBucket(s, "logbook", userId);
+    const today = Date.now();
+    const day = 86400000;
+    // BFR: most recent 'flight_review' within 24 calendar months
+    const bfrEvent = events.filter(e => e.kind === "flight_review").sort((a, b) => b.date.localeCompare(a.date))[0];
+    const bfrDays = bfrEvent ? Math.floor((today - new Date(bfrEvent.date).getTime()) / day) : null;
+    const bfrCurrent = bfrEvent && bfrDays < 730;
+    // IPC: 'ipc' within 6 calendar months, OR 6 approaches + holding + tracking within last 6 months
+    const ipcEvent = events.filter(e => e.kind === "ipc").sort((a, b) => b.date.localeCompare(a.date))[0];
+    const ipcDays = ipcEvent ? Math.floor((today - new Date(ipcEvent.date).getTime()) / day) : null;
+    // Medical: 'medical_first/second/third_class'
+    const medEvent = events.filter(e => e.kind.startsWith("medical_")).sort((a, b) => b.date.localeCompare(a.date))[0];
+    const medDays = medEvent ? Math.floor((today - new Date(medEvent.date).getTime()) / day) : null;
+    const medValidity = medEvent ? (medEvent.kind === "medical_first_class" ? 365 : medEvent.kind === "medical_second_class" ? 365 : 730) : null;
+    const medCurrent = medEvent && medValidity && medDays < medValidity;
+    // 90-day passenger carrying: 3 takeoffs/landings within preceding 90 days
+    const last90 = logbook.filter(e => (today - new Date(e.date).getTime()) < 90 * day);
+    const dayTakeoffs90 = last90.reduce((s, e) => s + (e.dayLandings || 0), 0);
+    const nightTakeoffs90 = last90.reduce((s, e) => s + (e.nightLandings || 0), 0);
+    // 6 approaches + holding + tracking within preceding 6 months (IFR currency)
+    const last180 = logbook.filter(e => (today - new Date(e.date).getTime()) < 180 * day);
+    const approaches180 = last180.reduce((s, e) => s + (Array.isArray(e.approaches) ? e.approaches.length : 0), 0);
+    return {
+      ok: true,
+      result: {
+        bfr: { current: bfrCurrent, lastDate: bfrEvent?.date || null, daysSince: bfrDays, expiresInDays: bfrEvent ? 730 - bfrDays : null },
+        ipc: { current: ipcDays != null && ipcDays < 183, lastDate: ipcEvent?.date || null, daysSince: ipcDays },
+        medical: { current: medCurrent, lastDate: medEvent?.date || null, daysSince: medDays, validityDays: medValidity, kind: medEvent?.kind || null },
+        passenger90: { dayCurrent: dayTakeoffs90 >= 3, dayCount: dayTakeoffs90, nightCurrent: nightTakeoffs90 >= 3, nightCount: nightTakeoffs90 },
+        ifr180: { current: approaches180 >= 6, approaches: approaches180 },
+      },
+    };
+  });
+
+  registerLensAction("aviation", "currency-event-add", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const kind = String(params.kind || "");
+    const date = String(params.date || new Date().toISOString().slice(0, 10));
+    const allowed = ["flight_review", "ipc", "medical_first_class", "medical_second_class", "medical_third_class", "checkride", "training"];
+    if (!allowed.includes(kind)) return { ok: false, error: `kind must be one of ${allowed.join(", ")}` };
+    const event = {
+      id: uidAv("evt"), kind, date,
+      cfi: String(params.cfi || ""),
+      notes: String(params.notes || ""),
+      certificateNumber: String(params.certificateNumber || ""),
+      createdAt: new Date().toISOString(),
+    };
+    ensureAvBucket(s, "currencyEvents", userId).push(event);
+    saveAviationState();
+    return { ok: true, result: { event } };
+  });
+
+  // ── Track logs (recorded flights) ────────────────────────────
+
+  registerLensAction("aviation", "track-logs-list", (ctx, _a, _p = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const tracks = ensureAvBucket(s, "trackLogs", userId);
+    return { ok: true, result: { tracks: tracks.slice().reverse() } };
+  });
+
+  registerLensAction("aviation", "track-logs-start", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const aircraftId = String(params.aircraftId || "");
+    if (!aircraftId) return { ok: false, error: "aircraftId required" };
+    const ac = ensureAvBucket(s, "aircraft", userId).find(a => a.id === aircraftId);
+    if (!ac) return { ok: false, error: "aircraft not found" };
+    const tracks = ensureAvBucket(s, "trackLogs", userId);
+    const open = tracks.find(t => t.aircraftId === aircraftId && !t.endedAt);
+    if (open) return { ok: false, error: "active track already exists for this aircraft" };
+    const track = {
+      id: uidAv("trk"), aircraftId, tail: ac.tail,
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      from: params.from ? String(params.from).toUpperCase() : null,
+      to: params.to ? String(params.to).toUpperCase() : null,
+      points: [],
+      maxAltitudeFt: 0,
+      maxGroundSpeedKts: 0,
+      totalDistanceNm: 0,
+    };
+    tracks.push(track);
+    saveAviationState();
+    return { ok: true, result: { track } };
+  });
+
+  registerLensAction("aviation", "track-logs-append", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const trackId = String(params.trackId || "");
+    const track = ensureAvBucket(s, "trackLogs", userId).find(t => t.id === trackId);
+    if (!track) return { ok: false, error: "track not found" };
+    if (track.endedAt) return { ok: false, error: "track already ended" };
+    const lat = Number(params.lat), lng = Number(params.lng);
+    const altitudeFt = Number(params.altitudeFt) || 0;
+    const groundSpeedKts = Number(params.groundSpeedKts) || 0;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat and lng required" };
+    const point = {
+      lat, lng, altitudeFt, groundSpeedKts,
+      heading: Number(params.heading) || null,
+      timestamp: new Date().toISOString(),
+    };
+    if (track.points.length > 0) {
+      const prev = track.points[track.points.length - 1];
+      const dLat = (lat - prev.lat) * Math.PI / 180;
+      const dLng = (lng - prev.lng) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(prev.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+      const distNm = 2 * 6371 * Math.asin(Math.sqrt(a)) * 0.539957;
+      track.totalDistanceNm = Math.round((track.totalDistanceNm + distNm) * 100) / 100;
+    }
+    track.points.push(point);
+    if (altitudeFt > track.maxAltitudeFt) track.maxAltitudeFt = altitudeFt;
+    if (groundSpeedKts > track.maxGroundSpeedKts) track.maxGroundSpeedKts = groundSpeedKts;
+    saveAviationState();
+    return { ok: true, result: { track } };
+  });
+
+  registerLensAction("aviation", "track-logs-end", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const trackId = String(params.trackId || "");
+    const track = ensureAvBucket(s, "trackLogs", userId).find(t => t.id === trackId);
+    if (!track) return { ok: false, error: "track not found" };
+    if (track.endedAt) return { ok: false, error: "track already ended" };
+    track.endedAt = new Date().toISOString();
+    track.durationMin = Math.round((new Date(track.endedAt).getTime() - new Date(track.startedAt).getTime()) / 60000);
+    saveAviationState();
+    return { ok: true, result: { track } };
+  });
+
+  // ── Briefing aggregator (METAR + TAF + PIREP + AIRMET + SIGMET) ──
+
+  registerLensAction("aviation", "briefing-graphical", async (_ctx, _a, params = {}) => {
+    const icaos = Array.isArray(params.icaos) ? params.icaos.map(String).map(s => s.toUpperCase()) : [];
+    if (icaos.length === 0) return { ok: false, error: "icaos array required" };
+    // aviationweather.gov public API endpoints — no key required
+    const fetchOne = async (url) => {
+      try {
+        const r = await globalThis.fetch(url);
+        if (!r.ok) return null;
+        return await r.json();
+      } catch { return null; }
+    };
+    try {
+      const [metars, tafs, pireps, airmets] = await Promise.all([
+        fetchOne(`https://aviationweather.gov/api/data/metar?ids=${icaos.join(",")}&format=json`),
+        fetchOne(`https://aviationweather.gov/api/data/taf?ids=${icaos.join(",")}&format=json`),
+        fetchOne(`https://aviationweather.gov/api/data/pirep?bbox=24,-130,50,-66&format=json`),
+        fetchOne(`https://aviationweather.gov/api/data/airsigmet?format=json`),
+      ]);
+      return {
+        ok: true,
+        result: {
+          metars: Array.isArray(metars) ? metars.slice(0, 30) : [],
+          tafs: Array.isArray(tafs) ? tafs.slice(0, 30) : [],
+          pireps: Array.isArray(pireps) ? pireps.slice(0, 50) : [],
+          airmets: Array.isArray(airmets) ? airmets.slice(0, 30) : [],
+          fetchedAt: new Date().toISOString(),
+          source: "aviationweather.gov (NWS)",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `briefing fetch failed: ${e?.message || "network"}` };
+    }
+  });
+
+  // ── NOTAMs (FAA NOTAM API; requires key in production) ───────
+
+  registerLensAction("aviation", "notams-fetch", async (_ctx, _a, params = {}) => {
+    const icao = String(params.icao || "").toUpperCase().trim();
+    if (!icao) return { ok: false, error: "icao required" };
+    const apiKey = process.env.FAA_NOTAM_API_KEY;
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: "FAA_NOTAM_API_KEY not configured. Register at https://api.faa.gov/ to receive a free key.",
+      };
+    }
+    try {
+      const r = await globalThis.fetch(`https://external-api.faa.gov/notamapi/v1/notams?icaoLocation=${icao}&pageSize=50`, {
+        headers: { client_id: process.env.FAA_NOTAM_CLIENT_ID || "", client_secret: apiKey },
+      });
+      if (!r.ok) return { ok: false, error: `FAA NOTAM API ${r.status}` };
+      const data = await r.json();
+      return {
+        ok: true,
+        result: {
+          icao,
+          items: (data.items || []).slice(0, 50),
+          totalCount: data.totalCount || 0,
+          source: "api.faa.gov (FAA NOTAM API)",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `NOTAM fetch failed: ${e?.message || "network"}` };
+    }
+  });
+
+  // ── Route advisor (suggest filed routes) ────────────────────
+
+  registerLensAction("aviation", "route-advisor", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const from = String(params.from || "").toUpperCase();
+    const to = String(params.to || "").toUpperCase();
+    const altitudeFt = Math.max(1000, Number(params.altitudeFt) || 8000);
+    if (!from || !to) return { ok: false, error: "from and to ICAO required" };
+    // Surface routes from the user's prior logbook entries on the same city-pair
+    const logbook = ensureAvBucket(s, "logbook", userId);
+    const priorRoutes = logbook.filter(e => e.from === from && e.to === to);
+    const uniqueRoutes = new Map();
+    for (const e of priorRoutes) {
+      const key = e.route.join("→");
+      if (!uniqueRoutes.has(key)) uniqueRoutes.set(key, { route: e.route, flownCount: 0, avgHours: 0 });
+      const r = uniqueRoutes.get(key);
+      r.flownCount++;
+      r.avgHours = (r.avgHours * (r.flownCount - 1) + e.totalHours) / r.flownCount;
+    }
+    const suggestions = [
+      { route: [from, to], rationale: "Direct", flownCount: 0, altitudeFt },
+      ...Array.from(uniqueRoutes.values()).map(r => ({
+        route: r.route,
+        rationale: `Flown ${r.flownCount}× before · avg ${r.avgHours.toFixed(1)}h`,
+        flownCount: r.flownCount,
+        altitudeFt,
+      })),
+    ];
+    return { ok: true, result: { from, to, suggestions, altitudeFt } };
+  });
+
+  // ── Live flight tracking (FlightAware-shape) ────────────────
+
+  registerLensAction("aviation", "live-flights-tracked", (ctx, _a, _p = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const watched = ensureAvBucket(s, "watchedFlights", userId);
+    return { ok: true, result: { flights: watched } };
+  });
+
+  registerLensAction("aviation", "live-flights-watch", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const ident = String(params.ident || "").trim().toUpperCase();
+    if (!ident) return { ok: false, error: "ident (callsign or tail) required" };
+    const watched = ensureAvBucket(s, "watchedFlights", userId);
+    if (watched.find(w => w.ident === ident)) return { ok: false, error: "already watching" };
+    watched.push({
+      id: uidAv("watch"), ident,
+      addedAt: new Date().toISOString(),
+      lastSeenAt: null,
+      lastPosition: null,
+    });
+    saveAviationState();
+    return { ok: true, result: { ident, watched: true } };
+  });
+
+  registerLensAction("aviation", "live-flights-unwatch", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const ident = String(params.ident || "").toUpperCase();
+    const watched = ensureAvBucket(s, "watchedFlights", userId);
+    const idx = watched.findIndex(w => w.ident === ident);
+    if (idx < 0) return { ok: false, error: "not watching" };
+    watched.splice(idx, 1);
+    saveAviationState();
+    return { ok: true, result: { ident, removed: true } };
+  });
+
+  // ── Fuel stops calculator ───────────────────────────────────
+
+  registerLensAction("aviation", "fuel-stops-calc", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const aircraftId = String(params.aircraftId || "");
+    const totalDistanceNm = Math.max(0, Number(params.totalDistanceNm) || 0);
+    const reserveGal = Math.max(0, Number(params.reserveGal) || 5);
+    if (!aircraftId || totalDistanceNm <= 0) return { ok: false, error: "aircraftId and totalDistanceNm > 0 required" };
+    const ac = ensureAvBucket(s, "aircraft", userId).find(a => a.id === aircraftId);
+    if (!ac) return { ok: false, error: "aircraft not found" };
+    const cruiseKts = ac.cruiseKts || 110;
+    const burnGph = ac.fuelBurnGph || 8;
+    const usableGal = Math.max(0, ac.fuelCapacityGal - reserveGal);
+    const enduranceHr = burnGph > 0 ? usableGal / burnGph : 0;
+    const maxLegNm = enduranceHr * cruiseKts;
+    const totalTimeHr = totalDistanceNm / cruiseKts;
+    const totalFuelGal = totalTimeHr * burnGph + reserveGal;
+    const stops = maxLegNm > 0 ? Math.max(0, Math.ceil(totalDistanceNm / maxLegNm) - 1) : 0;
+    return {
+      ok: true,
+      result: {
+        totalDistanceNm,
+        totalTimeHr: Math.round(totalTimeHr * 10) / 10,
+        totalFuelGal: Math.round(totalFuelGal * 10) / 10,
+        maxLegNm: Math.round(maxLegNm),
+        fuelStopsRequired: stops,
+        reserveGal,
+        cruiseKts, fuelBurnGph: burnGph,
+        usableFuelGal: usableGal,
+      },
+    };
+  });
+
+  // ── Dashboard summary (AvShell data source) ─────────────────
+
+  registerLensAction("aviation", "dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const aircraft = ensureAvBucket(s, "aircraft", userId);
+    const logbook = ensureAvBucket(s, "logbook", userId);
+    const tracks = ensureAvBucket(s, "trackLogs", userId);
+    const plans = s.plans?.get(userId) ? Array.from(s.plans.get(userId).values()) : [];
+    const totalHours = Math.round(logbook.reduce((s, e) => s + (Number(e.totalHours) || 0), 0) * 10) / 10;
+    const last30 = Date.now() - 30 * 86400000;
+    const hours30d = Math.round(logbook.filter(e => new Date(e.date).getTime() > last30).reduce((s, e) => s + (Number(e.totalHours) || 0), 0) * 10) / 10;
+    return {
+      ok: true,
+      result: {
+        aircraftCount: aircraft.length,
+        totalHours,
+        hours30d,
+        totalFlights: logbook.length,
+        savedPlanCount: plans.length,
+        activeTracks: tracks.filter(t => !t.endedAt).length,
+        completedTracks: tracks.filter(t => t.endedAt).length,
+        watchedFlights: (s.watchedFlights?.get(userId) || []).length,
+      },
+    };
+  });
 };
