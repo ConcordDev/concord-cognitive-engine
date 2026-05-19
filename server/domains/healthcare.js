@@ -357,7 +357,21 @@ export default function registerHealthcareActions(registerLensAction) {
     if (!STATE.healthLens) {
       STATE.healthLens = { medications: new Map(), records: new Map(), appointments: new Map(), doseLog: new Map() };
     }
-    return STATE.healthLens;
+    const s = STATE.healthLens;
+    // Phase 2 (Epic 2026 parity) backfills — append-only.
+    if (!s.patients)      s.patients      = new Map();
+    if (!s.problems)      s.problems      = new Map();
+    if (!s.allergies)     s.allergies     = new Map();
+    if (!s.vitals)        s.vitals        = new Map();
+    if (!s.labs)          s.labs          = new Map();
+    if (!s.immunizations) s.immunizations = new Map();
+    if (!s.encounters)    s.encounters    = new Map();
+    if (!s.smartPhrases)  s.smartPhrases  = new Map();
+    if (!s.messages)      s.messages      = new Map();
+    if (!s.refills)       s.refills       = new Map();
+    if (!s.intakeForms)   s.intakeForms   = new Map();
+    if (!s.seq)           s.seq           = new Map();
+    return s;
   }
   function saveStateIfAvailable() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
@@ -690,6 +704,700 @@ export default function registerHealthcareActions(registerLensAction) {
       ok: false,
       error: "Rx price comparison requires a real PBM/pharmacy API. Set GOODRX_API_KEY or RXSAVER_API_KEY for live cash + insurance pricing across major chains.",
       meta: { drug, zip },
+    };
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Epic 2026 parity — patients, problem list, allergies, vitals,
+  //  labs, immunizations, encounters/SOAP, SmartPhrases, codes,
+  //  AI scribe, patient portal, dashboard.
+  // ═══════════════════════════════════════════════════════════════
+
+  function aidH(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function uidH(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function isoH() { return new Date().toISOString(); }
+  function dayH() { return new Date().toISOString().slice(0, 10); }
+  function bucketH(m, k) { if (!m.has(k)) m.set(k, []); return m.get(k); }
+  function ensureSeqH(s, userId) {
+    if (!s.seq.has(userId)) s.seq.set(userId, { pat: 1, prob: 1, alg: 1, vit: 1, lab: 1, imm: 1, enc: 1, sp: 1, msg: 1, refill: 1, form: 1 });
+    const seq = s.seq.get(userId);
+    for (const k of ['pat','prob','alg','vit','lab','imm','enc','sp','msg','refill','form']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    return seq;
+  }
+
+  // ── Patients (patient chart owner) ─────────────────────────────
+
+  registerLensAction("healthcare", "patients-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = bucketH(s.patients, aidH(ctx));
+    const q = String(params.q || "").trim().toLowerCase();
+    const filtered = q ? list.filter(p =>
+      `${p.firstName} ${p.lastName} ${p.mrn}`.toLowerCase().includes(q)
+    ) : list;
+    return { ok: true, result: { patients: filtered.slice().sort((a, b) => a.lastName.localeCompare(b.lastName)) } };
+  });
+
+  registerLensAction("healthcare", "patients-create", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const firstName = String(params.firstName || "").trim();
+    const lastName = String(params.lastName || "").trim();
+    if (!firstName || !lastName) return { ok: false, error: "firstName + lastName required" };
+    const seq = ensureSeqH(s, userId);
+    const mrn = String(params.mrn || `MRN-${String(seq.pat).padStart(6, "0")}`);
+    const patient = {
+      id: uidH("pat"),
+      mrn,
+      firstName, lastName,
+      dob: String(params.dob || ""),                   // YYYY-MM-DD
+      sex: ['M','F','X','U'].includes(params.sex) ? params.sex : 'U',
+      pronouns: String(params.pronouns || ""),
+      phone: String(params.phone || ""),
+      email: String(params.email || ""),
+      address: String(params.address || ""),
+      insurancePlan: String(params.insurancePlan || ""),
+      insuranceMemberId: String(params.insuranceMemberId || ""),
+      emergencyContact: String(params.emergencyContact || ""),
+      preferredPharmacy: String(params.preferredPharmacy || ""),
+      createdAt: isoH(),
+    };
+    seq.pat++;
+    bucketH(s.patients, userId).push(patient);
+    saveStateIfAvailable();
+    return { ok: true, result: { patient } };
+  });
+
+  registerLensAction("healthcare", "patients-update", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = bucketH(s.patients, aidH(ctx)).find(x => x.id === String(params.id || ""));
+    if (!p) return { ok: false, error: "patient not found" };
+    for (const k of ['firstName','lastName','dob','pronouns','phone','email','address','insurancePlan','insuranceMemberId','emergencyContact','preferredPharmacy']) {
+      if (typeof params[k] === 'string') p[k] = params[k];
+    }
+    if (['M','F','X','U'].includes(params.sex)) p.sex = params.sex;
+    saveStateIfAvailable();
+    return { ok: true, result: { patient: p } };
+  });
+
+  registerLensAction("healthcare", "patients-detail", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const id = String(params.id || "");
+    const p = bucketH(s.patients, userId).find(x => x.id === id);
+    if (!p) return { ok: false, error: "patient not found" };
+    const filter = (arr) => arr.filter(x => x.patientId === id);
+    return {
+      ok: true,
+      result: {
+        patient: p,
+        problems: filter(bucketH(s.problems, userId)),
+        allergies: filter(bucketH(s.allergies, userId)),
+        vitals: filter(bucketH(s.vitals, userId)).slice().sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)).slice(0, 30),
+        labs: filter(bucketH(s.labs, userId)).slice().sort((a, b) => b.collectedAt.localeCompare(a.collectedAt)).slice(0, 50),
+        immunizations: filter(bucketH(s.immunizations, userId)),
+        encounters: filter(bucketH(s.encounters, userId)).slice().sort((a, b) => b.encounteredAt.localeCompare(a.encounteredAt)),
+      },
+    };
+  });
+
+  // ── Problem List with ICD-10 ──────────────────────────────────
+
+  registerLensAction("healthcare", "problems-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const list = bucketH(s.problems, aidH(ctx)).filter(p => p.patientId === patientId);
+    return { ok: true, result: { problems: list.slice().sort((a, b) => (b.onsetDate || '').localeCompare(a.onsetDate || '')) } };
+  });
+
+  registerLensAction("healthcare", "problems-add", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const name = String(params.name || "").trim();
+    if (!patientId || !name) return { ok: false, error: "patientId + name required" };
+    const seq = ensureSeqH(s, userId);
+    const problem = {
+      id: uidH("prob"),
+      number: `PRB-${String(seq.prob).padStart(5, "0")}`,
+      patientId,
+      name,
+      icd10: String(params.icd10 || ""),
+      status: ['active','resolved','inactive'].includes(params.status) ? params.status : 'active',
+      onsetDate: String(params.onsetDate || dayH()),
+      resolvedDate: null,
+      notes: String(params.notes || ""),
+      createdAt: isoH(),
+    };
+    seq.prob++;
+    bucketH(s.problems, userId).push(problem);
+    saveStateIfAvailable();
+    return { ok: true, result: { problem } };
+  });
+
+  registerLensAction("healthcare", "problems-update", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = bucketH(s.problems, aidH(ctx)).find(x => x.id === String(params.id || ""));
+    if (!p) return { ok: false, error: "problem not found" };
+    if (['active','resolved','inactive'].includes(params.status)) {
+      p.status = params.status;
+      if (params.status === 'resolved' && !p.resolvedDate) p.resolvedDate = dayH();
+      if (params.status !== 'resolved') p.resolvedDate = null;
+    }
+    for (const k of ['name','icd10','notes']) if (typeof params[k] === 'string') p[k] = params[k];
+    saveStateIfAvailable();
+    return { ok: true, result: { problem: p } };
+  });
+
+  // ICD-10 / CPT real lookup. Uses ClinicalTables NLM API (public, no key).
+  registerLensAction("healthcare", "icd10-search", async (_ctx, _a, params = {}) => {
+    const q = String(params.q || "").trim();
+    if (q.length < 2) return { ok: false, error: "query too short" };
+    try {
+      const url = `https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code,name&terms=${encodeURIComponent(q)}&maxList=20`;
+      const r = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!r.ok) return { ok: false, error: `ClinicalTables ${r.status}` };
+      const data = await r.json();
+      // Response is [total, codes[], extras{}, displayStrings[]]
+      const codes = Array.isArray(data?.[1]) ? data[1] : [];
+      const display = Array.isArray(data?.[3]) ? data[3] : [];
+      const matches = codes.map((code, i) => ({ code, description: (display[i] && display[i][1]) || (display[i] && display[i][0]) || code }));
+      return { ok: true, result: { matches, source: 'ClinicalTables NLM ICD-10-CM' } };
+    } catch (e) {
+      return { ok: false, error: `lookup failed: ${e?.message || e}` };
+    }
+  });
+
+  // ── Allergies ─────────────────────────────────────────────────
+
+  registerLensAction("healthcare", "allergies-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const list = bucketH(s.allergies, aidH(ctx)).filter(a => a.patientId === patientId);
+    return { ok: true, result: { allergies: list } };
+  });
+
+  registerLensAction("healthcare", "allergies-add", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const allergen = String(params.allergen || "").trim();
+    if (!patientId || !allergen) return { ok: false, error: "patientId + allergen required" };
+    const seq = ensureSeqH(s, userId);
+    const allergy = {
+      id: uidH("alg"),
+      number: `AL-${String(seq.alg).padStart(5, "0")}`,
+      patientId,
+      allergen,
+      kind: ['drug','food','environmental','other'].includes(params.kind) ? params.kind : 'drug',
+      severity: ['mild','moderate','severe','life_threatening'].includes(params.severity) ? params.severity : 'moderate',
+      reaction: String(params.reaction || ""),
+      onsetDate: String(params.onsetDate || ""),
+      notes: String(params.notes || ""),
+      createdAt: isoH(),
+    };
+    seq.alg++;
+    bucketH(s.allergies, userId).push(allergy);
+    saveStateIfAvailable();
+    return { ok: true, result: { allergy } };
+  });
+
+  registerLensAction("healthcare", "allergies-delete", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = bucketH(s.allergies, aidH(ctx));
+    const i = list.findIndex(a => a.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "allergy not found" };
+    list.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Vitals ────────────────────────────────────────────────────
+
+  registerLensAction("healthcare", "vitals-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const list = bucketH(s.vitals, aidH(ctx)).filter(v => v.patientId === patientId);
+    return { ok: true, result: { vitals: list.slice().sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)) } };
+  });
+
+  registerLensAction("healthcare", "vitals-record", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const seq = ensureSeqH(s, userId);
+    const v = {
+      id: uidH("vit"),
+      number: `V-${String(seq.vit).padStart(6, "0")}`,
+      patientId,
+      recordedAt: String(params.recordedAt || isoH()),
+      systolic:  Number.isFinite(Number(params.systolic))  ? Number(params.systolic)  : null,
+      diastolic: Number.isFinite(Number(params.diastolic)) ? Number(params.diastolic) : null,
+      heartRate: Number.isFinite(Number(params.heartRate)) ? Number(params.heartRate) : null,
+      respRate:  Number.isFinite(Number(params.respRate))  ? Number(params.respRate)  : null,
+      tempF:     Number.isFinite(Number(params.tempF))     ? Number(params.tempF)     : null,
+      spo2:      Number.isFinite(Number(params.spo2))      ? Number(params.spo2)      : null,
+      weightLb:  Number.isFinite(Number(params.weightLb))  ? Number(params.weightLb)  : null,
+      heightIn:  Number.isFinite(Number(params.heightIn))  ? Number(params.heightIn)  : null,
+      painScore: Number.isFinite(Number(params.painScore)) ? Number(params.painScore) : null,
+      notes: String(params.notes || ""),
+    };
+    if (v.weightLb && v.heightIn && v.heightIn > 0) {
+      v.bmi = Math.round((v.weightLb * 703 / (v.heightIn * v.heightIn)) * 10) / 10;
+    }
+    // Flag clinical alerts inline (Epic-style red-flag indicator).
+    v.flags = [];
+    if (v.systolic !== null && (v.systolic >= 180 || v.systolic < 90)) v.flags.push('bp_critical');
+    else if (v.systolic !== null && v.systolic >= 140) v.flags.push('bp_high');
+    if (v.diastolic !== null && (v.diastolic >= 120 || v.diastolic < 60)) v.flags.push('bp_critical');
+    else if (v.diastolic !== null && v.diastolic >= 90) v.flags.push('bp_high');
+    if (v.heartRate !== null && (v.heartRate > 130 || v.heartRate < 40)) v.flags.push('hr_critical');
+    if (v.spo2 !== null && v.spo2 < 92) v.flags.push('hypoxia');
+    if (v.tempF !== null && (v.tempF >= 103 || v.tempF <= 95)) v.flags.push('temp_critical');
+    else if (v.tempF !== null && v.tempF >= 100.4) v.flags.push('fever');
+    seq.vit++;
+    bucketH(s.vitals, userId).push(v);
+    saveStateIfAvailable();
+    return { ok: true, result: { vitals: v } };
+  });
+
+  // ── Labs (with abnormal-flag logic) ───────────────────────────
+
+  // Reference ranges — adult, conventional units. Lab-specific ranges should override per-org.
+  const LAB_RANGES = {
+    glucose:      { unit: 'mg/dL', low: 70,  high: 100,   critLow: 40,  critHigh: 400 },
+    a1c:          { unit: '%',     low: 4.0, high: 5.6,   critLow: null,critHigh: 14 },
+    sodium:       { unit: 'mEq/L', low: 135, high: 145,   critLow: 120, critHigh: 160 },
+    potassium:    { unit: 'mEq/L', low: 3.5, high: 5.1,   critLow: 2.5, critHigh: 6.5 },
+    creatinine:   { unit: 'mg/dL', low: 0.6, high: 1.3,   critLow: null,critHigh: 6 },
+    bun:          { unit: 'mg/dL', low: 6,   high: 24,    critLow: null,critHigh: 100 },
+    hemoglobin:   { unit: 'g/dL',  low: 12,  high: 17,    critLow: 7,   critHigh: 20 },
+    hematocrit:   { unit: '%',     low: 36,  high: 50,    critLow: null,critHigh: null },
+    wbc:          { unit: 'K/uL',  low: 4.5, high: 11,    critLow: 2,   critHigh: 30 },
+    platelets:    { unit: 'K/uL',  low: 150, high: 450,   critLow: 50,  critHigh: 1000 },
+    ast:          { unit: 'U/L',   low: 10,  high: 40,    critLow: null,critHigh: 1000 },
+    alt:          { unit: 'U/L',   low: 7,   high: 56,    critLow: null,critHigh: 1000 },
+    tsh:          { unit: 'uIU/mL',low: 0.4, high: 4.0,   critLow: null,critHigh: null },
+    ldl:          { unit: 'mg/dL', low: 0,   high: 100,   critLow: null,critHigh: null },
+    hdl:          { unit: 'mg/dL', low: 40,  high: 999,   critLow: null,critHigh: null },
+    troponin_i:   { unit: 'ng/mL', low: 0,   high: 0.04,  critLow: null,critHigh: null },
+  };
+
+  registerLensAction("healthcare", "labs-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const list = bucketH(s.labs, aidH(ctx)).filter(l => l.patientId === patientId);
+    return { ok: true, result: { labs: list.slice().sort((a, b) => b.collectedAt.localeCompare(a.collectedAt)) } };
+  });
+
+  registerLensAction("healthcare", "labs-record", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const test = String(params.test || "").trim().toLowerCase();
+    const value = Number(params.value);
+    if (!patientId || !test || !Number.isFinite(value)) return { ok: false, error: "patientId + test + numeric value required" };
+    const range = LAB_RANGES[test] || null;
+    let flag = 'normal';
+    if (range) {
+      if (range.critLow !== null && value <= range.critLow) flag = 'critical_low';
+      else if (range.critHigh !== null && value >= range.critHigh) flag = 'critical_high';
+      else if (value < range.low) flag = 'low';
+      else if (value > range.high) flag = 'high';
+    } else flag = 'unflagged';
+    const seq = ensureSeqH(s, userId);
+    const lab = {
+      id: uidH("lab"),
+      number: `L-${String(seq.lab).padStart(6, "0")}`,
+      patientId,
+      test, value,
+      unit: String(params.unit || range?.unit || ""),
+      refLow: range?.low ?? null,
+      refHigh: range?.high ?? null,
+      flag,
+      collectedAt: String(params.collectedAt || isoH()),
+      orderingProvider: String(params.orderingProvider || ""),
+      notes: String(params.notes || ""),
+    };
+    seq.lab++;
+    bucketH(s.labs, userId).push(lab);
+    saveStateIfAvailable();
+    return { ok: true, result: { lab, knownTests: Object.keys(LAB_RANGES) } };
+  });
+
+  registerLensAction("healthcare", "labs-known-tests", (_ctx, _a, _p = {}) => {
+    return { ok: true, result: { tests: Object.entries(LAB_RANGES).map(([t, r]) => ({ test: t, unit: r.unit, low: r.low, high: r.high })) } };
+  });
+
+  // ── Immunizations ─────────────────────────────────────────────
+
+  registerLensAction("healthcare", "immunizations-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const list = bucketH(s.immunizations, aidH(ctx)).filter(i => i.patientId === patientId);
+    return { ok: true, result: { immunizations: list.slice().sort((a, b) => b.administeredAt.localeCompare(a.administeredAt)) } };
+  });
+
+  registerLensAction("healthcare", "immunizations-add", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const vaccine = String(params.vaccine || "").trim();
+    if (!patientId || !vaccine) return { ok: false, error: "patientId + vaccine required" };
+    const seq = ensureSeqH(s, userId);
+    const imm = {
+      id: uidH("imm"),
+      number: `IMM-${String(seq.imm).padStart(5, "0")}`,
+      patientId,
+      vaccine,
+      cvx: String(params.cvx || ""),
+      manufacturer: String(params.manufacturer || ""),
+      lotNumber: String(params.lotNumber || ""),
+      doseSeries: String(params.doseSeries || ""),
+      site: String(params.site || ""),
+      administeredAt: String(params.administeredAt || dayH()),
+      administeredBy: String(params.administeredBy || ""),
+    };
+    seq.imm++;
+    bucketH(s.immunizations, userId).push(imm);
+    saveStateIfAvailable();
+    return { ok: true, result: { immunization: imm } };
+  });
+
+  // ── Encounters + SOAP notes ──────────────────────────────────
+
+  registerLensAction("healthcare", "encounters-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    let list = bucketH(s.encounters, aidH(ctx));
+    if (patientId) list = list.filter(e => e.patientId === patientId);
+    return { ok: true, result: { encounters: list.slice().sort((a, b) => b.encounteredAt.localeCompare(a.encounteredAt)) } };
+  });
+
+  registerLensAction("healthcare", "encounters-create", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const patient = bucketH(s.patients, userId).find(p => p.id === patientId);
+    if (!patient) return { ok: false, error: "patient not found" };
+    const seq = ensureSeqH(s, userId);
+    const enc = {
+      id: uidH("enc"),
+      number: `ENC-${String(seq.enc).padStart(6, "0")}`,
+      patientId,
+      patientName: `${patient.firstName} ${patient.lastName}`,
+      encounterType: ['office_visit','telehealth','urgent_care','er','admission','followup','annual'].includes(params.encounterType) ? params.encounterType : 'office_visit',
+      encounteredAt: String(params.encounteredAt || isoH()),
+      chiefComplaint: String(params.chiefComplaint || ""),
+      // SOAP note fields — start blank, filled by note-save or ai-scribe.
+      subjective: String(params.subjective || ""),
+      objective: String(params.objective || ""),
+      assessment: String(params.assessment || ""),
+      plan: String(params.plan || ""),
+      diagnosisCodes: Array.isArray(params.diagnosisCodes) ? params.diagnosisCodes.map(String) : [],
+      cptCodes: Array.isArray(params.cptCodes) ? params.cptCodes.map(String) : [],
+      provider: String(params.provider || ""),
+      status: ['open','signed','amended'].includes(params.status) ? params.status : 'open',
+      signedAt: null,
+      createdAt: isoH(),
+    };
+    seq.enc++;
+    bucketH(s.encounters, userId).push(enc);
+    saveStateIfAvailable();
+    return { ok: true, result: { encounter: enc } };
+  });
+
+  registerLensAction("healthcare", "encounters-save-soap", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const enc = bucketH(s.encounters, aidH(ctx)).find(x => x.id === String(params.id || ""));
+    if (!enc) return { ok: false, error: "encounter not found" };
+    if (enc.status === 'signed') return { ok: false, error: "encounter signed; create an amendment instead" };
+    for (const k of ['subjective','objective','assessment','plan','chiefComplaint','provider']) {
+      if (typeof params[k] === 'string') enc[k] = params[k];
+    }
+    if (Array.isArray(params.diagnosisCodes)) enc.diagnosisCodes = params.diagnosisCodes.map(String);
+    if (Array.isArray(params.cptCodes)) enc.cptCodes = params.cptCodes.map(String);
+    saveStateIfAvailable();
+    return { ok: true, result: { encounter: enc } };
+  });
+
+  registerLensAction("healthcare", "encounters-sign", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const enc = bucketH(s.encounters, aidH(ctx)).find(x => x.id === String(params.id || ""));
+    if (!enc) return { ok: false, error: "encounter not found" };
+    if (enc.status === 'signed') return { ok: false, error: "already signed" };
+    if (!enc.assessment || !enc.plan) return { ok: false, error: "Assessment + Plan required before signing (CMS audit rule)" };
+    enc.status = 'signed';
+    enc.signedAt = isoH();
+    saveStateIfAvailable();
+    return { ok: true, result: { encounter: enc } };
+  });
+
+  // ── SmartPhrases (Epic-style dot-phrase shortcuts) ───────────
+
+  registerLensAction("healthcare", "smartphrases-list", (ctx, _a, _p = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const list = bucketH(s.smartPhrases, userId);
+    if (list.length === 0) {
+      // Seed canonical Epic-style SmartPhrases
+      const seed = [
+        { name: '.ros', text: 'Constitutional: No fever, chills, or weight loss. HEENT: No headache, vision changes. CV: No chest pain, palpitations. Resp: No cough, dyspnea. GI: No nausea, vomiting, diarrhea. GU: No dysuria. MSK: No joint pain. Neuro: No focal deficits. Psych: No depression or anxiety.' },
+        { name: '.normalexam', text: 'GEN: Alert, oriented x3, no acute distress. HEENT: NC/AT, PERRLA, EOMI, mucous membranes moist. CV: RRR, no m/r/g. Resp: CTA bilaterally. Abd: Soft, NT/ND, +BS. Neuro: CN II-XII intact. Skin: No rash.' },
+        { name: '.htnplan', text: 'Continue lisinopril 10mg daily. Recheck BP in 2 weeks. Goal <130/80. DASH diet, 30 min exercise 5x/week. Recheck BMP in 3 months. Patient agrees with plan.' },
+        { name: '.dmplan', text: 'Continue metformin 1000mg BID. Repeat A1C in 3 months, goal <7%. Annual eye exam, foot exam at every visit. Lipid panel in 6 months. Pneumovax updated. Patient reinforces low-carb diet.' },
+        { name: '.urireturn', text: 'Return precautions: Fever >101F lasting >3 days, worsening cough, shortness of breath, ear pain, neck stiffness, or any concerning new symptom. Otherwise follow up PRN.' },
+      ];
+      for (const sp of seed) list.push({ id: uidH("sp"), createdAt: isoH(), ...sp });
+      saveStateIfAvailable();
+    }
+    return { ok: true, result: { smartPhrases: list } };
+  });
+
+  registerLensAction("healthcare", "smartphrases-create", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = String(params.name || "").trim();
+    const text = String(params.text || "").trim();
+    if (!name || !text) return { ok: false, error: "name + text required" };
+    const normalized = name.startsWith('.') ? name : '.' + name;
+    const sp = { id: uidH("sp"), name: normalized, text, createdAt: isoH() };
+    bucketH(s.smartPhrases, aidH(ctx)).push(sp);
+    saveStateIfAvailable();
+    return { ok: true, result: { smartPhrase: sp } };
+  });
+
+  registerLensAction("healthcare", "smartphrases-delete", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = bucketH(s.smartPhrases, aidH(ctx));
+    const i = list.findIndex(sp => sp.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "SmartPhrase not found" };
+    list.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // Expand .dotphrases in a body of text.
+  registerLensAction("healthcare", "smartphrases-expand", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = bucketH(s.smartPhrases, aidH(ctx));
+    const text = String(params.text || "");
+    let expanded = text;
+    for (const sp of list) {
+      const re = new RegExp(`(^|\\s)${sp.name.replace('.', '\\.')}\\b`, 'g');
+      expanded = expanded.replace(re, `$1${sp.text}`);
+    }
+    return { ok: true, result: { expanded, originalLength: text.length, expandedLength: expanded.length } };
+  });
+
+  // ── AI Scribe — raw note text → structured SOAP (Epic 2026 hero feature) ─
+
+  registerLensAction("healthcare", "ai-scribe", async (ctx, _a, params = {}) => {
+    const raw = String(params.text || "").trim();
+    if (raw.length < 30) return { ok: false, error: "transcript too short (min 30 chars)" };
+    // Deterministic shape so the lens has a useful response without brain.
+    function deterministic() {
+      const sentences = raw.split(/(?<=[.!?])\s+/);
+      const detect = (kw) => sentences.find(s => new RegExp(kw, 'i').test(s)) || '';
+      return {
+        chiefComplaint: detect('reports?|complain|presenting|here for|chief complaint|cc:').slice(0, 200) || sentences[0]?.slice(0, 200) || '',
+        subjective: sentences.filter(s => /reports?|complains?|states?|denies?|history|symptoms?|patient/i.test(s)).join(' ').slice(0, 1500) || raw.slice(0, 800),
+        objective: sentences.filter(s => /exam|appears?|vital|bp|hr|temp|spo2|auscult|inspect|palpat|labs?|imaging/i.test(s)).join(' ').slice(0, 1500),
+        assessment: sentences.filter(s => /assessment|diagnosis|likely|consistent with|impression|dx:|differential/i.test(s)).join(' ').slice(0, 1000),
+        plan: sentences.filter(s => /plan|prescrib|order|follow.?up|return|refer|education|counsel/i.test(s)).join(' ').slice(0, 1500),
+      };
+    }
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== 'function') {
+      return { ok: true, result: { soap: deterministic(), source: 'deterministic' } };
+    }
+    try {
+      const sys = `You are a medical scribe. Convert raw clinical note text into structured SOAP. Output ONLY JSON:
+{"chiefComplaint":"...","subjective":"...","objective":"...","assessment":"...","plan":"..."}
+Use only facts present in the input — never invent. If a section has no data, leave it empty.`;
+      const r = await brain({
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: raw.slice(0, 10000) }],
+        temperature: 0.1,
+        maxTokens: 2000,
+      });
+      const text = String(r?.content || r?.text || '').trim();
+      const parsed = extractJsonHealth(text);
+      if (!parsed?.subjective && !parsed?.assessment) {
+        return { ok: true, result: { soap: deterministic(), source: 'deterministic_brain_unparseable' } };
+      }
+      return {
+        ok: true,
+        result: {
+          soap: {
+            chiefComplaint: String(parsed.chiefComplaint || '').slice(0, 500),
+            subjective:     String(parsed.subjective     || '').slice(0, 3000),
+            objective:      String(parsed.objective      || '').slice(0, 3000),
+            assessment:     String(parsed.assessment     || '').slice(0, 2000),
+            plan:           String(parsed.plan           || '').slice(0, 3000),
+          },
+          source: 'brain',
+        },
+      };
+    } catch (e) {
+      return { ok: true, result: { soap: deterministic(), source: 'deterministic_after_brain_error', error: String(e?.message || e) } };
+    }
+  });
+
+  // Epic Conversational Search 2026 — search across a patient's chart with natural language.
+  registerLensAction("healthcare", "ai-chart-search", async (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const query = String(params.query || "").trim().toLowerCase();
+    if (!patientId || !query) return { ok: false, error: "patientId + query required" };
+    const filter = (arr) => arr.filter(x => x.patientId === patientId);
+    const problems = filter(bucketH(s.problems, userId));
+    const allergies = filter(bucketH(s.allergies, userId));
+    const meds = (bucketH(s.medications, userId) || []).filter(m => m.patientId ? m.patientId === patientId : true);
+    const vitals = filter(bucketH(s.vitals, userId));
+    const labs = filter(bucketH(s.labs, userId));
+    const encs = filter(bucketH(s.encounters, userId));
+    function hits(label, items, formatter) {
+      return items.filter(item => formatter(item).toLowerCase().includes(query)).slice(0, 5).map(item => ({ label, item, display: formatter(item) }));
+    }
+    const findings = [
+      ...hits('problem', problems, p => `${p.name} ${p.icd10 || ''} ${p.notes || ''}`),
+      ...hits('allergy', allergies, a => `${a.allergen} ${a.reaction || ''} (${a.severity})`),
+      ...hits('medication', meds, m => `${m.name || m.drug || ''} ${m.dose || ''} ${m.schedule || ''}`),
+      ...hits('vital', vitals, v => `BP ${v.systolic}/${v.diastolic} HR ${v.heartRate} ${v.notes || ''}`),
+      ...hits('lab', labs, l => `${l.test} ${l.value} ${l.unit || ''} (${l.flag})`),
+      ...hits('encounter', encs, e => `${e.encounterType} ${e.chiefComplaint || ''} ${e.assessment || ''} ${e.plan || ''}`),
+    ];
+    // Recent abnormal-flagged labs are always relevant when query mentions "abnormal" / "high" / "critical"
+    if (/abnormal|high|low|critical/.test(query)) {
+      for (const l of labs.filter(x => x.flag !== 'normal' && x.flag !== 'unflagged').slice(0, 5)) {
+        if (!findings.some(f => f.label === 'lab' && f.item.id === l.id)) {
+          findings.push({ label: 'lab', item: l, display: `${l.test} ${l.value} ${l.unit || ''} (${l.flag})` });
+        }
+      }
+    }
+    return { ok: true, result: { query, findings, hitCount: findings.length } };
+  });
+
+  // ── Patient Portal (MyChart-style) ────────────────────────────
+
+  registerLensAction("healthcare", "messages-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    let list = bucketH(s.messages, aidH(ctx));
+    if (patientId) list = list.filter(m => m.patientId === patientId);
+    return { ok: true, result: { messages: list.slice().sort((a, b) => b.sentAt.localeCompare(a.sentAt)) } };
+  });
+
+  registerLensAction("healthcare", "messages-send", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const body = String(params.body || "").trim();
+    if (!patientId || !body) return { ok: false, error: "patientId + body required" };
+    const seq = ensureSeqH(s, userId);
+    const msg = {
+      id: uidH("msg"),
+      number: `MSG-${String(seq.msg).padStart(5, "0")}`,
+      patientId,
+      direction: ['from_patient','to_patient'].includes(params.direction) ? params.direction : 'to_patient',
+      subject: String(params.subject || "").slice(0, 200),
+      body: body.slice(0, 5000),
+      sentAt: isoH(),
+      readAt: null,
+      sender: String(params.sender || ""),
+    };
+    seq.msg++;
+    bucketH(s.messages, userId).push(msg);
+    saveStateIfAvailable();
+    return { ok: true, result: { message: msg } };
+  });
+
+  registerLensAction("healthcare", "messages-mark-read", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = bucketH(s.messages, aidH(ctx)).find(x => x.id === String(params.id || ""));
+    if (!m) return { ok: false, error: "message not found" };
+    m.readAt = isoH();
+    saveStateIfAvailable();
+    return { ok: true, result: { message: m } };
+  });
+
+  registerLensAction("healthcare", "refills-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const status = ['requested','approved','denied','filled','all'].includes(params.status) ? params.status : 'all';
+    let list = bucketH(s.refills, aidH(ctx));
+    if (status !== 'all') list = list.filter(r => r.status === status);
+    return { ok: true, result: { refills: list.slice().sort((a, b) => b.requestedAt.localeCompare(a.requestedAt)) } };
+  });
+
+  registerLensAction("healthcare", "refills-request", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const medication = String(params.medication || "").trim();
+    if (!patientId || !medication) return { ok: false, error: "patientId + medication required" };
+    const seq = ensureSeqH(s, userId);
+    const refill = {
+      id: uidH("refill"),
+      number: `RX-${String(seq.refill).padStart(5, "0")}`,
+      patientId,
+      medication,
+      dose: String(params.dose || ""),
+      pharmacy: String(params.pharmacy || ""),
+      notes: String(params.notes || ""),
+      status: 'requested',
+      requestedAt: isoH(),
+      respondedAt: null,
+    };
+    seq.refill++;
+    bucketH(s.refills, userId).push(refill);
+    saveStateIfAvailable();
+    return { ok: true, result: { refill } };
+  });
+
+  registerLensAction("healthcare", "refills-respond", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const r = bucketH(s.refills, aidH(ctx)).find(x => x.id === String(params.id || ""));
+    if (!r) return { ok: false, error: "refill not found" };
+    if (!['approved','denied','filled'].includes(params.status)) return { ok: false, error: "status must be approved | denied | filled" };
+    r.status = params.status;
+    r.respondedAt = isoH();
+    r.responseNotes = String(params.responseNotes || "");
+    saveStateIfAvailable();
+    return { ok: true, result: { refill: r } };
+  });
+
+  // ── Dashboard summary ─────────────────────────────────────────
+
+  registerLensAction("healthcare", "dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patients = bucketH(s.patients, userId);
+    const encs = bucketH(s.encounters, userId);
+    const today = dayH();
+    const todaysVisits = encs.filter(e => e.encounteredAt.slice(0, 10) === today).length;
+    const unsignedNotes = encs.filter(e => e.status === 'open').length;
+    const inboxUnread = bucketH(s.messages, userId).filter(m => !m.readAt && m.direction === 'from_patient').length;
+    const pendingRefills = bucketH(s.refills, userId).filter(r => r.status === 'requested').length;
+    const criticalLabs = bucketH(s.labs, userId).filter(l => /critical/.test(l.flag)).length;
+    const allergiesCount = bucketH(s.allergies, userId).length;
+    const activeProblems = bucketH(s.problems, userId).filter(p => p.status === 'active').length;
+    return {
+      ok: true,
+      result: {
+        patientCount: patients.length,
+        todaysVisits,
+        unsignedNotes,
+        inboxUnread,
+        pendingRefills,
+        criticalLabs,
+        activeProblems,
+        allergiesCount,
+      },
     };
   });
 };

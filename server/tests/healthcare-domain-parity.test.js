@@ -284,3 +284,192 @@ describe("healthcare.appointment-list", () => {
     assert.equal(call("appointment-list", ctxA, { copayStatus: "unpaid" }).result.appointments.length, 1);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  Epic 2026 parity macros — patients, problems, allergies, vitals,
+//  labs, immunizations, encounters/SOAP, SmartPhrases, AI scribe,
+//  patient portal, dashboard.
+// ═════════════════════════════════════════════════════════════════
+
+describe("healthcare — patients CRUD + detail", () => {
+  it("creates a patient and lists per user", () => {
+    const r = call("patients-create", ctxA, { firstName: "Jane", lastName: "Doe", dob: "1985-04-12", sex: "F", phone: "555-0101" });
+    assert.equal(r.ok, true);
+    assert.match(r.result.patient.mrn, /^MRN-/);
+    assert.equal(r.result.patient.sex, "F");
+    assert.equal(call("patients-list", ctxA).result.patients.length, 1);
+    assert.equal(call("patients-list", ctxB).result.patients.length, 0);
+  });
+
+  it("patients-detail joins problems, allergies, vitals, labs, immunizations, encounters", () => {
+    const p = call("patients-create", ctxA, { firstName: "Bob", lastName: "Smith" }).result.patient;
+    call("problems-add", ctxA, { patientId: p.id, name: "Hypertension", icd10: "I10" });
+    call("allergies-add", ctxA, { patientId: p.id, allergen: "Penicillin", severity: "severe" });
+    call("vitals-record", ctxA, { patientId: p.id, systolic: 145, diastolic: 92, heartRate: 78 });
+    call("labs-record", ctxA, { patientId: p.id, test: "glucose", value: 220 });
+    const d = call("patients-detail", ctxA, { id: p.id });
+    assert.equal(d.ok, true);
+    assert.equal(d.result.problems.length, 1);
+    assert.equal(d.result.allergies.length, 1);
+    assert.equal(d.result.vitals.length, 1);
+    assert.equal(d.result.labs.length, 1);
+  });
+});
+
+describe("healthcare — problems + ICD-10", () => {
+  it("resolves a problem and sets resolvedDate", () => {
+    const p = call("patients-create", ctxA, { firstName: "Pat", lastName: "Test" }).result.patient;
+    const prob = call("problems-add", ctxA, { patientId: p.id, name: "Acute bronchitis", icd10: "J20.9" }).result.problem;
+    assert.equal(prob.status, "active");
+    const u = call("problems-update", ctxA, { id: prob.id, status: "resolved" });
+    assert.equal(u.result.problem.status, "resolved");
+    assert.ok(u.result.problem.resolvedDate);
+  });
+});
+
+describe("healthcare — vitals with clinical alert flags", () => {
+  it("flags hypertensive crisis", () => {
+    const p = call("patients-create", ctxA, { firstName: "Hi", lastName: "BP" }).result.patient;
+    const v = call("vitals-record", ctxA, { patientId: p.id, systolic: 195, diastolic: 125, heartRate: 80 });
+    assert.ok(v.result.vitals.flags.includes("bp_critical"));
+  });
+  it("flags hypoxia + fever", () => {
+    const p = call("patients-create", ctxA, { firstName: "Sick", lastName: "Pt" }).result.patient;
+    const v = call("vitals-record", ctxA, { patientId: p.id, spo2: 88, tempF: 102.5 });
+    assert.ok(v.result.vitals.flags.includes("hypoxia"));
+    assert.ok(v.result.vitals.flags.includes("fever"));
+  });
+  it("computes BMI from weight + height", () => {
+    const p = call("patients-create", ctxA, { firstName: "Bmi", lastName: "Test" }).result.patient;
+    const v = call("vitals-record", ctxA, { patientId: p.id, weightLb: 180, heightIn: 70 });
+    assert.ok(v.result.vitals.bmi > 25 && v.result.vitals.bmi < 27);
+  });
+});
+
+describe("healthcare — labs with reference ranges + abnormal flags", () => {
+  it("flags critical_high glucose", () => {
+    const p = call("patients-create", ctxA, { firstName: "Db", lastName: "Pt" }).result.patient;
+    const l = call("labs-record", ctxA, { patientId: p.id, test: "glucose", value: 450 });
+    assert.equal(l.result.lab.flag, "critical_high");
+    assert.equal(l.result.lab.unit, "mg/dL");
+  });
+  it("flags normal A1C", () => {
+    const p = call("patients-create", ctxA, { firstName: "Db", lastName: "Pt" }).result.patient;
+    const l = call("labs-record", ctxA, { patientId: p.id, test: "a1c", value: 5.2 });
+    assert.equal(l.result.lab.flag, "normal");
+  });
+  it("flags unflagged for unknown tests", () => {
+    const p = call("patients-create", ctxA, { firstName: "Db", lastName: "Pt" }).result.patient;
+    const l = call("labs-record", ctxA, { patientId: p.id, test: "rare_test", value: 42, unit: "u/L" });
+    assert.equal(l.result.lab.flag, "unflagged");
+  });
+});
+
+describe("healthcare — encounters + SOAP + sign", () => {
+  it("encounters-save-soap requires assessment + plan to sign", () => {
+    const p = call("patients-create", ctxA, { firstName: "P", lastName: "T" }).result.patient;
+    const e = call("encounters-create", ctxA, { patientId: p.id, chiefComplaint: "Cough x 3 days" }).result.encounter;
+    const noSign = call("encounters-sign", ctxA, { id: e.id });
+    assert.equal(noSign.ok, false);
+    assert.match(noSign.error, /Assessment.*Plan|CMS/i);
+    call("encounters-save-soap", ctxA, { id: e.id, assessment: "URI", plan: "Sx care, return precautions" });
+    const sign = call("encounters-sign", ctxA, { id: e.id });
+    assert.equal(sign.ok, true);
+    assert.equal(sign.result.encounter.status, "signed");
+  });
+  it("cannot save SOAP on signed encounter", () => {
+    const p = call("patients-create", ctxA, { firstName: "P", lastName: "T" }).result.patient;
+    const e = call("encounters-create", ctxA, { patientId: p.id }).result.encounter;
+    call("encounters-save-soap", ctxA, { id: e.id, assessment: "x", plan: "y" });
+    call("encounters-sign", ctxA, { id: e.id });
+    const r = call("encounters-save-soap", ctxA, { id: e.id, plan: "new" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("healthcare — SmartPhrases", () => {
+  it("seeds canonical Epic-style dot-phrases on first list", () => {
+    const r = call("smartphrases-list", ctxA);
+    assert.equal(r.ok, true);
+    assert.ok(r.result.smartPhrases.find(sp => sp.name === ".ros"));
+    assert.ok(r.result.smartPhrases.find(sp => sp.name === ".normalexam"));
+  });
+  it("expands a .dotphrase inline", () => {
+    call("smartphrases-list", ctxA); // seed
+    const r = call("smartphrases-expand", ctxA, { text: "PE: .normalexam. Notes follow." });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.expandedLength > r.result.originalLength);
+    assert.ok(r.result.expanded.includes("Alert, oriented x3"));
+  });
+});
+
+describe("healthcare — AI scribe", () => {
+  it("deterministic SOAP extract when no brain", async () => {
+    const raw = "Patient reports fever and cough for 3 days. Exam reveals temp 101.2. Likely viral URI. Plan: supportive care, fluids, return if worse.";
+    const r = await call("ai-scribe", ctxA, { text: raw });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "deterministic");
+    assert.ok(r.result.soap.subjective.length > 0);
+    assert.ok(r.result.soap.plan.length > 0);
+  });
+  it("rejects too-short transcript", async () => {
+    const r = await call("ai-scribe", ctxA, { text: "Cold" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("healthcare — chart conversational search", () => {
+  it("finds problems + labs + meds matching a query", async () => {
+    const p = call("patients-create", ctxA, { firstName: "Diabetes", lastName: "Pt" }).result.patient;
+    call("problems-add", ctxA, { patientId: p.id, name: "Type 2 Diabetes Mellitus", icd10: "E11.9" });
+    call("labs-record", ctxA, { patientId: p.id, test: "a1c", value: 8.2 });
+    const r = await call("ai-chart-search", ctxA, { patientId: p.id, query: "diabetes" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.findings.some(f => f.label === "problem"));
+  });
+  it("surfaces abnormal labs when query mentions 'critical'", async () => {
+    const p = call("patients-create", ctxA, { firstName: "P", lastName: "T" }).result.patient;
+    call("labs-record", ctxA, { patientId: p.id, test: "potassium", value: 7.5 });
+    const r = await call("ai-chart-search", ctxA, { patientId: p.id, query: "critical values" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.findings.some(f => f.label === "lab"));
+  });
+});
+
+describe("healthcare — patient portal (messages + refills)", () => {
+  it("send a message and mark it read", () => {
+    const p = call("patients-create", ctxA, { firstName: "P", lastName: "T" }).result.patient;
+    const m = call("messages-send", ctxA, { patientId: p.id, body: "Hello", direction: "from_patient" }).result.message;
+    assert.ok(!m.readAt);
+    const r = call("messages-mark-read", ctxA, { id: m.id });
+    assert.ok(r.result.message.readAt);
+  });
+  it("refill: request → approve workflow", () => {
+    const p = call("patients-create", ctxA, { firstName: "P", lastName: "T" }).result.patient;
+    const r1 = call("refills-request", ctxA, { patientId: p.id, medication: "Lisinopril 10mg", pharmacy: "CVS #123" });
+    assert.equal(r1.result.refill.status, "requested");
+    const r2 = call("refills-respond", ctxA, { id: r1.result.refill.id, status: "approved", responseNotes: "Sent to pharmacy" });
+    assert.equal(r2.result.refill.status, "approved");
+    assert.ok(r2.result.refill.respondedAt);
+  });
+});
+
+describe("healthcare — dashboard summary", () => {
+  it("aggregates patients, today's visits, unsigned notes, inbox, refills, critical labs", () => {
+    const p = call("patients-create", ctxA, { firstName: "P", lastName: "T" }).result.patient;
+    call("problems-add", ctxA, { patientId: p.id, name: "HTN" });
+    call("encounters-create", ctxA, { patientId: p.id });
+    call("messages-send", ctxA, { patientId: p.id, body: "?", direction: "from_patient" });
+    call("refills-request", ctxA, { patientId: p.id, medication: "X" });
+    call("labs-record", ctxA, { patientId: p.id, test: "potassium", value: 7.5 });
+    const r = call("dashboard-summary", ctxA);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.patientCount, 1);
+    assert.equal(r.result.todaysVisits, 1);
+    assert.equal(r.result.unsignedNotes, 1);
+    assert.equal(r.result.inboxUnread, 1);
+    assert.equal(r.result.pendingRefills, 1);
+    assert.equal(r.result.criticalLabs, 1);
+    assert.equal(r.result.activeProblems, 1);
+  });
+});
