@@ -423,3 +423,184 @@ describe("crypto.swap-route (real 0x aggregator, no simulated routing)", () => {
     delete process.env.ZEROX_API_KEY;
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  Coinbase + Phantom 2026 parity — holdings, transactions, DCA,
+//  staking, NFTs, watchlist, tax report, AI insight.
+// ═════════════════════════════════════════════════════════════════
+
+const ctxCr = { actor: { userId: "u_cr" }, userId: "u_cr" };
+
+// Stub fetch so live-price calls return a deterministic mock.
+function stubPriceFetch(prices) {
+  globalThis.fetch = async (url) => ({
+    ok: true,
+    json: async () => {
+      const out = {};
+      for (const [k, v] of Object.entries(prices)) out[k] = { usd: v };
+      return out;
+    },
+  });
+}
+
+describe("crypto — holdings + FIFO cost basis", () => {
+  it("holdings-add creates a lot + buy transaction", () => {
+    const r = call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 0.5, costBasisUsd: 30000, chain: "bitcoin" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.lot.qty, 0.5);
+    assert.equal(r.result.lot.unitCostUsd, 60000);
+    assert.equal(r.result.transaction.kind, "buy");
+  });
+
+  it("holdings-sell uses FIFO and emits realized G/L", () => {
+    call("holdings-add", ctxCr, { symbol: "ethereum", ticker: "ETH", qty: 2, costBasisUsd: 4000, acquiredAt: "2024-01-01" });
+    call("holdings-add", ctxCr, { symbol: "ethereum", ticker: "ETH", qty: 1, costBasisUsd: 3000, acquiredAt: "2024-06-01" });
+    // Sell 2.5 — should close all of lot1 (2) + 0.5 of lot2
+    const r = call("holdings-sell", ctxCr, { symbol: "ethereum", qty: 2.5, proceedsUsd: 10000, at: "2025-03-01" });
+    assert.equal(r.ok, true);
+    // Cost of sold: 2*2000 + 0.5*3000 = 4000 + 1500 = 5500
+    assert.equal(r.result.totalCostOfSold, 5500);
+    // Realized: 10000 - 5500 = 4500
+    assert.equal(r.result.transaction.realizedPnlUsd, 4500);
+    assert.equal(r.result.transaction.closedLots.length, 2);
+  });
+
+  it("holdings-sell rejects over-sell", () => {
+    call("holdings-add", ctxCr, { symbol: "solana", ticker: "SOL", qty: 10, costBasisUsd: 1000 });
+    const r = call("holdings-sell", ctxCr, { symbol: "solana", qty: 20, proceedsUsd: 5000 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /only.*available/);
+  });
+
+  it("holdings-list with priced lots returns market value + unrealized PnL", async () => {
+    stubPriceFetch({ bitcoin: 70000 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 60000 });
+    const r = await call("holdings-list", ctxCr);
+    assert.equal(r.ok, true);
+    const btc = r.result.holdings.find(h => h.symbol === "bitcoin");
+    assert.equal(btc.priceUsd, 70000);
+    assert.equal(btc.marketValueUsd, 70000);
+    assert.equal(btc.unrealizedPnlUsd, 10000);
+  });
+});
+
+describe("crypto — recurring buys (DCA)", () => {
+  it("creates + toggles + runs due to mint lot at live price", async () => {
+    stubPriceFetch({ bitcoin: 50000 });
+    const c = call("recurring-buys-create", ctxCr, { symbol: "bitcoin", ticker: "BTC", amountUsd: 100, cadence: "daily", startAt: "2020-01-01" });
+    assert.equal(c.ok, true);
+    const r = await call("recurring-buys-run-due", ctxCr);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.ran, 1);
+    assert.equal(r.result.lotsCreated[0].qty, 100 / 50000);
+    // Toggle off → next run shouldn't fire even if due
+    call("recurring-buys-toggle", ctxCr, { id: c.result.recurringBuy.id });
+    const r2 = await call("recurring-buys-run-due", ctxCr);
+    assert.equal(r2.result.ran, 0);
+  });
+});
+
+describe("crypto — staking", () => {
+  it("stake + record reward + unstake", () => {
+    const stake = call("staking-stake", ctxCr, { symbol: "solana", ticker: "SOL", qty: 100, validator: "validator.sol", aprPct: 6.5 });
+    assert.equal(stake.ok, true);
+    assert.equal(stake.result.position.qty, 100);
+    const rew = call("staking-rewards-record", ctxCr, { positionId: stake.result.position.id, rewardQty: 1.5, rewardUsd: 220 });
+    assert.equal(rew.ok, true);
+    assert.equal(rew.result.position.cumulativeRewardsUsd, 220);
+    const u = call("staking-unstake", ctxCr, { id: stake.result.position.id });
+    assert.equal(u.result.position.active, false);
+  });
+});
+
+describe("crypto — NFTs + watchlist", () => {
+  it("nfts add + list + delete", () => {
+    const n = call("nfts-add", ctxCr, { name: "Punk #404", collection: "CryptoPunks", chain: "ethereum", costBasisUsd: 5000 });
+    assert.equal(n.ok, true);
+    assert.equal(call("nfts-list", ctxCr).result.nfts.length, 1);
+    call("nfts-delete", ctxCr, { id: n.result.nft.id });
+    assert.equal(call("nfts-list", ctxCr).result.nfts.length, 0);
+  });
+
+  it("watchlist add/remove dedups + tracks symbols", async () => {
+    stubPriceFetch({ bitcoin: 70000, ethereum: 3500 });
+    call("watchlist-add", ctxCr, { symbol: "bitcoin" });
+    call("watchlist-add", ctxCr, { symbol: "BITCOIN" }); // dup, case-insensitive
+    call("watchlist-add", ctxCr, { symbol: "ethereum" });
+    const r = await call("watchlist-list", ctxCr);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.watchlist.length, 2);
+    call("watchlist-remove", ctxCr, { symbol: "ethereum" });
+    const r2 = await call("watchlist-list", ctxCr);
+    assert.equal(r2.result.watchlist.length, 1);
+  });
+});
+
+describe("crypto — tax report", () => {
+  it("splits short-term vs long-term realized gains", () => {
+    // Long-term: bought 2 years ago
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 20000, acquiredAt: "2023-01-15" });
+    // Short-term: bought 2 months ago (relative to today; use a recent acquire date)
+    const recent = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
+    call("holdings-add", ctxCr, { symbol: "ethereum", ticker: "ETH", qty: 2, costBasisUsd: 4000, acquiredAt: recent });
+    // Sell each
+    const today = new Date().toISOString().slice(0, 10);
+    call("holdings-sell", ctxCr, { symbol: "bitcoin", qty: 1, proceedsUsd: 50000, at: today });
+    call("holdings-sell", ctxCr, { symbol: "ethereum", qty: 1, proceedsUsd: 3000, at: today });
+    // Staking reward
+    const stake = call("staking-stake", ctxCr, { symbol: "solana", ticker: "SOL", qty: 100 }).result.position;
+    call("staking-rewards-record", ctxCr, { positionId: stake.id, rewardQty: 5, rewardUsd: 500, at: today });
+    const year = new Date().getFullYear();
+    const r = call("tax-report", ctxCr, { year });
+    assert.equal(r.ok, true);
+    // Long-term: BTC sold ≥ 365 days held → +30000 gain
+    assert.equal(r.result.realizedLongTerm.length, 1);
+    assert.equal(r.result.longTermGainUsd, 30000);
+    // Short-term: 0.5 ETH sold (FIFO took 1 ETH from the recent lot) → 1*(3000-2000) = 1000
+    assert.equal(r.result.realizedShortTerm.length, 1);
+    assert.equal(r.result.shortTermGainUsd, 1000);
+    assert.equal(r.result.stakingIncomeUsd, 500);
+  });
+});
+
+describe("crypto — portfolio summary + AI insight", () => {
+  it("portfolio-summary aggregates value across chains", async () => {
+    stubPriceFetch({ bitcoin: 70000, ethereum: 3500 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 0.5, costBasisUsd: 30000, chain: "bitcoin" });
+    call("holdings-add", ctxCr, { symbol: "ethereum", ticker: "ETH", qty: 2, costBasisUsd: 4000, chain: "ethereum" });
+    const r = await call("portfolio-summary", ctxCr);
+    assert.equal(r.ok, true);
+    // 0.5 * 70k + 2 * 3.5k = 35k + 7k = 42k
+    assert.equal(r.result.totalValueUsd, 42000);
+    // Cost: 30k + 4k = 34k → unrealized +8k
+    assert.equal(r.result.unrealizedPnlUsd, 8000);
+    assert.equal(r.result.byChain.length, 2);
+  });
+
+  it("ai-portfolio-insight returns deterministic insight when no brain", async () => {
+    stubPriceFetch({ bitcoin: 70000 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 60000 });
+    const r = await call("ai-portfolio-insight", ctxCr);
+    assert.equal(r.ok, true);
+    assert.match(r.result.source, /deterministic|brain/);
+    assert.ok(r.result.insight.length > 10);
+  });
+});
+
+describe("crypto — dashboard-summary", () => {
+  it("aggregates total value + activity counters", async () => {
+    stubPriceFetch({ bitcoin: 70000 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 60000 });
+    call("recurring-buys-create", ctxCr, { symbol: "ethereum", ticker: "ETH", amountUsd: 100, cadence: "weekly" });
+    call("staking-stake", ctxCr, { symbol: "solana", ticker: "SOL", qty: 50 });
+    call("watchlist-add", ctxCr, { symbol: "cardano" });
+    call("nfts-add", ctxCr, { name: "Punk", costBasisUsd: 1000 });
+    const r = await call("dashboard-summary", ctxCr);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalValueUsd, 70000);
+    assert.equal(r.result.activeRecurringBuys, 1);
+    assert.equal(r.result.activeStakingPositions, 1);
+    assert.equal(r.result.watchlistSize, 1);
+    assert.equal(r.result.nftCount, 1);
+  });
+});

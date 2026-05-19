@@ -12,6 +12,7 @@ import { CryptoActionPanel } from '@/components/crypto/CryptoActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { SwapRoutePanel } from '@/components/crypto-explorer/SwapRoutePanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { CoinbaseSection } from '@/components/crypto/CoinbaseSection';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useTilePush } from '@/hooks/useTilePush';
@@ -556,6 +557,9 @@ export default function CryptoLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="crypto" size="sm" className="ml-2" />
       <RivalShapePreview lensId="crypto" defaultOpen={true} />
+      <div className="px-4 mt-3">
+        <CoinbaseSection />
+      </div>
     <div data-lens-theme="crypto" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
