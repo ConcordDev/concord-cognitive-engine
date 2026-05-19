@@ -10416,6 +10416,11 @@ async function runMacro(domain, name, input, ctx) {
       "track_get", "track_list",
       "playlist_get", "playlist_list",
       "likes_mine",
+      // Sprint B reads
+      "classification_get",
+      "recommendation_explain",
+      "recommendations_recent",
+      "ai_runs_recent",
     ]),
     // Smoking-gun cleanup I9 — read paths for write-only audit tables
     "land-claims": new Set(["history"]),
@@ -24514,6 +24519,16 @@ registerAccountingMoatsMacros(register);
 // server/domains/music.js (audio analysis: bpm, key, chord, render).
 import registerMusicRebuildMacros from "./domains/music-rebuild.js";
 registerMusicRebuildMacros(register);
+
+// Music lens rebuild Sprint B — AI surface (migration 238). Research
+// grounded May 2026: Spotify Audio Features API deprecated Nov 2024
+// (so we don't claim Spotify parity — content axes are derived from
+// metadata + optional LLM enhancement). Inverse-X recommender mirrors
+// Apple Music's library-add-over-passive-stream weighting (2026
+// algorithm) + SoundCloud Musiio's sound-not-popularity training.
+// Hybrid (content + behavioral + social) matches 2024-25 academic SOTA.
+import registerMusicAiMacros from "./domains/music-ai.js";
+registerMusicAiMacros(register);
 
 // Smoking-gun cleanup C7 — periodic snapshot safety net. The
 // lens-state-persistence machinery (lib/lens-state-persistence.js,
