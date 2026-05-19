@@ -40,6 +40,7 @@ import {
   PiggyBank as MTabPig, Building2 as MTabBldg, Calculator as MTabCalc,
 } from 'lucide-react';
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
+import { QBSection } from '@/components/accounting/QBSection';
 import { AccountingActionPanel } from '@/components/accounting/AccountingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { StripeInvoicePanel } from '@/components/accounting/StripeInvoicePanel';
@@ -2680,6 +2681,9 @@ export default function AccountingLensPage() {
     <LensShell lensId="accounting" asMain={false}>
       <FirstRunTour lensId="accounting" />
       <DepthBadge lensId="accounting" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <QBSection />
+      </div>
     <div data-lens-theme="accounting" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

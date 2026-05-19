@@ -404,3 +404,300 @@ describe("accounting.invoice-webhook-mark-paid", () => {
     assert.equal(r.ok, false);
   });
 });
+
+describe("accounting — customers + vendors", () => {
+  it("creates and lists customers per user", () => {
+    call("coa-list", ctxA);
+    const c1 = call("customers-create", ctxA, { name: "Acme Corp", email: "ap@acme.com" });
+    assert.equal(c1.ok, true);
+    assert.match(c1.result.customer.number, /^C-\d{4}$/);
+    const c2 = call("customers-create", ctxA, { name: "Initech" });
+    assert.notEqual(c1.result.customer.id, c2.result.customer.id);
+    const list = call("customers-list", ctxA);
+    assert.equal(list.result.customers.length, 2);
+    // Other user isolated
+    const listB = call("customers-list", ctxB);
+    assert.equal(listB.result.customers.length, 0);
+  });
+
+  it("creates a 1099 vendor and stores tax id", () => {
+    call("coa-list", ctxA);
+    const r = call("vendors-create", ctxA, { name: "Designer Jane", is1099: true, taxId: "12-3456789", paymentTerms: "net15" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.vendor.is1099, true);
+    assert.equal(r.result.vendor.paymentTerms, "net15");
+  });
+});
+
+describe("accounting — bills (AP) flow", () => {
+  it("creates a bill that auto-posts a balanced JE (expense, AP)", () => {
+    call("coa-list", ctxA);
+    const v = call("vendors-create", ctxA, { name: "AWS" }).result.vendor;
+    const rentExp = call("coa-list", ctxA).result.accounts.find(a => a.code === "6100");
+    const b = call("bills-create", ctxA, { vendorId: v.id, total: 500, expenseAccountId: rentExp.id, memo: "May rent" });
+    assert.equal(b.ok, true);
+    assert.equal(b.result.bill.status, "open");
+    // JE was posted
+    const journal = globalThis._concordSTATE.accountingLens.journal.get("user_a") || [];
+    const posted = journal.find(e => e.id === b.result.bill.jeEntryId);
+    assert.ok(posted);
+    assert.equal(posted.totalDebit, 500);
+    assert.equal(posted.totalCredit, 500);
+  });
+
+  it("pays a bill — JE flips AP back to cash", () => {
+    call("coa-list", ctxA);
+    const v = call("vendors-create", ctxA, { name: "Office Depot" }).result.vendor;
+    const officeExp = call("coa-list", ctxA).result.accounts.find(a => a.code === "6000");
+    const b = call("bills-create", ctxA, { vendorId: v.id, total: 120, expenseAccountId: officeExp.id }).result.bill;
+    const pay = call("bills-pay", ctxA, { id: b.id });
+    assert.equal(pay.ok, true);
+    assert.equal(pay.result.bill.status, "paid");
+    assert.ok(pay.result.bill.payJeEntryId);
+  });
+
+  it("aging-ap buckets unpaid bills past due", () => {
+    call("coa-list", ctxA);
+    const v = call("vendors-create", ctxA, { name: "Old Vendor" }).result.vendor;
+    const exp = call("coa-list", ctxA).result.accounts.find(a => a.code === "6000");
+    const old = call("bills-create", ctxA, { vendorId: v.id, total: 200, expenseAccountId: exp.id, issuedAt: "2024-01-01", dueAt: "2024-01-31" }).result.bill;
+    const r = call("aging-ap", ctxA, { asOf: "2024-06-01" });
+    assert.equal(r.ok, true);
+    const d90 = r.result.buckets.find(b => b.key === "d90plus");
+    assert.equal(d90.bills.length, 1);
+    assert.equal(d90.bills[0].id, old.id);
+  });
+});
+
+describe("accounting — pl-compute (real, from journal)", () => {
+  it("computes revenue/cogs/expense from posted JEs", () => {
+    call("coa-list", ctxA);
+    const coa = call("coa-list", ctxA).result.accounts;
+    const cash = coa.find(a => a.code === "1000");
+    const rev = coa.find(a => a.code === "4000");
+    const cogs = coa.find(a => a.code === "5000");
+    const office = coa.find(a => a.code === "6000");
+    // Sales
+    call("je-post", ctxA, { date: "2026-03-15", lines: [{ accountId: cash.id, debit: 1000, credit: 0 }, { accountId: rev.id, debit: 0, credit: 1000 }] });
+    // COGS
+    call("je-post", ctxA, { date: "2026-03-16", lines: [{ accountId: cogs.id, debit: 300, credit: 0 }, { accountId: cash.id, debit: 0, credit: 300 }] });
+    // Expense
+    call("je-post", ctxA, { date: "2026-03-17", lines: [{ accountId: office.id, debit: 50, credit: 0 }, { accountId: cash.id, debit: 0, credit: 50 }] });
+    const pl = call("pl-compute", ctxA, { start: "2026-01-01", end: "2026-12-31" });
+    assert.equal(pl.ok, true);
+    assert.equal(pl.result.revenue.total, 1000);
+    assert.equal(pl.result.cogs.total, 300);
+    assert.equal(pl.result.operatingExpenses.total, 50);
+    assert.equal(pl.result.grossProfit, 700);
+    assert.equal(pl.result.netIncome, 650);
+  });
+});
+
+describe("accounting — runway forecast", () => {
+  it("returns liquidity and projected months", () => {
+    call("coa-list", ctxA);
+    const coa = call("coa-list", ctxA).result.accounts;
+    const cash = coa.find(a => a.code === "1000");
+    const rev = coa.find(a => a.code === "4000");
+    call("je-post", ctxA, { date: new Date().toISOString().slice(0, 10), lines: [{ accountId: cash.id, debit: 10000, credit: 0 }, { accountId: rev.id, debit: 0, credit: 10000 }] });
+    const r = call("runway-forecast", ctxA, { months: 6 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.forecast.length, 6);
+    assert.ok(r.result.cashOnHand >= 10000);
+  });
+});
+
+describe("accounting — recurring invoices + estimates", () => {
+  it("runs due recurring invoices and creates concrete invoices", () => {
+    call("coa-list", ctxA);
+    const r = call("recurring-invoices-create", ctxA, { customerName: "Monthly Co", total: 99, cadence: "monthly", startAt: "2020-01-01" });
+    assert.equal(r.ok, true);
+    const run = call("recurring-invoices-run-due", ctxA);
+    assert.equal(run.ok, true);
+    assert.equal(run.result.created.length, 1);
+    assert.equal(run.result.created[0].total, 99);
+  });
+
+  it("converts estimate to invoice exactly once", () => {
+    call("coa-list", ctxA);
+    const e = call("estimates-create", ctxA, { customerName: "Lead Co", total: 250 }).result.estimate;
+    const c1 = call("estimates-convert", ctxA, { id: e.id });
+    assert.equal(c1.ok, true);
+    assert.equal(c1.result.estimate.status, "accepted");
+    assert.equal(c1.result.invoice.total, 250);
+    // Second convert blocked
+    const c2 = call("estimates-convert", ctxA, { id: e.id });
+    assert.equal(c2.ok, false);
+  });
+});
+
+describe("accounting — bank feeds + AI categorize", () => {
+  it("imports bank txns and categorizes one — posts balanced JE", () => {
+    call("coa-list", ctxA);
+    const office = call("coa-list", ctxA).result.accounts.find(a => a.code === "6000");
+    const imp = call("bank-feeds-import", ctxA, { description: "Staples Office Supplies", amount: -85, date: "2026-04-01" });
+    assert.equal(imp.ok, true);
+    const txnId = imp.result.imported[0].id;
+    const cat = call("bank-feeds-categorize", ctxA, { txnId, accountId: office.id });
+    assert.equal(cat.ok, true);
+    assert.equal(cat.result.entry.totalDebit, 85);
+    assert.equal(cat.result.entry.totalCredit, 85);
+    // Lists move the txn out of uncategorized
+    const uncat = call("bank-feeds-list", ctxA, { status: "uncategorized" });
+    assert.equal(uncat.result.txns.length, 0);
+  });
+
+  it("ai-categorize-txn falls back to heuristics when no brain", async () => {
+    call("coa-list", ctxA);
+    const imp = call("bank-feeds-import", ctxA, { description: "AWS USE1 hosting charge", amount: -42 });
+    const txnId = imp.result.imported[0].id;
+    const r = await call("ai-categorize-txn", ctxA, { txnId });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.suggestedAccountId);
+    assert.match(r.result.source, /heuristic|rule|brain/);
+  });
+
+  it("category rule short-circuits ai-categorize", async () => {
+    call("coa-list", ctxA);
+    const office = call("coa-list", ctxA).result.accounts.find(a => a.code === "6000");
+    call("category-rules-create", ctxA, { pattern: "staples", accountId: office.id });
+    const imp = call("bank-feeds-import", ctxA, { description: "Staples #4421 receipt", amount: -19 });
+    const r = await call("ai-categorize-txn", ctxA, { txnId: imp.result.imported[0].id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "rule");
+    assert.equal(r.result.suggestedAccountId, office.id);
+  });
+});
+
+describe("accounting — expenses + 1099 summary", () => {
+  it("expenses-create posts a balanced JE", () => {
+    call("coa-list", ctxA);
+    const exp = call("coa-list", ctxA).result.accounts.find(a => a.code === "6200");
+    const r = call("expenses-create", ctxA, { accountId: exp.id, amount: 75, vendor: "PG&E", memo: "April electric" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.entry.totalDebit, 75);
+  });
+
+  it("summary-1099 only includes 1099 vendors past threshold", () => {
+    call("coa-list", ctxA);
+    const v1 = call("vendors-create", ctxA, { name: "Contractor", is1099: true, taxId: "11-1111111" }).result.vendor;
+    const v2 = call("vendors-create", ctxA, { name: "RegularCo", is1099: false }).result.vendor;
+    const exp = call("coa-list", ctxA).result.accounts.find(a => a.code === "6000");
+    const year = new Date().getFullYear();
+    const today = nowIsoUtility();
+    const b1 = call("bills-create", ctxA, { vendorId: v1.id, total: 700, expenseAccountId: exp.id, issuedAt: today, dueAt: today }).result.bill;
+    call("bills-pay", ctxA, { id: b1.id, paidAt: today });
+    const b2 = call("bills-create", ctxA, { vendorId: v2.id, total: 5000, expenseAccountId: exp.id }).result.bill;
+    call("bills-pay", ctxA, { id: b2.id, paidAt: today });
+    const r = call("summary-1099", ctxA, { year });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.vendors.length, 1);
+    assert.equal(r.result.vendors[0].vendorName, "Contractor");
+    assert.equal(r.result.vendors[0].reportable, true);
+  });
+});
+
+describe("accounting — dashboard-summary", () => {
+  it("returns KPI snapshot", () => {
+    call("coa-list", ctxA);
+    const r = call("dashboard-summary", ctxA);
+    assert.equal(r.ok, true);
+    assert.ok("cashOnHand" in r.result);
+    assert.ok("openInvTotal" in r.result);
+    assert.ok("ytdNetIncome" in r.result);
+    assert.ok("uncategorizedTxns" in r.result);
+  });
+});
+
+function nowIsoUtility() { return new Date().toISOString().slice(0, 10); }
+
+describe("accounting — 2026 AI features", () => {
+  it("ai-categorize-txn returns a confidence score", async () => {
+    call("coa-list", ctxA);
+    const imp = call("bank-feeds-import", ctxA, { description: "Staples Office", amount: -25 });
+    const r = await call("ai-categorize-txn", ctxA, { txnId: imp.result.imported[0].id });
+    assert.equal(r.ok, true);
+    assert.equal(typeof r.result.confidence, "number");
+    assert.ok(r.result.confidence >= 0 && r.result.confidence <= 1);
+  });
+
+  it("bank-feeds-bulk-suggest returns a suggestion per uncategorized txn", async () => {
+    call("coa-list", ctxA);
+    call("bank-feeds-import", ctxA, { description: "AWS hosting", amount: -50 });
+    call("bank-feeds-import", ctxA, { description: "Starbucks #1234", amount: -8 });
+    call("bank-feeds-import", ctxA, { description: "Client deposit", amount: 1000 });
+    const r = await call("bank-feeds-bulk-suggest", ctxA);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.suggestions.length, 3);
+    assert.equal(r.result.totalUncategorized, 3);
+    assert.ok(r.result.highConfidenceCount >= 0);
+    for (const s of r.result.suggestions) {
+      assert.ok(s.suggestedAccountId);
+      assert.equal(typeof s.confidence, "number");
+    }
+  });
+
+  it("bank-feeds-bulk-accept categorizes a batch in one call", () => {
+    call("coa-list", ctxA);
+    const office = call("coa-list", ctxA).result.accounts.find(a => a.code === "6000");
+    const imp1 = call("bank-feeds-import", ctxA, { description: "Office A", amount: -10 });
+    const imp2 = call("bank-feeds-import", ctxA, { description: "Office B", amount: -20 });
+    const r = call("bank-feeds-bulk-accept", ctxA, {
+      picks: [
+        { txnId: imp1.result.imported[0].id, accountId: office.id },
+        { txnId: imp2.result.imported[0].id, accountId: office.id },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.accepted, 2);
+    assert.equal(r.result.errors.length, 0);
+  });
+
+  it("ai-suggest-vendor matches existing vendor by name", () => {
+    call("coa-list", ctxA);
+    call("vendors-create", ctxA, { name: "AWS" });
+    const r = call("ai-suggest-vendor", ctxA, { description: "AWS USE1 hosting charge" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.matched, true);
+    assert.equal(r.result.vendorName, "AWS");
+  });
+
+  it("ai-suggest-vendor suggests a new-vendor name when nothing matches", () => {
+    call("coa-list", ctxA);
+    const r = call("ai-suggest-vendor", ctxA, { description: "MysteryCorp purchase 4291" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.matched, false);
+    assert.ok(r.result.suggestedNewVendor);
+  });
+
+  it("ask routes 'overdue' to deterministic answer with data", async () => {
+    call("coa-list", ctxA);
+    // create one overdue invoice (due 2020 in 2026 will be very overdue)
+    call("invoice-create", ctxA, { customerName: "OverdueCo", total: 500, issuedAt: "2020-01-01", dueAt: "2020-02-01" });
+    const r = await call("ask", ctxA, { question: "show me overdue invoices" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.intent, "overdue_invoices");
+    assert.equal(r.result.data.invoices.length, 1);
+    assert.match(r.result.answer, /1 overdue invoice/);
+  });
+
+  it("ask routes 'how much cash' to cash balance", async () => {
+    call("coa-list", ctxA);
+    const coa = call("coa-list", ctxA).result.accounts;
+    const cash = coa.find(a => a.code === "1000");
+    const rev = coa.find(a => a.code === "4000");
+    call("je-post", ctxA, { date: "2026-04-01", lines: [{ accountId: cash.id, debit: 2500, credit: 0 }, { accountId: rev.id, debit: 0, credit: 2500 }] });
+    const r = await call("ask", ctxA, { question: "how much cash do we have" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.intent, "cash_balance");
+    assert.equal(r.result.data.cashOnHand, 2500);
+  });
+
+  it("ask falls back to general snapshot when no intent matches", async () => {
+    call("coa-list", ctxA);
+    const r = await call("ask", ctxA, { question: "what's the weather like" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.intent, "general");
+    assert.ok(r.result.answer);
+  });
+});
