@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MpSearch } from '@/components/materials/MpSearch';
 import { CorrosionThermalPanel } from '@/components/materials/CorrosionThermalPanel';
+import { MaterialShortlist } from '@/components/materials/MaterialShortlist';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -375,6 +376,10 @@ export default function MaterialsLensPage() {
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CorrosionThermalPanel />
+      </section>
+
+      <section className="mt-6">
+        <MaterialShortlist />
       </section>
     </div>
 
