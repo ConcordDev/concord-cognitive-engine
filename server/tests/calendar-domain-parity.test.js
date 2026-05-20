@@ -219,3 +219,136 @@ describe("calendar.timezone-convert (IANA via Intl.DateTimeFormat)", () => {
     assert.match(r.result.inToTz, /2026-05-17,? 00:00:00$/);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  Google Calendar + Notion Calendar + Fantastical 2026 parity —
+//  multi-calendar events, recurrence, tasks, time blocking,
+//  natural-language parse, availability, AI auto-schedule.
+// ═════════════════════════════════════════════════════════════════
+
+const ctxCal = { actor: { userId: "cal_u" }, userId: "cal_u" };
+
+describe("calendar — 2026 parity macros", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("calendars-list auto-seeds Personal + Work", () => {
+    const r = call("calendars-list", ctxCal);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.calendars.length, 2);
+    assert.ok(r.result.calendars.find(c => c.name === "Personal" && c.isDefault));
+  });
+
+  it("calendars-create + cannot delete default", () => {
+    call("calendars-list", ctxCal);
+    const c = call("calendars-create", ctxCal, { name: "Side projects" });
+    assert.equal(c.ok, true);
+    const def = call("calendars-list", ctxCal).result.calendars.find(x => x.isDefault);
+    const del = call("calendars-delete", ctxCal, { id: def.id });
+    assert.equal(del.ok, false);
+    assert.match(del.error, /default/);
+  });
+
+  it("events-create + events-list within a range", () => {
+    call("calendars-list", ctxCal);
+    const ev = call("events-create", ctxCal, { title: "Standup", start: "2026-06-01T09:00:00Z", end: "2026-06-01T09:30:00Z" });
+    assert.equal(ev.ok, true);
+    assert.match(ev.result.event.number, /^EV-\d{6}$/);
+    const list = call("events-list", ctxCal, { rangeStart: "2026-05-30T00:00:00Z", rangeEnd: "2026-06-05T00:00:00Z" });
+    assert.equal(list.result.events.length, 1);
+    assert.equal(list.result.events[0].occurrenceStart, "2026-06-01T09:00:00Z");
+  });
+
+  it("recurring weekly event expands to multiple occurrences", () => {
+    call("calendars-list", ctxCal);
+    call("events-create", ctxCal, {
+      title: "Weekly sync", start: "2026-06-01T10:00:00Z", end: "2026-06-01T11:00:00Z",
+      recurrence: { freq: "weekly", interval: 1, count: 4 },
+    });
+    const list = call("events-list", ctxCal, { rangeStart: "2026-06-01T00:00:00Z", rangeEnd: "2026-07-15T00:00:00Z" });
+    assert.equal(list.result.events.length, 4);
+  });
+
+  it("conflicts-check flags an overlapping slot", () => {
+    call("calendars-list", ctxCal);
+    call("events-create", ctxCal, { title: "Busy", start: "2026-06-02T14:00:00Z", end: "2026-06-02T15:00:00Z" });
+    const r = call("conflicts-check", ctxCal, { start: "2026-06-02T14:30:00Z", end: "2026-06-02T15:30:00Z" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.hasConflict, true);
+    assert.equal(r.result.conflicts[0].title, "Busy");
+  });
+
+  it("availability-find returns free gaps around busy blocks", () => {
+    call("calendars-list", ctxCal);
+    call("events-create", ctxCal, { title: "Mtg", start: "2026-06-03T11:00:00Z", end: "2026-06-03T12:00:00Z" });
+    const r = call("availability-find", ctxCal, { day: "2026-06-03", durationMin: 30, workStartHour: 9, workEndHour: 17 });
+    assert.equal(r.ok, true);
+    // expect a gap before 11:00 and after 12:00
+    assert.ok(r.result.freeSlots.length >= 2);
+  });
+
+  it("tasks-create + time-block drops it onto the calendar", () => {
+    call("calendars-list", ctxCal);
+    const t = call("tasks-create", ctxCal, { title: "Write spec", estimateMin: 90, priority: "high" });
+    assert.equal(t.ok, true);
+    const tb = call("tasks-time-block", ctxCal, { taskId: t.result.task.id, start: "2026-06-04T13:00:00Z" });
+    assert.equal(tb.ok, true);
+    assert.equal(tb.result.event.title, "⏳ Write spec");
+    // event end should be start + 90min
+    assert.equal(tb.result.event.end, "2026-06-04T14:30:00.000Z");
+    assert.equal(tb.result.task.blockedEventId, tb.result.event.id);
+  });
+
+  it("tasks-toggle flips status", () => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    const t = call("tasks-create", ctxCal, { title: "X" }).result.task;
+    assert.equal(call("tasks-toggle", ctxCal, { id: t.id }).result.task.status, "done");
+    assert.equal(call("tasks-toggle", ctxCal, { id: t.id }).result.task.status, "todo");
+  });
+
+  it("nl-parse-event parses Fantastical-style text", () => {
+    const r = call("nl-parse-event", ctxCal, { text: "Team standup every Monday at 9am on Google Meet for 30 min" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parsed.recurrence.freq, "weekly");
+    assert.equal(r.result.parsed.durationMin, 30);
+    assert.match(r.result.parsed.title, /Team standup/i);
+    // 9am → hour 9
+    assert.equal(new Date(r.result.parsed.start).getHours(), 9);
+  });
+
+  it("nl-parse-event handles 'tomorrow at 2pm'", () => {
+    const r = call("nl-parse-event", ctxCal, { text: "Dentist tomorrow at 2pm" });
+    assert.equal(r.ok, true);
+    assert.equal(new Date(r.result.parsed.start).getHours(), 14);
+    assert.equal(r.result.parsed.recurrence, null);
+  });
+
+  it("ai-auto-schedule proposes slots for open tasks around events", () => {
+    call("calendars-list", ctxCal);
+    call("events-create", ctxCal, { title: "Lunch", start: "2026-06-10T12:00:00Z", end: "2026-06-10T13:00:00Z" });
+    call("tasks-create", ctxCal, { title: "Deep work", estimateMin: 60, priority: "high" });
+    call("tasks-create", ctxCal, { title: "Email", estimateMin: 30, priority: "low" });
+    const r = call("ai-auto-schedule", ctxCal, { day: "2026-06-10", workStartHour: 9, workEndHour: 17 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.scheduledCount, 2);
+    // High priority first
+    assert.equal(r.result.proposals[0].title, "Deep work");
+    // No proposal should overlap the lunch event
+    for (const p of r.result.proposals) {
+      const ps = new Date(p.proposedStart).getTime(), pe = new Date(p.proposedEnd).getTime();
+      const ls = new Date("2026-06-10T12:00:00Z").getTime(), le = new Date("2026-06-10T13:00:00Z").getTime();
+      assert.ok(pe <= ls || ps >= le, "proposal must not overlap lunch");
+    }
+  });
+
+  it("calendar-dashboard-summary aggregates events + tasks", () => {
+    call("calendars-list", ctxCal);
+    call("tasks-create", ctxCal, { title: "A" });
+    const r = call("calendar-dashboard-summary", ctxCal);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.calendarCount, 2);
+    assert.equal(r.result.openTasks, 1);
+  });
+});
