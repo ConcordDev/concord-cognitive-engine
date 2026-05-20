@@ -41,6 +41,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { PlaceFinder } from '@/components/atlas/PlaceFinder';
 import { DistanceMatrixPanel } from '@/components/atlas/DistanceMatrixPanel';
 import { MapsDirections } from '@/components/atlas/MapsDirections';
+import { RouteStops } from '@/components/atlas/RouteStops';
 import { SavedPlaces } from '@/components/atlas/SavedPlaces';
 
 // Leaflet requires dynamic import (no SSR)
@@ -510,6 +511,10 @@ export default function AtlasLensPage() {
 
       <section className="mt-6">
         <MapsDirections />
+      </section>
+
+      <section className="mt-6">
+        <RouteStops />
       </section>
 
       <section className="mt-6">
