@@ -8,6 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FilmStackFeed } from '@/components/film-studios/FilmStackFeed';
+import { FilmStudioSection } from '@/components/film-studios/FilmStudioSection';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -219,6 +220,9 @@ export default function FilmStudiosPage() {
       <FirstRunTour lensId="film-studios" />
       <ManifestActionBar />
       <DepthBadge lensId="film-studios" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <FilmStudioSection />
+      </div>
     <div data-lens-theme="film-studios" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
