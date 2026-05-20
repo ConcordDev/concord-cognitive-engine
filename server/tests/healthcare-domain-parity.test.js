@@ -473,3 +473,102 @@ describe("healthcare — dashboard summary", () => {
     assert.equal(r.result.activeProblems, 1);
   });
 });
+
+// ── Orders (CPOE), care team, care gaps, interactions, AVS ───────
+
+function newPatient(ctx = ctxA, extra = {}) {
+  return call("patients-create", ctx, { firstName: "Test", lastName: "Patient", ...extra }).result.patient;
+}
+
+describe("healthcare orders (CPOE)", () => {
+  it("creates, lists, updates status and cancels orders", () => {
+    const p = newPatient();
+    const lab = call("order-create", ctxA, { patientId: p.id, kind: "lab", name: "CBC with diff" }).result.order;
+    assert.equal(lab.status, "placed");
+    const med = call("order-create", ctxA, { patientId: p.id, kind: "medication", name: "Lisinopril", dose: "10mg", frequency: "daily" }).result.order;
+    assert.equal(med.status, "active");
+    assert.equal(call("order-list", ctxA, { patientId: p.id }).result.total, 2);
+    assert.equal(call("order-list", ctxA, { patientId: p.id, kind: "medication" }).result.total, 1);
+    call("order-update-status", ctxA, { id: lab.id, status: "resulted" });
+    assert.equal(call("order-list", ctxA, { patientId: p.id, status: "resulted" }).result.total, 1);
+    call("order-cancel", ctxA, { id: med.id });
+    assert.equal(call("order-list", ctxA, { patientId: p.id, kind: "medication" }).result.orders[0].status, "discontinued");
+  });
+
+  it("rejects an invalid order kind", () => {
+    const p = newPatient();
+    assert.equal(call("order-create", ctxA, { patientId: p.id, kind: "spell", name: "x" }).ok, false);
+  });
+});
+
+describe("healthcare drug-interaction-check", () => {
+  it("flags a known drug-drug interaction among active medication orders", () => {
+    const p = newPatient();
+    call("order-create", ctxA, { patientId: p.id, kind: "medication", name: "Warfarin 5mg" });
+    call("order-create", ctxA, { patientId: p.id, kind: "medication", name: "Aspirin 81mg" });
+    const r = call("drug-interaction-check", ctxA, { patientId: p.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.hasMajor, true);
+    assert.ok(r.result.interactions.some((i) => i.type === "drug-drug"));
+  });
+
+  it("flags a drug-allergy conflict against the candidate drug", () => {
+    const p = newPatient();
+    call("allergies-add", ctxA, { patientId: p.id, allergen: "penicillin", severity: "severe" });
+    const r = call("drug-interaction-check", ctxA, { patientId: p.id, candidateDrug: "Penicillin VK 500mg" });
+    assert.ok(r.result.interactions.some((i) => i.type === "drug-allergy" && i.severity === "major"));
+  });
+
+  it("returns clean when there are no interactions", () => {
+    const p = newPatient();
+    call("order-create", ctxA, { patientId: p.id, kind: "medication", name: "Vitamin D" });
+    assert.equal(call("drug-interaction-check", ctxA, { patientId: p.id }).result.clean, true);
+  });
+});
+
+describe("healthcare care team", () => {
+  it("assigns, lists and removes care team members", () => {
+    const p = newPatient();
+    const m = call("care-team-assign", ctxA, { patientId: p.id, providerName: "Dr. Lee", role: "pcp" }).result.member;
+    assert.equal(m.role, "pcp");
+    assert.equal(call("care-team-list", ctxA, { patientId: p.id }).result.careTeam.length, 1);
+    call("care-team-remove", ctxA, { id: m.id });
+    assert.equal(call("care-team-list", ctxA, { patientId: p.id }).result.careTeam.length, 0);
+  });
+});
+
+describe("healthcare care-gaps", () => {
+  it("flags an overdue flu shot and a diabetes A1C gap", () => {
+    const p = newPatient(ctxA, { dob: "1970-01-01", sex: "M" });
+    call("problems-add", ctxA, { patientId: p.id, name: "Type 2 diabetes mellitus", icd10: "E11.9" });
+    const r = call("care-gaps", ctxA, { patientId: p.id });
+    assert.equal(r.ok, true);
+    const items = r.result.gaps.map((g) => g.item);
+    assert.ok(items.includes("Influenza vaccine"));
+    assert.ok(items.includes("Hemoglobin A1C"));
+  });
+
+  it("clears the flu gap once a recent immunization is on file", () => {
+    const p = newPatient(ctxA, { dob: "1990-06-01", sex: "M" });
+    const today = new Date().toISOString().slice(0, 10);
+    call("immunizations-add", ctxA, { patientId: p.id, vaccine: "Influenza", administeredAt: today });
+    const r = call("care-gaps", ctxA, { patientId: p.id });
+    assert.ok(!r.result.gaps.some((g) => g.item === "Influenza vaccine"));
+  });
+});
+
+describe("healthcare visit-summary", () => {
+  it("generates an after-visit summary from an encounter", () => {
+    const p = newPatient(ctxA, { firstName: "Ann", lastName: "Vee" });
+    const enc = call("encounters-create", ctxA, { patientId: p.id, chiefComplaint: "Cough" }).result.encounter;
+    call("encounters-save-soap", ctxA, { id: enc.id, assessment: "Acute bronchitis", plan: "Rest, fluids, return if worse" });
+    call("problems-add", ctxA, { patientId: p.id, name: "Hypertension", icd10: "I10" });
+    call("order-create", ctxA, { patientId: p.id, kind: "medication", name: "Lisinopril", dose: "10mg" });
+    const r = call("visit-summary", ctxA, { encounterId: enc.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.summary.patientName, "Ann Vee");
+    assert.equal(r.result.summary.activeProblems.length, 1);
+    assert.equal(r.result.summary.medications.length, 1);
+    assert.ok(r.result.text.includes("AFTER-VISIT SUMMARY"));
+  });
+});

@@ -370,6 +370,8 @@ export default function registerHealthcareActions(registerLensAction) {
     if (!s.messages)      s.messages      = new Map();
     if (!s.refills)       s.refills       = new Map();
     if (!s.intakeForms)   s.intakeForms   = new Map();
+    if (!s.orders)        s.orders        = new Map();
+    if (!s.careTeam)      s.careTeam      = new Map();
     if (!s.seq)           s.seq           = new Map();
     return s;
   }
@@ -719,9 +721,9 @@ export default function registerHealthcareActions(registerLensAction) {
   function dayH() { return new Date().toISOString().slice(0, 10); }
   function bucketH(m, k) { if (!m.has(k)) m.set(k, []); return m.get(k); }
   function ensureSeqH(s, userId) {
-    if (!s.seq.has(userId)) s.seq.set(userId, { pat: 1, prob: 1, alg: 1, vit: 1, lab: 1, imm: 1, enc: 1, sp: 1, msg: 1, refill: 1, form: 1 });
+    if (!s.seq.has(userId)) s.seq.set(userId, { pat: 1, prob: 1, alg: 1, vit: 1, lab: 1, imm: 1, enc: 1, sp: 1, msg: 1, refill: 1, form: 1, ord: 1 });
     const seq = s.seq.get(userId);
-    for (const k of ['pat','prob','alg','vit','lab','imm','enc','sp','msg','refill','form']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    for (const k of ['pat','prob','alg','vit','lab','imm','enc','sp','msg','refill','form','ord']) if (!Number.isFinite(seq[k])) seq[k] = 1;
     return seq;
   }
 
@@ -1369,6 +1371,304 @@ Use only facts present in the input — never invent. If a section has no data, 
     r.responseNotes = String(params.responseNotes || "");
     saveStateIfAvailable();
     return { ok: true, result: { refill: r } };
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Orders (CPOE), care team, care gaps, drug-interaction check,
+  //  after-visit summary — Epic ambulatory parity.
+  // ═══════════════════════════════════════════════════════════════
+
+  const ORDER_KINDS = ['medication', 'lab', 'imaging', 'referral', 'procedure'];
+  const ORDER_STATUSES = ['placed', 'active', 'in-progress', 'completed', 'resulted', 'discontinued', 'cancelled'];
+  const ORDER_PRIORITIES = ['routine', 'urgent', 'stat'];
+  const CARE_TEAM_ROLES = ['pcp', 'attending', 'specialist', 'nurse', 'care-coordinator', 'pharmacist', 'social-worker', 'other'];
+
+  function ageFromDob(dob) {
+    if (!dob || !/^\d{4}-\d{2}-\d{2}/.test(String(dob))) return null;
+    const born = new Date(String(dob).slice(0, 10));
+    if (Number.isNaN(born.getTime())) return null;
+    const now = new Date();
+    let age = now.getFullYear() - born.getFullYear();
+    const m = now.getMonth() - born.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < born.getDate())) age--;
+    return age >= 0 && age < 140 ? age : null;
+  }
+  function daysSince(isoDate) {
+    if (!isoDate) return Infinity;
+    const t = new Date(String(isoDate).slice(0, 10)).getTime();
+    if (Number.isNaN(t)) return Infinity;
+    return (Date.now() - t) / 86400000;
+  }
+
+  // ── Orders (CPOE) ──────────────────────────────────────────────
+
+  registerLensAction("healthcare", "order-create", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    if (!bucketH(s.patients, userId).some(p => p.id === patientId)) return { ok: false, error: "patient not found" };
+    const kind = ORDER_KINDS.includes(params.kind) ? params.kind : null;
+    if (!kind) return { ok: false, error: `kind must be one of ${ORDER_KINDS.join(', ')}` };
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "order name required" };
+    const seq = ensureSeqH(s, userId);
+    const order = {
+      id: uidH("ord"),
+      number: `ORD-${String(seq.ord).padStart(6, "0")}`,
+      patientId, kind, name,
+      status: kind === 'medication' ? 'active' : 'placed',
+      priority: ORDER_PRIORITIES.includes(params.priority) ? params.priority : 'routine',
+      details: String(params.details || ""),
+      orderedBy: String(params.orderedBy || ""),
+      orderedAt: isoH(),
+      completedAt: null,
+      // medication-specific fields
+      dose: kind === 'medication' ? String(params.dose || "") : null,
+      frequency: kind === 'medication' ? String(params.frequency || "") : null,
+      route: kind === 'medication' ? String(params.route || "oral") : null,
+    };
+    seq.ord++;
+    bucketH(s.orders, userId).push(order);
+    saveStateIfAvailable();
+    return { ok: true, result: { order } };
+  });
+
+  registerLensAction("healthcare", "order-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const kind = ORDER_KINDS.includes(params.kind) ? params.kind : null;
+    const status = ORDER_STATUSES.includes(params.status) ? params.status : null;
+    let list = bucketH(s.orders, aidH(ctx)).filter(o => o.patientId === patientId);
+    if (kind) list = list.filter(o => o.kind === kind);
+    if (status) list = list.filter(o => o.status === status);
+    list = list.slice().sort((a, b) => b.orderedAt.localeCompare(a.orderedAt));
+    return { ok: true, result: { orders: list, total: list.length } };
+  });
+
+  registerLensAction("healthcare", "order-update-status", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const order = bucketH(s.orders, aidH(ctx)).find(o => o.id === String(params.id || ""));
+    if (!order) return { ok: false, error: "order not found" };
+    if (!ORDER_STATUSES.includes(params.status)) return { ok: false, error: `status must be one of ${ORDER_STATUSES.join(', ')}` };
+    order.status = params.status;
+    if (['completed', 'resulted'].includes(params.status)) order.completedAt = isoH();
+    saveStateIfAvailable();
+    return { ok: true, result: { order } };
+  });
+
+  registerLensAction("healthcare", "order-cancel", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const order = bucketH(s.orders, aidH(ctx)).find(o => o.id === String(params.id || ""));
+    if (!order) return { ok: false, error: "order not found" };
+    if (['completed', 'resulted', 'cancelled', 'discontinued'].includes(order.status)) {
+      return { ok: false, error: `order is already ${order.status}` };
+    }
+    order.status = order.kind === 'medication' ? 'discontinued' : 'cancelled';
+    saveStateIfAvailable();
+    return { ok: true, result: { order } };
+  });
+
+  // ── Drug interaction + drug-allergy check ──────────────────────
+
+  // Curated, conservative interaction table — substring-matched, both
+  // directions. Each entry: [drugA, drugB, severity, note].
+  const DRUG_INTERACTIONS = [
+    ['warfarin', 'aspirin', 'major', 'Additive bleeding risk — monitor INR closely.'],
+    ['warfarin', 'ibuprofen', 'major', 'NSAID increases bleeding risk on anticoagulation.'],
+    ['warfarin', 'naproxen', 'major', 'NSAID increases bleeding risk on anticoagulation.'],
+    ['lisinopril', 'spironolactone', 'major', 'Risk of hyperkalemia — monitor potassium.'],
+    ['lisinopril', 'potassium', 'moderate', 'Risk of hyperkalemia with ACE inhibitor.'],
+    ['simvastatin', 'clarithromycin', 'major', 'CYP3A4 inhibition — rhabdomyolysis risk.'],
+    ['simvastatin', 'amlodipine', 'moderate', 'Limit simvastatin to 20mg with amlodipine.'],
+    ['sertraline', 'tramadol', 'major', 'Serotonin syndrome risk — avoid combination.'],
+    ['sertraline', 'ibuprofen', 'moderate', 'SSRIs + NSAIDs increase GI bleeding risk.'],
+    ['fluoxetine', 'tramadol', 'major', 'Serotonin syndrome risk — avoid combination.'],
+    ['digoxin', 'furosemide', 'moderate', 'Diuretic-induced hypokalemia raises digoxin toxicity.'],
+    ['methotrexate', 'trimethoprim', 'major', 'Additive bone-marrow suppression — avoid.'],
+    ['clopidogrel', 'omeprazole', 'moderate', 'PPI reduces clopidogrel activation — prefer pantoprazole.'],
+    ['metformin', 'contrast', 'moderate', 'Hold metformin around iodinated contrast — lactic acidosis risk.'],
+    ['ciprofloxacin', 'tizanidine', 'major', 'CYP1A2 inhibition — severe hypotension/sedation.'],
+  ];
+
+  registerLensAction("healthcare", "drug-interaction-check", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const candidate = String(params.candidateDrug || "").trim();
+    const activeMeds = bucketH(s.orders, userId)
+      .filter(o => o.patientId === patientId && o.kind === 'medication' && ['active', 'placed', 'in-progress'].includes(o.status))
+      .map(o => o.name);
+    const allMeds = candidate ? [...activeMeds, candidate] : activeMeds;
+    const lower = allMeds.map(m => m.toLowerCase());
+    const interactions = [];
+    // Drug–drug, every unordered pair.
+    for (let i = 0; i < allMeds.length; i++) {
+      for (let j = i + 1; j < allMeds.length; j++) {
+        for (const [a, b, severity, note] of DRUG_INTERACTIONS) {
+          const hit = (lower[i].includes(a) && lower[j].includes(b)) || (lower[i].includes(b) && lower[j].includes(a));
+          if (hit) interactions.push({ type: 'drug-drug', a: allMeds[i], b: allMeds[j], severity, note });
+        }
+      }
+    }
+    // Drug–allergy.
+    const allergies = bucketH(s.allergies, userId).filter(a => a.patientId === patientId);
+    for (let i = 0; i < allMeds.length; i++) {
+      for (const alg of allergies) {
+        const allergen = String(alg.allergen || alg.name || "").trim().toLowerCase();
+        if (allergen && allergen.length >= 3 && lower[i].includes(allergen)) {
+          interactions.push({
+            type: 'drug-allergy', a: allMeds[i], b: alg.allergen,
+            severity: ['severe', 'life_threatening'].includes(alg.severity) ? 'major' : 'moderate',
+            note: `Patient has a documented allergy to ${alg.allergen}.`,
+          });
+        }
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        interactions,
+        checked: allMeds,
+        candidateDrug: candidate || null,
+        hasMajor: interactions.some(i => i.severity === 'major'),
+        clean: interactions.length === 0,
+      },
+    };
+  });
+
+  // ── Care team ──────────────────────────────────────────────────
+
+  registerLensAction("healthcare", "care-team-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const list = bucketH(s.careTeam, aidH(ctx)).filter(m => m.patientId === patientId);
+    return { ok: true, result: { careTeam: list } };
+  });
+
+  registerLensAction("healthcare", "care-team-assign", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    if (!bucketH(s.patients, userId).some(p => p.id === patientId)) return { ok: false, error: "patient not found" };
+    const providerName = String(params.providerName || "").trim();
+    if (!providerName) return { ok: false, error: "providerName required" };
+    const member = {
+      id: uidH("ct"), patientId, providerName,
+      role: CARE_TEAM_ROLES.includes(params.role) ? params.role : 'other',
+      specialty: String(params.specialty || ""),
+      addedAt: isoH(),
+    };
+    bucketH(s.careTeam, userId).push(member);
+    saveStateIfAvailable();
+    return { ok: true, result: { member } };
+  });
+
+  registerLensAction("healthcare", "care-team-remove", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = bucketH(s.careTeam, aidH(ctx));
+    const i = list.findIndex(m => m.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "care team member not found" };
+    list.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { removed: params.id } };
+  });
+
+  // ── Care gaps / health maintenance (Best Practice Advisories) ──
+
+  registerLensAction("healthcare", "care-gaps", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const patient = bucketH(s.patients, userId).find(p => p.id === patientId);
+    if (!patient) return { ok: false, error: "patient not found" };
+    const age = ageFromDob(patient.dob);
+    const problems = bucketH(s.problems, userId).filter(p => p.patientId === patientId && p.status === 'active');
+    const imms = bucketH(s.immunizations, userId).filter(x => x.patientId === patientId);
+    const labs = bucketH(s.labs, userId).filter(x => x.patientId === patientId);
+    const orders = bucketH(s.orders, userId).filter(o => o.patientId === patientId);
+    const hasProblem = (re) => problems.some(p => re.test(p.name || '') || re.test(p.icd10 || ''));
+    const lastImm = (re) => imms.filter(x => re.test(x.vaccine || '')).map(x => x.administeredAt || '').sort().pop() || null;
+    const lastLab = (re) => labs.filter(x => re.test(x.test || '')).map(x => x.collectedAt || '').sort().pop() || null;
+    const hasOrderEver = (re) => orders.some(o => re.test(o.name || ''));
+
+    const gaps = [];
+    const flu = lastImm(/flu|influenza/i);
+    if (daysSince(flu) > 365) {
+      gaps.push({ item: 'Influenza vaccine', status: flu ? 'overdue' : 'due', reason: 'Recommended annually for all patients.', lastDone: flu });
+    }
+    if (hasProblem(/diabet/i) || hasProblem(/^E1[01]/)) {
+      const a1c = lastLab(/a1c|hba1c|glycohemoglobin/i);
+      if (daysSince(a1c) > 180) {
+        gaps.push({ item: 'Hemoglobin A1C', status: a1c ? 'overdue' : 'due', reason: 'Diabetes on the problem list — A1C every 6 months.', lastDone: a1c });
+      }
+    }
+    if (age != null && age >= 40) {
+      const lipid = lastLab(/lipid|cholesterol/i);
+      if (daysSince(lipid) > 365) {
+        gaps.push({ item: 'Lipid panel', status: lipid ? 'overdue' : 'due', reason: 'Cardiovascular screening for age 40+.', lastDone: lipid });
+      }
+    }
+    if (age != null && age >= 45 && !hasOrderEver(/colonoscop|colorectal|cologuard|fit test/i)) {
+      gaps.push({ item: 'Colorectal cancer screening', status: 'due', reason: 'USPSTF recommends screening starting at age 45.', lastDone: null });
+    }
+    if (age != null && age >= 40 && patient.sex === 'F') {
+      const mammo = orders.filter(o => /mammogr/i.test(o.name || '')).map(o => o.orderedAt).sort().pop() || null;
+      if (daysSince(mammo) > 365) {
+        gaps.push({ item: 'Mammogram', status: mammo ? 'overdue' : 'due', reason: 'Breast cancer screening for women age 40+.', lastDone: mammo });
+      }
+    }
+    if (age != null && age >= 65) {
+      const pneumo = lastImm(/pneumo|pcv|ppsv/i);
+      if (!pneumo) gaps.push({ item: 'Pneumococcal vaccine', status: 'due', reason: 'Recommended for adults age 65+.', lastDone: null });
+    }
+    return { ok: true, result: { patientId, age, gaps, count: gaps.length, allClear: gaps.length === 0 } };
+  });
+
+  // ── After-visit summary ────────────────────────────────────────
+
+  registerLensAction("healthcare", "visit-summary", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const enc = bucketH(s.encounters, userId).find(e => e.id === String(params.encounterId || ""));
+    if (!enc) return { ok: false, error: "encounter not found" };
+    const patient = bucketH(s.patients, userId).find(p => p.id === enc.patientId);
+    const problems = bucketH(s.problems, userId).filter(p => p.patientId === enc.patientId && p.status === 'active');
+    const meds = bucketH(s.orders, userId).filter(o => o.patientId === enc.patientId && o.kind === 'medication' && ['active', 'placed'].includes(o.status));
+    const allergies = bucketH(s.allergies, userId).filter(a => a.patientId === enc.patientId);
+    const summary = {
+      patientName: patient ? `${patient.firstName} ${patient.lastName}` : enc.patientName,
+      mrn: patient?.mrn || null,
+      encounterDate: enc.encounteredAt,
+      encounterType: enc.encounterType,
+      provider: enc.provider,
+      signed: enc.status === 'signed',
+      chiefComplaint: enc.chiefComplaint,
+      assessment: enc.assessment,
+      plan: enc.plan,
+      diagnosisCodes: enc.diagnosisCodes || [],
+      activeProblems: problems.map(p => ({ name: p.name, icd10: p.icd10 })),
+      medications: meds.map(m => ({ name: m.name, dose: m.dose, frequency: m.frequency })),
+      allergies: allergies.map(a => a.allergen || a.name),
+    };
+    const text = [
+      `AFTER-VISIT SUMMARY`,
+      `${summary.patientName}${summary.mrn ? ` (${summary.mrn})` : ''}`,
+      `${summary.encounterType} · ${String(summary.encounterDate).slice(0, 10)}${summary.provider ? ` · ${summary.provider}` : ''}`,
+      ``,
+      `Reason for visit: ${summary.chiefComplaint || '—'}`,
+      ``,
+      `Assessment:`, summary.assessment || '—',
+      ``,
+      `Plan:`, summary.plan || '—',
+      ``,
+      `Active problems: ${summary.activeProblems.map(p => p.name).join('; ') || 'none'}`,
+      `Current medications: ${summary.medications.map(m => `${m.name}${m.dose ? ` ${m.dose}` : ''}`).join('; ') || 'none'}`,
+      `Allergies: ${summary.allergies.join('; ') || 'NKDA'}`,
+    ].join('\n');
+    return { ok: true, result: { summary, text } };
   });
 
   // ── Dashboard summary ─────────────────────────────────────────
