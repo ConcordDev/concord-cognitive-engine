@@ -55,7 +55,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
     if (!STATE.filmLens) STATE.filmLens = {};
     const s = STATE.filmLens;
     for (const k of ["projects", "scenes", "breakdownEls", "shots", "shootDays",
-      "budget", "cast", "crew", "sequences", "clips", "versions", "notes"]) {
+      "budget", "cast", "crew", "sequences", "clips", "versions", "notes",
+      "locations", "tasks", "markers"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -732,7 +733,312 @@ export default function registerFilmStudiosActions(registerLensAction) {
         versions: (s.versions.get(userId) || []).filter((x) => x.projectId === projectId).length,
         budgetEstimated: budget.reduce((a, l) => a + l.estimated, 0),
         budgetActual: budget.reduce((a, l) => a + l.actual, 0),
+        locations: (s.locations.get(userId) || []).filter((x) => x.projectId === projectId).length,
+        openTasks: (s.tasks.get(userId) || []).filter((x) => x.projectId === projectId && x.status !== "done").length,
       },
     };
+  });
+
+  // ─── StudioBinder + Frame.io parity — completion modules ────────────
+
+  const FM_SCRIPT_ELEMENTS = ["heading", "action", "character", "dialogue", "parenthetical", "transition"];
+  const FM_TASK_STATUS = ["todo", "in_progress", "done"];
+  const FM_VERSION_STATUS = ["in_review", "approved", "needs_changes"];
+
+  // ── Locations ───────────────────────────────────────────────────────
+  registerLensAction("film-studios", "location-create", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = fmClean(params.name, 120);
+    if (!name) return { ok: false, error: "location name required" };
+    const location = {
+      id: fmId("loc"), projectId: String(params.projectId), name,
+      address: fmClean(params.address, 240) || null,
+      contact: fmClean(params.contact, 120) || null,
+      notes: fmClean(params.notes, 400) || null,
+      createdAt: fmNow(),
+    };
+    fmListB(s.locations, userId).push(location);
+    saveFmState();
+    return { ok: true, result: { location } };
+  });
+
+  registerLensAction("film-studios", "location-list", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const locations = (s.locations.get(fmAid(ctx)) || []).filter((l) => l.projectId === String(params.projectId));
+    return { ok: true, result: { locations, count: locations.length } };
+  });
+
+  registerLensAction("film-studios", "location-update", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const loc = (s.locations.get(fmAid(ctx)) || []).find((l) => l.id === params.id);
+    if (!loc) return { ok: false, error: "location not found" };
+    if (params.name != null) loc.name = fmClean(params.name, 120) || loc.name;
+    if (params.address != null) loc.address = fmClean(params.address, 240) || null;
+    if (params.contact != null) loc.contact = fmClean(params.contact, 120) || null;
+    if (params.notes != null) loc.notes = fmClean(params.notes, 400) || null;
+    saveFmState();
+    return { ok: true, result: { location: loc } };
+  });
+
+  registerLensAction("film-studios", "location-delete", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const arr = s.locations.get(userId) || [];
+    const i = arr.findIndex((l) => l.id === params.id);
+    if (i < 0) return { ok: false, error: "location not found" };
+    arr.splice(i, 1);
+    for (const sc of s.scenes.get(userId) || []) {
+      if (sc.locationId === params.id) sc.locationId = null;
+    }
+    saveFmState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Screenplay ──────────────────────────────────────────────────────
+  registerLensAction("film-studios", "scene-script-set", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const scene = (s.scenes.get(fmAid(ctx)) || []).find((x) => x.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    const els = Array.isArray(params.elements) ? params.elements : [];
+    scene.script = els.slice(0, 2000).map((e) => ({
+      type: FM_SCRIPT_ELEMENTS.includes(String(e?.type)) ? String(e.type) : "action",
+      text: fmClean(e?.text, 2000),
+    }));
+    if (params.locationId !== undefined) {
+      const lid = params.locationId ? String(params.locationId) : null;
+      scene.locationId = (lid && (s.locations.get(fmAid(ctx)) || []).some((l) => l.id === lid)) ? lid : null;
+    }
+    saveFmState();
+    return { ok: true, result: { sceneId: scene.id, elementCount: scene.script.length } };
+  });
+
+  registerLensAction("film-studios", "scene-script-get", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const scene = (s.scenes.get(fmAid(ctx)) || []).find((x) => x.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    return { ok: true, result: { sceneId: scene.id, script: scene.script || [], locationId: scene.locationId || null } };
+  });
+
+  registerLensAction("film-studios", "screenplay", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const scenes = (s.scenes.get(userId) || [])
+      .filter((x) => x.projectId === String(params.projectId))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const totalEighths = scenes.reduce((a, x) => a + x.pageEighths, 0);
+    return {
+      ok: true,
+      result: {
+        scenes: scenes.map((sc) => ({
+          id: sc.id, number: sc.number, slugline: `${sc.intExt}. ${sc.location} - ${sc.timeOfDay}`,
+          script: sc.script || [],
+        })),
+        sceneCount: scenes.length,
+        pageCount: Math.round((totalEighths / 8) * 10) / 10,
+      },
+    };
+  });
+
+  // ── Storyboard ──────────────────────────────────────────────────────
+  registerLensAction("film-studios", "shot-storyboard-set", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const shot = (s.shots.get(fmAid(ctx)) || []).find((x) => x.id === params.shotId);
+    if (!shot) return { ok: false, error: "shot not found" };
+    const url = fmClean(params.imageUrl, 600);
+    if (url && !/^https?:\/\//.test(url)) return { ok: false, error: "imageUrl must be http(s)" };
+    shot.storyboardUrl = url || null;
+    shot.frameNotes = fmClean(params.frameNotes, 400) || null;
+    saveFmState();
+    return { ok: true, result: { shotId: shot.id, storyboardUrl: shot.storyboardUrl } };
+  });
+
+  registerLensAction("film-studios", "storyboard", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const frames = (s.shots.get(fmAid(ctx)) || [])
+      .filter((x) => x.projectId === String(params.projectId) && x.storyboardUrl)
+      .map((x) => ({
+        shotId: x.id, sceneId: x.sceneId, number: x.number, size: x.size,
+        storyboardUrl: x.storyboardUrl, frameNotes: x.frameNotes || null, description: x.description,
+      }));
+    return { ok: true, result: { frames, count: frames.length } };
+  });
+
+  // ── Day Out of Days ─────────────────────────────────────────────────
+  registerLensAction("film-studios", "dood-report", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const projectId = String(params.projectId);
+    if (!fmProject(s, userId, projectId)) return { ok: false, error: "project not found" };
+    const days = (s.shootDays.get(userId) || [])
+      .filter((d) => d.projectId === projectId)
+      .sort((a, b) => a.dayNumber - b.dayNumber);
+    const scenes = (s.scenes.get(userId) || []).filter((x) => x.projectId === projectId);
+    const cast = (s.cast.get(userId) || []).filter((c) => c.projectId === projectId);
+    const rows = cast.map((c) => {
+      // which day numbers this cast member works
+      const worked = days
+        .filter((d) => scenes.some((sc) => sc.shootDayId === d.id && sc.castIds.includes(c.id)))
+        .map((d) => d.dayNumber)
+        .sort((a, b) => a - b);
+      const cells = days.map((d) => {
+        if (!worked.length) return { day: d.dayNumber, code: "" };
+        if (d.dayNumber < worked[0] || d.dayNumber > worked[worked.length - 1]) {
+          return { day: d.dayNumber, code: "" };
+        }
+        let code = "W";
+        if (d.dayNumber === worked[0] && worked.length === 1) code = "SWF";
+        else if (d.dayNumber === worked[0]) code = "S";
+        else if (d.dayNumber === worked[worked.length - 1]) code = "F";
+        else if (!worked.includes(d.dayNumber)) code = "H";
+        return { day: d.dayNumber, code };
+      });
+      return {
+        castId: c.id, name: c.name, character: c.characterName,
+        workDays: worked.length, cells,
+      };
+    });
+    return { ok: true, result: { days: days.map((d) => d.dayNumber), rows } };
+  });
+
+  // ── Element-list report ─────────────────────────────────────────────
+  registerLensAction("film-studios", "element-list-report", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const els = (s.breakdownEls.get(userId) || []).filter((e) => e.projectId === String(params.projectId));
+    const sceneMap = new Map((s.scenes.get(userId) || []).map((sc) => [sc.id, sc.number]));
+    const byCategory = {};
+    for (const e of els) {
+      if (!byCategory[e.category]) byCategory[e.category] = [];
+      const existing = byCategory[e.category].find((x) => x.name.toLowerCase() === e.name.toLowerCase());
+      if (existing) existing.scenes.push(sceneMap.get(e.sceneId) || "?");
+      else byCategory[e.category].push({ name: e.name, scenes: [sceneMap.get(e.sceneId) || "?"] });
+    }
+    return { ok: true, result: { byCategory, totalElements: els.length } };
+  });
+
+  // ── Production tasks ────────────────────────────────────────────────
+  registerLensAction("film-studios", "task-create", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const title = fmClean(params.title, 200);
+    if (!title) return { ok: false, error: "task title required" };
+    const task = {
+      id: fmId("ftk"), projectId: String(params.projectId), title,
+      department: fmClean(params.department, 60) || "production",
+      assignee: fmClean(params.assignee, 80) || null,
+      dueDate: fmClean(params.dueDate, 10).slice(0, 10) || null,
+      status: "todo", createdAt: fmNow(),
+    };
+    fmListB(s.tasks, userId).push(task);
+    saveFmState();
+    return { ok: true, result: { task } };
+  });
+
+  registerLensAction("film-studios", "task-list", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const tasks = (s.tasks.get(fmAid(ctx)) || [])
+      .filter((t) => t.projectId === String(params.projectId))
+      .sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"));
+    return { ok: true, result: { tasks, count: tasks.length } };
+  });
+
+  registerLensAction("film-studios", "task-update", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const task = (s.tasks.get(fmAid(ctx)) || []).find((t) => t.id === params.id);
+    if (!task) return { ok: false, error: "task not found" };
+    if (params.title != null) task.title = fmClean(params.title, 200) || task.title;
+    if (params.department != null) task.department = fmClean(params.department, 60) || task.department;
+    if (params.assignee != null) task.assignee = fmClean(params.assignee, 80) || null;
+    if (params.dueDate != null) task.dueDate = fmClean(params.dueDate, 10).slice(0, 10) || null;
+    if (params.status != null) task.status = FM_TASK_STATUS.includes(String(params.status)) ? String(params.status) : task.status;
+    saveFmState();
+    return { ok: true, result: { task } };
+  });
+
+  registerLensAction("film-studios", "task-delete", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.tasks.get(fmAid(ctx)) || [];
+    const i = arr.findIndex((t) => t.id === params.id);
+    if (i < 0) return { ok: false, error: "task not found" };
+    arr.splice(i, 1);
+    saveFmState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Production calendar ─────────────────────────────────────────────
+  registerLensAction("film-studios", "production-calendar", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const projectId = String(params.projectId);
+    const now = new Date();
+    const year = Math.round(fmNum(params.year, now.getUTCFullYear()));
+    const month = Math.max(1, Math.min(12, Math.round(fmNum(params.month, now.getUTCMonth() + 1))));
+    const prefix = `${year}-${String(month).padStart(2, "0")}`;
+    const days = {};
+    const add = (date, item) => {
+      if (!date || !date.startsWith(prefix)) return;
+      const d = date.slice(8, 10);
+      if (!days[d]) days[d] = [];
+      days[d].push(item);
+    };
+    for (const sd of (s.shootDays.get(userId) || []).filter((x) => x.projectId === projectId)) {
+      add(sd.date, { type: "shoot_day", label: `Day ${sd.dayNumber}`, id: sd.id });
+    }
+    for (const t of (s.tasks.get(userId) || []).filter((x) => x.projectId === projectId)) {
+      add(t.dueDate, { type: "task", label: t.title, id: t.id, status: t.status });
+    }
+    return { ok: true, result: { year, month, days } };
+  });
+
+  // ── Timeline markers ────────────────────────────────────────────────
+  registerLensAction("film-studios", "marker-add", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const sequence = (s.sequences.get(userId) || []).find((q) => q.id === params.sequenceId);
+    if (!sequence) return { ok: false, error: "sequence not found" };
+    const label = fmClean(params.label, 120);
+    if (!label) return { ok: false, error: "marker label required" };
+    const marker = {
+      id: fmId("mk"), sequenceId: sequence.id, label,
+      frame: Math.max(0, Math.round(fmNum(params.frame))),
+      color: fmClean(params.color, 16) || "amber",
+      createdAt: fmNow(),
+    };
+    fmListB(s.markers, userId).push(marker);
+    saveFmState();
+    return { ok: true, result: { marker } };
+  });
+
+  registerLensAction("film-studios", "marker-list", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const markers = (s.markers.get(fmAid(ctx)) || [])
+      .filter((m) => m.sequenceId === String(params.sequenceId))
+      .sort((a, b) => a.frame - b.frame);
+    return { ok: true, result: { markers, count: markers.length } };
+  });
+
+  registerLensAction("film-studios", "marker-delete", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.markers.get(fmAid(ctx)) || [];
+    const i = arr.findIndex((m) => m.id === params.id);
+    if (i < 0) return { ok: false, error: "marker not found" };
+    arr.splice(i, 1);
+    saveFmState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Version approval ────────────────────────────────────────────────
+  registerLensAction("film-studios", "version-set-status", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const version = (s.versions.get(fmAid(ctx)) || []).find((v) => v.id === params.id);
+    if (!version) return { ok: false, error: "version not found" };
+    version.approvalStatus = FM_VERSION_STATUS.includes(String(params.status))
+      ? String(params.status) : "in_review";
+    saveFmState();
+    return { ok: true, result: { id: version.id, approvalStatus: version.approvalStatus } };
   });
 }

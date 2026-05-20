@@ -187,3 +187,91 @@ describe("film-studios.film-dashboard", () => {
     assert.equal(d.result.budgetActual, 2500);
   });
 });
+
+describe("film-studios — locations & screenplay", () => {
+  it("manages a locations database; scenes link to a location", () => {
+    const pid = newProject();
+    const loc = call("location-create", ctxA, { projectId: pid, name: "Rooftop", address: "123 Sky Ave" }).result.location;
+    assert.equal(call("location-list", ctxA, { projectId: pid }).result.count, 1);
+    const sid = call("scene-add", ctxA, { projectId: pid, location: "Rooftop" }).result.scene.id;
+    call("scene-script-set", ctxA, { sceneId: sid, locationId: loc.id, elements: [
+      { type: "heading", text: "EXT. ROOFTOP - NIGHT" },
+      { type: "action", text: "Rain falls." },
+      { type: "character", text: "RILEY" },
+      { type: "dialogue", text: "We have to go." },
+    ] });
+    const got = call("scene-script-get", ctxA, { sceneId: sid });
+    assert.equal(got.result.script.length, 4);
+    assert.equal(got.result.locationId, loc.id);
+    call("location-delete", ctxA, { id: loc.id });
+    assert.equal(call("scene-script-get", ctxA, { sceneId: sid }).result.locationId, null);
+  });
+
+  it("assembles a screenplay with page count", () => {
+    const pid = newProject();
+    call("scene-add", ctxA, { projectId: pid, location: "Bar", pageEighths: 12 });
+    const sp = call("screenplay", ctxA, { projectId: pid });
+    assert.equal(sp.result.sceneCount, 1);
+    assert.equal(sp.result.pageCount, 1.5);
+  });
+});
+
+describe("film-studios — storyboard & DOOD", () => {
+  it("attaches storyboard frames to shots", () => {
+    const pid = newProject();
+    const sid = call("scene-add", ctxA, { projectId: pid, location: "Hall" }).result.scene.id;
+    const shot = call("shot-add", ctxA, { sceneId: sid, size: "CU" }).result.shot;
+    call("shot-storyboard-set", ctxA, { shotId: shot.id, imageUrl: "https://example.com/frame.jpg", frameNotes: "push in" });
+    assert.equal(call("storyboard", ctxA, { projectId: pid }).result.count, 1);
+  });
+
+  it("builds a Day Out of Days matrix", () => {
+    const pid = newProject();
+    const cast = call("cast-add", ctxA, { projectId: pid, name: "Lead", characterName: "MAX" }).result.member;
+    const sid = call("scene-add", ctxA, { projectId: pid, location: "Set", castIds: [cast.id] }).result.scene.id;
+    const day = call("shoot-day-create", ctxA, { projectId: pid }).result.day;
+    call("strip-assign", ctxA, { sceneId: sid, shootDayId: day.id });
+    const dood = call("dood-report", ctxA, { projectId: pid });
+    assert.equal(dood.result.rows.length, 1);
+    assert.equal(dood.result.rows[0].cells[0].code, "SWF");
+  });
+});
+
+describe("film-studios — tasks, calendar, markers, approval", () => {
+  it("manages production tasks", () => {
+    const pid = newProject();
+    const t = call("task-create", ctxA, { projectId: pid, title: "Lock locations", dueDate: "2026-06-01" }).result.task;
+    call("task-update", ctxA, { id: t.id, status: "done" });
+    assert.equal(call("task-list", ctxA, { projectId: pid }).result.tasks[0].status, "done");
+    call("task-delete", ctxA, { id: t.id });
+    assert.equal(call("task-list", ctxA, { projectId: pid }).result.count, 0);
+  });
+
+  it("production calendar buckets shoot days and tasks", () => {
+    const pid = newProject();
+    call("shoot-day-create", ctxA, { projectId: pid, date: "2026-06-10" });
+    call("task-create", ctxA, { projectId: pid, title: "Wrap", dueDate: "2026-06-12" });
+    const cal = call("production-calendar", ctxA, { projectId: pid, year: 2026, month: 6 });
+    assert.equal(cal.result.days["10"][0].type, "shoot_day");
+    assert.equal(cal.result.days["12"][0].type, "task");
+  });
+
+  it("adds timeline markers and sets version approval status", () => {
+    const pid = newProject();
+    const seq = call("sequence-create", ctxA, { projectId: pid, name: "Reel 1" }).result.sequence;
+    call("marker-add", ctxA, { sequenceId: seq.id, label: "Music in", frame: 240 });
+    assert.equal(call("marker-list", ctxA, { sequenceId: seq.id }).result.count, 1);
+    const v = call("version-create", ctxA, { projectId: pid, label: "Cut 1" }).result.version;
+    call("version-set-status", ctxA, { id: v.id, status: "approved" });
+    assert.equal(call("version-list", ctxA, { projectId: pid }).result.versions[0].approvalStatus, "approved");
+  });
+
+  it("element-list report groups breakdown elements", () => {
+    const pid = newProject();
+    const sid = call("scene-add", ctxA, { projectId: pid, location: "Garage" }).result.scene.id;
+    call("breakdown-tag", ctxA, { sceneId: sid, category: "props", name: "Wrench" });
+    const rep = call("element-list-report", ctxA, { projectId: pid });
+    assert.equal(rep.result.totalElements, 1);
+    assert.equal(rep.result.byCategory.props[0].name, "Wrench");
+  });
+});
