@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Package, Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface PantryItem {
@@ -33,7 +33,7 @@ export function PantryTracker() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'food', action: 'pantry-list', input: {} });
+      const res = await lensRun({ domain: 'food', action: 'pantry-list', input: {} });
       setItems((res.data?.result?.items || []) as PantryItem[]);
     } catch (e) { console.error('[Pantry] list failed', e); }
     finally { setLoading(false); }
@@ -42,7 +42,7 @@ export function PantryTracker() {
   async function add() {
     if (!newName.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'food', action: 'pantry-add',
         input: {
           itemName: newName.trim(),
@@ -59,7 +59,7 @@ export function PantryTracker() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'food', action: 'pantry-delete', input: { id } });
+      await lensRun({ domain: 'food', action: 'pantry-delete', input: { id } });
       setItems(prev => prev.filter(i => i.id !== id));
     } catch (e) { console.error('[Pantry] delete failed', e); }
   }

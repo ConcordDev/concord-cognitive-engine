@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, Sparkles, Loader2, ShoppingCart } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 const MEAL_SLOTS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const;
@@ -32,7 +32,7 @@ export function MealPlanner() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'food', action: 'meal-plan-list', input: { startDate: weekStart() } });
+      const res = await lensRun({ domain: 'food', action: 'meal-plan-list', input: { startDate: weekStart() } });
       setPlan((res.data?.result?.meals || []) as PlannedMeal[]);
     } catch (e) { console.error('[Plan] list failed', e); }
     finally { setLoading(false); }
@@ -41,7 +41,7 @@ export function MealPlanner() {
   async function generate() {
     setGenerating(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'food', action: 'meal-plan-generate',
         input: { startDate: weekStart(), days: 7, mealsPerDay: 3, maxTimeMin: 30 },
       });
@@ -53,7 +53,7 @@ export function MealPlanner() {
   async function buildGroceryList() {
     setExportingList(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'food', action: 'grocery-list-build',
         input: { startDate: weekStart(), days: 7 },
       });

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Link as LinkIcon, Loader2, Check, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface ImportedRecipe {
   title: string;
@@ -29,7 +29,7 @@ export function RecipeImporter({ onImported }: RecipeImporterProps) {
     if (!url.trim()) return;
     setLoading(true); setError(null); setRecipe(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'food', action: 'recipe-import-url', input: { url: url.trim() },
       });
       const r = res.data?.result;

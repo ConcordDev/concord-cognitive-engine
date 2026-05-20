@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Calculator, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface ScaledIngredient {
   original: { qty: number; unit: string; item: string };
@@ -29,7 +29,7 @@ export function RecipeScaler({ baseServings, ingredients }: RecipeScalerProps) {
     setLoading(true);
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', {
+        const res = await lensRun({
           domain: 'food', action: 'recipe-scale',
           input: { ingredients, baseServings, targetServings },
         });
