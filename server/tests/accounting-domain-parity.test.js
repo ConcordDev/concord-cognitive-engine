@@ -701,3 +701,120 @@ describe("accounting — 2026 AI features", () => {
     assert.ok(r.result.answer);
   });
 });
+
+describe("accounting — payroll", () => {
+  it("creates employees and runs payroll with withholdings", () => {
+    const emp = call("employee-create", ctxA, { name: "Pat Dev", payType: "salary", rate: 120000 }).result.employee;
+    const run = call("payrun-create", ctxA, {
+      periodStart: "2026-05-01", periodEnd: "2026-05-15", payDate: "2026-05-16",
+      lines: [{ employeeId: emp.id }],
+    }).result.run;
+    assert.equal(run.stubs.length, 1);
+    assert.equal(run.totalGross, 5000);            // 120000 / 24
+    assert.ok(run.totalWithholding > 0 && run.totalNet < run.totalGross);
+    assert.ok(run.journalEntryId);
+    assert.equal(call("payroll-summary", ctxA, {}).result.runs, 1);
+  });
+
+  it("computes hourly gross from hours", () => {
+    const emp = call("employee-create", ctxA, { name: "Sam Hourly", payType: "hourly", rate: 40 }).result.employee;
+    const run = call("payrun-create", ctxA, { lines: [{ employeeId: emp.id, hours: 80 }] }).result.run;
+    assert.equal(run.stubs[0].gross, 3200);
+  });
+
+  it("isolates payroll per user", () => {
+    call("employee-create", ctxA, { name: "X", rate: 1000 });
+    assert.equal(call("employee-list", ctxB, {}).result.count, 0);
+  });
+});
+
+describe("accounting — budgets", () => {
+  it("tracks budget vs actual from the journal", () => {
+    const userId = ctxA;
+    call("coa-create", userId, { code: "6900", name: "Marketing", category: "expense" });
+    const acct = call("coa-list", userId, {}).result.accounts.find((a) => a.code === "6900");
+    const cash = call("coa-list", userId, {}).result.accounts.find((a) => a.code === "1000");
+    const yr = new Date().getUTCFullYear();
+    call("je-post", userId, {
+      date: `${yr}-03-01`, memo: "ad spend",
+      lines: [{ accountId: acct.id, debit: 800 }, { accountId: cash.id, credit: 800 }],
+    });
+    const b = call("budget-create", userId, { name: "FY budget", fiscalYear: yr }).result.budget;
+    call("budget-set-line", userId, { budgetId: b.id, accountId: acct.id, annualAmount: 1000 });
+    const bva = call("budget-vs-actual", userId, { budgetId: b.id });
+    const row = bva.result.rows.find((r) => r.accountId === acct.id);
+    assert.equal(row.budgeted, 1000);
+    assert.equal(row.actual, 800);
+    assert.equal(row.variance, -200);
+  });
+});
+
+describe("accounting — inventory", () => {
+  it("tracks stock and flags low inventory", () => {
+    const item = call("item-create", ctxA, {
+      name: "Widget", type: "inventory", price: 25, cost: 10, qtyOnHand: 5, reorderPoint: 8,
+    }).result.item;
+    assert.equal(item.qtyOnHand, 5);
+    const low = call("inventory-low-stock", ctxA, {});
+    assert.equal(low.result.count, 1);
+    call("item-adjust-stock", ctxA, { id: item.id, delta: 20 });
+    assert.equal(call("inventory-low-stock", ctxA, {}).result.count, 0);
+  });
+
+  it("rejects stock adjustment on a service item", () => {
+    const item = call("item-create", ctxA, { name: "Consulting", type: "service", price: 150 }).result.item;
+    assert.equal(call("item-adjust-stock", ctxA, { id: item.id, delta: 1 }).ok, false);
+  });
+});
+
+describe("accounting — sales tax", () => {
+  it("records a tax payment that reduces the liability", () => {
+    const userId = ctxA;
+    call("coa-list", userId, {});
+    const tax = call("coa-list", userId, {}).result.accounts.find((a) => a.code === "2100");
+    const cash = call("coa-list", userId, {}).result.accounts.find((a) => a.code === "1000");
+    call("je-post", userId, {
+      memo: "collected tax",
+      lines: [{ accountId: cash.id, debit: 300 }, { accountId: tax.id, credit: 300 }],
+    });
+    assert.equal(call("tax-liability", userId, {}).result.salesTaxPayable, 300);
+    call("tax-payment-record", userId, { amount: 300 });
+    assert.equal(call("tax-liability", userId, {}).result.salesTaxPayable, 0);
+  });
+
+  it("manages tax codes", () => {
+    const c = call("tax-code-create", ctxA, { name: "CA", rate: 8.5 }).result.taxCode;
+    assert.equal(call("tax-code-list", ctxA, {}).result.count, 1);
+    call("tax-code-delete", ctxA, { id: c.id });
+    assert.equal(call("tax-code-list", ctxA, {}).result.count, 0);
+  });
+});
+
+describe("accounting — purchase orders", () => {
+  it("creates a PO and receives it into a bill", () => {
+    const v = call("vendors-create", ctxA, { name: "Supplier Co" }).result.vendor;
+    const po = call("po-create", ctxA, {
+      vendorId: v.id, lines: [{ description: "Parts", qty: 10, unitCost: 12 }],
+    }).result.purchaseOrder;
+    assert.equal(po.total, 120);
+    const rec = call("po-receive", ctxA, { id: po.id });
+    assert.equal(rec.result.bill.amount, 120);
+    assert.equal(rec.result.purchaseOrder.status, "received");
+    assert.equal(call("po-receive", ctxA, { id: po.id }).ok, false);
+  });
+});
+
+describe("accounting — financial ratios", () => {
+  it("computes ratios from the ledger", () => {
+    const userId = ctxA;
+    const accts = call("coa-list", userId, {}).result.accounts;
+    const cash = accts.find((a) => a.code === "1000");
+    const equity = accts.find((a) => a.code === "3000");
+    call("je-post", userId, {
+      memo: "capital", lines: [{ accountId: cash.id, debit: 10000 }, { accountId: equity.id, credit: 10000 }],
+    });
+    const r = call("financial-ratios", userId, {});
+    assert.equal(r.result.totals.currentAssets, 10000);
+    assert.ok(r.result.workingCapital === 10000);
+  });
+});
