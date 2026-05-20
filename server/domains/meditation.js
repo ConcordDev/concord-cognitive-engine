@@ -115,4 +115,168 @@ export default function registerMeditationActions(registerLensAction) {
     const prompt = prompts[Math.abs(hash) % prompts.length];
     return { ok: true, result: { date: day, prompt } };
   });
+
+  // ─── Calm / Headspace 2026 session substrate (per-user, STATE) ───────
+
+  const LIBRARY = [
+    { id: "g-focus-10", title: "Single-Pointed Focus", category: "guided", durationMin: 10, narrator: "Tara Brach", goal: "focus" },
+    { id: "g-anx-8", title: "Soften, Soothe, Allow", category: "guided", durationMin: 8, narrator: "Kristin Neff", goal: "anxiety" },
+    { id: "g-grat-5", title: "Five Gratitudes", category: "guided", durationMin: 5, narrator: "Rick Hanson", goal: "gratitude" },
+    { id: "g-body-15", title: "Full Body Scan", category: "guided", durationMin: 15, narrator: "Jon Kabat-Zinn", goal: "relax" },
+    { id: "g-morn-7", title: "Morning Intention", category: "guided", durationMin: 7, narrator: "Sharon Salzberg", goal: "focus" },
+    { id: "b-box-5", title: "Box Breathing", category: "breathwork", durationMin: 5, pattern: "box", goal: "calm" },
+    { id: "b-478-4", title: "4-7-8 Wind Down", category: "breathwork", durationMin: 4, pattern: "478", goal: "sleep" },
+    { id: "b-coh-6", title: "Coherent Breathing", category: "breathwork", durationMin: 6, pattern: "coherent", goal: "calm" },
+    { id: "s-rain-30", title: "A Walk in Light Rain", category: "sleep_story", durationMin: 30, narrator: "Calm Voices", goal: "sleep" },
+    { id: "s-train-45", title: "The Midnight Train", category: "sleep_story", durationMin: 45, narrator: "Calm Voices", goal: "sleep" },
+    { id: "s-nidra-20", title: "Yoga Nidra Descent", category: "sleep_story", durationMin: 20, narrator: "Tracee Stanley", goal: "sleep" },
+    { id: "sc-rain", title: "Rainfall", category: "soundscape", durationMin: 60, goal: "sleep" },
+    { id: "sc-ocean", title: "Ocean Waves", category: "soundscape", durationMin: 60, goal: "relax" },
+    { id: "sc-white", title: "White Noise", category: "soundscape", durationMin: 480, goal: "sleep" },
+    { id: "sc-forest", title: "Forest at Dawn", category: "soundscape", durationMin: 60, goal: "focus" },
+    { id: "sos-panic-3", title: "SOS: Acute Panic Reset", category: "sos", durationMin: 3, goal: "anxiety" },
+    { id: "sos-night-3", title: "Nighttime SOS", category: "sos", durationMin: 3, goal: "sleep" },
+  ];
+  const BREATH_PATTERNS = {
+    box: { name: "Box Breathing", cycleSeconds: 16, phases: [{ label: "inhale", sec: 4 }, { label: "hold", sec: 4 }, { label: "exhale", sec: 4 }, { label: "hold", sec: 4 }] },
+    "478": { name: "4-7-8 Breathing", cycleSeconds: 19, phases: [{ label: "inhale", sec: 4 }, { label: "hold", sec: 7 }, { label: "exhale", sec: 8 }] },
+    coherent: { name: "Coherent Breathing", cycleSeconds: 11, phases: [{ label: "inhale", sec: 5.5 }, { label: "exhale", sec: 5.5 }] },
+  };
+
+  function getMedState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.meditationLens) STATE.meditationLens = {};
+    const s = STATE.meditationLens;
+    if (!(s.sessions instanceof Map)) s.sessions = new Map(); // userId -> Array<completed>
+    if (!(s.moods instanceof Map)) s.moods = new Map();       // userId -> Array<mood>
+    return s;
+  }
+  function saveMed() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const medId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const medNow = () => new Date().toISOString();
+  const medActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const medList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
+
+  registerLensAction("meditation", "library", (_ctx, _a, params = {}) => {
+    let items = [...LIBRARY];
+    if (params.category) items = items.filter((x) => x.category === String(params.category));
+    if (params.goal) items = items.filter((x) => x.goal === String(params.goal));
+    if (params.maxMinutes) items = items.filter((x) => x.durationMin <= Number(params.maxMinutes));
+    return {
+      ok: true,
+      result: {
+        sessions: items, count: items.length,
+        categories: [...new Set(LIBRARY.map((x) => x.category))],
+      },
+    };
+  });
+
+  registerLensAction("meditation", "play", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const track = LIBRARY.find((x) => x.id === params.sessionId);
+    if (!track) return { ok: false, error: "session not found in library" };
+    const mood = params.mood != null && Number.isFinite(Number(params.mood))
+      ? Math.max(1, Math.min(5, Math.round(Number(params.mood)))) : null;
+    const entry = {
+      id: medId("ms"),
+      sessionId: track.id,
+      title: track.title,
+      category: track.category,
+      durationMin: track.durationMin,
+      moodAfter: mood,
+      completedAt: medNow(),
+    };
+    medList(s.sessions, medActor(ctx)).push(entry);
+    saveMed();
+    return { ok: true, result: { session: entry } };
+  });
+
+  registerLensAction("meditation", "history", (ctx, _a, _params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sessions = [...medList(s.sessions, medActor(ctx))].reverse().slice(0, 50);
+    return { ok: true, result: { sessions, count: sessions.length } };
+  });
+
+  registerLensAction("meditation", "streak", (ctx, _a, _params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sessions = medList(s.sessions, medActor(ctx));
+    const days = new Set(sessions.map((x) => x.completedAt.slice(0, 10)));
+    let current = 0;
+    for (let i = 0; i < 366; i++) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      if (days.has(d)) current++;
+      else if (i === 0) continue;
+      else break;
+    }
+    return {
+      ok: true,
+      result: {
+        currentStreak: current,
+        totalSessions: sessions.length,
+        totalMinutes: sessions.reduce((n, x) => n + x.durationMin, 0),
+        daysPracticed: days.size,
+        practicedToday: days.has(new Date().toISOString().slice(0, 10)),
+      },
+    };
+  });
+
+  registerLensAction("meditation", "breathwork", (_ctx, _a, params = {}) => {
+    const key = ["box", "478", "coherent"].includes(String(params.pattern)) ? String(params.pattern) : "box";
+    const cycles = Math.max(1, Math.min(60, Math.round(Number(params.cycles) || 8)));
+    const p = BREATH_PATTERNS[key];
+    return { ok: true, result: { pattern: key, ...p, cycles, totalSeconds: p.cycleSeconds * cycles } };
+  });
+
+  registerLensAction("meditation", "mood-checkin", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const mood = Math.max(1, Math.min(5, Math.round(Number(params.mood) || 3)));
+    const entry = {
+      id: medId("md"),
+      mood,
+      note: String(params.note || "").trim().slice(0, 280),
+      at: medNow(),
+    };
+    medList(s.moods, medActor(ctx)).push(entry);
+    saveMed();
+    return { ok: true, result: { checkin: entry } };
+  });
+
+  registerLensAction("meditation", "mood-history", (ctx, _a, _params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const moods = medList(s.moods, medActor(ctx));
+    const recent = [...moods].reverse().slice(0, 30);
+    const avg = moods.length > 0 ? Math.round((moods.reduce((n, m) => n + m.mood, 0) / moods.length) * 10) / 10 : null;
+    return { ok: true, result: { moods: recent, averageMood: avg, count: moods.length } };
+  });
+
+  registerLensAction("meditation", "meditation-dashboard", (ctx, _a, _params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = medActor(ctx);
+    const sessions = medList(s.sessions, userId);
+    const days = new Set(sessions.map((x) => x.completedAt.slice(0, 10)));
+    let streak = 0;
+    for (let i = 0; i < 366; i++) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      if (days.has(d)) streak++;
+      else if (i === 0) continue;
+      else break;
+    }
+    const byCategory = {};
+    for (const x of sessions) byCategory[x.category] = (byCategory[x.category] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        totalSessions: sessions.length,
+        totalMinutes: sessions.reduce((n, x) => n + x.durationMin, 0),
+        currentStreak: streak,
+        byCategory,
+        moodCheckins: medList(s.moods, userId).length,
+      },
+    };
+  });
 }
