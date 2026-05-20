@@ -323,6 +323,9 @@ export default function registerCryptoActions(registerLensAction) {
     if (!s.recurringBuys)     s.recurringBuys     = new Map(); // userId -> Array<RecurringBuy>
     if (!s.nfts)              s.nfts              = new Map(); // userId -> Array<NFT>
     if (!s.watchlist)         s.watchlist         = new Map(); // userId -> Set<symbol>
+    if (!s.orders)            s.orders            = new Map(); // userId -> Array<LimitOrder>
+    if (!s.valueSnapshots)    s.valueSnapshots    = new Map(); // userId -> Array<{date,totalValueUsd,totalCostUsd}>
+    if (!s.wallets)           s.wallets           = new Map(); // userId -> Array<Wallet>
     if (!s.seq)               s.seq               = new Map();
     return s;
   }
@@ -825,6 +828,7 @@ export default function registerCryptoActions(registerLensAction) {
       unitCostUsd: qty > 0 ? costBasisUsd / qty : 0,
       acquiredAt: String(params.acquiredAt || dayCr()),
       source: String(params.source || 'manual'),
+      walletId: params.walletId ? String(params.walletId) : null,
       notes: String(params.notes || ''),
     };
     seq.lot++;
@@ -848,10 +852,13 @@ export default function registerCryptoActions(registerLensAction) {
     return { ok: true, result: { lot, transaction: tx } };
   });
 
-  registerLensAction("crypto", "holdings-list", async (ctx, _a, _p = {}) => {
+  registerLensAction("crypto", "holdings-list", async (ctx, _a, params = {}) => {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
-    const lots = listCr(s.holdings, userId).filter(l => l.qtyRemaining > 0);
+    const walletFilter = params.walletId ? String(params.walletId) : null;
+    const lots = listCr(s.holdings, userId)
+      .filter(l => l.qtyRemaining > 0)
+      .filter(l => !walletFilter || l.walletId === walletFilter);
     // Aggregate by symbol so the UI can show portfolio rows.
     const bySymbol = new Map();
     for (const lot of lots) {
@@ -935,10 +942,13 @@ export default function registerCryptoActions(registerLensAction) {
     return { ok: true, result: { transaction: tx, totalCostOfSold: Math.round(costOfSold * 100) / 100 } };
   });
 
-  registerLensAction("crypto", "portfolio-summary", async (ctx, _a, _p = {}) => {
+  registerLensAction("crypto", "portfolio-summary", async (ctx, _a, params = {}) => {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
-    const lots = listCr(s.holdings, userId).filter(l => l.qtyRemaining > 0);
+    const walletFilter = params.walletId ? String(params.walletId) : null;
+    const lots = listCr(s.holdings, userId)
+      .filter(l => l.qtyRemaining > 0)
+      .filter(l => !walletFilter || l.walletId === walletFilter);
     const symbols = Array.from(new Set(lots.map(l => l.symbol)));
     const prices = await fetchLivePrices(symbols);
     let totalCost = 0, totalValue = 0;
@@ -1402,6 +1412,315 @@ export default function registerCryptoActions(registerLensAction) {
       return { ok: true, result: { insight: text, source: 'brain', stats: { totalValueUsd: totalValue, totalCostUsd: totalCost, concentrationPct: concentration } } };
     } catch (_e) {
       return { ok: true, result: { insight: deterministic(), source: 'deterministic_after_brain_error', stats: { totalValueUsd: totalValue, totalCostUsd: totalCost, concentrationPct: concentration } } };
+    }
+  });
+
+  // ── Wallets / accounts (Coinbase + MetaMask multi-account) ────
+
+  const WALLET_KINDS = ['hot', 'hardware', 'exchange', 'watch'];
+
+  registerLensAction("crypto", "wallet-list", (ctx, _a, _p = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { wallets: listCr(s.wallets, aidCr(ctx)) } };
+  });
+
+  registerLensAction("crypto", "wallet-create", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "wallet name required" };
+    const wallet = {
+      id: uidCr('wal'), name: name.slice(0, 80),
+      kind: WALLET_KINDS.includes(params.kind) ? params.kind : 'hot',
+      address: String(params.address || '').trim().slice(0, 120) || null,
+      createdAt: isoCr(),
+    };
+    listCr(s.wallets, aidCr(ctx)).push(wallet);
+    saveCrypto();
+    return { ok: true, result: { wallet } };
+  });
+
+  registerLensAction("crypto", "wallet-rename", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const wallet = listCr(s.wallets, aidCr(ctx)).find(w => w.id === params.id);
+    if (!wallet) return { ok: false, error: "wallet not found" };
+    if (params.name != null) wallet.name = String(params.name).trim().slice(0, 80) || wallet.name;
+    if (params.kind != null && WALLET_KINDS.includes(params.kind)) wallet.kind = params.kind;
+    saveCrypto();
+    return { ok: true, result: { wallet } };
+  });
+
+  registerLensAction("crypto", "wallet-delete", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    const arr = listCr(s.wallets, userId);
+    const i = arr.findIndex(w => w.id === params.id);
+    if (i < 0) return { ok: false, error: "wallet not found" };
+    arr.splice(i, 1);
+    // Holdings keep their now-dangling walletId; they fall back to "unassigned".
+    saveCrypto();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Send (transfer crypto out — FIFO-debits holdings) ─────────
+
+  // Shared FIFO debit: closes oldest lots first. Returns null if short.
+  function cryFifoDebit(s, userId, symbol, qty) {
+    const lots = listCr(s.holdings, userId)
+      .filter(l => l.symbol === symbol && l.qtyRemaining > 0)
+      .sort((a, b) => a.acquiredAt.localeCompare(b.acquiredAt));
+    const avail = lots.reduce((sum, l) => sum + l.qtyRemaining, 0);
+    if (qty > avail + 1e-9) return null;
+    let remaining = qty, costBasis = 0;
+    const closedLots = [];
+    for (const lot of lots) {
+      if (remaining <= 0) break;
+      const take = Math.min(lot.qtyRemaining, remaining);
+      costBasis += take * lot.unitCostUsd;
+      lot.qtyRemaining = Math.max(0, lot.qtyRemaining - take);
+      closedLots.push({ lotId: lot.id, qty: take, unitCostUsd: lot.unitCostUsd });
+      remaining -= take;
+    }
+    return { costBasis: Math.round(costBasis * 100) / 100, closedLots, ticker: lots[0]?.ticker, chain: lots[0]?.chain };
+  }
+
+  registerLensAction("crypto", "send", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    const symbol = String(params.symbol || "").trim().toLowerCase();
+    const qty = Number(params.qty);
+    const toAddress = String(params.toAddress || "").trim();
+    if (!symbol || !Number.isFinite(qty) || qty <= 0) return { ok: false, error: "symbol + positive qty required" };
+    if (!toAddress) return { ok: false, error: "destination address required" };
+    const networkFeeUsd = Math.max(0, Number(params.networkFeeUsd) || 0);
+    const debit = cryFifoDebit(s, userId, symbol, qty);
+    if (!debit) return { ok: false, error: `insufficient ${symbol.toUpperCase()} balance` };
+    const seq = ensureSeqCr(s, userId);
+    const tx = {
+      id: uidCr('tx'),
+      number: `T-${String(seq.tx).padStart(6, '0')}`,
+      kind: 'send',
+      symbol, ticker: debit.ticker || symbol.toUpperCase(),
+      chain: debit.chain || 'ethereum',
+      qty,
+      priceUsd: null,
+      totalUsd: 0,
+      costBasisUsd: debit.costBasis,
+      networkFeeUsd,
+      toAddress,
+      at: String(params.at || dayCr()),
+      closedLots: debit.closedLots,
+      notes: String(params.notes || ''),
+    };
+    seq.tx++;
+    listCr(s.transactions, userId).push(tx);
+    saveCrypto();
+    return { ok: true, result: { transaction: tx } };
+  });
+
+  // ── Limit orders (Coinbase Advanced Trade) ────────────────────
+
+  registerLensAction("crypto", "order-create", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    const symbol = String(params.symbol || "").trim().toLowerCase();
+    const side = params.side === 'sell' ? 'sell' : 'buy';
+    const qty = Number(params.qty);
+    const limitPriceUsd = Number(params.limitPriceUsd);
+    if (!symbol || !Number.isFinite(qty) || qty <= 0) return { ok: false, error: "symbol + positive qty required" };
+    if (!Number.isFinite(limitPriceUsd) || limitPriceUsd <= 0) return { ok: false, error: "positive limitPriceUsd required" };
+    const order = {
+      id: uidCr('ord'),
+      symbol,
+      ticker: String(params.ticker || symbol).toUpperCase(),
+      chain: CHAIN_OPTIONS.includes(params.chain) ? params.chain : 'ethereum',
+      side, qty, limitPriceUsd,
+      status: 'open',
+      createdAt: isoCr(),
+      filledAt: null,
+      note: String(params.note || ''),
+    };
+    listCr(s.orders, userId).push(order);
+    saveCrypto();
+    return { ok: true, result: { order } };
+  });
+
+  registerLensAction("crypto", "order-list", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const status = ['open', 'filled', 'cancelled'].includes(params.status) ? params.status : null;
+    let list = listCr(s.orders, aidCr(ctx));
+    if (status) list = list.filter(o => o.status === status);
+    return { ok: true, result: { orders: list.slice().reverse(), total: list.length } };
+  });
+
+  registerLensAction("crypto", "order-cancel", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const order = listCr(s.orders, aidCr(ctx)).find(o => o.id === params.id);
+    if (!order) return { ok: false, error: "order not found" };
+    if (order.status !== 'open') return { ok: false, error: `order is already ${order.status}` };
+    order.status = 'cancelled';
+    order.cancelledAt = isoCr();
+    saveCrypto();
+    return { ok: true, result: { order } };
+  });
+
+  // Fill engine — fills open limit orders when the live price crosses.
+  registerLensAction("crypto", "orders-check", async (ctx, _a, _p = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    const open = listCr(s.orders, userId).filter(o => o.status === 'open');
+    if (open.length === 0) return { ok: true, result: { filled: [], stillOpen: 0, priceSource: 'n/a' } };
+    const prices = await fetchLivePrices(Array.from(new Set(open.map(o => o.symbol))));
+    if (Object.keys(prices).length === 0) {
+      return { ok: true, result: { filled: [], stillOpen: open.length, priceSource: 'unavailable' } };
+    }
+    const seq = ensureSeqCr(s, userId);
+    const filled = [];
+    for (const order of open) {
+      const price = prices[order.symbol];
+      if (typeof price !== 'number') continue;
+      const crosses = order.side === 'buy' ? price <= order.limitPriceUsd : price >= order.limitPriceUsd;
+      if (!crosses) continue;
+      if (order.side === 'buy') {
+        const cost = Math.round(order.qty * order.limitPriceUsd * 100) / 100;
+        const lot = {
+          id: uidCr('lot'), number: `H-${String(seq.lot).padStart(5, '0')}`,
+          symbol: order.symbol, ticker: order.ticker, chain: order.chain,
+          qty: order.qty, qtyRemaining: order.qty,
+          costBasisUsd: cost, unitCostUsd: order.limitPriceUsd,
+          acquiredAt: dayCr(), source: 'limit-order', notes: `Filled order ${order.id}`,
+        };
+        seq.lot++;
+        listCr(s.holdings, userId).push(lot);
+        const tx = {
+          id: uidCr('tx'), number: `T-${String(seq.tx).padStart(6, '0')}`,
+          kind: 'buy', symbol: order.symbol, ticker: order.ticker, chain: order.chain,
+          qty: order.qty, priceUsd: order.limitPriceUsd, totalUsd: cost,
+          at: dayCr(), lotId: lot.id, notes: `Limit order fill`,
+        };
+        seq.tx++;
+        listCr(s.transactions, userId).push(tx);
+      } else {
+        const debit = cryFifoDebit(s, userId, order.symbol, order.qty);
+        if (!debit) { order.note = 'fill skipped — insufficient balance'; continue; }
+        const proceeds = Math.round(order.qty * order.limitPriceUsd * 100) / 100;
+        const tx = {
+          id: uidCr('tx'), number: `T-${String(seq.tx).padStart(6, '0')}`,
+          kind: 'sell', symbol: order.symbol, ticker: order.ticker, chain: order.chain,
+          qty: order.qty, priceUsd: order.limitPriceUsd, totalUsd: proceeds,
+          costBasisUsd: debit.costBasis,
+          realizedPnlUsd: Math.round((proceeds - debit.costBasis) * 100) / 100,
+          at: dayCr(), closedLots: debit.closedLots, notes: `Limit order fill`,
+        };
+        seq.tx++;
+        listCr(s.transactions, userId).push(tx);
+      }
+      order.status = 'filled';
+      order.filledAt = isoCr();
+      order.fillPriceUsd = price;
+      filled.push(order);
+    }
+    saveCrypto();
+    return {
+      ok: true,
+      result: {
+        filled,
+        filledCount: filled.length,
+        stillOpen: open.length - filled.length,
+        priceSource: 'coingecko',
+      },
+    };
+  });
+
+  // ── Portfolio value snapshots / performance ───────────────────
+
+  registerLensAction("crypto", "portfolio-snapshot", async (ctx, _a, _p = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    const lots = listCr(s.holdings, userId).filter(l => l.qtyRemaining > 0);
+    const prices = await fetchLivePrices(Array.from(new Set(lots.map(l => l.symbol))));
+    let totalValue = 0, totalCost = 0;
+    for (const l of lots) {
+      totalValue += (prices[l.symbol] || 0) * l.qtyRemaining;
+      totalCost += l.unitCostUsd * l.qtyRemaining;
+    }
+    const snap = {
+      date: dayCr(),
+      totalValueUsd: Math.round(totalValue * 100) / 100,
+      totalCostUsd: Math.round(totalCost * 100) / 100,
+      capturedAt: isoCr(),
+    };
+    const series = listCr(s.valueSnapshots, userId);
+    const sameDay = series.findIndex(x => x.date === snap.date);
+    if (sameDay >= 0) series[sameDay] = snap; else series.push(snap);
+    saveCrypto();
+    return { ok: true, result: { snapshot: snap, priceSource: Object.keys(prices).length > 0 ? 'coingecko' : 'unavailable' } };
+  });
+
+  registerLensAction("crypto", "portfolio-history", (ctx, _a, _p = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const series = listCr(s.valueSnapshots, aidCr(ctx)).slice().sort((a, b) => a.date.localeCompare(b.date));
+    if (series.length < 2) {
+      return { ok: true, result: { series, points: series.length, message: series.length ? 'Capture more snapshots to see performance.' : 'No snapshots yet.' } };
+    }
+    const first = series[0], last = series[series.length - 1];
+    let bestDay = null, worstDay = null;
+    for (let i = 1; i < series.length; i++) {
+      const delta = series[i].totalValueUsd - series[i - 1].totalValueUsd;
+      if (!bestDay || delta > bestDay.delta) bestDay = { date: series[i].date, delta: Math.round(delta * 100) / 100 };
+      if (!worstDay || delta < worstDay.delta) worstDay = { date: series[i].date, delta: Math.round(delta * 100) / 100 };
+    }
+    const change = last.totalValueUsd - first.totalValueUsd;
+    return {
+      ok: true,
+      result: {
+        series, points: series.length,
+        startValueUsd: first.totalValueUsd, endValueUsd: last.totalValueUsd,
+        changeUsd: Math.round(change * 100) / 100,
+        changePct: first.totalValueUsd > 0 ? Math.round((change / first.totalValueUsd) * 10000) / 100 : 0,
+        bestDay, worstDay,
+      },
+    };
+  });
+
+  // ── Market overview (CoinGecko trending / gainers / losers) ───
+
+  registerLensAction("crypto", "market-overview", async (_ctx, _a, _p = {}) => {
+    try {
+      const [trendingRaw, markets, globalRaw] = await Promise.all([
+        safeFetchJson('https://api.coingecko.com/api/v3/search/trending').catch(() => null),
+        fetchAndShape('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&price_change_percentage=24h').catch(() => []),
+        safeFetchJson('https://api.coingecko.com/api/v3/global').catch(() => null),
+      ]);
+      if (markets.length === 0 && !Array.isArray(trendingRaw?.coins)) {
+        return { ok: false, error: "coingecko unreachable: market data unavailable" };
+      }
+      const trending = Array.isArray(trendingRaw?.coins)
+        ? trendingRaw.coins.slice(0, 10).map(c => ({
+          id: c.item?.id, symbol: (c.item?.symbol || '').toUpperCase(),
+          name: c.item?.name, rank: c.item?.market_cap_rank || null, iconUrl: c.item?.small || null,
+        }))
+        : [];
+      const withChange = markets.filter(m => Number.isFinite(m.change24h));
+      const gainers = [...withChange].sort((a, b) => b.change24h - a.change24h).slice(0, 10);
+      const losers = [...withChange].sort((a, b) => a.change24h - b.change24h).slice(0, 10);
+      const g = globalRaw?.data || {};
+      return {
+        ok: true,
+        result: {
+          trending, gainers, losers,
+          global: {
+            totalMarketCapUsd: Number(g.total_market_cap?.usd) || null,
+            totalVolume24hUsd: Number(g.total_volume?.usd) || null,
+            marketCapChange24hPct: Number(g.market_cap_change_percentage_24h_usd) || null,
+            btcDominancePct: Number(g.market_cap_percentage?.btc) || null,
+            ethDominancePct: Number(g.market_cap_percentage?.eth) || null,
+            activeCoins: Number(g.active_cryptocurrencies) || null,
+          },
+          source: 'coingecko',
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `coingecko unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
 

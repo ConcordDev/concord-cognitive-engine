@@ -604,3 +604,115 @@ describe("crypto — dashboard-summary", () => {
     assert.equal(r.result.nftCount, 1);
   });
 });
+
+describe("crypto — wallets", () => {
+  it("creates, renames, lists and deletes wallets", () => {
+    const w = call("wallet-create", ctxCr, { name: "Ledger", kind: "hardware" }).result.wallet;
+    assert.equal(w.kind, "hardware");
+    call("wallet-rename", ctxCr, { id: w.id, name: "Ledger Nano" });
+    assert.equal(call("wallet-list", ctxCr).result.wallets[0].name, "Ledger Nano");
+    call("wallet-delete", ctxCr, { id: w.id });
+    assert.equal(call("wallet-list", ctxCr).result.wallets.length, 0);
+  });
+
+  it("scopes holdings by wallet", async () => {
+    stubPriceFetch({ bitcoin: 70000, ethereum: 3500 });
+    const w1 = call("wallet-create", ctxCr, { name: "Hot" }).result.wallet;
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 60000, walletId: w1.id });
+    call("holdings-add", ctxCr, { symbol: "ethereum", ticker: "ETH", qty: 2, costBasisUsd: 6000 });
+    const scoped = await call("holdings-list", ctxCr, { walletId: w1.id });
+    assert.equal(scoped.result.holdings.length, 1);
+    assert.equal(scoped.result.holdings[0].symbol, "bitcoin");
+    const all = await call("holdings-list", ctxCr);
+    assert.equal(all.result.holdings.length, 2);
+  });
+});
+
+describe("crypto — send", () => {
+  it("FIFO-debits holdings and records a send transaction", () => {
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 2, costBasisUsd: 100000 });
+    const r = call("send", ctxCr, { symbol: "bitcoin", qty: 0.5, toAddress: "0xabc123", networkFeeUsd: 5 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.transaction.kind, "send");
+    assert.equal(r.result.transaction.toAddress, "0xabc123");
+    assert.equal(r.result.transaction.costBasisUsd, 25000);
+  });
+
+  it("rejects a send beyond the available balance", () => {
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 50000 });
+    const r = call("send", ctxCr, { symbol: "bitcoin", qty: 5, toAddress: "0xabc" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /insufficient/);
+  });
+
+  it("requires a destination address", () => {
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 50000 });
+    assert.equal(call("send", ctxCr, { symbol: "bitcoin", qty: 0.1 }).ok, false);
+  });
+});
+
+describe("crypto — limit orders", () => {
+  it("creates, lists and cancels orders", () => {
+    const o = call("order-create", ctxCr, { symbol: "bitcoin", ticker: "BTC", side: "buy", qty: 0.1, limitPriceUsd: 50000 }).result.order;
+    assert.equal(o.status, "open");
+    assert.equal(call("order-list", ctxCr, { status: "open" }).result.total, 1);
+    call("order-cancel", ctxCr, { id: o.id });
+    assert.equal(call("order-list", ctxCr, { status: "open" }).result.total, 0);
+    assert.equal(call("order-list", ctxCr, { status: "cancelled" }).result.total, 1);
+  });
+
+  it("fills a buy order when the live price drops below the limit", async () => {
+    stubPriceFetch({ bitcoin: 48000 });
+    call("order-create", ctxCr, { symbol: "bitcoin", ticker: "BTC", side: "buy", qty: 0.2, limitPriceUsd: 50000 });
+    const r = await call("orders-check", ctxCr);
+    assert.equal(r.result.filledCount, 1);
+    const holdings = await call("holdings-list", ctxCr);
+    assert.equal(holdings.result.holdings[0].symbol, "bitcoin");
+    assert.equal(holdings.result.holdings[0].qty, 0.2);
+  });
+
+  it("does not fill a buy order while the price is above the limit", async () => {
+    stubPriceFetch({ bitcoin: 60000 });
+    call("order-create", ctxCr, { symbol: "bitcoin", ticker: "BTC", side: "buy", qty: 0.2, limitPriceUsd: 50000 });
+    const r = await call("orders-check", ctxCr);
+    assert.equal(r.result.filledCount, 0);
+    assert.equal(r.result.stillOpen, 1);
+  });
+
+  it("fills a sell order and FIFO-debits holdings", async () => {
+    stubPriceFetch({ bitcoin: 80000 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 50000 });
+    call("order-create", ctxCr, { symbol: "bitcoin", ticker: "BTC", side: "sell", qty: 0.5, limitPriceUsd: 75000 });
+    const r = await call("orders-check", ctxCr);
+    assert.equal(r.result.filledCount, 1);
+    const txns = call("transactions-list", ctxCr, { kind: "sell" });
+    assert.equal(txns.result.transactions[0].realizedPnlUsd, 12500); // 0.5*75000 - 0.5*50000
+  });
+});
+
+describe("crypto — portfolio snapshots + history", () => {
+  it("captures snapshots and computes performance", async () => {
+    stubPriceFetch({ bitcoin: 60000 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 50000 });
+    // Pre-seed two historical snapshots directly into STATE.
+    globalThis._concordSTATE.cryptoLens.valueSnapshots = new Map([["u_cr", [
+      { date: "2026-05-18", totalValueUsd: 50000, totalCostUsd: 50000, capturedAt: "" },
+      { date: "2026-05-19", totalValueUsd: 55000, totalCostUsd: 50000, capturedAt: "" },
+    ]]]);
+    const snap = await call("portfolio-snapshot", ctxCr);
+    assert.equal(snap.ok, true);
+    assert.equal(snap.result.snapshot.totalValueUsd, 60000);
+    const hist = call("portfolio-history", ctxCr);
+    assert.equal(hist.result.points, 3);
+    assert.equal(hist.result.changeUsd, 10000); // 60000 - 50000
+  });
+});
+
+describe("crypto — market-overview", () => {
+  it("surfaces a network error when CoinGecko is unreachable", async () => {
+    globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
+    const r = await call("market-overview", ctxCr);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /coingecko unreachable/);
+  });
+});
