@@ -977,4 +977,43 @@ export default function registerParentingActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real children's-product safety recalls from the U.S.
+  // Consumer Product Safety Commission as visible DTUs. Free, no key.
+  registerLensAction("parenting", "feed", async (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const CHILD_RE = /child|infant|baby|toddler|nursery|crib|stroller|car seat|booster|playpen|pacifier|bassinet|high chair|toy/i;
+    try {
+      const r = await fetch("https://www.saferproducts.gov/RestWebServices/Recall?format=json");
+      if (!r.ok) return { ok: false, error: `cpsc ${r.status}` };
+      const data = await r.json();
+      const all = Array.isArray(data) ? data : [];
+      const recalls = all.filter((rec) => {
+        const hay = `${rec.Title || ""} ${(rec.Products || []).map((p) => p.Name).join(" ")} ${rec.Description || ""}`;
+        return CHILD_RE.test(hay);
+      }).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const rec of recalls) {
+        const id = `cpsckid_${rec.RecallID || rec.RecallNumber}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const product = (rec.Products?.[0]?.Name || rec.Title || "Children's product recall").slice(0, 90);
+        const hazard = rec.Hazards?.[0]?.Name || "?";
+        const title = `Child-product recall: ${product}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nHazard: ${hazard}\nRemedy: ${(rec.Remedies?.[0]?.Name) || "?"}\nRecall date: ${rec.RecallDate || "?"}\nDescription: ${(rec.Description || "").replace(/<[^>]+>/g, "").slice(0, 600)}\nSource: U.S. Consumer Product Safety Commission`,
+          tags: ["parenting", "feed", "child-safety", "recall", "cpsc"],
+          source: "cpsc-parenting-feed",
+          meta: { recallId: rec.RecallID, product, hazard, recallDate: rec.RecallDate },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      savePgState();
+      return { ok: true, result: { ingested, skipped, source: "cpsc-child-recalls", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `cpsc unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

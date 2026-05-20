@@ -38,6 +38,9 @@ import registerRetail from "../domains/retail.js";
 import registerSports from "../domains/sports.js";
 import registerTravel from "../domains/travel.js";
 import registerVeterinary from "../domains/veterinary.js";
+import registerEmergencyServices from "../domains/emergencyservices.js";
+import registerHomeImprovement from "../domains/homeimprovement.js";
+import registerParenting from "../domains/parenting.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -55,6 +58,8 @@ before(() => {
   registerPets(register); registerPharmacy(register); registerPhotography(register);
   registerRealEstate(register); registerRetail(register); registerSports(register);
   registerTravel(register); registerVeterinary(register);
+  registerEmergencyServices(register); registerHomeImprovement(register);
+  registerParenting(register);
 });
 
 let createdDtus;
@@ -541,5 +546,75 @@ describe("veterinary — substrate + openFDA feed", () => {
     const r = await callFeed("veterinary", makeCtx());
     assert.equal(r.result.ingested, 1);
     assert.ok(createdDtus[0].tags.includes("adverse-event"));
+  });
+});
+
+describe("emergency-services — CAD substrate + USGS feed", () => {
+  it("manages incidents and units per user", () => {
+    const ctxA = { actor: { userId: "ems_a" }, userId: "ems_a" };
+    const inc = callAction("emergency-services", "incident-create", ctxA, { summary: "Structure fire", kind: "fire", priority: 1 }).result.incident;
+    callAction("emergency-services", "unit-add", ctxA, { name: "Engine 7", kind: "fire_engine" });
+    callAction("emergency-services", "incident-status", ctxA, { id: inc.id, status: "dispatched" });
+    const list = callAction("emergency-services", "incident-list", ctxA, {});
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.incidents[0].status, "dispatched");
+    const dash = callAction("emergency-services", "ems-dashboard", ctxA, {});
+    assert.equal(dash.result.units, 1);
+    assert.equal(dash.result.byKind.fire, 1);
+  });
+  it("rejects a summaryless incident and keeps calculators intact", () => {
+    assert.equal(callAction("emergency-services", "incident-create", { userId: "ems_a" }, {}).ok, false);
+    assert.equal(callAction("emergency-services", "triageAssess", { userId: "ems_a" }, {}).ok, true);
+  });
+  it("ingests USGS earthquakes as DTUs", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ features: [
+      { id: "us7000", properties: { mag: 6.1, place: "120km S of Tokyo", time: 1747000000000, tsunami: 0 }, geometry: {} },
+    ] }) });
+    const r = await callFeed("emergency-services", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /M6\.1/);
+    assert.ok(createdDtus[0].tags.includes("earthquake"));
+  });
+});
+
+describe("home-improvement — project substrate + CPSC feed", () => {
+  it("manages projects, tasks and expenses per user", () => {
+    const ctxA = { actor: { userId: "hi_a" }, userId: "hi_a" };
+    const proj = callAction("home-improvement", "project-add", ctxA, { name: "Kitchen remodel", room: "kitchen", budget: 20000 }).result.project;
+    callAction("home-improvement", "task-add", ctxA, { projectId: proj.id, label: "Demo cabinets" });
+    callAction("home-improvement", "expense-log", ctxA, { projectId: proj.id, label: "Tile", amount: 850, kind: "materials" });
+    const list = callAction("home-improvement", "project-list", ctxA, {});
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.projects[0].spent, 850);
+    assert.equal(list.result.projects[0].budgetRemaining, 19150);
+    const dash = callAction("home-improvement", "home-improvement-dashboard", ctxA, {});
+    assert.equal(dash.result.totalSpent, 850);
+    assert.equal(dash.result.tasks, 1);
+  });
+  it("rejects a nameless project and keeps calculators intact", () => {
+    assert.equal(callAction("home-improvement", "project-add", { userId: "hi_a" }, {}).ok, false);
+    assert.equal(callAction("home-improvement", "projectEstimate", { userId: "hi_a" }, {}).ok, true);
+  });
+  it("ingests CPSC product recalls as DTUs", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ([
+      { RecallID: 9001, Title: "Ladder recall", Products: [{ Name: "Aluminum Step Ladder" }], Hazards: [{ Name: "Fall hazard" }], Remedies: [{ Name: "Refund" }], RecallDate: "2026-05-01", Description: "<p>Rungs may detach.</p>" },
+    ]) });
+    const r = await callFeed("home-improvement", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Aluminum Step Ladder/);
+    assert.ok(createdDtus[0].tags.includes("product-recall"));
+  });
+});
+
+describe("parenting.feed — CPSC child-product recalls → DTUs", () => {
+  it("ingests only child-relevant recalls", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ([
+      { RecallID: 1, Title: "Crib recall", Products: [{ Name: "Drop-side Crib" }], Hazards: [{ Name: "Entrapment" }], Remedies: [{ Name: "Repair kit" }], RecallDate: "2026-05-02", Description: "Crib slats may break." },
+      { RecallID: 2, Title: "Power drill recall", Products: [{ Name: "Cordless Drill" }], Hazards: [{ Name: "Fire" }], Remedies: [{ Name: "Refund" }], RecallDate: "2026-05-02", Description: "Battery overheats." },
+    ]) });
+    const r = await callFeed("parenting", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Drop-side Crib/);
+    assert.ok(createdDtus[0].tags.includes("child-safety"));
   });
 });
