@@ -27,7 +27,7 @@ Sources:
 - 2026-05-20: Backend — `node --check server/domains/fork.js` clean.
   Watchlist substrate (5 macros) + GitHub events `feed` macro appended to
   the fork-network domain.
-- 2026-05-20: Tests — `tests/fork-watchlist-domain-parity.test.js` 9/9 green
+- 2026-05-20: Tests — `tests/fork-watchlist-domain-parity.test.js` 5/5 green
   (watch CRUD + per-user scope + URL normalisation + duplicate guard /
   dashboard by-reason aggregation / events feed → DTUs + dedup on re-run).
 - 2026-05-20: Frontend — new `RepoWatchlist` (watched-repo list with live
