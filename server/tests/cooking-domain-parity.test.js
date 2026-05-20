@@ -171,3 +171,141 @@ describe("cooking.usda-nutrition (USDA FoodData Central)", () => {
     assert.match(r.error, /FDC ID not found/);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  Paprika + Samsung Food + Plan to Eat 2026 parity — recipes,
+//  collections, scaling, meal plan, grocery list, pantry, AI plan.
+// ═════════════════════════════════════════════════════════════════
+
+const ctxCk = { actor: { userId: "cook_u" }, userId: "cook_u" };
+
+describe("cooking — 2026 parity macros", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("recipes-create + list with normalized ingredients", () => {
+    const r = call("recipes-create", ctxCk, {
+      title: "Pasta Pomodoro", servings: 4, prepMin: 10, cookMin: 20,
+      ingredients: [{ name: "pasta", qty: 400, unit: "g" }, "salt", { name: "tomato", qty: 6 }],
+      steps: ["Boil pasta", "Make sauce"],
+    });
+    assert.equal(r.ok, true);
+    assert.match(r.result.recipe.number, /^R-\d{5}$/);
+    assert.equal(r.result.recipe.ingredients.length, 3);
+    assert.equal(r.result.recipe.ingredients[1].name, "salt");
+    assert.equal(call("recipes-list", ctxCk).result.recipes.length, 1);
+  });
+
+  it("recipes-scale scales quantities by serving factor", () => {
+    const rec = call("recipes-create", ctxCk, { title: "Cake", servings: 8, ingredients: [{ name: "flour", qty: 200, unit: "g" }] }).result.recipe;
+    const r = call("recipes-scale", ctxCk, { id: rec.id, targetServings: 4 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.factor, 0.5);
+    assert.equal(r.result.ingredients[0].qty, 100);
+  });
+
+  it("recipes-delete removes from collections + meal plan", () => {
+    const rec = call("recipes-create", ctxCk, { title: "X" }).result.recipe;
+    const col = call("collections-create", ctxCk, { name: "Faves" }).result.collection;
+    call("collections-toggle-recipe", ctxCk, { collectionId: col.id, recipeId: rec.id });
+    call("meal-plan-set", ctxCk, { date: "2026-06-01", slot: "dinner", recipeId: rec.id });
+    call("recipes-delete", ctxCk, { id: rec.id });
+    assert.equal(call("collections-list", ctxCk).result.collections[0].recipeCount, 0);
+    assert.equal(call("meal-plan-get", ctxCk, { start: "2026-06-01", end: "2026-06-01" }).result.entries.length, 0);
+  });
+
+  it("collections toggle adds + removes a recipe", () => {
+    const rec = call("recipes-create", ctxCk, { title: "Soup" }).result.recipe;
+    const col = call("collections-create", ctxCk, { name: "Winter" }).result.collection;
+    const add = call("collections-toggle-recipe", ctxCk, { collectionId: col.id, recipeId: rec.id });
+    assert.equal(add.result.inCollection, true);
+    const rem = call("collections-toggle-recipe", ctxCk, { collectionId: col.id, recipeId: rec.id });
+    assert.equal(rem.result.inCollection, false);
+  });
+
+  it("meal-plan-set + get within a range", () => {
+    const rec = call("recipes-create", ctxCk, { title: "Tacos", servings: 4 }).result.recipe;
+    call("meal-plan-set", ctxCk, { date: "2026-06-10", slot: "dinner", recipeId: rec.id });
+    const got = call("meal-plan-get", ctxCk, { start: "2026-06-08", end: "2026-06-12" });
+    assert.equal(got.result.entries.length, 1);
+    assert.equal(got.result.entries[0].recipe.title, "Tacos");
+  });
+
+  it("meal-plan-set rejects bad slot", () => {
+    const rec = call("recipes-create", ctxCk, { title: "X" }).result.recipe;
+    const r = call("meal-plan-set", ctxCk, { date: "2026-06-10", slot: "brunch", recipeId: rec.id });
+    assert.equal(r.ok, false);
+  });
+
+  it("shopping-list-generate consolidates ingredients + groups by aisle", () => {
+    const r1 = call("recipes-create", ctxCk, { title: "A", servings: 2, ingredients: [{ name: "tomato", qty: 4, unit: "" }, { name: "chicken breast", qty: 2, unit: "" }] }).result.recipe;
+    const r2 = call("recipes-create", ctxCk, { title: "B", servings: 2, ingredients: [{ name: "tomato", qty: 2, unit: "" }, { name: "milk", qty: 1, unit: "cup" }] }).result.recipe;
+    call("meal-plan-set", ctxCk, { date: "2026-06-15", slot: "lunch", recipeId: r1.id, servings: 2 });
+    call("meal-plan-set", ctxCk, { date: "2026-06-15", slot: "dinner", recipeId: r2.id, servings: 2 });
+    const r = call("shopping-list-generate", ctxCk, { start: "2026-06-15", end: "2026-06-15" });
+    assert.equal(r.ok, true);
+    // tomato should consolidate to 6 (4 + 2)
+    const tomato = r.result.items.find(i => i.name.toLowerCase() === "tomato");
+    assert.equal(tomato.qty, 6);
+    assert.equal(tomato.aisle, "produce");
+    const chicken = r.result.items.find(i => i.name.toLowerCase() === "chicken breast");
+    assert.equal(chicken.aisle, "meat");
+  });
+
+  it("shopping-list-generate subtracts pantry items", () => {
+    const rec = call("recipes-create", ctxCk, { title: "A", servings: 2, ingredients: [{ name: "olive oil", qty: 2, unit: "tbsp" }, { name: "onion", qty: 1, unit: "" }] }).result.recipe;
+    call("meal-plan-set", ctxCk, { date: "2026-06-20", slot: "dinner", recipeId: rec.id });
+    call("pantry-add", ctxCk, { name: "olive oil" }); // qty null = "have it"
+    const r = call("shopping-list-generate", ctxCk, { start: "2026-06-20", end: "2026-06-20", subtractPantry: true });
+    assert.ok(!r.result.items.find(i => i.name.toLowerCase() === "olive oil"));
+    assert.ok(r.result.items.find(i => i.name.toLowerCase() === "onion"));
+  });
+
+  it("shopping-list toggle marks an item checked", () => {
+    call("shopping-list-add", ctxCk, { name: "eggs" });
+    const list = call("shopping-list-get", ctxCk).result.items;
+    const t = call("shopping-list-toggle", ctxCk, { id: list[0].id });
+    assert.equal(t.result.item.checked, true);
+  });
+
+  it("pantry-cook-suggestions ranks recipes by coverage", () => {
+    call("recipes-create", ctxCk, { title: "Easy", ingredients: [{ name: "egg" }, { name: "toast" }] });
+    call("recipes-create", ctxCk, { title: "Hard", ingredients: [{ name: "egg" }, { name: "saffron" }, { name: "lobster" }] });
+    call("pantry-add", ctxCk, { name: "egg" });
+    call("pantry-add", ctxCk, { name: "toast" });
+    const r = call("pantry-cook-suggestions", ctxCk);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.suggestions[0].title, "Easy");
+    assert.equal(r.result.suggestions[0].coveragePct, 100);
+  });
+
+  it("ai-meal-plan fills the week from the recipe box", async () => {
+    call("recipes-create", ctxCk, { title: "R1", tags: ["vegan"] });
+    call("recipes-create", ctxCk, { title: "R2", tags: ["vegan"] });
+    call("recipes-create", ctxCk, { title: "R3" });
+    const r = await call("ai-meal-plan", ctxCk, { days: 7, slots: ["dinner"] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.assigned.length, 7);
+    const got = call("meal-plan-get", ctxCk, { start: r.result.assigned[0].date, end: r.result.assigned[6].date });
+    assert.equal(got.result.entries.length, 7);
+  });
+
+  it("ai-meal-plan rejects with empty recipe box", async () => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    const r = await call("ai-meal-plan", ctxCk, { days: 3 });
+    assert.equal(r.ok, false);
+  });
+
+  it("cooking-dashboard-summary aggregates", () => {
+    call("recipes-create", ctxCk, { title: "A" });
+    call("collections-create", ctxCk, { name: "C" });
+    call("pantry-add", ctxCk, { name: "salt" });
+    const r = call("cooking-dashboard-summary", ctxCk);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.recipeCount, 1);
+    assert.equal(r.result.collectionCount, 1);
+    assert.equal(r.result.pantryItems, 1);
+  });
+});
