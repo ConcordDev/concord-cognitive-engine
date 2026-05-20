@@ -137,4 +137,124 @@ export default function registerLinguisticsActions(registerLensAction) {
       return { ok: false, error: `datamuse unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Vocabulary builder (per-user word list with spaced review) ──────
+
+  function getLingState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.linguisticsLens) STATE.linguisticsLens = {};
+    if (!(STATE.linguisticsLens.words instanceof Map)) STATE.linguisticsLens.words = new Map(); // userId -> Array
+    return STATE.linguisticsLens;
+  }
+  function saveLing() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const lgId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const lgNow = () => new Date().toISOString();
+  const lgActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const lgClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
+  const lgWords = (s, userId) => { if (!s.words.has(userId)) s.words.set(userId, []); return s.words.get(userId); };
+  // Leitner-box review intervals (days) by mastery level 0-5.
+  const REVIEW_INTERVALS = [0, 1, 3, 7, 16, 45];
+
+  registerLensAction("linguistics", "vocab-add", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const word = lgClean(params.word, 80).toLowerCase();
+    if (!word) return { ok: false, error: "word required" };
+    const list = lgWords(s, lgActor(ctx));
+    if (list.some((w) => w.word === word)) return { ok: false, error: "word already in your vocabulary" };
+    const entry = {
+      id: lgId("vw"),
+      word,
+      definition: lgClean(params.definition, 600),
+      partOfSpeech: lgClean(params.partOfSpeech, 30) || null,
+      example: lgClean(params.example, 400) || null,
+      tags: Array.isArray(params.tags) ? params.tags.map((t) => lgClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 6) : [],
+      level: 0,
+      due: lgNow(),
+      reviewCount: 0,
+      addedAt: lgNow(),
+    };
+    list.push(entry);
+    saveLing();
+    return { ok: true, result: { word: entry } };
+  });
+
+  registerLensAction("linguistics", "vocab-list", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let words = [...lgWords(s, lgActor(ctx))];
+    if (params.tag) {
+      const t = lgClean(params.tag, 30).toLowerCase();
+      words = words.filter((w) => w.tags.includes(t));
+    }
+    const q = lgClean(params.query, 80).toLowerCase();
+    if (q) words = words.filter((w) => w.word.includes(q) || (w.definition || "").toLowerCase().includes(q));
+    words.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    return { ok: true, result: { words, count: words.length } };
+  });
+
+  registerLensAction("linguistics", "vocab-update", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = lgWords(s, lgActor(ctx)).find((x) => x.id === params.id);
+    if (!w) return { ok: false, error: "word not found" };
+    if (params.definition != null) w.definition = lgClean(params.definition, 600);
+    if (params.example != null) w.example = lgClean(params.example, 400) || null;
+    if (params.partOfSpeech != null) w.partOfSpeech = lgClean(params.partOfSpeech, 30) || null;
+    if (Array.isArray(params.tags)) w.tags = params.tags.map((t) => lgClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 6);
+    saveLing();
+    return { ok: true, result: { word: w } };
+  });
+
+  registerLensAction("linguistics", "vocab-delete", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lgWords(s, lgActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "word not found" };
+    arr.splice(i, 1);
+    saveLing();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // vocab-review-due — words whose review is due now.
+  registerLensAction("linguistics", "vocab-review-due", (ctx, _a, _params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const now = Date.now();
+    const due = lgWords(s, lgActor(ctx))
+      .filter((w) => new Date(w.due).getTime() <= now)
+      .sort((a, b) => a.due.localeCompare(b.due));
+    return { ok: true, result: { words: due, count: due.length } };
+  });
+
+  // vocab-review — record a review outcome; Leitner-box promote/demote.
+  registerLensAction("linguistics", "vocab-review", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = lgWords(s, lgActor(ctx)).find((x) => x.id === params.id);
+    if (!w) return { ok: false, error: "word not found" };
+    const known = params.known === true;
+    w.level = known ? Math.min(5, w.level + 1) : 0;
+    w.reviewCount += 1;
+    w.due = new Date(Date.now() + REVIEW_INTERVALS[w.level] * 86400000).toISOString();
+    w.lastReviewedAt = lgNow();
+    saveLing();
+    return { ok: true, result: { id: w.id, level: w.level, nextReviewInDays: REVIEW_INTERVALS[w.level] } };
+  });
+
+  registerLensAction("linguistics", "vocab-dashboard", (ctx, _a, _params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const words = lgWords(s, lgActor(ctx));
+    const now = Date.now();
+    return {
+      ok: true,
+      result: {
+        totalWords: words.length,
+        mastered: words.filter((w) => w.level >= 5).length,
+        learning: words.filter((w) => w.level > 0 && w.level < 5).length,
+        fresh: words.filter((w) => w.level === 0).length,
+        dueNow: words.filter((w) => new Date(w.due).getTime() <= now).length,
+      },
+    };
+  });
 }
