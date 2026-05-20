@@ -12,7 +12,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -181,7 +181,7 @@ export function ProductivityActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: {
           title: `Tasks — ${new Date().toISOString().slice(0, 10)}`,
@@ -190,7 +190,7 @@ export function ProductivityActionPanel() {
           meta: { visibility: 'private', consent: { allowCitations: false }, productivity: { tasks, summary: summaryResult, focus: focusResult } },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) { setMintedDtuId(id); pipe.publish('productivity.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`Snapshot DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
@@ -225,7 +225,7 @@ export function ProductivityActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', {
+        const r = await lensRun({
           domain: 'dtu', name: 'create',
           input: {
             title: `Daily throughput — ${summaryResult.date}`,
@@ -234,7 +234,7 @@ export function ProductivityActionPanel() {
             meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, summary: { date: summaryResult.date, completedToday: summaryResult.completedToday, throughput: summaryResult.throughput } },
           },
         });
-        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;
         if (!newId) throw new Error('No DTU id returned.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -259,8 +259,8 @@ export function ProductivityActionPanel() {
         'For each task, give one sentence on why it goes in that slot. Plain text.',
         open.slice(0, 8).map(t => `[P${t.priority}] ${t.title}`).join('; '),
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Ordering ready.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }

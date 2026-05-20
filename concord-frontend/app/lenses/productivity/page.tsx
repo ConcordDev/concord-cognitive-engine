@@ -20,6 +20,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ProductivityTaskSection } from '@/components/productivity/ProductivityTaskSection';
 import { ProductivityRepos } from '@/components/productivity/ProductivityRepos';
 import { ProductivityActionPanel } from '@/components/productivity/ProductivityActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -89,6 +90,9 @@ export default function ProductivityLensPage() {
       <FirstRunTour lensId="productivity" />
       <ManifestActionBar />
       <DepthBadge lensId="productivity" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <ProductivityTaskSection />
+      </div>
     <div className="min-h-screen bg-black pb-12 text-indigo-50">
       <header className="sticky top-0 z-10 border-b border-indigo-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
