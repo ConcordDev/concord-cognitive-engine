@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FolderPlus, Trash2, Loader2, Save, Sparkles, MessageSquare, Download, ChevronRight, ChevronDown, Plus } from 'lucide-react';
+import { FolderPlus, Trash2, Loader2, Save, Sparkles, MessageSquare, Download, ChevronRight, ChevronDown, Plus, Copy, Timer, Square } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
 import { cn } from '@/lib/utils';
@@ -104,6 +104,16 @@ export function MiroSection() {
       if (activeId === id) { setActiveId(null); setActiveShapes([]); setActiveTitle(''); }
       await refreshBoards();
     } catch (e) { console.error('[Miro] delete', e); }
+  }
+
+  async function duplicateBoard() {
+    if (!activeId) return;
+    if (dirty) await save();
+    try {
+      const r = await lensRun({ domain: 'whiteboard', action: 'board-duplicate', input: { id: activeId } });
+      const newId = r.data?.result?.board?.id;
+      if (newId) { await refreshBoards(); openBoard(newId); }
+    } catch (e) { console.error('[Miro] duplicate', e); }
   }
 
   async function save() {
@@ -254,8 +264,12 @@ export function MiroSection() {
               />
               <span className="text-[10px] text-gray-500">{activeShapes.length} elements</span>
               {dirty && <span className="text-[10px] text-amber-300">● unsaved</span>}
+              <BoardTimer boardId={activeId} />
               <button onClick={save} disabled={saving || !dirty} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] disabled:opacity-40 inline-flex items-center gap-1">
                 {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}Save
+              </button>
+              <button onClick={duplicateBoard} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1" title="Duplicate board">
+                <Copy className="w-3 h-3" />Duplicate
               </button>
               <button onClick={() => setShowAI(v => !v)} className={cn('px-2 py-1 text-[11px] rounded inline-flex items-center gap-1', showAI ? 'bg-pink-500/15 text-pink-200 border border-pink-500/30' : 'border border-white/15 text-gray-300 hover:bg-white/[0.05]')}>
                 <Sparkles className="w-3 h-3" />AI {showAI ? '▾' : '▸'}
@@ -315,6 +329,74 @@ export function MiroSection() {
             )}
           </div>
         </aside>
+      )}
+    </div>
+  );
+}
+
+function BoardTimer({ boardId }: { boardId: string }) {
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [label, setLabel] = useState('Meeting timer');
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const sync = React.useCallback(async () => {
+    try {
+      const r = await lensRun({ domain: 'whiteboard', action: 'timer-get', input: { boardId } });
+      const res = r.data?.result;
+      if (res?.active) { setRemaining(res.remainingSec ?? 0); setLabel(res.label || 'Meeting timer'); }
+      else setRemaining(null);
+    } catch { /* keep last state */ }
+  }, [boardId]);
+
+  // Server sync on board change + every 15s; local 1s countdown in between.
+  useEffect(() => { void sync(); setMenuOpen(false); }, [boardId, sync]);
+  useEffect(() => {
+    const poll = setInterval(() => { void sync(); }, 15000);
+    return () => clearInterval(poll);
+  }, [sync]);
+  useEffect(() => {
+    if (remaining == null) return;
+    const tick = setInterval(() => {
+      setRemaining(v => (v == null ? v : Math.max(0, v - 1)));
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [remaining == null]);
+
+  async function start(minutes: number) {
+    setMenuOpen(false);
+    await lensRun({ domain: 'whiteboard', action: 'timer-start', input: { boardId, minutes } });
+    await sync();
+  }
+  async function stop() {
+    await lensRun({ domain: 'whiteboard', action: 'timer-stop', input: { boardId } });
+    setRemaining(null);
+  }
+
+  if (remaining != null) {
+    const mm = Math.floor(remaining / 60);
+    const ss = String(remaining % 60).padStart(2, '0');
+    const low = remaining <= 30;
+    return (
+      <button onClick={stop} title={`${label} — click to stop`}
+        className={cn('px-2 py-1 text-[11px] rounded inline-flex items-center gap-1 font-mono',
+          low ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40' : 'bg-pink-500/15 text-pink-200 border border-pink-500/30')}>
+        <Timer className="w-3 h-3" />{mm}:{ss}<Square className="w-2.5 h-2.5 ml-0.5" />
+      </button>
+    );
+  }
+  return (
+    <div className="relative">
+      <button onClick={() => setMenuOpen(v => !v)} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1" title="Start a meeting timer">
+        <Timer className="w-3 h-3" />Timer
+      </button>
+      {menuOpen && (
+        <div className="absolute right-0 top-full mt-1 z-20 bg-[#0a0c10] border border-white/10 rounded shadow-lg p-1">
+          {[1, 3, 5, 10, 15, 30].map(m => (
+            <button key={m} onClick={() => start(m)} className="block w-full text-left px-3 py-1 text-[11px] text-gray-300 hover:bg-pink-500/15 hover:text-pink-200 rounded whitespace-nowrap">
+              {m} min
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
