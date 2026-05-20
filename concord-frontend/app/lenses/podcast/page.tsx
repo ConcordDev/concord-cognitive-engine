@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { PodcastPlayerSection } from '@/components/podcast/PodcastPlayerSection';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
 import { PodcastActionPanel } from '@/components/podcast/PodcastActionPanel';
@@ -382,6 +383,9 @@ export default function PodcastLensPage() {
       <FirstRunTour lensId="podcast" />
       <ManifestActionBar />
       <DepthBadge lensId="podcast" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <PodcastPlayerSection />
+      </div>
     <div data-lens-theme="podcast" className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="border-b border-white/10 bg-lattice-surface/50 backdrop-blur-xl sticky top-0 z-30">
