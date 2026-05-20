@@ -154,4 +154,132 @@ export default function registerOceanActions(registerLensAction) {
       return { ok: false, error: `noaa mdapi unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Ocean spot log (surf / dive / fishing spot tracker, per-user) ───
+
+  function getOceanState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.oceanLens) STATE.oceanLens = {};
+    const s = STATE.oceanLens;
+    if (!(s.spots instanceof Map)) s.spots = new Map();   // userId -> Array<spot>
+    if (!(s.sessions instanceof Map)) s.sessions = new Map(); // userId -> Array<session>
+    return s;
+  }
+  function saveOcean() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const ocId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const ocNow = () => new Date().toISOString();
+  const ocActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const ocClean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+  const ocNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const ocSpots = (s, userId) => { if (!s.spots.has(userId)) s.spots.set(userId, []); return s.spots.get(userId); };
+  const ocSessions = (s, userId) => { if (!s.sessions.has(userId)) s.sessions.set(userId, []); return s.sessions.get(userId); };
+  const SPOT_KINDS = ["surf", "dive", "fishing", "swim", "other"];
+
+  registerLensAction("ocean", "spot-add", (ctx, _a, params = {}) => {
+    const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = ocClean(params.name, 160);
+    if (!name) return { ok: false, error: "spot name required" };
+    const spot = {
+      id: ocId("spot"),
+      name,
+      kind: SPOT_KINDS.includes(params.kind) ? params.kind : "surf",
+      lat: ocNum(params.lat),
+      lon: ocNum(params.lon),
+      stationId: ocClean(params.stationId, 40) || null,
+      notes: ocClean(params.notes, 1000) || "",
+      createdAt: ocNow(),
+    };
+    ocSpots(s, ocActor(ctx)).push(spot);
+    saveOcean();
+    return { ok: true, result: { spot } };
+  });
+
+  registerLensAction("ocean", "spot-list", (ctx, _a, params = {}) => {
+    const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ocActor(ctx);
+    let spots = [...ocSpots(s, userId)];
+    if (params.kind) spots = spots.filter((x) => x.kind === params.kind);
+    const sessions = ocSessions(s, userId);
+    const out = spots.map((sp) => ({
+      ...sp, sessionCount: sessions.filter((se) => se.spotId === sp.id).length,
+    }));
+    return { ok: true, result: { spots: out, count: out.length } };
+  });
+
+  registerLensAction("ocean", "spot-delete", (ctx, _a, params = {}) => {
+    const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ocActor(ctx);
+    const arr = ocSpots(s, userId);
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "spot not found" };
+    arr.splice(i, 1);
+    s.sessions.set(userId, ocSessions(s, userId).filter((se) => se.spotId !== params.id));
+    saveOcean();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // session-log — record a surf/dive/fishing session at a spot.
+  registerLensAction("ocean", "session-log", (ctx, _a, params = {}) => {
+    const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ocActor(ctx);
+    const spot = ocSpots(s, userId).find((x) => x.id === params.spotId);
+    if (!spot) return { ok: false, error: "spot not found" };
+    const session = {
+      id: ocId("ses"),
+      spotId: spot.id,
+      spotName: spot.name,
+      date: ocClean(params.date, 30) || ocNow().slice(0, 10),
+      waveHeightM: ocNum(params.waveHeightM),
+      waterTempC: ocNum(params.waterTempC),
+      conditions: ocClean(params.conditions, 200) || null,
+      rating: params.rating != null ? Math.max(1, Math.min(5, Math.round(Number(params.rating)))) : null,
+      notes: ocClean(params.notes, 1000) || "",
+      loggedAt: ocNow(),
+    };
+    ocSessions(s, userId).push(session);
+    saveOcean();
+    return { ok: true, result: { session } };
+  });
+
+  registerLensAction("ocean", "session-list", (ctx, _a, params = {}) => {
+    const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let sessions = [...ocSessions(s, ocActor(ctx))];
+    if (params.spotId) sessions = sessions.filter((x) => x.spotId === params.spotId);
+    sessions.sort((a, b) => b.date.localeCompare(a.date));
+    return { ok: true, result: { sessions, count: sessions.length } };
+  });
+
+  registerLensAction("ocean", "session-delete", (ctx, _a, params = {}) => {
+    const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ocSessions(s, ocActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "session not found" };
+    arr.splice(i, 1);
+    saveOcean();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("ocean", "ocean-dashboard", (ctx, _a, _params = {}) => {
+    const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ocActor(ctx);
+    const spots = ocSpots(s, userId);
+    const sessions = ocSessions(s, userId);
+    const rated = sessions.filter((x) => x.rating != null);
+    const byKind = {};
+    for (const sp of spots) byKind[sp.kind] = (byKind[sp.kind] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        spots: spots.length,
+        sessions: sessions.length,
+        byKind,
+        avgRating: rated.length > 0 ? Math.round((rated.reduce((n, x) => n + x.rating, 0) / rated.length) * 10) / 10 : null,
+      },
+    };
+  });
 }
