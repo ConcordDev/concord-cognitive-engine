@@ -1759,6 +1759,37 @@ export default function registerCryptoActions(registerLensAction) {
       },
     };
   });
+
+  registerLensAction("crypto", "feed", async (ctx, _a, _params = {}) => {
+    const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
+    if (!STATE.cryptoLens) STATE.cryptoLens = {};
+    if (!(STATE.cryptoLens.feedSeen instanceof Set)) STATE.cryptoLens.feedSeen = new Set();
+    const seen = STATE.cryptoLens.feedSeen;
+    try {
+      const r = await fetch("https://api.coingecko.com/api/v3/search/trending");
+      if (!r.ok) return { ok: false, error: `coingecko ${r.status}` };
+      const data = await r.json();
+      const coins = (data.coins || []).slice(0, 15);
+      const day = new Date().toISOString().slice(0, 10);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const c of coins) {
+        const it = c.item || {};
+        const key = `${it.id}-${day}`;
+        if (!it.id || seen.has(key)) { skipped++; continue; }
+        const title = `Trending: ${it.name} (${String(it.symbol || "").toUpperCase()})`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${it.name} (${String(it.symbol || "").toUpperCase()})\nMarket-cap rank: ${it.market_cap_rank || "?"}\nTrending on CoinGecko, ${day}.`,
+          tags: ["crypto", "feed", "trending", "coingecko"],
+          source: "coingecko-trending-feed",
+          meta: { coinId: it.id, name: it.name, symbol: it.symbol, rank: it.market_cap_rank },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(key); }
+      }
+      if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } }
+      return { ok: true, result: { ingested, skipped, source: "coingecko-trending", dtuIds } };
+    } catch (e) { return { ok: false, error: `coingecko unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────

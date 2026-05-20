@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -3777,6 +3778,7 @@ function CarbonWorkbenchSection() {
   ] as const;
   return (
     <section className="mt-6 space-y-3">
+      <section className="mt-6"><LensFeedButton domain="environment" /></section>
       <h2 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider">Watershed/Persefoni-parity carbon accounting</h2>
       <nav className="flex items-center gap-1 border-b border-emerald-900/30 pb-2 overflow-x-auto">
         {TABS.map(t => (

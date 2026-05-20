@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -736,6 +737,7 @@ export default function AutomotiveLensPage() {
       </section>
 
       <section className="mt-6">
+      <section className="mt-6"><LensFeedButton domain="automotive" /></section>
         <VehicleHistory />
       </section>
     </LensPageShell>

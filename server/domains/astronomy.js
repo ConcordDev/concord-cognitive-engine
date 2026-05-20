@@ -556,4 +556,33 @@ export default function registerAstronomyActions(registerLensAction) {
       },
     };
   });
+
+  registerLensAction("astronomy", "feed", async (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
+    if (!STATE.astronomyLens) STATE.astronomyLens = {};
+    if (!(STATE.astronomyLens.feedSeen instanceof Set)) STATE.astronomyLens.feedSeen = new Set();
+    const seen = STATE.astronomyLens.feedSeen;
+    const limit = Math.max(1, Math.min(15, Math.round(Number(params.limit) || 8)));
+    try {
+      const key = process.env.NASA_API_KEY || "DEMO_KEY";
+      const r = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${key}&count=${limit}`);
+      if (!r.ok) return { ok: false, error: `nasa ${r.status}` };
+      const items = await r.json();
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const a of (Array.isArray(items) ? items : [])) {
+        const id = `${a.date}|${a.title || ""}`;
+        if (seen.has(id)) { skipped++; continue; }
+        const res = await ctx.macro.run("dtu", "create", {
+          title: `APOD: ${a.title}`,
+          creti: `${a.title} (${a.date})\n\n${(a.explanation || "").slice(0, 1000)}\n\n${a.url || ""}`,
+          tags: ["astronomy", "feed", "apod", "nasa"],
+          source: "nasa-apod-feed",
+          meta: { date: a.date, mediaType: a.media_type, url: a.url },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }
+      }
+      if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } }
+      return { ok: true, result: { ingested, skipped, source: "nasa-apod", dtuIds } };
+    } catch (e) { return { ok: false, error: `nasa unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
 }

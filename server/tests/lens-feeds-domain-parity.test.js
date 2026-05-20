@@ -16,6 +16,11 @@ import registerMusic from "../domains/music.js";
 import registerDaily from "../domains/daily.js";
 import registerOcean from "../domains/ocean.js";
 import registerGallery from "../domains/gallery.js";
+import registerAstronomy from "../domains/astronomy.js";
+import registerAviation from "../domains/aviation.js";
+import registerEnvironment from "../domains/environment.js";
+import registerAutomotive from "../domains/automotive.js";
+import registerCrypto from "../domains/crypto.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -25,6 +30,8 @@ before(() => {
   registerAnswers(register); registerLaw(register); registerPoetry(register);
   registerPaper(register); registerCalendar(register); registerMusic(register);
   registerDaily(register); registerOcean(register); registerGallery(register);
+  registerAstronomy(register); registerAviation(register); registerEnvironment(register);
+  registerAutomotive(register); registerCrypto(register);
 });
 
 let createdDtus;
@@ -218,5 +225,67 @@ describe("gallery.feed — Art Institute of Chicago → DTUs", () => {
     assert.equal(r.result.ingested, 1);
     assert.match(createdDtus[0].title, /La Grande Jatte/);
     assert.ok(createdDtus[0].meta.image.includes("img1"));
+  });
+});
+
+describe("astronomy.feed — NASA APOD → DTUs", () => {
+  it("ingests astronomy pictures of the day", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ([
+      { date: "2026-05-20", title: "The Andromeda Galaxy", explanation: "A spiral galaxy.", url: "https://a/1", media_type: "image" },
+    ]) });
+    const r = await callFeed("astronomy", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Andromeda/);
+  });
+});
+
+describe("aviation.feed — OpenSky → DTUs", () => {
+  it("ingests live aircraft states", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      time: 1700000000,
+      states: [["abc123", "UAL456 ", "United States", null, null, -122.4, 37.6, 10000, false, 250]],
+    }) });
+    const r = await callFeed("aviation", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /UAL456/);
+  });
+});
+
+describe("environment.feed — NWS severe alerts → DTUs", () => {
+  it("ingests severe hazard alerts", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      features: [
+        { id: "alert1", properties: { id: "alert1", event: "Tornado Warning", severity: "Extreme", areaDesc: "Central County", effective: "2026-05-20", expires: "2026-05-20", headline: "Take shelter now" } },
+      ],
+    }) });
+    const r = await callFeed("environment", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Tornado Warning/);
+  });
+});
+
+describe("automotive.feed — NHTSA recalls → DTUs", () => {
+  it("ingests vehicle recalls", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      results: [
+        { NHTSACampaignNumber: "26V001000", Component: "BRAKES", Summary: "Brake line may corrode.", Remedy: "Dealers will inspect." },
+      ],
+    }) });
+    const r = await callFeed("automotive", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /26V001000/);
+  });
+});
+
+describe("crypto.feed — CoinGecko trending → DTUs", () => {
+  it("ingests trending coins", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      coins: [
+        { item: { id: "bitcoin", name: "Bitcoin", symbol: "btc", market_cap_rank: 1 } },
+      ],
+    }) });
+    const r = await callFeed("crypto", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Trending: Bitcoin/);
   });
 });

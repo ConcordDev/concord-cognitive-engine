@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -441,6 +442,7 @@ export default function AstronomyLensPage() {
 
       <PipingProvider>
         <section className="mt-6">
+      <section className="mt-6"><LensFeedButton domain="astronomy" /></section>
           <AstronomyActionPanel />
         </section>
       </PipingProvider>

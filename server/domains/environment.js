@@ -693,4 +693,35 @@ export default function registerEnvironmentActions(registerLensAction) {
       },
     };
   });
+
+  registerLensAction("environment", "feed", async (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
+    if (!STATE.environmentLens) STATE.environmentLens = {};
+    if (!(STATE.environmentLens.feedSeen instanceof Set)) STATE.environmentLens.feedSeen = new Set();
+    const seen = STATE.environmentLens.feedSeen;
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    try {
+      const r = await fetch("https://api.weather.gov/alerts/active?severity=Severe,Extreme&status=actual&message_type=alert", { headers: { "User-Agent": "Concord-OS/1.0 (https://concord-os.org)", Accept: "application/geo+json" } });
+      if (!r.ok) return { ok: false, error: `nws ${r.status}` };
+      const data = await r.json();
+      const feats = (data.features || []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const f of feats) {
+        const p = f.properties || {};
+        const id = p.id || f.id;
+        if (seen.has(id)) { skipped++; continue; }
+        const title = `${p.event || "Hazard alert"} - ${String(p.areaDesc || "").slice(0, 80)}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${p.event || "Hazard"}\nSeverity: ${p.severity || "?"}\nArea: ${p.areaDesc || "?"}\nEffective: ${p.effective || "?"} - Expires: ${p.expires || "?"}\n\n${String(p.headline || p.description || "").slice(0, 600)}`,
+          tags: ["environment", "feed", "hazard-alert", "nws"],
+          source: "nws-alerts-feed",
+          meta: { alertId: id, event: p.event, severity: p.severity, areaDesc: p.areaDesc },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }
+      }
+      if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } }
+      return { ok: true, result: { ingested, skipped, source: "nws-severe-alerts", dtuIds } };
+    } catch (e) { return { ok: false, error: `nws unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
 };

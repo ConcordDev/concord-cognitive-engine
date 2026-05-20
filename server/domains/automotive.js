@@ -898,4 +898,36 @@ export default function registerAutomotiveActions(registerLensAction) {
       },
     };
   });
+
+  registerLensAction("automotive", "feed", async (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
+    if (!STATE.automotiveLens) STATE.automotiveLens = {};
+    if (!(STATE.automotiveLens.feedSeen instanceof Set)) STATE.automotiveLens.feedSeen = new Set();
+    const seen = STATE.automotiveLens.feedSeen;
+    const make = String(params.make || "honda").toLowerCase().replace(/[^a-z0-9 ]/g, "").trim() || "honda";
+    const model = String(params.model || "accord").toLowerCase().replace(/[^a-z0-9 ]/g, "").trim() || "accord";
+    const year = String(Math.max(1990, Math.min(2027, Math.round(Number(params.year) || 2024))));
+    try {
+      const r = await fetch(`https://api.nhtsa.gov/recalls/recallsByVehicle?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&modelYear=${year}`);
+      if (!r.ok) return { ok: false, error: `nhtsa ${r.status}` };
+      const data = await r.json();
+      const results = (data.results || []).slice(0, 15);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const rc of results) {
+        const id = rc.NHTSACampaignNumber;
+        if (!id || seen.has(id)) { skipped++; continue; }
+        const title = `Recall ${id}: ${String(rc.Component || "").slice(0, 80)}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${rc.Component || "Recall"} - ${make} ${model} ${year}\nCampaign: ${id}\n\nSummary: ${String(rc.Summary || "").slice(0, 600)}\n\nRemedy: ${String(rc.Remedy || "").slice(0, 400)}`,
+          tags: ["automotive", "feed", "recall", "nhtsa"],
+          source: "nhtsa-recalls-feed",
+          meta: { campaign: id, make, model, year, component: rc.Component },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }
+      }
+      if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } }
+      return { ok: true, result: { ingested, skipped, source: `nhtsa-recalls (${make} ${model} ${year})`, dtuIds } };
+    } catch (e) { return { ok: false, error: `nhtsa unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
 }

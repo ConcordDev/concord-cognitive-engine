@@ -1193,4 +1193,35 @@ export default function registerAviationActions(registerLensAction) {
       },
     };
   });
+
+  registerLensAction("aviation", "feed", async (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
+    if (!STATE.aviationLens) STATE.aviationLens = {};
+    if (!(STATE.aviationLens.feedSeen instanceof Set)) STATE.aviationLens.feedSeen = new Set();
+    const seen = STATE.aviationLens.feedSeen;
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    try {
+      const r = await fetch("https://opensky-network.org/api/states/all");
+      if (!r.ok) return { ok: false, error: `opensky ${r.status}` };
+      const data = await r.json();
+      const states = (data.states || []).filter((st) => st[1] && String(st[1]).trim()).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const st of states) {
+        const callsign = String(st[1] || "").trim();
+        const key = `${st[0]}-${data.time}`;
+        if (seen.has(key)) { skipped++; continue; }
+        const title = `Flight ${callsign} (${st[2] || "?"})`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\nICAO24: ${st[0]}\nAltitude: ${st[7] != null ? Math.round(st[7]) + " m" : "?"}\nVelocity: ${st[9] != null ? Math.round(st[9]) + " m/s" : "?"}\nPosition: ${st[6]}, ${st[5]}`,
+          tags: ["aviation", "feed", "flight", "opensky"],
+          source: "opensky-feed",
+          meta: { icao24: st[0], callsign, originCountry: st[2], lat: st[6], lon: st[5], altitude: st[7] },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(key); }
+      }
+      if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } }
+      return { ok: true, result: { ingested, skipped, source: "opensky-network", dtuIds } };
+    } catch (e) { return { ok: false, error: `opensky unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
 };
