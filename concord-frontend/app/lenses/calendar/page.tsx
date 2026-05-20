@@ -13,6 +13,7 @@ import { GCalSection } from '@/components/calendar/GCalSection';
 import { TimezoneTools } from '@/components/calendar/TimezoneTools';
 import { ScheduleAnalyzer } from '@/components/calendar/ScheduleAnalyzer';
 import { AppointmentSchedules } from '@/components/calendar/AppointmentSchedules';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { CalendarActionPanel } from '@/components/calendar/CalendarActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -2087,6 +2088,7 @@ export default function CalendarLensPage() {
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LensFeedButton domain="calendar" />
         <AppointmentSchedules />
       </section>
 

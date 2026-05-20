@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
 import { PaperLibrary } from '@/components/paper/PaperLibrary';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
 import { CrossRefPanel } from '@/components/research/CrossRefPanel';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
@@ -1132,6 +1133,7 @@ export default function PaperLensPage() {
       <ArxivSearch />
     </section>
     <section className="mt-4 mx-4">
+      <LensFeedButton domain="paper" />
       <PaperLibrary />
     </section>
     {/* Phase 4 — REAL Open Library book search. */}

@@ -252,4 +252,38 @@ export default function registerDailyActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest inspirational quotes (ZenQuotes) as visible DTUs.
+  registerLensAction("daily", "feed", async (ctx, _a, params = {}) => {
+    const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(15, Math.round(muNumDy(params.limit, 8))));
+    try {
+      const r = await fetch("https://zenquotes.io/api/quotes");
+      if (!r.ok) return { ok: false, error: `zenquotes ${r.status}` };
+      const quotes = await r.json();
+      if (!Array.isArray(quotes)) return { ok: false, error: "zenquotes returned no data" };
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const q of quotes.slice(0, limit)) {
+        const key = `${q.a}::${(q.q || "").slice(0, 32)}`;
+        if (s.feedSeen.has(key)) { skipped++; continue; }
+        const title = `"${(q.q || "").slice(0, 90)}" — ${q.a || "Unknown"}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `"${q.q || ""}"\n\n— ${q.a || "Unknown"}`,
+          tags: ["daily", "feed", "inspiration", "quote"],
+          source: "zenquotes-feed",
+          meta: { author: q.a, quote: q.q },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(key); }
+      }
+      saveDaily();
+      return { ok: true, result: { ingested, skipped, source: "zenquotes", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `zenquotes unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  function muNumDy(v, d) { const n = Number(v); return Number.isFinite(n) ? n : d; }
 }

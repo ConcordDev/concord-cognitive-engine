@@ -282,4 +282,38 @@ export default function registerOceanActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest active NWS marine weather alerts as visible DTUs.
+  registerLensAction("ocean", "feed", async (ctx, _a, params = {}) => {
+    const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    try {
+      const r = await fetch("https://api.weather.gov/alerts/active?region_type=marine&status=actual&message_type=alert", {
+        headers: { "User-Agent": "Concord-OS/1.0 (https://concord-os.org)", Accept: "application/geo+json" },
+      });
+      if (!r.ok) return { ok: false, error: `nws ${r.status}` };
+      const data = await r.json();
+      const feats = (data.features || []).slice(0, limit);
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const f of feats) {
+        const p = f.properties || {};
+        if (s.feedSeen.has(p.id || f.id)) { skipped++; continue; }
+        const title = `${p.event || "Marine alert"} — ${(p.areaDesc || "").slice(0, 80)}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${p.event || "Marine alert"}\nSeverity: ${p.severity || "?"}\nArea: ${p.areaDesc || "?"}\nEffective: ${p.effective || "?"}\nExpires: ${p.expires || "?"}\n\n${(p.headline || p.description || "").slice(0, 600)}`,
+          tags: ["ocean", "feed", "marine-alert", "nws"],
+          source: "nws-marine-alerts-feed",
+          meta: { alertId: p.id || f.id, event: p.event, severity: p.severity, areaDesc: p.areaDesc, expires: p.expires },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(p.id || f.id); }
+      }
+      saveOcean();
+      return { ok: true, result: { ingested, skipped, source: "nws-marine-alerts", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `nws unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

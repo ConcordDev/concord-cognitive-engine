@@ -10,6 +10,11 @@ import registerHistory from "../domains/history.js";
 import registerAnswers from "../domains/answers.js";
 import registerLaw from "../domains/law.js";
 import registerPoetry from "../domains/poetry.js";
+import registerPaper from "../domains/paper.js";
+import registerCalendar from "../domains/calendar.js";
+import registerMusic from "../domains/music.js";
+import registerDaily from "../domains/daily.js";
+import registerOcean from "../domains/ocean.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -17,6 +22,8 @@ function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
 before(() => {
   registerGeology(register); registerSpace(register); registerHistory(register);
   registerAnswers(register); registerLaw(register); registerPoetry(register);
+  registerPaper(register); registerCalendar(register); registerMusic(register);
+  registerDaily(register); registerOcean(register);
 });
 
 let createdDtus;
@@ -135,5 +142,66 @@ describe("poetry.feed — PoetryDB → DTUs", () => {
     assert.equal(r.result.ingested, 1);
     assert.match(createdDtus[0].title, /Road Not Taken/);
     assert.ok(createdDtus[0].tags.includes("public-domain"));
+  });
+});
+
+describe("paper.feed — Crossref → DTUs", () => {
+  it("ingests recent scholarly works", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      message: { items: [
+        { DOI: "10.1/abc", title: ["A New Result"], author: [{ given: "A", family: "Smith" }], "container-title": ["Nature"] },
+      ] },
+    }) });
+    const r = await callFeed("paper", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /A New Result/);
+  });
+});
+
+describe("calendar.feed — Nager.Date holidays → DTUs", () => {
+  it("ingests upcoming public holidays", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ([
+      { date: "2026-07-04", name: "Independence Day", localName: "Independence Day", countryCode: "US", global: true },
+    ]) });
+    const r = await callFeed("calendar", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Independence Day/);
+  });
+});
+
+describe("music.feed — Apple RSS top albums → DTUs", () => {
+  it("ingests top albums", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      feed: { results: [
+        { id: "alb1", name: "Greatest Hits", artistName: "The Band", releaseDate: "2026-01-01", genres: [{ name: "Rock" }], url: "https://a/1" },
+      ] },
+    }) });
+    const r = await callFeed("music", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Greatest Hits/);
+  });
+});
+
+describe("daily.feed — ZenQuotes → DTUs", () => {
+  it("ingests inspirational quotes", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ([
+      { q: "The only way out is through.", a: "Robert Frost", h: "" },
+    ]) });
+    const r = await callFeed("daily", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /only way out/);
+  });
+});
+
+describe("ocean.feed — NWS marine alerts → DTUs", () => {
+  it("ingests active marine alerts", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      features: [
+        { id: "nws1", properties: { id: "nws1", event: "Small Craft Advisory", severity: "Moderate", areaDesc: "Coastal waters", effective: "2026-05-20", expires: "2026-05-21", headline: "SCA in effect" } },
+      ],
+    }) });
+    const r = await callFeed("ocean", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Small Craft Advisory/);
   });
 });

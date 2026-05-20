@@ -854,4 +854,36 @@ export default function registerMusicActions(registerLensAction) {
     saveMusicState();
     return { ok: true, result: { settings: cur } };
   });
+
+  // feed — ingest the current top albums (Apple Marketing RSS) as DTUs.
+  registerLensAction("music", "feed", async (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(25, Math.round(muNum(params.limit, 15))));
+    const country = muClean(params.country, 2).toLowerCase() || "us";
+    try {
+      const r = await fetch(`https://rss.applemarketing.com/api/v2/${country}/music/most-played/${limit}/albums.json`);
+      if (!r.ok) return { ok: false, error: `apple rss ${r.status}` };
+      const data = await r.json();
+      const albums = data.feed?.results || [];
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const a of albums) {
+        if (s.feedSeen.has(a.id)) { skipped++; continue; }
+        const title = `${a.name} — ${a.artistName}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${a.name}\nby ${a.artistName}\nReleased: ${a.releaseDate || "?"}\nGenre: ${(a.genres || []).map((g) => g.name).join(", ")}\n${a.url || ""}`,
+          tags: ["music", "feed", "top-albums"],
+          source: "apple-music-rss-feed",
+          meta: { albumId: a.id, name: a.name, artist: a.artistName, releaseDate: a.releaseDate, url: a.url },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(a.id); }
+      }
+      saveMusicState();
+      return { ok: true, result: { ingested, skipped, source: "apple-music-top-albums", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `apple rss unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

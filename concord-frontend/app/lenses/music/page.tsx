@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MusicStreamingSection } from '@/components/music/MusicStreamingSection';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -629,6 +630,7 @@ export default function MusicLensPage() {
       <FirstRunTour lensId="music" />
       <DepthBadge lensId="music" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
+        <LensFeedButton domain="music" />
         <MusicStreamingSection />
       </div>
     <div className="lens-music flex flex-col h-full overflow-hidden" data-lens-theme="music">

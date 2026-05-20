@@ -910,6 +910,39 @@ export default function registerCalendarActions(registerLensAction) {
     saveCal();
     return { ok: true, result: { cancelled: params.bookingId } };
   });
+
+  // feed — ingest upcoming public holidays (Nager.Date) as visible DTUs.
+  registerLensAction("calendar", "feed", async (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const country = String(params.country || "US").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2) || "US";
+    try {
+      const r = await fetch(`https://date.nager.at/api/v3/NextPublicHolidays/${country}`);
+      if (!r.ok) return { ok: false, error: `nager.date ${r.status}` };
+      const holidays = await r.json();
+      if (!Array.isArray(holidays)) return { ok: false, error: "nager.date returned no data" };
+      const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const h of holidays.slice(0, limit)) {
+        const key = `${country}-${h.date}-${h.name}`;
+        if (s.feedSeen.has(key)) { skipped++; continue; }
+        const title = `${h.name} — ${h.date}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${h.name} (${h.localName || h.name})\nDate: ${h.date}\nCountry: ${country}${h.global ? " · nationwide" : ""}`,
+          tags: ["calendar", "feed", "public-holiday"],
+          source: "nager-date-feed",
+          meta: { date: h.date, name: h.name, country, global: h.global },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(key); }
+      }
+      saveCal();
+      return { ok: true, result: { ingested, skipped, source: "nager.date-public-holidays", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `nager.date unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
 
 // ── iCal helpers (RFC 5545 escaping + date format) ───────────────

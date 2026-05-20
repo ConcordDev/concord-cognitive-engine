@@ -323,6 +323,41 @@ export default function registerPaperActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest the latest scholarly works (Crossref) as visible DTUs.
+  registerLensAction("paper", "feed", async (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    try {
+      const r = await fetch(`https://api.crossref.org/works?sort=created&order=desc&rows=${limit}&select=DOI,title,author,container-title,created`, {
+        headers: { "User-Agent": "Concord-OS/1.0 (https://concord-os.org)" },
+      });
+      if (!r.ok) return { ok: false, error: `crossref ${r.status}` };
+      const data = await r.json();
+      const items = data.message?.items || [];
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const it of items) {
+        if (!it.DOI || s.feedSeen.has(it.DOI)) { skipped++; continue; }
+        const title = ppClean(Array.isArray(it.title) ? it.title[0] : it.title, 300) || "Untitled work";
+        const authors = (it.author || []).map((a) => `${a.given || ""} ${a.family || ""}`.trim()).filter(Boolean);
+        const venue = Array.isArray(it["container-title"]) ? it["container-title"][0] : null;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nAuthors: ${authors.join(", ") || "—"}\nVenue: ${venue || "—"}\nDOI: ${it.DOI}\nhttps://doi.org/${it.DOI}`,
+          tags: ["paper", "feed", "crossref"],
+          source: "crossref-feed",
+          meta: { doi: it.DOI, authors, venue },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(it.DOI); }
+      }
+      savePaper();
+      return { ok: true, result: { ingested, skipped, source: "crossref", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `crossref unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
 
 // Note: prior versions held a SAMPLE_PAPERS array of 8 hand-curated ML
