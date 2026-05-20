@@ -14,7 +14,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Loader2, BookText, RefreshCw, AlertTriangle, ExternalLink, Search, FileText } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface ArxivPaper {
@@ -30,7 +30,7 @@ interface ArxivPaper {
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown> = {}): Promise<T | null> {
   try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
+    const r = await lensRun({ domain, name, input });
     return r?.data as T;
   } catch {
     return null;

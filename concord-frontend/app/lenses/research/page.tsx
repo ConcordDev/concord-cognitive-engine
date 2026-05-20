@@ -8,6 +8,7 @@ import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ResearchLibrarySection } from '@/components/research/ResearchLibrarySection';
 import { ResearchArxiv } from '@/components/research/ResearchArxiv';
 import { CrossRefPanel } from '@/components/research/CrossRefPanel';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -326,6 +327,9 @@ export default function ResearchLensPage() {
       <FirstRunTour lensId="research" />
       <ManifestActionBar />
       <DepthBadge lensId="research" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <ResearchLibrarySection />
+      </div>
     <div data-lens-theme="research" className="p-6 space-y-6">
       {/* Phase 5 — open research-arc sessions for this lens. */}
       <SessionRail lensId="research" hideWhenEmpty />
