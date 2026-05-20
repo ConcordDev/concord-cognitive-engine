@@ -188,3 +188,106 @@ describe("art.art-prompt & dashboard", () => {
     assert.ok(d.result.promptOfTheDay.text);
   });
 });
+
+describe("art — generalised elements (fill, shapes, text)", () => {
+  it("commits a fill, a rect and a text element", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { kind: "fill", color: "#ff0000", opacity: 1 } });
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { kind: "rect", color: "#00ff00", x: 10, y: 10, w: 100, h: 50, filled: true } });
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { kind: "text", color: "#0000ff", x: 20, y: 30, content: "Hello", fontSize: 40 } });
+    const layer = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0];
+    assert.equal(layer.strokes.length, 3);
+    assert.equal(layer.strokes[0].kind, "fill");
+    assert.equal(layer.strokes[1].kind, "rect");
+    assert.equal(layer.strokes[2].content, "Hello");
+  });
+
+  it("rejects a text element with no content", () => {
+    const art = newArtwork();
+    const r = call("stroke-commit", ctxA, { artworkId: art.id, layerId: art.layers[0].id, stroke: { kind: "text", x: 1, y: 1 } });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("art — layer operations", () => {
+  it("duplicates and merges layers", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: STROKE });
+    const dup = call("layer-duplicate", ctxA, { artworkId: art.id, layerId: lid });
+    assert.equal(dup.result.layer.strokeCount, 1);
+    let aw = call("artwork-get", ctxA, { id: art.id }).result.artwork;
+    assert.equal(aw.layers.length, 2);
+    call("layer-merge-down", ctxA, { artworkId: art.id, layerId: aw.layers[1].id });
+    aw = call("artwork-get", ctxA, { id: art.id }).result.artwork;
+    assert.equal(aw.layers.length, 1);
+    assert.equal(aw.layers[0].strokes.length, 2);
+  });
+
+  it("locks a layer and blocks edits", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("layer-update", ctxA, { artworkId: art.id, layerId: lid, locked: true });
+    assert.equal(call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: STROKE }).ok, false);
+  });
+
+  it("transforms, flips and rotates a layer", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { tool: "ink", color: "#111111", size: 4, opacity: 1, points: [[100, 100], [200, 200]] } });
+    call("layer-transform", ctxA, { artworkId: art.id, layerId: lid, dx: 50, dy: 0, scale: 1 });
+    let pts = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes[0].points;
+    assert.equal(pts[0][0], 150);
+    call("layer-flip", ctxA, { artworkId: art.id, layerId: lid, axis: "horizontal" });
+    call("layer-rotate90", ctxA, { artworkId: art.id, layerId: lid, direction: "cw" });
+    pts = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes[0].points;
+    assert.equal(pts.length, 2);
+  });
+
+  it("adjusts layer colours by hue/saturation/lightness", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { ...STROKE, color: "#ff0000" } });
+    call("layer-adjust-color", ctxA, { artworkId: art.id, layerId: lid, hueShift: 180, satScale: 1, lightScale: 1 });
+    const color = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes[0].color;
+    assert.notEqual(color, "#ff0000");
+  });
+});
+
+describe("art — selection delete, redo, canvas", () => {
+  it("deletes selected elements by id", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    const a = call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: STROKE }).result.strokeId;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: STROKE });
+    call("element-delete", ctxA, { artworkId: art.id, layerId: lid, ids: [a] });
+    assert.equal(call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes.length, 1);
+  });
+
+  it("undo then redo restores a stroke", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: STROKE });
+    call("stroke-undo", ctxA, { artworkId: art.id, layerId: lid });
+    assert.equal(call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes.length, 0);
+    call("stroke-redo", ctxA, { artworkId: art.id, layerId: lid });
+    assert.equal(call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes.length, 1);
+  });
+
+  it("resizes and flips the canvas", () => {
+    const art = newArtwork();
+    call("artwork-resize", ctxA, { id: art.id, width: 500, height: 400 });
+    assert.equal(call("artwork-get", ctxA, { id: art.id }).result.artwork.width, 500);
+    const r = call("artwork-flip", ctxA, { id: art.id, axis: "horizontal" });
+    assert.equal(r.result.axis, "horizontal");
+  });
+});
+
+describe("art — custom brush presets", () => {
+  it("saves and lists a custom brush", () => {
+    call("brush-preset-save", ctxA, { name: "My Inker", tool: "ink", size: 12, opacity: 0.8 });
+    const r = call("brush-presets", ctxA, {});
+    assert.ok(r.result.brushes.some((b) => b.name === "My Inker" && b.custom));
+  });
+});

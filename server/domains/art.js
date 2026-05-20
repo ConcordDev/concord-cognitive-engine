@@ -501,7 +501,7 @@ export default function registerArtActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.artLens) STATE.artLens = {};
     const s = STATE.artLens;
-    for (const k of ["artworks", "palettes", "refBoards"]) {
+    for (const k of ["artworks", "palettes", "refBoards", "brushPresets"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -603,24 +603,56 @@ export default function registerArtActions(registerLensAction) {
   }
 
   // ── Stroke sanitisation ─────────────────────────────────────────────
+  // An "element" generalises a stroke: polyline (default), fill, rect,
+  // ellipse or text. Polyline strokes keep the original shape so legacy
+  // data and the existing brush engine are unchanged.
   function sanitizeStroke(raw, art) {
     if (!raw || typeof raw !== "object") return null;
-    const tool = ART_TOOLS.includes(String(raw.tool)) ? String(raw.tool) : "ink";
+    const kind = ["stroke", "fill", "rect", "ellipse", "text"].includes(String(raw.kind))
+      ? String(raw.kind) : "stroke";
     const color = atHex(raw.color) || "#222222";
-    const size = atClamp(raw.size, 0.5, 400, 6);
     const opacity = atClamp(raw.opacity, 0.01, 1, 1);
+    const cx = (v) => Math.round(atClamp(v, -art.width, art.width * 2, 0));
+    const cy = (v) => Math.round(atClamp(v, -art.height, art.height * 2, 0));
+    const base = { id: atId("stk"), kind, color, opacity };
+    if (kind === "fill") {
+      return { ...base, tool: "fill" };
+    }
+    if (kind === "text") {
+      const content = atClean(raw.content, 500);
+      if (!content) return null;
+      return {
+        ...base, tool: "text", content,
+        x: cx(raw.x), y: cy(raw.y),
+        fontSize: atClamp(raw.fontSize, 6, 400, 32),
+      };
+    }
+    if (kind === "rect" || kind === "ellipse") {
+      return {
+        ...base, tool: kind, size: atClamp(raw.size, 0.5, 100, 6),
+        x: cx(raw.x), y: cy(raw.y),
+        w: Math.round(atClamp(raw.w, 0, art.width * 2, 0)),
+        h: Math.round(atClamp(raw.h, 0, art.height * 2, 0)),
+        filled: !!raw.filled,
+      };
+    }
+    const tool = ART_TOOLS.includes(String(raw.tool)) ? String(raw.tool) : "ink";
+    const size = atClamp(raw.size, 0.5, 400, 6);
     const pts = Array.isArray(raw.points) ? raw.points : [];
     const points = [];
     for (const p of pts.slice(0, ART_MAX_POINTS)) {
-      if (Array.isArray(p) && p.length >= 2) {
-        points.push([
-          Math.round(atClamp(p[0], -2, art.width + 2, 0)),
-          Math.round(atClamp(p[1], -2, art.height + 2, 0)),
-        ]);
-      }
+      if (Array.isArray(p) && p.length >= 2) points.push([cx(p[0]), cy(p[1])]);
     }
     if (!points.length) return null;
-    return { id: atId("stk"), tool, color, size, opacity, points };
+    return { ...base, tool, size, points };
+  }
+  // Apply a geometry function to every coordinate of an element.
+  function transformElement(el, fn) {
+    if (el.points) el.points = el.points.map((p) => fn(p[0], p[1]));
+    if (typeof el.x === "number" && typeof el.y === "number") {
+      const [nx, ny] = fn(el.x, el.y);
+      el.x = nx; el.y = ny;
+    }
   }
 
   // ── Artworks ────────────────────────────────────────────────────────
@@ -688,6 +720,37 @@ export default function registerArtActions(registerLensAction) {
     return { ok: true, result: { id: artwork.id, saved: true } };
   });
 
+  registerLensAction("art", "artwork-resize", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const artwork = (s.artworks.get(atAid(ctx)) || []).find((a) => a.id === params.id);
+    if (!artwork) return { ok: false, error: "artwork not found" };
+    artwork.width = Math.round(atClamp(params.width, 64, 4096, artwork.width));
+    artwork.height = Math.round(atClamp(params.height, 64, 4096, artwork.height));
+    artwork.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { id: artwork.id, width: artwork.width, height: artwork.height } };
+  });
+
+  registerLensAction("art", "artwork-flip", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const artwork = (s.artworks.get(atAid(ctx)) || []).find((a) => a.id === params.id);
+    if (!artwork) return { ok: false, error: "artwork not found" };
+    const horizontal = params.axis !== "vertical";
+    for (const layer of artwork.layers) {
+      for (const el of layer.strokes) {
+        transformElement(el, (x, y) => [
+          horizontal ? artwork.width - x : x,
+          horizontal ? y : artwork.height - y,
+        ]);
+        if (el.w != null && horizontal) el.x -= el.w;
+        if (el.h != null && !horizontal) el.y -= el.h;
+      }
+    }
+    artwork.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { id: artwork.id, axis: horizontal ? "horizontal" : "vertical" } };
+  });
+
   registerLensAction("art", "artwork-delete", (ctx, _a, params = {}) => {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const arr = s.artworks.get(atAid(ctx)) || [];
@@ -731,9 +794,141 @@ export default function registerArtActions(registerLensAction) {
     if (params.blendMode != null && ART_BLEND_MODES.includes(String(params.blendMode))) {
       layer.blendMode = String(params.blendMode);
     }
+    if (params.locked != null) layer.locked = !!params.locked;
+    if (params.clipped != null) layer.clipped = !!params.clipped;
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { layer: { ...layer, strokes: undefined, strokeCount: layer.strokes.length } } };
+  });
+
+  // ── Layer operations — duplicate, merge, transform, adjust ──────────
+  registerLensAction("art", "layer-duplicate", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    if (art.layers.length >= ART_MAX_LAYERS) return { ok: false, error: `layer limit (${ART_MAX_LAYERS}) reached` };
+    const i = art.layers.findIndex((l) => l.id === params.layerId);
+    if (i < 0) return { ok: false, error: "layer not found" };
+    const src = art.layers[i];
+    const copy = {
+      id: atId("lyr"), name: `${src.name} copy`,
+      visible: true, opacity: src.opacity, blendMode: src.blendMode,
+      locked: false, clipped: src.clipped || false, redo: [],
+      strokes: src.strokes.map((st) => ({
+        ...st, id: atId("stk"),
+        points: st.points ? st.points.map((p) => [...p]) : undefined,
+      })),
+    };
+    art.layers.splice(i + 1, 0, copy);
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layer: { ...copy, strokes: undefined, strokeCount: copy.strokes.length } } };
+  });
+
+  registerLensAction("art", "layer-merge-down", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const i = art.layers.findIndex((l) => l.id === params.layerId);
+    if (i <= 0) return { ok: false, error: "no layer below to merge into" };
+    const below = art.layers[i - 1];
+    below.strokes = below.strokes.concat(art.layers[i].strokes).slice(0, ART_MAX_STROKES_PER_LAYER);
+    art.layers.splice(i, 1);
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { mergedInto: below.id, strokeCount: below.strokes.length } };
+  });
+
+  registerLensAction("art", "layer-transform", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    const dx = atNum(params.dx);
+    const dy = atNum(params.dy);
+    const scale = atClamp(params.scale, 0.05, 20, 1);
+    const cxC = art.width / 2;
+    const cyC = art.height / 2;
+    const ids = Array.isArray(params.ids) && params.ids.length ? new Set(params.ids.map(String)) : null;
+    const fn = (x, y) => [
+      Math.round(cxC + (x - cxC) * scale + dx),
+      Math.round(cyC + (y - cyC) * scale + dy),
+    ];
+    for (const el of layer.strokes) {
+      if (ids && !ids.has(el.id)) continue;
+      transformElement(el, fn);
+      if (el.w != null) el.w = Math.round(el.w * scale);
+      if (el.h != null) el.h = Math.round(el.h * scale);
+      if (el.fontSize != null) el.fontSize = Math.max(6, Math.round(el.fontSize * scale));
+    }
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layerId: layer.id, transformed: ids ? ids.size : layer.strokes.length } };
+  });
+
+  registerLensAction("art", "layer-flip", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    const horizontal = params.axis !== "vertical";
+    for (const el of layer.strokes) {
+      transformElement(el, (x, y) => [
+        horizontal ? art.width - x : x,
+        horizontal ? y : art.height - y,
+      ]);
+      // anchor rect/text top-left after flip
+      if (el.w != null && horizontal) el.x -= el.w;
+      if (el.h != null && !horizontal) el.y -= el.h;
+    }
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layerId: layer.id, axis: horizontal ? "horizontal" : "vertical" } };
+  });
+
+  registerLensAction("art", "layer-rotate90", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    const cw = params.direction !== "ccw";
+    const cxC = art.width / 2;
+    const cyC = art.height / 2;
+    for (const el of layer.strokes) {
+      transformElement(el, (x, y) => (cw
+        ? [Math.round(cxC - (y - cyC)), Math.round(cyC + (x - cxC))]
+        : [Math.round(cxC + (y - cyC)), Math.round(cyC - (x - cxC))]));
+      if (el.w != null && el.h != null) { const t = el.w; el.w = el.h; el.h = t; }
+    }
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layerId: layer.id, direction: cw ? "cw" : "ccw" } };
+  });
+
+  registerLensAction("art", "layer-adjust-color", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    const hueShift = atNum(params.hueShift);
+    const satScale = atClamp(params.satScale, 0, 3, 1);
+    const lightScale = atClamp(params.lightScale, 0, 3, 1);
+    for (const el of layer.strokes) {
+      if (!el.color) continue;
+      const [h, sat, l] = rgbToHsl(...hexToRgb(el.color));
+      el.color = hslToHex(h + hueShift, Math.max(0, Math.min(1, sat * satScale)), Math.max(0, Math.min(1, l * lightScale)));
+    }
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layerId: layer.id, adjusted: layer.strokes.length } };
   });
 
   registerLensAction("art", "layer-delete", (ctx, _a, params = {}) => {
@@ -774,9 +969,11 @@ export default function registerArtActions(registerLensAction) {
     if (layer.strokes.length >= ART_MAX_STROKES_PER_LAYER) {
       return { ok: false, error: "layer stroke limit reached" };
     }
+    if (layer.locked) return { ok: false, error: "layer is locked" };
     const stroke = sanitizeStroke(params.stroke, art);
     if (!stroke) return { ok: false, error: "invalid stroke" };
     layer.strokes.push(stroke);
+    layer.redo = [];
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { strokeId: stroke.id, strokeCount: layer.strokes.length } };
@@ -795,6 +992,7 @@ export default function registerArtActions(registerLensAction) {
       const stroke = sanitizeStroke(raw, art);
       if (stroke) { layer.strokes.push(stroke); added += 1; }
     }
+    if (added) layer.redo = [];
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { added, strokeCount: layer.strokes.length } };
@@ -806,10 +1004,44 @@ export default function registerArtActions(registerLensAction) {
     if (!art) return { ok: false, error: "artwork not found" };
     const layer = art.layers.find((l) => l.id === params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    if (!Array.isArray(layer.redo)) layer.redo = [];
     const removed = layer.strokes.pop() || null;
+    if (removed) layer.redo.push(removed);
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { removed: removed?.id || null, strokeCount: layer.strokes.length } };
+  });
+
+  registerLensAction("art", "stroke-redo", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (!Array.isArray(layer.redo) || !layer.redo.length) {
+      return { ok: true, result: { restored: null, strokeCount: layer.strokes.length } };
+    }
+    const restored = layer.redo.pop();
+    layer.strokes.push(restored);
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { restored: restored.id, strokeCount: layer.strokes.length } };
+  });
+
+  registerLensAction("art", "element-delete", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    const ids = new Set(Array.isArray(params.ids) ? params.ids.map(String) : []);
+    if (!ids.size) return { ok: false, error: "ids required" };
+    const before = layer.strokes.length;
+    layer.strokes = layer.strokes.filter((el) => !ids.has(el.id));
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { deleted: before - layer.strokes.length } };
   });
 
   registerLensAction("art", "layer-clear", (ctx, _a, params = {}) => {
@@ -825,8 +1057,39 @@ export default function registerArtActions(registerLensAction) {
   });
 
   // ── Brush presets ───────────────────────────────────────────────────
-  registerLensAction("art", "brush-presets", (_ctx, _a, _params = {}) => {
-    return { ok: true, result: { brushes: ART_BRUSH_PRESETS, blendModes: ART_BLEND_MODES } };
+  registerLensAction("art", "brush-presets", (ctx, _a, _params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userBrushes = s.brushPresets.get(atAid(ctx)) || [];
+    return {
+      ok: true,
+      result: { brushes: [...ART_BRUSH_PRESETS, ...userBrushes], blendModes: ART_BLEND_MODES },
+    };
+  });
+
+  registerLensAction("art", "brush-preset-save", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = atClean(params.name, 60);
+    if (!name) return { ok: false, error: "brush name required" };
+    const brush = {
+      id: atId("brush"), name,
+      tool: ART_TOOLS.includes(String(params.tool)) ? String(params.tool) : "ink",
+      size: atClamp(params.size, 0.5, 400, 8),
+      opacity: atClamp(params.opacity, 0.01, 1, 1),
+      custom: true,
+    };
+    atListB(s.brushPresets, atAid(ctx)).push(brush);
+    saveArtState();
+    return { ok: true, result: { brush } };
+  });
+
+  registerLensAction("art", "brush-preset-delete", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.brushPresets.get(atAid(ctx)) || [];
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "brush preset not found" };
+    arr.splice(i, 1);
+    saveArtState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   // ── Palettes ────────────────────────────────────────────────────────
