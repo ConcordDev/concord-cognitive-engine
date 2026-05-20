@@ -21,6 +21,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { MetMuseumPanel } from '@/components/art/MetMuseumPanel';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
+import { SavedCollections } from '@/components/gallery/SavedCollections';
 import { GalleryActionPanel } from '@/components/gallery/GalleryActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { Loader2, Image as ImageIcon } from 'lucide-react';
@@ -175,6 +176,10 @@ export default function GalleryPage() {
       {/* Bespoke Cleveland Museum of Art browser with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CmaBrowser />
+      </section>
+
+      <section className="mt-6">
+        <SavedCollections />
       </section>
 
       {/* CMA + Smithsonian + AIC-shape gallery workbench: search / artwork / depts + actions */}
