@@ -72,5 +72,11 @@ Sources:
 | Free-angle (non-90°) layer rotation | per-pixel raster transform | move/scale/flip + exact 90° rotation |
 
 ## Verification log
-- (in progress) — backend macros + tests; ArtCanvas engine rewrite for shapes/text/fill/
-  selection/transform; feature walkthrough.
+- 2026-05: backend `node --test tests/art-domain-parity.test.js` → 29/29 green (47 macros).
+- 2026-05: ArtCanvas engine rewritten — renders all element kinds (brush strokes, fill,
+  rect, ellipse, text), clipping-mask compositing; tool palette (8 brushes/tools), live
+  shape preview, marquee selection, transform/adjust/canvas panels, redo, PNG export.
+  `npx tsc --noEmit` exit 0.
+- 2026-05: `npm run score-lenses` → art 7/7 PASS.
+- Every spec feature implemented. Boundary register holds only the 4 genuine hardware/GPU
+  items. Zero unchecked non-boundary lines.
