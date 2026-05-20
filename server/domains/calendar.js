@@ -258,6 +258,10 @@ export default function registerCalendarActions(registerLensAction) {
         seq: new Map(),       // userId -> { cal, evt, task }
       };
     }
+    // Append-only backfill — appointment schedules (Google Calendar 2026).
+    if (!(STATE.calendarLens.appointmentSchedules instanceof Map)) {
+      STATE.calendarLens.appointmentSchedules = new Map(); // userId -> Array<Schedule>
+    }
     return STATE.calendarLens;
   }
   function saveCal() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
@@ -787,6 +791,124 @@ export default function registerCalendarActions(registerLensAction) {
         unblockedTasks: tasks.filter(t => t.status === 'todo' && !t.blockedEventId).length,
       },
     };
+  });
+
+  // ─── Appointment schedules (Google Calendar 2026 booking pages) ───────
+  // Publish bookable windows; let others reserve time slots.
+
+  const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  registerLensAction("calendar", "appointment-schedule-create", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = String(params.title || "").trim().slice(0, 120);
+    if (!title) return { ok: false, error: "schedule title required" };
+    const durationMin = Math.max(5, Math.min(480, Math.round(Number(params.durationMin) || 30)));
+    const startHour = Math.max(0, Math.min(23, Math.round(Number(params.startHour) || 9)));
+    const endHour = Math.max(startHour + 1, Math.min(24, Math.round(Number(params.endHour) || 17)));
+    let weekdays = Array.isArray(params.weekdays)
+      ? [...new Set(params.weekdays.map(Number).filter((d) => d >= 0 && d <= 6))]
+      : [1, 2, 3, 4, 5];
+    if (weekdays.length === 0) weekdays = [1, 2, 3, 4, 5];
+    const schedule = {
+      id: uidCal("appt"),
+      title,
+      description: String(params.description || "").trim().slice(0, 400),
+      durationMin,
+      availability: { weekdays: weekdays.sort((a, b) => a - b), startHour, endHour },
+      bookings: [],
+      createdAt: isoCal(),
+    };
+    listCal(s.appointmentSchedules, aidCal(ctx)).push(schedule);
+    saveCal();
+    return { ok: true, result: { schedule } };
+  });
+
+  registerLensAction("calendar", "appointment-schedule-list", (ctx, _a, _p = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const schedules = listCal(s.appointmentSchedules, aidCal(ctx)).map((sc) => ({
+      ...sc,
+      bookingCount: sc.bookings.length,
+    }));
+    return { ok: true, result: { schedules, count: schedules.length } };
+  });
+
+  registerLensAction("calendar", "appointment-schedule-delete", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = listCal(s.appointmentSchedules, aidCal(ctx));
+    const i = arr.findIndex((sc) => sc.id === params.id);
+    if (i < 0) return { ok: false, error: "schedule not found" };
+    arr.splice(i, 1);
+    saveCal();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("calendar", "appointment-slots", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const schedule = listCal(s.appointmentSchedules, aidCal(ctx)).find((sc) => sc.id === params.scheduleId);
+    if (!schedule) return { ok: false, error: "schedule not found" };
+    const dateStr = String(params.date || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return { ok: false, error: "date required (YYYY-MM-DD)" };
+    const day = new Date(`${dateStr}T00:00:00`);
+    const weekday = day.getDay();
+    if (!schedule.availability.weekdays.includes(weekday)) {
+      return { ok: true, result: { date: dateStr, weekday: WEEKDAY_NAMES[weekday], slots: [], reason: "not an available weekday" } };
+    }
+    const booked = new Set(schedule.bookings.map((b) => b.slotStart));
+    const slots = [];
+    const now = Date.now();
+    for (let mins = schedule.availability.startHour * 60; mins + schedule.durationMin <= schedule.availability.endHour * 60; mins += schedule.durationMin) {
+      const h = String(Math.floor(mins / 60)).padStart(2, '0');
+      const m = String(mins % 60).padStart(2, '0');
+      const slotStart = `${dateStr}T${h}:${m}:00`;
+      const slotMs = new Date(slotStart).getTime();
+      slots.push({
+        slotStart,
+        label: `${h}:${m}`,
+        available: !booked.has(slotStart) && slotMs > now,
+      });
+    }
+    return { ok: true, result: { date: dateStr, weekday: WEEKDAY_NAMES[weekday], durationMin: schedule.durationMin, slots } };
+  });
+
+  registerLensAction("calendar", "appointment-book", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const schedule = listCal(s.appointmentSchedules, aidCal(ctx)).find((sc) => sc.id === params.scheduleId);
+    if (!schedule) return { ok: false, error: "schedule not found" };
+    const slotStart = String(params.slotStart || "");
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(slotStart)) return { ok: false, error: "valid slotStart required" };
+    if (schedule.bookings.some((b) => b.slotStart === slotStart)) return { ok: false, error: "slot already booked" };
+    const bookerName = String(params.bookerName || "").trim().slice(0, 120);
+    if (!bookerName) return { ok: false, error: "bookerName required" };
+    const booking = {
+      id: uidCal("bk"),
+      slotStart,
+      bookerName,
+      note: String(params.note || "").trim().slice(0, 400),
+      bookedAt: isoCal(),
+    };
+    schedule.bookings.push(booking);
+    schedule.bookings.sort((a, b) => a.slotStart.localeCompare(b.slotStart));
+    saveCal();
+    return { ok: true, result: { booking } };
+  });
+
+  registerLensAction("calendar", "appointment-bookings", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const schedule = listCal(s.appointmentSchedules, aidCal(ctx)).find((sc) => sc.id === params.scheduleId);
+    if (!schedule) return { ok: false, error: "schedule not found" };
+    const upcoming = schedule.bookings.filter((b) => new Date(b.slotStart).getTime() > Date.now());
+    return { ok: true, result: { scheduleId: schedule.id, title: schedule.title, bookings: schedule.bookings, upcomingCount: upcoming.length } };
+  });
+
+  registerLensAction("calendar", "appointment-cancel-booking", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const schedule = listCal(s.appointmentSchedules, aidCal(ctx)).find((sc) => sc.id === params.scheduleId);
+    if (!schedule) return { ok: false, error: "schedule not found" };
+    const i = schedule.bookings.findIndex((b) => b.id === params.bookingId);
+    if (i < 0) return { ok: false, error: "booking not found" };
+    schedule.bookings.splice(i, 1);
+    saveCal();
+    return { ok: true, result: { cancelled: params.bookingId } };
   });
 }
 

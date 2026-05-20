@@ -351,4 +351,36 @@ describe("calendar — 2026 parity macros", () => {
     assert.equal(r.result.calendarCount, 2);
     assert.equal(r.result.openTasks, 1);
   });
+
+  it("appointment schedule create / list / delete", () => {
+    const sc = call("appointment-schedule-create", ctxCal, { title: "Office hours", durationMin: 30, startHour: 9, endHour: 12 });
+    assert.equal(sc.ok, true);
+    assert.equal(sc.result.schedule.durationMin, 30);
+    assert.equal(call("appointment-schedule-list", ctxCal).result.count, 1);
+    assert.equal(call("appointment-schedule-delete", ctxCal, { id: sc.result.schedule.id }).ok, true);
+    assert.equal(call("appointment-schedule-list", ctxCal).result.count, 0);
+  });
+
+  it("appointment-slots generates duration-stepped slots on available weekdays", () => {
+    const sc = call("appointment-schedule-create", ctxCal, { title: "OH", durationMin: 30, startHour: 9, endHour: 11, weekdays: [1, 2, 3, 4, 5] }).result.schedule;
+    // pick a far-future Monday
+    const slots = call("appointment-slots", ctxCal, { scheduleId: sc.id, date: "2099-01-05" }); // Mon
+    assert.equal(slots.ok, true);
+    assert.equal(slots.result.slots.length, 4); // 9:00 9:30 10:00 10:30
+    assert.ok(slots.result.slots.every(s => s.available));
+    const weekend = call("appointment-slots", ctxCal, { scheduleId: sc.id, date: "2099-01-03" }); // Sat
+    assert.equal(weekend.result.slots.length, 0);
+  });
+
+  it("appointment-book reserves a slot and blocks double-booking", () => {
+    const sc = call("appointment-schedule-create", ctxCal, { title: "OH", durationMin: 30, startHour: 9, endHour: 11 }).result.schedule;
+    const booked = call("appointment-book", ctxCal, { scheduleId: sc.id, slotStart: "2099-01-05T09:00:00", bookerName: "Dana" });
+    assert.equal(booked.ok, true);
+    assert.equal(call("appointment-book", ctxCal, { scheduleId: sc.id, slotStart: "2099-01-05T09:00:00", bookerName: "Other" }).ok, false);
+    const slots = call("appointment-slots", ctxCal, { scheduleId: sc.id, date: "2099-01-05" });
+    assert.equal(slots.result.slots.find(s => s.slotStart === "2099-01-05T09:00:00").available, false);
+    assert.equal(call("appointment-bookings", ctxCal, { scheduleId: sc.id }).result.bookings.length, 1);
+    assert.equal(call("appointment-cancel-booking", ctxCal, { scheduleId: sc.id, bookingId: booked.result.booking.id }).ok, true);
+    assert.equal(call("appointment-bookings", ctxCal, { scheduleId: sc.id }).result.bookings.length, 0);
+  });
 });
