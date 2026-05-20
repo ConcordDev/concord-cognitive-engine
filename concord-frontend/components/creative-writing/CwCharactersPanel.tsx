@@ -24,15 +24,30 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', role: 'supporting', description: '', arc: '' });
+  const [relationships, setRelationships] = useState<{ id: string; kind: string; fromName: string; toName: string }[]>([]);
+  const [relForm, setRelForm] = useState({ fromId: '', toId: '', kind: 'friend' });
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('creative-writing', 'character-list', { projectId });
+    const [r, rels] = await Promise.all([
+      lensRun('creative-writing', 'character-list', { projectId }),
+      lensRun('creative-writing', 'character-relationships', { projectId }),
+    ]);
     setCharacters(r.data?.result?.characters || []);
+    setRelationships(rels.data?.result?.relationships || []);
     setLoading(false);
     onChange();
   }, [projectId, onChange]);
+
+  const addRelation = async () => {
+    if (!relForm.fromId || !relForm.toId || relForm.fromId === relForm.toId) return;
+    await lensRun('creative-writing', 'character-relate', {
+      fromId: relForm.fromId, toId: relForm.toId, kind: relForm.kind,
+    });
+    setRelForm({ fromId: '', toId: '', kind: 'friend' });
+    await refresh();
+  };
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -110,6 +125,45 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Relationships */}
+      {characters.length >= 2 && (
+        <section>
+          <h3 className="text-xs font-semibold text-zinc-300 mb-2">Relationships</h3>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <select value={relForm.fromId} onChange={(e) => setRelForm({ ...relForm, fromId: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              <option value="">Character…</option>
+              {characters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <select value={relForm.kind} onChange={(e) => setRelForm({ ...relForm, kind: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              {['family', 'romance', 'friend', 'rival', 'mentor', 'ally', 'enemy', 'other'].map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+            <select value={relForm.toId} onChange={(e) => setRelForm({ ...relForm, toId: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              <option value="">Character…</option>
+              {characters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button type="button" onClick={addRelation}
+              className="px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Relate</button>
+          </div>
+          {relationships.length > 0 && (
+            <ul className="space-y-1">
+              {relationships.map((r) => (
+                <li key={r.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs">
+                  <span className="text-zinc-200">{r.fromName}</span>
+                  <span className="text-amber-400">— {r.kind} →</span>
+                  <span className="text-zinc-200 flex-1">{r.toName}</span>
+                  <button type="button"
+                    onClick={() => lensRun('creative-writing', 'character-unrelate', { id: r.id }).then(refresh)}
+                    className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
     </div>
   );

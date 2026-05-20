@@ -32,6 +32,9 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
   const [draft, setDraft] = useState<Scene | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [snapshots, setSnapshots] = useState<{ id: string; title: string; wordCount: number }[]>([]);
+  const [comments, setComments] = useState<{ id: string; body: string }[]>([]);
+  const [commentDraft, setCommentDraft] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -50,6 +53,34 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
     setDraft(sc ? { ...sc } : null);
     setDirty(false);
   }, [selected, scenes]);
+
+  const loadSceneExtras = useCallback(async () => {
+    if (!selected) { setSnapshots([]); setComments([]); return; }
+    const [snaps, cmts] = await Promise.all([
+      lensRun('creative-writing', 'snapshot-list', { sceneId: selected }),
+      lensRun('creative-writing', 'scene-comment-list', { sceneId: selected }),
+    ]);
+    setSnapshots(snaps.data?.result?.snapshots || []);
+    setComments(cmts.data?.result?.comments || []);
+  }, [selected]);
+
+  useEffect(() => { void loadSceneExtras(); }, [loadSceneExtras]);
+
+  const takeSnapshot = async () => {
+    if (!selected) return;
+    await lensRun('creative-writing', 'snapshot-take', { sceneId: selected });
+    await loadSceneExtras();
+  };
+  const restoreSnapshot = async (id: string) => {
+    await lensRun('creative-writing', 'snapshot-restore', { id });
+    await refresh();
+  };
+  const addComment = async () => {
+    if (!selected || !commentDraft.trim()) return;
+    await lensRun('creative-writing', 'scene-comment-add', { sceneId: selected, body: commentDraft.trim() });
+    setCommentDraft('');
+    await loadSceneExtras();
+  };
 
   const addChapter = async () => {
     await lensRun('creative-writing', 'chapter-add', { projectId });
@@ -213,6 +244,48 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 {dirty ? 'Save scene' : 'Saved'}
               </button>
+              <button type="button" onClick={takeSnapshot}
+                className="px-2.5 py-1.5 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Snapshot</button>
+            </div>
+
+            {/* Snapshots */}
+            {snapshots.length > 0 && (
+              <div className="border-t border-zinc-800 pt-2">
+                <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-1">Snapshots</p>
+                <ul className="space-y-0.5">
+                  {snapshots.map((sn) => (
+                    <li key={sn.id} className="flex items-center gap-2 text-[11px] text-zinc-400">
+                      <span className="flex-1 truncate">{sn.title}</span>
+                      <span className="text-zinc-600">{sn.wordCount}w</span>
+                      <button type="button" onClick={() => restoreSnapshot(sn.id)}
+                        className="text-amber-400 hover:underline">restore</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Comments */}
+            <div className="border-t border-zinc-800 pt-2">
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-1">Comments</p>
+              <ul className="space-y-1 mb-1.5">
+                {comments.map((c) => (
+                  <li key={c.id} className="flex items-start gap-2 text-[11px] bg-zinc-950/60 rounded px-2 py-1">
+                    <span className="flex-1 text-zinc-300">{c.body}</span>
+                    <button type="button"
+                      onClick={() => lensRun('creative-writing', 'scene-comment-delete', { id: c.id }).then(loadSceneExtras)}
+                      className="text-zinc-600 hover:text-rose-400">×</button>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex items-center gap-2">
+                <input placeholder="Add an annotation" value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void addComment(); }}
+                  className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                <button type="button" onClick={addComment}
+                  className="px-2.5 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Add</button>
+              </div>
             </div>
           </div>
         )}

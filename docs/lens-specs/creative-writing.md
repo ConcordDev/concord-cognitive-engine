@@ -50,4 +50,12 @@ Sources:
 | Real-time cross-device sync | sync infra | per-user STATE; reload reflects latest |
 
 ## Verification log
-- (in progress) — backend macros + tests; frontend panels; feature walkthrough.
+- 2026-05-20: Backend — 48 macros across project / binder / corkboard / characters /
+  threads / research / progress areas; `node --check` clean.
+- 2026-05-20: Tests — `tests/creativewriting-domain-parity.test.js` 20/20 green
+  (CRUD round-trips, snapshot restore, plot-grid computation, compile word count,
+  goal projection, scene comments, character relationships).
+- 2026-05-20: Frontend — Binder (snapshots + scene comments), Corkboard, Characters
+  (relationships), Plot (plot grid), Research (story-notes binder), Progress
+  (goal projection + compile) all reachable; `npx tsc --noEmit` exit 0.
+- 2026-05-20: `npm run score-lenses` → creative-writing 7/7 PASS.

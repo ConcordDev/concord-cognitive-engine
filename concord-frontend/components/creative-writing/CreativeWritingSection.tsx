@@ -15,6 +15,7 @@ import { CwCorkboardPanel } from './CwCorkboardPanel';
 import { CwCharactersPanel } from './CwCharactersPanel';
 import { CwThreadsPanel } from './CwThreadsPanel';
 import { CwProgressPanel } from './CwProgressPanel';
+import { CwResearchPanel } from './CwResearchPanel';
 
 interface Project { id: string; title: string; genre: string; targetWords: number; wordCount?: number }
 interface Dash {
@@ -22,12 +23,13 @@ interface Dash {
   scenes: number; characters: number; threads: number;
   byStatus: Record<string, number>;
 }
-type TabId = 'binder' | 'corkboard' | 'characters' | 'plot' | 'progress';
+type TabId = 'binder' | 'corkboard' | 'characters' | 'plot' | 'research' | 'progress';
 const TABS: { id: TabId; label: string; icon: typeof BookText }[] = [
   { id: 'binder', label: 'Binder', icon: BookText },
   { id: 'corkboard', label: 'Corkboard', icon: LayoutGrid },
   { id: 'characters', label: 'Characters', icon: Users },
   { id: 'plot', label: 'Plot', icon: GitBranch },
+  { id: 'research', label: 'Research', icon: BookText },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
 ];
 
@@ -145,6 +147,7 @@ export function CreativeWritingSection() {
                 {tab === 'corkboard' && <CwCorkboardPanel projectId={activeProject} />}
                 {tab === 'characters' && <CwCharactersPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'plot' && <CwThreadsPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'research' && <CwResearchPanel projectId={activeProject} />}
                 {tab === 'progress' && <CwProgressPanel projectId={activeProject} />}
               </div>
             </>

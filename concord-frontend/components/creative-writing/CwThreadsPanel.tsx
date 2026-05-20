@@ -11,6 +11,10 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Thread { id: string; name: string; color: string; sceneCount: number }
+interface PlotGrid {
+  threads: { id: string; name: string; color: string }[];
+  grid: { chapterId: string; title: string; cells: { threadId: string; sceneCount: number }[] }[];
+}
 
 const COLORS = ['indigo', 'rose', 'emerald', 'amber', 'sky', 'violet'];
 const COLOR_BG: Record<string, string> = {
@@ -20,14 +24,19 @@ const COLOR_BG: Record<string, string> = {
 
 export function CwThreadsPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [grid, setGrid] = useState<PlotGrid | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', color: 'indigo' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('creative-writing', 'thread-list', { projectId });
+    const [r, g] = await Promise.all([
+      lensRun('creative-writing', 'thread-list', { projectId }),
+      lensRun('creative-writing', 'plot-grid', { projectId }),
+    ]);
     setThreads(r.data?.result?.threads || []);
+    setGrid((g.data?.result as PlotGrid | null) || null);
     setLoading(false);
     onChange();
   }, [projectId, onChange]);
@@ -94,6 +103,42 @@ export function CwThreadsPanel({ projectId, onChange }: { projectId: string; onC
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Plot grid */}
+      {grid && grid.threads.length > 0 && grid.grid.length > 0 && (
+        <section>
+          <h3 className="text-xs font-semibold text-zinc-300 mb-2">Plot grid — chapters × threads</h3>
+          <div className="overflow-x-auto">
+            <table className="text-[10px]">
+              <thead>
+                <tr>
+                  <th className="text-left text-zinc-500 px-2 py-1">Chapter</th>
+                  {grid.threads.map((t) => (
+                    <th key={t.id} className="px-1.5 py-1">
+                      <span className={cn('inline-block w-2 h-2 rounded-full mr-1', COLOR_BG[t.color] || 'bg-zinc-500')} />
+                      <span className="text-zinc-400">{t.name}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {grid.grid.map((row) => (
+                  <tr key={row.chapterId}>
+                    <td className="text-zinc-200 px-2 py-1 whitespace-nowrap">{row.title}</td>
+                    {row.cells.map((c) => (
+                      <td key={c.threadId} className="px-1.5 py-1 text-center">
+                        {c.sceneCount > 0
+                          ? <span className="inline-block min-w-[18px] bg-amber-900/60 text-amber-200 rounded">{c.sceneCount}</span>
+                          : <span className="text-zinc-700">·</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
     </div>
   );

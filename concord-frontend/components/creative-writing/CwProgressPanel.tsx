@@ -20,15 +20,26 @@ interface Stats {
 
 export function CwProgressPanel({ projectId }: { projectId: string }) {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [projection, setProjection] = useState<{ deadline: string | null; daysLeft: number | null; perDayNeeded: number | null; recentPace: number; onTrack: boolean | null } | null>(null);
+  const [compiled, setCompiled] = useState<{ wordCount: number; manuscript: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ words: '', minutes: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('creative-writing', 'writing-stats', { projectId });
+    const [r, p] = await Promise.all([
+      lensRun('creative-writing', 'writing-stats', { projectId }),
+      lensRun('creative-writing', 'goal-projection', { projectId }),
+    ]);
     setStats((r.data?.result as Stats | null) || null);
+    setProjection((p.data?.result as typeof projection) || null);
     setLoading(false);
   }, [projectId]);
+
+  const doCompile = async () => {
+    const r = await lensRun('creative-writing', 'compile', { projectId });
+    setCompiled((r.data?.result as { wordCount: number; manuscript: string } | null) || null);
+  };
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -117,6 +128,40 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
           </ul>
         </div>
       )}
+
+      {/* Deadline projection */}
+      {projection && projection.deadline && (
+        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+          <h3 className="text-xs font-semibold text-zinc-300 mb-1">Deadline projection</h3>
+          {projection.daysLeft != null && projection.daysLeft > 0 ? (
+            <p className="text-[11px] text-zinc-400">
+              {projection.daysLeft} days to {projection.deadline} ·
+              {' '}<span className="text-amber-300">{projection.perDayNeeded?.toLocaleString()} words/day needed</span> ·
+              {' '}recent pace {projection.recentPace.toLocaleString()}/day ·
+              {' '}<span className={projection.onTrack ? 'text-emerald-400' : 'text-rose-400'}>
+                {projection.onTrack ? 'on track' : 'behind pace'}</span>
+            </p>
+          ) : (
+            <p className="text-[11px] text-zinc-500">Deadline {projection.deadline} has passed.</p>
+          )}
+        </div>
+      )}
+
+      {/* Compile */}
+      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <h3 className="text-xs font-semibold text-zinc-300">Compile manuscript</h3>
+          <button type="button" onClick={doCompile}
+            className="px-2.5 py-1 text-[11px] bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Compile</button>
+        </div>
+        {compiled && (
+          <>
+            <p className="text-[10px] text-zinc-500 mb-1">{compiled.wordCount.toLocaleString()} words assembled</p>
+            <textarea readOnly value={compiled.manuscript} rows={10}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-zinc-300 font-serif resize-y" />
+          </>
+        )}
+      </div>
     </div>
   );
 }
