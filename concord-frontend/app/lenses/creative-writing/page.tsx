@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
 import { GutendexSearch } from '@/components/creative-writing/GutendexSearch';
+import { CreativeWritingSection } from '@/components/creative-writing/CreativeWritingSection';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -295,6 +296,9 @@ export default function CreativeWritingPage() {
       <FirstRunTour lensId="creative-writing" />
       <ManifestActionBar />
       <DepthBadge lensId="creative-writing" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <CreativeWritingSection />
+      </div>
     <div data-lens-theme="creative-writing" className="min-h-screen">
       {/* Phase 4 (third wave) — REAL Datamuse word-relationship panel for prose. */}
       <div className="px-6 pt-4">
