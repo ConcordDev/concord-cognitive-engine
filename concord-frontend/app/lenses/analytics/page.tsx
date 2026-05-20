@@ -51,6 +51,7 @@ import { CreatorAnalytics } from '@/components/social/CreatorAnalytics';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { PlatformGrowth } from '@/components/analytics/PlatformGrowth';
+import { EventAnalytics } from '@/components/analytics/EventAnalytics';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -920,6 +921,9 @@ export default function AnalyticsPage() {
       </main>
       <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PlatformGrowth />
+      </section>
+      <section className="mt-6 mx-4">
+        <EventAnalytics />
       </section>
     </div>
 
