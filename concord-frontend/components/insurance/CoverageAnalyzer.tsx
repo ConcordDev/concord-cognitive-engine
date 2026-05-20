@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Shield, AlertTriangle, CheckCircle, Loader2, TrendingDown } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface CoverageGap {
@@ -23,7 +23,7 @@ export function CoverageAnalyzer() {
     setLoading(true);
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', { domain: 'insurance', action: 'coverage-analyze', input: {} });
+        const res = await lensRun({ domain: 'insurance', action: 'coverage-analyze', input: {} });
         setGaps((res.data?.result?.gaps || []) as CoverageGap[]);
         setScore(Number(res.data?.result?.score) || 0);
       } catch (e) { console.error('[Coverage] failed', e); }

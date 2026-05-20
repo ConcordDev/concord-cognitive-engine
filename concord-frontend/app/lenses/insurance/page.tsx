@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { InsuranceWalletSection } from '@/components/insurance/InsuranceWalletSection';
 import { InsurancePolicyTalk } from '@/components/insurance/InsurancePolicyTalk';
 import { InsuranceActionPanel } from '@/components/insurance/InsuranceActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -975,6 +976,9 @@ export default function InsuranceLensPage() {
       <FirstRunTour lensId="insurance" />
       <ManifestActionBar />
       <DepthBadge lensId="insurance" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <InsuranceWalletSection />
+      </div>
     <div data-lens-theme="insurance" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
