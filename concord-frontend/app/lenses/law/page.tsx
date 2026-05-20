@@ -10,6 +10,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LawFeed } from '@/components/law/LawFeed';
+import { LawContracts } from '@/components/law/LawContracts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -507,7 +508,10 @@ export default function LawLensPage() {
         </div>
       </div>
 
-      {/* Contract Builder - Clause Library */}
+      {/* Contract lifecycle workbench — Ironclad-shape */}
+      <LawContracts />
+
+      {/* Contract Builder - Clause Library (quick reference) */}
       <div className="panel p-4">
         <h2 className="font-semibold mb-4 flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-neon-purple" />
@@ -535,7 +539,7 @@ export default function LawLensPage() {
               {['Data Processing Agreement', 'Sub-Processor Notification', 'Data Breach Response'].map((clause) => (
                 <div key={clause} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
                   <span className="text-xs text-gray-300">{clause}</span>
-                  <button onClick={() => { api.post('/api/lens/run', { domain: 'law', action: 'add-clause', category: 'data-protection', clause }).then(() => showToast('success', `Added "${clause}" to contract`)).catch(() => showToast('error', `Failed to add "${clause}"`)); }} className="text-[10px] text-neon-cyan hover:text-neon-cyan/80 flex items-center gap-1">
+                  <button onClick={() => { navigator.clipboard?.writeText(clause); showToast('success', `Copied "${clause}" — paste it into a contract in the workbench above`); }} className="text-[10px] text-neon-cyan hover:text-neon-cyan/80 flex items-center gap-1">
                     <Copy className="w-3 h-3" />
                     Add
                   </button>
@@ -560,7 +564,7 @@ export default function LawLensPage() {
               {['IP Assignment', 'License Grant', 'Non-Compete Restriction'].map((clause) => (
                 <div key={clause} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
                   <span className="text-xs text-gray-300">{clause}</span>
-                  <button onClick={() => { api.post('/api/lens/run', { domain: 'law', action: 'add-clause', category: 'intellectual-property', clause }).then(() => showToast('success', `Added "${clause}" to contract`)).catch(() => showToast('error', `Failed to add "${clause}"`)); }} className="text-[10px] text-neon-purple hover:text-neon-purple/80 flex items-center gap-1">
+                  <button onClick={() => { navigator.clipboard?.writeText(clause); showToast('success', `Copied "${clause}" — paste it into a contract in the workbench above`); }} className="text-[10px] text-neon-purple hover:text-neon-purple/80 flex items-center gap-1">
                     <Copy className="w-3 h-3" />
                     Add
                   </button>
@@ -585,7 +589,7 @@ export default function LawLensPage() {
               {['Limitation of Liability', 'Indemnification', 'Force Majeure'].map((clause) => (
                 <div key={clause} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
                   <span className="text-xs text-gray-300">{clause}</span>
-                  <button onClick={() => { api.post('/api/lens/run', { domain: 'law', action: 'add-clause', category: 'liability', clause }).then(() => showToast('success', `Added "${clause}" to contract`)).catch(() => showToast('error', `Failed to add "${clause}"`)); }} className="text-[10px] text-neon-green hover:text-neon-green/80 flex items-center gap-1">
+                  <button onClick={() => { navigator.clipboard?.writeText(clause); showToast('success', `Copied "${clause}" — paste it into a contract in the workbench above`); }} className="text-[10px] text-neon-green hover:text-neon-green/80 flex items-center gap-1">
                     <Copy className="w-3 h-3" />
                     Add
                   </button>
@@ -610,7 +614,7 @@ export default function LawLensPage() {
               {['Termination for Cause', 'Auto-Renewal Terms', 'Survival Provisions'].map((clause) => (
                 <div key={clause} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
                   <span className="text-xs text-gray-300">{clause}</span>
-                  <button onClick={() => { api.post('/api/lens/run', { domain: 'law', action: 'add-clause', category: 'termination', clause }).then(() => showToast('success', `Added "${clause}" to contract`)).catch(() => showToast('error', `Failed to add "${clause}"`)); }} className="text-[10px] text-yellow-500 hover:text-yellow-500/80 flex items-center gap-1">
+                  <button onClick={() => { navigator.clipboard?.writeText(clause); showToast('success', `Copied "${clause}" — paste it into a contract in the workbench above`); }} className="text-[10px] text-yellow-500 hover:text-yellow-500/80 flex items-center gap-1">
                     <Copy className="w-3 h-3" />
                     Add
                   </button>
