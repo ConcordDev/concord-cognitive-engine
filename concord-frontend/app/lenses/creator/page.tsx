@@ -28,6 +28,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { CreatorStudioSection } from '@/components/creator/CreatorStudioSection';
 import { CreatorLeaderboard } from '@/components/creator/CreatorLeaderboard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -209,6 +210,9 @@ export default function CreatorDashboardPage() {
       <FirstRunTour lensId="creator" />
       <ManifestActionBar />
       <DepthBadge lensId="creator" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <CreatorStudioSection />
+      </div>
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5 flex items-start justify-between gap-3 flex-wrap">
           <div>
