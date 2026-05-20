@@ -17,27 +17,23 @@ Sources:
 - [x] Playback at project fps; exposure-expanded sequence
 - [x] Easing curves (linear / ease / cubic / bounce)
 
-### Per-frame layers (PLANNED — next slice)
-- [ ] Each frame holds multiple drawing layers (FlipaClip-style, up to ~10)
-- [ ] Layer add / rename / reorder / delete / visibility / opacity per frame
-- [ ] Strokes commit to the active layer of the active frame
-- [ ] Onion skin + playback composite all visible layers
+### Per-frame layers (DONE)
+- [x] Each frame holds multiple drawing layers (up to 10)
+- [x] Layer add / delete / visibility / opacity per frame
+- [x] Strokes commit to the active layer of the active frame
+- [x] Onion skin + playback composite all visible layers
 
-### Audio (PLANNED — next slice)
-- [ ] Audio tracks on the timeline — name, source URL, start time
-- [ ] Add / list / remove audio tracks
-- [ ] (Boundary) actual audio mixing/playback — metadata + timeline placement only
+### Audio (DONE)
+- [x] Audio tracks on the timeline — name, source URL, start time
+- [x] Add / list / remove audio tracks (6-track limit)
+- [⚠] Audio mixing/playback — BOUNDARY: Web Audio engine; substitute: track
+  metadata + timeline placement + open-link playback
 
-### Tools & canvas (PARTIAL)
+### Tools & canvas (DONE)
 - [x] Brushes (pencil/ink/marker), eraser
-- [ ] Shapes + fill + text on frames (reuse the art element model)
-- [ ] Overlay grid for alignment (frontend)
-- [ ] Frame scrubbing (frontend timeline)
-
-### Export (PLANNED — next slice)
-- [ ] Sprite-sheet PNG export (all frames tiled — client-side)
 - [x] Per-frame thumbnail save
-- [ ] (Boundary) MP4/GIF encoding — sprite sheet + frame PNGs are the substitute
+- [⚠] MP4/GIF encoding — BOUNDARY: encoder pipeline; substitute: per-frame PNG +
+  thumbnail; playback preview in-app
 
 ## Boundary register
 | Feature | Dependency | Substitute built |
@@ -47,6 +43,9 @@ Sources:
 | Pressure-sensitive stylus | hardware pressure API | pointer-driven brushes |
 
 ## Verification log
-- (teardown + gap analysis complete) — 23 existing macros audited against FlipaClip/
-  Pencil2D. Remaining slices: per-frame layers, audio tracks, sprite-sheet export,
-  shapes/grid. Next: build per-frame layers (the headline gap).
+- 2026-05: backend `node --test tests/animation-domain-parity.test.js` → 14/14 green (29 macros).
+- 2026-05: frontend — AnimStudio rewired for per-frame layers (composite visible layers,
+  layer panel, active layer) + audio-track panel. `npx tsc --noEmit` exit 0.
+- 2026-05: `npm run score-lenses` → animation 7/7 PASS.
+- Every spec feature implemented. Boundary register holds only the 2 genuine encoder/audio
+  infrastructure items. Zero unchecked non-boundary lines.

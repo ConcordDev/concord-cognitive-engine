@@ -8,14 +8,25 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Loader2, ArrowLeft, Undo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers,
+  Loader2, ArrowLeft, Undo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff, Music,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Stroke { tool: string; color: string; size: number; opacity: number; points: number[][] }
-interface Frame { id: string; exposure: number; strokes: Stroke[] }
-interface Anim { id: string; title: string; width: number; height: number; fps: number; background: string; frames: Frame[] }
+interface FLayer { id: string; name: string; visible: boolean; opacity: number; strokes: Stroke[] }
+interface Frame { id: string; exposure: number; layers: FLayer[]; strokes?: Stroke[] }
+interface AudioTrack { id: string; name: string; url: string | null; startSec: number }
+interface Anim { id: string; title: string; width: number; height: number; fps: number; background: string; frames: Frame[]; audio?: AudioTrack[] }
+
+// Flatten a frame's visible layers (tolerates legacy single-layer frames).
+function visibleStrokes(frame: Frame | undefined): Stroke[] {
+  if (!frame) return [];
+  if (Array.isArray(frame.layers) && frame.layers.length) {
+    return frame.layers.filter((l) => l.visible).flatMap((l) => l.strokes);
+  }
+  return frame.strokes || [];
+}
 
 const BRUSHES = [
   { id: 'pencil', name: 'Pencil', tool: 'pencil', size: 4, opacity: 1 },
@@ -57,6 +68,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
   const [anim, setAnim] = useState<Anim | null>(null);
   const [loading, setLoading] = useState(true);
   const [frameIdx, setFrameIdx] = useState(0);
+  const [activeLayer, setActiveLayer] = useState<string>('');
   const [onion, setOnion] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [tool, setTool] = useState('ink');
@@ -93,18 +105,24 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.restore();
     if (withOnion && idx > 0) {
-      for (const st of anim.frames[idx - 1].strokes) drawStroke(ctx, st, 0.28);
+      for (const st of visibleStrokes(anim.frames[idx - 1])) drawStroke(ctx, st, 0.28);
     }
     if (withOnion && idx < anim.frames.length - 1) {
-      for (const st of anim.frames[idx + 1].strokes) drawStroke(ctx, st, 0.18);
+      for (const st of visibleStrokes(anim.frames[idx + 1])) drawStroke(ctx, st, 0.18);
     }
-    const frame = anim.frames[idx];
-    if (frame) for (const st of frame.strokes) drawStroke(ctx, st, 1);
+    for (const st of visibleStrokes(anim.frames[idx])) drawStroke(ctx, st, 1);
   }, [anim]);
 
   useEffect(() => {
     if (!playing) renderFrame(frameIdx, onion);
   }, [renderFrame, frameIdx, onion, playing]);
+
+  // Keep the active layer valid as the frame changes.
+  useEffect(() => {
+    const frame = anim?.frames[frameIdx];
+    const layers = frame?.layers || [];
+    setActiveLayer((prev) => (layers.some((l) => l.id === prev) ? prev : layers[layers.length - 1]?.id || ''));
+  }, [anim, frameIdx]);
 
   // Playback
   useEffect(() => {
@@ -174,21 +192,50 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     if (!points.length) return;
     const stroke: Stroke = { tool, color, size, opacity, points };
     const fid = anim.frames[frameIdx].id;
+    const lid = activeLayer;
     setAnim((prev) => prev && ({
       ...prev,
-      frames: prev.frames.map((f, i) => (i === frameIdx ? { ...f, strokes: [...f.strokes, stroke] } : f)),
+      frames: prev.frames.map((f, i) => (i === frameIdx
+        ? { ...f, layers: f.layers.map((l) => (l.id === lid ? { ...l, strokes: [...l.strokes, stroke] } : l)) } : f)),
     }));
-    await lensRun('animation', 'anim-stroke-commit', { animId: anim.id, frameId: fid, stroke });
+    await lensRun('animation', 'anim-stroke-commit', { animId: anim.id, frameId: fid, layerId: lid, stroke });
   };
 
   const undo = async () => {
     if (!anim) return;
     const fid = anim.frames[frameIdx].id;
+    const lid = activeLayer;
     setAnim((prev) => prev && ({
       ...prev,
-      frames: prev.frames.map((f, i) => (i === frameIdx ? { ...f, strokes: f.strokes.slice(0, -1) } : f)),
+      frames: prev.frames.map((f, i) => (i === frameIdx
+        ? { ...f, layers: f.layers.map((l) => (l.id === lid ? { ...l, strokes: l.strokes.slice(0, -1) } : l)) } : f)),
     }));
-    await lensRun('animation', 'anim-stroke-undo', { animId: anim.id, frameId: fid });
+    await lensRun('animation', 'anim-stroke-undo', { animId: anim.id, frameId: fid, layerId: lid });
+  };
+
+  const reloadAnim = async () => {
+    const r = await lensRun('animation', 'anim-get', { id: animId });
+    setAnim((r.data?.result?.animation as Anim) || null);
+  };
+  const addLayer = async () => {
+    if (!anim) return;
+    await lensRun('animation', 'frame-layer-add', { animId: anim.id, frameId: anim.frames[frameIdx].id });
+    await reloadAnim();
+  };
+  const updateLayer = async (layerId: string, patch: { visible?: boolean; opacity?: number }) => {
+    if (!anim) return;
+    const fid = anim.frames[frameIdx].id;
+    setAnim((prev) => prev && ({
+      ...prev,
+      frames: prev.frames.map((f, i) => (i === frameIdx
+        ? { ...f, layers: f.layers.map((l) => (l.id === layerId ? { ...l, ...patch } : l)) } : f)),
+    }));
+    await lensRun('animation', 'frame-layer-update', { animId: anim.id, frameId: fid, layerId, ...patch });
+  };
+  const deleteLayer = async (layerId: string) => {
+    if (!anim || (anim.frames[frameIdx].layers || []).length <= 1) return;
+    await lensRun('animation', 'frame-layer-delete', { animId: anim.id, frameId: anim.frames[frameIdx].id, layerId });
+    await reloadAnim();
   };
 
   const addFrame = async (duplicate: boolean) => {
@@ -326,7 +373,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
               {f.exposure > 1 && (
                 <span className="absolute bottom-0 right-0 bg-zinc-800 text-zinc-300 text-[8px] px-1 rounded-tl">×{f.exposure}</span>
               )}
-              {f.strokes.length > 0 && <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-cyan-500" />}
+              {visibleStrokes(f).length > 0 && <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-cyan-500" />}
             </button>
           ))}
         </div>
@@ -361,6 +408,72 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
               onChange={(e) => setOpacity(Number(e.target.value))} className="w-24 accent-cyan-500" />
           </label>
         </div>
+      </div>
+
+      {/* Frame layers */}
+      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
+            <Layers className="w-3.5 h-3.5 text-cyan-400" /> Frame {frameIdx + 1} layers
+          </h3>
+          <button type="button" onClick={addLayer} className="text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
+        </div>
+        <ul className="space-y-1">
+          {[...(frame.layers || [])].reverse().map((l) => (
+            <li key={l.id}
+              className={cn('flex items-center gap-1.5 rounded px-2 py-1 border',
+                activeLayer === l.id ? 'border-cyan-600 bg-cyan-950/30' : 'border-zinc-800 bg-zinc-900')}>
+              <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })}
+                className="text-zinc-400 hover:text-zinc-200">
+                {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </button>
+              <button type="button" onClick={() => setActiveLayer(l.id)}
+                className="flex-1 text-left text-[11px] text-zinc-200 truncate">{l.name}</button>
+              <input type="range" min={0} max={1} step={0.1} value={l.opacity}
+                onChange={(e) => updateLayer(l.id, { opacity: Number(e.target.value) })}
+                className="w-14 accent-cyan-500" />
+              <button type="button" onClick={() => deleteLayer(l.id)} className="text-zinc-600 hover:text-rose-400">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Audio tracks */}
+      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
+            <Music className="w-3.5 h-3.5 text-cyan-400" /> Audio tracks
+          </h3>
+          <button type="button"
+            onClick={async () => {
+              const name = window.prompt('Track name:');
+              if (!name || !name.trim()) return;
+              const url = window.prompt('Audio URL (optional):') || '';
+              const startSec = Number(window.prompt('Start time (seconds):', '0') || '0');
+              await lensRun('animation', 'audio-track-add', { animId: anim.id, name: name.trim(), url, startSec });
+              await reloadAnim();
+            }}
+            className="text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
+        </div>
+        {(anim.audio || []).length === 0 ? (
+          <p className="text-[11px] text-zinc-500 italic">No audio tracks. Add up to 6 to score the timeline.</p>
+        ) : (
+          <ul className="space-y-1">
+            {(anim.audio || []).map((t) => (
+              <li key={t.id} className="flex items-center gap-2 text-[11px] text-zinc-300 bg-zinc-900 rounded px-2 py-1">
+                <Music className="w-3 h-3 text-zinc-500" />
+                <span className="flex-1">{t.name}</span>
+                <span className="text-zinc-500">@ {t.startSec}s</span>
+                {t.url && <a href={t.url} target="_blank" rel="noopener noreferrer" className="text-cyan-400">open</a>}
+                <button type="button"
+                  onClick={() => lensRun('animation', 'audio-track-remove', { animId: anim.id, id: t.id }).then(reloadAnim)}
+                  className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
