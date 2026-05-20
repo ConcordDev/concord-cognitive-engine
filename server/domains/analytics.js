@@ -61,4 +61,223 @@ export default function registerAnalyticsActions(registerLensAction) {
     const trend = slope > 0.01 ? "upward" : slope < -0.01 ? "downward" : "flat";
     return { ok: true, result: { trend, slope: Math.round(slope * 1000) / 1000, dataPoints: n, lastValue: values[n - 1], forecast, confidence: n >= 10 ? "moderate" : "low" } };
   });
+
+  // ─── Mixpanel / Amplitude-shape event analytics (per-user, STATE) ────
+  // Event-based model: track events, then compute funnels, retention,
+  // segmentation and saved reports over the stored event log.
+
+  function getAnalyticsState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.analyticsLens) STATE.analyticsLens = {};
+    const s = STATE.analyticsLens;
+    if (!(s.events instanceof Map)) s.events = new Map();   // userId -> Array<event>
+    if (!(s.funnels instanceof Map)) s.funnels = new Map(); // userId -> Array<funnel def>
+    return s;
+  }
+  function saveAnalytics() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const anId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const anNow = () => new Date().toISOString();
+  const anActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const anClean = (v, max = 120) => String(v == null ? "" : v).trim().slice(0, max);
+  const anEvents = (s, userId) => { if (!s.events.has(userId)) s.events.set(userId, []); return s.events.get(userId); };
+  const anFunnels = (s, userId) => { if (!s.funnels.has(userId)) s.funnels.set(userId, []); return s.funnels.get(userId); };
+  const EVENT_CAP = 50000;
+
+  registerLensAction("analytics", "event-track", (ctx, _a, params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = anClean(params.name, 80);
+    if (!name) return { ok: false, error: "event name required" };
+    const props = {};
+    if (params.properties && typeof params.properties === "object") {
+      for (const [k, v] of Object.entries(params.properties).slice(0, 20)) {
+        props[anClean(k, 40)] = typeof v === "number" ? v : anClean(v, 200);
+      }
+    }
+    const event = {
+      id: anId("ev"),
+      name,
+      distinctId: anClean(params.distinctId, 80) || "anon",
+      properties: props,
+      at: params.at && !Number.isNaN(new Date(params.at).getTime()) ? new Date(params.at).toISOString() : anNow(),
+    };
+    const log = anEvents(s, anActor(ctx));
+    log.push(event);
+    if (log.length > EVENT_CAP) log.splice(0, log.length - EVENT_CAP);
+    saveAnalytics();
+    return { ok: true, result: { event, total: log.length } };
+  });
+
+  registerLensAction("analytics", "event-list", (ctx, _a, params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let log = [...anEvents(s, anActor(ctx))];
+    if (params.name) log = log.filter((e) => e.name === params.name);
+    if (params.distinctId) log = log.filter((e) => e.distinctId === params.distinctId);
+    log.sort((a, b) => b.at.localeCompare(a.at));
+    return { ok: true, result: { events: log.slice(0, 100), total: log.length } };
+  });
+
+  registerLensAction("analytics", "event-stats", (ctx, _a, _params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const log = anEvents(s, anActor(ctx));
+    const byName = {};
+    const users = new Set();
+    for (const e of log) {
+      byName[e.name] = (byName[e.name] || 0) + 1;
+      users.add(e.distinctId);
+    }
+    const topEvents = Object.entries(byName).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+    return {
+      ok: true,
+      result: {
+        totalEvents: log.length,
+        uniqueUsers: users.size,
+        distinctEventTypes: topEvents.length,
+        topEvents: topEvents.slice(0, 15),
+      },
+    };
+  });
+
+  // funnel-compute — conversion through ordered event steps. A user
+  // counts toward step i only if they fired step 0..i in time order.
+  function computeFunnel(log, steps) {
+    const byUser = {};
+    for (const e of log) {
+      (byUser[e.distinctId] = byUser[e.distinctId] || []).push(e);
+    }
+    const stepCounts = steps.map(() => 0);
+    let totalStarters = 0;
+    for (const events of Object.values(byUser)) {
+      events.sort((a, b) => a.at.localeCompare(b.at));
+      let stepIdx = 0;
+      let lastAt = "";
+      for (const e of events) {
+        if (e.name === steps[stepIdx] && e.at >= lastAt) {
+          lastAt = e.at;
+          stepIdx++;
+          if (stepIdx > steps.length) break;
+        }
+      }
+      if (stepIdx >= 1) totalStarters++;
+      for (let i = 0; i < stepIdx && i < steps.length; i++) stepCounts[i]++;
+    }
+    const first = stepCounts[0] || 0;
+    return {
+      steps: steps.map((name, i) => ({
+        step: i + 1, event: name, count: stepCounts[i],
+        conversionFromStart: first > 0 ? Math.round((stepCounts[i] / first) * 1000) / 10 : 0,
+        conversionFromPrev: i === 0 ? 100 : (stepCounts[i - 1] > 0 ? Math.round((stepCounts[i] / stepCounts[i - 1]) * 1000) / 10 : 0),
+      })),
+      totalStarters,
+      overallConversion: first > 0 ? Math.round((stepCounts[stepCounts.length - 1] / first) * 1000) / 10 : 0,
+    };
+  }
+
+  registerLensAction("analytics", "funnel-build", (ctx, _a, params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const steps = Array.isArray(params.steps) ? params.steps.map((x) => anClean(x, 80)).filter(Boolean) : [];
+    if (steps.length < 2) return { ok: false, error: "funnel needs at least 2 event steps" };
+    return { ok: true, result: computeFunnel(anEvents(s, anActor(ctx)), steps) };
+  });
+
+  registerLensAction("analytics", "funnel-save", (ctx, _a, params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = anClean(params.name, 100);
+    const steps = Array.isArray(params.steps) ? params.steps.map((x) => anClean(x, 80)).filter(Boolean) : [];
+    if (!name || steps.length < 2) return { ok: false, error: "name + 2+ steps required" };
+    const funnel = { id: anId("fn"), name, steps, createdAt: anNow() };
+    anFunnels(s, anActor(ctx)).push(funnel);
+    saveAnalytics();
+    return { ok: true, result: { funnel } };
+  });
+
+  registerLensAction("analytics", "funnel-list", (ctx, _a, _params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const log = anEvents(s, anActor(ctx));
+    const funnels = anFunnels(s, anActor(ctx)).map((f) => ({ ...f, result: computeFunnel(log, f.steps) }));
+    return { ok: true, result: { funnels, count: funnels.length } };
+  });
+
+  registerLensAction("analytics", "funnel-delete", (ctx, _a, params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = anFunnels(s, anActor(ctx));
+    const i = arr.findIndex((f) => f.id === params.id);
+    if (i < 0) return { ok: false, error: "funnel not found" };
+    arr.splice(i, 1);
+    saveAnalytics();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // segment — break an event's volume down by a property value.
+  registerLensAction("analytics", "segment", (ctx, _a, params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const eventName = anClean(params.eventName, 80);
+    const propKey = anClean(params.propertyKey, 40);
+    if (!eventName || !propKey) return { ok: false, error: "eventName + propertyKey required" };
+    const log = anEvents(s, anActor(ctx)).filter((e) => e.name === eventName);
+    const buckets = {};
+    for (const e of log) {
+      const v = String(e.properties?.[propKey] ?? "(not set)");
+      buckets[v] = (buckets[v] || 0) + 1;
+    }
+    const segments = Object.entries(buckets)
+      .map(([value, count]) => ({ value, count, pct: log.length > 0 ? Math.round((count / log.length) * 1000) / 10 : 0 }))
+      .sort((a, b) => b.count - a.count);
+    return { ok: true, result: { eventName, propertyKey: propKey, total: log.length, segments } };
+  });
+
+  // retention — of users who did cohortEvent on a day, how many did
+  // returnEvent on each of the following days (up to 7).
+  registerLensAction("analytics", "retention-report", (ctx, _a, params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cohortEvent = anClean(params.cohortEvent, 80);
+    const returnEvent = anClean(params.returnEvent, 80) || cohortEvent;
+    if (!cohortEvent) return { ok: false, error: "cohortEvent required" };
+    const log = anEvents(s, anActor(ctx));
+    const cohortByUser = {};
+    const returnDaysByUser = {};
+    for (const e of log) {
+      const day = e.at.slice(0, 10);
+      if (e.name === cohortEvent && (!cohortByUser[e.distinctId] || day < cohortByUser[e.distinctId])) {
+        cohortByUser[e.distinctId] = day;
+      }
+      if (e.name === returnEvent) {
+        (returnDaysByUser[e.distinctId] = returnDaysByUser[e.distinctId] || new Set()).add(day);
+      }
+    }
+    const cohortSize = Object.keys(cohortByUser).length;
+    const dayMs = 86400000;
+    const retention = [];
+    for (let d = 0; d <= 7; d++) {
+      let retained = 0;
+      for (const [user, startDay] of Object.entries(cohortByUser)) {
+        const target = new Date(new Date(startDay).getTime() + d * dayMs).toISOString().slice(0, 10);
+        if (returnDaysByUser[user]?.has(target)) retained++;
+      }
+      retention.push({ day: d, retained, pct: cohortSize > 0 ? Math.round((retained / cohortSize) * 1000) / 10 : 0 });
+    }
+    return { ok: true, result: { cohortEvent, returnEvent, cohortSize, retention } };
+  });
+
+  registerLensAction("analytics", "analytics-dashboard", (ctx, _a, _params = {}) => {
+    const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = anActor(ctx);
+    const log = anEvents(s, userId);
+    const users = new Set(log.map((e) => e.distinctId));
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      ok: true,
+      result: {
+        totalEvents: log.length,
+        uniqueUsers: users.size,
+        eventsToday: log.filter((e) => e.at.slice(0, 10) === today).length,
+        savedFunnels: anFunnels(s, userId).length,
+        eventTypes: new Set(log.map((e) => e.name)).size,
+      },
+    };
+  });
 }
