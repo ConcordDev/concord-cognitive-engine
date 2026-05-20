@@ -11,6 +11,7 @@ import { TidePredictions } from '@/components/ocean/TidePredictions';
 import { NoaaTidesPanel } from '@/components/ocean/NoaaTidesPanel';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { WaveEcosystemPanel } from '@/components/ocean/WaveEcosystemPanel';
+import { SpotLog } from '@/components/ocean/SpotLog';
 import { TideActionStack } from '@/components/ocean/TideActionStack';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
@@ -551,6 +552,10 @@ export default function OceanLensPage() {
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <WaveEcosystemPanel />
+      </section>
+
+      <section className="mt-6">
+        <SpotLog />
       </section>
     </div>
 
