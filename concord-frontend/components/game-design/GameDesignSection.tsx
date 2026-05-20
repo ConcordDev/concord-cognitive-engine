@@ -7,24 +7,29 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Gamepad2, Plus, FileText, Cog, Swords, Grid3x3, Loader2 } from 'lucide-react';
+import { Gamepad2, Plus, FileText, Cog, Swords, Grid3x3, Loader2, Repeat, GitBranch } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { GdGddPanel } from './GdGddPanel';
 import { GdMechanicsPanel } from './GdMechanicsPanel';
 import { GdEntitiesPanel } from './GdEntitiesPanel';
 import { GdLevelPanel } from './GdLevelPanel';
+import { GdLoopsPanel } from './GdLoopsPanel';
+import { GdNarrativePanel } from './GdNarrativePanel';
 
 interface Game { id: string; title: string; genre: string; platform: string }
 interface Dash {
-  title: string; gddSections: number; mechanics: number; entities: number; levels: number;
+  title: string; gddSections: number; mechanics: number; loops: number;
+  entities: number; levels: number; narrativeNodes: number;
 }
-type TabId = 'gdd' | 'mechanics' | 'entities' | 'levels';
+type TabId = 'gdd' | 'mechanics' | 'loops' | 'entities' | 'levels' | 'narrative';
 const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: 'gdd', label: 'Design Doc', icon: FileText },
   { id: 'mechanics', label: 'Mechanics', icon: Cog },
+  { id: 'loops', label: 'Loops', icon: Repeat },
   { id: 'entities', label: 'Entities', icon: Swords },
   { id: 'levels', label: 'Levels', icon: Grid3x3 },
+  { id: 'narrative', label: 'Narrative', icon: GitBranch },
 ];
 
 export function GameDesignSection() {
@@ -108,11 +113,13 @@ export function GameDesignSection() {
           ) : (
             <>
               {dash && (
-                <div className="grid grid-cols-4 gap-2 px-4 py-3 border-b border-zinc-800">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4 py-3 border-b border-zinc-800">
                   <Stat label="GDD sections" value={dash.gddSections} />
                   <Stat label="Mechanics" value={dash.mechanics} />
+                  <Stat label="Loops" value={dash.loops ?? 0} />
                   <Stat label="Entities" value={dash.entities} />
                   <Stat label="Levels" value={dash.levels} />
+                  <Stat label="Story nodes" value={dash.narrativeNodes ?? 0} />
                 </div>
               )}
               <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">
@@ -131,8 +138,10 @@ export function GameDesignSection() {
               <div className="p-4">
                 {tab === 'gdd' && <GdGddPanel gameId={activeGame} onChange={refreshDash} />}
                 {tab === 'mechanics' && <GdMechanicsPanel gameId={activeGame} onChange={refreshDash} />}
+                {tab === 'loops' && <GdLoopsPanel gameId={activeGame} onChange={refreshDash} />}
                 {tab === 'entities' && <GdEntitiesPanel gameId={activeGame} onChange={refreshDash} />}
                 {tab === 'levels' && <GdLevelPanel gameId={activeGame} onChange={refreshDash} />}
+                {tab === 'narrative' && <GdNarrativePanel gameId={activeGame} onChange={refreshDash} />}
               </div>
             </>
           )}

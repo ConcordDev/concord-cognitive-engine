@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, FileText, Save } from 'lucide-react';
+import { Loader2, Plus, Trash2, FileText, Save, ChevronUp, ChevronDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Section { id: string; title: string; content: string }
@@ -47,6 +47,17 @@ export function GdGddPanel({ gameId, onChange }: { gameId: string; onChange: () 
     await refresh();
   };
 
+  const moveSection = async (id: string, dir: -1 | 1) => {
+    const idx = sections.findIndex((s) => s.id === id);
+    const swap = idx + dir;
+    if (swap < 0 || swap >= sections.length) return;
+    const order = sections.map((s) => s.id);
+    [order[idx], order[swap]] = [order[swap], order[idx]];
+    setSections(order.map((sid) => sections.find((s) => s.id === sid)!));
+    await lensRun('game-design', 'gdd-reorder', { gameId, order });
+    await refresh();
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
@@ -74,15 +85,25 @@ export function GdGddPanel({ gameId, onChange }: { gameId: string; onChange: () 
         <p className="text-[11px] text-zinc-500 italic py-6 text-center">No design-doc sections yet. Add one above.</p>
       ) : (
         <ul className="space-y-3">
-          {sections.map((s) => (
+          {sections.map((s, i) => (
             <li key={s.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-200">
                   <FileText className="w-3.5 h-3.5 text-lime-400" /> {s.title}
                 </h3>
-                <button type="button" onClick={() => delSection(s.id)} className="text-zinc-600 hover:text-rose-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => moveSection(s.id, -1)} disabled={i === 0}
+                    className="text-zinc-600 hover:text-zinc-300 disabled:opacity-30">
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button" onClick={() => moveSection(s.id, 1)} disabled={i === sections.length - 1}
+                    className="text-zinc-600 hover:text-zinc-300 disabled:opacity-30">
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button" onClick={() => delSection(s.id)} className="text-zinc-600 hover:text-rose-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
               <textarea value={drafts[s.id] ?? ''} rows={4}
                 onChange={(e) => setDrafts((p) => ({ ...p, [s.id]: e.target.value }))}

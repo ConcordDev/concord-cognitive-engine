@@ -71,4 +71,15 @@ Sources:
 | Terrain / Wang corner-blend brush | per-tile edge metadata on image tiles | auto-layer rules (IntGrid value → tile) for procedural fill |
 
 ## Verification log
-- (in progress) — backend macros + tests; frontend panels; feature walkthrough.
+- 2026-05-20: Backend — 68 macros across game / GDD / mechanics / loops / entities /
+  enums / tiles / levels / object+IntGrid layers / auto-layer / narrative areas;
+  `node --check` clean.
+- 2026-05-20: Tests — `tests/gamedesign-domain-parity.test.js` 26/26 green (layer
+  reorder/delete/duplicate/opacity, object layers, IntGrid + auto-layer generation,
+  level resize/duplicate/export, custom tiles, entity fields, enums, core loops +
+  balance analysis, narrative graph reachability, balance report, project export).
+- 2026-05-20: Frontend — six tabs (Design Doc with reorder, Mechanics, Loops,
+  Entities with typed fields + enums + balance report, Levels with the tile/object/
+  IntGrid editor + auto-layer + resize + export, Narrative graph); `npx tsc --noEmit`
+  exit 0.
+- 2026-05-20: `npm run score-lenses` → game-design 7/7 PASS.
