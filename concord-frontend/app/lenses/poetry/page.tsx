@@ -11,6 +11,7 @@ import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
 import { PoetryDbPanel } from '@/components/poetry/PoetryDbPanel';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
+import { PoemWorkspace } from '@/components/poetry/PoemWorkspace';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -679,6 +680,10 @@ export default function PoetryPage() {
       {/* Bespoke PoetryDB search with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PoetryDbSearch />
+      </section>
+
+      <section className="mt-6">
+        <PoemWorkspace />
       </section>
 
       {/* Poetry Foundation + Poets.org-shape workbench: meter / rhyme / form / frequency + actions */}
