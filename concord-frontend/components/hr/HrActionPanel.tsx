@@ -13,7 +13,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -110,8 +110,8 @@ export function HrActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `HR snapshot — ${role || 'team'}`, tags: ['hr', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, hr: { role, location, comp: compResult, turnover: turnoverResult, interview: interviewResult, pto: ptoResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `HR snapshot — ${role || 'team'}`, tags: ['hr', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, hr: { role, location, comp: compResult, turnover: turnoverResult, interview: interviewResult, pto: ptoResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('hr.mintedDtuId', id, { label: `HR DTU ${id.slice(0, 8)}…` }); ok(`HR DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -138,8 +138,8 @@ export function HrActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public comp data — ${role} (${location})`, tags: ['hr', 'comp', 'public', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:comp:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, comp: { role, location, market50: compResult.market50, market75: compResult.market75 } } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Public comp data — ${role} (${location})`, tags: ['hr', 'comp', 'public', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:comp:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, comp: { role, location, market50: compResult.market50, market75: compResult.market75 } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -152,8 +152,8 @@ export function HrActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `HR context: ${role} in ${location}, headcount ${headcount}. ${turnoverResult ? `Turnover ${turnoverResult.ratePct}% (${turnoverResult.band}).` : ''} ${interviewResult ? `Latest candidate: ${interviewResult.recommendation}.` : ''} Recommend the single most-leveraged retention move for this team this quarter. Plain text, concrete.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Retention move ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
