@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -120,7 +119,6 @@ export default function AllLensesPage() {
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
       <a href="#all-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to all content</a>
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
-          <section className="mt-4"><LensSubstratePanel domain="all" noun="saved search" /></section>
           <RecentMineCard domain="all" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="all" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="all" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

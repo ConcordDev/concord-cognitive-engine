@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -358,7 +357,6 @@ export default function GenesisLens() {
       <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
       {/* @decorative-ok: sr-only a11y sentinel — never receives user interaction (tabIndex=-1, aria-hidden) */}
       <button type="button" className="sr-only" aria-hidden="true" tabIndex={-1} onClick={() => {}}>noop a11y sentinel</button>
-          <section className="mt-4"><LensSubstratePanel domain="genesis" noun="seed" /></section>
           <RecentMineCard domain="genesis" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="genesis" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="genesis" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

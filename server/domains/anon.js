@@ -2,8 +2,6 @@
 // Domain actions for anonymization/privacy: k-anonymity, re-identification
 // risk assessment, and differential privacy noise injection.
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerAnonActions(registerLensAction) {
   /**
    * anonymize
@@ -375,12 +373,5 @@ export default function registerAnonActions(registerLensAction) {
         },
       },
     };
-  });
-
-  // Persistent records substrate (audit THIN-tier depth pass).
-  registerLensSubstrate(registerLensAction, "anon", {
-    noun: "identity", idPrefix: "idn",
-    kinds: ["pseudonym","alias","mask","burner"],
-    statuses: ["active","dormant","retired"],
   });
 }

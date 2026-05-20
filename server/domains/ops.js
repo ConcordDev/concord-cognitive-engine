@@ -2,8 +2,6 @@
 // Domain actions for the ops lens — PagerDuty shape. 4 macros over
 // on-call schedule, escalation, runbook lookup, and post-mortem.
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerOpsActions(registerLensAction) {
   /**
    * pageOnCall — return the current on-call person for a rotation.
@@ -98,12 +96,5 @@ export default function registerOpsActions(registerLensAction) {
           : `Within window (${minutesOpen}m of ${threshold}m). Continue triage; re-check in ${Math.max(1, Math.round((threshold - minutesOpen) / 2))}m.`,
       },
     };
-  });
-
-  // Persistent incident-tracking substrate.
-  registerLensSubstrate(registerLensAction, "ops", {
-    noun: "incident", idPrefix: "inc",
-    kinds: ["sev1", "sev2", "sev3", "sev4"],
-    statuses: ["open", "mitigating", "monitoring", "resolved"],
   });
 }

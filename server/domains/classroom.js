@@ -9,8 +9,6 @@
 
 const OL_BASE = "https://openlibrary.org";
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerClassroomActions(registerLensAction) {
   /**
    * ol-search — Open Library book/work search (~30M records).
@@ -166,12 +164,5 @@ export default function registerClassroomActions(registerLensAction) {
     } catch (err) {
       return { ok: false, error: `openlibrary unreachable: ${err instanceof Error ? err.message : String(err)}` };
     }
-  });
-
-  // Persistent records substrate (audit THIN-tier depth pass).
-  registerLensSubstrate(registerLensAction, "classroom", {
-    noun: "class", idPrefix: "cls",
-    kinds: ["lecture","lab","seminar","workshop"],
-    statuses: ["scheduled","active","completed"],
   });
 }

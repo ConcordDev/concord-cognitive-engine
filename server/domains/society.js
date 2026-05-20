@@ -23,8 +23,6 @@ const COMMON_INDICATORS = {
   povertyHeadcount: "SI.POV.DDAY",
 };
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerSocietyActions(registerLensAction) {
   /**
    * wb-indicator — Fetch a single World Bank indicator for a country.
@@ -155,12 +153,5 @@ export default function registerSocietyActions(registerLensAction) {
         source: "world-bank-open-data",
       },
     };
-  });
-
-  // Persistent records substrate (audit THIN-tier depth pass).
-  registerLensSubstrate(registerLensAction, "society", {
-    noun: "initiative", idPrefix: "ini",
-    kinds: ["policy","program","movement","ritual"],
-    statuses: ["proposed","active","concluded"],
   });
 }

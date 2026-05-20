@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -364,7 +363,6 @@ export default function SufferingLensPage() {
         <SufferingRef />
       </section>
     </div>
-          <section className="mt-4"><LensSubstratePanel domain="suffering" noun="episode" /></section>
           <RecentMineCard domain="suffering" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="suffering" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="suffering" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

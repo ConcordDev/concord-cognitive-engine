@@ -2,8 +2,6 @@
 // Domain actions for pain point / issue analysis: pain point mapping,
 // root cause analysis, and intervention design.
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerSufferingActions(registerLensAction) {
   /**
    * painPointMapping
@@ -383,12 +381,5 @@ export default function registerSufferingActions(registerLensAction) {
         overallCoverage: r(1 - uncoveredCauses.length / causes.length),
       },
     };
-  });
-
-  // Persistent records substrate (THIN-tier depth pass).
-  registerLensSubstrate(registerLensAction, "suffering", {
-    noun: "episode", idPrefix: "epi",
-    kinds: ["physical","emotional","existential","witnessed"],
-    statuses: ["acute","processing","integrated"],
   });
 }

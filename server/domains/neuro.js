@@ -2,8 +2,6 @@
 // Domain actions for neuroscience: EEG signal processing, connectivity
 // analysis, frequency band decomposition, and neural activation mapping.
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerNeuroActions(registerLensAction) {
   /**
    * frequencyAnalysis
@@ -342,12 +340,5 @@ export default function registerNeuroActions(registerLensAction) {
         })),
       },
     };
-  });
-
-  // Persistent records substrate (audit THIN-tier depth pass).
-  registerLensSubstrate(registerLensAction, "neuro", {
-    noun: "study", idPrefix: "std",
-    kinds: ["scan","signal","mapping","experiment"],
-    statuses: ["planned","running","analyzed"],
   });
 }

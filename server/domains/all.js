@@ -1,8 +1,6 @@
 // server/domains/all.js
 // Aggregation domain providing cross-domain analytics and search.
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerAllActions(registerLensAction) {
   /**
    * crossDomainSearch
@@ -96,12 +94,5 @@ export default function registerAllActions(registerLensAction) {
     }
     items.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     return { ok: true, result: { feed: items.slice(0, limit) } };
-  });
-
-  // Persistent saved-search substrate.
-  registerLensSubstrate(registerLensAction, "all", {
-    noun: "saved search", idPrefix: "search",
-    kinds: ["query", "filter", "view"],
-    statuses: ["pinned", "active", "archived"],
   });
 }

@@ -10,7 +10,6 @@
 import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -108,7 +107,6 @@ export default function ExpeditionJournalPage() {
           <BaseCampAlmanac />
         </section>
       </div>
-          <section className="mt-4"><LensSubstratePanel domain="expedition-journal" noun="entry" /></section>
           <RecentMineCard domain="expedition-journal" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="expedition-journal" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="expedition-journal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

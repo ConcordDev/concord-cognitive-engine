@@ -2,8 +2,6 @@
 // Domain actions for schema management: validation, diffing, and
 // evolution planning with backward compatibility checks.
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerSchemaActions(registerLensAction) {
   /**
    * schemaValidate
@@ -466,12 +464,5 @@ export default function registerSchemaActions(registerLensAction) {
         },
       },
     };
-  });
-
-  // Persistent records substrate (audit THIN-tier depth pass).
-  registerLensSubstrate(registerLensAction, "schema", {
-    noun: "schema object", idPrefix: "sch",
-    kinds: ["table","view","migration","index"],
-    statuses: ["draft","proposed","applied"],
   });
 }

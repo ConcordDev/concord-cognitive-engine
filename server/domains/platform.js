@@ -2,8 +2,6 @@
 // Domain actions for platform engineering: SLA computation, capacity planning,
 // incident management, and service dependency analysis.
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerPlatformActions(registerLensAction) {
   /**
    * slaCompute
@@ -431,12 +429,5 @@ export default function registerPlatformActions(registerLensAction) {
         healthScore: Math.round(Math.max(0, 100 - spofs.length * 15 - circulars.length * 20 - (maxDepth > 5 ? 10 : 0))),
       },
     };
-  });
-
-  // Persistent records substrate (audit THIN-tier depth pass).
-  registerLensSubstrate(registerLensAction, "platform", {
-    noun: "service", idPrefix: "svc",
-    kinds: ["api","worker","integration","webhook"],
-    statuses: ["healthy","degraded","down"],
   });
 }

@@ -10,7 +10,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -125,7 +124,6 @@ export default function CrisisOpsPage() {
           <FemaDisasters />
         </section>
       </div>
-          <section className="mt-4"><LensSubstratePanel domain="crisis-ops" noun="incident" /></section>
           <RecentMineCard domain="crisis-ops" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="crisis-ops" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="crisis-ops" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

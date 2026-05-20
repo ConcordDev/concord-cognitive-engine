@@ -6,8 +6,6 @@
 
 const USASPENDING_API = "https://api.usaspending.gov/api/v2";
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerDefenseActions(registerLensAction) {
   registerLensAction("defense", "threatAssessment", (ctx, artifact, _params) => {
     const threats = artifact.data?.threats || [];
@@ -121,12 +119,5 @@ export default function registerDefenseActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `usaspending unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
-  });
-
-  // Persistent records substrate (audit THIN-tier depth pass).
-  registerLensSubstrate(registerLensAction, "defense", {
-    noun: "asset", idPrefix: "ast",
-    kinds: ["unit","position","intel","logistics"],
-    statuses: ["ready","engaged","standby","lost"],
   });
 }

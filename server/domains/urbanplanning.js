@@ -8,8 +8,6 @@
 const CENSUS_API = "https://api.census.gov/data";
 const HUD_API = "https://www.huduser.gov/hudapi/public";
 
-import { registerLensSubstrate } from "../lib/lens-substrate.js";
-
 export default function registerUrbanplanningActions(registerLensAction) {
   registerLensAction("urban-planning", "zoningAnalysis", (ctx, artifact, _params) => { const data = artifact.data || {}; const zone = (data.zoneType || "residential").toLowerCase(); const lotSize = parseFloat(data.lotSizeSqFt) || 5000; const specs = { residential: { far: 0.5, maxHeight: 35, setback: 20, parking: 2, density: "low" }, commercial: { far: 2.0, maxHeight: 60, setback: 10, parking: 1, density: "medium" }, mixed: { far: 3.0, maxHeight: 85, setback: 5, parking: 1.5, density: "high" }, industrial: { far: 1.0, maxHeight: 45, setback: 30, parking: 0.5, density: "low" } }; const s = specs[zone] || specs.residential; const maxBuildable = Math.round(lotSize * s.far); return { ok: true, result: { zoneType: zone, lotSize, floorAreaRatio: s.far, maxBuildableSqFt: maxBuildable, maxHeight: `${s.maxHeight} ft`, setback: `${s.setback} ft`, parkingRequired: `${s.parking} spaces per unit`, density: s.density } }; });
   registerLensAction("urban-planning", "walkabilityScore", (ctx, artifact, _params) => { const amenities = artifact.data?.amenities || []; const categories = { grocery: 0, restaurant: 0, school: 0, park: 0, transit: 0, retail: 0, healthcare: 0 }; for (const a of amenities) { const cat = (a.category || "retail").toLowerCase(); if (categories[cat] !== undefined) categories[cat] += (a.withinWalkingDistance ? 1 : 0.3); } const maxPoints = Object.keys(categories).length * 2; const score = Math.min(100, Math.round(Object.values(categories).reduce((s,v)=>s+v,0) / maxPoints * 100)); return { ok: true, result: { walkabilityScore: score, rating: score >= 90 ? "walkers-paradise" : score >= 70 ? "very-walkable" : score >= 50 ? "somewhat-walkable" : score >= 25 ? "car-dependent" : "almost-all-errands-require-car", amenityScores: categories, totalAmenities: amenities.length } }; });
@@ -119,12 +117,5 @@ export default function registerUrbanplanningActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `hud unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
-  });
-
-  // Persistent records substrate (audit THIN-tier depth pass).
-  registerLensSubstrate(registerLensAction, "urban-planning", {
-    noun: "plan", idPrefix: "plan",
-    kinds: ["zoning","transit","housing","park"],
-    statuses: ["proposed","review","approved","built"],
   });
 }
