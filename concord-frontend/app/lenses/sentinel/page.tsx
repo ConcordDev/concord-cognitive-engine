@@ -12,6 +12,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -273,6 +274,7 @@ export default function SentinelLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <section className="mt-4"><LensSubstratePanel domain="sentinel" noun="watch" /></section>
           <RecentMineCard domain="sentinel" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="sentinel" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="sentinel" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

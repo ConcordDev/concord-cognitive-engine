@@ -37,6 +37,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -214,6 +215,7 @@ export default function SocialHubPage() {
             )}
 
             {/* Cross-lens narrative — DTUs surfaced INTO social from elsewhere */}
+            <section className="mt-4"><LensSubstratePanel domain="social" noun="post" /></section>
             <CrossLensRecentsPanel lensId="social" sinceDays={14} limit={8} hideWhenEmpty />
           </main>
 

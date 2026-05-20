@@ -200,6 +200,36 @@ import blackMarket from './black-market.js';
 import society from './society.js';
 import gallery from './gallery.js';
 import classroom from './classroom.js';
+import cognition from './cognition.js';
+import goddessLens from './goddess.js';
+import inheritance from './inheritance.js';
+import lattice from './lattice.js';
+import mesh from './mesh.js';
+import psyops from './psyops.js';
+import sandbox from './sandbox.js';
+import socialLens from './social.js';
+import sponsorship from './sponsorship.js';
+import staking from './staking.js';
+import syncLens from './sync.js';
+import toolsLens from './tools.js';
+import tournaments from './tournaments.js';
+import bounties from './bounties.js';
+import codeQuality from './code-quality.js';
+import cognitiveReplay from './cognitive-replay.js';
+import crisisOps from './crisis-ops.js';
+import deathInsurance from './death-insurance.js';
+import deities from './deities.js';
+import dxPlatform from './dx-platform.js';
+import expeditionJournal from './expedition-journal.js';
+import genesis from './genesis.js';
+import ghostTracker from './ghost-tracker.js';
+import personasLens from './personas.js';
+import rootLens from './root.js';
+import savedLens from './saved.js';
+import selfLens from './self.js';
+import sentinel from './sentinel.js';
+import subWorlds from './sub-worlds.js';
+import worldCreator from './world-creator.js';
 
 export default [
   healthcare,
@@ -393,4 +423,34 @@ export default [
   society,
   gallery,
   classroom,
+  cognition,
+  goddessLens,
+  inheritance,
+  lattice,
+  mesh,
+  psyops,
+  sandbox,
+  socialLens,
+  sponsorship,
+  staking,
+  syncLens,
+  toolsLens,
+  tournaments,
+  bounties,
+  codeQuality,
+  cognitiveReplay,
+  crisisOps,
+  deathInsurance,
+  deities,
+  dxPlatform,
+  expeditionJournal,
+  genesis,
+  ghostTracker,
+  personasLens,
+  rootLens,
+  savedLens,
+  selfLens,
+  sentinel,
+  subWorlds,
+  worldCreator,
 ];

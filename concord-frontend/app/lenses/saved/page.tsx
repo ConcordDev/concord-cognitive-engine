@@ -16,6 +16,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { BookmarksList } from '@/components/social/BookmarksList';
 import { api } from '@/lib/api/client';
 import Link from 'next/link';
@@ -55,6 +56,7 @@ export default function SavedLensPage() {
 
         <main className="max-w-3xl mx-auto px-4 py-4 space-y-4">
           <BookmarksList currentUserId={me?.user?.id} />
+          <LensSubstratePanel domain="saved" noun="saved item" />
           <CrossLensRecentsPanel lensId="saved" sinceDays={30} limit={6} hideWhenEmpty />
         </main>
       </div>

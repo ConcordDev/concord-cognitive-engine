@@ -14,6 +14,7 @@ import registerSupplychain from "../domains/supplychain.js";
 import registerUrbanplanning from "../domains/urbanplanning.js";
 import registerLawEnforcement from "../domains/lawenforcement.js";
 import registerSuffering from "../domains/suffering.js";
+import domainModules from "../domains/index.js";
 
 beforeEach(() => {
   globalThis._concordSTATE = { dtus: new Map() };
@@ -85,6 +86,40 @@ describe("THIN-tier domains gained the substrate", () => {
       const call = registryFor(domain, registerFn);
       const ctx = { actor: { userId: "u1" } };
       const rec = call("record-add", ctx, { title: `${domain} entry` }).result.record;
+      assert.ok(rec.id);
+      assert.equal(call("record-list", ctx).result.count, 1);
+      assert.equal(call("record-dashboard", ctx).result.total, 1);
+      call("record-delete", ctx, { id: rec.id });
+      assert.equal(call("record-list", ctx).result.count, 0);
+    });
+  }
+});
+
+describe("new substrate-only lens domains (registered via domains/index.js)", () => {
+  const reg = new Map();
+  for (const mod of domainModules) mod((d, n, fn) => reg.set(`${d}.${n}`, fn));
+
+  it("loaded every domain module without throwing", () => {
+    assert.ok(domainModules.length > 200, "expected 200+ domain modules");
+    assert.ok(reg.size > 3000, "expected 3000+ registered macros");
+  });
+
+  for (const domain of [
+    "cognition", "goddess", "lattice", "mesh", "psyops", "sandbox",
+    "tools", "tournaments", "bounties", "code-quality", "crisis-ops",
+    "death-insurance", "deities", "dx-platform", "genesis", "ghost-tracker",
+    "personas", "root", "saved", "self", "sentinel", "sub-worlds",
+    "world-creator", "social", "sponsorship", "staking", "sync",
+    "inheritance", "cognitive-replay", "expedition-journal",
+  ]) {
+    it(`${domain} — substrate macros registered and round-trip`, () => {
+      const call = (n, ctx, p = {}) => {
+        const fn = reg.get(`${domain}.${n}`);
+        assert.ok(fn, `${domain}.${n} not registered`);
+        return fn(ctx, { data: {} }, p);
+      };
+      const ctx = { actor: { userId: `u-${domain}` } };
+      const rec = call("record-add", ctx, { title: `${domain} item` }).result.record;
       assert.ok(rec.id);
       assert.equal(call("record-list", ctx).result.count, 1);
       assert.equal(call("record-dashboard", ctx).result.total, 1);
