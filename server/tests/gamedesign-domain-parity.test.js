@@ -136,3 +136,203 @@ describe("game-design.game-dashboard", () => {
     assert.equal(d.result.mechanicsByCategory.core, 1);
   });
 });
+
+describe("game-design level layers — reorder / delete / duplicate / opacity", () => {
+  it("reorders, sets opacity, duplicates and deletes layers", () => {
+    const gid = newGame();
+    const lvl = call("level-create", ctxA, { gameId: gid, cols: 6, rows: 6 }).result.level;
+    const [bg, fg] = lvl.layers;
+    // reorder
+    call("level-layer-reorder", ctxA, { levelId: lvl.id, order: [fg.id, bg.id] });
+    assert.equal(call("level-get", ctxA, { id: lvl.id }).result.level.layers[0].id, fg.id);
+    // opacity clamp
+    call("level-layer-update", ctxA, { levelId: lvl.id, layerId: bg.id, opacity: 0.4 });
+    assert.equal(call("level-get", ctxA, { id: lvl.id }).result.level.layers[1].opacity, 0.4);
+    // duplicate copies tiles
+    call("level-paint", ctxA, { levelId: lvl.id, layerId: bg.id, index: 3, tile: "stone" });
+    const dup = call("level-layer-duplicate", ctxA, { levelId: lvl.id, layerId: bg.id }).result.layer;
+    assert.equal(dup.tiles[3], "stone");
+    assert.equal(call("level-get", ctxA, { id: lvl.id }).result.level.layers.length, 3);
+    // delete
+    call("level-layer-delete", ctxA, { levelId: lvl.id, layerId: dup.id });
+    assert.equal(call("level-get", ctxA, { id: lvl.id }).result.level.layers.length, 2);
+  });
+
+  it("refuses a bad reorder and refuses to delete the last layer", () => {
+    const gid = newGame();
+    const lvl = call("level-create", ctxA, { gameId: gid, cols: 4, rows: 4 }).result.level;
+    assert.equal(call("level-layer-reorder", ctxA, { levelId: lvl.id, order: ["bad"] }).ok, false);
+    call("level-layer-delete", ctxA, { levelId: lvl.id, layerId: lvl.layers[0].id });
+    const got = call("level-get", ctxA, { id: lvl.id }).result.level;
+    assert.equal(got.layers.length, 1);
+    assert.equal(call("level-layer-delete", ctxA, { levelId: lvl.id, layerId: got.layers[0].id }).ok, false);
+  });
+});
+
+describe("game-design object layers", () => {
+  it("places, updates and deletes objects on an object layer", () => {
+    const gid = newGame();
+    const lvl = call("level-create", ctxA, { gameId: gid, cols: 8, rows: 8 }).result.level;
+    const layer = call("level-layer-add", ctxA, { levelId: lvl.id, kind: "object", name: "Entities" }).result.layer;
+    assert.equal(layer.kind, "object");
+    const obj = call("level-object-add", ctxA, { levelId: lvl.id, layerId: layer.id, name: "Spawn", x: 32, y: 64 }).result.object;
+    assert.equal(obj.x, 32);
+    call("level-object-update", ctxA, { levelId: lvl.id, id: obj.id, x: 100 });
+    const got = call("level-get", ctxA, { id: lvl.id }).result.level;
+    assert.equal(got.layers[2].objects[0].x, 100);
+    call("level-object-delete", ctxA, { levelId: lvl.id, id: obj.id });
+    assert.equal(call("level-get", ctxA, { id: lvl.id }).result.level.layers[2].objects.length, 0);
+  });
+
+  it("rejects painting an object layer with tile macros", () => {
+    const gid = newGame();
+    const lvl = call("level-create", ctxA, { gameId: gid, cols: 4, rows: 4 }).result.level;
+    const layer = call("level-layer-add", ctxA, { levelId: lvl.id, kind: "object" }).result.layer;
+    assert.equal(call("level-paint", ctxA, { levelId: lvl.id, layerId: layer.id, index: 0, tile: "grass" }).ok, false);
+  });
+});
+
+describe("game-design IntGrid + auto-layer", () => {
+  it("paints integer values and auto-generates a tile layer from rules", () => {
+    const gid = newGame();
+    const lvl = call("level-create", ctxA, { gameId: gid, cols: 4, rows: 4 }).result.level;
+    const intLayer = call("level-layer-add", ctxA, { levelId: lvl.id, kind: "intgrid" }).result.layer;
+    const tileLayer = lvl.layers[0].id;
+    call("level-paint", ctxA, { levelId: lvl.id, layerId: intLayer.id, index: 0, tile: 1 });
+    call("level-paint", ctxA, { levelId: lvl.id, layerId: intLayer.id, index: 5, tile: 1 });
+    call("autotile-rule-add", ctxA, { gameId: gid, intValue: 1, tile: "wall" });
+    const auto = call("level-autotile", ctxA, { levelId: lvl.id, sourceLayerId: intLayer.id, targetLayerId: tileLayer });
+    assert.equal(auto.result.painted, 2);
+    const got = call("level-get", ctxA, { id: lvl.id }).result.level;
+    assert.equal(got.layers[0].tiles[0], "wall");
+    assert.equal(got.layers[0].tiles[1], null);
+  });
+
+  it("rejects autotile when the source is not an IntGrid layer", () => {
+    const gid = newGame();
+    const lvl = call("level-create", ctxA, { gameId: gid, cols: 4, rows: 4 }).result.level;
+    const r = call("level-autotile", ctxA, { levelId: lvl.id, sourceLayerId: lvl.layers[0].id, targetLayerId: lvl.layers[1].id });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("game-design level resize / duplicate / export", () => {
+  it("resizes a level preserving tiles inside the new bounds", () => {
+    const gid = newGame();
+    const lvl = call("level-create", ctxA, { gameId: gid, cols: 6, rows: 6 }).result.level;
+    call("level-paint", ctxA, { levelId: lvl.id, layerId: lvl.layers[0].id, index: 0, tile: "grass" });
+    call("level-resize", ctxA, { levelId: lvl.id, cols: 10, rows: 10 });
+    const got = call("level-get", ctxA, { id: lvl.id }).result.level;
+    assert.equal(got.cols, 10);
+    assert.equal(got.layers[0].tiles.length, 100);
+    assert.equal(got.layers[0].tiles[0], "grass");
+  });
+
+  it("duplicates a level and exports JSON", () => {
+    const gid = newGame();
+    const lvl = call("level-create", ctxA, { gameId: gid, cols: 5, rows: 5, orientation: "isometric" }).result.level;
+    const copy = call("level-duplicate", ctxA, { id: lvl.id }).result.level;
+    assert.notEqual(copy.id, lvl.id);
+    assert.equal(copy.orientation, "isometric");
+    const exp = call("level-export", ctxA, { id: lvl.id });
+    assert.equal(exp.result.map.width, 5);
+    assert.ok(exp.result.json.includes("isometric"));
+  });
+});
+
+describe("game-design custom tiles", () => {
+  it("creates custom tiles usable in paint", () => {
+    const gid = newGame();
+    const tile = call("tile-create", ctxA, { gameId: gid, name: "Crystal", color: "#22d3ee" }).result.tile;
+    const list = call("tile-list", ctxA, { gameId: gid }).result;
+    assert.ok(list.all.some((t) => t.id === tile.id));
+    const lvl = call("level-create", ctxA, { gameId: gid, cols: 4, rows: 4 }).result.level;
+    call("level-paint", ctxA, { levelId: lvl.id, layerId: lvl.layers[0].id, index: 0, tile: tile.id });
+    assert.equal(call("level-get", ctxA, { id: lvl.id }).result.level.layers[0].tiles[0], tile.id);
+    call("tile-delete", ctxA, { id: tile.id });
+    assert.equal(call("tile-list", ctxA, { gameId: gid }).result.custom.length, 0);
+  });
+});
+
+describe("game-design entity fields + enums", () => {
+  it("sets typed custom fields on an entity", () => {
+    const gid = newGame();
+    const e = call("entity-add", ctxA, { gameId: gid, name: "Mob", kind: "enemy" }).result.entity;
+    call("entity-field-set", ctxA, { entityId: e.id, key: "aggroRange", type: "int", value: "8" });
+    call("entity-field-set", ctxA, { entityId: e.id, key: "flying", type: "bool", value: true });
+    let ent = call("game-get", ctxA, { id: gid }).result.entities[0];
+    assert.equal(ent.fields.length, 2);
+    assert.equal(ent.fields.find((f) => f.key === "aggroRange").value, 8);
+    call("entity-field-delete", ctxA, { entityId: e.id, key: "flying" });
+    ent = call("game-get", ctxA, { id: gid }).result.entities[0];
+    assert.equal(ent.fields.length, 1);
+  });
+
+  it("creates and lists enums", () => {
+    const gid = newGame();
+    call("enum-create", ctxA, { gameId: gid, name: "ItemType", values: ["money", "ammo", "gun", "money"] });
+    const enums = call("enum-list", ctxA, { gameId: gid }).result.enums;
+    assert.equal(enums.length, 1);
+    assert.equal(enums[0].values.length, 3); // deduped
+  });
+});
+
+describe("game-design core loops", () => {
+  it("models a loop and analyses net resource delta", () => {
+    const gid = newGame();
+    const loop = call("loop-create", ctxA, { gameId: gid, name: "Combat loop", kind: "core" }).result.loop;
+    call("loop-step-add", ctxA, { loopId: loop.id, label: "Kill enemy", delta: 10, resource: "gold" });
+    call("loop-step-add", ctxA, { loopId: loop.id, label: "Buy upgrade", delta: -12, resource: "gold" });
+    const a = call("loop-analysis", ctxA, { gameId: gid });
+    assert.equal(a.result.totalLoops, 1);
+    assert.equal(a.result.loops[0].netDelta, -2);
+    call("loop-step-delete", ctxA, { loopId: loop.id, stepId: call("loop-list", ctxA, { gameId: gid }).result.loops[0].steps[1].id });
+    assert.equal(call("loop-list", ctxA, { gameId: gid }).result.loops[0].steps.length, 1);
+    call("loop-delete", ctxA, { id: loop.id });
+    assert.equal(call("loop-list", ctxA, { gameId: gid }).result.count, 0);
+  });
+});
+
+describe("game-design narrative graph", () => {
+  it("builds nodes, links them and analyses reachability", () => {
+    const gid = newGame();
+    const a = call("narrative-node-create", ctxA, { gameId: gid, title: "Open", kind: "start" }).result.node;
+    const b = call("narrative-node-create", ctxA, { gameId: gid, title: "Fork", kind: "scene" }).result.node;
+    const c = call("narrative-node-create", ctxA, { gameId: gid, title: "Good end", kind: "ending" }).result.node;
+    call("narrative-link-add", ctxA, { fromId: a.id, toId: b.id, label: "enter" });
+    call("narrative-link-add", ctxA, { fromId: b.id, toId: c.id, label: "win" });
+    const g = call("narrative-graph", ctxA, { gameId: gid });
+    assert.equal(g.result.totalNodes, 3);
+    assert.equal(g.result.maxDepth, 2);
+    assert.equal(g.result.unreachable.length, 0);
+    assert.equal(call("narrative-link-add", ctxA, { fromId: a.id, toId: a.id }).ok, false);
+    call("narrative-node-delete", ctxA, { id: b.id });
+    // deleting b orphans c — links cascade-removed
+    assert.equal(call("narrative-node-list", ctxA, { gameId: gid }).result.links.length, 0);
+  });
+});
+
+describe("game-design balance report + project export + gdd reorder", () => {
+  it("reports entity balance and flags an entity far above the curve", () => {
+    const gid = newGame();
+    for (let i = 0; i < 4; i++) {
+      call("entity-add", ctxA, { gameId: gid, name: `Rat ${i}`, kind: "enemy", health: 10, damage: 2 });
+    }
+    call("entity-add", ctxA, { gameId: gid, name: "Titan", kind: "enemy", health: 500, damage: 90 });
+    const r = call("balance-report", ctxA, { gameId: gid });
+    assert.equal(r.result.entities, 5);
+    assert.ok(r.result.outliers.includes("Titan"));
+    assert.equal(r.result.byKind.enemy.count, 5);
+  });
+
+  it("reorders GDD sections and exports the whole project", () => {
+    const gid = newGame();
+    const s1 = call("gdd-add", ctxA, { gameId: gid, title: "One" }).result.section;
+    const s2 = call("gdd-add", ctxA, { gameId: gid, title: "Two" }).result.section;
+    call("gdd-reorder", ctxA, { gameId: gid, order: [s2.id, s1.id] });
+    assert.equal(call("game-get", ctxA, { id: gid }).result.gdd[0].title, "Two");
+    const exp = call("game-export", ctxA, { gameId: gid });
+    assert.equal(exp.result.project.gdd.length, 2);
+    assert.ok(exp.result.json.length > 0);
+  });
+});
