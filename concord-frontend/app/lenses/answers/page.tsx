@@ -19,6 +19,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { StackOverflowSearch } from '@/components/answers/StackOverflowSearch';
+import { AnswersQA } from '@/components/answers/AnswersQA';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -718,6 +719,9 @@ export default function AnswersLensPage() {
           </div>
         </div>
       </footer>
+      <section className="mt-6">
+        <AnswersQA />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <StackOverflowSearch />
       </section>
