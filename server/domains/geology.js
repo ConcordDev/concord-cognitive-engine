@@ -174,4 +174,101 @@ export default function registerGeologyActions(registerLensAction) {
       return { ok: false, error: `usgs designmaps unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Field observation log (Mindat / field-geology journal) ──────────
+
+  function getGeoState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.geologyLens) STATE.geologyLens = {};
+    if (!(STATE.geologyLens.observations instanceof Map)) STATE.geologyLens.observations = new Map(); // userId -> Array
+    return STATE.geologyLens;
+  }
+  function saveGeo() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const geoId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const geoActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const geoClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
+  const geoNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const geoObs = (s, userId) => { if (!s.observations.has(userId)) s.observations.set(userId, []); return s.observations.get(userId); };
+  const SAMPLE_KINDS = ["rock", "mineral", "fossil", "outcrop", "structure", "other"];
+
+  registerLensAction("geology", "observation-log", (ctx, _a, params = {}) => {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = geoClean(params.name, 160);
+    if (!name) return { ok: false, error: "observation name required" };
+    const obs = {
+      id: geoId("obs"),
+      name,
+      kind: SAMPLE_KINDS.includes(params.kind) ? params.kind : "rock",
+      lat: geoNum(params.lat),
+      lon: geoNum(params.lon),
+      locationName: geoClean(params.locationName, 160) || null,
+      formation: geoClean(params.formation, 120) || null,
+      notes: geoClean(params.notes, 2000) || "",
+      tags: Array.isArray(params.tags) ? params.tags.map((t) => geoClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8) : [],
+      collectedAt: geoClean(params.collectedAt, 30) || new Date().toISOString().slice(0, 10),
+      createdAt: new Date().toISOString(),
+    };
+    geoObs(s, geoActor(ctx)).push(obs);
+    saveGeo();
+    return { ok: true, result: { observation: obs } };
+  });
+
+  registerLensAction("geology", "observation-list", (ctx, _a, params = {}) => {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let obs = [...geoObs(s, geoActor(ctx))];
+    if (params.kind) obs = obs.filter((o) => o.kind === params.kind);
+    if (params.tag) {
+      const t = geoClean(params.tag, 30).toLowerCase();
+      obs = obs.filter((o) => o.tags.includes(t));
+    }
+    const q = geoClean(params.query, 80).toLowerCase();
+    if (q) obs = obs.filter((o) => o.name.toLowerCase().includes(q) || (o.notes || "").toLowerCase().includes(q));
+    obs.sort((a, b) => b.collectedAt.localeCompare(a.collectedAt) || b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { observations: obs, count: obs.length } };
+  });
+
+  registerLensAction("geology", "observation-update", (ctx, _a, params = {}) => {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const obs = geoObs(s, geoActor(ctx)).find((o) => o.id === params.id);
+    if (!obs) return { ok: false, error: "observation not found" };
+    if (params.name != null) obs.name = geoClean(params.name, 160) || obs.name;
+    if (params.kind != null && SAMPLE_KINDS.includes(params.kind)) obs.kind = params.kind;
+    if (params.notes != null) obs.notes = geoClean(params.notes, 2000);
+    if (params.formation != null) obs.formation = geoClean(params.formation, 120) || null;
+    if (Array.isArray(params.tags)) obs.tags = params.tags.map((t) => geoClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8);
+    saveGeo();
+    return { ok: true, result: { observation: obs } };
+  });
+
+  registerLensAction("geology", "observation-delete", (ctx, _a, params = {}) => {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = geoObs(s, geoActor(ctx));
+    const i = arr.findIndex((o) => o.id === params.id);
+    if (i < 0) return { ok: false, error: "observation not found" };
+    arr.splice(i, 1);
+    saveGeo();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("geology", "field-dashboard", (ctx, _a, _params = {}) => {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const obs = geoObs(s, geoActor(ctx));
+    const byKind = {};
+    for (const k of SAMPLE_KINDS) byKind[k] = 0;
+    for (const o of obs) byKind[o.kind] = (byKind[o.kind] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        totalObservations: obs.length,
+        byKind,
+        geotagged: obs.filter((o) => o.lat != null && o.lon != null).length,
+        formations: [...new Set(obs.map((o) => o.formation).filter(Boolean))].length,
+      },
+    };
+  });
 }

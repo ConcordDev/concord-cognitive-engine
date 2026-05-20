@@ -94,4 +94,88 @@ export default function registerSpaceActions(registerLensAction) {
       return { ok: false, error: `launch library unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Launch watchlist (Heavens-Above / Launch Library tracking) ──────
+
+  function getSpaceState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.spaceLens) STATE.spaceLens = {};
+    if (!(STATE.spaceLens.watch instanceof Map)) STATE.spaceLens.watch = new Map(); // userId -> Array
+    return STATE.spaceLens;
+  }
+  function saveSpace() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const spId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const spActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const spClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const spWatch = (s, userId) => { if (!s.watch.has(userId)) s.watch.set(userId, []); return s.watch.get(userId); };
+
+  registerLensAction("space", "launch-track", (ctx, _a, params = {}) => {
+    const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = spClean(params.name, 200);
+    if (!name) return { ok: false, error: "launch name required" };
+    const watch = spWatch(s, spActor(ctx));
+    const launchKey = spClean(params.launchId, 80) || name.toLowerCase();
+    if (watch.some((w) => w.launchKey === launchKey)) return { ok: false, error: "already tracking this launch" };
+    const item = {
+      id: spId("wl"),
+      launchKey,
+      name,
+      provider: spClean(params.provider, 120) || "Unknown",
+      net: spClean(params.net, 40) || null, // No-Earlier-Than date
+      pad: spClean(params.pad, 160) || null,
+      note: spClean(params.note, 400) || "",
+      watched: false,
+      trackedAt: new Date().toISOString(),
+    };
+    watch.push(item);
+    saveSpace();
+    return { ok: true, result: { item, count: watch.length } };
+  });
+
+  registerLensAction("space", "launch-watchlist", (ctx, _a, _params = {}) => {
+    const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const now = Date.now();
+    const items = [...spWatch(s, spActor(ctx))]
+      .map((w) => {
+        const t = w.net ? new Date(w.net).getTime() : NaN;
+        const daysUntil = Number.isFinite(t) ? Math.ceil((t - now) / 86400000) : null;
+        return { ...w, daysUntil, status: daysUntil == null ? "tbd" : daysUntil < 0 ? "launched" : daysUntil === 0 ? "today" : "upcoming" };
+      })
+      .sort((a, b) => {
+        if (a.daysUntil == null) return 1;
+        if (b.daysUntil == null) return -1;
+        return a.daysUntil - b.daysUntil;
+      });
+    return {
+      ok: true,
+      result: {
+        items, count: items.length,
+        upcoming: items.filter((i) => i.status === "upcoming" || i.status === "today").length,
+      },
+    };
+  });
+
+  registerLensAction("space", "launch-mark-watched", (ctx, _a, params = {}) => {
+    const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const item = spWatch(s, spActor(ctx)).find((w) => w.id === params.id);
+    if (!item) return { ok: false, error: "tracked launch not found" };
+    item.watched = params.watched != null ? params.watched === true : !item.watched;
+    saveSpace();
+    return { ok: true, result: { id: item.id, watched: item.watched } };
+  });
+
+  registerLensAction("space", "launch-untrack", (ctx, _a, params = {}) => {
+    const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const watch = spWatch(s, spActor(ctx));
+    const i = watch.findIndex((w) => w.id === params.id);
+    if (i < 0) return { ok: false, error: "tracked launch not found" };
+    watch.splice(i, 1);
+    saveSpace();
+    return { ok: true, result: { removed: params.id, count: watch.length } };
+  });
 }
