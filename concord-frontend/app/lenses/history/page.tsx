@@ -27,6 +27,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { WikipediaExplorer } from '@/components/history/WikipediaExplorer';
 import { TimelineSourceTools } from '@/components/history/TimelineSourceTools';
 import { TimelineBuilder } from '@/components/history/TimelineBuilder';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
@@ -651,6 +652,7 @@ export default function HistoryLensPage() {
       </section>
 
       <section className="mt-6">
+        <LensFeedButton domain="history" />
         <TimelineBuilder />
       </section>
     </div>

@@ -11,6 +11,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LawFeed } from '@/components/law/LawFeed';
 import { LawContracts } from '@/components/law/LawContracts';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -509,6 +510,7 @@ export default function LawLensPage() {
       </div>
 
       {/* Contract lifecycle workbench — Ironclad-shape */}
+        <LensFeedButton domain="law" />
       <LawContracts />
 
       {/* Contract Builder - Clause Library (quick reference) */}

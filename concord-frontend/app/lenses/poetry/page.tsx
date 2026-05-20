@@ -12,6 +12,7 @@ import { PoetryDbPanel } from '@/components/poetry/PoetryDbPanel';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
 import { PoemWorkspace } from '@/components/poetry/PoemWorkspace';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -683,6 +684,7 @@ export default function PoetryPage() {
       </section>
 
       <section className="mt-6">
+        <LensFeedButton domain="poetry" />
         <PoemWorkspace />
       </section>
 

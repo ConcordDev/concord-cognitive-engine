@@ -33,6 +33,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { UpcomingLaunches } from '@/components/space/UpcomingLaunches';
 import { LaunchWatchlist } from '@/components/space/LaunchWatchlist';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 
 type ModeTab = 'Dashboard' | 'Missions' | 'Satellites' | 'LaunchOps' | 'Telemetry' | 'Crew' | 'Debris';
 
@@ -661,6 +662,7 @@ export default function SpaceLensPage() {
         <UpcomingLaunches />
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LensFeedButton domain="space" />
         <LaunchWatchlist />
       </section>
     </div>
