@@ -69,6 +69,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ArtExplorer } from '@/components/art/ArtExplorer';
 import { PaletteWorkshop } from '@/components/art/PaletteWorkshop';
 import { ArtActionPanel } from '@/components/art/ArtActionPanel';
+import { ArtStudioSection } from '@/components/art/ArtStudioSection';
 import { PipingProvider } from '@/components/panel-polish';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
@@ -1059,6 +1060,9 @@ export default function ArtLensPage() {
       <FirstRunTour lensId="art" />
       <ManifestActionBar />
       <DepthBadge lensId="art" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <ArtStudioSection />
+      </div>
       {/* Phase 4 — REAL MET Museum Open Access (CC0). */}
       <MetMuseumPanel domain="art" className="mx-4 mt-2" />
     <div data-lens-theme="art" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-rose-950/10 via-neutral-950 to-black">

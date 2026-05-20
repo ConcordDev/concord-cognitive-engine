@@ -490,4 +490,488 @@ export default function registerArtActions(registerLensAction) {
       return { ok: false, error: `aic unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Procreate + Krita 2026 parity — a real drawing studio ──────────
+  // Layered vector-stroke artworks (replayable on an HTML5 canvas),
+  // blend modes, brush presets, palettes with color-theory harmony,
+  // reference boards, and rotating art prompts.
+
+  function getArtState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.artLens) STATE.artLens = {};
+    const s = STATE.artLens;
+    for (const k of ["artworks", "palettes", "refBoards"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveArtState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const atId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const atNow = () => new Date().toISOString();
+  const atAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const atListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const atNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const atClamp = (v, lo, hi, d) => Math.max(lo, Math.min(hi, atNum(v, d)));
+  const atClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const atHex = (v) => {
+    const m = String(v || "").trim().toLowerCase();
+    return /^#[0-9a-f]{6}$/.test(m) ? m : null;
+  };
+
+  const ART_TOOLS = ["pencil", "ink", "marker", "airbrush", "eraser", "fill"];
+  const ART_BLEND_MODES = [
+    "normal", "multiply", "screen", "overlay", "darken", "lighten",
+    "color-dodge", "color-burn", "hard-light", "soft-light",
+    "difference", "exclusion", "hue", "saturation", "color", "luminosity",
+  ];
+  const ART_MAX_POINTS = 5000;
+  const ART_MAX_STROKES_PER_LAYER = 6000;
+  const ART_MAX_LAYERS = 24;
+
+  const ART_BRUSH_PRESETS = [
+    { id: "sketch", name: "Sketch Pencil", tool: "pencil", size: 2, opacity: 0.65, hardness: 0.8 },
+    { id: "pencil", name: "Pencil", tool: "pencil", size: 4, opacity: 1, hardness: 1 },
+    { id: "ink", name: "Studio Ink", tool: "ink", size: 6, opacity: 1, hardness: 0.95 },
+    { id: "round", name: "Hard Round", tool: "ink", size: 14, opacity: 1, hardness: 1 },
+    { id: "marker", name: "Marker", tool: "marker", size: 20, opacity: 0.4, hardness: 0.7 },
+    { id: "airbrush", name: "Soft Airbrush", tool: "airbrush", size: 44, opacity: 0.16, hardness: 0.1 },
+    { id: "wash", name: "Wash", tool: "marker", size: 60, opacity: 0.12, hardness: 0.4 },
+    { id: "eraser", name: "Eraser", tool: "eraser", size: 24, opacity: 1, hardness: 0.9 },
+  ];
+
+  // Real drawing-practice prompts.
+  const ART_PROMPTS = [
+    { category: "study", text: "A 5-minute gesture drawing of a figure in motion." },
+    { category: "study", text: "A still life of three objects lit by a single light source." },
+    { category: "study", text: "A value study in greyscale — five tones, no lines." },
+    { category: "color", text: "Paint the same scene in a warm and then a cool palette." },
+    { category: "color", text: "Use only three colors plus white for an entire piece." },
+    { category: "color", text: "A monochromatic painting exploring one hue's full range." },
+    { category: "imagination", text: "A creature that is half plant, half animal." },
+    { category: "imagination", text: "Your favorite room redrawn 100 years in the future." },
+    { category: "imagination", text: "An everyday object reimagined as a piece of architecture." },
+    { category: "composition", text: "A landscape using the rule of thirds and a strong horizon." },
+    { category: "composition", text: "A portrait where negative space tells half the story." },
+    { category: "composition", text: "A scene built entirely from circles and triangles." },
+    { category: "observation", text: "Draw your own hand without lifting your eyes from it." },
+    { category: "observation", text: "Sketch the view from the nearest window." },
+    { category: "expressive", text: "Draw a single emotion using only line weight and direction." },
+  ];
+  const ART_PROMPT_CATEGORIES = [...new Set(ART_PROMPTS.map((p) => p.category))];
+
+  // ── Color theory helpers ────────────────────────────────────────────
+  function hexToRgb(hex) {
+    return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  }
+  function rgbToHex(r, g, b) {
+    const c = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+    return `#${c(r)}${c(g)}${c(b)}`;
+  }
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, sat = 0;
+    const l = (max + min) / 2;
+    const d = max - min;
+    if (d !== 0) {
+      sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+    }
+    return [h, sat, l];
+  }
+  function hslToHex(h, sat, l) {
+    h = ((h % 360) + 360) % 360;
+    const c = (1 - Math.abs(2 * l - 1)) * sat;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return rgbToHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+  }
+
+  // ── Stroke sanitisation ─────────────────────────────────────────────
+  function sanitizeStroke(raw, art) {
+    if (!raw || typeof raw !== "object") return null;
+    const tool = ART_TOOLS.includes(String(raw.tool)) ? String(raw.tool) : "ink";
+    const color = atHex(raw.color) || "#222222";
+    const size = atClamp(raw.size, 0.5, 400, 6);
+    const opacity = atClamp(raw.opacity, 0.01, 1, 1);
+    const pts = Array.isArray(raw.points) ? raw.points : [];
+    const points = [];
+    for (const p of pts.slice(0, ART_MAX_POINTS)) {
+      if (Array.isArray(p) && p.length >= 2) {
+        points.push([
+          Math.round(atClamp(p[0], -2, art.width + 2, 0)),
+          Math.round(atClamp(p[1], -2, art.height + 2, 0)),
+        ]);
+      }
+    }
+    if (!points.length) return null;
+    return { id: atId("stk"), tool, color, size, opacity, points };
+  }
+
+  // ── Artworks ────────────────────────────────────────────────────────
+  registerLensAction("art", "artwork-create", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = atClean(params.title, 120) || "Untitled";
+    const artwork = {
+      id: atId("art"), title,
+      width: Math.round(atClamp(params.width, 64, 4096, 1280)),
+      height: Math.round(atClamp(params.height, 64, 4096, 800)),
+      background: atHex(params.background) || "#ffffff",
+      layers: [{ id: atId("lyr"), name: "Layer 1", visible: true, opacity: 1, blendMode: "normal", strokes: [] }],
+      thumbnail: null,
+      createdAt: atNow(), updatedAt: atNow(),
+    };
+    atListB(s.artworks, atAid(ctx)).push(artwork);
+    saveArtState();
+    return { ok: true, result: { artwork } };
+  });
+
+  registerLensAction("art", "artwork-list", (ctx, _a, _params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const artworks = (s.artworks.get(atAid(ctx)) || [])
+      .map((a) => ({
+        id: a.id, title: a.title, width: a.width, height: a.height,
+        background: a.background, thumbnail: a.thumbnail,
+        layerCount: a.layers.length,
+        strokeCount: a.layers.reduce((n, l) => n + l.strokes.length, 0),
+        updatedAt: a.updatedAt,
+      }))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return { ok: true, result: { artworks, count: artworks.length } };
+  });
+
+  registerLensAction("art", "artwork-get", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const artwork = (s.artworks.get(atAid(ctx)) || []).find((a) => a.id === params.id);
+    if (!artwork) return { ok: false, error: "artwork not found" };
+    return { ok: true, result: { artwork } };
+  });
+
+  registerLensAction("art", "artwork-rename", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const artwork = (s.artworks.get(atAid(ctx)) || []).find((a) => a.id === params.id);
+    if (!artwork) return { ok: false, error: "artwork not found" };
+    const title = atClean(params.title, 120);
+    if (!title) return { ok: false, error: "title required" };
+    artwork.title = title;
+    artwork.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { id: artwork.id, title } };
+  });
+
+  registerLensAction("art", "artwork-save-thumbnail", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const artwork = (s.artworks.get(atAid(ctx)) || []).find((a) => a.id === params.id);
+    if (!artwork) return { ok: false, error: "artwork not found" };
+    const thumb = String(params.thumbnail || "");
+    if (!thumb.startsWith("data:image/") || thumb.length > 400000) {
+      return { ok: false, error: "thumbnail must be a data URL under 400KB" };
+    }
+    artwork.thumbnail = thumb;
+    artwork.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { id: artwork.id, saved: true } };
+  });
+
+  registerLensAction("art", "artwork-delete", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.artworks.get(atAid(ctx)) || [];
+    const i = arr.findIndex((a) => a.id === params.id);
+    if (i < 0) return { ok: false, error: "artwork not found" };
+    arr.splice(i, 1);
+    saveArtState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Layers ──────────────────────────────────────────────────────────
+  function findArt(s, userId, artworkId) {
+    return (s.artworks.get(userId) || []).find((a) => a.id === artworkId) || null;
+  }
+
+  registerLensAction("art", "layer-add", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    if (art.layers.length >= ART_MAX_LAYERS) return { ok: false, error: `layer limit (${ART_MAX_LAYERS}) reached` };
+    const layer = {
+      id: atId("lyr"),
+      name: atClean(params.name, 60) || `Layer ${art.layers.length + 1}`,
+      visible: true, opacity: 1, blendMode: "normal", strokes: [],
+    };
+    art.layers.push(layer);
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layer } };
+  });
+
+  registerLensAction("art", "layer-update", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (params.name != null) layer.name = atClean(params.name, 60) || layer.name;
+    if (params.visible != null) layer.visible = !!params.visible;
+    if (params.opacity != null) layer.opacity = atClamp(params.opacity, 0, 1, layer.opacity);
+    if (params.blendMode != null && ART_BLEND_MODES.includes(String(params.blendMode))) {
+      layer.blendMode = String(params.blendMode);
+    }
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layer: { ...layer, strokes: undefined, strokeCount: layer.strokes.length } } };
+  });
+
+  registerLensAction("art", "layer-delete", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    if (art.layers.length <= 1) return { ok: false, error: "an artwork needs at least one layer" };
+    const i = art.layers.findIndex((l) => l.id === params.layerId);
+    if (i < 0) return { ok: false, error: "layer not found" };
+    art.layers.splice(i, 1);
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { deleted: params.layerId } };
+  });
+
+  registerLensAction("art", "layer-reorder", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const i = art.layers.findIndex((l) => l.id === params.layerId);
+    if (i < 0) return { ok: false, error: "layer not found" };
+    const dir = params.direction === "up" ? 1 : -1;   // up = toward top of stack (end of array)
+    const j = i + dir;
+    if (j < 0 || j >= art.layers.length) return { ok: true, result: { order: art.layers.map((l) => l.id) } };
+    [art.layers[i], art.layers[j]] = [art.layers[j], art.layers[i]];
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { order: art.layers.map((l) => l.id) } };
+  });
+
+  // ── Strokes — the actual drawing ────────────────────────────────────
+  registerLensAction("art", "stroke-commit", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.strokes.length >= ART_MAX_STROKES_PER_LAYER) {
+      return { ok: false, error: "layer stroke limit reached" };
+    }
+    const stroke = sanitizeStroke(params.stroke, art);
+    if (!stroke) return { ok: false, error: "invalid stroke" };
+    layer.strokes.push(stroke);
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { strokeId: stroke.id, strokeCount: layer.strokes.length } };
+  });
+
+  registerLensAction("art", "stroke-batch", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    const incoming = Array.isArray(params.strokes) ? params.strokes : [];
+    let added = 0;
+    for (const raw of incoming) {
+      if (layer.strokes.length >= ART_MAX_STROKES_PER_LAYER) break;
+      const stroke = sanitizeStroke(raw, art);
+      if (stroke) { layer.strokes.push(stroke); added += 1; }
+    }
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { added, strokeCount: layer.strokes.length } };
+  });
+
+  registerLensAction("art", "stroke-undo", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    const removed = layer.strokes.pop() || null;
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { removed: removed?.id || null, strokeCount: layer.strokes.length } };
+  });
+
+  registerLensAction("art", "layer-clear", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    layer.strokes = [];
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { cleared: layer.id } };
+  });
+
+  // ── Brush presets ───────────────────────────────────────────────────
+  registerLensAction("art", "brush-presets", (_ctx, _a, _params = {}) => {
+    return { ok: true, result: { brushes: ART_BRUSH_PRESETS, blendModes: ART_BLEND_MODES } };
+  });
+
+  // ── Palettes ────────────────────────────────────────────────────────
+  registerLensAction("art", "palette-create", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = atClean(params.name, 80);
+    if (!name) return { ok: false, error: "palette name required" };
+    const colors = (Array.isArray(params.colors) ? params.colors : [])
+      .map(atHex).filter(Boolean).slice(0, 24);
+    if (!colors.length) return { ok: false, error: "at least one valid hex color required" };
+    const palette = { id: atId("pal"), name, colors, createdAt: atNow() };
+    atListB(s.palettes, atAid(ctx)).push(palette);
+    saveArtState();
+    return { ok: true, result: { palette } };
+  });
+
+  registerLensAction("art", "palette-list", (ctx, _a, _params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const palettes = [...(s.palettes.get(atAid(ctx)) || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { palettes, count: palettes.length } };
+  });
+
+  registerLensAction("art", "palette-delete", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.palettes.get(atAid(ctx)) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "palette not found" };
+    arr.splice(i, 1);
+    saveArtState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("art", "palette-harmony", (_ctx, _a, params = {}) => {
+    const base = atHex(params.baseColor);
+    if (!base) return { ok: false, error: "baseColor must be a #rrggbb hex" };
+    const scheme = ["complementary", "analogous", "triadic", "tetradic", "split-complementary", "monochromatic"]
+      .includes(String(params.scheme)) ? String(params.scheme) : "analogous";
+    const [h, sat, l] = rgbToHsl(...hexToRgb(base));
+    let colors;
+    if (scheme === "complementary") colors = [base, hslToHex(h + 180, sat, l)];
+    else if (scheme === "triadic") colors = [base, hslToHex(h + 120, sat, l), hslToHex(h + 240, sat, l)];
+    else if (scheme === "tetradic") colors = [base, hslToHex(h + 90, sat, l), hslToHex(h + 180, sat, l), hslToHex(h + 270, sat, l)];
+    else if (scheme === "split-complementary") colors = [base, hslToHex(h + 150, sat, l), hslToHex(h + 210, sat, l)];
+    else if (scheme === "monochromatic") {
+      colors = [0.25, 0.4, 0.55, 0.7, 0.85].map((ll) => hslToHex(h, sat, ll));
+    } else colors = [hslToHex(h - 30, sat, l), base, hslToHex(h + 30, sat, l)];
+    return { ok: true, result: { baseColor: base, scheme, colors } };
+  });
+
+  registerLensAction("art", "color-mix", (_ctx, _a, params = {}) => {
+    const a = atHex(params.colorA), b = atHex(params.colorB);
+    if (!a || !b) return { ok: false, error: "colorA and colorB must be #rrggbb hex" };
+    const ratio = atClamp(params.ratio, 0, 1, 0.5);
+    const [ar, ag, ab] = hexToRgb(a);
+    const [br, bg, bb] = hexToRgb(b);
+    const mixed = rgbToHex(
+      ar + (br - ar) * ratio, ag + (bg - ag) * ratio, ab + (bb - ab) * ratio,
+    );
+    return { ok: true, result: { colorA: a, colorB: b, ratio, mixed } };
+  });
+
+  // ── Reference boards ────────────────────────────────────────────────
+  registerLensAction("art", "reference-board-create", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = atClean(params.name, 80);
+    if (!name) return { ok: false, error: "board name required" };
+    const board = { id: atId("ref"), name, refs: [], createdAt: atNow() };
+    atListB(s.refBoards, atAid(ctx)).push(board);
+    saveArtState();
+    return { ok: true, result: { board } };
+  });
+
+  registerLensAction("art", "reference-board-list", (ctx, _a, _params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const boards = s.refBoards.get(atAid(ctx)) || [];
+    return { ok: true, result: { boards, count: boards.length } };
+  });
+
+  registerLensAction("art", "reference-add", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = (s.refBoards.get(atAid(ctx)) || []).find((b) => b.id === params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const imageUrl = atClean(params.imageUrl, 600);
+    if (!/^https?:\/\//.test(imageUrl)) return { ok: false, error: "imageUrl must be an http(s) URL" };
+    const ref = { id: atId("img"), imageUrl, note: atClean(params.note, 200) || null, addedAt: atNow() };
+    board.refs.push(ref);
+    saveArtState();
+    return { ok: true, result: { ref } };
+  });
+
+  registerLensAction("art", "reference-remove", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = (s.refBoards.get(atAid(ctx)) || []).find((b) => b.id === params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const i = board.refs.findIndex((r) => r.id === params.refId);
+    if (i < 0) return { ok: false, error: "reference not found" };
+    board.refs.splice(i, 1);
+    saveArtState();
+    return { ok: true, result: { removed: params.refId } };
+  });
+
+  registerLensAction("art", "reference-board-delete", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.refBoards.get(atAid(ctx)) || [];
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "board not found" };
+    arr.splice(i, 1);
+    saveArtState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Art prompts ─────────────────────────────────────────────────────
+  registerLensAction("art", "art-prompt", (_ctx, _a, params = {}) => {
+    if (params.random) {
+      let pool = ART_PROMPTS;
+      if (params.category) {
+        const c = String(params.category).toLowerCase();
+        const filtered = ART_PROMPTS.filter((p) => p.category === c);
+        if (filtered.length) pool = filtered;
+      }
+      return { ok: true, result: { prompt: pool[Math.floor(Math.random() * pool.length)], categories: ART_PROMPT_CATEGORIES } };
+    }
+    const dayIdx = Math.floor(Date.now() / 86400000) % ART_PROMPTS.length;
+    return { ok: true, result: { prompt: ART_PROMPTS[dayIdx], categories: ART_PROMPT_CATEGORIES } };
+  });
+
+  // ── Dashboard ───────────────────────────────────────────────────────
+  registerLensAction("art", "art-dashboard", (ctx, _a, _params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = atAid(ctx);
+    const artworks = s.artworks.get(userId) || [];
+    const totalStrokes = artworks.reduce(
+      (n, a) => n + a.layers.reduce((m, l) => m + l.strokes.length, 0), 0);
+    const latest = [...artworks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+    const dayIdx = Math.floor(Date.now() / 86400000) % ART_PROMPTS.length;
+    return {
+      ok: true,
+      result: {
+        artworks: artworks.length,
+        totalStrokes,
+        palettes: (s.palettes.get(userId) || []).length,
+        referenceBoards: (s.refBoards.get(userId) || []).length,
+        latestArtwork: latest ? { id: latest.id, title: latest.title } : null,
+        promptOfTheDay: ART_PROMPTS[dayIdx],
+      },
+    };
+  });
 }
