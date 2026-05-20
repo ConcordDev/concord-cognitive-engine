@@ -11,6 +11,7 @@ import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
 import { DictionaryPanel } from '@/components/linguistics/DictionaryPanel';
 import { WordLookup } from '@/components/linguistics/WordLookup';
 import { LinguisticsActionPanel } from '@/components/linguistics/LinguisticsActionPanel';
+import { VocabularyBuilder } from '@/components/linguistics/VocabularyBuilder';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -685,6 +686,10 @@ export default function LinguisticsLensPage() {
       {/* Bespoke dictionary + Datamuse word lookup with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <WordLookup />
+      </section>
+
+      <section className="mt-6">
+        <VocabularyBuilder />
       </section>
 
       <PipingProvider>
