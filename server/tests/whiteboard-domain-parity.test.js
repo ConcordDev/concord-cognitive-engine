@@ -365,3 +365,43 @@ describe("whiteboard — workspace-summary", () => {
     assert.equal(r.result.openCommentCount, 1);
   });
 });
+
+describe("whiteboard — board-duplicate", () => {
+  it("clones a board with a deep-copied scene and a new id", () => {
+    const src = call("board-save", ctxA, { title: "Original", scene: { elements: [{ id: 'e1', kind: 'sticky', text: 'hi' }] } });
+    const dup = call("board-duplicate", ctxA, { id: src.result.board.id });
+    assert.equal(dup.ok, true);
+    assert.notEqual(dup.result.board.id, src.result.board.id);
+    assert.equal(dup.result.board.title, "Original (copy)");
+    assert.equal(dup.result.board.scene.elements[0].text, "hi");
+    // deep copy — mutating the clone does not touch the source
+    dup.result.board.scene.elements[0].text = "changed";
+    const reloaded = call("board-load", ctxA, { id: src.result.board.id });
+    assert.equal(reloaded.result.board.scene.elements[0].text, "hi");
+  });
+
+  it("rejects an unknown board id", () => {
+    assert.equal(call("board-duplicate", ctxA, { id: "nope" }).ok, false);
+  });
+});
+
+describe("whiteboard — meeting timer", () => {
+  it("start / get / stop lifecycle, board-scoped", () => {
+    assert.equal(call("timer-get", ctxA, { boardId: "b1" }).result.active, false);
+    const started = call("timer-start", ctxA, { boardId: "b1", minutes: 5, label: "Standup" });
+    assert.equal(started.ok, true);
+    assert.equal(started.result.timer.durationSec, 300);
+    const got = call("timer-get", ctxB, { boardId: "b1" });
+    assert.equal(got.result.active, true);
+    assert.equal(got.result.label, "Standup");
+    assert.ok(got.result.remainingSec > 290 && got.result.remainingSec <= 300);
+    call("timer-stop", ctxA, { boardId: "b1" });
+    assert.equal(call("timer-get", ctxA, { boardId: "b1" }).result.active, false);
+  });
+
+  it("clamps the duration and requires a boardId", () => {
+    assert.equal(call("timer-start", ctxA, { minutes: 5 }).ok, false);
+    const clamped = call("timer-start", ctxA, { boardId: "b2", minutes: 999 });
+    assert.equal(clamped.result.timer.durationSec, 7200); // 120 min cap
+  });
+});

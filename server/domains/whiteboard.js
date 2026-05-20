@@ -117,6 +117,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (!STATE.whiteboardLens.votes)         STATE.whiteboardLens.votes         = new Map(); // userId -> Map<boardId, Map<elementId, Set<voterId>>>
     if (!STATE.whiteboardLens.sharedBoards)  STATE.whiteboardLens.sharedBoards  = new Map(); // boardId -> { id, title, scene, ownerId, participants: Set<userId>, createdAt, updatedAt }
     if (!STATE.whiteboardLens.sharedVotes)   STATE.whiteboardLens.sharedVotes   = new Map(); // boardId -> Map<elementId, Set<voterId>>
+    if (!STATE.whiteboardLens.timers)        STATE.whiteboardLens.timers        = new Map(); // boardId -> { endsAt, durationSec, label, startedBy, startedAt }
     return STATE.whiteboardLens;
   }
   function saveWhiteboardState() {
@@ -249,6 +250,79 @@ export default function registerWhiteboardActions(registerLensAction) {
     map.delete(id);
     saveWhiteboardState();
     return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("whiteboard", "board-duplicate", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const srcId = String(params.id || "");
+    const map = s.boards.get(userId);
+    if (!map || !map.has(srcId)) return { ok: false, error: "not found" };
+    const src = map.get(srcId);
+    const id = nextWbId("board");
+    const board = {
+      id,
+      title: String(params.title || `${src.title} (copy)`).slice(0, 80),
+      scene: JSON.parse(JSON.stringify(src.scene || { elements: [], appState: {} })),
+      createdAt: nowIsoWb(),
+      updatedAt: nowIsoWb(),
+    };
+    map.set(id, board);
+    saveWhiteboardState();
+    return { ok: true, result: { board } };
+  });
+
+  // ── Meeting timer (Miro-shape, board-scoped) ──
+
+  registerLensAction("whiteboard", "timer-start", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const boardId = String(params.boardId || "");
+    if (!boardId) return { ok: false, error: "boardId required" };
+    const minutes = Math.max(0.25, Math.min(120, Number(params.minutes) || 5));
+    const durationSec = Math.round(minutes * 60);
+    const timer = {
+      endsAt: new Date(Date.now() + durationSec * 1000).toISOString(),
+      durationSec,
+      label: String(params.label || "Meeting timer").slice(0, 60),
+      startedBy: wbActor(ctx),
+      startedAt: nowIsoWb(),
+    };
+    s.timers.set(boardId, timer);
+    saveWhiteboardState();
+    return { ok: true, result: { boardId, timer } };
+  });
+
+  registerLensAction("whiteboard", "timer-get", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const boardId = String(params.boardId || "");
+    const timer = s.timers.get(boardId);
+    if (!timer) return { ok: true, result: { active: false } };
+    const remainingMs = new Date(timer.endsAt).getTime() - Date.now();
+    if (remainingMs <= 0) {
+      return { ok: true, result: { active: false, expired: true, label: timer.label } };
+    }
+    return {
+      ok: true,
+      result: {
+        active: true,
+        label: timer.label,
+        endsAt: timer.endsAt,
+        durationSec: timer.durationSec,
+        remainingSec: Math.round(remainingMs / 1000),
+      },
+    };
+  });
+
+  registerLensAction("whiteboard", "timer-stop", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const boardId = String(params.boardId || "");
+    s.timers.delete(boardId);
+    saveWhiteboardState();
+    return { ok: true, result: { active: false } };
   });
 
   // ── Voting sessions ──
