@@ -541,6 +541,237 @@ export default function registerLawActions(registerLensAction) {
       return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Contract lifecycle management (Ironclad / LegalZoom 2026 parity) ───
+  // Per-user STATE-backed contract repository: draft, compose from a
+  // clause library, review for risk, sign, and track to expiry.
+
+  function getLawState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.lawLens) STATE.lawLens = {};
+    if (!(STATE.lawLens.contracts instanceof Map)) STATE.lawLens.contracts = new Map();
+    return STATE.lawLens;
+  }
+  function saveLaw() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const lwId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const lwNow = () => new Date().toISOString();
+  const lwActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const lwClean = (v, max = 280) => String(v == null ? "" : v).trim().slice(0, max);
+  const lwList = (s, userId) => { if (!s.contracts.has(userId)) s.contracts.set(userId, []); return s.contracts.get(userId); };
+
+  const CONTRACT_TYPES = ["nda", "services", "employment", "license", "lease", "sale", "partnership", "other"];
+  const CONTRACT_STATUSES = ["draft", "in_review", "sent", "signed", "active", "expired", "terminated"];
+
+  const CLAUSE_LIBRARY = {
+    "data-protection": [
+      { title: "Data Processing Agreement", text: "Each party shall process personal data only on documented instructions from the other party and in compliance with applicable data-protection law." },
+      { title: "Sub-Processor Notification", text: "The Processor shall notify the Controller of any intended addition or replacement of Sub-Processors, giving the Controller the opportunity to object." },
+      { title: "Data Breach Response", text: "The Processor shall notify the Controller without undue delay, and in any event within 72 hours, after becoming aware of a personal-data breach." },
+    ],
+    "intellectual-property": [
+      { title: "IP Assignment", text: "All intellectual property created under this Agreement shall be the sole and exclusive property of the Client upon creation." },
+      { title: "License Grant", text: "The Licensor grants the Licensee a non-exclusive, non-transferable license to use the Licensed Materials for the stated purpose." },
+      { title: "Non-Compete Restriction", text: "During the term and for twelve (12) months thereafter, the Party shall not engage in any directly competing business within the defined territory." },
+    ],
+    "liability": [
+      { title: "Limitation of Liability", text: "Neither party's aggregate liability shall exceed the total fees paid under this Agreement in the twelve (12) months preceding the claim." },
+      { title: "Indemnification", text: "Each party shall indemnify and hold harmless the other against third-party claims arising from its breach of this Agreement." },
+      { title: "Force Majeure", text: "Neither party shall be liable for any failure or delay in performance caused by events beyond its reasonable control." },
+    ],
+    "termination": [
+      { title: "Termination for Convenience", text: "Either party may terminate this Agreement upon thirty (30) days' prior written notice to the other party." },
+      { title: "Termination for Cause", text: "Either party may terminate immediately if the other materially breaches this Agreement and fails to cure within fifteen (15) days of notice." },
+      { title: "Survival", text: "Provisions which by their nature should survive termination — including confidentiality, indemnification, and limitation of liability — shall survive." },
+    ],
+    "general": [
+      { title: "Confidentiality", text: "Each party shall keep confidential all non-public information disclosed by the other party and use it only for the purposes of this Agreement." },
+      { title: "Governing Law", text: "This Agreement shall be governed by and construed in accordance with the laws of the stated jurisdiction." },
+      { title: "Dispute Resolution", text: "Any dispute shall first be submitted to good-faith negotiation and, failing resolution, to binding arbitration." },
+      { title: "Entire Agreement", text: "This Agreement constitutes the entire agreement between the parties and supersedes all prior understandings." },
+    ],
+  };
+  // Clauses a well-formed contract should carry — drives contract-review.
+  const RECOMMENDED_CLAUSES = ["Confidentiality", "Limitation of Liability", "Governing Law", "Dispute Resolution", "Termination for Convenience"];
+
+  registerLensAction("law", "clause-library", (_ctx, _a, params = {}) => {
+    const cat = lwClean(params.category, 40).toLowerCase();
+    if (cat && CLAUSE_LIBRARY[cat]) return { ok: true, result: { category: cat, clauses: CLAUSE_LIBRARY[cat] } };
+    return {
+      ok: true,
+      result: {
+        categories: Object.keys(CLAUSE_LIBRARY).map((c) => ({ category: c, count: CLAUSE_LIBRARY[c].length })),
+        library: CLAUSE_LIBRARY,
+      },
+    };
+  });
+
+  registerLensAction("law", "contract-create", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = lwClean(params.title, 160);
+    if (!title) return { ok: false, error: "contract title required" };
+    const type = CONTRACT_TYPES.includes(params.type) ? params.type : "other";
+    const contract = {
+      id: lwId("ctr"),
+      title,
+      type,
+      counterparty: lwClean(params.counterparty, 160) || "Unspecified",
+      value: Math.max(0, Number(params.value) || 0),
+      status: "draft",
+      effectiveDate: lwClean(params.effectiveDate, 30) || null,
+      expiryDate: lwClean(params.expiryDate, 30) || null,
+      clauses: [],
+      signatures: [],
+      createdAt: lwNow(),
+      updatedAt: lwNow(),
+    };
+    lwList(s, lwActor(ctx)).push(contract);
+    saveLaw();
+    return { ok: true, result: { contract } };
+  });
+
+  registerLensAction("law", "contract-list", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let cs = [...lwList(s, lwActor(ctx))];
+    if (params.status && CONTRACT_STATUSES.includes(params.status)) cs = cs.filter((c) => c.status === params.status);
+    cs.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const contracts = cs.map((c) => ({
+      id: c.id, title: c.title, type: c.type, counterparty: c.counterparty,
+      value: c.value, status: c.status, clauseCount: c.clauses.length,
+      signatureCount: c.signatures.length, expiryDate: c.expiryDate, updatedAt: c.updatedAt,
+    }));
+    return { ok: true, result: { contracts, count: contracts.length } };
+  });
+
+  registerLensAction("law", "contract-detail", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    return { ok: true, result: { contract: c } };
+  });
+
+  registerLensAction("law", "contract-update", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    if (params.title != null) c.title = lwClean(params.title, 160) || c.title;
+    if (params.counterparty != null) c.counterparty = lwClean(params.counterparty, 160);
+    if (params.value != null) c.value = Math.max(0, Number(params.value) || 0);
+    if (params.effectiveDate != null) c.effectiveDate = lwClean(params.effectiveDate, 30) || null;
+    if (params.expiryDate != null) c.expiryDate = lwClean(params.expiryDate, 30) || null;
+    if (params.status != null && CONTRACT_STATUSES.includes(params.status)) c.status = params.status;
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { contract: c } };
+  });
+
+  registerLensAction("law", "contract-delete", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lwList(s, lwActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "contract not found" };
+    arr.splice(i, 1);
+    saveLaw();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("law", "clause-add", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.contractId);
+    if (!c) return { ok: false, error: "contract not found" };
+    const title = lwClean(params.title, 120);
+    if (!title) return { ok: false, error: "clause title required" };
+    const clause = {
+      id: lwId("cl"),
+      category: lwClean(params.category, 40).toLowerCase() || "general",
+      title,
+      text: lwClean(params.text, 4000) || "(no text)",
+      addedAt: lwNow(),
+    };
+    c.clauses.push(clause);
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { clause, clauseCount: c.clauses.length } };
+  });
+
+  registerLensAction("law", "clause-remove", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.contractId);
+    if (!c) return { ok: false, error: "contract not found" };
+    const i = c.clauses.findIndex((x) => x.id === params.clauseId);
+    if (i < 0) return { ok: false, error: "clause not found" };
+    c.clauses.splice(i, 1);
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { removed: params.clauseId, clauseCount: c.clauses.length } };
+  });
+
+  registerLensAction("law", "contract-review", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const titles = c.clauses.map((cl) => cl.title.toLowerCase());
+    const missing = RECOMMENDED_CLAUSES.filter((rc) => !titles.some((t) => t.includes(rc.toLowerCase().split(" ")[0])));
+    const findings = [];
+    for (const m of missing) findings.push({ severity: "warning", message: `Missing recommended clause: ${m}` });
+    if (c.clauses.length === 0) findings.push({ severity: "high", message: "Contract has no clauses." });
+    if (!c.expiryDate) findings.push({ severity: "info", message: "No expiry date set — contract is open-ended." });
+    if (c.value === 0) findings.push({ severity: "info", message: "Contract value is zero or unset." });
+    if (c.status === "active" && c.signatures.length < 2) {
+      findings.push({ severity: "high", message: "Contract is marked active but has fewer than two signatures." });
+    }
+    const riskScore = Math.min(100, findings.reduce((n, f) => n + (f.severity === "high" ? 30 : f.severity === "warning" ? 12 : 4), 0));
+    const grade = riskScore >= 60 ? "high-risk" : riskScore >= 25 ? "needs-attention" : "sound";
+    return { ok: true, result: { contractId: c.id, riskScore, grade, findings, clauseCount: c.clauses.length } };
+  });
+
+  registerLensAction("law", "contract-sign", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const party = lwClean(params.party, 120);
+    if (!party) return { ok: false, error: "party name required" };
+    if (c.signatures.some((sig) => sig.party.toLowerCase() === party.toLowerCase())) {
+      return { ok: false, error: "party has already signed" };
+    }
+    c.signatures.push({ party, signedAt: lwNow() });
+    if (c.signatures.length >= 2 && c.status !== "active") c.status = "signed";
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { contractId: c.id, signatures: c.signatures, status: c.status } };
+  });
+
+  registerLensAction("law", "contract-dashboard", (ctx, _a, _params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cs = lwList(s, lwActor(ctx));
+    const byStatus = {};
+    for (const st of CONTRACT_STATUSES) byStatus[st] = 0;
+    let totalValue = 0;
+    let expiringSoon = 0;
+    const soon = Date.now() + 30 * 86400000;
+    for (const c of cs) {
+      byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+      totalValue += c.value;
+      if (c.expiryDate) {
+        const t = new Date(c.expiryDate).getTime();
+        if (!Number.isNaN(t) && t > Date.now() && t < soon) expiringSoon += 1;
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        total: cs.length,
+        byStatus,
+        totalValue,
+        expiringSoon,
+        unsigned: cs.filter((c) => c.signatures.length === 0).length,
+      },
+    };
+  });
 }
 
 /**
