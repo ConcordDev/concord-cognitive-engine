@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Coffee, Loader2, RefreshCw, Volume2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface BriefingSection {
   heading: string;
@@ -27,7 +27,7 @@ export function NewsBriefing() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'news', action: 'daily-briefing', input: {} });
+      const res = await lensRun({ domain: 'news', action: 'daily-briefing', input: {} });
       setBriefing(res.data?.result as DailyBriefing || null);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
