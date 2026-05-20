@@ -1254,6 +1254,41 @@ Constraints:
       },
     };
   });
+
+  // feed — ingest real quiz questions from the Open Trivia Database as
+  // visible DTUs. Free public API, no key.
+  registerLensAction("education", "feed", async (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    try {
+      const r = await fetch(`https://opentdb.com/api.php?amount=${limit}&type=multiple`);
+      if (!r.ok) return { ok: false, error: `opentdb ${r.status}` };
+      const data = await r.json();
+      const decode = (t) => String(t || "").replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&eacute;/g, "é");
+      const questions = (Array.isArray(data?.results) ? data.results : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const q of questions) {
+        const question = decode(q.question);
+        const id = `trivia_${question.slice(0, 60)}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const answer = decode(q.correct_answer);
+        const title = `Study question: ${question.slice(0, 80)}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${question}\n\nAnswer: ${answer}\n\nCategory: ${decode(q.category)} · Difficulty: ${q.difficulty}`,
+          tags: ["education", "feed", "quiz", "opentdb", q.difficulty].filter(Boolean),
+          source: "opentdb-feed",
+          meta: { question, answer, category: decode(q.category), difficulty: q.difficulty },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveStateIfAvailable();
+      return { ok: true, result: { ingested, skipped, source: "opentdb-quiz-questions", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `opentdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 };
 
 function saveStateIfAvailable() {

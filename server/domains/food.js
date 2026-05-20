@@ -1289,6 +1289,40 @@ export default function registerFoodActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real food products from the Open Food Facts open
+  // database as visible DTUs. Free, no key.
+  registerLensAction("food", "feed", async (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const categories = ["snacks", "beverages", "breakfasts", "cheeses", "pastas", "chocolates"];
+    const cat = categories[new Date().getHours() % categories.length];
+    try {
+      const r = await fetch(`https://world.openfoodfacts.org/category/${cat}.json?page_size=${limit}&fields=code,product_name,brands,nutriscore_grade,categories`);
+      if (!r.ok) return { ok: false, error: `openfoodfacts ${r.status}` };
+      const data = await r.json();
+      const products = (Array.isArray(data?.products) ? data.products : []).filter((p) => p.product_name).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const p of products) {
+        const id = `off_${p.code}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const title = `Food product: ${p.product_name}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nBrand: ${p.brands || "?"}\nNutri-Score: ${(p.nutriscore_grade || "?").toUpperCase()}\nCategory: ${cat}\nBarcode: ${p.code}\nSource: Open Food Facts`,
+          tags: ["food", "feed", "product", "openfoodfacts"],
+          source: "openfoodfacts-feed",
+          meta: { code: p.code, name: p.product_name, brands: p.brands, nutriscore: p.nutriscore_grade },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveStateIfAvailable();
+      return { ok: true, result: { ingested, skipped, source: "openfoodfacts-products", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `openfoodfacts unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 };
 
 function hashStringFood(s) {

@@ -786,4 +786,42 @@ export default function registerTravelActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real country travel profiles from the REST Countries
+  // API as visible DTUs. Free, no key.
+  registerLensAction("travel", "feed", async (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const regions = ["europe", "asia", "africa", "americas", "oceania"];
+    const region = regions[new Date().getDate() % regions.length];
+    try {
+      const r = await fetch(`https://restcountries.com/v3.1/region/${region}?fields=name,capital,region,subregion,population,currencies,languages,timezones`);
+      if (!r.ok) return { ok: false, error: `restcountries ${r.status}` };
+      const data = await r.json();
+      const countries = (Array.isArray(data) ? data : [])
+        .sort(() => 0.5 - Math.random()).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const c of countries) {
+        const cname = c.name?.common || "?";
+        const id = `country_${cname}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const langs = c.languages ? Object.values(c.languages).join(", ") : "?";
+        const curr = c.currencies ? Object.values(c.currencies).map((x) => x.name).join(", ") : "?";
+        const title = `Travel guide: ${cname}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nCapital: ${(c.capital || ["?"]).join(", ")}\nRegion: ${c.region} / ${c.subregion || "?"}\nPopulation: ${(c.population || 0).toLocaleString()}\nLanguages: ${langs}\nCurrency: ${curr}\nTimezones: ${(c.timezones || []).slice(0, 3).join(", ")}`,
+          tags: ["travel", "feed", "country", "restcountries"],
+          source: "restcountries-feed",
+          meta: { country: cname, capital: c.capital?.[0], region: c.region, population: c.population },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveTravelState();
+      return { ok: true, result: { ingested, skipped, source: "restcountries-guides", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `restcountries unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

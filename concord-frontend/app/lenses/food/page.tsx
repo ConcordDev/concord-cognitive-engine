@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
@@ -2834,6 +2835,7 @@ export default function FoodLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <section className="mt-4"><LensFeedButton domain="food" label="Live food-product feed" /></section>
           <RecentMineCard domain="food" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="food" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="food" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

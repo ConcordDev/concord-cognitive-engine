@@ -422,4 +422,41 @@ export default function registerFashionActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real fashion / costume pieces from The Metropolitan
+  // Museum of Art Open Access collection as visible DTUs. Free, no key.
+  registerLensAction("fashion", "feed", async (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(15, Math.round(Number(params.limit) || 8)));
+    const queries = ["dress", "gown", "coat", "hat", "shoes", "textile"];
+    const q = queries[new Date().getHours() % queries.length];
+    try {
+      const sr = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/search?q=${q}&hasImages=true`);
+      if (!sr.ok) return { ok: false, error: `metmuseum ${sr.status}` };
+      const sdata = await sr.json();
+      const ids = (Array.isArray(sdata?.objectIDs) ? sdata.objectIDs : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const oid of ids) {
+        const id = `met_${oid}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const or = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${oid}`);
+        if (!or.ok) continue;
+        const o = await or.json();
+        const title = `Fashion piece: ${o.title || "Untitled"}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nArtist/Maker: ${o.artistDisplayName || "Unknown"}\nDate: ${o.objectDate || "?"}\nMedium: ${o.medium || "?"}\nDepartment: ${o.department || "?"}\nCulture: ${o.culture || "?"}`,
+          tags: ["fashion", "feed", "costume", "metmuseum"],
+          source: "metmuseum-feed",
+          meta: { objectId: oid, title: o.title, medium: o.medium, imageUrl: o.primaryImageSmall || null },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveFashionState();
+      return { ok: true, result: { ingested, skipped, source: "metmuseum-fashion", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `metmuseum unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

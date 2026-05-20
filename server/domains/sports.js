@@ -523,4 +523,41 @@ export default function registerSportsActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real recent sports fixtures from TheSportsDB as
+  // visible DTUs. Free public API (public test key "3").
+  registerLensAction("sports", "feed", async (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    // League rotation: EPL, NBA, NFL, MLB, NHL.
+    const leagues = ["4328", "4387", "4391", "4424", "4380"];
+    const league = leagues[new Date().getDate() % leagues.length];
+    try {
+      const r = await fetch(`https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=${league}`);
+      if (!r.ok) return { ok: false, error: `thesportsdb ${r.status}` };
+      const data = await r.json();
+      const events = (Array.isArray(data?.events) ? data.events : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const ev of events) {
+        const id = `sportevent_${ev.idEvent}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const score = (ev.intHomeScore != null && ev.intAwayScore != null)
+          ? `${ev.intHomeScore}–${ev.intAwayScore}` : "result pending";
+        const title = `${ev.strEvent || "Match"} (${score})`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nLeague: ${ev.strLeague || "?"}\nDate: ${ev.dateEvent || "?"}\n${ev.strHomeTeam} ${ev.intHomeScore ?? "-"} — ${ev.intAwayScore ?? "-"} ${ev.strAwayTeam}\nVenue: ${ev.strVenue || "?"}`,
+          tags: ["sports", "feed", "fixture", "thesportsdb"],
+          source: "thesportsdb-feed",
+          meta: { eventId: ev.idEvent, league: ev.strLeague, home: ev.strHomeTeam, away: ev.strAwayTeam, date: ev.dateEvent },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveSportsState();
+      return { ok: true, result: { ingested, skipped, source: "thesportsdb-fixtures", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

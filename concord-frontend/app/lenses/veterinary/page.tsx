@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -459,6 +460,7 @@ export default function VeterinaryLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#veterinary-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to veterinary content</a>
+          <section className="mt-4"><LensFeedButton domain="veterinary" label="Live vet-safety feed" /></section>
           <RecentMineCard domain="veterinary" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="veterinary" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="veterinary" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

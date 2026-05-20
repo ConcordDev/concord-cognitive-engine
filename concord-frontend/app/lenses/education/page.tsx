@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { Users as MobileTabUsers, BookOpen as MobileTabBook, ClipboardList as MobileTabList, Award as MobileTabAward, Calendar as MobileTabCal, Brain as MobileTabBrain } from 'lucide-react';
@@ -4694,6 +4695,7 @@ function KhanCourseraWorkbenchSection() {
         {active === 'notes' && <LessonNotes />}
         {active === 'discussions' && <CourseDiscussions courseId={activeCourse?.id} />}
       </div>
+      <section className="mt-4"><LensFeedButton domain="education" label="Live quiz feed" /></section>
     </section>
   );
 }

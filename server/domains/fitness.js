@@ -1221,6 +1221,41 @@ Generate the plan.`;
       },
     };
   });
+
+  // feed — ingest real exercises from the open wger workout database as
+  // visible DTUs. Free public API, no key.
+  registerLensAction("fitness", "feed", async (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const offset = (new Date().getDate() * limit) % 200;
+    try {
+      const r = await fetch(`https://wger.de/api/v2/exercise/?language=2&limit=${limit}&offset=${offset}&format=json`);
+      if (!r.ok) return { ok: false, error: `wger ${r.status}` };
+      const data = await r.json();
+      const exercises = (Array.isArray(data?.results) ? data.results : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const ex of exercises) {
+        const id = `wger_${ex.uuid || ex.id}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const name = ex.name || `Exercise ${ex.id}`;
+        const desc = String(ex.description || "").replace(/<[^>]+>/g, "").trim();
+        const title = `Exercise: ${name}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\n${desc || "An exercise from the wger open workout database."}`.slice(0, 3000),
+          tags: ["fitness", "feed", "exercise", "wger"],
+          source: "wger-feed",
+          meta: { exerciseId: ex.id, uuid: ex.uuid, name },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveStateIfAvailable();
+      return { ok: true, result: { ingested, skipped, source: "wger-exercises", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `wger unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 };
 
 function extractJsonFit(text) {

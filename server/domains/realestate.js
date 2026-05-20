@@ -910,4 +910,38 @@ export default function registerRealEstateActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real median home-value data by US state from the
+  // Census Bureau American Community Survey as visible DTUs. Free, no key.
+  registerLensAction("realestate", "feed", async (ctx, _a, params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(52, Math.round(Number(params.limit) || 15)));
+    try {
+      const r = await fetch("https://api.census.gov/data/2023/acs/acs1?get=NAME,B25077_001E&for=state:*");
+      if (!r.ok) return { ok: false, error: `census ${r.status}` };
+      const data = await r.json();
+      const rows = (Array.isArray(data) ? data.slice(1) : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const row of rows) {
+        const [name, value, stateFips] = row;
+        const id = `acs_homevalue_${stateFips}_2023`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const median = Number(value);
+        const title = `Median home value: ${name} (2023)`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nMedian owner-occupied home value: $${median.toLocaleString()}\nSource: US Census Bureau American Community Survey 1-Year (B25077_001E)`,
+          tags: ["realestate", "feed", "home-value", "census"],
+          source: "census-feed",
+          meta: { state: name, fips: stateFips, medianValue: median, year: 2023 },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveREState();
+      return { ok: true, result: { ingested, skipped, source: "census-home-values", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `census unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 };

@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -1039,6 +1040,7 @@ export default function SportsLensPage() {
         <LiveScoreboard />
       </section>
     </div>
+          <section className="mt-4"><LensFeedButton domain="sports" label="Live fixtures feed" /></section>
           <RecentMineCard domain="sports" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="sports" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="sports" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

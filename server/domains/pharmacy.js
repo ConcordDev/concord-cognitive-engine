@@ -658,4 +658,37 @@ export default function registerPharmacyActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real FDA drug recall / enforcement reports from
+  // openFDA as visible DTUs. Free public API, no key.
+  registerLensAction("pharmacy", "feed", async (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    try {
+      const r = await fetch(`https://api.fda.gov/drug/enforcement.json?sort=report_date:desc&limit=${limit}`);
+      if (!r.ok) return { ok: false, error: `openfda ${r.status}` };
+      const data = await r.json();
+      const recalls = (Array.isArray(data?.results) ? data.results : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const rec of recalls) {
+        const id = `fdarecall_${rec.recall_number}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const product = (rec.product_description || "Drug recall").slice(0, 90);
+        const title = `Drug recall: ${product}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nClassification: ${rec.classification || "?"}\nStatus: ${rec.status || "?"}\nReason: ${rec.reason_for_recall || "?"}\nRecalling firm: ${rec.recalling_firm || "?"}\nDistribution: ${rec.distribution_pattern || "?"}\nReport date: ${rec.report_date || "?"}`.slice(0, 3500),
+          tags: ["pharmacy", "feed", "drug-recall", "openfda", rec.classification].filter(Boolean),
+          source: "openfda-feed",
+          meta: { recallNumber: rec.recall_number, classification: rec.classification, firm: rec.recalling_firm },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveRxState();
+      return { ok: true, result: { ingested, skipped, source: "openfda-drug-recalls", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `openfda unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

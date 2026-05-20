@@ -4,6 +4,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -595,6 +596,7 @@ export default function EnergyLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+          <section className="mt-4"><LensFeedButton domain="energy" label="Live grid carbon feed" /></section>
           <RecentMineCard domain="energy" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="energy" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="energy" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

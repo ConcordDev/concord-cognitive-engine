@@ -6,6 +6,7 @@ import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { LayoutDashboard as MobileTabDash, Home as MobileTabHome, DollarSign as MobileTabDollar, Building as MobileTabBuilding, Calendar as MobileTabCal, Map as MobileTabMap } from 'lucide-react';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -3391,6 +3392,7 @@ export default function RealEstateLensPage() {
           <RealEstateActionPanel />
         </section>
       </PipingProvider>
+          <section className="mt-4"><LensFeedButton domain="realestate" label="Live home-value feed" /></section>
           <RecentMineCard domain="realestate" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="realestate" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="realestate" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

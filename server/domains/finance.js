@@ -1229,6 +1229,39 @@ Generate the summary.`;
       },
     };
   });
+
+  // feed — ingest real ECB foreign-exchange reference rates from the
+  // Frankfurter API as visible DTUs. Free, no key.
+  registerLensAction("finance", "feed", async (ctx, _a, params = {}) => {
+    const s = getFinState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    try {
+      const r = await fetch("https://api.frankfurter.app/latest?from=USD");
+      if (!r.ok) return { ok: false, error: `frankfurter ${r.status}` };
+      const data = await r.json();
+      const rates = data?.rates && typeof data.rates === "object" ? data.rates : {};
+      const entries = Object.entries(rates).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const [code, rate] of entries) {
+        const id = `fx_USD_${code}_${data.date}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const title = `FX rate: USD/${code} = ${rate} (${data.date})`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\n1 USD = ${rate} ${code}\nAs of: ${data.date}\nSource: European Central Bank reference rates (Frankfurter API)`,
+          tags: ["finance", "feed", "forex", "ecb"],
+          source: "frankfurter-feed",
+          meta: { base: "USD", quote: code, rate, date: data.date },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveStateIfAvailable();
+      return { ok: true, result: { ingested, skipped, source: "ecb-fx-rates", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `frankfurter unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────

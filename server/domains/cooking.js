@@ -649,4 +649,42 @@ export default function registerCookingActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real recipes from TheMealDB as visible DTUs.
+  // Free public API (public test key "1"), no signup.
+  registerLensAction("cooking", "feed", async (ctx, _a, params = {}) => {
+    const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    const letter = "abcdefghijklmnoprst"[new Date().getHours() % 19];
+    try {
+      const r = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?f=${letter}`);
+      if (!r.ok) return { ok: false, error: `themealdb ${r.status}` };
+      const data = await r.json();
+      const meals = (Array.isArray(data?.meals) ? data.meals : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const m of meals) {
+        const id = `meal_${m.idMeal}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const title = `Recipe: ${m.strMeal}`;
+        const ings = [];
+        for (let i = 1; i <= 20; i++) {
+          const ing = m[`strIngredient${i}`];
+          if (ing && ing.trim()) ings.push(`${m[`strMeasure${i}`] || ""} ${ing}`.trim());
+        }
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nCuisine: ${m.strArea || "?"} · Category: ${m.strCategory || "?"}\n\nIngredients:\n${ings.map((x) => `- ${x}`).join("\n")}\n\n${m.strInstructions || ""}`.slice(0, 4000),
+          tags: ["cooking", "feed", "recipe", "themealdb"],
+          source: "themealdb-feed",
+          meta: { mealId: m.idMeal, name: m.strMeal, area: m.strArea, category: m.strCategory },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveCook();
+      return { ok: true, result: { ingested, skipped, source: "themealdb-recipes", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `themealdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

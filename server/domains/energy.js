@@ -534,4 +534,37 @@ export default function registerEnergyActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real GB electricity carbon-intensity + generation mix
+  // from the National Grid ESO Carbon Intensity API. Free, no key.
+  registerLensAction("energy", "feed", async (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 8)));
+    try {
+      const r = await fetch("https://api.carbonintensity.org.uk/intensity/date");
+      if (!r.ok) return { ok: false, error: `carbonintensity ${r.status}` };
+      const data = await r.json();
+      const periods = (Array.isArray(data?.data) ? data.data : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const p of periods) {
+        const id = `ci_${p.from}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const actual = p.intensity?.actual ?? p.intensity?.forecast;
+        const title = `Grid carbon intensity: ${p.from} (${p.intensity?.index || "?"})`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nCarbon intensity: ${actual} gCO2/kWh\nIndex: ${p.intensity?.index}\nForecast: ${p.intensity?.forecast} gCO2/kWh\nSource: National Grid ESO Carbon Intensity API`,
+          tags: ["energy", "feed", "carbon-intensity", "grid"],
+          source: "carbonintensity-feed",
+          meta: { from: p.from, to: p.to, intensity: actual, index: p.intensity?.index },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveEnergyState();
+      return { ok: true, result: { ingested, skipped, source: "uk-carbon-intensity", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `carbonintensity unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

@@ -485,4 +485,38 @@ export default function registerPhotographyActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real photography artworks from the Art Institute of
+  // Chicago open API as visible DTUs. Free, no key.
+  registerLensAction("photography", "feed", async (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const page = (new Date().getDate() % 10) + 1;
+    try {
+      const r = await fetch(`https://api.artic.edu/api/v1/artworks/search?q=photograph&query[term][is_public_domain]=true&fields=id,title,artist_title,date_display,medium_display,image_id&limit=${limit}&page=${page}`);
+      if (!r.ok) return { ok: false, error: `artic ${r.status}` };
+      const data = await r.json();
+      const works = (Array.isArray(data?.data) ? data.data : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const w of works) {
+        const id = `artic_${w.id}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const title = `Photograph: ${w.title || "Untitled"}`;
+        const imageUrl = w.image_id ? `https://www.artic.edu/iiif/2/${w.image_id}/full/843,/0/default.jpg` : null;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nArtist: ${w.artist_title || "Unknown"}\nDate: ${w.date_display || "?"}\nMedium: ${w.medium_display || "?"}\nCollection: Art Institute of Chicago`,
+          tags: ["photography", "feed", "artwork", "artic"],
+          source: "artic-feed",
+          meta: { artworkId: w.id, title: w.title, artist: w.artist_title, imageUrl },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      savePhotoState();
+      return { ok: true, result: { ingested, skipped, source: "artic-photography", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `artic unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

@@ -1118,4 +1118,37 @@ export default function registerPetsActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real dog-breed reference profiles from The Dog API as
+  // visible DTUs. Free public API, no key required for the breeds list.
+  registerLensAction("pets", "feed", async (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const page = new Date().getDate() % 8;
+    try {
+      const r = await fetch(`https://api.thedogapi.com/v1/breeds?limit=${limit}&page=${page}`);
+      if (!r.ok) return { ok: false, error: `thedogapi ${r.status}` };
+      const data = await r.json();
+      const breeds = (Array.isArray(data) ? data : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const b of breeds) {
+        const id = `dogbreed_${b.id}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const title = `Dog breed: ${b.name}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nTemperament: ${b.temperament || "?"}\nLife span: ${b.life_span || "?"}\nWeight: ${b.weight?.imperial || "?"} lbs\nHeight: ${b.height?.imperial || "?"} in\nBred for: ${b.bred_for || "?"}\nGroup: ${b.breed_group || "?"}`,
+          tags: ["pets", "feed", "dog-breed", "thedogapi"],
+          source: "thedogapi-feed",
+          meta: { breedId: b.id, name: b.name, temperament: b.temperament, lifeSpan: b.life_span },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      savePetState();
+      return { ok: true, result: { ingested, skipped, source: "thedogapi-breeds", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `thedogapi unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

@@ -21,6 +21,23 @@ import registerAviation from "../domains/aviation.js";
 import registerEnvironment from "../domains/environment.js";
 import registerAutomotive from "../domains/automotive.js";
 import registerCrypto from "../domains/crypto.js";
+import registerAgriculture from "../domains/agriculture.js";
+import registerCooking from "../domains/cooking.js";
+import registerEducation from "../domains/education.js";
+import registerEnergy from "../domains/energy.js";
+import registerFashion from "../domains/fashion.js";
+import registerFinance from "../domains/finance.js";
+import registerFitness from "../domains/fitness.js";
+import registerFood from "../domains/food.js";
+import registerLandscaping from "../domains/landscaping.js";
+import registerPets from "../domains/pets.js";
+import registerPharmacy from "../domains/pharmacy.js";
+import registerPhotography from "../domains/photography.js";
+import registerRealEstate from "../domains/realestate.js";
+import registerRetail from "../domains/retail.js";
+import registerSports from "../domains/sports.js";
+import registerTravel from "../domains/travel.js";
+import registerVeterinary from "../domains/veterinary.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -32,6 +49,12 @@ before(() => {
   registerDaily(register); registerOcean(register); registerGallery(register);
   registerAstronomy(register); registerAviation(register); registerEnvironment(register);
   registerAutomotive(register); registerCrypto(register);
+  registerAgriculture(register); registerCooking(register); registerEducation(register);
+  registerEnergy(register); registerFashion(register); registerFinance(register);
+  registerFitness(register); registerFood(register); registerLandscaping(register);
+  registerPets(register); registerPharmacy(register); registerPhotography(register);
+  registerRealEstate(register); registerRetail(register); registerSports(register);
+  registerTravel(register); registerVeterinary(register);
 });
 
 let createdDtus;
@@ -287,5 +310,236 @@ describe("crypto.feed — CoinGecko trending → DTUs", () => {
     const r = await callFeed("crypto", makeCtx());
     assert.equal(r.result.ingested, 1);
     assert.match(createdDtus[0].title, /Trending: Bitcoin/);
+  });
+});
+
+// ─── Phase A: 17 domain-app feeds + new substrates ────────────────────
+
+function callAction(domain, name, ctx, params = {}) {
+  const fn = ACTIONS.get(`${domain}.${name}`);
+  assert.ok(fn, `${domain}.${name} not registered`);
+  return fn(ctx, { id: null, data: {}, meta: {} }, params);
+}
+
+describe("agriculture.feed — World Bank crop yields → DTUs", () => {
+  it("ingests indicator rows and dedupes on re-run", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ([{ page: 1 }, [
+      { value: 4200, countryiso3code: "USA", date: "2022", country: { value: "United States" } },
+      { value: 3100, countryiso3code: "BRA", date: "2022", country: { value: "Brazil" } },
+    ]]) });
+    const ctx = makeCtx();
+    const r = await callFeed("agriculture", ctx);
+    assert.equal(r.result.ingested, 2);
+    assert.match(createdDtus[0].title, /Cereal yield/);
+    const r2 = await callFeed("agriculture", ctx);
+    assert.equal(r2.result.ingested, 0);
+    assert.equal(r2.result.skipped, 2);
+  });
+});
+
+describe("cooking.feed — TheMealDB recipes → DTUs", () => {
+  it("ingests meals with ingredients", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ meals: [
+      { idMeal: "1", strMeal: "Beef Stew", strArea: "British", strCategory: "Beef", strInstructions: "Cook it.", strIngredient1: "Beef", strMeasure1: "1 lb" },
+    ] }) });
+    const r = await callFeed("cooking", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Beef Stew/);
+  });
+});
+
+describe("education.feed — Open Trivia DB → DTUs", () => {
+  it("ingests quiz questions", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ results: [
+      { question: "What is 2+2?", correct_answer: "4", category: "Math", difficulty: "easy" },
+    ] }) });
+    const r = await callFeed("education", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Study question/);
+  });
+});
+
+describe("energy.feed — UK carbon intensity → DTUs", () => {
+  it("ingests intensity periods", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ data: [
+      { from: "2026-05-20T00:00Z", to: "2026-05-20T00:30Z", intensity: { actual: 120, forecast: 130, index: "moderate" } },
+    ] }) });
+    const r = await callFeed("energy", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /carbon intensity/i);
+  });
+});
+
+describe("fashion.feed — Met Museum costume → DTUs", () => {
+  it("ingests objects via search + object fetch", async () => {
+    globalThis.fetch = async (url) => {
+      if (String(url).includes("/search")) {
+        return { ok: true, json: async () => ({ objectIDs: [101, 102] }) };
+      }
+      return { ok: true, json: async () => ({ title: "Silk Gown", artistDisplayName: "House of Worth", objectDate: "1890", medium: "silk" }) };
+    };
+    const r = await callFeed("fashion", makeCtx());
+    assert.equal(r.result.ingested, 2);
+    assert.match(createdDtus[0].title, /Silk Gown/);
+  });
+});
+
+describe("finance.feed — ECB FX rates → DTUs", () => {
+  it("ingests currency rates", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ date: "2026-05-20", rates: { EUR: 0.92, GBP: 0.79 } }) });
+    const r = await callFeed("finance", makeCtx());
+    assert.equal(r.result.ingested, 2);
+    assert.match(createdDtus[0].title, /FX rate/);
+  });
+});
+
+describe("fitness.feed — wger exercises → DTUs", () => {
+  it("ingests exercises and strips HTML", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ results: [
+      { id: 9, uuid: "abc", name: "Squat", description: "<p>Bend knees.</p>" },
+    ] }) });
+    const r = await callFeed("fitness", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Squat/);
+  });
+});
+
+describe("food.feed — Open Food Facts → DTUs", () => {
+  it("ingests food products", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [
+      { code: "555", product_name: "Granola", brands: "Acme", nutriscore_grade: "a" },
+    ] }) });
+    const r = await callFeed("food", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Granola/);
+  });
+});
+
+describe("landscaping — substrate + GBIF feed", () => {
+  it("manages garden beds, plantings and care log per user", () => {
+    const ctxA = { actor: { userId: "ls_a" }, userId: "ls_a" };
+    const bed = callAction("landscaping", "bed-add", ctxA, { name: "Front Border", sizeSqft: 120, sunExposure: "partial" }).result.bed;
+    callAction("landscaping", "planting-add", ctxA, { bedId: bed.id, plant: "Lavender", quantity: 6 });
+    callAction("landscaping", "care-log", ctxA, { bedId: bed.id, kind: "mulch" });
+    const list = callAction("landscaping", "bed-list", ctxA, {});
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.beds[0].plantingCount, 1);
+    const dash = callAction("landscaping", "landscaping-dashboard", ctxA, {});
+    assert.equal(dash.result.plantings, 1);
+  });
+  it("ingests GBIF plant species", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ results: [
+      { key: 1, scientificName: "Acer rubrum L.", canonicalName: "Acer rubrum", family: "Sapindaceae", genus: "Acer" },
+    ] }) });
+    const r = await callFeed("landscaping", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Acer rubrum/);
+  });
+});
+
+describe("pets.feed — The Dog API → DTUs", () => {
+  it("ingests dog breeds", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ([
+      { id: 1, name: "Beagle", temperament: "Friendly", life_span: "12 - 15 years", weight: { imperial: "20 - 30" }, height: { imperial: "13 - 15" } },
+    ]) });
+    const r = await callFeed("pets", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Beagle/);
+  });
+});
+
+describe("pharmacy.feed — openFDA drug recalls → DTUs", () => {
+  it("ingests recall reports", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ results: [
+      { recall_number: "D-001", product_description: "Aspirin 100ct", classification: "Class II", status: "Ongoing", reason_for_recall: "Mislabel" },
+    ] }) });
+    const r = await callFeed("pharmacy", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Aspirin/);
+  });
+});
+
+describe("photography.feed — Art Institute of Chicago → DTUs", () => {
+  it("ingests photograph artworks with image URL", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ data: [
+      { id: 7, title: "Migrant Mother", artist_title: "Dorothea Lange", date_display: "1936", medium_display: "Gelatin silver print", image_id: "xyz" },
+    ] }) });
+    const r = await callFeed("photography", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.ok(createdDtus[0].meta.imageUrl.includes("xyz"));
+  });
+});
+
+describe("realestate.feed — Census home values → DTUs", () => {
+  it("ingests median home values by state", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ([
+      ["NAME", "B25077_001E", "state"],
+      ["California", "750000", "06"],
+      ["Texas", "300000", "48"],
+    ]) });
+    const r = await callFeed("realestate", makeCtx());
+    assert.equal(r.result.ingested, 2);
+    assert.match(createdDtus[0].title, /California/);
+  });
+});
+
+describe("retail.feed — Open Beauty Facts → DTUs", () => {
+  it("ingests retail products", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [
+      { code: "888", product_name: "Hand Cream", brands: "Acme", categories: "Cosmetics" },
+    ] }) });
+    const r = await callFeed("retail", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Hand Cream/);
+  });
+});
+
+describe("sports.feed — TheSportsDB fixtures → DTUs", () => {
+  it("ingests past fixtures", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ events: [
+      { idEvent: "e1", strEvent: "Arsenal vs Chelsea", strLeague: "EPL", dateEvent: "2026-05-18", strHomeTeam: "Arsenal", strAwayTeam: "Chelsea", intHomeScore: "2", intAwayScore: "1", strVenue: "Emirates" },
+    ] }) });
+    const r = await callFeed("sports", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Arsenal vs Chelsea/);
+  });
+});
+
+describe("travel.feed — REST Countries → DTUs", () => {
+  it("ingests country guides", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ([
+      { name: { common: "Japan" }, capital: ["Tokyo"], region: "Asia", subregion: "Eastern Asia", population: 125000000, currencies: { JPY: { name: "yen" } }, languages: { jpn: "Japanese" }, timezones: ["UTC+09:00"] },
+    ]) });
+    const r = await callFeed("travel", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /Japan/);
+  });
+});
+
+describe("veterinary — substrate + openFDA feed", () => {
+  it("manages patients, visits and vaccinations per user", () => {
+    const ctxA = { actor: { userId: "vt_a" }, userId: "vt_a" };
+    const ctxB = { actor: { userId: "vt_b" }, userId: "vt_b" };
+    const pat = callAction("veterinary", "patient-add", ctxA, { name: "Rex", species: "dog", owner: "Sam" }).result.patient;
+    callAction("veterinary", "visit-log", ctxA, { patientId: pat.id, kind: "surgery", cost: 1200 });
+    callAction("veterinary", "vaccine-record", ctxA, { patientId: pat.id, vaccine: "Rabies" });
+    const list = callAction("veterinary", "patient-list", ctxA, {});
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.patients[0].visitCount, 1);
+    assert.equal(callAction("veterinary", "patient-list", ctxB, {}).result.count, 0);
+    const dash = callAction("veterinary", "vet-dashboard", ctxA, {});
+    assert.equal(dash.result.revenue, 1200);
+  });
+  it("rejects a nameless patient and keeps calculators intact", () => {
+    assert.equal(callAction("veterinary", "patient-add", { userId: "vt_a" }, {}).ok, false);
+    assert.equal(callAction("veterinary", "triageAssess", { userId: "vt_a" }, {}).ok, true);
+  });
+  it("ingests openFDA vet adverse events", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ results: [
+      { unique_aer_id_number: "AER-1", animal: { species: "Dog", breed: { breed_component: "Labrador" } }, drug: [{ brand_name: "Apoquel" }], reaction: [{ veddra_term_name: "Vomiting" }], original_receive_date: "20260510" },
+    ] }) });
+    const r = await callFeed("veterinary", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.ok(createdDtus[0].tags.includes("adverse-event"));
   });
 });

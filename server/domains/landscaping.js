@@ -144,4 +144,144 @@ export default function registerLandscapingActions(registerLensAction) {
       return { ok: false, error: `trefle unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Garden / bed management substrate (per-user, STATE-backed) ─────
+  function getLandState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.landscapingLens) STATE.landscapingLens = {};
+    const s = STATE.landscapingLens;
+    if (!(s.beds instanceof Map)) s.beds = new Map(); // userId -> Array
+    return s;
+  }
+  function saveLand() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const lsId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const lsActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const lsClean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+  const lsNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const lsBeds = (s, userId) => { if (!s.beds.has(userId)) s.beds.set(userId, []); return s.beds.get(userId); };
+  const SUN = ["full", "partial", "shade"];
+  const SOIL = ["loam", "clay", "sandy", "silt", "chalk", "peat"];
+
+  registerLensAction("landscaping", "bed-add", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = lsClean(params.name, 120);
+    if (!name) return { ok: false, error: "bed name required" };
+    const bed = {
+      id: lsId("bed"), name,
+      sizeSqft: Math.max(0, lsNum(params.sizeSqft)),
+      sunExposure: SUN.includes(params.sunExposure) ? params.sunExposure : "full",
+      soilType: SOIL.includes(params.soilType) ? params.soilType : "loam",
+      notes: lsClean(params.notes, 1000) || "",
+      plantings: [], careLog: [],
+      createdAt: new Date().toISOString(),
+    };
+    lsBeds(s, lsActor(ctx)).push(bed);
+    saveLand();
+    return { ok: true, result: { bed } };
+  });
+
+  registerLensAction("landscaping", "bed-list", (ctx, _a, _params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const beds = lsBeds(s, lsActor(ctx)).map((b) => ({
+      ...b, plantingCount: b.plantings.length, careCount: b.careLog.length,
+    }));
+    return { ok: true, result: { beds, count: beds.length, totalSqft: beds.reduce((n, b) => n + b.sizeSqft, 0) } };
+  });
+
+  registerLensAction("landscaping", "bed-delete", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lsBeds(s, lsActor(ctx));
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "bed not found" };
+    arr.splice(i, 1);
+    saveLand();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("landscaping", "planting-add", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const bed = lsBeds(s, lsActor(ctx)).find((b) => b.id === params.bedId);
+    if (!bed) return { ok: false, error: "bed not found" };
+    const planting = {
+      id: lsId("plt"),
+      plant: lsClean(params.plant, 120) || "plant",
+      quantity: Math.max(1, Math.round(lsNum(params.quantity)) || 1),
+      plantedDate: lsClean(params.plantedDate, 30) || new Date().toISOString().slice(0, 10),
+      status: ["planned", "growing", "thriving", "struggling", "removed"].includes(params.status) ? params.status : "growing",
+    };
+    bed.plantings.push(planting);
+    saveLand();
+    return { ok: true, result: { planting } };
+  });
+
+  registerLensAction("landscaping", "care-log", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const bed = lsBeds(s, lsActor(ctx)).find((b) => b.id === params.bedId);
+    if (!bed) return { ok: false, error: "bed not found" };
+    const kind = ["water", "fertilize", "prune", "weed", "mulch", "pest_treat", "harvest"].includes(params.kind) ? params.kind : "water";
+    const entry = {
+      id: lsId("care"), kind,
+      date: lsClean(params.date, 30) || new Date().toISOString().slice(0, 10),
+      notes: lsClean(params.notes, 600) || "",
+    };
+    bed.careLog.push(entry);
+    saveLand();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("landscaping", "landscaping-dashboard", (ctx, _a, _params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const beds = lsBeds(s, lsActor(ctx));
+    let plantings = 0, careEvents = 0;
+    for (const b of beds) { plantings += b.plantings.length; careEvents += b.careLog.length; }
+    return {
+      ok: true,
+      result: {
+        beds: beds.length,
+        totalSqft: beds.reduce((n, b) => n + b.sizeSqft, 0),
+        plantings, careEvents,
+      },
+    };
+  });
+
+  // feed — ingest real plant species records from the GBIF backbone
+  // taxonomy as visible DTUs. Free public API, no key.
+  registerLensAction("landscaping", "feed", async (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const topics = ["maple", "rose", "lavender", "fern", "oak", "tulip", "hydrangea"];
+    const q = lsClean(params.query, 60) || topics[new Date().getHours() % topics.length];
+    try {
+      const r = await fetch(`https://api.gbif.org/v1/species/search?q=${encodeURIComponent(q)}&rank=SPECIES&highertaxonKey=6&limit=${limit}`);
+      if (!r.ok) return { ok: false, error: `gbif ${r.status}` };
+      const data = await r.json();
+      const species = (Array.isArray(data?.results) ? data.results : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const sp of species) {
+        const id = `gbif_${sp.key || sp.nubKey}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const common = (sp.vernacularNames || []).find((v) => v.language === "eng")?.vernacularName;
+        const name = sp.scientificName || sp.canonicalName || "Plant species";
+        const title = `Plant: ${common || sp.canonicalName || name}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nScientific name: ${name}\nFamily: ${sp.family || "?"}\nGenus: ${sp.genus || "?"}\nOrder: ${sp.order || "?"}\nSource: GBIF Backbone Taxonomy`,
+          tags: ["landscaping", "feed", "plant", "gbif"],
+          source: "gbif-feed",
+          meta: { gbifKey: sp.key, scientificName: name, family: sp.family, commonName: common || null },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveLand();
+      return { ok: true, result: { ingested, skipped, source: "gbif-plant-species", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `gbif unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

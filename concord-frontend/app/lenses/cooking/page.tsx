@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -686,6 +687,7 @@ export default function CookingLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="cooking" /></div>}
       </div>
     </div>
+          <section className="mt-4"><LensFeedButton domain="cooking" label="Live recipe feed" /></section>
           <RecentMineCard domain="cooking" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="cooking" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="cooking" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

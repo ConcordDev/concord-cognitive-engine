@@ -1257,4 +1257,37 @@ export default function registerRetailActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real consumer retail products from the Open Beauty
+  // Facts open database as visible DTUs. Free, no key.
+  registerLensAction("retail", "feed", async (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const page = (new Date().getDate() % 8) + 1;
+    try {
+      const r = await fetch(`https://world.openbeautyfacts.org/api/v2/search?fields=code,product_name,brands,categories&page_size=${limit}&page=${page}`);
+      if (!r.ok) return { ok: false, error: `openbeautyfacts ${r.status}` };
+      const data = await r.json();
+      const products = (Array.isArray(data?.products) ? data.products : []).filter((p) => p.product_name).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const p of products) {
+        const id = `obf_${p.code}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const title = `Retail product: ${p.product_name}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nBrand: ${p.brands || "?"}\nCategory: ${(p.categories || "?").slice(0, 200)}\nBarcode: ${p.code}\nSource: Open Beauty Facts`,
+          tags: ["retail", "feed", "product", "openbeautyfacts"],
+          source: "openbeautyfacts-feed",
+          meta: { code: p.code, name: p.product_name, brands: p.brands },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveRetailState();
+      return { ok: true, result: { ingested, skipped, source: "openbeautyfacts-products", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `openbeautyfacts unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 };
