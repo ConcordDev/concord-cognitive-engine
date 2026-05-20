@@ -907,6 +907,73 @@ export default function registerAtlasActions(registerLensAction) {
     return `${m}m`;
   }
 
+  // route-stops — Google Maps 2026 "Ask Maps"-style stop suggestion:
+  // route from start to end, then find a chosen amenity near the route
+  // midpoint so the user can add a sensible waypoint (coffee, fuel, …).
+  registerLensAction("atlas", "route-stops", async (_ctx, _a, params = {}) => {
+    const start = params.start || {};
+    const end = params.end || {};
+    if (![start.lat, start.lng, end.lat, end.lng].every((v) => Number.isFinite(Number(v)))) {
+      return { ok: false, error: "start and end each need numeric lat/lng" };
+    }
+    const amenity = String(params.amenity || "fuel").trim().toLowerCase().replace(/[^a-z_]/g, "") || "fuel";
+    const profile = ['driving', 'walking', 'cycling'].includes(params.mode) ? params.mode : 'driving';
+    try {
+      const coords = `${Number(start.lng)},${Number(start.lat)};${Number(end.lng)},${Number(end.lat)}`;
+      const routeR = await fetch(`https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson&steps=false`, { headers: { Accept: 'application/json' } });
+      if (!routeR.ok) return { ok: false, error: `OSRM ${routeR.status}` };
+      const routeData = await routeR.json();
+      const route = routeData.routes?.[0];
+      if (routeData.code !== 'Ok' || !route) return { ok: false, error: `OSRM: ${routeData.code || 'no route'}` };
+      const line = route.geometry?.coordinates || [];
+      if (line.length < 2) return { ok: false, error: "route had no geometry" };
+      const mid = line[Math.floor(line.length / 2)]; // [lng, lat]
+      const pad = 0.045; // ~5km box around the midpoint
+      const bbox = { south: mid[1] - pad, north: mid[1] + pad, west: mid[0] - pad, east: mid[0] + pad };
+      const query = `[out:json][timeout:25];(node["amenity"="${amenity}"](${bbox.south},${bbox.west},${bbox.north},${bbox.east}););out tags center 40;`;
+      const poiR = await fetch(`${OVERPASS_BASE}/interpreter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+      if (!poiR.ok) return { ok: false, error: `overpass ${poiR.status}` };
+      const poiData = await poiR.json();
+      const haversineKm = (la1, lo1, la2, lo2) => {
+        const R = 6371, dLa = (la2 - la1) * Math.PI / 180, dLo = (lo2 - lo1) * Math.PI / 180;
+        const a = Math.sin(dLa / 2) ** 2 + Math.cos(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.sin(dLo / 2) ** 2;
+        return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+      };
+      const stops = (poiData.elements || [])
+        .map((el) => {
+          const lat = el.lat ?? el.center?.lat, lng = el.lon ?? el.center?.lon;
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+          return {
+            name: el.tags?.name || `(unnamed ${amenity})`,
+            lat, lng,
+            amenity,
+            detourFromMidKm: haversineKm(mid[1], mid[0], lat, lng),
+            brand: el.tags?.brand || null,
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.detourFromMidKm - b.detourFromMidKm)
+        .slice(0, 12);
+      return {
+        ok: true,
+        result: {
+          amenity, mode: profile,
+          routeDistanceKm: Math.round(route.distance / 100) / 10,
+          routeDurationText: formatDuration(route.duration),
+          midpoint: { lat: mid[1], lng: mid[0] },
+          stops, count: stops.length,
+          source: "osrm + overpass",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `route-stops unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
   // ── Recent searches ──────────────────────────────────────────
 
   registerLensAction("atlas", "recent-searches-list", (ctx, _a, _p = {}) => {

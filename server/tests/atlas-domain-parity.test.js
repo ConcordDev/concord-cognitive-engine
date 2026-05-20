@@ -165,3 +165,40 @@ describe("atlas — dashboard summary", () => {
     assert.equal(r.result.byCategory.cafe, 2);
   });
 });
+
+describe("atlas.route-stops (Ask Maps-style stop suggestion)", () => {
+  it("rejects start/end without numeric lat/lng", async () => {
+    const r = await call("route-stops", ctxA, { start: {}, end: {} });
+    assert.equal(r.ok, false);
+  });
+
+  it("routes via OSRM then finds amenities near the midpoint", async () => {
+    globalThis.fetch = async (url) => {
+      if (String(url).includes("router.project-osrm.org")) {
+        return { ok: true, json: async () => ({
+          code: "Ok",
+          routes: [{
+            distance: 120000, duration: 5400,
+            geometry: { type: "LineString", coordinates: [[-122.4, 37.7], [-122.2, 37.6], [-122.0, 37.5]] },
+            legs: [{}],
+          }],
+        }) };
+      }
+      // Overpass
+      return { ok: true, json: async () => ({
+        elements: [
+          { lat: 37.61, lon: -122.21, tags: { name: "Midway Fuel", amenity: "fuel", brand: "Shell" } },
+          { lat: 37.65, lon: -122.25, tags: { amenity: "fuel" } },
+        ],
+      }) };
+    };
+    const r = await call("route-stops", ctxA, {
+      start: { lat: 37.7, lng: -122.4 }, end: { lat: 37.5, lng: -122.0 }, amenity: "fuel",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.amenity, "fuel");
+    assert.equal(r.result.count, 2);
+    assert.equal(r.result.stops[0].name, "Midway Fuel"); // nearest the midpoint first
+    assert.ok(r.result.midpoint.lat > 37.5 && r.result.midpoint.lat < 37.7);
+  });
+});
