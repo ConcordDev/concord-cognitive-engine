@@ -131,4 +131,128 @@ export default function registerForestryActions(registerLensAction) {
       return { ok: false, error: `nifc unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Forest stand management substrate (per-user, STATE-backed) ──────
+
+  function getForestryState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.forestryLens) STATE.forestryLens = {};
+    if (!(STATE.forestryLens.stands instanceof Map)) STATE.forestryLens.stands = new Map(); // userId -> Array
+    return STATE.forestryLens;
+  }
+  function saveForestry() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const frId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const frActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const frClean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+  const frNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const frStands = (s, userId) => { if (!s.stands.has(userId)) s.stands.set(userId, []); return s.stands.get(userId); };
+  const SPECIES = ["douglas_fir", "ponderosa_pine", "loblolly_pine", "oak", "maple", "spruce", "mixed", "other"];
+
+  registerLensAction("forestry", "stand-add", (ctx, _a, params = {}) => {
+    const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = frClean(params.name, 160);
+    if (!name) return { ok: false, error: "stand name required" };
+    const stand = {
+      id: frId("std"), name,
+      species: SPECIES.includes(params.species) ? params.species : "mixed",
+      acres: Math.max(0, frNum(params.acres)),
+      ageYears: Math.max(0, Math.round(frNum(params.ageYears))),
+      treesPerAcre: Math.max(0, Math.round(frNum(params.treesPerAcre))),
+      lat: Number.isFinite(Number(params.lat)) ? Number(params.lat) : null,
+      lon: Number.isFinite(Number(params.lon)) ? Number(params.lon) : null,
+      notes: frClean(params.notes, 1000) || "",
+      activities: [],
+      createdAt: new Date().toISOString(),
+    };
+    frStands(s, frActor(ctx)).push(stand);
+    saveForestry();
+    return { ok: true, result: { stand } };
+  });
+
+  registerLensAction("forestry", "stand-list", (ctx, _a, _params = {}) => {
+    const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const stands = frStands(s, frActor(ctx)).map((st) => ({
+      ...st, estimatedTrees: st.acres * st.treesPerAcre, activityCount: st.activities.length,
+    }));
+    return { ok: true, result: { stands, count: stands.length, totalAcres: stands.reduce((n, st) => n + st.acres, 0) } };
+  });
+
+  registerLensAction("forestry", "stand-delete", (ctx, _a, params = {}) => {
+    const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = frStands(s, frActor(ctx));
+    const i = arr.findIndex((st) => st.id === params.id);
+    if (i < 0) return { ok: false, error: "stand not found" };
+    arr.splice(i, 1);
+    saveForestry();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("forestry", "activity-log", (ctx, _a, params = {}) => {
+    const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const stand = frStands(s, frActor(ctx)).find((st) => st.id === params.standId);
+    if (!stand) return { ok: false, error: "stand not found" };
+    const kind = ["planting", "thinning", "harvest", "prescribed_burn", "survey", "treatment"].includes(params.kind) ? params.kind : "survey";
+    const activity = {
+      id: frId("act"), kind,
+      date: frClean(params.date, 30) || new Date().toISOString().slice(0, 10),
+      notes: frClean(params.notes, 600) || "",
+    };
+    stand.activities.push(activity);
+    saveForestry();
+    return { ok: true, result: { activity } };
+  });
+
+  registerLensAction("forestry", "forestry-dashboard", (ctx, _a, _params = {}) => {
+    const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const stands = frStands(s, frActor(ctx));
+    const bySpecies = {};
+    for (const st of stands) bySpecies[st.species] = (bySpecies[st.species] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        stands: stands.length,
+        totalAcres: stands.reduce((n, st) => n + st.acres, 0),
+        activities: stands.reduce((n, st) => n + st.activities.length, 0),
+        bySpecies,
+      },
+    };
+  });
+
+  // feed — ingest active US wildfire incidents (InciWeb) as visible DTUs.
+  registerLensAction("forestry", "feed", async (ctx, _a, params = {}) => {
+    const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    try {
+      const r = await fetch(`${INCIWEB_BASE}/incidents`);
+      if (!r.ok) return { ok: false, error: `inciweb ${r.status}` };
+      const data = await r.json();
+      const incidents = (Array.isArray(data) ? data : data.data || data.incidents || []).slice(0, limit);
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const inc of incidents) {
+        const id = String(inc.id || inc.incident_id || inc.name);
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const name = inc.name || inc.title || "Wildfire incident";
+        const title = `Wildfire: ${name}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nType: ${inc.type || "?"}\nState: ${inc.state || inc.location || "?"}\nSize: ${inc.size || inc.acres || "?"} acres\nUpdated: ${inc.updated || inc.last_updated || "?"}`,
+          tags: ["forestry", "feed", "wildfire", "inciweb"],
+          source: "inciweb-feed",
+          meta: { incidentId: id, name, type: inc.type, state: inc.state, size: inc.size || inc.acres },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveForestry();
+      return { ok: true, result: { ingested, skipped, source: "inciweb-active-fires", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `inciweb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
