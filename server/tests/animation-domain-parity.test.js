@@ -55,7 +55,7 @@ describe("animation frames", () => {
     const f1 = a.frames[0].id;
     call("anim-stroke-commit", ctxA, { animId: a.id, frameId: f1, stroke: STROKE });
     const dup = call("frame-duplicate", ctxA, { animId: a.id, frameId: f1 });
-    assert.equal(dup.result.frame.strokes.length, 1);
+    assert.equal(dup.result.frame.layers[0].strokes.length, 1);
     call("frame-add", ctxA, { animId: a.id });
     let anim = call("anim-get", ctxA, { id: a.id }).result.animation;
     assert.equal(anim.frames.length, 3);
@@ -86,9 +86,9 @@ describe("animation stroke loop", () => {
     const batch = call("anim-stroke-batch", ctxA, { animId: a.id, frameId: fid, strokes: [STROKE, STROKE] });
     assert.equal(batch.result.strokeCount, 3);
     call("anim-stroke-undo", ctxA, { animId: a.id, frameId: fid });
-    assert.equal(call("anim-get", ctxA, { id: a.id }).result.animation.frames[0].strokes.length, 2);
+    assert.equal(call("anim-get", ctxA, { id: a.id }).result.animation.frames[0].layers[0].strokes.length, 2);
     call("frame-clear", ctxA, { animId: a.id, frameId: fid });
-    assert.equal(call("anim-get", ctxA, { id: a.id }).result.animation.frames[0].strokes.length, 0);
+    assert.equal(call("anim-get", ctxA, { id: a.id }).result.animation.frames[0].layers[0].strokes.length, 0);
   });
 
   it("rejects a stroke with no points", () => {
@@ -123,5 +123,44 @@ describe("animation playback & easing", () => {
     const d = call("anim-dashboard", ctxA, {});
     assert.equal(d.result.animations, 1);
     assert.equal(d.result.totalFrames, 2);
+  });
+});
+
+describe("animation per-frame layers", () => {
+  it("adds, updates and deletes layers on a frame; strokes target a layer", () => {
+    const a = newAnim();
+    const fid = a.frames[0].id;
+    const l2 = call("frame-layer-add", ctxA, { animId: a.id, frameId: fid, name: "Ink" }).result.layer;
+    call("anim-stroke-commit", ctxA, { animId: a.id, frameId: fid, layerId: l2.id, stroke: STROKE });
+    const frame = call("anim-get", ctxA, { id: a.id }).result.animation.frames[0];
+    assert.equal(frame.layers.length, 2);
+    assert.equal(frame.layers[1].strokes.length, 1);
+    call("frame-layer-update", ctxA, { animId: a.id, frameId: fid, layerId: l2.id, visible: false });
+    assert.equal(call("anim-get", ctxA, { id: a.id }).result.animation.frames[0].layers[1].visible, false);
+    call("frame-layer-delete", ctxA, { animId: a.id, frameId: fid, layerId: l2.id });
+    assert.equal(call("anim-get", ctxA, { id: a.id }).result.animation.frames[0].layers.length, 1);
+  });
+
+  it("refuses to delete the last layer of a frame", () => {
+    const a = newAnim();
+    const fid = a.frames[0].id;
+    const only = call("anim-get", ctxA, { id: a.id }).result.animation.frames[0].layers[0].id;
+    assert.equal(call("frame-layer-delete", ctxA, { animId: a.id, frameId: fid, layerId: only }).ok, false);
+  });
+});
+
+describe("animation audio tracks", () => {
+  it("adds, lists and removes audio tracks", () => {
+    const a = newAnim();
+    const t = call("audio-track-add", ctxA, { animId: a.id, name: "Theme", url: "https://example.com/x.mp3", startSec: 2 }).result.track;
+    assert.equal(call("audio-track-list", ctxA, { animId: a.id }).result.count, 1);
+    assert.equal(t.startSec, 2);
+    call("audio-track-remove", ctxA, { animId: a.id, id: t.id });
+    assert.equal(call("audio-track-list", ctxA, { animId: a.id }).result.count, 0);
+  });
+
+  it("rejects an unnamed audio track", () => {
+    const a = newAnim();
+    assert.equal(call("audio-track-add", ctxA, { animId: a.id, name: "" }).ok, false);
   });
 });

@@ -107,8 +107,28 @@ export default function registerAnimationActions(registerLensAction) {
   function findAnim(s, userId, animId) {
     return (s.projects.get(userId) || []).find((a) => a.id === animId) || null;
   }
+  const AN_MAX_LAYERS = 10;
+  function blankLayer(name) {
+    return { id: anId("lyr"), name: name || "Layer 1", visible: true, opacity: 1, strokes: [] };
+  }
   function blankFrame() {
-    return { id: anId("frm"), exposure: 1, strokes: [] };
+    return { id: anId("frm"), exposure: 1, layers: [blankLayer("Layer 1")], strokes: [] };
+  }
+  // Resolve a frame's active drawing layer; tolerates legacy single-layer frames.
+  function frameLayer(frame, layerId) {
+    if (!Array.isArray(frame.layers) || !frame.layers.length) {
+      // migrate a legacy frame: wrap its flat strokes in a default layer
+      frame.layers = [{ id: anId("lyr"), name: "Layer 1", visible: true, opacity: 1, strokes: frame.strokes || [] }];
+    }
+    if (layerId) return frame.layers.find((l) => l.id === layerId) || null;
+    return frame.layers[frame.layers.length - 1];
+  }
+  // Flatten a frame's visible layers into one stroke list (playback/onion/legacy).
+  function frameStrokes(frame) {
+    if (Array.isArray(frame.layers) && frame.layers.length) {
+      return frame.layers.filter((l) => l.visible).flatMap((l) => l.strokes);
+    }
+    return frame.strokes || [];
   }
   function anSanitizeStroke(raw, anim) {
     if (!raw || typeof raw !== "object") return null;
@@ -257,9 +277,13 @@ export default function registerAnimationActions(registerLensAction) {
     const idx = anim.frames.findIndex((f) => f.id === params.frameId);
     if (idx < 0) return { ok: false, error: "frame not found" };
     const src = anim.frames[idx];
+    frameLayer(src);   // migrate legacy frame to layered shape if needed
     const copy = {
-      id: anId("frm"), exposure: src.exposure,
-      strokes: src.strokes.map((st) => ({ ...st, id: anId("stk"), points: st.points.map((p) => [...p]) })),
+      id: anId("frm"), exposure: src.exposure, strokes: [],
+      layers: src.layers.map((l) => ({
+        id: anId("lyr"), name: l.name, visible: l.visible, opacity: l.opacity,
+        strokes: l.strokes.map((st) => ({ ...st, id: anId("stk"), points: st.points.map((p) => [...p]) })),
+      })),
     };
     anim.frames.splice(idx + 1, 0, copy);
     anim.updatedAt = anNow();
@@ -308,20 +332,70 @@ export default function registerAnimationActions(registerLensAction) {
     return { ok: true, result: { frameId: frame.id, exposure: frame.exposure } };
   });
 
-  // ── Strokes ─────────────────────────────────────────────────────────
+  // ── Per-frame layers ────────────────────────────────────────────────
+  registerLensAction("animation", "frame-layer-add", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    frameLayer(frame);
+    if (frame.layers.length >= AN_MAX_LAYERS) return { ok: false, error: `layer limit (${AN_MAX_LAYERS}) reached` };
+    const layer = blankLayer(anClean(params.name, 60) || `Layer ${frame.layers.length + 1}`);
+    frame.layers.push(layer);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { layer: { ...layer, strokes: undefined, strokeCount: 0 } } };
+  });
+
+  registerLensAction("animation", "frame-layer-update", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    const layer = frameLayer(frame, params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (params.name != null) layer.name = anClean(params.name, 60) || layer.name;
+    if (params.visible != null) layer.visible = !!params.visible;
+    if (params.opacity != null) layer.opacity = anClamp(params.opacity, 0, 1, layer.opacity);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { layerId: layer.id, visible: layer.visible, opacity: layer.opacity } };
+  });
+
+  registerLensAction("animation", "frame-layer-delete", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    frameLayer(frame);
+    if (frame.layers.length <= 1) return { ok: false, error: "a frame needs at least one layer" };
+    const i = frame.layers.findIndex((l) => l.id === params.layerId);
+    if (i < 0) return { ok: false, error: "layer not found" };
+    frame.layers.splice(i, 1);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { deleted: params.layerId } };
+  });
+
+  // ── Strokes (commit to the active layer of a frame) ─────────────────
   registerLensAction("animation", "anim-stroke-commit", (ctx, _a, params = {}) => {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
     const frame = anim.frames.find((f) => f.id === params.frameId);
     if (!frame) return { ok: false, error: "frame not found" };
-    if (frame.strokes.length >= AN_MAX_STROKES) return { ok: false, error: "frame stroke limit reached" };
+    const layer = frameLayer(frame, params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.strokes.length >= AN_MAX_STROKES) return { ok: false, error: "layer stroke limit reached" };
     const stroke = anSanitizeStroke(params.stroke, anim);
     if (!stroke) return { ok: false, error: "invalid stroke" };
-    frame.strokes.push(stroke);
+    layer.strokes.push(stroke);
     anim.updatedAt = anNow();
     saveAnimState();
-    return { ok: true, result: { strokeId: stroke.id, strokeCount: frame.strokes.length } };
+    return { ok: true, result: { strokeId: stroke.id, layerId: layer.id, strokeCount: layer.strokes.length } };
   });
 
   registerLensAction("animation", "anim-stroke-batch", (ctx, _a, params = {}) => {
@@ -330,16 +404,18 @@ export default function registerAnimationActions(registerLensAction) {
     if (!anim) return { ok: false, error: "animation not found" };
     const frame = anim.frames.find((f) => f.id === params.frameId);
     if (!frame) return { ok: false, error: "frame not found" };
+    const layer = frameLayer(frame, params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
     const incoming = Array.isArray(params.strokes) ? params.strokes : [];
     let added = 0;
     for (const raw of incoming) {
-      if (frame.strokes.length >= AN_MAX_STROKES) break;
+      if (layer.strokes.length >= AN_MAX_STROKES) break;
       const stroke = anSanitizeStroke(raw, anim);
-      if (stroke) { frame.strokes.push(stroke); added += 1; }
+      if (stroke) { layer.strokes.push(stroke); added += 1; }
     }
     anim.updatedAt = anNow();
     saveAnimState();
-    return { ok: true, result: { added, strokeCount: frame.strokes.length } };
+    return { ok: true, result: { added, strokeCount: layer.strokes.length } };
   });
 
   registerLensAction("animation", "anim-stroke-undo", (ctx, _a, params = {}) => {
@@ -348,10 +424,12 @@ export default function registerAnimationActions(registerLensAction) {
     if (!anim) return { ok: false, error: "animation not found" };
     const frame = anim.frames.find((f) => f.id === params.frameId);
     if (!frame) return { ok: false, error: "frame not found" };
-    const removed = frame.strokes.pop() || null;
+    const layer = frameLayer(frame, params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    const removed = layer.strokes.pop() || null;
     anim.updatedAt = anNow();
     saveAnimState();
-    return { ok: true, result: { removed: removed?.id || null, strokeCount: frame.strokes.length } };
+    return { ok: true, result: { removed: removed?.id || null, strokeCount: layer.strokes.length } };
   });
 
   registerLensAction("animation", "frame-clear", (ctx, _a, params = {}) => {
@@ -360,10 +438,51 @@ export default function registerAnimationActions(registerLensAction) {
     if (!anim) return { ok: false, error: "animation not found" };
     const frame = anim.frames.find((f) => f.id === params.frameId);
     if (!frame) return { ok: false, error: "frame not found" };
-    frame.strokes = [];
+    const layer = frameLayer(frame, params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (params.allLayers) { for (const l of frame.layers) l.strokes = []; }
+    else layer.strokes = [];
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { cleared: frame.id } };
+  });
+
+  // ── Audio tracks ────────────────────────────────────────────────────
+  registerLensAction("animation", "audio-track-add", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    if (!Array.isArray(anim.audio)) anim.audio = [];
+    if (anim.audio.length >= 6) return { ok: false, error: "audio track limit (6) reached" };
+    const name = anClean(params.name, 80);
+    if (!name) return { ok: false, error: "track name required" };
+    const url = anClean(params.url, 600);
+    const track = {
+      id: anId("aud"), name,
+      url: /^https?:\/\//.test(url) ? url : null,
+      startSec: Math.max(0, anNum(params.startSec)),
+    };
+    anim.audio.push(track);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { track } };
+  });
+
+  registerLensAction("animation", "audio-track-list", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    return { ok: true, result: { tracks: anim.audio || [], count: (anim.audio || []).length } };
+  });
+
+  registerLensAction("animation", "audio-track-remove", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    anim.audio = (anim.audio || []).filter((t) => t.id !== params.id);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   // ── Playback & easing ───────────────────────────────────────────────
