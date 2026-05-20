@@ -1,31 +1,47 @@
 'use client';
 
 /**
- * ProjectsSection — Linear + Asana + Jira shape project management.
- * Owns the project roster + active project; panels hydrate via lensRun().
+ * ProjectsSection — Linear + Asana + Jira parity project management.
+ * Owns the project roster + active project; nine panels hydrate via
+ * lensRun().
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { FolderKanban, Plus, KanbanSquare, Repeat, Flag, Users, Loader2 } from 'lucide-react';
+import {
+  FolderKanban, Plus, KanbanSquare, ListChecks, CalendarRange, Repeat, BarChart3,
+  Flag, Users, Settings2, Briefcase, Loader2,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { PjBoardPanel } from './PjBoardPanel';
+import { PjBacklogPanel } from './PjBacklogPanel';
+import { PjTimelinePanel } from './PjTimelinePanel';
 import { PjSprintsPanel } from './PjSprintsPanel';
-import { PjMilestonesPanel } from './PjMilestonesPanel';
+import { PjReportsPanel } from './PjReportsPanel';
+import { PjPlanningPanel } from './PjPlanningPanel';
 import { PjTeamPanel } from './PjTeamPanel';
+import { PjSettingsPanel } from './PjSettingsPanel';
+import { PjPortfolioPanel } from './PjPortfolioPanel';
 
-interface Project { id: string; name: string; key: string; color: string }
+interface Project { id: string; name: string; key: string; color: string; status: string; health: string; archived: boolean }
 interface Dash {
   name: string; totalTasks: number; done: number; completionPct: number;
   overdue: number; activeSprints: number; openMilestones: number; members: number;
 }
-type TabId = 'board' | 'sprints' | 'milestones' | 'team';
+type TabId = 'board' | 'backlog' | 'timeline' | 'sprints' | 'reports' | 'planning' | 'team' | 'settings' | 'portfolio';
 const TABS: { id: TabId; label: string; icon: typeof KanbanSquare }[] = [
   { id: 'board', label: 'Board', icon: KanbanSquare },
+  { id: 'backlog', label: 'Backlog', icon: ListChecks },
+  { id: 'timeline', label: 'Timeline', icon: CalendarRange },
   { id: 'sprints', label: 'Sprints', icon: Repeat },
-  { id: 'milestones', label: 'Milestones', icon: Flag },
+  { id: 'reports', label: 'Reports', icon: BarChart3 },
+  { id: 'planning', label: 'Planning', icon: Flag },
   { id: 'team', label: 'Team', icon: Users },
+  { id: 'settings', label: 'Settings', icon: Settings2 },
+  { id: 'portfolio', label: 'Portfolio', icon: Briefcase },
 ];
+const PROJECT_STATUS = ['planned', 'started', 'paused', 'completed', 'canceled'];
+const HEALTH = ['on_track', 'at_risk', 'off_track'];
 
 export function ProjectsSection() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -67,12 +83,26 @@ export function ProjectsSection() {
     await refreshProjects();
   };
 
+  const project = projects.find((p) => p.id === activeProject) || null;
+
+  const updateProject = async (patch: Record<string, unknown>) => {
+    if (!project) return;
+    await lensRun('projects', 'project-update', { id: project.id, ...patch });
+    await refreshProjects();
+  };
+
+  const archiveProject = async () => {
+    if (!project) return;
+    await lensRun('projects', 'project-archive', { id: project.id, archived: true });
+    await refreshProjects();
+  };
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-indigo-600/15 to-transparent">
         <FolderKanban className="w-5 h-5 text-indigo-400" />
         <h2 className="text-sm font-bold text-zinc-100">Project Management</h2>
-        <span className="text-[11px] text-zinc-500">Linear + Asana + Jira shape</span>
+        <span className="text-[11px] text-zinc-500">Linear + Asana + Jira parity</span>
       </header>
 
       {error && <div className="mx-4 mt-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
@@ -105,10 +135,23 @@ export function ProjectsSection() {
             </div>
           </div>
 
-          {!activeProject ? (
+          {!activeProject || !project ? (
             <p className="text-[11px] text-zinc-500 italic px-4 py-8 text-center">Create a project to start tracking work.</p>
           ) : (
             <>
+              {/* Project meta + dashboard */}
+              <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-zinc-800">
+                <select value={project.status} onChange={(e) => updateProject({ status: e.target.value })}
+                  className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100 capitalize">
+                  {PROJECT_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select value={project.health} onChange={(e) => updateProject({ health: e.target.value })}
+                  className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
+                  {HEALTH.map((h) => <option key={h} value={h}>{h.replace(/_/g, ' ')}</option>)}
+                </select>
+                <button type="button" onClick={archiveProject}
+                  className="text-[11px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg">Archive</button>
+              </div>
               {dash && (
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4 py-3 border-b border-zinc-800">
                   <Stat label="Tasks" value={dash.totalTasks} />
@@ -134,9 +177,14 @@ export function ProjectsSection() {
               </nav>
               <div className="p-4">
                 {tab === 'board' && <PjBoardPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'backlog' && <PjBacklogPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'timeline' && <PjTimelinePanel projectId={activeProject} />}
                 {tab === 'sprints' && <PjSprintsPanel projectId={activeProject} onChange={refreshDash} />}
-                {tab === 'milestones' && <PjMilestonesPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'reports' && <PjReportsPanel projectId={activeProject} />}
+                {tab === 'planning' && <PjPlanningPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'team' && <PjTeamPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'settings' && <PjSettingsPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'portfolio' && <PjPortfolioPanel />}
               </div>
             </>
           )}

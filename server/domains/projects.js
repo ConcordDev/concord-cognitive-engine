@@ -14,7 +14,9 @@ export default function registerProjectsActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.projectsLens) STATE.projectsLens = {};
     const s = STATE.projectsLens;
-    for (const k of ["projects", "tasks", "sprints", "members", "milestones", "comments"]) {
+    for (const k of ["projects", "tasks", "sprints", "members", "milestones", "comments",
+      "labels", "customFields", "attachments", "activity", "views", "rules", "templates",
+      "risks", "goals", "relations", "wip"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -36,9 +38,48 @@ export default function registerProjectsActions(registerLensAction) {
 
   const PJ_STATUSES = ["backlog", "todo", "in_progress", "in_review", "done"];
   const PJ_PRIORITIES = ["none", "low", "medium", "high", "urgent"];
+  const PJ_PROJECT_STATUS = ["planned", "started", "paused", "completed", "canceled"];
+  const PJ_HEALTH = ["on_track", "at_risk", "off_track"];
+  const PJ_TYPES = ["story", "bug", "task", "epic", "chore"];
+  const PJ_RELATION_KINDS = ["blocks", "blocked_by", "relates", "duplicates"];
+  const PJ_RULE_TRIGGERS = ["status_changed", "task_created", "assigned", "priority_changed"];
+  const PJ_RULE_ACTIONS = ["set_status", "set_priority", "set_assignee", "add_label", "set_sprint"];
 
   function pjProject(s, userId, projectId) {
     return (s.projects.get(userId) || []).find((p) => p.id === projectId) || null;
+  }
+  // Append a per-task activity entry (audit log).
+  function pjLog(s, userId, taskId, action, detail) {
+    pjListB(s.activity, userId).push({
+      id: pjId("act"), taskId, action,
+      detail: detail == null ? null : String(detail).slice(0, 200),
+      at: pjNow(),
+    });
+  }
+  // Evaluate automation rules for a project against a task event.
+  function pjRunRules(s, userId, task, trigger) {
+    const rules = (s.rules.get(userId) || []).filter(
+      (r) => r.projectId === task.projectId && r.trigger === trigger && r.enabled);
+    for (const rule of rules) {
+      // condition: optional {field, equals}
+      if (rule.condition && rule.condition.field) {
+        if (String(task[rule.condition.field]) !== String(rule.condition.equals)) continue;
+      }
+      const v = rule.actionValue;
+      if (rule.action === "set_status" && PJ_STATUSES.includes(v)) {
+        task.status = v;
+        task.completedAt = v === "done" ? (task.completedAt || pjNow()) : null;
+      } else if (rule.action === "set_priority" && PJ_PRIORITIES.includes(v)) {
+        task.priority = v;
+      } else if (rule.action === "set_assignee") {
+        if ((s.members.get(userId) || []).some((m) => m.id === v)) task.assigneeId = v;
+      } else if (rule.action === "add_label" && v) {
+        if (!task.labels.includes(v)) task.labels = [...task.labels, v].slice(0, 12);
+      } else if (rule.action === "set_sprint") {
+        if ((s.sprints.get(userId) || []).some((x) => x.id === v)) task.sprintId = v;
+      }
+      pjLog(s, userId, task.id, "automation", `${rule.name}: ${rule.action}`);
+    }
   }
 
   // ── Projects ────────────────────────────────────────────────────────
@@ -51,6 +92,12 @@ export default function registerProjectsActions(registerLensAction) {
       key: (pjClean(params.key, 6) || name.replace(/[^A-Za-z]/g, "").slice(0, 4) || "PRJ").toUpperCase(),
       description: pjClean(params.description, 1000) || null,
       color: pjClean(params.color, 16) || "indigo",
+      status: pjPick(params.status, PJ_PROJECT_STATUS, "planned"),
+      health: pjPick(params.health, PJ_HEALTH, "on_track"),
+      leadId: null,
+      startDate: pjDay(params.startDate) || null,
+      targetDate: pjDay(params.targetDate) || null,
+      archived: false,
       seq: 0,
       createdAt: pjNow(), updatedAt: pjNow(),
     };
@@ -59,19 +106,51 @@ export default function registerProjectsActions(registerLensAction) {
     return { ok: true, result: { project } };
   });
 
-  registerLensAction("projects", "project-list", (ctx, _a, _params = {}) => {
+  registerLensAction("projects", "project-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const tasks = s.tasks.get(userId) || [];
+    const projects = (s.projects.get(userId) || [])
+      .filter((p) => (params.includeArchived ? true : !p.archived))
+      .map((p) => {
+        const pt = tasks.filter((t) => t.projectId === p.id);
+        const done = pt.filter((t) => t.status === "done").length;
+        return {
+          ...p,
+          taskCount: pt.length,
+          doneCount: done,
+          progressPct: pt.length ? Math.round((done / pt.length) * 100) : 0,
+        };
+      });
+    return { ok: true, result: { projects, count: projects.length } };
+  });
+
+  // Portfolio rollup — every project's health + progress at a glance.
+  registerLensAction("projects", "portfolio", (ctx, _a, _params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const tasks = s.tasks.get(userId) || [];
     const projects = (s.projects.get(userId) || []).map((p) => {
       const pt = tasks.filter((t) => t.projectId === p.id);
+      const done = pt.filter((t) => t.status === "done").length;
       return {
-        ...p,
-        taskCount: pt.length,
-        doneCount: pt.filter((t) => t.status === "done").length,
+        id: p.id, name: p.name, key: p.key, status: p.status, health: p.health,
+        archived: p.archived, targetDate: p.targetDate,
+        totalTasks: pt.length, doneTasks: done,
+        progressPct: pt.length ? Math.round((done / pt.length) * 100) : 0,
+        points: pt.reduce((a, t) => a + t.points, 0),
       };
     });
-    return { ok: true, result: { projects, count: projects.length } };
+    const byHealth = {};
+    for (const h of PJ_HEALTH) byHealth[h] = projects.filter((p) => !p.archived && p.health === h).length;
+    return {
+      ok: true,
+      result: {
+        projects,
+        active: projects.filter((p) => !p.archived).length,
+        byHealth,
+      },
+    };
   });
 
   registerLensAction("projects", "project-get", (ctx, _a, params = {}) => {
@@ -79,13 +158,17 @@ export default function registerProjectsActions(registerLensAction) {
     const userId = pjAid(ctx);
     const project = pjProject(s, userId, params.id);
     if (!project) return { ok: false, error: "project not found" };
+    const forP = (k) => (s[k].get(userId) || []).filter((x) => x.projectId === project.id);
     return {
       ok: true,
       result: {
         project,
-        members: (s.members.get(userId) || []).filter((m) => m.projectId === project.id),
-        sprints: (s.sprints.get(userId) || []).filter((sp) => sp.projectId === project.id),
-        milestones: (s.milestones.get(userId) || []).filter((m) => m.projectId === project.id),
+        members: forP("members"),
+        sprints: forP("sprints"),
+        milestones: forP("milestones"),
+        labels: forP("labels"),
+        customFields: forP("customFields"),
+        views: forP("views"),
       },
     };
   });
@@ -94,12 +177,31 @@ export default function registerProjectsActions(registerLensAction) {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const project = pjProject(s, pjAid(ctx), params.id);
     if (!project) return { ok: false, error: "project not found" };
+    const userId = pjAid(ctx);
     if (params.name != null) project.name = pjClean(params.name, 160) || project.name;
     if (params.description != null) project.description = pjClean(params.description, 1000) || null;
     if (params.color != null) project.color = pjClean(params.color, 16) || project.color;
+    if (params.status != null) project.status = pjPick(params.status, PJ_PROJECT_STATUS, project.status);
+    if (params.health != null) project.health = pjPick(params.health, PJ_HEALTH, project.health);
+    if (params.startDate != null) project.startDate = pjDay(params.startDate) || null;
+    if (params.targetDate != null) project.targetDate = pjDay(params.targetDate) || null;
+    if (params.leadId !== undefined) {
+      const l = params.leadId ? String(params.leadId) : null;
+      project.leadId = (l && (s.members.get(userId) || []).some((m) => m.id === l)) ? l : null;
+    }
     project.updatedAt = pjNow();
     savePjState();
     return { ok: true, result: { project } };
+  });
+
+  registerLensAction("projects", "project-archive", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const project = pjProject(s, pjAid(ctx), params.id);
+    if (!project) return { ok: false, error: "project not found" };
+    project.archived = params.archived !== false;
+    project.updatedAt = pjNow();
+    savePjState();
+    return { ok: true, result: { id: project.id, archived: project.archived } };
   });
 
   registerLensAction("projects", "project-delete", (ctx, _a, params = {}) => {
@@ -109,7 +211,8 @@ export default function registerProjectsActions(registerLensAction) {
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "project not found" };
     arr.splice(i, 1);
-    for (const k of ["tasks", "sprints", "members", "milestones"]) {
+    for (const k of ["tasks", "sprints", "members", "milestones", "labels", "customFields",
+      "views", "rules", "templates", "risks", "goals", "wip"]) {
       const list = s[k].get(userId);
       if (list) s[k].set(userId, list.filter((x) => x.projectId !== params.id));
     }
@@ -132,34 +235,69 @@ export default function registerProjectsActions(registerLensAction) {
     if (sprintId && !(s.sprints.get(userId) || []).some((sp) => sp.id === sprintId)) sprintId = null;
     let milestoneId = params.milestoneId ? String(params.milestoneId) : null;
     if (milestoneId && !(s.milestones.get(userId) || []).some((m) => m.id === milestoneId)) milestoneId = null;
+    let parentId = params.parentId ? String(params.parentId) : null;
+    if (parentId && !(s.tasks.get(userId) || []).some((t) => t.id === parentId && t.projectId === project.id)) {
+      parentId = null;
+    }
+    const siblings = (s.tasks.get(userId) || []).filter((t) => t.projectId === project.id);
     const task = {
       id: pjId("tsk"), projectId: project.id,
       ref: `${project.key}-${project.seq}`,
       title,
       description: pjClean(params.description, 4000) || null,
+      type: pjPick(params.type, PJ_TYPES, "task"),
       status: pjPick(params.status, PJ_STATUSES, "backlog"),
       priority: pjPick(params.priority, PJ_PRIORITIES, "none"),
-      assigneeId, sprintId, milestoneId,
+      assigneeId, sprintId, milestoneId, parentId,
       labels: Array.isArray(params.labels)
-        ? [...new Set(params.labels.map((l) => pjClean(l, 30)).filter(Boolean))].slice(0, 10) : [],
+        ? [...new Set(params.labels.map((l) => pjClean(l, 30)).filter(Boolean))].slice(0, 12) : [],
+      customFields: {},
       points: Math.max(0, Math.round(pjNum(params.points))),
+      startDate: pjDay(params.startDate) || null,
       dueDate: pjDay(params.dueDate) || null,
+      rank: siblings.length,
       createdAt: pjNow(), updatedAt: pjNow(), completedAt: null,
     };
     if (task.status === "done") task.completedAt = pjNow();
+    pjRunRules(s, userId, task, "task_created");
     pjListB(s.tasks, userId).push(task);
+    pjLog(s, userId, task.id, "created", task.ref);
     savePjState();
     return { ok: true, result: { task } };
   });
 
+  // Shared task filter+sort used by task-list and saved views.
+  function pjFilterTasks(all, f) {
+    let tasks = all.slice();
+    if (f.status) tasks = tasks.filter((t) => t.status === String(f.status));
+    if (f.sprintId) tasks = tasks.filter((t) => t.sprintId === String(f.sprintId));
+    if (f.assigneeId) tasks = tasks.filter((t) => t.assigneeId === String(f.assigneeId));
+    if (f.milestoneId) tasks = tasks.filter((t) => t.milestoneId === String(f.milestoneId));
+    if (f.type) tasks = tasks.filter((t) => t.type === String(f.type));
+    if (f.priority) tasks = tasks.filter((t) => t.priority === String(f.priority));
+    if (f.parentId) tasks = tasks.filter((t) => t.parentId === String(f.parentId));
+    if (f.label) tasks = tasks.filter((t) => t.labels.includes(String(f.label)));
+    if (f.query) {
+      const q = String(f.query).toLowerCase();
+      tasks = tasks.filter((t) => t.title.toLowerCase().includes(q)
+        || (t.description || "").toLowerCase().includes(q) || t.ref.toLowerCase().includes(q));
+    }
+    const prRank = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 };
+    const sort = f.sort || "created";
+    tasks.sort((a, b) => {
+      if (sort === "priority") return (prRank[b.priority] || 0) - (prRank[a.priority] || 0);
+      if (sort === "due") return (a.dueDate || "9999").localeCompare(b.dueDate || "9999");
+      if (sort === "rank") return a.rank - b.rank;
+      if (sort === "updated") return b.updatedAt.localeCompare(a.updatedAt);
+      return b.createdAt.localeCompare(a.createdAt);
+    });
+    return tasks;
+  }
+
   registerLensAction("projects", "task-list", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let tasks = (s.tasks.get(pjAid(ctx)) || []).filter((t) => t.projectId === String(params.projectId));
-    if (params.status) tasks = tasks.filter((t) => t.status === String(params.status));
-    if (params.sprintId) tasks = tasks.filter((t) => t.sprintId === String(params.sprintId));
-    if (params.assigneeId) tasks = tasks.filter((t) => t.assigneeId === String(params.assigneeId));
-    if (params.label) tasks = tasks.filter((t) => t.labels.includes(String(params.label)));
-    tasks = [...tasks].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const all = (s.tasks.get(pjAid(ctx)) || []).filter((t) => t.projectId === String(params.projectId));
+    const tasks = pjFilterTasks(all, params);
     return { ok: true, result: { tasks, count: tasks.length } };
   });
 
@@ -168,13 +306,18 @@ export default function registerProjectsActions(registerLensAction) {
     const userId = pjAid(ctx);
     const task = (s.tasks.get(userId) || []).find((t) => t.id === params.id);
     if (!task) return { ok: false, error: "task not found" };
+    const prevStatus = task.status;
+    const prevPriority = task.priority;
+    const prevAssignee = task.assigneeId;
     if (params.title != null) task.title = pjClean(params.title, 240) || task.title;
     if (params.description != null) task.description = pjClean(params.description, 4000) || null;
+    if (params.type != null) task.type = pjPick(params.type, PJ_TYPES, task.type);
     if (params.priority != null) task.priority = pjPick(params.priority, PJ_PRIORITIES, task.priority);
     if (params.points != null) task.points = Math.max(0, Math.round(pjNum(params.points)));
+    if (params.startDate != null) task.startDate = pjDay(params.startDate) || null;
     if (params.dueDate != null) task.dueDate = pjDay(params.dueDate) || null;
     if (Array.isArray(params.labels)) {
-      task.labels = [...new Set(params.labels.map((l) => pjClean(l, 30)).filter(Boolean))].slice(0, 10);
+      task.labels = [...new Set(params.labels.map((l) => pjClean(l, 30)).filter(Boolean))].slice(0, 12);
     }
     if (params.assigneeId !== undefined) {
       const a = params.assigneeId ? String(params.assigneeId) : null;
@@ -188,10 +331,21 @@ export default function registerProjectsActions(registerLensAction) {
       const m = params.milestoneId ? String(params.milestoneId) : null;
       task.milestoneId = (m && (s.milestones.get(userId) || []).some((x) => x.id === m)) ? m : null;
     }
+    if (params.parentId !== undefined) {
+      const p = params.parentId ? String(params.parentId) : null;
+      task.parentId = (p && p !== task.id
+        && (s.tasks.get(userId) || []).some((t) => t.id === p && t.projectId === task.projectId)) ? p : null;
+    }
     if (params.status != null) {
       task.status = pjPick(params.status, PJ_STATUSES, task.status);
       task.completedAt = task.status === "done" ? (task.completedAt || pjNow()) : null;
     }
+    if (prevStatus !== task.status) {
+      pjLog(s, userId, task.id, "status", `${prevStatus} → ${task.status}`);
+      pjRunRules(s, userId, task, "status_changed");
+    }
+    if (prevPriority !== task.priority) pjRunRules(s, userId, task, "priority_changed");
+    if (prevAssignee !== task.assigneeId && task.assigneeId) pjRunRules(s, userId, task, "assigned");
     task.updatedAt = pjNow();
     savePjState();
     return { ok: true, result: { task } };
@@ -199,13 +353,37 @@ export default function registerProjectsActions(registerLensAction) {
 
   registerLensAction("projects", "task-move-status", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const task = (s.tasks.get(pjAid(ctx)) || []).find((t) => t.id === params.id);
+    const userId = pjAid(ctx);
+    const task = (s.tasks.get(userId) || []).find((t) => t.id === params.id);
     if (!task) return { ok: false, error: "task not found" };
+    const prev = task.status;
     task.status = pjPick(params.status, PJ_STATUSES, task.status);
     task.completedAt = task.status === "done" ? (task.completedAt || pjNow()) : null;
     task.updatedAt = pjNow();
+    if (prev !== task.status) {
+      pjLog(s, userId, task.id, "status", `${prev} → ${task.status}`);
+      pjRunRules(s, userId, task, "status_changed");
+    }
     savePjState();
     return { ok: true, result: { id: task.id, status: task.status } };
+  });
+
+  // Reorder a task within the backlog rank.
+  registerLensAction("projects", "task-rank", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const task = (s.tasks.get(userId) || []).find((t) => t.id === params.id);
+    if (!task) return { ok: false, error: "task not found" };
+    const sibs = (s.tasks.get(userId) || [])
+      .filter((t) => t.projectId === task.projectId)
+      .sort((a, b) => a.rank - b.rank);
+    const without = sibs.filter((t) => t.id !== task.id);
+    let idx = Math.round(pjNum(params.toIndex, without.length));
+    idx = Math.max(0, Math.min(without.length, idx));
+    without.splice(idx, 0, task);
+    without.forEach((t, i) => { t.rank = i; });
+    savePjState();
+    return { ok: true, result: { order: without.map((t) => t.id) } };
   });
 
   registerLensAction("projects", "task-delete", (ctx, _a, params = {}) => {
@@ -216,6 +394,13 @@ export default function registerProjectsActions(registerLensAction) {
     if (i < 0) return { ok: false, error: "task not found" };
     arr.splice(i, 1);
     s.comments.set(userId, (s.comments.get(userId) || []).filter((c) => c.taskId !== params.id));
+    s.attachments.set(userId, (s.attachments.get(userId) || []).filter((c) => c.taskId !== params.id));
+    s.activity.set(userId, (s.activity.get(userId) || []).filter((c) => c.taskId !== params.id));
+    s.relations.set(userId, (s.relations.get(userId) || [])
+      .filter((r) => r.fromTaskId !== params.id && r.toTaskId !== params.id));
+    for (const t of s.tasks.get(userId) || []) {
+      if (t.parentId === params.id) t.parentId = null;
+    }
     savePjState();
     return { ok: true, result: { deleted: params.id } };
   });
@@ -228,12 +413,18 @@ export default function registerProjectsActions(registerLensAction) {
     if (!task) return { ok: false, error: "task not found" };
     const body = pjClean(params.body, 2000);
     if (!body) return { ok: false, error: "comment body required" };
+    let parentCommentId = params.parentCommentId ? String(params.parentCommentId) : null;
+    if (parentCommentId && !(s.comments.get(userId) || []).some((c) => c.id === parentCommentId)) {
+      parentCommentId = null;
+    }
+    const mentions = [...new Set((body.match(/@[\w-]+/g) || []).map((m) => m.slice(1)))].slice(0, 10);
     const comment = {
-      id: pjId("cmt"), taskId: task.id, body,
+      id: pjId("cmt"), taskId: task.id, body, parentCommentId, mentions,
       author: pjClean(params.author, 60) || "Me",
       createdAt: pjNow(),
     };
     pjListB(s.comments, userId).push(comment);
+    pjLog(s, userId, task.id, "comment", parentCommentId ? "replied" : "commented");
     savePjState();
     return { ok: true, result: { comment } };
   });
@@ -480,5 +671,697 @@ export default function registerProjectsActions(registerLensAction) {
         members: (s.members.get(userId) || []).filter((m) => m.projectId === project.id).length,
       },
     };
+  });
+
+  // ── Task detail — subtasks, relations, attachments, custom fields ────
+  registerLensAction("projects", "task-detail", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const allTasks = s.tasks.get(userId) || [];
+    const task = allTasks.find((t) => t.id === params.id);
+    if (!task) return { ok: false, error: "task not found" };
+    const children = allTasks.filter((t) => t.parentId === task.id);
+    const rels = (s.relations.get(userId) || []).filter(
+      (r) => r.fromTaskId === task.id || r.toTaskId === task.id);
+    const refOf = (id) => allTasks.find((t) => t.id === id);
+    return {
+      ok: true,
+      result: {
+        task,
+        parent: task.parentId ? (refOf(task.parentId) || null) : null,
+        subtasks: children.map((c) => ({ id: c.id, ref: c.ref, title: c.title, status: c.status, points: c.points })),
+        subtaskProgress: children.length
+          ? Math.round((children.filter((c) => c.status === "done").length / children.length) * 100) : null,
+        relations: rels.map((r) => {
+          const otherId = r.fromTaskId === task.id ? r.toTaskId : r.fromTaskId;
+          const other = refOf(otherId);
+          const dir = r.fromTaskId === task.id ? r.kind
+            : (r.kind === "blocks" ? "blocked_by" : r.kind === "blocked_by" ? "blocks" : r.kind);
+          return { id: r.id, kind: dir, task: other ? { id: other.id, ref: other.ref, title: other.title, status: other.status } : null };
+        }),
+        attachments: (s.attachments.get(userId) || []).filter((a) => a.taskId === task.id),
+        comments: (s.comments.get(userId) || []).filter((c) => c.taskId === task.id)
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+        activity: (s.activity.get(userId) || []).filter((a) => a.taskId === task.id)
+          .sort((a, b) => b.at.localeCompare(a.at)).slice(0, 50),
+      },
+    };
+  });
+
+  // ── Labels ──────────────────────────────────────────────────────────
+  registerLensAction("projects", "label-create", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = pjClean(params.name, 40);
+    if (!name) return { ok: false, error: "label name required" };
+    const label = { id: pjId("lbl"), projectId: String(params.projectId), name, color: pjClean(params.color, 16) || "zinc" };
+    pjListB(s.labels, userId).push(label);
+    savePjState();
+    return { ok: true, result: { label } };
+  });
+
+  registerLensAction("projects", "label-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const labels = (s.labels.get(pjAid(ctx)) || []).filter((l) => l.projectId === String(params.projectId));
+    return { ok: true, result: { labels, count: labels.length } };
+  });
+
+  registerLensAction("projects", "label-update", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const label = (s.labels.get(pjAid(ctx)) || []).find((l) => l.id === params.id);
+    if (!label) return { ok: false, error: "label not found" };
+    if (params.name != null) label.name = pjClean(params.name, 40) || label.name;
+    if (params.color != null) label.color = pjClean(params.color, 16) || label.color;
+    savePjState();
+    return { ok: true, result: { label } };
+  });
+
+  registerLensAction("projects", "label-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.labels.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((l) => l.id === params.id);
+    if (i < 0) return { ok: false, error: "label not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Custom fields ───────────────────────────────────────────────────
+  registerLensAction("projects", "custom-field-create", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = pjClean(params.name, 60);
+    if (!name) return { ok: false, error: "field name required" };
+    const field = {
+      id: pjId("cf"), projectId: String(params.projectId), name,
+      type: pjPick(params.type, ["text", "number", "select", "date"], "text"),
+      options: Array.isArray(params.options)
+        ? params.options.map((o) => pjClean(o, 40)).filter(Boolean).slice(0, 20) : [],
+    };
+    pjListB(s.customFields, userId).push(field);
+    savePjState();
+    return { ok: true, result: { field } };
+  });
+
+  registerLensAction("projects", "custom-field-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const fields = (s.customFields.get(pjAid(ctx)) || []).filter((f) => f.projectId === String(params.projectId));
+    return { ok: true, result: { fields, count: fields.length } };
+  });
+
+  registerLensAction("projects", "custom-field-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const arr = s.customFields.get(userId) || [];
+    const i = arr.findIndex((f) => f.id === params.id);
+    if (i < 0) return { ok: false, error: "field not found" };
+    arr.splice(i, 1);
+    for (const t of s.tasks.get(userId) || []) {
+      if (t.customFields) delete t.customFields[params.id];
+    }
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("projects", "task-set-field", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const task = (s.tasks.get(userId) || []).find((t) => t.id === params.taskId);
+    if (!task) return { ok: false, error: "task not found" };
+    const field = (s.customFields.get(userId) || []).find((f) => f.id === params.fieldId);
+    if (!field) return { ok: false, error: "custom field not found" };
+    if (!task.customFields) task.customFields = {};
+    if (params.value == null || params.value === "") {
+      delete task.customFields[field.id];
+    } else if (field.type === "number") {
+      task.customFields[field.id] = pjNum(params.value);
+    } else {
+      task.customFields[field.id] = pjClean(params.value, 200);
+    }
+    task.updatedAt = pjNow();
+    savePjState();
+    return { ok: true, result: { taskId: task.id, customFields: task.customFields } };
+  });
+
+  // ── Relations / dependencies ────────────────────────────────────────
+  registerLensAction("projects", "relation-add", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const tasks = s.tasks.get(userId) || [];
+    const from = tasks.find((t) => t.id === params.fromTaskId);
+    const to = tasks.find((t) => t.id === params.toTaskId);
+    if (!from || !to) return { ok: false, error: "both tasks must exist" };
+    if (from.id === to.id) return { ok: false, error: "a task cannot relate to itself" };
+    if (from.projectId !== to.projectId) return { ok: false, error: "tasks must be in the same project" };
+    const kind = pjPick(params.kind, PJ_RELATION_KINDS, "relates");
+    const exists = (s.relations.get(userId) || []).some(
+      (r) => r.fromTaskId === from.id && r.toTaskId === to.id && r.kind === kind);
+    if (exists) return { ok: false, error: "relation already exists" };
+    const relation = { id: pjId("rel"), projectId: from.projectId, fromTaskId: from.id, toTaskId: to.id, kind };
+    pjListB(s.relations, userId).push(relation);
+    pjLog(s, userId, from.id, "relation", `${kind} ${to.ref}`);
+    savePjState();
+    return { ok: true, result: { relation } };
+  });
+
+  registerLensAction("projects", "relation-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rels = (s.relations.get(pjAid(ctx)) || [])
+      .filter((r) => r.fromTaskId === String(params.taskId) || r.toTaskId === String(params.taskId));
+    return { ok: true, result: { relations: rels, count: rels.length } };
+  });
+
+  registerLensAction("projects", "relation-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.relations.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "relation not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Attachments ─────────────────────────────────────────────────────
+  registerLensAction("projects", "attachment-add", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const task = (s.tasks.get(userId) || []).find((t) => t.id === params.taskId);
+    if (!task) return { ok: false, error: "task not found" };
+    const url = pjClean(params.url, 600);
+    if (!/^https?:\/\//.test(url)) return { ok: false, error: "url must be http(s)" };
+    const attachment = {
+      id: pjId("att"), taskId: task.id, url,
+      name: pjClean(params.name, 120) || url.slice(0, 60),
+      createdAt: pjNow(),
+    };
+    pjListB(s.attachments, userId).push(attachment);
+    pjLog(s, userId, task.id, "attachment", attachment.name);
+    savePjState();
+    return { ok: true, result: { attachment } };
+  });
+
+  registerLensAction("projects", "attachment-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const attachments = (s.attachments.get(pjAid(ctx)) || []).filter((a) => a.taskId === String(params.taskId));
+    return { ok: true, result: { attachments, count: attachments.length } };
+  });
+
+  registerLensAction("projects", "attachment-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.attachments.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((a) => a.id === params.id);
+    if (i < 0) return { ok: false, error: "attachment not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Activity log ────────────────────────────────────────────────────
+  registerLensAction("projects", "activity-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const activity = (s.activity.get(pjAid(ctx)) || [])
+      .filter((a) => a.taskId === String(params.taskId))
+      .sort((a, b) => b.at.localeCompare(a.at));
+    return { ok: true, result: { activity, count: activity.length } };
+  });
+
+  // ── Saved views ─────────────────────────────────────────────────────
+  registerLensAction("projects", "view-create", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = pjClean(params.name, 80);
+    if (!name) return { ok: false, error: "view name required" };
+    const f = params.filters || {};
+    const view = {
+      id: pjId("vw"), projectId: String(params.projectId), name,
+      filters: {
+        status: f.status ? String(f.status) : null,
+        assigneeId: f.assigneeId ? String(f.assigneeId) : null,
+        type: f.type ? String(f.type) : null,
+        priority: f.priority ? String(f.priority) : null,
+        label: f.label ? String(f.label) : null,
+        sprintId: f.sprintId ? String(f.sprintId) : null,
+        query: f.query ? pjClean(f.query, 120) : null,
+        sort: f.sort ? String(f.sort) : "created",
+      },
+      createdAt: pjNow(),
+    };
+    pjListB(s.views, userId).push(view);
+    savePjState();
+    return { ok: true, result: { view } };
+  });
+
+  registerLensAction("projects", "view-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const views = (s.views.get(pjAid(ctx)) || []).filter((v) => v.projectId === String(params.projectId));
+    return { ok: true, result: { views, count: views.length } };
+  });
+
+  registerLensAction("projects", "view-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.views.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((v) => v.id === params.id);
+    if (i < 0) return { ok: false, error: "view not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("projects", "view-run", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const view = (s.views.get(userId) || []).find((v) => v.id === params.id);
+    if (!view) return { ok: false, error: "view not found" };
+    const all = (s.tasks.get(userId) || []).filter((t) => t.projectId === view.projectId);
+    const f = {};
+    for (const [k, val] of Object.entries(view.filters)) if (val) f[k] = val;
+    const tasks = pjFilterTasks(all, f);
+    return { ok: true, result: { view: view.name, tasks, count: tasks.length } };
+  });
+
+  // ── Automation rules ────────────────────────────────────────────────
+  registerLensAction("projects", "rule-create", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = pjClean(params.name, 80);
+    if (!name) return { ok: false, error: "rule name required" };
+    const trigger = pjPick(params.trigger, PJ_RULE_TRIGGERS, "status_changed");
+    const action = pjPick(params.action, PJ_RULE_ACTIONS, "set_priority");
+    const rule = {
+      id: pjId("rul"), projectId: String(params.projectId), name, trigger, action,
+      actionValue: pjClean(params.actionValue, 60),
+      condition: (params.condition && params.condition.field)
+        ? { field: pjClean(params.condition.field, 30), equals: pjClean(params.condition.equals, 40) } : null,
+      enabled: true, createdAt: pjNow(),
+    };
+    pjListB(s.rules, userId).push(rule);
+    savePjState();
+    return { ok: true, result: { rule } };
+  });
+
+  registerLensAction("projects", "rule-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rules = (s.rules.get(pjAid(ctx)) || []).filter((r) => r.projectId === String(params.projectId));
+    return { ok: true, result: { rules, count: rules.length } };
+  });
+
+  registerLensAction("projects", "rule-toggle", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rule = (s.rules.get(pjAid(ctx)) || []).find((r) => r.id === params.id);
+    if (!rule) return { ok: false, error: "rule not found" };
+    rule.enabled = params.enabled !== false;
+    savePjState();
+    return { ok: true, result: { id: rule.id, enabled: rule.enabled } };
+  });
+
+  registerLensAction("projects", "rule-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.rules.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "rule not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Templates ───────────────────────────────────────────────────────
+  registerLensAction("projects", "template-create", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = pjClean(params.name, 80);
+    if (!name) return { ok: false, error: "template name required" };
+    const d = params.taskDefaults || {};
+    const template = {
+      id: pjId("tpl"), projectId: String(params.projectId), name,
+      taskDefaults: {
+        title: pjClean(d.title, 240) || name,
+        type: pjPick(d.type, PJ_TYPES, "task"),
+        priority: pjPick(d.priority, PJ_PRIORITIES, "none"),
+        points: Math.max(0, Math.round(pjNum(d.points))),
+        description: pjClean(d.description, 4000) || null,
+      },
+      subtasks: Array.isArray(params.subtasks)
+        ? params.subtasks.map((x) => pjClean(x, 240)).filter(Boolean).slice(0, 30) : [],
+      createdAt: pjNow(),
+    };
+    pjListB(s.templates, userId).push(template);
+    savePjState();
+    return { ok: true, result: { template } };
+  });
+
+  registerLensAction("projects", "template-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const templates = (s.templates.get(pjAid(ctx)) || []).filter((t) => t.projectId === String(params.projectId));
+    return { ok: true, result: { templates, count: templates.length } };
+  });
+
+  registerLensAction("projects", "template-apply", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const template = (s.templates.get(userId) || []).find((t) => t.id === params.id);
+    if (!template) return { ok: false, error: "template not found" };
+    const project = pjProject(s, userId, template.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const mkTask = (over) => {
+      project.seq += 1;
+      const t = {
+        id: pjId("tsk"), projectId: project.id, ref: `${project.key}-${project.seq}`,
+        title: "task", description: null, type: "task", status: "backlog", priority: "none",
+        assigneeId: null, sprintId: null, milestoneId: null, parentId: null,
+        labels: [], customFields: {}, points: 0, startDate: null, dueDate: null,
+        rank: (s.tasks.get(userId) || []).filter((x) => x.projectId === project.id).length,
+        createdAt: pjNow(), updatedAt: pjNow(), completedAt: null, ...over,
+      };
+      pjListB(s.tasks, userId).push(t);
+      pjLog(s, userId, t.id, "created", `from template ${template.name}`);
+      return t;
+    };
+    const parent = mkTask({
+      title: template.taskDefaults.title, type: template.taskDefaults.type,
+      priority: template.taskDefaults.priority, points: template.taskDefaults.points,
+      description: template.taskDefaults.description,
+    });
+    const subtasks = template.subtasks.map((title) => mkTask({ title, parentId: parent.id }));
+    savePjState();
+    return { ok: true, result: { task: parent, subtasks } };
+  });
+
+  registerLensAction("projects", "template-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.templates.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((t) => t.id === params.id);
+    if (i < 0) return { ok: false, error: "template not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Bulk operations ─────────────────────────────────────────────────
+  registerLensAction("projects", "task-bulk-update", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const ids = Array.isArray(params.ids) ? params.ids.map(String) : [];
+    if (!ids.length) return { ok: false, error: "ids required" };
+    const patch = params.patch || {};
+    let updated = 0;
+    for (const task of s.tasks.get(userId) || []) {
+      if (!ids.includes(task.id)) continue;
+      if (patch.status != null) {
+        const prev = task.status;
+        task.status = pjPick(patch.status, PJ_STATUSES, task.status);
+        task.completedAt = task.status === "done" ? (task.completedAt || pjNow()) : null;
+        if (prev !== task.status) pjLog(s, userId, task.id, "status", `${prev} → ${task.status}`);
+      }
+      if (patch.priority != null) task.priority = pjPick(patch.priority, PJ_PRIORITIES, task.priority);
+      if (patch.sprintId !== undefined) {
+        const sp = patch.sprintId ? String(patch.sprintId) : null;
+        task.sprintId = (sp && (s.sprints.get(userId) || []).some((x) => x.id === sp)) ? sp : null;
+      }
+      if (patch.assigneeId !== undefined) {
+        const a = patch.assigneeId ? String(patch.assigneeId) : null;
+        task.assigneeId = (a && (s.members.get(userId) || []).some((m) => m.id === a)) ? a : null;
+      }
+      if (patch.addLabel) {
+        const l = pjClean(patch.addLabel, 30);
+        if (l && !task.labels.includes(l)) task.labels = [...task.labels, l].slice(0, 12);
+      }
+      task.updatedAt = pjNow();
+      updated += 1;
+    }
+    savePjState();
+    return { ok: true, result: { updated } };
+  });
+
+  registerLensAction("projects", "task-bulk-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const ids = new Set(Array.isArray(params.ids) ? params.ids.map(String) : []);
+    if (!ids.size) return { ok: false, error: "ids required" };
+    const before = (s.tasks.get(userId) || []).length;
+    s.tasks.set(userId, (s.tasks.get(userId) || []).filter((t) => !ids.has(t.id)));
+    s.comments.set(userId, (s.comments.get(userId) || []).filter((c) => !ids.has(c.taskId)));
+    s.relations.set(userId, (s.relations.get(userId) || [])
+      .filter((r) => !ids.has(r.fromTaskId) && !ids.has(r.toTaskId)));
+    for (const t of s.tasks.get(userId) || []) if (ids.has(t.parentId)) t.parentId = null;
+    savePjState();
+    return { ok: true, result: { deleted: before - (s.tasks.get(userId) || []).length } };
+  });
+
+  // ── WIP limits & swimlane board ─────────────────────────────────────
+  registerLensAction("projects", "wip-set", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const status = pjPick(params.status, PJ_STATUSES, null);
+    if (!status) return { ok: false, error: "valid status required" };
+    const limit = Math.max(0, Math.round(pjNum(params.limit)));
+    const arr = pjListB(s.wip, userId);
+    const existing = arr.find((w) => w.projectId === params.projectId && w.status === status);
+    if (existing) existing.limit = limit;
+    else arr.push({ projectId: String(params.projectId), status, limit });
+    savePjState();
+    return { ok: true, result: { status, limit } };
+  });
+
+  registerLensAction("projects", "wip-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const limits = (s.wip.get(pjAid(ctx)) || []).filter((w) => w.projectId === String(params.projectId));
+    return { ok: true, result: { limits } };
+  });
+
+  registerLensAction("projects", "board-swimlanes", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const groupBy = pjPick(params.groupBy, ["assignee", "epic", "priority", "type"], "assignee");
+    const tasks = (s.tasks.get(userId) || []).filter((t) => t.projectId === String(params.projectId));
+    const memberMap = new Map((s.members.get(userId) || []).map((m) => [m.id, m.name]));
+    const keyOf = (t) => {
+      if (groupBy === "assignee") return t.assigneeId || "_unassigned";
+      if (groupBy === "epic") return t.parentId || "_none";
+      if (groupBy === "priority") return t.priority;
+      return t.type;
+    };
+    const labelOf = (key) => {
+      if (key === "_unassigned") return "Unassigned";
+      if (key === "_none") return "No epic";
+      if (groupBy === "assignee") return memberMap.get(key) || key;
+      if (groupBy === "epic") return tasks.find((t) => t.id === key)?.title || key;
+      return key;
+    };
+    const keys = [...new Set(tasks.map(keyOf))];
+    const swimlanes = keys.map((key) => ({
+      key, label: labelOf(key),
+      columns: PJ_STATUSES.map((status) => ({
+        status,
+        tasks: tasks.filter((t) => keyOf(t) === key && t.status === status),
+      })),
+    }));
+    return { ok: true, result: { groupBy, swimlanes } };
+  });
+
+  // ── Reporting ───────────────────────────────────────────────────────
+  registerLensAction("projects", "report-velocity", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const tasks = (s.tasks.get(userId) || []).filter((t) => t.projectId === String(params.projectId));
+    const sprints = (s.sprints.get(userId) || [])
+      .filter((sp) => sp.projectId === String(params.projectId))
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const series = sprints.map((sp) => {
+      const st = tasks.filter((t) => t.sprintId === sp.id);
+      return {
+        sprint: sp.name, status: sp.status,
+        committed: st.reduce((a, t) => a + t.points, 0),
+        completed: st.filter((t) => t.status === "done").reduce((a, t) => a + t.points, 0),
+      };
+    });
+    const done = series.filter((x) => x.status === "completed");
+    const avgVelocity = done.length
+      ? Math.round((done.reduce((a, x) => a + x.completed, 0) / done.length) * 10) / 10 : 0;
+    return { ok: true, result: { series, avgVelocity, completedSprints: done.length } };
+  });
+
+  registerLensAction("projects", "report-flow", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const days = Math.max(7, Math.min(120, Math.round(pjNum(params.days, 30))));
+    const tasks = (s.tasks.get(pjAid(ctx)) || []).filter((t) => t.projectId === String(params.projectId));
+    const series = [];
+    for (let d = days - 1; d >= 0; d--) {
+      const cutoff = new Date(Date.now() - d * PJ_DAY).toISOString();
+      const created = tasks.filter((t) => t.createdAt <= cutoff).length;
+      const completed = tasks.filter((t) => t.completedAt && t.completedAt <= cutoff).length;
+      series.push({
+        date: cutoff.slice(0, 10), created, completed, open: created - completed,
+      });
+    }
+    return { ok: true, result: { series } };
+  });
+
+  registerLensAction("projects", "report-cycle-time", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const tasks = (s.tasks.get(userId) || [])
+      .filter((t) => t.projectId === String(params.projectId) && t.completedAt);
+    const activity = s.activity.get(userId) || [];
+    const rows = tasks.map((t) => {
+      const startEntry = activity
+        .filter((a) => a.taskId === t.id && a.action === "status" && /→ in_progress/.test(a.detail || ""))
+        .sort((a, b) => a.at.localeCompare(b.at))[0];
+      const cycleStart = startEntry ? startEntry.at : t.createdAt;
+      const cycleDays = Math.max(0, (Date.parse(t.completedAt) - Date.parse(cycleStart)) / PJ_DAY);
+      const leadDays = Math.max(0, (Date.parse(t.completedAt) - Date.parse(t.createdAt)) / PJ_DAY);
+      return { ref: t.ref, cycleDays: Math.round(cycleDays * 10) / 10, leadDays: Math.round(leadDays * 10) / 10 };
+    });
+    const avg = (arr) => (arr.length ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : 0);
+    return {
+      ok: true,
+      result: {
+        completedTasks: rows.length,
+        avgCycleDays: avg(rows.map((r) => r.cycleDays)),
+        avgLeadDays: avg(rows.map((r) => r.leadDays)),
+        rows: rows.slice(-30),
+      },
+    };
+  });
+
+  registerLensAction("projects", "report-forecast", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const tasks = (s.tasks.get(userId) || []).filter((t) => t.projectId === String(params.projectId));
+    const remainingPoints = tasks.filter((t) => t.status !== "done").reduce((a, t) => a + t.points, 0);
+    const sprints = (s.sprints.get(userId) || [])
+      .filter((sp) => sp.projectId === String(params.projectId) && sp.status === "completed");
+    const velocities = sprints.map((sp) =>
+      tasks.filter((t) => t.sprintId === sp.id && t.status === "done").reduce((a, t) => a + t.points, 0));
+    const avgVelocity = velocities.length
+      ? velocities.reduce((a, b) => a + b, 0) / velocities.length : 0;
+    return {
+      ok: true,
+      result: {
+        remainingPoints,
+        avgVelocity: Math.round(avgVelocity * 10) / 10,
+        projectedSprints: avgVelocity > 0 ? Math.ceil(remainingPoints / avgVelocity) : null,
+        basis: velocities.length,
+      },
+    };
+  });
+
+  // ── Risk register ───────────────────────────────────────────────────
+  registerLensAction("projects", "risk-add", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = pjClean(params.name, 200);
+    if (!name) return { ok: false, error: "risk name required" };
+    const likelihood = Math.max(1, Math.min(5, Math.round(pjNum(params.likelihood, 3))));
+    const impact = Math.max(1, Math.min(5, Math.round(pjNum(params.impact, 3))));
+    const score = likelihood * impact;
+    const risk = {
+      id: pjId("rsk"), projectId: String(params.projectId), name, likelihood, impact, score,
+      severity: score >= 15 ? "critical" : score >= 9 ? "high" : score >= 4 ? "medium" : "low",
+      mitigation: pjClean(params.mitigation, 600) || null,
+      createdAt: pjNow(),
+    };
+    pjListB(s.risks, userId).push(risk);
+    savePjState();
+    return { ok: true, result: { risk } };
+  });
+
+  registerLensAction("projects", "risk-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const risks = (s.risks.get(pjAid(ctx)) || [])
+      .filter((r) => r.projectId === String(params.projectId))
+      .sort((a, b) => b.score - a.score);
+    return {
+      ok: true,
+      result: { risks, count: risks.length, critical: risks.filter((r) => r.severity === "critical").length },
+    };
+  });
+
+  registerLensAction("projects", "risk-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.risks.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "risk not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Goals / OKRs ────────────────────────────────────────────────────
+  registerLensAction("projects", "goal-create", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = pjClean(params.name, 200);
+    if (!name) return { ok: false, error: "goal name required" };
+    const goal = {
+      id: pjId("goal"), projectId: String(params.projectId), name,
+      metric: pjClean(params.metric, 60) || "progress",
+      target: pjNum(params.target, 100),
+      current: pjNum(params.current, 0),
+      createdAt: pjNow(),
+    };
+    pjListB(s.goals, userId).push(goal);
+    savePjState();
+    return { ok: true, result: { goal } };
+  });
+
+  registerLensAction("projects", "goal-list", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const goals = (s.goals.get(pjAid(ctx)) || [])
+      .filter((g) => g.projectId === String(params.projectId))
+      .map((g) => ({
+        ...g,
+        progressPct: g.target > 0 ? Math.round((g.current / g.target) * 100) : 0,
+      }));
+    return { ok: true, result: { goals, count: goals.length } };
+  });
+
+  registerLensAction("projects", "goal-update-progress", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const goal = (s.goals.get(pjAid(ctx)) || []).find((g) => g.id === params.id);
+    if (!goal) return { ok: false, error: "goal not found" };
+    if (params.current != null) goal.current = pjNum(params.current, goal.current);
+    if (params.target != null) goal.target = pjNum(params.target, goal.target);
+    savePjState();
+    return {
+      ok: true,
+      result: { goal: { ...goal, progressPct: goal.target > 0 ? Math.round((goal.current / goal.target) * 100) : 0 } },
+    };
+  });
+
+  registerLensAction("projects", "goal-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.goals.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((g) => g.id === params.id);
+    if (i < 0) return { ok: false, error: "goal not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Timeline / Gantt ────────────────────────────────────────────────
+  registerLensAction("projects", "timeline", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const tasks = (s.tasks.get(userId) || [])
+      .filter((t) => t.projectId === String(params.projectId) && (t.startDate || t.dueDate))
+      .map((t) => ({
+        id: t.id, ref: t.ref, title: t.title, status: t.status, type: t.type,
+        start: t.startDate || t.dueDate, end: t.dueDate || t.startDate,
+      }))
+      .sort((a, b) => a.start.localeCompare(b.start));
+    const milestones = (s.milestones.get(userId) || [])
+      .filter((m) => m.projectId === String(params.projectId) && m.dueDate)
+      .map((m) => ({ id: m.id, name: m.name, date: m.dueDate, status: m.status }));
+    return { ok: true, result: { tasks, milestones } };
   });
 }
