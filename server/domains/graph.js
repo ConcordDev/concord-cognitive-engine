@@ -588,4 +588,171 @@ export default function registerGraphActions(registerLensAction) {
     artifact.data.graphMetrics = result;
     return { ok: true, result };
   });
+
+  // ─── Mind-map / concept-graph builder (XMind / MindMeister shape) ────
+
+  function getGraphState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.graphLens) STATE.graphLens = {};
+    if (!(STATE.graphLens.maps instanceof Map)) STATE.graphLens.maps = new Map(); // userId -> Array
+    return STATE.graphLens;
+  }
+  function saveGraph() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const gphId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const gphActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const gphClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
+  const gphMaps = (s, userId) => { if (!s.maps.has(userId)) s.maps.set(userId, []); return s.maps.get(userId); };
+
+  registerLensAction("graph", "map-create", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = gphClean(params.title, 160);
+    if (!title) return { ok: false, error: "map title required" };
+    // a fresh map starts with a central node
+    const central = { id: gphId("nd"), label: title, notes: "", central: true };
+    const map = { id: gphId("mp"), title, nodes: [central], edges: [], createdAt: new Date().toISOString() };
+    gphMaps(s, gphActor(ctx)).push(map);
+    saveGraph();
+    return { ok: true, result: { map } };
+  });
+
+  registerLensAction("graph", "map-list", (ctx, _a, _params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const maps = gphMaps(s, gphActor(ctx)).map((m) => ({
+      id: m.id, title: m.title, nodeCount: m.nodes.length, edgeCount: m.edges.length, createdAt: m.createdAt,
+    }));
+    return { ok: true, result: { maps, count: maps.length } };
+  });
+
+  registerLensAction("graph", "map-detail", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = gphMaps(s, gphActor(ctx)).find((x) => x.id === params.id);
+    if (!m) return { ok: false, error: "map not found" };
+    return { ok: true, result: { map: m } };
+  });
+
+  registerLensAction("graph", "map-delete", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = gphMaps(s, gphActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "map not found" };
+    arr.splice(i, 1);
+    saveGraph();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  function findMap(s, ctx, id) { return gphMaps(s, gphActor(ctx)).find((x) => x.id === id); }
+
+  registerLensAction("graph", "node-add", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const label = gphClean(params.label, 240);
+    if (!label) return { ok: false, error: "node label required" };
+    const node = { id: gphId("nd"), label, notes: gphClean(params.notes, 2000) || "", central: false };
+    m.nodes.push(node);
+    let edge = null;
+    if (params.parentId) {
+      const parent = m.nodes.find((n) => n.id === params.parentId);
+      if (parent) {
+        edge = { id: gphId("ed"), from: parent.id, to: node.id, label: "" };
+        m.edges.push(edge);
+      }
+    }
+    saveGraph();
+    return { ok: true, result: { node, edge } };
+  });
+
+  registerLensAction("graph", "node-update", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const node = m.nodes.find((n) => n.id === params.nodeId);
+    if (!node) return { ok: false, error: "node not found" };
+    if (params.label != null) node.label = gphClean(params.label, 240) || node.label;
+    if (params.notes != null) node.notes = gphClean(params.notes, 2000);
+    saveGraph();
+    return { ok: true, result: { node } };
+  });
+
+  registerLensAction("graph", "node-delete", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const node = m.nodes.find((n) => n.id === params.nodeId);
+    if (!node) return { ok: false, error: "node not found" };
+    if (node.central) return { ok: false, error: "cannot delete the central node" };
+    m.nodes = m.nodes.filter((n) => n.id !== params.nodeId);
+    m.edges = m.edges.filter((e) => e.from !== params.nodeId && e.to !== params.nodeId);
+    saveGraph();
+    return { ok: true, result: { deleted: params.nodeId } };
+  });
+
+  registerLensAction("graph", "edge-add", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const from = m.nodes.find((n) => n.id === params.fromNodeId);
+    const to = m.nodes.find((n) => n.id === params.toNodeId);
+    if (!from || !to) return { ok: false, error: "both nodes must exist" };
+    if (from.id === to.id) return { ok: false, error: "an edge cannot connect a node to itself" };
+    if (m.edges.some((e) => e.from === from.id && e.to === to.id)) return { ok: false, error: "edge already exists" };
+    const edge = { id: gphId("ed"), from: from.id, to: to.id, label: gphClean(params.label, 80) || "" };
+    m.edges.push(edge);
+    saveGraph();
+    return { ok: true, result: { edge } };
+  });
+
+  registerLensAction("graph", "edge-delete", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const i = m.edges.findIndex((e) => e.id === params.edgeId);
+    if (i < 0) return { ok: false, error: "edge not found" };
+    m.edges.splice(i, 1);
+    saveGraph();
+    return { ok: true, result: { deleted: params.edgeId } };
+  });
+
+  // map-metrics — degree distribution + most-connected node over a map.
+  registerLensAction("graph", "map-metrics", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.id);
+    if (!m) return { ok: false, error: "map not found" };
+    const degree = {};
+    for (const n of m.nodes) degree[n.id] = 0;
+    for (const e of m.edges) { degree[e.from] = (degree[e.from] || 0) + 1; degree[e.to] = (degree[e.to] || 0) + 1; }
+    let hub = null;
+    for (const n of m.nodes) {
+      if (!hub || degree[n.id] > degree[hub.id]) hub = n;
+    }
+    const isolated = m.nodes.filter((n) => degree[n.id] === 0 && !n.central);
+    return {
+      ok: true,
+      result: {
+        nodeCount: m.nodes.length,
+        edgeCount: m.edges.length,
+        avgDegree: m.nodes.length > 0 ? Math.round((m.edges.length * 2 / m.nodes.length) * 100) / 100 : 0,
+        mostConnected: hub ? { label: hub.label, degree: degree[hub.id] } : null,
+        isolatedNodes: isolated.length,
+      },
+    };
+  });
+
+  registerLensAction("graph", "graph-dashboard", (ctx, _a, _params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const maps = gphMaps(s, gphActor(ctx));
+    return {
+      ok: true,
+      result: {
+        maps: maps.length,
+        totalNodes: maps.reduce((n, m) => n + m.nodes.length, 0),
+        totalEdges: maps.reduce((n, m) => n + m.edges.length, 0),
+      },
+    };
+  });
 }
