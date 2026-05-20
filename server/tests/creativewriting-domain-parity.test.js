@@ -157,3 +157,84 @@ describe("creative-writing word-count goals", () => {
     assert.equal(d.result.byStatus.final, 1);
   });
 });
+
+describe("creative-writing — research notes", () => {
+  it("manages research/story notes", () => {
+    const pid = newProject();
+    const n = call("note-create", ctxA, { projectId: pid, title: "Magic system", kind: "worldbuilding", body: "Spells cost memory." }).result.note;
+    assert.equal(call("note-list", ctxA, { projectId: pid }).result.count, 1);
+    call("note-update", ctxA, { id: n.id, body: "Spells cost years." });
+    assert.equal(call("note-list", ctxA, { projectId: pid, kind: "worldbuilding" }).result.notes[0].body, "Spells cost years.");
+    call("note-delete", ctxA, { id: n.id });
+    assert.equal(call("note-list", ctxA, { projectId: pid }).result.count, 0);
+  });
+});
+
+describe("creative-writing — snapshots", () => {
+  it("snapshots a scene and restores it", () => {
+    const pid = newProject();
+    const sid = call("scene-add", ctxA, { projectId: pid }).result.scene.id;
+    call("scene-write", ctxA, { sceneId: sid, content: "original draft text here" });
+    const snap = call("snapshot-take", ctxA, { sceneId: sid }).result.snapshot;
+    call("scene-write", ctxA, { sceneId: sid, content: "totally rewritten" });
+    call("snapshot-restore", ctxA, { id: snap.id });
+    const scene = call("project-get", ctxA, { id: pid }).result.scenes.find((x) => x.id === sid);
+    assert.equal(scene.content, "original draft text here");
+    assert.equal(call("snapshot-list", ctxA, { sceneId: sid }).result.count, 1);
+  });
+});
+
+describe("creative-writing — plot grid & compile", () => {
+  it("builds a plot grid of chapters x threads", () => {
+    const pid = newProject();
+    const c1 = call("chapter-add", ctxA, { projectId: pid, title: "One" }).result.chapter.id;
+    const sid = call("scene-add", ctxA, { projectId: pid, chapterId: c1 }).result.scene.id;
+    const thread = call("thread-create", ctxA, { projectId: pid, name: "Romance" }).result.thread;
+    call("scene-thread-tag", ctxA, { sceneId: sid, threadId: thread.id, attached: true });
+    const grid = call("plot-grid", ctxA, { projectId: pid });
+    assert.equal(grid.result.grid[0].cells[0].sceneCount, 1);
+  });
+
+  it("compiles the manuscript", () => {
+    const pid = newProject();
+    const c1 = call("chapter-add", ctxA, { projectId: pid, title: "Opening" }).result.chapter.id;
+    const sid = call("scene-add", ctxA, { projectId: pid, chapterId: c1 }).result.scene.id;
+    call("scene-write", ctxA, { sceneId: sid, content: "The story begins." });
+    const r = call("compile", ctxA, { projectId: pid });
+    assert.ok(r.result.manuscript.includes("The story begins."));
+    assert.equal(r.result.wordCount, 3);
+  });
+});
+
+describe("creative-writing — goal projection", () => {
+  it("projects words-per-day against a deadline", () => {
+    const pid = newProject();
+    call("project-update", ctxA, { id: pid, targetWords: 50000, deadline: "2099-01-01" });
+    const proj = call("goal-projection", ctxA, { projectId: pid });
+    assert.equal(proj.result.targetWords, 50000);
+    assert.equal(proj.result.wordsLeft, 50000);
+    assert.ok(proj.result.daysLeft > 0);
+  });
+});
+
+describe("creative-writing — scene comments & relationships", () => {
+  it("adds and removes scene comments", () => {
+    const pid = newProject();
+    const sid = call("scene-add", ctxA, { projectId: pid }).result.scene.id;
+    const c = call("scene-comment-add", ctxA, { sceneId: sid, body: "tighten this beat" }).result.comment;
+    assert.equal(call("scene-comment-list", ctxA, { sceneId: sid }).result.count, 1);
+    call("scene-comment-delete", ctxA, { id: c.id });
+    assert.equal(call("scene-comment-list", ctxA, { sceneId: sid }).result.count, 0);
+  });
+
+  it("relates two characters", () => {
+    const pid = newProject();
+    const a = call("character-add", ctxA, { projectId: pid, name: "Mira" }).result.character;
+    const b = call("character-add", ctxA, { projectId: pid, name: "Tomas" }).result.character;
+    call("character-relate", ctxA, { fromId: a.id, toId: b.id, kind: "romance" });
+    const rels = call("character-relationships", ctxA, { characterId: a.id });
+    assert.equal(rels.result.count, 1);
+    assert.equal(rels.result.relationships[0].kind, "romance");
+    assert.equal(call("character-relate", ctxA, { fromId: a.id, toId: b.id, kind: "romance" }).ok, false);
+  });
+});

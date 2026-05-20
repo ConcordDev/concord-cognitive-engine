@@ -57,7 +57,8 @@ export default function registerCreativeWritingActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.writingLens) STATE.writingLens = {};
     const s = STATE.writingLens;
-    for (const k of ["projects", "chapters", "scenes", "characters", "threads", "sessions"]) {
+    for (const k of ["projects", "chapters", "scenes", "characters", "threads", "sessions",
+      "notes", "snapshots", "comments", "charRelations"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -92,6 +93,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
       id: cwId("man"), title,
       genre: cwClean(params.genre, 40) || "fiction",
       targetWords: Math.max(0, Math.round(cwNum(params.targetWords))),
+      deadline: cwClean(params.deadline, 10).slice(0, 10) || null,
       logline: cwClean(params.logline, 400) || null,
       createdAt: cwNow(), updatedAt: cwNow(),
     };
@@ -140,6 +142,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
     if (params.title != null) project.title = cwClean(params.title, 160) || project.title;
     if (params.genre != null) project.genre = cwClean(params.genre, 40) || project.genre;
     if (params.targetWords != null) project.targetWords = Math.max(0, Math.round(cwNum(params.targetWords)));
+    if (params.deadline != null) project.deadline = cwClean(params.deadline, 10).slice(0, 10) || null;
     if (params.logline != null) project.logline = cwClean(params.logline, 400) || null;
     project.updatedAt = cwNow();
     saveCwState();
@@ -153,7 +156,8 @@ export default function registerCreativeWritingActions(registerLensAction) {
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "project not found" };
     arr.splice(i, 1);
-    for (const k of ["chapters", "scenes", "characters", "threads", "sessions"]) {
+    for (const k of ["chapters", "scenes", "characters", "threads", "sessions",
+      "notes", "snapshots", "comments", "charRelations"]) {
       const list = s[k].get(userId);
       if (list) s[k].set(userId, list.filter((x) => x.projectId !== params.id));
     }
@@ -514,5 +518,281 @@ export default function registerCreativeWritingActions(registerLensAction) {
         byStatus,
       },
     };
+  });
+
+  // ─── Scrivener + Dabble + Plottr — completion modules ───────────────
+
+  const CW_NOTE_KINDS = ["research", "worldbuilding", "location", "item", "lore"];
+  const CW_REL_KINDS = ["family", "romance", "friend", "rival", "mentor", "ally", "enemy", "other"];
+
+  // ── Research / story notes ──────────────────────────────────────────
+  registerLensAction("creative-writing", "note-create", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    if (!cwProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const title = cwClean(params.title, 160);
+    if (!title) return { ok: false, error: "note title required" };
+    const note = {
+      id: cwId("note"), projectId: String(params.projectId), title,
+      kind: cwPick(params.kind, CW_NOTE_KINDS, "research"),
+      body: cwClean(params.body, 20000) || "",
+      createdAt: cwNow(), updatedAt: cwNow(),
+    };
+    cwListB(s.notes, userId).push(note);
+    saveCwState();
+    return { ok: true, result: { note } };
+  });
+
+  registerLensAction("creative-writing", "note-list", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let notes = (s.notes.get(cwAid(ctx)) || []).filter((n) => n.projectId === String(params.projectId));
+    if (params.kind) notes = notes.filter((n) => n.kind === String(params.kind));
+    return { ok: true, result: { notes, count: notes.length } };
+  });
+
+  registerLensAction("creative-writing", "note-update", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const note = (s.notes.get(cwAid(ctx)) || []).find((n) => n.id === params.id);
+    if (!note) return { ok: false, error: "note not found" };
+    if (params.title != null) note.title = cwClean(params.title, 160) || note.title;
+    if (params.kind != null) note.kind = cwPick(params.kind, CW_NOTE_KINDS, note.kind);
+    if (params.body != null) note.body = cwClean(params.body, 20000);
+    note.updatedAt = cwNow();
+    saveCwState();
+    return { ok: true, result: { note } };
+  });
+
+  registerLensAction("creative-writing", "note-delete", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.notes.get(cwAid(ctx)) || [];
+    const i = arr.findIndex((n) => n.id === params.id);
+    if (i < 0) return { ok: false, error: "note not found" };
+    arr.splice(i, 1);
+    saveCwState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Scene snapshots ─────────────────────────────────────────────────
+  registerLensAction("creative-writing", "snapshot-take", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const scene = (s.scenes.get(userId) || []).find((x) => x.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    const snapshot = {
+      id: cwId("snap"), sceneId: scene.id, projectId: scene.projectId,
+      title: cwClean(params.title, 80) || `Snapshot ${cwNow().slice(0, 16)}`,
+      content: scene.content || "", wordCount: scene.wordCount || 0,
+      takenAt: cwNow(),
+    };
+    cwListB(s.snapshots, userId).push(snapshot);
+    saveCwState();
+    return { ok: true, result: { snapshot: { id: snapshot.id, title: snapshot.title, wordCount: snapshot.wordCount, takenAt: snapshot.takenAt } } };
+  });
+
+  registerLensAction("creative-writing", "snapshot-list", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const snapshots = (s.snapshots.get(cwAid(ctx)) || [])
+      .filter((sn) => sn.sceneId === String(params.sceneId))
+      .sort((a, b) => b.takenAt.localeCompare(a.takenAt))
+      .map((sn) => ({ id: sn.id, title: sn.title, wordCount: sn.wordCount, takenAt: sn.takenAt }));
+    return { ok: true, result: { snapshots, count: snapshots.length } };
+  });
+
+  registerLensAction("creative-writing", "snapshot-restore", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const snap = (s.snapshots.get(userId) || []).find((sn) => sn.id === params.id);
+    if (!snap) return { ok: false, error: "snapshot not found" };
+    const scene = (s.scenes.get(userId) || []).find((x) => x.id === snap.sceneId);
+    if (!scene) return { ok: false, error: "scene no longer exists" };
+    scene.content = snap.content;
+    scene.wordCount = snap.wordCount;
+    scene.updatedAt = cwNow();
+    saveCwState();
+    return { ok: true, result: { sceneId: scene.id, wordCount: scene.wordCount } };
+  });
+
+  registerLensAction("creative-writing", "snapshot-delete", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.snapshots.get(cwAid(ctx)) || [];
+    const i = arr.findIndex((sn) => sn.id === params.id);
+    if (i < 0) return { ok: false, error: "snapshot not found" };
+    arr.splice(i, 1);
+    saveCwState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Plot grid ───────────────────────────────────────────────────────
+  registerLensAction("creative-writing", "plot-grid", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    if (!cwProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const chapters = (s.chapters.get(userId) || [])
+      .filter((c) => c.projectId === String(params.projectId))
+      .sort((a, b) => a.order - b.order);
+    const threads = (s.threads.get(userId) || []).filter((t) => t.projectId === String(params.projectId));
+    const scenes = (s.scenes.get(userId) || []).filter((x) => x.projectId === String(params.projectId));
+    const grid = chapters.map((ch) => ({
+      chapterId: ch.id, title: ch.title,
+      cells: threads.map((th) => {
+        const hits = scenes.filter((sc) => sc.chapterId === ch.id && (sc.threadIds || []).includes(th.id));
+        return { threadId: th.id, sceneCount: hits.length, scenes: hits.map((sc) => sc.title) };
+      }),
+    }));
+    return {
+      ok: true,
+      result: { threads: threads.map((t) => ({ id: t.id, name: t.name, color: t.color })), grid },
+    };
+  });
+
+  // ── Compile / export ────────────────────────────────────────────────
+  registerLensAction("creative-writing", "compile", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const project = cwProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const chapters = (s.chapters.get(userId) || [])
+      .filter((c) => c.projectId === project.id)
+      .sort((a, b) => a.order - b.order);
+    const scenes = (s.scenes.get(userId) || []).filter((x) => x.projectId === project.id);
+    const includeDrafts = params.includeDrafts !== false;
+    let text = `${project.title}\n${"=".repeat(project.title.length)}\n\n`;
+    let wordCount = 0;
+    const parts = [];
+    for (const ch of chapters) {
+      const chScenes = scenes.filter((sc) => sc.chapterId === ch.id).sort((a, b) => a.order - b.order);
+      const usable = chScenes.filter((sc) => includeDrafts || sc.status === "final" || sc.status === "revised");
+      if (!usable.length) continue;
+      text += `\n${ch.title}\n${"-".repeat(ch.title.length)}\n\n`;
+      for (const sc of usable) {
+        if (sc.content) { text += `${sc.content}\n\n`; wordCount += sc.wordCount || 0; }
+      }
+      parts.push({ chapter: ch.title, scenes: usable.length });
+    }
+    return {
+      ok: true,
+      result: { title: project.title, manuscript: text, wordCount, chapters: parts },
+    };
+  });
+
+  // ── Goal projection ─────────────────────────────────────────────────
+  registerLensAction("creative-writing", "goal-projection", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const project = cwProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const scenes = (s.scenes.get(userId) || []).filter((x) => x.projectId === project.id);
+    const current = scenes.reduce((a, x) => a + (x.wordCount || 0), 0);
+    const wordsLeft = Math.max(0, project.targetWords - current);
+    const sessions = (s.sessions.get(userId) || []).filter((x) => x.projectId === project.id);
+    const recent = sessions.filter((x) => x.date >= new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
+    const pace = recent.length ? Math.round(recent.reduce((a, x) => a + x.words, 0) / 7) : 0;
+    let daysLeft = null; let perDayNeeded = null; let onTrack = null;
+    if (project.deadline) {
+      daysLeft = Math.ceil((Date.parse(`${project.deadline}T00:00:00Z`) - Date.now()) / 86400000);
+      if (daysLeft > 0) {
+        perDayNeeded = Math.ceil(wordsLeft / daysLeft);
+        onTrack = pace >= perDayNeeded;
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        targetWords: project.targetWords, currentWords: current, wordsLeft,
+        deadline: project.deadline, daysLeft, recentPace: pace, perDayNeeded, onTrack,
+      },
+    };
+  });
+
+  // ── Scene comments / annotations ────────────────────────────────────
+  registerLensAction("creative-writing", "scene-comment-add", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const scene = (s.scenes.get(userId) || []).find((x) => x.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    const body = cwClean(params.body, 1000);
+    if (!body) return { ok: false, error: "comment body required" };
+    const comment = {
+      id: cwId("cmt"), sceneId: scene.id, projectId: scene.projectId, body,
+      anchor: cwClean(params.anchor, 120) || null,
+      resolved: false, createdAt: cwNow(),
+    };
+    cwListB(s.comments, userId).push(comment);
+    saveCwState();
+    return { ok: true, result: { comment } };
+  });
+
+  registerLensAction("creative-writing", "scene-comment-list", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const comments = (s.comments.get(cwAid(ctx)) || [])
+      .filter((c) => c.sceneId === String(params.sceneId))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return { ok: true, result: { comments, count: comments.length } };
+  });
+
+  registerLensAction("creative-writing", "scene-comment-delete", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.comments.get(cwAid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "comment not found" };
+    arr.splice(i, 1);
+    saveCwState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Character relationships ─────────────────────────────────────────
+  registerLensAction("creative-writing", "character-relate", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const chars = s.characters.get(userId) || [];
+    const from = chars.find((c) => c.id === params.fromId);
+    const to = chars.find((c) => c.id === params.toId);
+    if (!from || !to) return { ok: false, error: "both characters must exist" };
+    if (from.id === to.id) return { ok: false, error: "a character cannot relate to itself" };
+    const kind = cwPick(params.kind, CW_REL_KINDS, "other");
+    const exists = (s.charRelations.get(userId) || []).some(
+      (r) => r.fromId === from.id && r.toId === to.id);
+    if (exists) return { ok: false, error: "relationship already exists" };
+    const relation = {
+      id: cwId("rel"), projectId: from.projectId,
+      fromId: from.id, toId: to.id, kind,
+      note: cwClean(params.note, 300) || null,
+    };
+    cwListB(s.charRelations, userId).push(relation);
+    saveCwState();
+    return { ok: true, result: { relation } };
+  });
+
+  registerLensAction("creative-writing", "character-relationships", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const chars = new Map((s.characters.get(userId) || []).map((c) => [c.id, c.name]));
+    let rels = s.charRelations.get(userId) || [];
+    if (params.characterId) {
+      rels = rels.filter((r) => r.fromId === params.characterId || r.toId === params.characterId);
+    } else if (params.projectId) {
+      rels = rels.filter((r) => r.projectId === String(params.projectId));
+    }
+    return {
+      ok: true,
+      result: {
+        relationships: rels.map((r) => ({
+          id: r.id, kind: r.kind, note: r.note,
+          fromId: r.fromId, fromName: chars.get(r.fromId) || "?",
+          toId: r.toId, toName: chars.get(r.toId) || "?",
+        })),
+        count: rels.length,
+      },
+    };
+  });
+
+  registerLensAction("creative-writing", "character-unrelate", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.charRelations.get(cwAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "relationship not found" };
+    arr.splice(i, 1);
+    saveCwState();
+    return { ok: true, result: { deleted: params.id } };
   });
 }
