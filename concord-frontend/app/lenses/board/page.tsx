@@ -10,6 +10,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { BggHotList } from '@/components/board/BggHotList';
+import { KanbanBoard } from '@/components/board/KanbanBoard';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1576,6 +1577,9 @@ export default function BoardLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6">
+        <KanbanBoard />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <BggHotList />
       </section>
