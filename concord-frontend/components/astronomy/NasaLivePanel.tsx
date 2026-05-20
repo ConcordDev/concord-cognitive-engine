@@ -17,7 +17,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2, Orbit as Telescope, Satellite, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface ApodPayload {
@@ -55,7 +55,7 @@ type Tab = 'apod' | 'iss' | 'neo';
 
 async function runMacro<T>(name: string, input: Record<string, unknown> = {}): Promise<T | null> {
   try {
-    const r = await api.post('/api/lens/run', { domain: 'astronomy', name, input });
+    const r = await lensRun({ domain: 'astronomy', name, input });
     return r?.data as T;
   } catch {
     return null;
