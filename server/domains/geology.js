@@ -271,4 +271,37 @@ export default function registerGeologyActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest live USGS significant earthquakes as visible DTUs.
+  registerLensAction("geology", "feed", async (ctx, _a, params = {}) => {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    try {
+      const r = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson");
+      if (!r.ok) return { ok: false, error: `usgs ${r.status}` };
+      const data = await r.json();
+      const feats = (data.features || []).slice(0, limit);
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const f of feats) {
+        if (s.feedSeen.has(f.id)) { skipped++; continue; }
+        const p = f.properties || {};
+        const c = f.geometry?.coordinates || [];
+        const title = `M${p.mag} earthquake — ${p.place}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nMagnitude: ${p.mag}\nDepth: ${c[2]} km\nTime: ${new Date(p.time).toISOString()}\nUSGS: ${p.url}`,
+          tags: ["geology", "feed", "earthquake", "usgs"],
+          source: "usgs.earthquake-feed",
+          meta: { magnitude: p.mag, place: p.place, time: p.time, lat: c[1], lon: c[0], depthKm: c[2], usgsId: f.id, url: p.url },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(f.id); }
+      }
+      saveGeo();
+      return { ok: true, result: { ingested, skipped, source: "usgs-earthquake-feed", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `usgs feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

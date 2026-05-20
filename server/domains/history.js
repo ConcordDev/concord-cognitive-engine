@@ -339,4 +339,42 @@ export default function registerHistoryActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest "on this day" historical events (Wikimedia) as DTUs.
+  registerLensAction("history", "feed", async (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    const now = new Date();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    try {
+      const r = await fetch(`https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events/${mm}/${dd}`, {
+        headers: { "User-Agent": "Concord-OS/1.0 (https://concord-os.org)", Accept: "application/json" },
+      });
+      if (!r.ok) return { ok: false, error: `wikimedia ${r.status}` };
+      const data = await r.json();
+      const events = (data.events || []).slice(0, limit);
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const ev of events) {
+        const key = `otd-${mm}-${dd}-${ev.year}-${(ev.text || "").slice(0, 24)}`;
+        if (s.feedSeen.has(key)) { skipped++; continue; }
+        const title = `${ev.year}: ${(ev.text || "").slice(0, 120)}`;
+        const link = ev.pages?.[0]?.content_urls?.desktop?.page || null;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `On this day (${mm}/${dd}), ${ev.year}:\n\n${ev.text || ""}${link ? `\n\n${link}` : ""}`,
+          tags: ["history", "feed", "on-this-day"],
+          source: "wikimedia.onthisday",
+          meta: { year: ev.year, monthDay: `${mm}-${dd}`, link },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(key); }
+      }
+      saveHistory();
+      return { ok: true, result: { ingested, skipped, source: "wikimedia-on-this-day", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `wikimedia feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

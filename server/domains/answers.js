@@ -319,4 +319,42 @@ export default function registerAnswersActions(registerLensAction) {
       },
     };
   });
+
+  function decodeHtml(str) {
+    return String(str)
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (_m, n) => String.fromCharCode(Number(n)));
+  }
+
+  // feed — ingest hot Stack Overflow questions (Stack Exchange API) as DTUs.
+  registerLensAction("answers", "feed", async (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    const site = String(params.site || "stackoverflow").replace(/[^a-z.]/g, "") || "stackoverflow";
+    try {
+      const r = await fetch(`https://api.stackexchange.com/2.3/questions?order=desc&sort=hot&pagesize=${limit}&site=${site}`);
+      if (!r.ok) return { ok: false, error: `stack exchange ${r.status}` };
+      const data = await r.json();
+      const questions = data.items || [];
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const q of questions) {
+        if (s.feedSeen.has(String(q.question_id))) { skipped++; continue; }
+        const title = decodeHtml(q.title || "Untitled question");
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nScore: ${q.score} · Answers: ${q.answer_count}${q.is_answered ? " (answered)" : ""}\nTags: ${(q.tags || []).join(", ")}\n${q.link || ""}`,
+          tags: ["answers", "feed", "stackoverflow", ...(q.tags || []).slice(0, 4)],
+          source: "stack-exchange-feed",
+          meta: { questionId: q.question_id, score: q.score, answerCount: q.answer_count, isAnswered: q.is_answered, link: q.link, site },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(String(q.question_id)); }
+      }
+      save();
+      return { ok: true, result: { ingested, skipped, source: "stack-exchange", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `stack exchange unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

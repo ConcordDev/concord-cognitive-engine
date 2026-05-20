@@ -772,6 +772,40 @@ export default function registerLawActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest recent federal/state court opinions (CourtListener) as DTUs.
+  registerLensAction("law", "feed", async (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    const token = process.env.COURTLISTENER_API_TOKEN;
+    try {
+      const headers = token ? { Authorization: `Token ${token}` } : {};
+      const r = await fetch(`${COURTLISTENER_BASE}/search/?type=o&order_by=${encodeURIComponent("dateFiled desc")}&page_size=${limit}`, { headers });
+      if (!r.ok) return { ok: false, error: `courtlistener ${r.status}` };
+      const data = await r.json();
+      const results = data.results || [];
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const o of results) {
+        if (s.feedSeen.has(String(o.id))) { skipped++; continue; }
+        const title = `Opinion: ${o.caseName || "Untitled case"}`;
+        const url = o.absolute_url ? `https://www.courtlistener.com${o.absolute_url}` : null;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nCourt: ${o.court || "?"}\nFiled: ${o.dateFiled || "?"}\nCitation: ${o.citation || "—"}\n${o.snippet || ""}${url ? `\n\n${url}` : ""}`,
+          tags: ["law", "feed", "court-opinion"],
+          source: "courtlistener-feed",
+          meta: { opinionId: o.id, caseName: o.caseName, court: o.court, dateFiled: o.dateFiled, url },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(String(o.id)); }
+      }
+      saveLaw();
+      return { ok: true, result: { ingested, skipped, source: "courtlistener", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
 
 /**

@@ -210,4 +210,37 @@ export default function registerPoetryActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest classic poems from the public-domain PoetryDB as DTUs.
+  registerLensAction("poetry", "feed", async (ctx, _a, params = {}) => {
+    const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(12, Math.round(Number(params.limit) || 6)));
+    try {
+      const r = await fetch(`https://poetrydb.org/random/${limit}`);
+      if (!r.ok) return { ok: false, error: `poetrydb ${r.status}` };
+      const poems = await r.json();
+      if (!Array.isArray(poems)) return { ok: false, error: "poetrydb returned no poems" };
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const p of poems) {
+        const key = `${p.author}::${p.title}`;
+        if (s.feedSeen.has(key)) { skipped++; continue; }
+        const body = Array.isArray(p.lines) ? p.lines.join("\n") : "";
+        const title = `${p.title} — ${p.author}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${p.title}\nby ${p.author}\n\n${body}`,
+          tags: ["poetry", "feed", "public-domain"],
+          source: "poetrydb-feed",
+          meta: { poemTitle: p.title, author: p.author, lineCount: Array.isArray(p.lines) ? p.lines.length : 0 },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(key); }
+      }
+      savePoetry();
+      return { ok: true, result: { ingested, skipped, source: "poetrydb", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `poetrydb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

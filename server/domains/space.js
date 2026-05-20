@@ -178,4 +178,36 @@ export default function registerSpaceActions(registerLensAction) {
     saveSpace();
     return { ok: true, result: { removed: params.id, count: watch.length } };
   });
+
+  // feed — ingest live upcoming launches (Launch Library) as visible DTUs.
+  registerLensAction("space", "feed", async (ctx, _a, params = {}) => {
+    const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(15, Math.round(Number(params.limit) || 8)));
+    try {
+      const r = await fetch(`${LAUNCH_LIBRARY_BASE}/launch/upcoming/?limit=${limit}&mode=list`);
+      if (!r.ok) return { ok: false, error: `launch library ${r.status}` };
+      const data = await r.json();
+      const launches = data.results || [];
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const l of launches) {
+        if (s.feedSeen.has(l.id)) { skipped++; continue; }
+        const provider = l.launch_service_provider?.name || "Unknown";
+        const title = `Launch: ${l.name}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nProvider: ${provider}\nNET: ${l.net || "TBD"}\nStatus: ${l.status?.name || "?"}\nPad: ${l.pad?.name || "?"}`,
+          tags: ["space", "feed", "launch"],
+          source: "launch-library-feed",
+          meta: { launchId: l.id, name: l.name, net: l.net, provider, status: l.status?.name },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(l.id); }
+      }
+      saveSpace();
+      return { ok: true, result: { ingested, skipped, source: "launch-library", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `launch library unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
