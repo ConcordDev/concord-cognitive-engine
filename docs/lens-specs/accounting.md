@@ -64,4 +64,9 @@ Sources:
 | Multi-currency live FX | FX rate provider | single base currency (USD) |
 
 ## Verification log
-- (in progress) — payroll/budgets/inventory/sales-tax/PO/ratios/classes slices being built + tested.
+- 2026-05: backend `node --test tests/accounting-domain-parity.test.js` → 62/62 green (91 macros).
+- 2026-05: frontend — 6 new QB-section panels (payroll, budgets, inventory, sales tax,
+  purchase orders, ratios) wired into QBShell nav; `npx tsc --noEmit` exit 0.
+- 2026-05: `npm run score-lenses` → accounting 7/7 PASS.
+- Every spec feature is implemented. Boundary register holds only the 4 genuine
+  infrastructure items (live bank feeds, regulated payroll/1099 e-filing, multi-currency).

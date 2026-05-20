@@ -25,6 +25,12 @@ import { CashFlowStatement } from './CashFlowStatement';
 import { RunwayForecast } from './RunwayForecast';
 import { APAgingPanel } from './APAgingPanel';
 import { Form1099Panel } from './Form1099Panel';
+import { AcPayrollPanel } from './AcPayrollPanel';
+import { AcBudgetsPanel } from './AcBudgetsPanel';
+import { AcInventoryPanel } from './AcInventoryPanel';
+import { AcSalesTaxPanel } from './AcSalesTaxPanel';
+import { AcPurchaseOrdersPanel } from './AcPurchaseOrdersPanel';
+import { AcRatiosPanel } from './AcRatiosPanel';
 
 export function QBSection() {
   const [nav, setNav] = useState<QBNav>('dashboard');
@@ -70,6 +76,12 @@ export function QBSection() {
       {nav === 'ledger'    && <LedgerHint />}
       {nav === 'coa'       && <CoaHint />}
       {nav === 'ten99'     && <Form1099Panel />}
+      {nav === 'payroll'   && <AcPayrollPanel />}
+      {nav === 'budgets'   && <AcBudgetsPanel />}
+      {nav === 'inventory' && <AcInventoryPanel />}
+      {nav === 'salestax'  && <AcSalesTaxPanel />}
+      {nav === 'purchaseorders' && <AcPurchaseOrdersPanel />}
+      {nav === 'ratios'    && <AcRatiosPanel />}
     </QBShell>
   );
 }

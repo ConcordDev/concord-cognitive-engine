@@ -34,7 +34,13 @@ export type QBNav =
   | 'coa'
   | 'aging-ar'
   | 'aging-ap'
-  | 'ten99';
+  | 'ten99'
+  | 'payroll'
+  | 'budgets'
+  | 'inventory'
+  | 'salestax'
+  | 'purchaseorders'
+  | 'ratios';
 
 interface NavItem {
   id: QBNav;
@@ -67,6 +73,12 @@ const NAV: NavItem[] = [
   { id: 'pl',        label: 'P&L',         icon: PieIcon,  group: 'reports' },
   { id: 'cashflow',  label: 'Cash flow',   icon: PieIcon,  group: 'reports' },
   { id: 'runway',    label: 'Runway',      icon: PieIcon,  group: 'reports' },
+  { id: 'payroll',   label: 'Payroll',     icon: Users,    group: 'expenses' },
+  { id: 'purchaseorders', label: 'Purchase orders', icon: Truck, group: 'expenses' },
+  { id: 'inventory', label: 'Inventory',   icon: Receipt,  group: 'sales' },
+  { id: 'budgets',   label: 'Budgets',     icon: PieIcon,  group: 'reports' },
+  { id: 'salestax',  label: 'Sales tax',   icon: PieIcon,  group: 'reports' },
+  { id: 'ratios',    label: 'Ratios',      icon: PieIcon,  group: 'reports' },
   { id: 'aging-ar',  label: 'A/R aging',   icon: PieIcon,  group: 'reports' },
   { id: 'aging-ap',  label: 'A/P aging',   icon: PieIcon,  group: 'reports' },
   { id: 'ledger',    label: 'Ledger',      icon: BookOpen, group: 'reports' },
