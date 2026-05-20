@@ -307,4 +307,595 @@ export default function registerAutomotiveActions(registerLensAction) {
       },
     };
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Drivvo + Fuelly + CARFAX Car Care 2026 parity — garage, fuel
+  //  log + MPG, service log + schedule + reminders, expenses,
+  //  trips, documents, vehicle stats.
+  // ═══════════════════════════════════════════════════════════════
+
+  function getAutoState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.automotiveLens) {
+      STATE.automotiveLens = {
+        vehicles: new Map(),  // userId -> Array<Vehicle>
+        fuel: new Map(),      // userId -> Array<FuelEntry>
+        service: new Map(),   // userId -> Array<ServiceEntry>
+        schedule: new Map(),  // userId -> Array<ScheduleItem>
+        expenses: new Map(),  // userId -> Array<Expense>
+        trips: new Map(),     // userId -> Array<Trip>
+        documents: new Map(), // userId -> Array<Document>
+        seq: new Map(),       // userId -> { veh, fuel, svc, sch, exp, trip, doc }
+      };
+    }
+    return STATE.automotiveLens;
+  }
+  function saveAuto() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function aidAu(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function uidAu(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function isoAu() { return new Date().toISOString(); }
+  function dayAu() { return new Date().toISOString().slice(0, 10); }
+  function listAu(map, k) { if (!map.has(k)) map.set(k, []); return map.get(k); }
+  function ensureSeqAu(s, userId) {
+    if (!s.seq.has(userId)) s.seq.set(userId, { veh: 1, fuel: 1, svc: 1, sch: 1, exp: 1, trip: 1, doc: 1 });
+    const seq = s.seq.get(userId);
+    for (const k of ['veh','fuel','svc','sch','exp','trip','doc']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    return seq;
+  }
+
+  const EXPENSE_CATEGORIES = ['fuel', 'repair', 'maintenance', 'insurance', 'registration', 'tax', 'parking', 'toll', 'cleaning', 'other'];
+
+  // ── Vehicles (garage) ────────────────────────────────────────
+
+  registerLensAction("automotive", "vehicles-list", (ctx, _a, _p = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { vehicles: listAu(s.vehicles, aidAu(ctx)) } };
+  });
+
+  registerLensAction("automotive", "vehicles-create", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const seq = ensureSeqAu(s, userId);
+    const vehicle = {
+      id: uidAu('veh'),
+      number: `V-${String(seq.veh).padStart(3, '0')}`,
+      name,
+      make: String(params.make || ''),
+      model: String(params.model || ''),
+      year: Number(params.year) || null,
+      vin: String(params.vin || ''),
+      licensePlate: String(params.licensePlate || ''),
+      odometer: Math.max(0, Number(params.odometer) || 0),
+      odometerUnit: ['mi', 'km'].includes(params.odometerUnit) ? params.odometerUnit : 'mi',
+      fuelUnit: ['gal', 'L'].includes(params.fuelUnit) ? params.fuelUnit : 'gal',
+      color: String(params.color || ''),
+      createdAt: isoAu(),
+    };
+    seq.veh++;
+    listAu(s.vehicles, userId).push(vehicle);
+    saveAuto();
+    return { ok: true, result: { vehicle } };
+  });
+
+  registerLensAction("automotive", "vehicles-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const v = listAu(s.vehicles, aidAu(ctx)).find(x => x.id === String(params.id || ""));
+    if (!v) return { ok: false, error: "vehicle not found" };
+    for (const k of ['name', 'make', 'model', 'vin', 'licensePlate', 'color']) if (typeof params[k] === 'string') v[k] = params[k];
+    if (Number.isFinite(Number(params.year))) v.year = Number(params.year);
+    if (Number.isFinite(Number(params.odometer))) v.odometer = Math.max(0, Number(params.odometer));
+    saveAuto();
+    return { ok: true, result: { vehicle: v } };
+  });
+
+  registerLensAction("automotive", "vehicles-delete", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const id = String(params.id || "");
+    const list = listAu(s.vehicles, userId);
+    const i = list.findIndex(v => v.id === id);
+    if (i < 0) return { ok: false, error: "vehicle not found" };
+    list.splice(i, 1);
+    // cascade-delete the vehicle's records
+    for (const bucket of ['fuel', 'service', 'schedule', 'expenses', 'trips', 'documents']) {
+      const arr = listAu(s[bucket], userId);
+      for (let j = arr.length - 1; j >= 0; j--) if (arr[j].vehicleId === id) arr.splice(j, 1);
+    }
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  function bumpOdometer(s, userId, vehicleId, odometer) {
+    if (!Number.isFinite(odometer)) return;
+    const v = listAu(s.vehicles, userId).find(x => x.id === vehicleId);
+    if (v && odometer > v.odometer) v.odometer = odometer;
+  }
+
+  // ── Fuel log + economy ───────────────────────────────────────
+
+  registerLensAction("automotive", "fuel-log", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    const vehicle = listAu(s.vehicles, userId).find(v => v.id === vehicleId);
+    if (!vehicle) return { ok: false, error: "vehicle not found" };
+    const volume = Number(params.volume);
+    const totalCost = Number(params.totalCost);
+    const odometer = Number(params.odometer);
+    if (!Number.isFinite(volume) || volume <= 0) return { ok: false, error: "positive volume required" };
+    if (!Number.isFinite(totalCost) || totalCost < 0) return { ok: false, error: "non-negative totalCost required" };
+    if (!Number.isFinite(odometer) || odometer < 0) return { ok: false, error: "odometer required" };
+    const seq = ensureSeqAu(s, userId);
+    const entry = {
+      id: uidAu('fuel'),
+      number: `F-${String(seq.fuel).padStart(6, '0')}`,
+      vehicleId,
+      date: String(params.date || dayAu()),
+      odometer,
+      volume,
+      totalCost,
+      pricePerUnit: Math.round((totalCost / volume) * 1000) / 1000,
+      fuelGrade: String(params.fuelGrade || 'regular'),
+      fullTank: params.fullTank !== false,
+      station: String(params.station || ''),
+      mpg: null,            // computed on list against the previous fill
+      createdAt: isoAu(),
+    };
+    seq.fuel++;
+    listAu(s.fuel, userId).push(entry);
+    bumpOdometer(s, userId, vehicleId, odometer);
+    // mirror an expense
+    const expSeq = seq;
+    listAu(s.expenses, userId).push({
+      id: uidAu('exp'), number: `E-${String(expSeq.exp).padStart(6, '0')}`,
+      vehicleId, category: 'fuel', amount: totalCost, date: entry.date,
+      note: `${volume} ${vehicle.fuelUnit} @ ${entry.pricePerUnit}`, odometer, autoFromFuel: entry.id, createdAt: isoAu(),
+    });
+    expSeq.exp++;
+    saveAuto();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("automotive", "fuel-list", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    let list = listAu(s.fuel, userId);
+    if (vehicleId) list = list.filter(f => f.vehicleId === vehicleId);
+    // Compute MPG/economy per fill against the previous full-tank fill of the same vehicle.
+    const byVehicle = new Map();
+    for (const f of list.slice().sort((a, b) => a.odometer - b.odometer)) {
+      const prev = byVehicle.get(f.vehicleId);
+      if (prev && f.fullTank && f.odometer > prev.odometer) {
+        const dist = f.odometer - prev.odometer;
+        f.mpg = f.volume > 0 ? Math.round((dist / f.volume) * 100) / 100 : null;
+        f.distanceSincePrev = dist;
+      } else {
+        f.mpg = null;
+      }
+      if (f.fullTank) byVehicle.set(f.vehicleId, f);
+    }
+    return { ok: true, result: { fuel: list.slice().sort((a, b) => b.date.localeCompare(a.date) || b.odometer - a.odometer) } };
+  });
+
+  registerLensAction("automotive", "fuel-delete", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const id = String(params.id || "");
+    const list = listAu(s.fuel, userId);
+    const i = list.findIndex(f => f.id === id);
+    if (i < 0) return { ok: false, error: "fuel entry not found" };
+    list.splice(i, 1);
+    const exp = listAu(s.expenses, userId);
+    for (let j = exp.length - 1; j >= 0; j--) if (exp[j].autoFromFuel === id) exp.splice(j, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Service log ──────────────────────────────────────────────
+
+  registerLensAction("automotive", "service-log", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    const vehicle = listAu(s.vehicles, userId).find(v => v.id === vehicleId);
+    if (!vehicle) return { ok: false, error: "vehicle not found" };
+    const serviceType = String(params.serviceType || "").trim();
+    if (!serviceType) return { ok: false, error: "serviceType required" };
+    const seq = ensureSeqAu(s, userId);
+    const odometer = Number(params.odometer);
+    const cost = Number(params.cost) || 0;
+    const entry = {
+      id: uidAu('svc'),
+      number: `S-${String(seq.svc).padStart(5, '0')}`,
+      vehicleId,
+      serviceType,
+      date: String(params.date || dayAu()),
+      odometer: Number.isFinite(odometer) ? odometer : vehicle.odometer,
+      cost,
+      shop: String(params.shop || ''),
+      notes: String(params.notes || ''),
+      createdAt: isoAu(),
+    };
+    seq.svc++;
+    listAu(s.service, userId).push(entry);
+    if (Number.isFinite(odometer)) bumpOdometer(s, userId, vehicleId, odometer);
+    if (cost > 0) {
+      listAu(s.expenses, userId).push({
+        id: uidAu('exp'), number: `E-${String(seq.exp).padStart(6, '0')}`,
+        vehicleId, category: 'maintenance', amount: cost, date: entry.date,
+        note: serviceType, odometer: entry.odometer, autoFromService: entry.id, createdAt: isoAu(),
+      });
+      seq.exp++;
+    }
+    saveAuto();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("automotive", "service-list", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    let list = listAu(s.service, aidAu(ctx));
+    if (vehicleId) list = list.filter(x => x.vehicleId === vehicleId);
+    return { ok: true, result: { service: list.slice().sort((a, b) => b.date.localeCompare(a.date)) } };
+  });
+
+  registerLensAction("automotive", "service-delete", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const id = String(params.id || "");
+    const list = listAu(s.service, userId);
+    const i = list.findIndex(x => x.id === id);
+    if (i < 0) return { ok: false, error: "service entry not found" };
+    list.splice(i, 1);
+    const exp = listAu(s.expenses, userId);
+    for (let j = exp.length - 1; j >= 0; j--) if (exp[j].autoFromService === id) exp.splice(j, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Service schedule + reminders ─────────────────────────────
+
+  registerLensAction("automotive", "schedule-list", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    let list = listAu(s.schedule, aidAu(ctx));
+    if (vehicleId) list = list.filter(x => x.vehicleId === vehicleId);
+    return { ok: true, result: { schedule: list } };
+  });
+
+  registerLensAction("automotive", "schedule-create", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    if (!listAu(s.vehicles, userId).find(v => v.id === vehicleId)) return { ok: false, error: "vehicle not found" };
+    const serviceType = String(params.serviceType || "").trim();
+    if (!serviceType) return { ok: false, error: "serviceType required" };
+    const intervalMiles = Number(params.intervalMiles) || null;
+    const intervalMonths = Number(params.intervalMonths) || null;
+    if (!intervalMiles && !intervalMonths) return { ok: false, error: "intervalMiles or intervalMonths required" };
+    const seq = ensureSeqAu(s, userId);
+    const item = {
+      id: uidAu('sch'),
+      number: `SCH-${String(seq.sch).padStart(3, '0')}`,
+      vehicleId,
+      serviceType,
+      intervalMiles,
+      intervalMonths,
+      lastDoneOdometer: Number(params.lastDoneOdometer) || null,
+      lastDoneDate: params.lastDoneDate ? String(params.lastDoneDate) : null,
+      createdAt: isoAu(),
+    };
+    seq.sch++;
+    listAu(s.schedule, userId).push(item);
+    saveAuto();
+    return { ok: true, result: { item } };
+  });
+
+  registerLensAction("automotive", "schedule-delete", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listAu(s.schedule, aidAu(ctx));
+    const i = list.findIndex(x => x.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "schedule item not found" };
+    list.splice(i, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // Compute which scheduled services are due / overdue / upcoming.
+  registerLensAction("automotive", "service-reminders", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    const vehicles = listAu(s.vehicles, userId);
+    const serviceLog = listAu(s.service, userId);
+    let schedule = listAu(s.schedule, userId);
+    if (vehicleId) schedule = schedule.filter(x => x.vehicleId === vehicleId);
+    const now = Date.now();
+    const reminders = [];
+    for (const item of schedule) {
+      const vehicle = vehicles.find(v => v.id === item.vehicleId);
+      if (!vehicle) continue;
+      // last-done: explicit on the schedule item, else the most recent matching service log entry
+      const matchingServices = serviceLog
+        .filter(sv => sv.vehicleId === item.vehicleId && sv.serviceType.toLowerCase() === item.serviceType.toLowerCase())
+        .sort((a, b) => b.odometer - a.odometer);
+      const lastOdo = item.lastDoneOdometer ?? matchingServices[0]?.odometer ?? 0;
+      const lastDateStr = item.lastDoneDate ?? matchingServices[0]?.date ?? null;
+      let milesStatus = null, dateStatus = null;
+      if (item.intervalMiles) {
+        const dueAt = lastOdo + item.intervalMiles;
+        const milesRemaining = dueAt - vehicle.odometer;
+        milesStatus = { dueAtOdometer: dueAt, milesRemaining, overdue: milesRemaining < 0, dueSoon: milesRemaining >= 0 && milesRemaining <= 500 };
+      }
+      if (item.intervalMonths && lastDateStr) {
+        const dueDate = new Date(lastDateStr);
+        dueDate.setMonth(dueDate.getMonth() + item.intervalMonths);
+        const daysRemaining = Math.round((dueDate.getTime() - now) / 86_400_000);
+        dateStatus = { dueDate: dueDate.toISOString().slice(0, 10), daysRemaining, overdue: daysRemaining < 0, dueSoon: daysRemaining >= 0 && daysRemaining <= 14 };
+      }
+      const overdue = (milesStatus?.overdue) || (dateStatus?.overdue) || false;
+      const dueSoon = !overdue && ((milesStatus?.dueSoon) || (dateStatus?.dueSoon) || false);
+      reminders.push({
+        scheduleId: item.id,
+        vehicleId: item.vehicleId,
+        vehicleName: vehicle.name,
+        serviceType: item.serviceType,
+        status: overdue ? 'overdue' : dueSoon ? 'due_soon' : 'ok',
+        milesStatus, dateStatus,
+        lastDoneOdometer: lastOdo, lastDoneDate: lastDateStr,
+      });
+    }
+    reminders.sort((a, b) => {
+      const rank = { overdue: 0, due_soon: 1, ok: 2 };
+      return rank[a.status] - rank[b.status];
+    });
+    return {
+      ok: true,
+      result: {
+        reminders,
+        overdueCount: reminders.filter(r => r.status === 'overdue').length,
+        dueSoonCount: reminders.filter(r => r.status === 'due_soon').length,
+      },
+    };
+  });
+
+  // ── Expenses ──────────────────────────────────────────────────
+
+  registerLensAction("automotive", "expenses-log", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    if (!listAu(s.vehicles, userId).find(v => v.id === vehicleId)) return { ok: false, error: "vehicle not found" };
+    const category = EXPENSE_CATEGORIES.includes(params.category) ? params.category : 'other';
+    const amount = Number(params.amount);
+    if (!Number.isFinite(amount) || amount < 0) return { ok: false, error: "non-negative amount required" };
+    const seq = ensureSeqAu(s, userId);
+    const expense = {
+      id: uidAu('exp'),
+      number: `E-${String(seq.exp).padStart(6, '0')}`,
+      vehicleId, category, amount,
+      date: String(params.date || dayAu()),
+      note: String(params.note || ''),
+      odometer: Number(params.odometer) || null,
+      createdAt: isoAu(),
+    };
+    seq.exp++;
+    listAu(s.expenses, userId).push(expense);
+    saveAuto();
+    return { ok: true, result: { expense } };
+  });
+
+  registerLensAction("automotive", "expenses-list", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    const days = Math.max(1, Math.min(3650, Number(params.days) || 365));
+    const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    let list = listAu(s.expenses, userId).filter(e => e.date >= cutoff);
+    if (vehicleId) list = list.filter(e => e.vehicleId === vehicleId);
+    const byCategory = {};
+    for (const e of list) byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+    const total = list.reduce((sum, e) => sum + e.amount, 0);
+    return {
+      ok: true,
+      result: {
+        expenses: list.slice().sort((a, b) => b.date.localeCompare(a.date)),
+        total: Math.round(total * 100) / 100,
+        byCategory: Object.fromEntries(Object.entries(byCategory).map(([k, v]) => [k, Math.round(v * 100) / 100])),
+      },
+    };
+  });
+
+  registerLensAction("automotive", "expenses-delete", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listAu(s.expenses, aidAu(ctx));
+    const i = list.findIndex(e => e.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "expense not found" };
+    list.splice(i, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Trips ─────────────────────────────────────────────────────
+
+  registerLensAction("automotive", "trips-log", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    if (!listAu(s.vehicles, userId).find(v => v.id === vehicleId)) return { ok: false, error: "vehicle not found" };
+    const distance = Number(params.distance);
+    if (!Number.isFinite(distance) || distance <= 0) return { ok: false, error: "positive distance required" };
+    const seq = ensureSeqAu(s, userId);
+    const trip = {
+      id: uidAu('trip'),
+      number: `TR-${String(seq.trip).padStart(5, '0')}`,
+      vehicleId,
+      date: String(params.date || dayAu()),
+      distance,
+      purpose: ['business', 'personal', 'commute', 'other'].includes(params.purpose) ? params.purpose : 'personal',
+      from: String(params.from || ''),
+      to: String(params.to || ''),
+      note: String(params.note || ''),
+      createdAt: isoAu(),
+    };
+    seq.trip++;
+    listAu(s.trips, userId).push(trip);
+    saveAuto();
+    return { ok: true, result: { trip } };
+  });
+
+  registerLensAction("automotive", "trips-list", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    let list = listAu(s.trips, aidAu(ctx));
+    if (vehicleId) list = list.filter(t => t.vehicleId === vehicleId);
+    const businessMiles = list.filter(t => t.purpose === 'business').reduce((sum, t) => sum + t.distance, 0);
+    const totalMiles = list.reduce((sum, t) => sum + t.distance, 0);
+    return {
+      ok: true,
+      result: {
+        trips: list.slice().sort((a, b) => b.date.localeCompare(a.date)),
+        totalMiles: Math.round(totalMiles * 10) / 10,
+        businessMiles: Math.round(businessMiles * 10) / 10,
+      },
+    };
+  });
+
+  registerLensAction("automotive", "trips-delete", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listAu(s.trips, aidAu(ctx));
+    const i = list.findIndex(t => t.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "trip not found" };
+    list.splice(i, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Documents (insurance, registration, etc) ─────────────────
+
+  registerLensAction("automotive", "documents-list", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    let list = listAu(s.documents, aidAu(ctx));
+    if (vehicleId) list = list.filter(d => d.vehicleId === vehicleId);
+    const now = Date.now();
+    for (const d of list) {
+      d.expiringSoon = d.expiryDate ? (new Date(d.expiryDate).getTime() - now) <= 30 * 86_400_000 && new Date(d.expiryDate).getTime() > now : false;
+      d.expired = d.expiryDate ? new Date(d.expiryDate).getTime() < now : false;
+    }
+    return { ok: true, result: { documents: list } };
+  });
+
+  registerLensAction("automotive", "documents-create", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    if (!listAu(s.vehicles, userId).find(v => v.id === vehicleId)) return { ok: false, error: "vehicle not found" };
+    const kind = ['insurance', 'registration', 'inspection', 'warranty', 'title', 'other'].includes(params.kind) ? params.kind : 'other';
+    const seq = ensureSeqAu(s, userId);
+    const doc = {
+      id: uidAu('doc'),
+      number: `D-${String(seq.doc).padStart(4, '0')}`,
+      vehicleId, kind,
+      title: String(params.title || kind),
+      provider: String(params.provider || ''),
+      policyNumber: String(params.policyNumber || ''),
+      expiryDate: params.expiryDate ? String(params.expiryDate) : null,
+      fileUrl: String(params.fileUrl || ''),
+      note: String(params.note || ''),
+      createdAt: isoAu(),
+    };
+    seq.doc++;
+    listAu(s.documents, userId).push(doc);
+    saveAuto();
+    return { ok: true, result: { document: doc } };
+  });
+
+  registerLensAction("automotive", "documents-delete", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listAu(s.documents, aidAu(ctx));
+    const i = list.findIndex(d => d.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "document not found" };
+    list.splice(i, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Vehicle stats ────────────────────────────────────────────
+
+  registerLensAction("automotive", "vehicle-stats", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    const vehicle = listAu(s.vehicles, userId).find(v => v.id === vehicleId);
+    if (!vehicle) return { ok: false, error: "vehicle not found" };
+    const fuel = listAu(s.fuel, userId).filter(f => f.vehicleId === vehicleId).sort((a, b) => a.odometer - b.odometer);
+    // Lifetime MPG: total distance between first & last fill ÷ total volume of fills after the first.
+    let lifetimeMpg = null;
+    if (fuel.length >= 2) {
+      const dist = fuel[fuel.length - 1].odometer - fuel[0].odometer;
+      const vol = fuel.slice(1).reduce((sum, f) => sum + f.volume, 0);
+      if (dist > 0 && vol > 0) lifetimeMpg = Math.round((dist / vol) * 100) / 100;
+    }
+    const expenses = listAu(s.expenses, userId).filter(e => e.vehicleId === vehicleId);
+    const totalSpend = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const fuelSpend = expenses.filter(e => e.category === 'fuel').reduce((sum, e) => sum + e.amount, 0);
+    const odoEntries = [...fuel.map(f => f.odometer), ...listAu(s.service, userId).filter(x => x.vehicleId === vehicleId).map(x => x.odometer)].filter(Number.isFinite);
+    const milesTracked = odoEntries.length >= 2 ? Math.max(...odoEntries) - Math.min(...odoEntries) : 0;
+    const costPerMile = milesTracked > 0 ? Math.round((totalSpend / milesTracked) * 1000) / 1000 : null;
+    return {
+      ok: true,
+      result: {
+        vehicleId, vehicleName: vehicle.name,
+        odometer: vehicle.odometer,
+        lifetimeMpg,
+        totalSpend: Math.round(totalSpend * 100) / 100,
+        fuelSpend: Math.round(fuelSpend * 100) / 100,
+        fillCount: fuel.length,
+        serviceCount: listAu(s.service, userId).filter(x => x.vehicleId === vehicleId).length,
+        milesTracked,
+        costPerMile,
+      },
+    };
+  });
+
+  // ── Dashboard summary ────────────────────────────────────────
+
+  registerLensAction("automotive", "automotive-dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicles = listAu(s.vehicles, userId);
+    const yearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
+    const yearExpenses = listAu(s.expenses, userId).filter(e => e.date >= yearAgo);
+    const spend12mo = yearExpenses.reduce((sum, e) => sum + e.amount, 0);
+    // reminders rollup
+    let overdue = 0, dueSoon = 0;
+    const serviceLog = listAu(s.service, userId);
+    for (const item of listAu(s.schedule, userId)) {
+      const vehicle = vehicles.find(v => v.id === item.vehicleId);
+      if (!vehicle) continue;
+      const matching = serviceLog.filter(sv => sv.vehicleId === item.vehicleId && sv.serviceType.toLowerCase() === item.serviceType.toLowerCase()).sort((a, b) => b.odometer - a.odometer);
+      const lastOdo = item.lastDoneOdometer ?? matching[0]?.odometer ?? 0;
+      if (item.intervalMiles) {
+        const rem = (lastOdo + item.intervalMiles) - vehicle.odometer;
+        if (rem < 0) overdue++; else if (rem <= 500) dueSoon++;
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        vehicleCount: vehicles.length,
+        spend12moUsd: Math.round(spend12mo * 100) / 100,
+        fuelEntryCount: listAu(s.fuel, userId).length,
+        serviceEntryCount: serviceLog.length,
+        overdueServices: overdue,
+        dueSoonServices: dueSoon,
+        scheduleCount: listAu(s.schedule, userId).length,
+      },
+    };
+  });
 }
