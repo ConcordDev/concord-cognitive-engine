@@ -11,6 +11,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { QuotablePanel } from '@/components/daily/QuotablePanel';
 import { DailyInspiration } from '@/components/daily/DailyInspiration';
+import { DailyJournal } from '@/components/daily/DailyJournal';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -971,6 +972,9 @@ export default function DailyLensPage() {
         )}
       </div>
         </div>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <DailyJournal />
+        </section>
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <DailyInspiration />
         </section>
