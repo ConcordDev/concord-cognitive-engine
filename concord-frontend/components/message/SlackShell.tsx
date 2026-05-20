@@ -6,8 +6,9 @@
  */
 
 import React from 'react';
-import { Hash, Lock, MessageSquare, Bell, Inbox, Calendar, Bookmark, Search, Sparkles } from 'lucide-react';
+import { Hash, Lock, MessageSquare, Bell, Inbox, Calendar, Bookmark, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { StatusControl } from './StatusControl';
 
 export type MsgNav = 'channels' | 'inbox' | 'activity' | 'scheduled' | 'snoozed' | 'saved' | 'search';
 
@@ -60,6 +61,7 @@ export function SlackShell({ activeNav, onNavChange, badges = {}, channelList, m
             </button>
           );
         })}
+        <StatusControl />
       </nav>
 
       {/* Channel list */}

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Send, Loader2, Hash, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, MoreHorizontal } from 'lucide-react';
+import { Send, Loader2, Hash, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, MoreHorizontal, Pin } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ChannelIcon } from './SlackShell';
+import { ChannelExtrasBar } from './ChannelExtrasBar';
 
 export interface Message {
   id: string;
@@ -41,6 +42,7 @@ export function MessageStream({
   const [showSchedule, setShowSchedule] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState('');
+  const [pinNonce, setPinNonce] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (channel) { refresh(); markRead(); } else { setMsgs([]); setSummary(null); setSmartReplies([]); } }, [channel?.id]);
@@ -136,6 +138,14 @@ export function MessageStream({
     } catch (e) { console.error('[Stream] save', e); }
   }
 
+  async function pinMsg(m: Message) {
+    if (!channel) return;
+    try {
+      await lensRun({ domain: 'message', action: 'pin-message', input: { channelId: channel.id, messageId: m.id } });
+      setPinNonce(n => n + 1);
+    } catch (e) { console.error('[Stream] pin', e); }
+  }
+
   if (!channel) {
     return <div className="flex-1 flex items-center justify-center text-xs text-gray-500">Pick a channel or DM from the list.</div>;
   }
@@ -150,6 +160,8 @@ export function MessageStream({
           {summarizing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}Summarize
         </button>
       </header>
+
+      <ChannelExtrasBar channelId={channel.id} pinNonce={pinNonce} />
 
       {summary && (
         <div className="px-4 py-2 bg-violet-500/[0.06] border-b border-violet-500/20 text-xs text-violet-100 flex items-start gap-2">
@@ -182,6 +194,7 @@ export function MessageStream({
                 {m.edited && <span className="text-gray-500 italic">(edited)</span>}
                 <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1">
                   <button onClick={() => onOpenThread(m.id)} className="p-1 text-gray-400 hover:text-white" title="Reply in thread"><MessageSquare className="w-3 h-3" /></button>
+                  <button onClick={() => pinMsg(m)} className="p-1 text-gray-400 hover:text-amber-300" title="Pin to channel"><Pin className="w-3 h-3" /></button>
                   <button onClick={() => saveMessage(m)} className="p-1 text-gray-400 hover:text-white" title="Save"><Smile className="w-3 h-3" /></button>
                   <button onClick={() => { setEditingId(m.id); setEditBody(m.body); }} className="p-1 text-gray-400 hover:text-white" title="Edit"><Edit3 className="w-3 h-3" /></button>
                   <button onClick={() => deleteMsg(m)} className="p-1 text-gray-400 hover:text-rose-300" title="Delete"><Trash2 className="w-3 h-3" /></button>
