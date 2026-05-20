@@ -11,6 +11,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CmvFeed } from '@/components/debate/CmvFeed';
+import { DebateTree } from '@/components/debate/DebateTree';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -1023,6 +1024,9 @@ export default function DebateLensPage() {
         </button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="debate" /></div>}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <DebateTree />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CmvFeed />
       </section>
