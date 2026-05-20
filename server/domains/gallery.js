@@ -177,4 +177,125 @@ export default function registerGalleryActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Saved artwork collections (museum "favorites", per-user) ────────
+
+  function getGalleryState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.galleryLens) STATE.galleryLens = {};
+    if (!(STATE.galleryLens.collections instanceof Map)) STATE.galleryLens.collections = new Map(); // userId -> Array
+    return STATE.galleryLens;
+  }
+  function saveGallery() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const glId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const glNow = () => new Date().toISOString();
+  const glActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const glClean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+  const glList = (s, userId) => { if (!s.collections.has(userId)) s.collections.set(userId, []); return s.collections.get(userId); };
+
+  function ensureDefaultCollection(s, userId) {
+    const list = glList(s, userId);
+    if (list.length === 0) {
+      list.push({ id: glId("col"), name: "Favorites", artworks: [], createdAt: glNow() });
+    }
+    return list;
+  }
+
+  registerLensAction("gallery", "collection-create", (ctx, _a, params = {}) => {
+    const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = glClean(params.name, 100);
+    if (!name) return { ok: false, error: "collection name required" };
+    const collection = { id: glId("col"), name, artworks: [], createdAt: glNow() };
+    ensureDefaultCollection(s, glActor(ctx)).push(collection);
+    saveGallery();
+    return { ok: true, result: { collection } };
+  });
+
+  registerLensAction("gallery", "collection-list", (ctx, _a, _params = {}) => {
+    const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const collections = ensureDefaultCollection(s, glActor(ctx)).map((c) => ({
+      id: c.id, name: c.name, artworkCount: c.artworks.length, createdAt: c.createdAt,
+      cover: c.artworks[0]?.image || null,
+    }));
+    return { ok: true, result: { collections, count: collections.length } };
+  });
+
+  registerLensAction("gallery", "collection-detail", (ctx, _a, params = {}) => {
+    const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const collection = ensureDefaultCollection(s, glActor(ctx)).find((c) => c.id === params.id);
+    if (!collection) return { ok: false, error: "collection not found" };
+    return { ok: true, result: { collection } };
+  });
+
+  registerLensAction("gallery", "collection-delete", (ctx, _a, params = {}) => {
+    const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = glList(s, glActor(ctx));
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "collection not found" };
+    arr.splice(i, 1);
+    saveGallery();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("gallery", "artwork-save", (ctx, _a, params = {}) => {
+    const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = glActor(ctx);
+    const collections = ensureDefaultCollection(s, userId);
+    const collection = params.collectionId
+      ? collections.find((c) => c.id === params.collectionId)
+      : collections[0];
+    if (!collection) return { ok: false, error: "collection not found" };
+    const title = glClean(params.title, 300);
+    if (!title) return { ok: false, error: "artwork title required" };
+    const refId = glClean(params.refId, 120) || title.toLowerCase();
+    if (collection.artworks.some((a) => a.refId === refId)) {
+      return { ok: false, error: "artwork already in this collection" };
+    }
+    const artwork = {
+      id: glId("art"),
+      refId,
+      title,
+      artist: glClean(params.artist, 200) || "Unknown",
+      date: glClean(params.date, 80) || null,
+      image: glClean(params.image, 600) || null,
+      museum: glClean(params.museum, 120) || null,
+      savedAt: glNow(),
+    };
+    collection.artworks.push(artwork);
+    saveGallery();
+    return { ok: true, result: { artwork, collectionId: collection.id, artworkCount: collection.artworks.length } };
+  });
+
+  registerLensAction("gallery", "artwork-remove", (ctx, _a, params = {}) => {
+    const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const collection = glList(s, glActor(ctx)).find((c) => c.id === params.collectionId);
+    if (!collection) return { ok: false, error: "collection not found" };
+    const i = collection.artworks.findIndex((a) => a.id === params.artworkId);
+    if (i < 0) return { ok: false, error: "artwork not found" };
+    collection.artworks.splice(i, 1);
+    saveGallery();
+    return { ok: true, result: { removed: params.artworkId, artworkCount: collection.artworks.length } };
+  });
+
+  registerLensAction("gallery", "gallery-dashboard", (ctx, _a, _params = {}) => {
+    const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const collections = ensureDefaultCollection(s, glActor(ctx));
+    const allArt = collections.flatMap((c) => c.artworks);
+    const byMuseum = {};
+    for (const a of allArt) { const m = a.museum || "Unknown"; byMuseum[m] = (byMuseum[m] || 0) + 1; }
+    return {
+      ok: true,
+      result: {
+        collections: collections.length,
+        savedArtworks: allArt.length,
+        byMuseum,
+        artists: [...new Set(allArt.map((a) => a.artist))].length,
+      },
+    };
+  });
 }
