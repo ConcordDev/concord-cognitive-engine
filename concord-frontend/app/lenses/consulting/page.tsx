@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { ConsultingFirmReference } from '@/components/consulting/ConsultingFirmReference';
+import { EngagementTracker } from '@/components/consulting/EngagementTracker';
 import {
   Lightbulb,
   Briefcase,
@@ -666,6 +667,11 @@ export default function ConsultingLensPage() {
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ConsultingFirmReference />
+      </section>
+
+      {/* Engagement workbench: client engagement CRUD + time log + dashboard */}
+      <section className="mt-4">
+        <EngagementTracker />
       </section>
     </LensPageShell>
     

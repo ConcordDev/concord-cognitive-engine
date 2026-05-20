@@ -480,4 +480,66 @@ export default function registerMarketActions(registerLensAction) {
     });
     return { ok: true, result: { quotes, source: "yahoo-finance" } };
   });
+
+  // ─── Competitor / market-research substrate (per-user, STATE) ───────
+  function getMarketState() {
+    const STATE = globalThis._concordSTATE; if (!STATE) return null;
+    if (!STATE.marketLens) STATE.marketLens = {};
+    if (!(STATE.marketLens.competitors instanceof Map)) STATE.marketLens.competitors = new Map();
+    return STATE.marketLens;
+  }
+  function saveMarket() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } } }
+  const mkId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const mkActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const mkClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
+  const mkNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const mkComps = (s, u) => { if (!s.competitors.has(u)) s.competitors.set(u, []); return s.competitors.get(u); };
+
+  registerLensAction("market", "competitor-add", (ctx, _a, params = {}) => {
+    const s = getMarketState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = mkClean(params.name, 160);
+    if (!name) return { ok: false, error: "competitor name required" };
+    const comp = { id: mkId("cmp"), name, segment: mkClean(params.segment, 80) || "general",
+      marketSharePct: mkNum(params.marketSharePct), pricing: mkClean(params.pricing, 120) || null,
+      strengths: mkClean(params.strengths, 600) || "", weaknesses: mkClean(params.weaknesses, 600) || "",
+      threatLevel: ["low", "medium", "high"].includes(params.threatLevel) ? params.threatLevel : "medium",
+      createdAt: new Date().toISOString() };
+    mkComps(s, mkActor(ctx)).push(comp); saveMarket();
+    return { ok: true, result: { competitor: comp } };
+  });
+  registerLensAction("market", "competitor-list", (ctx, _a, params = {}) => {
+    const s = getMarketState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let comps = [...mkComps(s, mkActor(ctx))];
+    if (params.segment) comps = comps.filter((c) => c.segment === params.segment);
+    comps.sort((a, b) => (b.marketSharePct || 0) - (a.marketSharePct || 0));
+    return { ok: true, result: { competitors: comps, count: comps.length } };
+  });
+  registerLensAction("market", "competitor-update", (ctx, _a, params = {}) => {
+    const s = getMarketState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = mkComps(s, mkActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "competitor not found" };
+    if (params.marketSharePct != null) c.marketSharePct = mkNum(params.marketSharePct);
+    if (params.threatLevel && ["low", "medium", "high"].includes(params.threatLevel)) c.threatLevel = params.threatLevel;
+    if (params.strengths != null) c.strengths = mkClean(params.strengths, 600);
+    if (params.weaknesses != null) c.weaknesses = mkClean(params.weaknesses, 600);
+    saveMarket();
+    return { ok: true, result: { competitor: c } };
+  });
+  registerLensAction("market", "competitor-delete", (ctx, _a, params = {}) => {
+    const s = getMarketState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = mkComps(s, mkActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "competitor not found" };
+    arr.splice(i, 1); saveMarket();
+    return { ok: true, result: { deleted: params.id } };
+  });
+  registerLensAction("market", "market-dashboard", (ctx, _a, _p = {}) => {
+    const s = getMarketState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const comps = mkComps(s, mkActor(ctx));
+    const tracked = comps.reduce((n, c) => n + (c.marketSharePct || 0), 0);
+    const bySegment = {};
+    for (const c of comps) bySegment[c.segment] = (bySegment[c.segment] || 0) + 1;
+    return { ok: true, result: { competitors: comps.length, highThreat: comps.filter((c) => c.threatLevel === "high").length,
+      trackedSharePct: Math.round(tracked * 10) / 10, segments: bySegment } };
+  });
 }

@@ -547,4 +547,103 @@ export default function registerForkActions(registerLensAction) {
       return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Repo-watchlist substrate (per-user, STATE-backed) ──────────────
+  function getForkState() {
+    const STATE = globalThis._concordSTATE; if (!STATE) return null;
+    if (!STATE.forkLens) STATE.forkLens = {};
+    if (!(STATE.forkLens.repos instanceof Map)) STATE.forkLens.repos = new Map();
+    if (!(STATE.forkLens.feedSeen instanceof Set)) STATE.forkLens.feedSeen = new Set();
+    return STATE.forkLens;
+  }
+  function saveFork() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } } }
+  const fkId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const fkActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const fkClean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+  const fkRepos = (s, u) => { if (!s.repos.has(u)) s.repos.set(u, []); return s.repos.get(u); };
+
+  registerLensAction("fork", "watch-add", (ctx, _a, params = {}) => {
+    const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const fullName = fkClean(params.fullName, 160).replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "");
+    if (!/^[\w.-]+\/[\w.-]+$/.test(fullName)) return { ok: false, error: "fullName must be owner/repo" };
+    const arr = fkRepos(s, fkActor(ctx));
+    if (arr.some((r) => r.fullName.toLowerCase() === fullName.toLowerCase())) return { ok: false, error: "already watching" };
+    const repo = { id: fkId("rw"), fullName, note: fkClean(params.note, 300) || "",
+      reason: ["upstream", "fork", "competitor", "reference", "dependency"].includes(params.reason) ? params.reason : "reference",
+      lastStars: null, lastPushedAt: null, createdAt: new Date().toISOString() };
+    arr.push(repo); saveFork();
+    return { ok: true, result: { repo } };
+  });
+  registerLensAction("fork", "watch-list", (ctx, _a, _p = {}) => {
+    const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const repos = fkRepos(s, fkActor(ctx));
+    return { ok: true, result: { repos, count: repos.length } };
+  });
+  registerLensAction("fork", "watch-delete", (ctx, _a, params = {}) => {
+    const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = fkRepos(s, fkActor(ctx));
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "repo not found" };
+    arr.splice(i, 1); saveFork();
+    return { ok: true, result: { deleted: params.id } };
+  });
+  registerLensAction("fork", "watch-refresh", async (ctx, _a, params = {}) => {
+    const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const repo = fkRepos(s, fkActor(ctx)).find((r) => r.id === params.id);
+    if (!repo) return { ok: false, error: "repo not found" };
+    try {
+      const r = await fetch(`${GITHUB_API}/repos/${repo.fullName}`, { headers: { "User-Agent": "concord-fork-lens", Accept: "application/vnd.github+json" } });
+      if (!r.ok) return { ok: false, error: `github ${r.status}` };
+      const d = await r.json();
+      repo.lastStars = d.stargazers_count ?? null;
+      repo.lastPushedAt = d.pushed_at ?? null;
+      repo.openIssues = d.open_issues_count ?? null;
+      repo.forks = d.forks_count ?? null;
+      saveFork();
+      return { ok: true, result: { repo } };
+    } catch (e) { return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
+  registerLensAction("fork", "watch-dashboard", (ctx, _a, _p = {}) => {
+    const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const repos = fkRepos(s, fkActor(ctx));
+    const byReason = {};
+    for (const r of repos) byReason[r.reason] = (byReason[r.reason] || 0) + 1;
+    return { ok: true, result: { repos: repos.length, totalStars: repos.reduce((n, r) => n + (r.lastStars || 0), 0),
+      refreshed: repos.filter((r) => r.lastPushedAt).length, byReason } };
+  });
+
+  // ─── Live feed: a watched repo's recent public events → DTUs ────────
+  registerLensAction("fork", "feed", async (ctx, _a, params = {}) => {
+    const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const seen = s.feedSeen;
+    const fullName = fkClean(params.fullName, 160).replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "") || "nodejs/node";
+    if (!/^[\w.-]+\/[\w.-]+$/.test(fullName)) return { ok: false, error: "fullName must be owner/repo" };
+    try {
+      const r = await fetch(`${GITHUB_API}/repos/${fullName}/events?per_page=20`, { headers: { "User-Agent": "concord-fork-lens", Accept: "application/vnd.github+json" } });
+      if (!r.ok) return { ok: false, error: `github ${r.status}` };
+      const events = await r.json();
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const ev of (Array.isArray(events) ? events : []).slice(0, 15)) {
+        const id = ev.id;
+        if (!id || seen.has(id)) { skipped++; continue; }
+        const actor = ev.actor?.login || "someone";
+        const kind = String(ev.type || "Event").replace(/Event$/, "");
+        let detail = "";
+        if (ev.payload?.commits) detail = ev.payload.commits.map((c) => `· ${String(c.message || "").split("\n")[0].slice(0, 100)}`).join("\n");
+        else if (ev.payload?.action && ev.payload?.pull_request) detail = `PR #${ev.payload.pull_request.number} ${ev.payload.action}: ${ev.payload.pull_request.title || ""}`;
+        else if (ev.payload?.action && ev.payload?.issue) detail = `Issue #${ev.payload.issue.number} ${ev.payload.action}: ${ev.payload.issue.title || ""}`;
+        else if (ev.payload?.ref) detail = `${ev.payload.ref_type || "ref"} ${ev.payload.ref}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title: `${kind} on ${fullName} by ${actor}`,
+          creti: `Repository: ${fullName}\nEvent: ${ev.type}\nActor: ${actor}\nWhen: ${ev.created_at || ""}\n\n${detail || "(no further detail)"}`,
+          tags: ["fork", "feed", "github", kind.toLowerCase()],
+          source: "github-events-feed",
+          meta: { eventId: id, repo: fullName, type: ev.type, actor, createdAt: ev.created_at },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }
+      }
+      saveFork();
+      return { ok: true, result: { ingested, skipped, source: `github-events (${fullName})`, dtuIds } };
+    } catch (e) { return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
 }

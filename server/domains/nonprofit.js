@@ -164,4 +164,72 @@ export default function registerNonprofitActions(registerLensAction) {
       return { ok: false, error: `propublica unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Campaign + donation substrate (per-user, STATE-backed) ─────────
+  function getNonprofitState() {
+    const STATE = globalThis._concordSTATE; if (!STATE) return null;
+    if (!STATE.nonprofitLens) STATE.nonprofitLens = {};
+    if (!(STATE.nonprofitLens.campaigns instanceof Map)) STATE.nonprofitLens.campaigns = new Map();
+    return STATE.nonprofitLens;
+  }
+  function saveNonprofit() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } } }
+  const npId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const npActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const npClean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+  const npNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const npCampaigns = (s, u) => { if (!s.campaigns.has(u)) s.campaigns.set(u, []); return s.campaigns.get(u); };
+
+  registerLensAction("nonprofit", "campaign-create", (ctx, _a, params = {}) => {
+    const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = npClean(params.name, 160);
+    if (!name) return { ok: false, error: "campaign name required" };
+    const campaign = { id: npId("cmp"), name, goal: Math.max(0, npNum(params.goal)),
+      deadline: npClean(params.deadline, 30) || null, status: "active", donations: [], createdAt: new Date().toISOString() };
+    npCampaigns(s, npActor(ctx)).push(campaign); saveNonprofit();
+    return { ok: true, result: { campaign } };
+  });
+  registerLensAction("nonprofit", "campaign-list", (ctx, _a, _p = {}) => {
+    const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const campaigns = npCampaigns(s, npActor(ctx)).map((c) => {
+      const raised = c.donations.reduce((n, d) => n + d.amount, 0);
+      return { ...c, raised, donorCount: c.donations.length, progressPct: c.goal > 0 ? Math.round((raised / c.goal) * 100) : 0 };
+    });
+    return { ok: true, result: { campaigns, count: campaigns.length } };
+  });
+  registerLensAction("nonprofit", "campaign-update", (ctx, _a, params = {}) => {
+    const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = npCampaigns(s, npActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "campaign not found" };
+    if (params.goal != null) c.goal = Math.max(0, npNum(params.goal));
+    if (params.status && ["active", "complete", "paused"].includes(params.status)) c.status = params.status;
+    saveNonprofit();
+    return { ok: true, result: { campaign: c } };
+  });
+  registerLensAction("nonprofit", "campaign-delete", (ctx, _a, params = {}) => {
+    const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = npCampaigns(s, npActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "campaign not found" };
+    arr.splice(i, 1); saveNonprofit();
+    return { ok: true, result: { deleted: params.id } };
+  });
+  registerLensAction("nonprofit", "donation-log", (ctx, _a, params = {}) => {
+    const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = npCampaigns(s, npActor(ctx)).find((x) => x.id === params.campaignId);
+    if (!c) return { ok: false, error: "campaign not found" };
+    const amount = npNum(params.amount);
+    if (amount <= 0) return { ok: false, error: "donation amount must be positive" };
+    const donation = { id: npId("don"), amount, donor: npClean(params.donor, 120) || "Anonymous",
+      recurring: params.recurring === true, at: new Date().toISOString() };
+    c.donations.push(donation); saveNonprofit();
+    return { ok: true, result: { donation } };
+  });
+  registerLensAction("nonprofit", "nonprofit-dashboard", (ctx, _a, _p = {}) => {
+    const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const campaigns = npCampaigns(s, npActor(ctx));
+    const allDonations = campaigns.flatMap((c) => c.donations);
+    return { ok: true, result: { campaigns: campaigns.length, active: campaigns.filter((c) => c.status === "active").length,
+      totalRaised: allDonations.reduce((n, d) => n + d.amount, 0), donations: allDonations.length,
+      recurringDonors: allDonations.filter((d) => d.recurring).length } };
+  });
 };

@@ -25,6 +25,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { showToast } from '@/components/common/Toasts';
 import { ForkNetworkExplorer } from '@/components/fork/ForkNetworkExplorer';
+import { RepoWatchlist } from '@/components/fork/RepoWatchlist';
 
 interface ForkData {
   parentId: string | null;
@@ -759,6 +760,11 @@ export default function ForkLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ForkNetworkExplorer />
+      </section>
+
+      {/* Repo-watchlist workbench: watch repos + refresh stats + GitHub events feed */}
+      <section className="mt-4">
+        <RepoWatchlist />
       </section>
     </div>
           <RecentMineCard domain="fork" limit={10} hideWhenEmpty className="mt-4" />

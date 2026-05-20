@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MshaLookup } from '@/components/mining/MshaLookup';
 import { MiningActionPanel } from '@/components/mining/MiningActionPanel';
+import { MineSiteManager } from '@/components/mining/MineSiteManager';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -372,6 +373,11 @@ export default function MiningLensPage() {
       {/* Bespoke MSHA mine + violations lookup with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <MshaLookup />
+      </section>
+
+      {/* Mine-operations workbench: site CRUD + incident log + dashboard */}
+      <section className="mt-4 mx-4">
+        <MineSiteManager />
       </section>
 
       {/* MSHA + USGS-shape mine workbench: grade / blast / safety / resource + actions */}

@@ -95,4 +95,69 @@ export default function registerMiningActions(registerLensAction) {
       return { ok: false, error: `msha unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Mine-operations substrate (per-user, STATE-backed) ─────────────
+  function getMiningState() {
+    const STATE = globalThis._concordSTATE; if (!STATE) return null;
+    if (!STATE.miningLens) STATE.miningLens = {};
+    if (!(STATE.miningLens.sites instanceof Map)) STATE.miningLens.sites = new Map();
+    return STATE.miningLens;
+  }
+  function saveMining() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } } }
+  const mnId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const mnActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const mnClean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+  const mnNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const mnSites = (s, u) => { if (!s.sites.has(u)) s.sites.set(u, []); return s.sites.get(u); };
+  const MINE_KINDS = ["surface", "underground", "placer", "quarry", "other"];
+
+  registerLensAction("mining", "site-add", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = mnClean(params.name, 160);
+    if (!name) return { ok: false, error: "site name required" };
+    const site = { id: mnId("ms"), name, kind: MINE_KINDS.includes(params.kind) ? params.kind : "surface",
+      commodity: mnClean(params.commodity, 80) || "ore", status: "active", incidents: [],
+      productionTonnes: Math.max(0, mnNum(params.productionTonnes)), createdAt: new Date().toISOString() };
+    mnSites(s, mnActor(ctx)).push(site); saveMining();
+    return { ok: true, result: { site } };
+  });
+  registerLensAction("mining", "site-list", (ctx, _a, _p = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sites = mnSites(s, mnActor(ctx)).map((x) => ({ ...x, incidentCount: x.incidents.length }));
+    return { ok: true, result: { sites, count: sites.length } };
+  });
+  registerLensAction("mining", "site-update", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.id);
+    if (!site) return { ok: false, error: "site not found" };
+    if (params.status && ["active", "suspended", "closed", "reclamation"].includes(params.status)) site.status = params.status;
+    if (params.productionTonnes != null) site.productionTonnes = Math.max(0, mnNum(params.productionTonnes));
+    saveMining();
+    return { ok: true, result: { site } };
+  });
+  registerLensAction("mining", "site-delete", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = mnSites(s, mnActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "site not found" };
+    arr.splice(i, 1); saveMining();
+    return { ok: true, result: { deleted: params.id } };
+  });
+  registerLensAction("mining", "incident-log", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.siteId);
+    if (!site) return { ok: false, error: "site not found" };
+    const inc = { id: mnId("inc"), severity: ["near_miss", "minor", "serious", "fatal"].includes(params.severity) ? params.severity : "minor",
+      description: mnClean(params.description, 600), date: mnClean(params.date, 30) || new Date().toISOString().slice(0, 10) };
+    site.incidents.push(inc); saveMining();
+    return { ok: true, result: { incident: inc } };
+  });
+  registerLensAction("mining", "mining-dashboard", (ctx, _a, _p = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sites = mnSites(s, mnActor(ctx));
+    const incidents = sites.flatMap((x) => x.incidents);
+    return { ok: true, result: { sites: sites.length, active: sites.filter((x) => x.status === "active").length,
+      totalProduction: sites.reduce((n, x) => n + x.productionTonnes, 0), incidents: incidents.length,
+      seriousIncidents: incidents.filter((i) => i.severity === "serious" || i.severity === "fatal").length } };
+  });
 }
