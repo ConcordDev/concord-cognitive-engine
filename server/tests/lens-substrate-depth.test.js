@@ -13,6 +13,7 @@ import registerAll from "../domains/all.js";
 import registerSupplychain from "../domains/supplychain.js";
 import registerUrbanplanning from "../domains/urbanplanning.js";
 import registerLawEnforcement from "../domains/lawenforcement.js";
+import registerSuffering from "../domains/suffering.js";
 
 beforeEach(() => {
   globalThis._concordSTATE = { dtus: new Map() };
@@ -78,6 +79,7 @@ describe("THIN-tier domains gained the substrate", () => {
     ["supplychain", registerSupplychain],
     ["urban-planning", registerUrbanplanning],
     ["law-enforcement", registerLawEnforcement],
+    ["suffering", registerSuffering],
   ]) {
     it(`${domain} — record substrate is wired and round-trips`, () => {
       const call = registryFor(domain, registerFn);
