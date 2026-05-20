@@ -16,6 +16,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { WellnessSection } from '@/components/wellness/WellnessSection';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WellnessFeed } from '@/components/wellness/WellnessFeed';
 import { WellnessActionPanel } from '@/components/wellness/WellnessActionPanel';
@@ -86,6 +87,9 @@ export default function WellnessPage() {
         <LensShell lensId="wellness">
       <FirstRunTour lensId="wellness" />
       <DepthBadge lensId="wellness" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <WellnessSection />
+      </div>
       <LensVerticalHero lensId="wellness" className="mx-6 mt-4" />
   <div className="p-6 sm:p-8 max-w-3xl mx-auto">
         <header className="mb-6">
