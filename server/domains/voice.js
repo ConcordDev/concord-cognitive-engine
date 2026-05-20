@@ -166,4 +166,203 @@ export default function registerVoiceActions(registerLensAction) {
     const topKeywords = results.filter(r => r.count > 0).slice(0, 10);
     return { ok: true, result: { keywordsSearched: keywords.length, totalOccurrences, keywordDensity: `${density}%`, wordCount, topKeywords, notFound, distribution: results.filter(r => r.count > 0).map(r => ({ keyword: r.keyword, count: r.count, frequency: `${Math.round((r.count / wordCount) * 10000) / 100}%` })) } };
   });
+
+  // ─── Otter.ai-shape recording / transcript substrate (per-user) ──────
+
+  function getVoiceState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.voiceLens) STATE.voiceLens = {};
+    if (!(STATE.voiceLens.recordings instanceof Map)) STATE.voiceLens.recordings = new Map(); // userId -> Array
+    return STATE.voiceLens;
+  }
+  function saveVoice() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const vcId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const vcNow = () => new Date().toISOString();
+  const vcActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const vcClean = (v, max = 4000) => String(v == null ? "" : v).trim().slice(0, max);
+  const vcNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const vcList = (s, userId) => { if (!s.recordings.has(userId)) s.recordings.set(userId, []); return s.recordings.get(userId); };
+  const ACTION_CUES = ["will ", "need to", "should ", "let's ", "i'll ", "we'll ", "action:", "todo", "follow up", "follow-up", "next step", "by tomorrow", "by friday", "make sure"];
+
+  function durFromSegments(segments) {
+    if (segments.length === 0) return 0;
+    const last = segments[segments.length - 1];
+    return Math.round(last.startSec + 5);
+  }
+
+  registerLensAction("voice", "recording-create", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = vcClean(params.title, 200);
+    if (!title) return { ok: false, error: "recording title required" };
+    const segments = [];
+    if (Array.isArray(params.segments)) {
+      let t = 0;
+      for (const seg of params.segments) {
+        const text = vcClean(seg.text, 4000);
+        if (!text) continue;
+        segments.push({
+          id: vcId("sg"),
+          speaker: vcClean(seg.speaker, 60) || "Speaker 1",
+          text,
+          startSec: Number.isFinite(Number(seg.startSec)) ? Math.max(0, Math.round(Number(seg.startSec))) : t,
+          highlighted: false,
+        });
+        t += 8;
+      }
+    } else if (params.transcript) {
+      // Split a raw transcript into pseudo-segments by sentence.
+      const sentences = vcClean(params.transcript, 40000).split(/(?<=[.!?])\s+/).filter(Boolean);
+      let t = 0;
+      for (const sent of sentences) {
+        segments.push({ id: vcId("sg"), speaker: "Speaker 1", text: sent.slice(0, 4000), startSec: t, highlighted: false });
+        t += 8;
+      }
+    }
+    const recording = {
+      id: vcId("rec"),
+      title,
+      folder: vcClean(params.folder, 80) || "All recordings",
+      durationSec: params.durationSec != null ? Math.max(0, Math.round(vcNum(params.durationSec))) : durFromSegments(segments),
+      segments,
+      summary: null,
+      createdAt: vcNow(),
+    };
+    vcList(s, vcActor(ctx)).push(recording);
+    saveVoice();
+    return { ok: true, result: { recording } };
+  });
+
+  registerLensAction("voice", "recording-list", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let recs = [...vcList(s, vcActor(ctx))];
+    if (params.folder) recs = recs.filter((r) => r.folder === params.folder);
+    recs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const recordings = recs.map((r) => ({
+      id: r.id, title: r.title, folder: r.folder, durationSec: r.durationSec,
+      segmentCount: r.segments.length, speakerCount: new Set(r.segments.map((g) => g.speaker)).size,
+      highlightCount: r.segments.filter((g) => g.highlighted).length,
+      hasSummary: !!r.summary, createdAt: r.createdAt,
+    }));
+    return { ok: true, result: { recordings, count: recordings.length } };
+  });
+
+  registerLensAction("voice", "recording-detail", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rec = vcList(s, vcActor(ctx)).find((r) => r.id === params.id);
+    if (!rec) return { ok: false, error: "recording not found" };
+    return { ok: true, result: { recording: rec } };
+  });
+
+  registerLensAction("voice", "recording-rename", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rec = vcList(s, vcActor(ctx)).find((r) => r.id === params.id);
+    if (!rec) return { ok: false, error: "recording not found" };
+    const title = vcClean(params.title, 200);
+    if (!title) return { ok: false, error: "title required" };
+    rec.title = title;
+    if (params.folder != null) rec.folder = vcClean(params.folder, 80) || rec.folder;
+    saveVoice();
+    return { ok: true, result: { recording: rec } };
+  });
+
+  registerLensAction("voice", "recording-delete", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = vcList(s, vcActor(ctx));
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "recording not found" };
+    arr.splice(i, 1);
+    saveVoice();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("voice", "segment-edit", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rec = vcList(s, vcActor(ctx)).find((r) => r.id === params.recordingId);
+    if (!rec) return { ok: false, error: "recording not found" };
+    const seg = rec.segments.find((g) => g.id === params.segmentId);
+    if (!seg) return { ok: false, error: "segment not found" };
+    if (params.text != null) seg.text = vcClean(params.text, 4000) || seg.text;
+    if (params.speaker != null) seg.speaker = vcClean(params.speaker, 60) || seg.speaker;
+    rec.summary = null; // transcript changed — invalidate summary
+    saveVoice();
+    return { ok: true, result: { segment: seg } };
+  });
+
+  registerLensAction("voice", "highlight-toggle", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rec = vcList(s, vcActor(ctx)).find((r) => r.id === params.recordingId);
+    if (!rec) return { ok: false, error: "recording not found" };
+    const seg = rec.segments.find((g) => g.id === params.segmentId);
+    if (!seg) return { ok: false, error: "segment not found" };
+    seg.highlighted = !seg.highlighted;
+    saveVoice();
+    return { ok: true, result: { segmentId: seg.id, highlighted: seg.highlighted } };
+  });
+
+  // recording-summary — deterministic transcript summary + action items.
+  registerLensAction("voice", "recording-summary", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rec = vcList(s, vcActor(ctx)).find((r) => r.id === params.id);
+    if (!rec) return { ok: false, error: "recording not found" };
+    if (rec.segments.length === 0) return { ok: false, error: "recording has no transcript" };
+    // Highlights are explicit summary points; otherwise pick the longest segments.
+    const highlighted = rec.segments.filter((g) => g.highlighted);
+    const keyPoints = (highlighted.length > 0
+      ? highlighted
+      : [...rec.segments].sort((a, b) => b.text.length - a.text.length).slice(0, 5).sort((a, b) => a.startSec - b.startSec)
+    ).map((g) => g.text.slice(0, 200));
+    const actionItems = [];
+    for (const g of rec.segments) {
+      const low = g.text.toLowerCase();
+      if (ACTION_CUES.some((c) => low.includes(c))) {
+        actionItems.push({ text: g.text.slice(0, 200), speaker: g.speaker });
+      }
+    }
+    const summary = {
+      keyPoints,
+      actionItems: actionItems.slice(0, 12),
+      speakers: [...new Set(rec.segments.map((g) => g.speaker))],
+      composedAt: vcNow(),
+    };
+    rec.summary = summary;
+    saveVoice();
+    return { ok: true, result: { summary } };
+  });
+
+  registerLensAction("voice", "transcript-search", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const q = vcClean(params.query, 100).toLowerCase();
+    if (!q) return { ok: false, error: "query required" };
+    const hits = [];
+    for (const rec of vcList(s, vcActor(ctx))) {
+      for (const g of rec.segments) {
+        if (g.text.toLowerCase().includes(q)) {
+          hits.push({ recordingId: rec.id, recordingTitle: rec.title, segmentId: g.id, speaker: g.speaker, text: g.text.slice(0, 200), startSec: g.startSec });
+        }
+      }
+    }
+    return { ok: true, result: { hits, count: hits.length } };
+  });
+
+  registerLensAction("voice", "voice-dashboard", (ctx, _a, _params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const recs = vcList(s, vcActor(ctx));
+    const totalSec = recs.reduce((n, r) => n + r.durationSec, 0);
+    return {
+      ok: true,
+      result: {
+        recordings: recs.length,
+        totalMinutes: Math.round(totalSec / 60),
+        totalSegments: recs.reduce((n, r) => n + r.segments.length, 0),
+        highlights: recs.reduce((n, r) => n + r.segments.filter((g) => g.highlighted).length, 0),
+        summarized: recs.filter((r) => r.summary).length,
+        folders: [...new Set(recs.map((r) => r.folder))].length,
+      },
+    };
+  });
 }
