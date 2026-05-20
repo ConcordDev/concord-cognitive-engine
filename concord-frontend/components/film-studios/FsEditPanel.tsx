@@ -28,6 +28,8 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
   const [loading, setLoading] = useState(true);
   const [seqForm, setSeqForm] = useState({ name: '', fps: '24' });
   const [clipForm, setClipForm] = useState({ name: '', track: 'V1', durationSec: '', transition: 'cut' });
+  const [markers, setMarkers] = useState<{ id: string; label: string; frame: number }[]>([]);
+  const [markerForm, setMarkerForm] = useState({ label: '', frame: '' });
 
   const loadSequences = useCallback(async () => {
     const r = await lensRun('film-studios', 'sequence-list', { projectId });
@@ -39,10 +41,23 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
   }, [projectId, onChange]);
 
   const loadCut = useCallback(async () => {
-    if (!activeSeq) { setCut(null); return; }
-    const r = await lensRun('film-studios', 'cut-list', { sequenceId: activeSeq });
+    if (!activeSeq) { setCut(null); setMarkers([]); return; }
+    const [r, m] = await Promise.all([
+      lensRun('film-studios', 'cut-list', { sequenceId: activeSeq }),
+      lensRun('film-studios', 'marker-list', { sequenceId: activeSeq }),
+    ]);
     setCut((r.data?.result as CutList | null) || null);
+    setMarkers(m.data?.result?.markers || []);
   }, [activeSeq]);
+
+  const addMarker = async () => {
+    if (!activeSeq || !markerForm.label.trim()) return;
+    await lensRun('film-studios', 'marker-add', {
+      sequenceId: activeSeq, label: markerForm.label.trim(), frame: Number(markerForm.frame) || 0,
+    });
+    setMarkerForm({ label: '', frame: '' });
+    await loadCut();
+  };
 
   useEffect(() => { void loadSequences(); }, [loadSequences]);
   useEffect(() => { void loadCut(); }, [loadCut]);
@@ -151,6 +166,34 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
                   ))}
                 </div>
               )}
+              {/* Markers */}
+              <div className="mt-3 pt-2 border-t border-zinc-800">
+                <p className="text-[11px] font-semibold text-zinc-400 mb-1.5">Markers</p>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <input placeholder="Marker label" value={markerForm.label}
+                    onChange={(e) => setMarkerForm({ ...markerForm, label: e.target.value })}
+                    className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
+                  <input placeholder="frame" inputMode="numeric" value={markerForm.frame}
+                    onChange={(e) => setMarkerForm({ ...markerForm, frame: e.target.value })}
+                    className="w-20 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
+                  <button type="button" onClick={addMarker}
+                    className="px-2.5 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">Add</button>
+                </div>
+                {markers.length > 0 && (
+                  <ul className="space-y-0.5">
+                    {markers.map((mk) => (
+                      <li key={mk.id} className="flex items-center gap-2 text-[11px] text-zinc-300">
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        <span className="font-mono text-zinc-500">f{mk.frame}</span>
+                        <span className="flex-1">{mk.label}</span>
+                        <button type="button"
+                          onClick={() => lensRun('film-studios', 'marker-delete', { id: mk.id }).then(loadCut)}
+                          className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </section>
           )}
         </>

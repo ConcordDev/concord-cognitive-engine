@@ -57,4 +57,9 @@ Sources:
 | PDF call-sheet generation & email | PDF renderer + mail | structured call-sheet data rendered on screen |
 
 ## Verification log
-- (in progress) — backend macros + tests; frontend panels; feature walkthrough.
+- 2026-05: backend `node --test tests/filmstudios-domain-parity.test.js` → 22/22 green (65 macros).
+- 2026-05: frontend — new Screenplay + Production tabs/panels; storyboard frames in Shots,
+  DOOD in Production, markers in Edit, version approval in Review. `npx tsc --noEmit` exit 0.
+- 2026-05: `npm run score-lenses` → film-studios 7/7 PASS.
+- Every spec feature implemented. Boundary register holds only the 4 genuine media/PDF
+  infrastructure items. Zero unchecked non-boundary lines.

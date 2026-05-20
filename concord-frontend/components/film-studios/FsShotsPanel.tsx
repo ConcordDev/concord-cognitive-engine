@@ -12,6 +12,7 @@ interface Scene { id: string; number: string; slugline: string }
 interface Shot {
   id: string; number: string; size: string; angle: string; movement: string;
   lens: string | null; equipment: string | null; description: string | null;
+  storyboardUrl?: string | null;
 }
 
 const SIZES = ['ECU', 'CU', 'MCU', 'MS', 'MWS', 'WS', 'EWS', 'OTS', 'POV', 'INSERT'];
@@ -105,9 +106,14 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
         <ul className="space-y-1.5">
           {shots.map((sh) => (
             <li key={sh.id} className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-              <span className="flex items-center justify-center w-8 h-8 rounded bg-fuchsia-900/40 text-fuchsia-300 text-xs font-bold shrink-0">
-                {sh.number}
-              </span>
+              {sh.storyboardUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={sh.storyboardUrl} alt="storyboard" className="w-14 h-9 object-cover rounded shrink-0" />
+              ) : (
+                <span className="flex items-center justify-center w-8 h-8 rounded bg-fuchsia-900/40 text-fuchsia-300 text-xs font-bold shrink-0">
+                  {sh.number}
+                </span>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-zinc-100">
                   <span className="font-semibold">{sh.size}</span> · {sh.angle.replace(/_/g, ' ')} · {sh.movement}
@@ -115,7 +121,17 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
                 </p>
                 {sh.description && <p className="text-[11px] text-zinc-400 truncate">{sh.description}</p>}
               </div>
-              <Camera className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
+              <button type="button"
+                onClick={async () => {
+                  const url = window.prompt('Storyboard image URL:', sh.storyboardUrl || '');
+                  if (url !== null) {
+                    await lensRun('film-studios', 'shot-storyboard-set', { shotId: sh.id, imageUrl: url.trim() });
+                    await loadShots();
+                  }
+                }}
+                className="text-zinc-500 hover:text-fuchsia-300 shrink-0" title="Set storyboard frame">
+                <Camera className="w-3.5 h-3.5" />
+              </button>
               <button type="button" onClick={() => delShot(sh.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

@@ -9,7 +9,7 @@ import { Loader2, Plus, MessageSquare, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface Version { id: string; label: string; stage: string; runtimeSec: number; noteCount: number; openNotes: number }
+interface Version { id: string; label: string; stage: string; runtimeSec: number; noteCount: number; openNotes: number; approvalStatus?: string }
 interface Note { id: string; timecodeSec: number; body: string; author: string; resolved: boolean }
 
 const STAGES = ['assembly', 'rough_cut', 'fine_cut', 'picture_lock', 'final'];
@@ -112,6 +112,30 @@ export function FsReviewPanel({ projectId, onChange }: { projectId: string; onCh
               </option>
             ))}
           </select>
+
+          {/* Approval status */}
+          {activeVersion && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-zinc-500">Approval:</span>
+              {['in_review', 'needs_changes', 'approved'].map((st) => {
+                const cur = versions.find((v) => v.id === activeVersion)?.approvalStatus || 'in_review';
+                return (
+                  <button key={st} type="button"
+                    onClick={async () => {
+                      await lensRun('film-studios', 'version-set-status', { id: activeVersion, status: st });
+                      await loadVersions();
+                    }}
+                    className={cn('text-[10px] px-2 py-0.5 rounded capitalize',
+                      cur === st
+                        ? (st === 'approved' ? 'bg-emerald-700 text-white'
+                          : st === 'needs_changes' ? 'bg-rose-700 text-white' : 'bg-amber-700 text-white')
+                        : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700')}>
+                    {st.replace(/_/g, ' ')}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* New note */}
           <section className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">

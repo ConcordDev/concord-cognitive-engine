@@ -16,6 +16,8 @@ import { FsSchedulePanel } from './FsSchedulePanel';
 import { FsBudgetTeamPanel } from './FsBudgetTeamPanel';
 import { FsEditPanel } from './FsEditPanel';
 import { FsReviewPanel } from './FsReviewPanel';
+import { FsScreenplayPanel } from './FsScreenplayPanel';
+import { FsProductionPanel } from './FsProductionPanel';
 
 interface Project { id: string; title: string; format: string; logline: string | null }
 interface Dash {
@@ -23,11 +25,13 @@ interface Dash {
   shootDays: number; cast: number; crew: number; sequences: number;
   versions: number; budgetEstimated: number; budgetActual: number;
 }
-type TabId = 'script' | 'shots' | 'schedule' | 'budget' | 'edit' | 'review';
+type TabId = 'script' | 'screenplay' | 'shots' | 'schedule' | 'production' | 'budget' | 'edit' | 'review';
 const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: 'script', label: 'Script', icon: FileText },
+  { id: 'screenplay', label: 'Screenplay', icon: FileText },
   { id: 'shots', label: 'Shots', icon: Camera },
   { id: 'schedule', label: 'Schedule', icon: CalendarDays },
+  { id: 'production', label: 'Production', icon: CalendarDays },
   { id: 'budget', label: 'Budget & Team', icon: Wallet },
   { id: 'edit', label: 'Edit', icon: Scissors },
   { id: 'review', label: 'Review', icon: MessageSquare },
@@ -143,8 +147,10 @@ export function FilmStudioSection() {
               </nav>
               <div className="p-4">
                 {tab === 'script' && <FsScriptPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'screenplay' && <FsScreenplayPanel projectId={activeProject} />}
                 {tab === 'shots' && <FsShotsPanel projectId={activeProject} />}
                 {tab === 'schedule' && <FsSchedulePanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'production' && <FsProductionPanel projectId={activeProject} />}
                 {tab === 'budget' && <FsBudgetTeamPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'edit' && <FsEditPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'review' && <FsReviewPanel projectId={activeProject} onChange={refreshDash} />}
