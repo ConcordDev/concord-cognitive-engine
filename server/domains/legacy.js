@@ -2,6 +2,8 @@
 // Domain actions for legacy system management: technical debt computation,
 // migration readiness assessment, and risk mapping.
 
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerLegacyActions(registerLensAction) {
   /**
    * technicalDebt
@@ -316,5 +318,12 @@ export default function registerLegacyActions(registerLensAction) {
         },
       },
     };
+  });
+
+  // Persistent records substrate (audit THIN-tier depth pass).
+  registerLensSubstrate(registerLensAction, "legacy", {
+    noun: "bequest", idPrefix: "beq",
+    kinds: ["asset","title","knowledge","grudge"],
+    statuses: ["pending","granted","void"],
   });
 }

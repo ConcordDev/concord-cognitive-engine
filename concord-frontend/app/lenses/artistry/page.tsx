@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -465,6 +466,7 @@ export default function ArtistryLensPage() {
         <WikimediaArt />
       </section>
     </div>
+          <section className="mt-4"><LensSubstratePanel domain="artistry" noun="artwork" /></section>
           <RecentMineCard domain="artistry" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="artistry" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="artistry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

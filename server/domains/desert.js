@@ -1,4 +1,6 @@
 // server/domains/desert.js
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerDesertActions(registerLensAction) {
   registerLensAction("desert", "waterBudget", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -43,5 +45,12 @@ export default function registerDesertActions(registerLensAction) {
     const annualOutput = Math.round(areaM2 * annualIrradiance * panelEfficiency / 1000); // MWh
     const homesEquivalent = Math.round(annualOutput / 10); // ~10 MWh per home per year
     return { ok: true, result: { latitude, clearDaysPerYear: clearDays, dailyIrradiance: `${Math.round(irradiance * 10) / 10} kWh/m²`, annualIrradiance: `${Math.round(annualIrradiance)} kWh/m²`, solarArea: `${areaAcres} acres (${Math.round(areaM2).toLocaleString()} m²)`, annualOutputMWh: annualOutput, homesEquivalent, potential: annualOutput > 1000 ? "excellent" : annualOutput > 100 ? "good" : "modest" } };
+  });
+
+  // Persistent records substrate (audit THIN-tier depth pass).
+  registerLensSubstrate(registerLensAction, "desert", {
+    noun: "site", idPrefix: "site",
+    kinds: ["solar","well","outpost","survey"],
+    statuses: ["prospect","active","dormant"],
   });
 }

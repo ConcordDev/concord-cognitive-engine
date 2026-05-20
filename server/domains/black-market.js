@@ -4,6 +4,8 @@
 // player creations, restricted-tier goods. Pulls from the same
 // creative_artifacts table the marketplace uses, with an extra filter.
 
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerBlackMarketActions(registerLensAction) {
   /**
    * listings — return rare/legendary-quality artifacts, optionally
@@ -42,4 +44,11 @@ export default function registerBlackMarketActions(registerLensAction) {
       ],
     },
   }));
+
+  // Persistent records substrate (audit THIN-tier depth pass).
+  registerLensSubstrate(registerLensAction, "black-market", {
+    noun: "listing", idPrefix: "lst",
+    kinds: ["contraband","favor","intel","rare"],
+    statuses: ["offered","negotiating","closed"],
+  });
 }

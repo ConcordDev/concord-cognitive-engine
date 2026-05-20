@@ -4,6 +4,8 @@
 // stored locally — but the universal lens pipeline still wants a macro
 // to discover the lens and surface it in cross-domain search.
 
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerSettingsActions(registerLensAction) {
   /**
    * list — return the available client preferences and their current
@@ -34,5 +36,12 @@ export default function registerSettingsActions(registerLensAction) {
     const userId = ctx?.actor?.id || ctx?.actor?.userId;
     const prefs = (STATE?.userPrefs ?? {})[userId] ?? {};
     return { ok: true, result: { prefs } };
+  });
+
+  // Persistent saved-preference-profile substrate.
+  registerLensSubstrate(registerLensAction, "settings", {
+    noun: "profile", idPrefix: "prof",
+    kinds: ["graphics", "audio", "controls", "accessibility", "general"],
+    statuses: ["active", "saved", "archived"],
   });
 }

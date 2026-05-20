@@ -2,6 +2,8 @@
 // Domain actions for the observe lens — Datadog Security / observability
 // shape. 4 macros over service/incident/alert/SLO concepts.
 
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerObserveActions(registerLensAction) {
   /**
    * serviceLog — summarise a service's recent log entries.
@@ -96,5 +98,12 @@ export default function registerObserveActions(registerLensAction) {
         remainingBudgetMinutes: Math.max(0, Math.round((target - (100 - actual)) / 100 * windowDays * 24 * 60)),
       },
     };
+  });
+
+  // Persistent monitored-entity substrate (services, alerts, SLOs).
+  registerLensSubstrate(registerLensAction, "observe", {
+    noun: "monitor", idPrefix: "mon",
+    kinds: ["service", "alert", "slo", "dashboard"],
+    statuses: ["healthy", "watch", "burning", "critical"],
   });
 }

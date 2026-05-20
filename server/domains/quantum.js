@@ -2,6 +2,8 @@
 // Domain actions for quantum computing: circuit simulation, gate analysis,
 // error rate computation, and qubit utilization metrics.
 
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerQuantumActions(registerLensAction) {
   // Gate matrices (2x2 complex: [real, imag] pairs)
   const GATES = {
@@ -312,5 +314,12 @@ export default function registerQuantumActions(registerLensAction) {
         ],
       },
     };
+  });
+
+  // Persistent records substrate (audit THIN-tier depth pass).
+  registerLensSubstrate(registerLensAction, "quantum", {
+    noun: "circuit", idPrefix: "qct",
+    kinds: ["algorithm","experiment","simulation"],
+    statuses: ["draft","queued","run","analyzed"],
   });
 }

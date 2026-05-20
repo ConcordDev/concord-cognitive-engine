@@ -2,6 +2,8 @@
 // Domain actions for offline/sync management: conflict detection and resolution,
 // cache strategy optimization, and minimal delta computation.
 
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerOfflineActions(registerLensAction) {
   /**
    * syncConflict
@@ -476,5 +478,12 @@ export default function registerOfflineActions(registerLensAction) {
         recommendation: deltaSize < fullStateSize * 0.5 ? "delta_sync" : "full_sync",
       },
     };
+  });
+
+  // Persistent records substrate (audit THIN-tier depth pass).
+  registerLensSubstrate(registerLensAction, "offline", {
+    noun: "sync job", idPrefix: "job",
+    kinds: ["download","cache","queue","conflict"],
+    statuses: ["pending","syncing","done","failed"],
   });
 }

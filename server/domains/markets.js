@@ -89,6 +89,8 @@ const FX_MAJORS = [
 // Registration
 // ──────────────────────────────────────────────────────────────
 
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerMarketsActions(registerLensAction) {
   // ── State (per-user alerts cache) ──
 
@@ -431,5 +433,12 @@ export default function registerMarketsActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `yahoo finance unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // Persistent records substrate (audit THIN-tier depth pass).
+  registerLensSubstrate(registerLensAction, "markets", {
+    noun: "position", idPrefix: "pos",
+    kinds: ["long","short","hedge","watch"],
+    statuses: ["open","filled","closed"],
   });
 }

@@ -1,4 +1,6 @@
 // server/domains/lawenforcement.js
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerLawEnforcementActions(registerLensAction) {
   registerLensAction("law-enforcement", "caseAnalysis", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -30,5 +32,12 @@ export default function registerLawEnforcementActions(registerLensAction) {
     for (const i of incidents) { const t = i.type || "other"; byType[t] = (byType[t] || 0) + 1; }
     const resolved = incidents.filter(i => i.resolved || i.status === "closed").length;
     return { ok: true, result: { totalIncidents: incidents.length, byType: Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, c]) => ({ type: t, count: c })), clearanceRate: Math.round((resolved / incidents.length) * 100), mostCommon: Object.entries(byType).sort((a, b) => b[1] - a[1])[0]?.[0] || "none", trend: incidents.length > 100 ? "high-volume" : "normal" } };
+  });
+
+  // Persistent records substrate (audit THIN-tier depth pass).
+  registerLensSubstrate(registerLensAction, "law-enforcement", {
+    noun: "case", idPrefix: "case",
+    kinds: ["patrol","investigation","arrest","report"],
+    statuses: ["open","active","closed"],
   });
 }

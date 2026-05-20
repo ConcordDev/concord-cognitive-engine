@@ -1,6 +1,8 @@
 // server/domains/artistry.js
 // Domain actions for artistry: color palette analysis, composition scoring, style classification, media inventory.
 
+import { registerLensSubstrate } from "../lib/lens-substrate.js";
+
 export default function registerArtistryActions(registerLensAction) {
   /**
    * colorPaletteAnalysis
@@ -392,5 +394,12 @@ export default function registerArtistryActions(registerLensAction) {
 
     artifact.data.mediaInventory = result;
     return { ok: true, result };
+  });
+
+  // Persistent records substrate (audit THIN-tier depth pass).
+  registerLensSubstrate(registerLensAction, "artistry", {
+    noun: "artwork", idPrefix: "art",
+    kinds: ["sketch","study","finished","commission"],
+    statuses: ["wip","review","done"],
   });
 }

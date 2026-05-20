@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -385,6 +386,7 @@ export default function DefenseLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <section className="mt-4"><LensSubstratePanel domain="defense" noun="asset" /></section>
           <RecentMineCard domain="defense" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="defense" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="defense" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

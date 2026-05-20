@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensSubstratePanel } from '@/components/lens/LensSubstratePanel';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -246,6 +247,7 @@ export default function SupplyChainLensPage() {
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#supplychain-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to supplychain content</a>
+          <section className="mt-4"><LensSubstratePanel domain="supplychain" noun="shipment" /></section>
           <RecentMineCard domain="supplychain" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="supplychain" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="supplychain" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
