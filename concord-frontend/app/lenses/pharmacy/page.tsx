@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { PharmacyRxSection } from '@/components/pharmacy/PharmacyRxSection';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -159,6 +160,9 @@ export default function PharmacyLensPage() {
       <FirstRunTour lensId="pharmacy" />
       <ManifestActionBar />
       <DepthBadge lensId="pharmacy" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <PharmacyRxSection />
+      </div>
     <div data-lens-theme="pharmacy" className="p-6 space-y-6">
       {/* Disclaimer */}
       <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
