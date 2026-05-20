@@ -26,7 +26,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -125,7 +125,7 @@ export function JournalActionPanel() {
     setBusy('save'); setFeedback(null);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: {
           title: entryTitle.trim() || `Journal — ${today}`,
@@ -145,7 +145,7 @@ export function JournalActionPanel() {
           },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) { setSavedDtuId(id); pipe.publish('reflection.savedDtuId', id, { label: `entry ${id.slice(0, 8)}` }); ok(`Saved DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
@@ -180,7 +180,7 @@ export function JournalActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', {
+        const r = await lensRun({
           domain: 'dtu', name: 'create',
           input: {
             title: `Gratitude — ${entryTitle.trim() || new Date().toISOString().slice(0, 10)}`,
@@ -199,7 +199,7 @@ export function JournalActionPanel() {
             },
           },
         });
-        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;
         if (!newId) throw new Error('No DTU id returned.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -221,11 +221,11 @@ export function JournalActionPanel() {
         ``,
         `Return only the prompt - one or two sentences, plaintext, no preamble. Make it specific and unobvious.`,
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 3 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         setAgentPrompt(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Prompt ready.');
