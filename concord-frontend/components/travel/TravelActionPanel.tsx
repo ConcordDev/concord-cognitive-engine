@@ -13,7 +13,7 @@ import {
   Loader2, Check, AlertTriangle, MapPin,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -103,8 +103,8 @@ export function TravelActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Trip — ${destination.trim() || 'untitled'}`, tags: ['travel', 'trip', tripStyle, destination.trim().toLowerCase()], source: 'travel:trip:mint', meta: { visibility: 'private', consent: { allowCitations: false }, trip: { destination, days: parseInt(tripDays, 10), style: tripStyle, budget: budgetResult, packing: packingResult, jetlag: jetlagResult, visa: visaResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Trip — ${destination.trim() || 'untitled'}`, tags: ['travel', 'trip', tripStyle, destination.trim().toLowerCase()], source: 'travel:trip:mint', meta: { visibility: 'private', consent: { allowCitations: false }, trip: { destination, days: parseInt(tripDays, 10), style: tripStyle, budget: budgetResult, packing: packingResult, jetlag: jetlagResult, visa: visaResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('travel.mintedDtuId', id, { label: `trip ${id.slice(0, 8)}` }); ok(`Trip DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -125,8 +125,8 @@ export function TravelActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Travel guide — ${destination.trim() || 'destination'}`, tags: ['travel', 'guide', 'public', tripStyle], source: 'travel:guide:publish', meta: { visibility: 'public', consent: { allowCitations: true }, guide: { destination, style: tripStyle, packingTips: packingResult?.items, budget: budgetResult } } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Travel guide — ${destination.trim() || 'destination'}`, tags: ['travel', 'guide', 'public', tripStyle], source: 'travel:guide:publish', meta: { visibility: 'public', consent: { allowCitations: true }, guide: { destination, style: tripStyle, packingTips: packingResult?.items, budget: budgetResult } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -140,8 +140,8 @@ export function TravelActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Trip: ${destination.trim()} for ${tripDays} days (${tripStyle}). ${budgetResult ? `Budget $${budgetResult.total}.` : ''} Suggest the single best off-the-beaten-path experience for this destination + style. Include why it's better than the obvious tourist option. Plain text.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Local tip ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

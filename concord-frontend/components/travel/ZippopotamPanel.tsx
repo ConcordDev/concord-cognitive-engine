@@ -9,7 +9,7 @@
 
 import { useState, useCallback } from 'react';
 import { MapPin, RefreshCw, AlertTriangle, Search } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Place {
@@ -22,7 +22,7 @@ interface Place {
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
+    const r = await lensRun({ domain, name, input });
     return r?.data as T;
   } catch {
     return null;
