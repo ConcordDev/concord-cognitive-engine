@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Award, Plus, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Status {
@@ -33,7 +33,7 @@ export function CurrencyPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'aviation', action: 'currency-status', input: {} });
+      const res = await lensRun({ domain: 'aviation', action: 'currency-status', input: {} });
       setStatus((res.data?.result as Status) || null);
     } catch (e) { console.error('[Currency] failed', e); }
     finally { setLoading(false); }
@@ -41,7 +41,7 @@ export function CurrencyPanel() {
 
   async function add() {
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'currency-event-add', input: form });
+      await lensRun({ domain: 'aviation', action: 'currency-event-add', input: form });
       setForm({ ...form, cfi: '', notes: '' });
       await refresh();
     } catch (e) { console.error('[Currency] add', e); }

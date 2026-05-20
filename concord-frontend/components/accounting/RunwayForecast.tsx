@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, Calendar } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 
 interface MonthRow { month: string; projected: number; in: number; out: number }
@@ -23,7 +23,7 @@ export function RunwayForecast() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'runway-forecast', input: { months } });
+      const r = await lensRun({ domain: 'accounting', action: 'runway-forecast', input: { months } });
       setData((r.data?.result as Runway) || null);
     } catch (e) { console.error('[Runway] failed', e); }
     finally { setLoading(false); }

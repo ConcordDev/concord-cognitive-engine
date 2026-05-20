@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { Sparkles, Send, Loader2, User as UserIcon } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -30,7 +30,7 @@ export function FinanceAssistant() {
     setInput('');
     setPending(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'assistant-ask', input: { question: q } });
+      const res = await lensRun({ domain: 'finance', action: 'assistant-ask', input: { question: q } });
       const answer = (res.data?.result?.answer || '(empty response)') as string;
       const source = (res.data?.result?.source || undefined) as string | undefined;
       setMessages(prev => [...prev, { role: 'assistant', text: answer, source }]);

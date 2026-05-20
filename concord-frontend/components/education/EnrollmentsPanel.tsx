@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { GraduationCap, Loader2, X, BookOpen } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Enrollment {
@@ -20,7 +20,7 @@ export function EnrollmentsPanel({ onSelectCourse }: { onSelectCourse?: (courseI
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'education', action: 'enrollments-list', input: {} });
+      const res = await lensRun({ domain: 'education', action: 'enrollments-list', input: {} });
       setEnrollments((res.data?.result?.enrollments || []) as Enrollment[]);
     } catch (e) { console.error('[Enrollments] failed', e); }
     finally { setLoading(false); }
@@ -28,7 +28,7 @@ export function EnrollmentsPanel({ onSelectCourse }: { onSelectCourse?: (courseI
 
   async function unenroll(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'enrollments-unenroll', input: { id } });
+      await lensRun({ domain: 'education', action: 'enrollments-unenroll', input: { id } });
       setEnrollments(prev => prev.filter(e => e.id !== id));
     } catch (e) { console.error('[Enrollments] unenroll failed', e); }
   }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CalendarDays, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Event {
   listingId: string; address: string; date: string;
@@ -18,7 +18,7 @@ export function OpenHouseCalendar() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'realestate', action: 'open-houses-upcoming', input: { days: 21 } });
+      const res = await lensRun({ domain: 'realestate', action: 'open-houses-upcoming', input: { days: 21 } });
       setEvents((res.data?.result?.events || []) as Event[]);
     } catch (e) { console.error('[OpenHouses] failed', e); }
     finally { setLoading(false); }

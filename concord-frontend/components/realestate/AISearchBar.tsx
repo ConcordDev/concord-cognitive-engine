@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Search, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Parsed {
   filters: Record<string, unknown>;
@@ -21,7 +21,7 @@ export function AISearchBar({ onParsed }: { onParsed?: (p: Parsed) => void }) {
     if (!text) return;
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'realestate', action: 'parse-search-query', input: { query: text } });
+      const res = await lensRun({ domain: 'realestate', action: 'parse-search-query', input: { query: text } });
       const p = res.data?.result as Parsed | undefined;
       if (p) {
         setParsed(p);

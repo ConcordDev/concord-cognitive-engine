@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Scissors, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Candidate {
@@ -33,7 +33,7 @@ export function TaxLossHarvester() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'tax-loss-candidates', input: { minLoss: Number(minLoss) || 100 } });
+      const res = await lensRun({ domain: 'finance', action: 'tax-loss-candidates', input: { minLoss: Number(minLoss) || 100 } });
       setResult(res.data?.result || null);
     } catch (e) { console.error('[TaxLoss] load failed', e); }
     finally { setLoading(false); }

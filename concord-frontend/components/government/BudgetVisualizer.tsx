@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { PieChart, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface BudgetCategory {
@@ -24,7 +24,7 @@ export function BudgetVisualizer() {
     setLoading(true);
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', { domain: 'government', action: 'budget-breakdown', input: { scope, year } });
+        const res = await lensRun({ domain: 'government', action: 'budget-breakdown', input: { scope, year } });
         setCategories((res.data?.result?.categories || []) as BudgetCategory[]);
         setTotal(Number(res.data?.result?.totalBillions) || 0);
       } catch (e) { console.error('[Budget] failed', e); }

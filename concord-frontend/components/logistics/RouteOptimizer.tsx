@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Route, Plus, X, Loader2, MapPin, Clock, TrendingDown } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface OptimizedStop {
   order: number;
@@ -39,7 +39,7 @@ export function RouteOptimizer() {
     if (cleaned.length < 2) return;
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'route-optimize', input: { stops: cleaned, startTime, vehicleType } });
+      const res = await lensRun({ domain: 'logistics', action: 'route-optimize', input: { stops: cleaned, startTime, vehicleType } });
       setResult(res.data?.result as RouteOptimization || null);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

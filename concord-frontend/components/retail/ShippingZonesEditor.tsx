@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Truck, Plus, Trash2, Loader2, Globe } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Zone {
   id: string; name: string; countries: string[];
@@ -23,7 +23,7 @@ export function ShippingZonesEditor() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'retail', action: 'shipping-zones-list', input: {} });
+      const res = await lensRun({ domain: 'retail', action: 'shipping-zones-list', input: {} });
       setZones((res.data?.result?.zones || []) as Zone[]);
     } catch (e) { console.error('[Shipping] list failed', e); }
     finally { setLoading(false); }
@@ -36,7 +36,7 @@ export function ShippingZonesEditor() {
     if (form.standardCents) rates.push({ id: 'r_std', name: 'Standard', priceCents: Number(form.standardCents), freeThreshold: form.standardFreeThreshold ? Number(form.standardFreeThreshold) : null });
     if (form.expressCents) rates.push({ id: 'r_exp', name: 'Express', priceCents: Number(form.expressCents), freeThreshold: null });
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'shipping-zones-create', input: { name: form.name, countries, rates } });
+      await lensRun({ domain: 'retail', action: 'shipping-zones-create', input: { name: form.name, countries, rates } });
       setForm({ name: '', countries: 'US, CA', standardCents: '500', standardFreeThreshold: '50', expressCents: '2000' });
       setCreating(false);
       await refresh();
@@ -45,14 +45,14 @@ export function ShippingZonesEditor() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'shipping-zones-delete', input: { id } });
+      await lensRun({ domain: 'retail', action: 'shipping-zones-delete', input: { id } });
       setZones(prev => prev.filter(z => z.id !== id));
     } catch (e) { console.error('[Shipping] delete failed', e); }
   }
 
   async function getQuote() {
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'retail', action: 'shipping-rate-quote',
         input: { country: quoteCountry, subtotal: Number(quoteSubtotal) || 0 },
       });

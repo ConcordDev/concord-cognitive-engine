@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { GraduationCap, Footprints, Car, Bike, Bus, Loader2, MapPin } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Schools {
@@ -27,11 +27,11 @@ export function SchoolWalkPanel() {
     setLoading(true);
     try {
       const requests = [
-        api.post('/api/lens/run', { domain: 'realestate', action: 'school-ratings', input: { address } }),
-        api.post('/api/lens/run', { domain: 'realestate', action: 'walk-score', input: { address } }),
+        lensRun({ domain: 'realestate', action: 'school-ratings', input: { address } }),
+        lensRun({ domain: 'realestate', action: 'walk-score', input: { address } }),
       ];
       if (commuteTo.trim()) {
-        requests.push(api.post('/api/lens/run', { domain: 'realestate', action: 'commute-estimate', input: { from: address, to: commuteTo, mode: commuteMode } }));
+        requests.push(lensRun({ domain: 'realestate', action: 'commute-estimate', input: { from: address, to: commuteTo, mode: commuteMode } }));
       }
       const [s, w, c] = await Promise.all(requests);
       setSchools(s.data?.result || null);

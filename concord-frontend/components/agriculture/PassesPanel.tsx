@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Sprout, Wheat, Plus, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface PlantingPass { id: string; fieldId: string; crop: string; variety: string; seedingRate: number; depthInches: number; acresPlanted: number; plantedAt: string }
@@ -22,8 +22,8 @@ export function PassesPanel() {
     setLoading(true);
     try {
       const [p, h] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'agriculture', action: 'planting-passes', input: {} }),
-        api.post('/api/lens/run', { domain: 'agriculture', action: 'harvest-passes', input: {} }),
+        lensRun({ domain: 'agriculture', action: 'planting-passes', input: {} }),
+        lensRun({ domain: 'agriculture', action: 'harvest-passes', input: {} }),
       ]);
       setPlanting((p.data?.result?.passes || []) as PlantingPass[]);
       setHarvest((h.data?.result?.passes || []) as HarvestPass[]);
@@ -34,7 +34,7 @@ export function PassesPanel() {
   async function logPlanting() {
     if (!pForm.fieldId.trim() || !pForm.crop.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'agriculture', action: 'planting-log',
         input: { ...pForm, seedingRate: Number(pForm.seedingRate), depthInches: Number(pForm.depthInches), acresPlanted: Number(pForm.acresPlanted) },
       });
@@ -46,7 +46,7 @@ export function PassesPanel() {
   async function logHarvest() {
     if (!hForm.fieldId.trim() || !hForm.crop.trim() || !hForm.acresHarvested) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'agriculture', action: 'harvest-log',
         input: { ...hForm, acresHarvested: Number(hForm.acresHarvested), yieldBushels: Number(hForm.yieldBushels), moisturePct: Number(hForm.moisturePct) || undefined },
       });

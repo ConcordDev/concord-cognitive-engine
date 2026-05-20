@@ -17,7 +17,7 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { Search, Music2, Disc, Wand2, Loader2, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -48,7 +48,7 @@ const TAB_META: Record<BrowserTab, { label: string; icon: typeof Music2; accent:
 async function fetchBrowserAssets(tab: BrowserTab): Promise<BrowserAsset[]> {
   // music.browse for loops/stems, dtu.listByKind for the rest
   if (tab === 'loops' || tab === 'stems') {
-    const res = await api.post('/api/lens/run', {
+    const res = await lensRun({
       domain: 'music', name: 'browse',
       input: { kind: tab, limit: 50 },
     }).catch(() => null);
@@ -69,7 +69,7 @@ async function fetchBrowserAssets(tab: BrowserTab): Promise<BrowserAsset[]> {
   }
   if (tab === 'dtu' || tab === 'forge') {
     const kinds = tab === 'dtu' ? ['music_dtu', 'audio_dtu'] : ['forge_app'];
-    const res = await api.post('/api/lens/run', {
+    const res = await lensRun({
       domain: 'dtu', name: 'listByKind',
       input: { kind: kinds, limit: 50 },
     }).catch(() => null);

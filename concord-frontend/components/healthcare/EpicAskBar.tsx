@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Finding { label: string; display: string }
 
@@ -23,7 +23,7 @@ export function EpicAskBar({ patientId }: { patientId?: string | null }) {
     if (!patientId) { setFindings([{ label: 'system', display: 'Select a patient first — chart search needs a patientId.' }]); return; }
     setLoading(true); setFindings(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'ai-chart-search', input: { patientId, query: question } });
+      const r = await lensRun({ domain: 'healthcare', action: 'ai-chart-search', input: { patientId, query: question } });
       setFindings((r.data?.result?.findings || []) as Finding[]);
     } catch (e) { console.error('[Ask] failed', e); }
     finally { setLoading(false); }

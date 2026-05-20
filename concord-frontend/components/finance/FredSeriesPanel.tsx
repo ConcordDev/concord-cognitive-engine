@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { LineChart, RefreshCw, AlertTriangle, KeyRound, ExternalLink } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Observation { date: string; value: number | null; }
@@ -38,7 +38,7 @@ const POPULAR_SERIES = [
 ];
 
 async function runMacro(domain: string, name: string, input: Record<string, unknown>) {
-  try { const r = await api.post('/api/lens/run', { domain, name, input }); return r?.data as FredResponse | null; }
+  try { const r = await lensRun({ domain, name, input }); return r?.data as FredResponse | null; }
   catch { return null; }
 }
 

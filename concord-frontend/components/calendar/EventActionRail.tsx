@@ -24,7 +24,7 @@ import {
   Loader2, Check, X, Link as LinkIcon, Wand2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 
@@ -74,7 +74,7 @@ export function EventActionRail({ event }: { event: EventLite }) {
   async function mintToSubstrate() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu',
         name: 'create',
         input: {
@@ -95,7 +95,7 @@ export function EventActionRail({ event }: { event: EventLite }) {
           },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) {
         setDtuRef({ id, published: false });
@@ -192,15 +192,14 @@ export function EventActionRail({ event }: { event: EventLite }) {
         event.collaborators?.length ? `Collaborators: ${event.collaborators.join(', ')}.` : '',
         'Return a brief prep summary in plaintext.',
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'chat_agent',
         name: 'do',
         input: { task, maxTurns: 6 },
       });
       const reply = r.data?.result?.reply
         ?? r.data?.result?.summary
-        ?? r.data?.result?.output
-        ?? r.data?.reply;
+        ?? r.data?.result?.output;
       if (reply) {
         setAgentFindings(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Agent finished prep.');

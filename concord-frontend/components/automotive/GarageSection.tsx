@@ -13,7 +13,7 @@ import {
   AlertTriangle, Gauge, Bell,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 type Tab = 'overview' | 'fuel' | 'service' | 'expenses' | 'trips' | 'documents';
@@ -48,7 +48,7 @@ export function GarageSection() {
   const refreshVehicles = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'automotive', action: 'vehicles-list', input: {} });
+      const r = await lensRun({ domain: 'automotive', action: 'vehicles-list', input: {} });
       const list = (r.data?.result?.vehicles || []) as Vehicle[];
       setVehicles(list);
       if (list.length > 0 && !activeId) setActiveId(list[0].id);
@@ -62,13 +62,13 @@ export function GarageSection() {
   const refreshVehicleData = useCallback(async (id: string) => {
     try {
       const [f, sv, rem, ex, tr, doc, st] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'automotive', action: 'fuel-list', input: { vehicleId: id } }),
-        api.post('/api/lens/run', { domain: 'automotive', action: 'service-list', input: { vehicleId: id } }),
-        api.post('/api/lens/run', { domain: 'automotive', action: 'service-reminders', input: { vehicleId: id } }),
-        api.post('/api/lens/run', { domain: 'automotive', action: 'expenses-list', input: { vehicleId: id } }),
-        api.post('/api/lens/run', { domain: 'automotive', action: 'trips-list', input: { vehicleId: id } }),
-        api.post('/api/lens/run', { domain: 'automotive', action: 'documents-list', input: { vehicleId: id } }),
-        api.post('/api/lens/run', { domain: 'automotive', action: 'vehicle-stats', input: { vehicleId: id } }),
+        lensRun({ domain: 'automotive', action: 'fuel-list', input: { vehicleId: id } }),
+        lensRun({ domain: 'automotive', action: 'service-list', input: { vehicleId: id } }),
+        lensRun({ domain: 'automotive', action: 'service-reminders', input: { vehicleId: id } }),
+        lensRun({ domain: 'automotive', action: 'expenses-list', input: { vehicleId: id } }),
+        lensRun({ domain: 'automotive', action: 'trips-list', input: { vehicleId: id } }),
+        lensRun({ domain: 'automotive', action: 'documents-list', input: { vehicleId: id } }),
+        lensRun({ domain: 'automotive', action: 'vehicle-stats', input: { vehicleId: id } }),
       ]);
       setFuel((f.data?.result?.fuel || []) as FuelEntry[]);
       setService((sv.data?.result?.service || []) as ServiceEntry[]);
@@ -96,14 +96,14 @@ export function GarageSection() {
     const year = prompt('Year?') || '';
     const odometer = prompt('Current odometer?') || '0';
     try {
-      const r = await api.post('/api/lens/run', { domain: 'automotive', action: 'vehicles-create', input: { name: name.trim(), make, model, year: Number(year) || undefined, odometer: Number(odometer) || 0 } });
+      const r = await lensRun({ domain: 'automotive', action: 'vehicles-create', input: { name: name.trim(), make, model, year: Number(year) || undefined, odometer: Number(odometer) || 0 } });
       await refreshVehicles();
       if (r.data?.result?.vehicle) setActiveId(r.data.result.vehicle.id);
     } catch (e) { console.error('[Garage] addVehicle', e); }
   }
   async function delVehicle(id: string) {
     if (!confirm('Delete this vehicle and all its records?')) return;
-    try { await api.post('/api/lens/run', { domain: 'automotive', action: 'vehicles-delete', input: { id } }); setActiveId(null); await refreshVehicles(); }
+    try { await lensRun({ domain: 'automotive', action: 'vehicles-delete', input: { id } }); setActiveId(null); await refreshVehicles(); }
     catch (e) { console.error('[Garage] delVehicle', e); }
   }
 
@@ -113,13 +113,13 @@ export function GarageSection() {
     const totalCost = prompt('Total cost ($)?'); if (!totalCost) return;
     const odometer = prompt('Odometer reading?', String(activeVehicle?.odometer || '')); if (!odometer) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'automotive', action: 'fuel-log', input: { vehicleId: activeId, volume: Number(volume), totalCost: Number(totalCost), odometer: Number(odometer) } });
+      const r = await lensRun({ domain: 'automotive', action: 'fuel-log', input: { vehicleId: activeId, volume: Number(volume), totalCost: Number(totalCost), odometer: Number(odometer) } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       await reloadAll();
     } catch (e) { console.error('[Garage] logFuel', e); }
   }
   async function delFuel(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'automotive', action: 'fuel-delete', input: { id } }); await reloadAll(); }
+    try { await lensRun({ domain: 'automotive', action: 'fuel-delete', input: { id } }); await reloadAll(); }
     catch (e) { console.error('[Garage] delFuel', e); }
   }
 
@@ -129,12 +129,12 @@ export function GarageSection() {
     const cost = prompt('Cost ($)?') || '0';
     const odometer = prompt('Odometer?', String(activeVehicle?.odometer || '')) || '';
     try {
-      await api.post('/api/lens/run', { domain: 'automotive', action: 'service-log', input: { vehicleId: activeId, serviceType: serviceType.trim(), cost: Number(cost), odometer: Number(odometer) || undefined } });
+      await lensRun({ domain: 'automotive', action: 'service-log', input: { vehicleId: activeId, serviceType: serviceType.trim(), cost: Number(cost), odometer: Number(odometer) || undefined } });
       await reloadAll();
     } catch (e) { console.error('[Garage] logService', e); }
   }
   async function delService(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'automotive', action: 'service-delete', input: { id } }); await reloadAll(); }
+    try { await lensRun({ domain: 'automotive', action: 'service-delete', input: { id } }); await reloadAll(); }
     catch (e) { console.error('[Garage] delService', e); }
   }
   async function addSchedule() {
@@ -144,7 +144,7 @@ export function GarageSection() {
     const intervalMonths = prompt('Every how many months? (blank to skip)') || '';
     const lastDoneOdometer = prompt('Odometer when last done?') || '';
     try {
-      const r = await api.post('/api/lens/run', { domain: 'automotive', action: 'schedule-create', input: {
+      const r = await lensRun({ domain: 'automotive', action: 'schedule-create', input: {
         vehicleId: activeId, serviceType: serviceType.trim(),
         intervalMiles: Number(intervalMiles) || undefined,
         intervalMonths: Number(intervalMonths) || undefined,
@@ -161,12 +161,12 @@ export function GarageSection() {
     const amount = prompt('Amount ($)?'); if (!amount) return;
     const note = prompt('Note?') || '';
     try {
-      await api.post('/api/lens/run', { domain: 'automotive', action: 'expenses-log', input: { vehicleId: activeId, category: category.trim(), amount: Number(amount), note } });
+      await lensRun({ domain: 'automotive', action: 'expenses-log', input: { vehicleId: activeId, category: category.trim(), amount: Number(amount), note } });
       await reloadAll();
     } catch (e) { console.error('[Garage] logExpense', e); }
   }
   async function delExpense(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'automotive', action: 'expenses-delete', input: { id } }); await reloadAll(); }
+    try { await lensRun({ domain: 'automotive', action: 'expenses-delete', input: { id } }); await reloadAll(); }
     catch (e) { console.error('[Garage] delExpense', e); }
   }
 
@@ -177,12 +177,12 @@ export function GarageSection() {
     const from = prompt('From?') || '';
     const to = prompt('To?') || '';
     try {
-      await api.post('/api/lens/run', { domain: 'automotive', action: 'trips-log', input: { vehicleId: activeId, distance: Number(distance), purpose: purpose.trim(), from, to } });
+      await lensRun({ domain: 'automotive', action: 'trips-log', input: { vehicleId: activeId, distance: Number(distance), purpose: purpose.trim(), from, to } });
       await reloadAll();
     } catch (e) { console.error('[Garage] logTrip', e); }
   }
   async function delTrip(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'automotive', action: 'trips-delete', input: { id } }); await reloadAll(); }
+    try { await lensRun({ domain: 'automotive', action: 'trips-delete', input: { id } }); await reloadAll(); }
     catch (e) { console.error('[Garage] delTrip', e); }
   }
 
@@ -193,12 +193,12 @@ export function GarageSection() {
     const provider = prompt('Provider?') || '';
     const expiryDate = prompt('Expiry date (YYYY-MM-DD, blank for none)?') || '';
     try {
-      await api.post('/api/lens/run', { domain: 'automotive', action: 'documents-create', input: { vehicleId: activeId, kind: kind.trim(), title, provider, expiryDate: expiryDate || undefined } });
+      await lensRun({ domain: 'automotive', action: 'documents-create', input: { vehicleId: activeId, kind: kind.trim(), title, provider, expiryDate: expiryDate || undefined } });
       await reloadAll();
     } catch (e) { console.error('[Garage] addDoc', e); }
   }
   async function delDoc(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'automotive', action: 'documents-delete', input: { id } }); await reloadAll(); }
+    try { await lensRun({ domain: 'automotive', action: 'documents-delete', input: { id } }); await reloadAll(); }
     catch (e) { console.error('[Garage] delDoc', e); }
   }
 

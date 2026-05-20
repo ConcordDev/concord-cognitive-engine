@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { RotateCcw, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Refund { id: string; orderId: string; orderNumber: string; amount: number; reason: string; restock: boolean; processedAt: string }
 interface Order { id: string; number: string; total: number }
@@ -19,8 +19,8 @@ export function RefundsPanel() {
     setLoading(true);
     try {
       const [r, o] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'retail', action: 'refunds-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'retail', action: 'orders-list', input: {} }),
+        lensRun({ domain: 'retail', action: 'refunds-list', input: {} }),
+        lensRun({ domain: 'retail', action: 'orders-list', input: {} }),
       ]);
       setRefunds((r.data?.result?.refunds || []) as Refund[]);
       setOrders((o.data?.result?.orders || []) as Order[]);
@@ -31,7 +31,7 @@ export function RefundsPanel() {
   async function create() {
     if (!form.orderId || !form.amount) return;
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'retail', action: 'refunds-create',
         input: { orderId: form.orderId, amount: Number(form.amount), reason: form.reason, restock: form.restock },
       });

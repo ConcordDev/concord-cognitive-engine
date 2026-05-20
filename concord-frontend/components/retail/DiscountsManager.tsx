@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Tag, Plus, Trash2, Loader2, Percent, DollarSign, Truck } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Discount {
@@ -24,7 +24,7 @@ export function DiscountsManager() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'retail', action: 'discounts-list', input: {} });
+      const res = await lensRun({ domain: 'retail', action: 'discounts-list', input: {} });
       setDiscounts((res.data?.result?.discounts || []) as Discount[]);
     } catch (e) { console.error('[Discounts] list failed', e); }
     finally { setLoading(false); }
@@ -33,7 +33,7 @@ export function DiscountsManager() {
   async function create() {
     if (!form.code.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'retail', action: 'discounts-create',
         input: {
           code: form.code, kind: form.kind, value: Number(form.value) || 0,
@@ -49,7 +49,7 @@ export function DiscountsManager() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'discounts-delete', input: { id } });
+      await lensRun({ domain: 'retail', action: 'discounts-delete', input: { id } });
       setDiscounts(prev => prev.filter(d => d.id !== id));
     } catch (e) { console.error('[Discounts] delete failed', e); }
   }

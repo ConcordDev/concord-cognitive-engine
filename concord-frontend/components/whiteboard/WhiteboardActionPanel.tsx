@@ -14,7 +14,7 @@ import {
   Loader2, Check, AlertTriangle, Layout,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -162,7 +162,7 @@ export function WhiteboardActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: {
           title: `Whiteboard — ${boardName.trim() || 'session'}`,
@@ -171,7 +171,7 @@ export function WhiteboardActionPanel() {
           meta: { visibility: 'private', consent: { allowCitations: false }, board: { name: boardName, snapshot: boardSnapshot.slice(0, 8000), boardId: savedBoardId, voteResult: tallyResult } },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) { setMintedDtuId(id); pipe.publish('whiteboard.mintedDtuId', id, { label: `board ${id.slice(0, 8)}` }); ok(`Board DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
@@ -201,7 +201,7 @@ export function WhiteboardActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', {
+        const r = await lensRun({
           domain: 'dtu', name: 'create',
           input: {
             title: `Public whiteboard — ${boardName.trim() || 'session'}`,
@@ -210,7 +210,7 @@ export function WhiteboardActionPanel() {
             meta: { visibility: 'public', consent: { allowCitations: true }, board: { name: boardName, snapshot: boardSnapshot.slice(0, 8000), tally: tallyResult } },
           },
         });
-        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;
         if (!newId) throw new Error('No DTU id returned.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -231,8 +231,8 @@ export function WhiteboardActionPanel() {
         '',
         'Write a 3-sentence retro: what was decided, what was deferred, what to revisit next session. Plain text.',
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Retro ready.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }

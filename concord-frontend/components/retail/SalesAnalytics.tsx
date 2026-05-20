@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BarChart3, Loader2, TrendingUp, DollarSign, Package } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface RevDay { date: string; revenue: number; orderCount: number }
@@ -25,9 +25,9 @@ export function SalesAnalytics() {
     setLoading(true);
     try {
       const [s, r, t] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'retail', action: 'analytics-summary', input: {} }),
-        api.post('/api/lens/run', { domain: 'retail', action: 'analytics-revenue-by-day', input: { days: 30 } }),
-        api.post('/api/lens/run', { domain: 'retail', action: 'analytics-top-products', input: { limit: 10, days: 30 } }),
+        lensRun({ domain: 'retail', action: 'analytics-summary', input: {} }),
+        lensRun({ domain: 'retail', action: 'analytics-revenue-by-day', input: { days: 30 } }),
+        lensRun({ domain: 'retail', action: 'analytics-top-products', input: { limit: 10, days: 30 } }),
       ]);
       setSummary(s.data?.result || null);
       setRevSeries((r.data?.result?.series || []) as RevDay[]);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, Plus, X, Loader2, Video, User, Key } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Tour {
@@ -30,7 +30,7 @@ export function ToursPanel({ defaultListingId }: { defaultListingId?: string }) 
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'realestate', action: 'tours-list', input: {} });
+      const res = await lensRun({ domain: 'realestate', action: 'tours-list', input: {} });
       setTours((res.data?.result?.tours || []) as Tour[]);
     } catch (e) { console.error('[Tours] list failed', e); }
     finally { setLoading(false); }
@@ -39,7 +39,7 @@ export function ToursPanel({ defaultListingId }: { defaultListingId?: string }) 
   async function request() {
     if (!form.listingId.trim() || !form.date) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'realestate', action: 'tours-request',
         input: { listingId: form.listingId, date: form.date, time: form.time, kind: form.kind, notes: form.notes },
       });
@@ -51,7 +51,7 @@ export function ToursPanel({ defaultListingId }: { defaultListingId?: string }) 
 
   async function cancel(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'realestate', action: 'tours-cancel', input: { id } });
+      await lensRun({ domain: 'realestate', action: 'tours-cancel', input: { id } });
       await refresh();
     } catch (e) { console.error('[Tours] cancel failed', e); }
   }

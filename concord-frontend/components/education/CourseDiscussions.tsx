@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { MessagesSquare, Send, ThumbsUp, Loader2, Reply } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Post { id: string; courseId: string; text: string; author: string; replyTo: string | null; upvotes: number; createdAt: string }
@@ -18,7 +18,7 @@ export function CourseDiscussions({ courseId }: { courseId?: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'education', action: 'discussions-list', input: courseId ? { courseId } : {} });
+      const res = await lensRun({ domain: 'education', action: 'discussions-list', input: courseId ? { courseId } : {} });
       setPosts((res.data?.result?.discussions || []) as Post[]);
     } catch (e) { console.error('[Discussions] failed', e); }
     finally { setLoading(false); }
@@ -27,7 +27,7 @@ export function CourseDiscussions({ courseId }: { courseId?: string }) {
   async function post() {
     if (!draft.trim() || !courseId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'discussions-post', input: { courseId, text: draft, replyTo: replyTo || undefined } });
+      await lensRun({ domain: 'education', action: 'discussions-post', input: { courseId, text: draft, replyTo: replyTo || undefined } });
       setDraft(''); setReplyTo(null);
       await refresh();
     } catch (e) { console.error('[Discussions] post failed', e); }
@@ -35,7 +35,7 @@ export function CourseDiscussions({ courseId }: { courseId?: string }) {
 
   async function upvote(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'discussions-upvote', input: { id } });
+      await lensRun({ domain: 'education', action: 'discussions-upvote', input: { id } });
       await refresh();
     } catch (e) { console.error('[Discussions] upvote failed', e); }
   }

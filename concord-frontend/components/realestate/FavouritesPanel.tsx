@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Heart, Loader2, BedDouble, Bath, Maximize2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import type { Listing } from './ListingsBrowser';
 
 export function FavouritesPanel({ onSelect }: { onSelect?: (l: Listing) => void }) {
@@ -14,7 +14,7 @@ export function FavouritesPanel({ onSelect }: { onSelect?: (l: Listing) => void 
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'realestate', action: 'favourites-list', input: {} });
+      const res = await lensRun({ domain: 'realestate', action: 'favourites-list', input: {} });
       setFavourites((res.data?.result?.favourites || []) as Listing[]);
     } catch (e) { console.error('[Favourites] list failed', e); }
     finally { setLoading(false); }
@@ -22,7 +22,7 @@ export function FavouritesPanel({ onSelect }: { onSelect?: (l: Listing) => void 
 
   async function unfav(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'realestate', action: 'favourites-toggle', input: { id } });
+      await lensRun({ domain: 'realestate', action: 'favourites-toggle', input: { id } });
       setFavourites(prev => prev.filter(l => l.id !== id));
     } catch (e) { console.error('[Favourites] toggle failed', e); }
   }

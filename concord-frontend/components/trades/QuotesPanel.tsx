@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Loader2, Send, Check, X, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface LineItem { desc: string; qty: number; unitPrice: number }
@@ -32,7 +32,7 @@ export function QuotesPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'trades', action: 'quotes-list', input: {} });
+      const res = await lensRun({ domain: 'trades', action: 'quotes-list', input: {} });
       setQuotes((res.data?.result?.quotes || []) as Quote[]);
     } catch (e) { console.error('[Quotes] failed', e); }
     finally { setLoading(false); }
@@ -46,7 +46,7 @@ export function QuotesPanel() {
     const validLines = lines.filter(l => l.desc.trim() && l.qty > 0);
     if (!form.customerId.trim() || !form.title.trim() || validLines.length === 0) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'trades', action: 'quotes-create',
         input: { customerId: form.customerId, title: form.title, lineItems: validLines.map(l => ({ ...l, qty: Number(l.qty), unitPrice: Number(l.unitPrice) })), taxRate: Number(form.taxRate) || 0 },
       });
@@ -59,7 +59,7 @@ export function QuotesPanel() {
 
   async function action(id: string, act: 'send' | 'accept' | 'reject') {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: `quotes-${act}`, input: { id } });
+      await lensRun({ domain: 'trades', action: `quotes-${act}`, input: { id } });
       await refresh();
     } catch (e) { console.error('[Quotes]', act, e); }
   }

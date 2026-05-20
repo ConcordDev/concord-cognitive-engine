@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Fuel, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Aircraft { id: string; tail: string; cruiseKts: number; fuelBurnGph: number; fuelCapacityGal: number }
 interface Result {
@@ -20,7 +20,7 @@ export function FuelStopsCalc() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await api.post('/api/lens/run', { domain: 'aviation', action: 'aircraft-list', input: {} });
+        const r = await lensRun({ domain: 'aviation', action: 'aircraft-list', input: {} });
         setAircraft((r.data?.result?.aircraft || []) as Aircraft[]);
       } catch (e) { console.error('[FuelStops] aircraft', e); }
     })();
@@ -30,7 +30,7 @@ export function FuelStopsCalc() {
     if (!form.aircraftId || !form.totalDistanceNm) return;
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'aviation', action: 'fuel-stops-calc', input: { aircraftId: form.aircraftId, totalDistanceNm: Number(form.totalDistanceNm), reserveGal: Number(form.reserveGal) || 5 } });
+      const r = await lensRun({ domain: 'aviation', action: 'fuel-stops-calc', input: { aircraftId: form.aircraftId, totalDistanceNm: Number(form.totalDistanceNm), reserveGal: Number(form.reserveGal) || 5 } });
       setResult((r.data?.result as Result) || null);
     } catch (e) { console.error('[FuelStops] failed', e); }
     finally { setLoading(false); }

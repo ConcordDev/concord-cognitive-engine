@@ -12,7 +12,7 @@ import {
   Calendar as CalIcon, ChevronLeft, ChevronRight, Plus, Sparkles, Loader2,
   CheckSquare, Square, Trash2, Clock, X, Zap, ListTodo,
 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface CalendarMeta { id: string; number: string; name: string; color: string; visible: boolean; isDefault: boolean }
@@ -64,9 +64,9 @@ export function GCalSection() {
       const rangeStart = new Date(mStart.getFullYear(), mStart.getMonth() - 1, 1).toISOString();
       const rangeEnd = new Date(mStart.getFullYear(), mStart.getMonth() + 2, 1).toISOString();
       const [c, e, t] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'calendar', action: 'calendars-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'calendar', action: 'events-list', input: { rangeStart, rangeEnd } }),
-        api.post('/api/lens/run', { domain: 'calendar', action: 'tasks-list', input: { status: 'all' } }),
+        lensRun({ domain: 'calendar', action: 'calendars-list', input: {} }),
+        lensRun({ domain: 'calendar', action: 'events-list', input: { rangeStart, rangeEnd } }),
+        lensRun({ domain: 'calendar', action: 'tasks-list', input: { status: 'all' } }),
       ]);
       setCalendars((c.data?.result?.calendars || []) as CalendarMeta[]);
       setEvents((e.data?.result?.events || []) as CalEvent[]);
@@ -81,10 +81,10 @@ export function GCalSection() {
     if (!quickAdd.trim()) return;
     setQuickBusy(true);
     try {
-      const p = await api.post('/api/lens/run', { domain: 'calendar', action: 'nl-parse-event', input: { text: quickAdd.trim() } });
+      const p = await lensRun({ domain: 'calendar', action: 'nl-parse-event', input: { text: quickAdd.trim() } });
       const parsed = p.data?.result?.parsed;
       if (!parsed) { alert('Could not parse that.'); return; }
-      const r = await api.post('/api/lens/run', { domain: 'calendar', action: 'events-create', input: {
+      const r = await lensRun({ domain: 'calendar', action: 'events-create', input: {
         title: parsed.title, start: parsed.start, end: parsed.end,
         recurrence: parsed.recurrence || undefined, conferenceLink: parsed.conferenceLink || undefined,
       } });
@@ -99,13 +99,13 @@ export function GCalSection() {
     if (!editEvent || !editEvent.title?.trim() || !editEvent.start) return;
     try {
       if (editEvent._new) {
-        const r = await api.post('/api/lens/run', { domain: 'calendar', action: 'events-create', input: {
+        const r = await lensRun({ domain: 'calendar', action: 'events-create', input: {
           title: editEvent.title, start: editEvent.start, end: editEvent.end,
           calendarId: editEvent.calendarId, description: editEvent.description, location: editEvent.location,
         } });
         if (r.data?.ok === false) { alert(r.data?.error); return; }
       } else {
-        await api.post('/api/lens/run', { domain: 'calendar', action: 'events-update', input: {
+        await lensRun({ domain: 'calendar', action: 'events-update', input: {
           id: editEvent.id, title: editEvent.title, start: editEvent.start, end: editEvent.end,
           calendarId: editEvent.calendarId, description: editEvent.description, location: editEvent.location,
         } });
@@ -118,7 +118,7 @@ export function GCalSection() {
   async function deleteEvent(id: string) {
     if (!confirm('Delete this event?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'calendar', action: 'events-delete', input: { id } });
+      await lensRun({ domain: 'calendar', action: 'events-delete', input: { id } });
       setEditEvent(null);
       await refresh();
     } catch (err) { console.error('[GCal] deleteEvent', err); }
@@ -126,31 +126,31 @@ export function GCalSection() {
 
   async function toggleCalendar(cal: CalendarMeta) {
     setCalendars(prev => prev.map(c => c.id === cal.id ? { ...c, visible: !c.visible } : c));
-    try { await api.post('/api/lens/run', { domain: 'calendar', action: 'calendars-update', input: { id: cal.id, visible: !cal.visible } }); }
+    try { await lensRun({ domain: 'calendar', action: 'calendars-update', input: { id: cal.id, visible: !cal.visible } }); }
     catch (err) { console.error('[GCal] toggleCal', err); }
   }
 
   async function addCalendar() {
     const name = prompt('New calendar name?');
     if (!name?.trim()) return;
-    try { await api.post('/api/lens/run', { domain: 'calendar', action: 'calendars-create', input: { name: name.trim() } }); await refresh(); }
+    try { await lensRun({ domain: 'calendar', action: 'calendars-create', input: { name: name.trim() } }); await refresh(); }
     catch (err) { console.error('[GCal] addCal', err); }
   }
 
   async function addTask() {
     const title = prompt('New task?');
     if (!title?.trim()) return;
-    try { await api.post('/api/lens/run', { domain: 'calendar', action: 'tasks-create', input: { title: title.trim() } }); await refresh(); }
+    try { await lensRun({ domain: 'calendar', action: 'tasks-create', input: { title: title.trim() } }); await refresh(); }
     catch (err) { console.error('[GCal] addTask', err); }
   }
 
   async function toggleTask(t: Task) {
-    try { await api.post('/api/lens/run', { domain: 'calendar', action: 'tasks-toggle', input: { id: t.id } }); await refresh(); }
+    try { await lensRun({ domain: 'calendar', action: 'tasks-toggle', input: { id: t.id } }); await refresh(); }
     catch (err) { console.error('[GCal] toggleTask', err); }
   }
 
   async function deleteTask(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'calendar', action: 'tasks-delete', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'calendar', action: 'tasks-delete', input: { id } }); await refresh(); }
     catch (err) { console.error('[GCal] deleteTask', err); }
   }
 
@@ -159,7 +159,7 @@ export function GCalSection() {
     setProposals(null);
     try {
       const day = ymd(view === 'month' ? new Date() : cursor);
-      const r = await api.post('/api/lens/run', { domain: 'calendar', action: 'ai-auto-schedule', input: { day } });
+      const r = await lensRun({ domain: 'calendar', action: 'ai-auto-schedule', input: { day } });
       setProposals((r.data?.result?.proposals || []) as Proposal[]);
     } catch (err) { console.error('[GCal] autoSchedule', err); }
     finally { setAiBusy(false); }
@@ -167,7 +167,7 @@ export function GCalSection() {
 
   async function commitProposal(p: Proposal) {
     try {
-      await api.post('/api/lens/run', { domain: 'calendar', action: 'tasks-time-block', input: { taskId: p.taskId, start: p.proposedStart } });
+      await lensRun({ domain: 'calendar', action: 'tasks-time-block', input: { taskId: p.taskId, start: p.proposedStart } });
       setProposals(prev => prev ? prev.filter(x => x.taskId !== p.taskId) : null);
       await refresh();
     } catch (err) { console.error('[GCal] commitProposal', err); }

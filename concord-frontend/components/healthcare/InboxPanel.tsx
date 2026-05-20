@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Mail, Loader2, Plus, Send, Inbox } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Patient { id: string; firstName: string; lastName: string; mrn: string }
@@ -27,8 +27,8 @@ export function InboxPanel() {
     setLoading(true);
     try {
       const [m, p] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'healthcare', action: 'messages-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'healthcare', action: 'patients-list', input: {} }),
+        lensRun({ domain: 'healthcare', action: 'messages-list', input: {} }),
+        lensRun({ domain: 'healthcare', action: 'patients-list', input: {} }),
       ]);
       setList((m.data?.result?.messages || []) as Message[]);
       setPatients((p.data?.result?.patients || []) as Patient[]);
@@ -38,7 +38,7 @@ export function InboxPanel() {
 
   async function markRead(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'messages-mark-read', input: { id } });
+      await lensRun({ domain: 'healthcare', action: 'messages-mark-read', input: { id } });
       await refresh();
     } catch (e) { console.error('[Inbox] read', e); }
   }
@@ -46,7 +46,7 @@ export function InboxPanel() {
   async function send() {
     if (!draft.patientId || !draft.body.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'messages-send', input: { ...draft, direction: 'to_patient' } });
+      await lensRun({ domain: 'healthcare', action: 'messages-send', input: { ...draft, direction: 'to_patient' } });
       setDraft({ patientId: '', subject: '', body: '' });
       setComposing(false);
       await refresh();

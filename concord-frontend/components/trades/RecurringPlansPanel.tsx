@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Repeat, Plus, Loader2, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Plan { id: string; customerId: string; serviceType: string; cadence: 'weekly' | 'monthly' | 'quarterly' | 'annual'; priceEach: number; status: 'active' | 'cancelled'; nextServiceDate: string | null; jobsCompleted: number; totalRevenue: number }
@@ -17,7 +17,7 @@ export function RecurringPlansPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'trades', action: 'recurring-plans-list', input: {} });
+      const res = await lensRun({ domain: 'trades', action: 'recurring-plans-list', input: {} });
       setPlans((res.data?.result?.plans || []) as Plan[]);
     } catch (e) { console.error('[Recurring] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function RecurringPlansPanel() {
   async function create() {
     if (!form.customerId.trim() || !form.serviceType.trim() || !form.priceEach) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'trades', action: 'recurring-plans-create',
         input: { customerId: form.customerId, serviceType: form.serviceType, cadence: form.cadence, priceEach: Number(form.priceEach) },
       });
@@ -37,7 +37,7 @@ export function RecurringPlansPanel() {
 
   async function cancel(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'recurring-plans-cancel', input: { id } });
+      await lensRun({ domain: 'trades', action: 'recurring-plans-cancel', input: { id } });
       await refresh();
     } catch (e) { console.error('[Recurring] cancel', e); }
   }

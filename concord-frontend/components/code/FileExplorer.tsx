@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { File, FilePlus, Loader2, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface FileNode { path: string; language: string; size: number; modifiedAt: string }
@@ -26,7 +26,7 @@ export function FileExplorer({
     if (!projectId) return;
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'files-tree', input: { projectId } });
+      const r = await lensRun({ domain: 'code', action: 'files-tree', input: { projectId } });
       setTree((r.data?.result?.tree || []) as FileNode[]);
     } catch (e) { console.error('[FileTree] failed', e); }
     finally { setLoading(false); }
@@ -35,7 +35,7 @@ export function FileExplorer({
   async function create() {
     if (!projectId || !draftPath.trim()) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'files-write', input: { projectId, path: draftPath.trim(), content: '' } });
+      const r = await lensRun({ domain: 'code', action: 'files-write', input: { projectId, path: draftPath.trim(), content: '' } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setDraftPath('');
       setCreating(false);
@@ -49,7 +49,7 @@ export function FileExplorer({
     if (!projectId) return;
     if (!confirm(`Delete ${path}?`)) return;
     try {
-      await api.post('/api/lens/run', { domain: 'code', action: 'files-delete', input: { projectId, path } });
+      await lensRun({ domain: 'code', action: 'files-delete', input: { projectId, path } });
       await refresh();
       onChanged?.();
     } catch (e) { console.error('[FileTree] delete', e); }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Building2, Plus, Send, Loader2, Copy } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Supplier {
@@ -29,7 +29,7 @@ export function SuppliersPortal() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'suppliers-list', input: {} });
+      const r = await lensRun({ domain: 'environment', action: 'suppliers-list', input: {} });
       setSuppliers((r.data?.result?.suppliers || []) as Supplier[]);
     } catch (e) { console.error('[Suppliers] failed', e); }
     finally { setLoading(false); }
@@ -38,7 +38,7 @@ export function SuppliersPortal() {
   async function add() {
     if (!form.name.trim() || !form.email.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'environment', action: 'suppliers-add', input: { ...form, spendUsd: Number(form.spendUsd) || 0 } });
+      await lensRun({ domain: 'environment', action: 'suppliers-add', input: { ...form, spendUsd: Number(form.spendUsd) || 0 } });
       setForm({ name: '', email: '', contactName: '', spendUsd: '', categoryCode: '' });
       await refresh();
     } catch (e) { console.error('[Suppliers] add', e); }
@@ -46,7 +46,7 @@ export function SuppliersPortal() {
 
   async function invite(id: string) {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'suppliers-invite', input: { id } });
+      const r = await lensRun({ domain: 'environment', action: 'suppliers-invite', input: { id } });
       const link = r.data?.result?.portalLink;
       if (link) {
         const fullUrl = window.location.origin + link;
@@ -60,7 +60,7 @@ export function SuppliersPortal() {
   async function recordDisclosure() {
     if (!discloseFor || !discloseTonnes) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'suppliers-record-disclosure', input: { id: discloseFor, co2eTonnes: Number(discloseTonnes) } });
+      const r = await lensRun({ domain: 'environment', action: 'suppliers-record-disclosure', input: { id: discloseFor, co2eTonnes: Number(discloseTonnes) } });
       if (r.data?.ok === false) alert(r.data?.error);
       setDiscloseFor(null); setDiscloseTonnes('');
       await refresh();

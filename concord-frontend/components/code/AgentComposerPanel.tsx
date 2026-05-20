@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Sparkles, Loader2, Send, CheckCircle, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface AgentTask {
@@ -26,7 +26,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'agent-tasks-list', input: {} });
+      const r = await lensRun({ domain: 'code', action: 'agent-tasks-list', input: {} });
       const all = (r.data?.result?.tasks || []) as AgentTask[];
       setList(projectId ? all.filter(t => t.projectId === projectId) : all);
     } catch (e) { console.error('[Agent] list', e); }
@@ -37,7 +37,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
     if (!projectId || !prompt.trim()) return;
     setBusy(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'agent-task-start', input: { projectId, prompt: prompt.trim() } });
+      const r = await lensRun({ domain: 'code', action: 'agent-task-start', input: { projectId, prompt: prompt.trim() } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setPrompt('');
       await refresh();
@@ -47,7 +47,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
 
   async function finish(id: string, status: 'completed' | 'cancelled') {
     try {
-      await api.post('/api/lens/run', { domain: 'code', action: 'agent-task-finish', input: { id, status } });
+      await lensRun({ domain: 'code', action: 'agent-task-finish', input: { id, status } });
       await refresh();
     } catch (e) { console.error('[Agent] finish', e); }
   }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Eye, Package, DollarSign, Tag, TrendingUp, Loader2, Megaphone } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { ShopNav } from './EtsyShell';
 
@@ -35,8 +35,8 @@ export function ShopDashboard({ onJumpTo }: { onJumpTo: (n: ShopNav) => void }) 
     setLoading(true);
     try {
       const [s, d] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'marketplace', action: 'analytics-summary', input: { days } }),
-        api.post('/api/lens/run', { domain: 'marketplace', action: 'dashboard-summary', input: {} }),
+        lensRun({ domain: 'marketplace', action: 'analytics-summary', input: { days } }),
+        lensRun({ domain: 'marketplace', action: 'dashboard-summary', input: {} }),
       ]);
       setSummary((s.data?.result as Summary) || null);
       setDash((d.data?.result as Dashboard) || null);

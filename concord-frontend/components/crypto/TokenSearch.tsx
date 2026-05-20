@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Star, StarOff, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface TokenSummary {
@@ -56,7 +56,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
   async function refresh(p: number) {
     setLoading(true); setError(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'crypto',
         action: 'search-tokens',
         input: { query: query.trim(), page: p, pageSize: PAGE_SIZE },

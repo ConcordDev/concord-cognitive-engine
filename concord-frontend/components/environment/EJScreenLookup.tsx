@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Map as MapIcon, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface EJData { lat: number; lng: number; radiusMiles: number; data?: unknown }
 
@@ -16,7 +16,7 @@ export function EJScreenLookup() {
     if (!form.lat || !form.lng) return;
     setLoading(true); setError(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'epa-ejscreen', input: { lat: Number(form.lat), lng: Number(form.lng), radiusMiles: Number(form.radiusMiles) } });
+      const r = await lensRun({ domain: 'environment', action: 'epa-ejscreen', input: { lat: Number(form.lat), lng: Number(form.lng), radiusMiles: Number(form.radiusMiles) } });
       if (r.data?.ok === false) setError((r.data?.error as string) || 'lookup failed');
       else setResult(r.data?.result as EJData);
     } catch (e) { setError(e instanceof Error ? e.message : 'failed'); }

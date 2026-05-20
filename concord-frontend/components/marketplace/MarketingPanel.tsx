@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, Plus, ToggleLeft, ToggleRight } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Promotion {
@@ -23,7 +23,7 @@ export function MarketingPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'promotions-list', input: {} });
+      const r = await lensRun({ domain: 'marketplace', action: 'promotions-list', input: {} });
       setList((r.data?.result?.promotions || []) as Promotion[]);
     } catch (e) { console.error('[Promos] failed', e); }
     finally { setLoading(false); }
@@ -32,7 +32,7 @@ export function MarketingPanel() {
   async function create() {
     if (!draft.code.trim() || !draft.amount) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'promotions-create', input: {
+      const r = await lensRun({ domain: 'marketplace', action: 'promotions-create', input: {
         code: draft.code.trim(), kind: draft.kind, amount: Number(draft.amount),
         minOrderUsd: Number(draft.minOrderUsd) || 0,
         validUntil: draft.validUntil || undefined,
@@ -45,7 +45,7 @@ export function MarketingPanel() {
   }
 
   async function toggle(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'marketplace', action: 'promotions-toggle', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'marketplace', action: 'promotions-toggle', input: { id } }); await refresh(); }
     catch (e) { console.error('[Promos] toggle', e); }
   }
 

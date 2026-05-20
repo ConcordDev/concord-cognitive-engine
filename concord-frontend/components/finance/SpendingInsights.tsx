@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, AlertTriangle, Loader2, BarChart3 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Trend {
@@ -32,7 +32,7 @@ export function SpendingInsights() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'finance', action: 'spending-insights',
         input: {},
       });

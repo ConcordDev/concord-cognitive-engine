@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Flag, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Marker { id: string; projectId: string; name: string; timeBeats: number; colour: string; kind: string }
 
@@ -17,7 +17,7 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
     if (!projectId) { setMarkers([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'studio', action: 'markers-list', input: { projectId } });
+      const res = await lensRun({ domain: 'studio', action: 'markers-list', input: { projectId } });
       setMarkers((res.data?.result?.markers || []) as Marker[]);
     } catch (e) { console.error('[Markers] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
   async function add() {
     if (!projectId || !form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'markers-add', input: { projectId, ...form, timeBeats: Number(form.timeBeats) } });
+      await lensRun({ domain: 'studio', action: 'markers-add', input: { projectId, ...form, timeBeats: Number(form.timeBeats) } });
       setForm({ name: '', timeBeats: '0', kind: 'section', colour: '#fbbf24' });
       await refresh();
     } catch (e) { console.error('[Markers] add', e); }
@@ -34,7 +34,7 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'markers-delete', input: { id } });
+      await lensRun({ domain: 'studio', action: 'markers-delete', input: { id } });
       setMarkers(prev => prev.filter(m => m.id !== id));
     } catch (e) { console.error('[Markers] delete', e); }
   }

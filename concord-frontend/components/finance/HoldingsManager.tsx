@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Briefcase, Plus, Trash2, Loader2, Edit3, Check, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Holding {
@@ -35,7 +35,7 @@ export function HoldingsManager() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'holdings-list', input: {} });
+      const res = await lensRun({ domain: 'finance', action: 'holdings-list', input: {} });
       setHoldings((res.data?.result?.holdings || []) as Holding[]);
     } catch (e) { console.error('[Holdings] list failed', e); }
     finally { setLoading(false); }
@@ -44,7 +44,7 @@ export function HoldingsManager() {
   async function add() {
     if (!form.symbol.trim() || !form.shares || !form.price) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'holdings-add',
         input: {
           symbol: form.symbol.trim(), name: form.name.trim() || form.symbol.trim().toUpperCase(),
@@ -64,7 +64,7 @@ export function HoldingsManager() {
     const v = Number(editPrice.value);
     if (!Number.isFinite(v) || v < 0) return;
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'holdings-update-price', input: { id, price: v } });
+      await lensRun({ domain: 'finance', action: 'holdings-update-price', input: { id, price: v } });
       setEditPrice(null);
       await refresh();
     } catch (e) { console.error('[Holdings] update-price failed', e); }
@@ -72,7 +72,7 @@ export function HoldingsManager() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'holdings-remove', input: { id } });
+      await lensRun({ domain: 'finance', action: 'holdings-remove', input: { id } });
       setHoldings(prev => prev.filter(h => h.id !== id));
     } catch (e) { console.error('[Holdings] remove failed', e); }
   }

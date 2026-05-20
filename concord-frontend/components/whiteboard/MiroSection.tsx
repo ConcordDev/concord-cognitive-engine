@@ -11,7 +11,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FolderPlus, Trash2, Loader2, Save, Sparkles, MessageSquare, Download, ChevronRight, ChevronDown, Plus } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
 import { cn } from '@/lib/utils';
 
@@ -63,7 +63,7 @@ export function MiroSection() {
   async function refreshBoards() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-list', input: {} });
+      const r = await lensRun({ domain: 'whiteboard', action: 'board-list', input: {} });
       const list = (r.data?.result?.boards || []) as BoardMeta[];
       setBoards(list);
       if (!activeId && list.length > 0) openBoard(list[0].id);
@@ -73,7 +73,7 @@ export function MiroSection() {
 
   async function openBoard(id: string) {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-load', input: { id } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'board-load', input: { id } });
       const b = r.data?.result?.board;
       if (!b) { alert('board not found'); return; }
       setActiveId(id);
@@ -88,7 +88,7 @@ export function MiroSection() {
 
   async function createBoard() {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-save', input: {
+      const r = await lensRun({ domain: 'whiteboard', action: 'board-save', input: {
         title: 'New board',
         scene: { elements: [], appState: {} },
       } });
@@ -100,7 +100,7 @@ export function MiroSection() {
   async function deleteBoard(id: string) {
     if (!confirm('Delete this board?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-delete', input: { id } });
+      await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id } });
       if (activeId === id) { setActiveId(null); setActiveShapes([]); setActiveTitle(''); }
       await refreshBoards();
     } catch (e) { console.error('[Miro] delete', e); }
@@ -110,7 +110,7 @@ export function MiroSection() {
     if (!activeId) return;
     setSaving(true);
     try {
-      await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-save', input: {
+      await lensRun({ domain: 'whiteboard', action: 'board-save', input: {
         id: activeId,
         title: activeTitle || 'Untitled',
         scene: { elements: activeShapes, appState: {} },
@@ -138,7 +138,7 @@ export function MiroSection() {
     setClustering(true);
     setClusters(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'ai-cluster-stickies', input: { boardId: activeId } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'ai-cluster-stickies', input: { boardId: activeId } });
       setClusters((r.data?.result?.clusters || []) as Cluster[]);
     } catch (e) { console.error('[Miro] cluster', e); }
     finally { setClustering(false); }
@@ -150,7 +150,7 @@ export function MiroSection() {
     setSummarizing(true);
     setSummary(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'ai-summarize-board', input: { boardId: activeId } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'ai-summarize-board', input: { boardId: activeId } });
       setSummary(r.data?.result as SummaryResult);
     } catch (e) { console.error('[Miro] summarize', e); }
     finally { setSummarizing(false); }
@@ -160,12 +160,12 @@ export function MiroSection() {
     if (!genPrompt.trim()) return;
     setGenerating(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'ai-generate-board', input: { prompt: genPrompt.trim(), kind: genKind } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'ai-generate-board', input: { prompt: genPrompt.trim(), kind: genKind } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       const scene = r.data?.result?.scene;
       const elements = (scene?.elements || []) as Shape[];
       // Create a new board with the generated scene.
-      const save = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-save', input: {
+      const save = await lensRun({ domain: 'whiteboard', action: 'board-save', input: {
         title: `Generated: ${genPrompt.slice(0, 60)}`,
         scene: { elements, appState: scene?.appState || {} },
       } });
@@ -180,7 +180,7 @@ export function MiroSection() {
   async function exportBoard() {
     if (!activeId) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-export-json', input: { boardId: activeId } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'board-export-json', input: { boardId: activeId } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       const blob = new Blob([JSON.stringify(r.data?.result?.export, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
@@ -194,7 +194,7 @@ export function MiroSection() {
 
   async function refreshComments(id: string) {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'comments-list', input: { boardId: id } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'comments-list', input: { boardId: id } });
       setComments((r.data?.result?.comments as Record<string, Comment[]>) || {});
     } catch (e) { console.error('[Miro] comments', e); }
   }
@@ -202,7 +202,7 @@ export function MiroSection() {
   async function addComment(elementId: string, body: string) {
     if (!activeId || !body.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'whiteboard', action: 'comments-add', input: { boardId: activeId, elementId, body: body.trim() } });
+      await lensRun({ domain: 'whiteboard', action: 'comments-add', input: { boardId: activeId, elementId, body: body.trim() } });
       await refreshComments(activeId);
     } catch (e) { console.error('[Miro] add comment', e); }
   }
@@ -210,7 +210,7 @@ export function MiroSection() {
   async function resolveComment(id: string) {
     if (!activeId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'whiteboard', action: 'comments-resolve', input: { boardId: activeId, id } });
+      await lensRun({ domain: 'whiteboard', action: 'comments-resolve', input: { boardId: activeId, id } });
       await refreshComments(activeId);
     } catch (e) { console.error('[Miro] resolve', e); }
   }

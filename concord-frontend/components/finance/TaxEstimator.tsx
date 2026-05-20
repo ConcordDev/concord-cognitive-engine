@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Calculator, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface TaxResult {
@@ -32,7 +32,7 @@ export function TaxEstimator() {
   const compute = useMemo(() => async () => {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'finance', action: 'tax-estimate',
         input: { wages, otherIncome, longTermGains, shortTermGains, deductions, filing, withholding },
       });

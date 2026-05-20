@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { StickyNote, Plus, Trash2, Loader2, Clock } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Note { id: string; lessonId: string; text: string; videoTimestampSec: number | null; createdAt: string }
 
@@ -17,7 +17,7 @@ export function LessonNotes({ lessonId }: { lessonId?: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'education', action: 'notes-list', input: lessonId ? { lessonId } : {} });
+      const res = await lensRun({ domain: 'education', action: 'notes-list', input: lessonId ? { lessonId } : {} });
       setNotes((res.data?.result?.notes || []) as Note[]);
     } catch (e) { console.error('[Notes] list failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function LessonNotes({ lessonId }: { lessonId?: string }) {
   async function save() {
     if (!draft.trim() || !lessonId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'notes-save', input: { lessonId, text: draft, timestampSec: timestamp ? Number(timestamp) : undefined } });
+      await lensRun({ domain: 'education', action: 'notes-save', input: { lessonId, text: draft, timestampSec: timestamp ? Number(timestamp) : undefined } });
       setDraft(''); setTimestamp('');
       await refresh();
     } catch (e) { console.error('[Notes] save failed', e); }
@@ -34,7 +34,7 @@ export function LessonNotes({ lessonId }: { lessonId?: string }) {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'notes-delete', input: { id } });
+      await lensRun({ domain: 'education', action: 'notes-delete', input: { id } });
       setNotes(prev => prev.filter(n => n.id !== id));
     } catch (e) { console.error('[Notes] delete failed', e); }
   }

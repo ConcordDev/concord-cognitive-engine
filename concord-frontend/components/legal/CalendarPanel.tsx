@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, Loader2, Plus, AlertCircle, Gavel, Users, FileText } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Matter { id: string; name: string }
@@ -47,8 +47,8 @@ export function CalendarPanel() {
     setLoading(true);
     try {
       const [e, m] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'legal', action: 'calendar-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
+        lensRun({ domain: 'legal', action: 'calendar-list', input: {} }),
+        lensRun({ domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
       ]);
       setList((e.data?.result?.events || []) as CalEvent[]);
       setMatters((m.data?.result?.matters || []) as Matter[]);
@@ -59,7 +59,7 @@ export function CalendarPanel() {
   async function create() {
     if (!draft.title.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'calendar-create', input: draft });
+      await lensRun({ domain: 'legal', action: 'calendar-create', input: draft });
       setDraft({ title: '', kind: 'deadline', date: '', time: '', location: '', matterId: '', description: '' });
       setShowCreate(false);
       await refresh();
@@ -69,7 +69,7 @@ export function CalendarPanel() {
   async function runCalc() {
     if (!calc.rule || !calc.triggerDate) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'legal', action: 'court-rules-deadline', input: { rule: calc.rule, triggerDate: calc.triggerDate } });
+      const r = await lensRun({ domain: 'legal', action: 'court-rules-deadline', input: { rule: calc.rule, triggerDate: calc.triggerDate } });
       setCalcResult(r.data?.result);
     } catch (e) { console.error('[Calendar] calc failed', e); }
   }
@@ -77,7 +77,7 @@ export function CalendarPanel() {
   async function bookCalcResult() {
     if (!calcResult || !calc.rule) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'legal', action: 'calendar-create',
         input: {
           title: calcResult.ruleName,

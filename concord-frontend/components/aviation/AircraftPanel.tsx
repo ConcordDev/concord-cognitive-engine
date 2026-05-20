@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Plane, Plus, Trash2, Loader2, Fuel, Weight } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Aircraft {
   id: string; tail: string; make: string; model: string; year: number | null; kind: string;
@@ -22,7 +22,7 @@ export function AircraftPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'aviation', action: 'aircraft-list', input: {} });
+      const res = await lensRun({ domain: 'aviation', action: 'aircraft-list', input: {} });
       setAircraft((res.data?.result?.aircraft || []) as Aircraft[]);
     } catch (e) { console.error('[Aircraft] failed', e); }
     finally { setLoading(false); }
@@ -31,7 +31,7 @@ export function AircraftPanel() {
   async function add() {
     if (!form.tail.trim() || !form.make.trim() || !form.model.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'aircraft-add', input: { ...form, year: Number(form.year) || undefined, cruiseKts: Number(form.cruiseKts), fuelBurnGph: Number(form.fuelBurnGph), fuelCapacityGal: Number(form.fuelCapacityGal), hobbsHours: Number(form.hobbsHours) || 0 } });
+      await lensRun({ domain: 'aviation', action: 'aircraft-add', input: { ...form, year: Number(form.year) || undefined, cruiseKts: Number(form.cruiseKts), fuelBurnGph: Number(form.fuelBurnGph), fuelCapacityGal: Number(form.fuelCapacityGal), hobbsHours: Number(form.hobbsHours) || 0 } });
       setForm({ tail: '', make: '', model: '', year: '', kind: 'single_engine_piston', cruiseKts: '120', fuelBurnGph: '9', fuelCapacityGal: '50', hobbsHours: '' });
       await refresh();
     } catch (e) { console.error('[Aircraft] add', e); }
@@ -39,7 +39,7 @@ export function AircraftPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'aircraft-delete', input: { id } });
+      await lensRun({ domain: 'aviation', action: 'aircraft-delete', input: { id } });
       setAircraft(prev => prev.filter(a => a.id !== id));
     } catch (e) { console.error('[Aircraft] delete', e); }
   }

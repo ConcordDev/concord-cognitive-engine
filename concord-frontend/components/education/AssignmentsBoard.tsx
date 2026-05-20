@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ClipboardList, Plus, Loader2, Send, Users } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Assignment {
@@ -24,7 +24,7 @@ export function AssignmentsBoard({ courseId }: { courseId?: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'education', action: 'assignments-list', input: courseId ? { courseId } : {} });
+      const res = await lensRun({ domain: 'education', action: 'assignments-list', input: courseId ? { courseId } : {} });
       setAssignments((res.data?.result?.assignments || []) as Assignment[]);
     } catch (e) { console.error('[Assignments] list failed', e); }
     finally { setLoading(false); }
@@ -33,7 +33,7 @@ export function AssignmentsBoard({ courseId }: { courseId?: string }) {
   async function create() {
     if (!form.title.trim() || !courseId) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'education', action: 'assignments-create',
         input: { courseId, title: form.title, description: form.description, dueAt: form.dueAt || undefined, peerReviewCount: Number(form.peerReviewCount) || 0, maxPoints: Number(form.maxPoints) || 100 },
       });
@@ -46,7 +46,7 @@ export function AssignmentsBoard({ courseId }: { courseId?: string }) {
   async function submit() {
     if (!submittingFor || !submissionText.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'assignments-submit', input: { assignmentId: submittingFor, text: submissionText } });
+      await lensRun({ domain: 'education', action: 'assignments-submit', input: { assignmentId: submittingFor, text: submissionText } });
       setSubmittingFor(null); setSubmissionText('');
       await refresh();
     } catch (e) { console.error('[Assignments] submit failed', e); }

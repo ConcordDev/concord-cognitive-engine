@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Target, Plus, Loader2, Check, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Skill {
@@ -35,7 +35,7 @@ export function SkillTree() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'education', action: 'skills-tree', input: subjectFilter ? { subject: subjectFilter } : {} });
+      const res = await lensRun({ domain: 'education', action: 'skills-tree', input: subjectFilter ? { subject: subjectFilter } : {} });
       setSkills((res.data?.result?.skills || []) as Skill[]);
       setCounts(res.data?.result?.counts || {});
     } catch (e) { console.error('[Skills] refresh failed', e); }
@@ -45,7 +45,7 @@ export function SkillTree() {
   async function add() {
     if (!form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'skills-create', input: form });
+      await lensRun({ domain: 'education', action: 'skills-create', input: form });
       setForm({ name: '', subject: form.subject });
       await refresh();
     } catch (e) { console.error('[Skills] add failed', e); }
@@ -53,7 +53,7 @@ export function SkillTree() {
 
   async function practice(id: string, success: boolean) {
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'skills-practice', input: { id, success } });
+      await lensRun({ domain: 'education', action: 'skills-practice', input: { id, success } });
       await refresh();
     } catch (e) { console.error('[Skills] practice failed', e); }
   }

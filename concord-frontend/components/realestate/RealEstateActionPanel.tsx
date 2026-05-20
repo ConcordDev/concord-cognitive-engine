@@ -13,7 +13,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -105,8 +105,8 @@ export function RealEstateActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Property — ${address.trim() || 'analysis'}`, tags: ['realestate', 'property', `price:${price}`], source: 'realestate:property:mint', meta: { visibility: 'private', consent: { allowCitations: false }, property: { address, price: parseFloat(price), cap: capResult, mortgage: mortgageResult, afford: affordResult, rentBuy: rentBuyResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Property — ${address.trim() || 'analysis'}`, tags: ['realestate', 'property', `price:${price}`], source: 'realestate:property:mint', meta: { visibility: 'private', consent: { allowCitations: false }, property: { address, price: parseFloat(price), cap: capResult, mortgage: mortgageResult, afford: affordResult, rentBuy: rentBuyResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('realestate.mintedDtuId', id, { label: `property ${id.slice(0, 8)}` }); ok(`Property DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -127,8 +127,8 @@ export function RealEstateActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Investor analysis — ${address || price}`, tags: ['realestate', 'analysis', 'public'], source: 'realestate:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, analysis: { price, capRate: capResult?.capRatePct, monthlyPayment: mortgageResult?.monthlyPayment, rentBuy: rentBuyResult?.recommendation } } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Investor analysis — ${address || price}`, tags: ['realestate', 'analysis', 'public'], source: 'realestate:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, analysis: { price, capRate: capResult?.capRatePct, monthlyPayment: mortgageResult?.monthlyPayment, rentBuy: rentBuyResult?.recommendation } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -141,8 +141,8 @@ export function RealEstateActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Property: ${address || 'unnamed'} at $${price}. ${capResult ? `Cap rate ${capResult.capRatePct?.toFixed(2)}%.` : ''} ${mortgageResult ? `Mortgage $${mortgageResult.monthlyPayment?.toFixed(0)}/mo.` : ''} ${rentBuyResult ? `Rent-vs-buy: ${rentBuyResult.recommendation}.` : ''} Suggest the single best negotiation lever for this deal (price, repair credit, closing date, financing contingency). Plain text.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Negotiation lever ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

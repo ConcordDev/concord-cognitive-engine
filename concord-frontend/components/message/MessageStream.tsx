@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Send, Loader2, Hash, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, MoreHorizontal } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ChannelIcon } from './SlackShell';
 
@@ -50,7 +50,7 @@ export function MessageStream({
     if (!channel) return;
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'messages-list', input: { channelId: channel.id, limit: 100 } });
+      const r = await lensRun({ domain: 'message', action: 'messages-list', input: { channelId: channel.id, limit: 100 } });
       const list = (r.data?.result?.messages || []) as Message[];
       setMsgs(list);
       // Compute smart replies for the last message
@@ -63,7 +63,7 @@ export function MessageStream({
   async function markRead() {
     if (!channel) return;
     try {
-      await api.post('/api/lens/run', { domain: 'message', action: 'messages-mark-read', input: { channelId: channel.id } });
+      await lensRun({ domain: 'message', action: 'messages-mark-read', input: { channelId: channel.id } });
       onMessageActivity?.();
     } catch {}
   }
@@ -71,7 +71,7 @@ export function MessageStream({
   async function loadSmartReplies(text: string) {
     if (!text || text.length < 4) { setSmartReplies([]); return; }
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'ai-smart-reply', input: { lastMessage: text } });
+      const r = await lensRun({ domain: 'message', action: 'ai-smart-reply', input: { lastMessage: text } });
       setSmartReplies((r.data?.result?.suggestions || []) as string[]);
     } catch { setSmartReplies([]); }
   }
@@ -80,7 +80,7 @@ export function MessageStream({
     if (!channel || !body.trim() || sending) return;
     setSending(true);
     try {
-      await api.post('/api/lens/run', { domain: 'message', action: 'messages-send', input: { channelId: channel.id, body: body.trim() } });
+      await lensRun({ domain: 'message', action: 'messages-send', input: { channelId: channel.id, body: body.trim() } });
       setBody('');
       await refresh();
       onMessageActivity?.();
@@ -91,7 +91,7 @@ export function MessageStream({
   async function scheduleSend() {
     if (!channel || !body.trim() || !scheduleAt) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'schedule-send', input: { channelId: channel.id, body: body.trim(), sendAt: new Date(scheduleAt).toISOString() } });
+      const r = await lensRun({ domain: 'message', action: 'schedule-send', input: { channelId: channel.id, body: body.trim(), sendAt: new Date(scheduleAt).toISOString() } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setBody('');
       setShowSchedule(false);
@@ -105,7 +105,7 @@ export function MessageStream({
     if (!channel) return;
     setSummarizing(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'ai-summarize-channel', input: { channelId: channel.id, limit: 50 } });
+      const r = await lensRun({ domain: 'message', action: 'ai-summarize-channel', input: { channelId: channel.id, limit: 50 } });
       setSummary(r.data?.result || null);
     } catch (e) { console.error('[Stream] summarize', e); }
     finally { setSummarizing(false); }
@@ -114,7 +114,7 @@ export function MessageStream({
   async function saveEdit(m: Message) {
     if (!channel || !editBody.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'message', action: 'messages-edit', input: { channelId: channel.id, id: m.id, body: editBody.trim() } });
+      await lensRun({ domain: 'message', action: 'messages-edit', input: { channelId: channel.id, id: m.id, body: editBody.trim() } });
       setEditingId(null); setEditBody('');
       await refresh();
     } catch (e) { console.error('[Stream] edit', e); }
@@ -124,14 +124,14 @@ export function MessageStream({
     if (!channel) return;
     if (!confirm('Delete this message?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'message', action: 'messages-delete', input: { channelId: channel.id, id: m.id } });
+      await lensRun({ domain: 'message', action: 'messages-delete', input: { channelId: channel.id, id: m.id } });
       await refresh();
     } catch (e) { console.error('[Stream] delete', e); }
   }
 
   async function saveMessage(m: Message) {
     try {
-      await api.post('/api/lens/run', { domain: 'message', action: 'save-message', input: { messageId: m.id, threadId: m.channelId, sender: m.senderName, body: m.body } });
+      await lensRun({ domain: 'message', action: 'save-message', input: { messageId: m.id, threadId: m.channelId, sender: m.senderName, body: m.body } });
       alert('Saved.');
     } catch (e) { console.error('[Stream] save', e); }
   }

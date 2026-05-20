@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Database, Search, Loader2, ExternalLink } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Dataset { id: string; name: string; title: string; organization: string; notes: string; resourceCount: number; firstResourceUrl: string | null; firstResourceFormat: string | null; lastModified: string | null }
 
@@ -17,7 +17,7 @@ export function OpenDataExplorer() {
     if (!query.trim()) return;
     setLoading(true); setError(null);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'government', action: 'open-data-search', input: { query } });
+      const res = await lensRun({ domain: 'government', action: 'open-data-search', input: { query } });
       if (res.data?.ok === false) {
         setError((res.data?.error as string) || 'search failed');
         setResults([]); setTotal(0);

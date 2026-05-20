@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Package, Loader2, CheckCircle, Truck, XCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Order {
@@ -35,7 +35,7 @@ export function OrdersPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'orders-list', input: { status: filter } });
+      const r = await lensRun({ domain: 'marketplace', action: 'orders-list', input: { status: filter } });
       setList((r.data?.result?.orders || []) as Order[]);
     } catch (e) { console.error('[Orders] failed', e); }
     finally { setLoading(false); }
@@ -44,20 +44,20 @@ export function OrdersPanel() {
   async function ship() {
     if (!shipForm) return;
     try {
-      await api.post('/api/lens/run', { domain: 'marketplace', action: 'orders-mark-shipped', input: shipForm });
+      await lensRun({ domain: 'marketplace', action: 'orders-mark-shipped', input: shipForm });
       setShipForm(null);
       await refresh();
     } catch (e) { console.error('[Orders] ship', e); }
   }
 
   async function deliver(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'marketplace', action: 'orders-mark-delivered', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'marketplace', action: 'orders-mark-delivered', input: { id } }); await refresh(); }
     catch (e) { console.error('[Orders] deliver', e); }
   }
 
   async function refund(id: string) {
     const reason = prompt('Refund reason?'); if (reason === null) return;
-    try { await api.post('/api/lens/run', { domain: 'marketplace', action: 'orders-refund', input: { id, reason } }); await refresh(); }
+    try { await lensRun({ domain: 'marketplace', action: 'orders-refund', input: { id, reason } }); await refresh(); }
     catch (e) { console.error('[Orders] refund', e); }
   }
 

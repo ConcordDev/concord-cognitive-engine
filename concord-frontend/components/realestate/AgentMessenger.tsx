@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { MessageSquare, Plus, Send, Loader2, Star, Mail, Phone } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Agent {
@@ -29,7 +29,7 @@ export function AgentMessenger() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'realestate', action: 'agents-list', input: {} });
+      const res = await lensRun({ domain: 'realestate', action: 'agents-list', input: {} });
       const list = (res.data?.result?.agents || []) as Agent[];
       setAgents(list);
       if (list.length > 0 && !activeAgent) setActiveAgent(list[0]);
@@ -39,7 +39,7 @@ export function AgentMessenger() {
 
   async function loadMessages(agentId: string) {
     try {
-      const res = await api.post('/api/lens/run', { domain: 'realestate', action: 'messages-list', input: { agentId } });
+      const res = await lensRun({ domain: 'realestate', action: 'messages-list', input: { agentId } });
       setMessages((res.data?.result?.messages || []) as Message[]);
     } catch (e) { console.error('[Messages] load failed', e); }
   }
@@ -47,7 +47,7 @@ export function AgentMessenger() {
   async function addAgent() {
     if (!agentForm.name.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'realestate', action: 'agents-add',
         input: { name: agentForm.name.trim(), brokerage: agentForm.brokerage, email: agentForm.email, phone: agentForm.phone, rating: Number(agentForm.rating) || 5 },
       });
@@ -60,7 +60,7 @@ export function AgentMessenger() {
   async function send() {
     if (!activeAgent || !draft.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'realestate', action: 'agent-message', input: { agentId: activeAgent.id, text: draft.trim() } });
+      await lensRun({ domain: 'realestate', action: 'agent-message', input: { agentId: activeAgent.id, text: draft.trim() } });
       setDraft('');
       await loadMessages(activeAgent.id);
     } catch (e) { console.error('[Messages] send failed', e); }

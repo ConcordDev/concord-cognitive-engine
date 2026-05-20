@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowDownUp, Loader2, Settings, AlertTriangle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface SwappableToken {
@@ -65,7 +65,7 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
     const t = setTimeout(async () => {
       setLoadingQuote(true); setError(null);
       try {
-        const res = await api.post('/api/lens/run', {
+        const res = await lensRun({
           domain: 'crypto',
           action: 'swap-quote',
           input: {
@@ -74,7 +74,8 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
             amountIn: Number(amountIn),
             slippagePercent: slippage,
           },
-        }, { signal: ac.signal });
+          signal: ac.signal,
+        });
         const result = res.data?.result as SwapQuote | undefined;
         if (result) setQuote(result);
       } catch (e) {

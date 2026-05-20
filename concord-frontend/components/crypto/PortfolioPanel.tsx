@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Wallet, Loader2, Plus, ArrowDownCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -42,8 +42,8 @@ export function PortfolioPanel() {
     setLoading(true);
     try {
       const [h, s] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'crypto', action: 'holdings-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'crypto', action: 'portfolio-summary', input: {} }),
+        lensRun({ domain: 'crypto', action: 'holdings-list', input: {} }),
+        lensRun({ domain: 'crypto', action: 'portfolio-summary', input: {} }),
       ]);
       setHoldings((h.data?.result?.holdings || []) as Holding[]);
       setSummary((s.data?.result as Summary) || null);
@@ -54,7 +54,7 @@ export function PortfolioPanel() {
   async function recordBuy() {
     if (!buyDraft.symbol.trim() || !buyDraft.qty || !buyDraft.costBasisUsd) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'holdings-add', input: {
+      const r = await lensRun({ domain: 'crypto', action: 'holdings-add', input: {
         symbol: buyDraft.symbol.trim().toLowerCase(),
         ticker: buyDraft.ticker.trim() || buyDraft.symbol.trim().toUpperCase(),
         qty: Number(buyDraft.qty),
@@ -72,7 +72,7 @@ export function PortfolioPanel() {
   async function recordSell() {
     if (!showSell || !sellDraft.qty || !sellDraft.proceedsUsd) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'holdings-sell', input: {
+      const r = await lensRun({ domain: 'crypto', action: 'holdings-sell', input: {
         symbol: showSell.symbol,
         qty: Number(sellDraft.qty),
         proceedsUsd: Number(sellDraft.proceedsUsd),

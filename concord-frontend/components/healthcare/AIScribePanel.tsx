@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Loader2, FileText, Copy, Send, Mic } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface SOAP { chiefComplaint: string; subjective: string; objective: string; plan: string; assessment: string }
 interface Patient { id: string; firstName: string; lastName: string; mrn: string }
@@ -31,7 +31,7 @@ export function AIScribePanel({
     setSoap(null);
     setApplied(false);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'ai-scribe', input: { text: raw } });
+      const r = await lensRun({ domain: 'healthcare', action: 'ai-scribe', input: { text: raw } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setSoap(r.data?.result?.soap as SOAP);
       setSource(r.data?.result?.source);
@@ -83,7 +83,7 @@ export function AIScribePanel({
   async function applyToEncounter() {
     if (!soap || !encounter) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'encounters-save-soap', input: {
+      await lensRun({ domain: 'healthcare', action: 'encounters-save-soap', input: {
         id: encounter.id,
         chiefComplaint: soap.chiefComplaint,
         subjective: soap.subjective,

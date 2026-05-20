@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Music, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Clip { id: string; projectId: string; trackId: string; name: string; kind: 'audio' | 'midi' | 'drum'; startBeats: number; lengthBeats: number; colour: string; muted: boolean }
@@ -18,7 +18,7 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
     if (!projectId) { setClips([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'studio', action: 'clips-list', input: { projectId, trackId } });
+      const res = await lensRun({ domain: 'studio', action: 'clips-list', input: { projectId, trackId } });
       setClips((res.data?.result?.clips || []) as Clip[]);
     } catch (e) { console.error('[Clips] failed', e); }
     finally { setLoading(false); }
@@ -27,7 +27,7 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
   async function create() {
     if (!projectId || !trackId || !form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'clips-create', input: { projectId, trackId, name: form.name, startBeats: Number(form.startBeats), lengthBeats: Number(form.lengthBeats), kind: form.kind } });
+      await lensRun({ domain: 'studio', action: 'clips-create', input: { projectId, trackId, name: form.name, startBeats: Number(form.startBeats), lengthBeats: Number(form.lengthBeats), kind: form.kind } });
       setForm({ name: '', startBeats: '0', lengthBeats: '4', kind: 'midi' });
       await refresh();
     } catch (e) { console.error('[Clips] create', e); }
@@ -35,7 +35,7 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'clips-delete', input: { id } });
+      await lensRun({ domain: 'studio', action: 'clips-delete', input: { id } });
       setClips(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error('[Clips] delete', e); }
   }

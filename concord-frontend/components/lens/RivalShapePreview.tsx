@@ -15,7 +15,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronRight, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 
 import { VSCodeShell } from '@/components/code/VSCodeShell';
 import { WalletShell } from '@/components/crypto/WalletShell';
@@ -142,7 +142,7 @@ function CryptoPreview() {
   useEffect(() => {
     (async () => {
       try {
-        const w = await api.post('/api/lens/run', { domain: 'crypto', action: 'wallet', input: {} }).catch(() => null);
+        const w = await lensRun({ domain: 'crypto', action: 'wallet', input: {} }).catch(() => null);
         const items = (w?.data?.result?.wallets || w?.data?.result?.assets || []) as Array<{ id?: string; symbol?: string; name?: string; balance?: number; usdValue?: number }>;
         const assets = items.map(it => ({
           id: String(it.id || it.symbol || ''),
@@ -173,8 +173,8 @@ function FinancePreview() {
     (async () => {
       try {
         const [s, h] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'finance', action: 'dashboard-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'finance', action: 'holdings-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'finance', action: 'dashboard-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'finance', action: 'holdings-list', input: {} }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         setHoldings((h?.data?.result?.holdings || []) as Array<Record<string, unknown>>);
@@ -231,8 +231,8 @@ function RealEstatePreview() {
     (async () => {
       try {
         const [s, l] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'realestate', action: 'dashboard-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'realestate', action: 'listings-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'realestate', action: 'dashboard-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'realestate', action: 'listings-list', input: {} }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         setListings((l?.data?.result?.listings || []) as Array<Record<string, unknown>>);
@@ -281,9 +281,9 @@ function RetailPreview() {
     (async () => {
       try {
         const [s, o, r] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'retail', action: 'analytics-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'retail', action: 'orders-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'retail', action: 'analytics-revenue-by-day', input: { days: 7 } }).catch(() => null),
+          lensRun({ domain: 'retail', action: 'analytics-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'retail', action: 'orders-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'retail', action: 'analytics-revenue-by-day', input: { days: 7 } }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         setOrders(((o?.data?.result?.orders || []) as Array<Record<string, unknown>>).slice(0, 8));
@@ -326,8 +326,8 @@ function EducationPreview() {
     (async () => {
       try {
         const [s, e] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'education', action: 'dashboard-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'education', action: 'enrollments-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'education', action: 'dashboard-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'education', action: 'enrollments-list', input: {} }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         setEnrollments((e?.data?.result?.enrollments || []) as Array<Record<string, unknown>>);
@@ -376,10 +376,10 @@ function TradesPreview() {
     (async () => {
       try {
         const [s, b, bk, q] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'trades', action: 'dashboard-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'trades', action: 'dispatch-board', input: { date: today } }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'trades', action: 'bookings-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'trades', action: 'quotes-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'trades', action: 'dashboard-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'trades', action: 'dispatch-board', input: { date: today } }).catch(() => null),
+          lensRun({ domain: 'trades', action: 'bookings-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'trades', action: 'quotes-list', input: {} }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         setBoard((b?.data?.result as typeof board) || { rows: [], unassigned: [] });
@@ -422,10 +422,10 @@ function LogisticsPreview() {
     (async () => {
       try {
         const [s, sh, v, a] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'logistics', action: 'dashboard-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'logistics', action: 'shipments-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'logistics', action: 'fleet-vehicles-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'logistics', action: 'dock-appointments-list', input: { date: today } }).catch(() => null),
+          lensRun({ domain: 'logistics', action: 'dashboard-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'logistics', action: 'shipments-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'logistics', action: 'fleet-vehicles-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'logistics', action: 'dock-appointments-list', input: { date: today } }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         const items = (sh?.data?.result?.shipments || sh?.data?.result?.items || []) as Array<Record<string, unknown>>;
@@ -471,10 +471,10 @@ function AgriculturePreview() {
     (async () => {
       try {
         const [s, f, eq, wo] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'agriculture', action: 'dashboard-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'agriculture', action: 'field-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'agriculture', action: 'equipment-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'agriculture', action: 'work-orders-list', input: { status: 'scheduled' } }).catch(() => null),
+          lensRun({ domain: 'agriculture', action: 'dashboard-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'agriculture', action: 'field-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'agriculture', action: 'equipment-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'agriculture', action: 'work-orders-list', input: { status: 'scheduled' } }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         setFields((f?.data?.result?.fields || []) as Array<Record<string, unknown>>);
@@ -516,7 +516,7 @@ function StudioPreview() {
   useEffect(() => {
     (async () => {
       try {
-        const s = await api.post('/api/lens/run', { domain: 'studio', action: 'dashboard-summary', input: {} }).catch(() => null);
+        const s = await lensRun({ domain: 'studio', action: 'dashboard-summary', input: {} }).catch(() => null);
         const summary = (s?.data?.result as Record<string, unknown>) || {};
         setD(summary);
         const latest = summary.latestProject as Record<string, unknown> | null;
@@ -524,8 +524,8 @@ function StudioPreview() {
           const projectId = String(latest.id);
           setProj(latest);
           const [c, sc] = await Promise.all([
-            api.post('/api/lens/run', { domain: 'studio', action: 'clips-list', input: { projectId } }).catch(() => null),
-            api.post('/api/lens/run', { domain: 'studio', action: 'scenes-list', input: { projectId } }).catch(() => null),
+            lensRun({ domain: 'studio', action: 'clips-list', input: { projectId } }).catch(() => null),
+            lensRun({ domain: 'studio', action: 'scenes-list', input: { projectId } }).catch(() => null),
           ]);
           setClips((c?.data?.result?.clips || []) as Array<Record<string, unknown>>);
           setScenes((sc?.data?.result?.scenes || []) as Array<Record<string, unknown>>);
@@ -583,10 +583,10 @@ function AviationPreview() {
     (async () => {
       try {
         const [s, ac, tr, cur] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'aviation', action: 'dashboard-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'aviation', action: 'aircraft-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'aviation', action: 'track-logs-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'aviation', action: 'currency-status', input: {} }).catch(() => null),
+          lensRun({ domain: 'aviation', action: 'dashboard-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'aviation', action: 'aircraft-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'aviation', action: 'track-logs-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'aviation', action: 'currency-status', input: {} }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         setAircraft((ac?.data?.result?.aircraft || []) as Array<Record<string, unknown>>);
@@ -623,10 +623,10 @@ function GovernmentPreview() {
     (async () => {
       try {
         const [s, sr, pm, ast] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'government', action: 'dashboard-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'government', action: 'service-requests-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'government', action: 'permits-list', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'government', action: 'assets-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'government', action: 'dashboard-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'government', action: 'service-requests-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'government', action: 'permits-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'government', action: 'assets-list', input: {} }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         setRequests(((sr?.data?.result?.requests || []) as Array<Record<string, unknown>>).slice(0, 8));
@@ -688,14 +688,14 @@ function EnvironmentPreview() {
     (async () => {
       try {
         const [s, t] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'environment', action: 'dashboard-summary', input: {} }).catch(() => null),
-          api.post('/api/lens/run', { domain: 'environment', action: 'targets-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'environment', action: 'dashboard-summary', input: {} }).catch(() => null),
+          lensRun({ domain: 'environment', action: 'targets-list', input: {} }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         const list = (t?.data?.result?.targets || []) as Array<Record<string, unknown>>;
         const enriched: Array<Record<string, unknown>> = [];
         for (const tgt of list.slice(0, 3)) {
-          const p = await api.post('/api/lens/run', { domain: 'environment', action: 'targets-progress', input: { id: tgt.id } }).catch(() => null);
+          const p = await lensRun({ domain: 'environment', action: 'targets-progress', input: { id: tgt.id } }).catch(() => null);
           const prog = p?.data?.result as { reductionAchievedPct?: number; expectedReductionPct?: number; onTrack?: boolean } | undefined;
           enriched.push({ ...tgt, achievedPct: prog?.reductionAchievedPct || 0, expectedPct: prog?.expectedReductionPct || 0, onTrack: prog?.onTrack || false });
         }

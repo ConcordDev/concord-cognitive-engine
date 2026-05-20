@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BarChart3, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { cn } from '@/lib/utils';
 
@@ -23,7 +23,7 @@ export function StatsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'analytics-by-listing', input: { days } });
+      const r = await lensRun({ domain: 'marketplace', action: 'analytics-by-listing', input: { days } });
       setData((r.data?.result?.listings || []) as ListingRow[]);
     } catch (e) { console.error('[Stats] failed', e); }
     finally { setLoading(false); }
@@ -91,7 +91,7 @@ export function SearchVisibilityPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.post('/api/lens/run', { domain: 'marketplace', action: 'search-visibility', input: {} })
+    lensRun({ domain: 'marketplace', action: 'search-visibility', input: {} })
       .then(r => setData((r.data?.result?.listings || []) as VisibilityRow[]))
       .catch(e => console.error('[Visibility] failed', e))
       .finally(() => setLoading(false));

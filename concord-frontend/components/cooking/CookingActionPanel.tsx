@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { ChefHat, Apple, Calculator, Shuffle, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
   StructuredArrayEditor,
@@ -151,8 +151,8 @@ export function CookingActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Recipe — ${scaleResult?.recipe ?? recipeName}`, tags: ['cooking', 'recipe'], source: 'cooking:recipe:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cook: { usda: usdaResult, scale: scaleResult, nutr: nutrResult, sub: subResult, recipe: recipeFor() } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Recipe — ${scaleResult?.recipe ?? recipeName}`, tags: ['cooking', 'recipe'], source: 'cooking:recipe:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cook: { usda: usdaResult, scale: scaleResult, nutr: nutrResult, sub: subResult, recipe: recipeFor() } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) {
         setMintedDtuId(id);
         pipe.publish('cooking.mintedDtuId', id, { label: `Recipe DTU ${id.slice(0, 8)}…` });
@@ -186,8 +186,8 @@ export function CookingActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Recipe — ${scaleResult.recipe}`, tags: ['cooking', 'recipe', 'public'], source: 'cooking:recipe:publish', meta: { visibility: 'public', consent: { allowCitations: true }, scale: scaleResult, nutr: nutrResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Recipe — ${scaleResult.recipe}`, tags: ['cooking', 'recipe', 'public'], source: 'cooking:recipe:publish', meta: { visibility: 'public', consent: { allowCitations: true }, scale: scaleResult, nutr: nutrResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -204,8 +204,8 @@ export function CookingActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Home cook advisor. ${scaleResult ? `Making ${scaleResult.recipe}, ${scaleResult.targetServings} servings.` : ''} ${nutrResult ? `Per serving: ${nutrResult.perServing} cal, ${nutrResult.macros.protein} protein.` : ''} ${subResult?.substitutions[0] ? `Substituting ${subResult.ingredient} with ${subResult.substitutions[0].sub}.` : ''} Suggest one technique tip + one flavor enhancement. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
         setAgentReply(text);

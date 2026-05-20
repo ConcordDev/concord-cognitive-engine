@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   X, Loader2, Plane, Cloud, MapPin, Gauge, Plus, Trash2, Save, AlertTriangle, Wind,
 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Airport {
@@ -134,7 +134,7 @@ function WeatherTab() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'aviation', action: 'weather-metar',
         input: { ids: ids.split(',').map((s) => s.trim()).filter(Boolean) },
       });
@@ -213,7 +213,7 @@ function AirportsTab() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'aviation', action: 'airport-lookup',
         input: { ident: id || ident },
       });
@@ -314,8 +314,8 @@ function PerfTab() {
     setLoading(true);
     try {
       const [t, l] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'aviation', action: 'perf-takeoff', input: inputs }),
-        api.post('/api/lens/run', { domain: 'aviation', action: 'perf-landing', input: inputs }),
+        lensRun({ domain: 'aviation', action: 'perf-takeoff', input: inputs }),
+        lensRun({ domain: 'aviation', action: 'perf-landing', input: inputs }),
       ]);
       setTakeoff((t.data as { result?: typeof takeoff }).result || null);
       setLanding((l.data as { result?: typeof landing }).result || null);
@@ -392,7 +392,7 @@ function PlansTab() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'aviation', action: 'plan-list', input: {} });
+      const res = await lensRun({ domain: 'aviation', action: 'plan-list', input: {} });
       setPlans(((res.data as { result?: { plans?: FlightPlan[] } }).result?.plans) || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -402,7 +402,7 @@ function PlansTab() {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'plan-create', input: draft });
+      await lensRun({ domain: 'aviation', action: 'plan-create', input: draft });
       setCreating(false);
       await refresh();
     } catch (e) { console.error(e); }
@@ -410,7 +410,7 @@ function PlansTab() {
 
   const remove = async (id: string) => {
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'plan-delete', input: { id } });
+      await lensRun({ domain: 'aviation', action: 'plan-delete', input: { id } });
       await refresh();
     } catch (e) { console.error(e); }
   };

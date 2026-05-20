@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Users, Loader2, Plus, Trash2, Mail, Phone, Building2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Customer {
   id: string; number: string; name: string; email: string; phone: string;
@@ -20,7 +20,7 @@ export function CustomersPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'customers-list', input: {} });
+      const r = await lensRun({ domain: 'accounting', action: 'customers-list', input: {} });
       setList((r.data?.result?.customers || []) as Customer[]);
     } catch (e) { console.error('[Customers] list failed', e); }
     finally { setLoading(false); }
@@ -29,7 +29,7 @@ export function CustomersPanel() {
   async function create() {
     if (!draft.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'customers-create', input: draft });
+      await lensRun({ domain: 'accounting', action: 'customers-create', input: draft });
       setDraft({ name: '', email: '', phone: '', company: '', billingAddress: '', taxId: '' });
       setCreating(false);
       await refresh();
@@ -39,7 +39,7 @@ export function CustomersPanel() {
   async function remove(id: string) {
     if (!confirm('Delete this customer?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'customers-delete', input: { id } });
+      await lensRun({ domain: 'accounting', action: 'customers-delete', input: { id } });
       setList(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error('[Customers] delete failed', e); }
   }

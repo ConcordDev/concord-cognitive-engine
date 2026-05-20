@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { CoinbaseShell, CryptoNav } from './CoinbaseShell';
 import { PortfolioPanel } from './PortfolioPanel';
 import { WatchlistPanel, RecurringBuysPanel, StakingPanel, NFTsPanel, ActivityPanel, TaxPanel, InsightsPanel } from './CryptoPanels';
@@ -11,7 +11,7 @@ export function CoinbaseSection() {
   const [summary, setSummary] = useState<{ totalValueUsd: number; unrealizedPnlPct: number; activeRecurringBuys: number; activeStakingPositions: number; watchlistSize: number; nftCount: number; priceAlertCount: number } | null>(null);
 
   useEffect(() => {
-    api.post('/api/lens/run', { domain: 'crypto', action: 'dashboard-summary', input: {} })
+    lensRun({ domain: 'crypto', action: 'dashboard-summary', input: {} })
       .then(r => setSummary(r.data?.result || null))
       .catch(() => {});
   }, [nav]);

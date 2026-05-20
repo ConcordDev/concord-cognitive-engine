@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Target, Plus, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface TargetItem {
@@ -29,12 +29,12 @@ export function TargetsTracker() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'targets-list', input: {} });
+      const r = await lensRun({ domain: 'environment', action: 'targets-list', input: {} });
       const list = (r.data?.result?.targets || []) as TargetItem[];
       setTargets(list);
       const progMap: Record<string, Progress> = {};
       for (const t of list) {
-        const p = await api.post('/api/lens/run', { domain: 'environment', action: 'targets-progress', input: { id: t.id } });
+        const p = await lensRun({ domain: 'environment', action: 'targets-progress', input: { id: t.id } });
         if (p.data?.ok !== false) progMap[t.id] = p.data?.result as Progress;
       }
       setProgress(progMap);
@@ -45,7 +45,7 @@ export function TargetsTracker() {
   async function create() {
     if (!form.name.trim() || !form.baseCo2eTonnes) return;
     try {
-      await api.post('/api/lens/run', { domain: 'environment', action: 'targets-create', input: { ...form, baseYear: Number(form.baseYear), targetYear: Number(form.targetYear), baseCo2eTonnes: Number(form.baseCo2eTonnes), reductionPct: Number(form.reductionPct) } });
+      await lensRun({ domain: 'environment', action: 'targets-create', input: { ...form, baseYear: Number(form.baseYear), targetYear: Number(form.targetYear), baseCo2eTonnes: Number(form.baseCo2eTonnes), reductionPct: Number(form.reductionPct) } });
       setForm({ ...form, name: '', baseCo2eTonnes: '' });
       await refresh();
     } catch (e) { console.error('[Targets] create', e); }

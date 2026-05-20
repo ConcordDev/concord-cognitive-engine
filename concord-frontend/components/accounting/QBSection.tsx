@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { QBShell, QBNav } from './QBShell';
 import { AccountingAskBar } from './AccountingAskBar';
 import { AccountingDashboard } from './AccountingDashboard';
@@ -34,7 +34,7 @@ export function QBSection() {
 
   async function refreshBadges() {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'dashboard-summary', input: {} });
+      const r = await lensRun({ domain: 'accounting', action: 'dashboard-summary', input: {} });
       const d = r.data?.result;
       if (d) {
         setBadges({

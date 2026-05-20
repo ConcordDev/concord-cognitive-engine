@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Columns3, Loader2, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Listing {
@@ -24,7 +24,7 @@ export function PropertyCompare({ ids, onClear, onRemove }: { ids: string[]; onC
   async function refresh() {
     setLoading(true); setError(null);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'realestate', action: 'compare', input: { ids } });
+      const res = await lensRun({ domain: 'realestate', action: 'compare', input: { ids } });
       if (res.data?.ok === false) {
         setError((res.data?.error as string) || 'compare failed');
         setListings([]); setRows([]);

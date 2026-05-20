@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Loader2, CreditCard, Check, X, Send } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Permit {
@@ -32,7 +32,7 @@ export function PermitsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'government', action: 'permits-list', input: {} });
+      const res = await lensRun({ domain: 'government', action: 'permits-list', input: {} });
       setPermits((res.data?.result?.permits || []) as Permit[]);
     } catch (e) { console.error('[Permits] failed', e); }
     finally { setLoading(false); }
@@ -41,7 +41,7 @@ export function PermitsPanel() {
   async function apply() {
     if (!form.applicantName.trim() || !form.applicantEmail.trim() || !form.kind.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'permits-apply', input: { ...form, feeUsd: Number(form.feeUsd) || 0 } });
+      await lensRun({ domain: 'government', action: 'permits-apply', input: { ...form, feeUsd: Number(form.feeUsd) || 0 } });
       setForm({ applicantName: '', applicantEmail: '', applicantPhone: '', kind: 'building_residential', description: '', siteAddress: '', feeUsd: '0' });
       await refresh();
     } catch (e) { console.error('[Permits] apply', e); }
@@ -53,7 +53,7 @@ export function PermitsPanel() {
       const input: Record<string, unknown> = { id };
       if (act === 'deny' && reason) input.reason = reason;
       if (act === 'issue') input.validForDays = 365;
-      const res = await api.post('/api/lens/run', { domain: 'government', action: `permits-${act}`, input });
+      const res = await lensRun({ domain: 'government', action: `permits-${act}`, input });
       if (res.data?.ok === false) alert(res.data?.error);
       await refresh();
     } catch (e) { console.error('[Permits]', act, e); }

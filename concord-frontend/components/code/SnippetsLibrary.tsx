@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Sparkles, Trash2, Search, Loader2, Copy, ChevronDown, ChevronRight } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Snippet {
@@ -43,7 +43,7 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'code',
         action: 'snippets-list',
         input: { language: undefined, limit: 100 },
@@ -61,7 +61,7 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
     if (!newTitle.trim() || !newCode.trim()) return;
     setSaving(true);
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'code',
         action: 'snippets-save',
         input: {
@@ -84,7 +84,7 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
   async function deleteSnippet(id: string) {
     if (!confirm('Delete snippet?')) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'code',
         action: 'snippets-delete',
         input: { id },

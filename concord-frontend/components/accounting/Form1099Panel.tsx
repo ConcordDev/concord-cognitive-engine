@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Form1099Row {
@@ -20,7 +20,7 @@ export function Form1099Panel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'summary-1099', input: { year } });
+      const r = await lensRun({ domain: 'accounting', action: 'summary-1099', input: { year } });
       setData(r.data?.result || null);
     } catch (e) { console.error('[1099] failed', e); }
     finally { setLoading(false); }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Wallet, Plus, Trash2, Loader2, AlertTriangle, Check } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Envelope {
@@ -32,7 +32,7 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'finance', action: 'envelopes-list', input: {},
       });
       const items = (res.data?.result?.envelopes || []) as Envelope[];
@@ -46,7 +46,7 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
   async function create() {
     if (!newCat.trim() || !newTarget) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'envelopes-create',
         input: { category: newCat.trim(), monthlyTarget: Number(newTarget), rolloverEnabled: true },
       });
@@ -57,7 +57,7 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'envelopes-delete', input: { id },
       });
       setEnvelopes(prev => prev.filter(e => e.id !== id));
@@ -67,7 +67,7 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
   async function saveIncome(value: number) {
     setIncome(value);
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'monthly-income-set', input: { monthlyIncome: value },
       });
     } catch (e) { console.error('[Income] save failed', e); }

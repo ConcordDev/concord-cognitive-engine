@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Layers, Plus, Loader2, ArrowRight, Gavel } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Load { id: string; origin: string; destination: string; ratePerMile: number; weightLbs: number; equipment: string; pickupDate: string | null; commodity: string; status: 'available' | 'booked'; bids: Array<{ carrierId: string; amount: number; bidAt: string }>; bookedAmount?: number }
@@ -20,7 +20,7 @@ export function LoadBoardPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'loads-list', input: {} });
+      const res = await lensRun({ domain: 'logistics', action: 'loads-list', input: {} });
       setLoads((res.data?.result?.loads || []) as Load[]);
     } catch (e) { console.error('[Loads] failed', e); }
     finally { setLoading(false); }
@@ -29,7 +29,7 @@ export function LoadBoardPanel() {
   async function post() {
     if (!form.origin.trim() || !form.destination.trim() || !form.ratePerMile) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'logistics', action: 'loads-post',
         input: { ...form, ratePerMile: Number(form.ratePerMile), weightLbs: Number(form.weightLbs) || 0 },
       });
@@ -41,7 +41,7 @@ export function LoadBoardPanel() {
   async function bid(loadId: string) {
     if (!bidAmt || !bidCarrier.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'loads-bid', input: { id: loadId, carrierId: bidCarrier, amount: Number(bidAmt) } });
+      await lensRun({ domain: 'logistics', action: 'loads-bid', input: { id: loadId, carrierId: bidCarrier, amount: Number(bidAmt) } });
       setBidFor(null); setBidAmt(''); setBidCarrier('');
       await refresh();
     } catch (e) { console.error('[Loads] bid', e); }
@@ -49,7 +49,7 @@ export function LoadBoardPanel() {
 
   async function accept(loadId: string, carrierId: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'loads-accept-bid', input: { id: loadId, carrierId } });
+      await lensRun({ domain: 'logistics', action: 'loads-accept-bid', input: { id: loadId, carrierId } });
       await refresh();
     } catch (e) { console.error('[Loads] accept', e); }
   }

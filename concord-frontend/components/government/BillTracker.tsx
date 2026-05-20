@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FileText, Loader2, ExternalLink, Star, StarOff } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Bill {
@@ -54,7 +54,7 @@ export function BillTracker() {
   async function refresh(searchTopic: string) {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'government', action: 'bills-list', input: { topic: searchTopic, limit: 40 } });
+      const res = await lensRun({ domain: 'government', action: 'bills-list', input: { topic: searchTopic, limit: 40 } });
       setBills((res.data?.result?.bills || []) as Bill[]);
     } catch (e) { console.error('[Bills] failed', e); }
     finally { setLoading(false); }

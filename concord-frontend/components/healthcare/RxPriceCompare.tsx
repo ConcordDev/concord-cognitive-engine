@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { DollarSign, Loader2, Search, MapPin } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface PharmacyPrice {
@@ -25,7 +25,7 @@ export function RxPriceCompare() {
     if (!drug.trim()) return;
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'healthcare', action: 'rx-price-compare',
         input: { drug: drug.trim(), zip: zip || undefined },
       });

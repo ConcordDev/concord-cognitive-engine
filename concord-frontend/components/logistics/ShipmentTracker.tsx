@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Package, Plus, Loader2, MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Shipment {
@@ -27,14 +27,14 @@ export function ShipmentTracker() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'shipments-list', input: {} });
+      const res = await lensRun({ domain: 'logistics', action: 'shipments-list', input: {} });
       setShipments((res.data?.result?.shipments || []) as Shipment[]);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }
   async function track() {
     if (!tracking.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'shipment-track', input: { trackingNumber: tracking.trim(), carrier } });
+      await lensRun({ domain: 'logistics', action: 'shipment-track', input: { trackingNumber: tracking.trim(), carrier } });
       setTracking('');
       await refresh();
     } catch (e) { console.error(e); }

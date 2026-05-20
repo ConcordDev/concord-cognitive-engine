@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Wrench, Users, Calendar, FileText, Plus, Save, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Customer {
@@ -123,8 +123,8 @@ function JobsTab() {
     setLoading(true);
     try {
       const [j, c] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'trades', action: 'job-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'trades', action: 'customer-list', input: {} }),
+        lensRun({ domain: 'trades', action: 'job-list', input: {} }),
+        lensRun({ domain: 'trades', action: 'customer-list', input: {} }),
       ]);
       setJobs(((j.data as { result?: { jobs?: Job[] } }).result?.jobs) || []);
       setCustomers(((c.data as { result?: { customers?: Customer[] } }).result?.customers) || []);
@@ -136,7 +136,7 @@ function JobsTab() {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'job-create', input: draft });
+      await lensRun({ domain: 'trades', action: 'job-create', input: draft });
       setCreating(false);
       setDraft({ customerId: '', description: '', priority: 'normal', estimatedHours: 1 });
       await refresh();
@@ -145,7 +145,7 @@ function JobsTab() {
 
   const updateStatus = async (id: string, status: Job['status']) => {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'job-update-status', input: { id, status } });
+      await lensRun({ domain: 'trades', action: 'job-update-status', input: { id, status } });
       await refresh();
     } catch (e) { console.error(e); }
   };
@@ -220,7 +220,7 @@ function CustomersTab() {
 
   const refresh = useCallback(async () => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'trades', action: 'customer-list', input: {} });
+      const r = await lensRun({ domain: 'trades', action: 'customer-list', input: {} });
       setCustomers(((r.data as { result?: { customers?: Customer[] } }).result?.customers) || []);
     } catch (e) { console.error(e); }
   }, []);
@@ -229,7 +229,7 @@ function CustomersTab() {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'customer-upsert', input: draft });
+      await lensRun({ domain: 'trades', action: 'customer-upsert', input: draft });
       setCreating(false);
       setDraft({ name: '', phone: '', email: '', address: '', notes: '' });
       await refresh();
@@ -277,8 +277,8 @@ function ContractsTab() {
   const refresh = useCallback(async () => {
     try {
       const [c, cust] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'trades', action: 'contract-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'trades', action: 'customer-list', input: {} }),
+        lensRun({ domain: 'trades', action: 'contract-list', input: {} }),
+        lensRun({ domain: 'trades', action: 'customer-list', input: {} }),
       ]);
       setContracts(((c.data as { result?: { contracts?: Contract[] } }).result?.contracts) || []);
       setCustomers(((cust.data as { result?: { customers?: Customer[] } }).result?.customers) || []);
@@ -289,7 +289,7 @@ function ContractsTab() {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'contract-create', input: draft });
+      await lensRun({ domain: 'trades', action: 'contract-create', input: draft });
       setCreating(false);
       await refresh();
     } catch (e) { console.error(e); }
@@ -297,7 +297,7 @@ function ContractsTab() {
 
   const cancel = async (id: string) => {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'contract-cancel', input: { id } });
+      await lensRun({ domain: 'trades', action: 'contract-cancel', input: { id } });
       await refresh();
     } catch (e) { console.error(e); }
   };

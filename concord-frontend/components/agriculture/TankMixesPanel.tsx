@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Beaker, Plus, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Mix { id: string; name: string; components: Array<{ product: string; ratePerAcre: number; costPerAcre: number }>; carrierGalPerAcre: number; totalCostPerAcre: number; compatible: boolean }
@@ -19,7 +19,7 @@ export function TankMixesPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'agriculture', action: 'tank-mixes-list', input: {} });
+      const res = await lensRun({ domain: 'agriculture', action: 'tank-mixes-list', input: {} });
       setMixes((res.data?.result?.mixes || []) as Mix[]);
     } catch (e) { console.error('[Mixes] failed', e); }
     finally { setLoading(false); }
@@ -29,7 +29,7 @@ export function TankMixesPanel() {
     const valid = components.filter(c => c.product.trim());
     if (!name.trim() || valid.length === 0) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'agriculture', action: 'tank-mix-create',
         input: { name, components: valid, carrierGalPerAcre: Number(carrier) || 10 },
       });

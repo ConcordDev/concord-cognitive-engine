@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Download, Loader2, FileAudio, CheckCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Render { id: string; projectId: string; projectName: string; trackId: string | null; format: string; sampleRate: number; kind: string; durationSec: number; status: string; outputUrl: string; bouncedAt: string }
@@ -17,7 +17,7 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'studio', action: 'renders-list', input: {} });
+      const res = await lensRun({ domain: 'studio', action: 'renders-list', input: {} });
       setRenders((res.data?.result?.renders || []) as Render[]);
     } catch (e) { console.error('[Bounce] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
   async function bounce() {
     if (!projectId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'bounce', input: { projectId, format: form.format, sampleRate: Number(form.sampleRate), stems: form.stems } });
+      await lensRun({ domain: 'studio', action: 'bounce', input: { projectId, format: form.format, sampleRate: Number(form.sampleRate), stems: form.stems } });
       await refresh();
     } catch (e) { console.error('[Bounce] bounce', e); }
   }

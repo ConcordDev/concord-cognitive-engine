@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { GitMerge, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Send { id: string; projectId: string; fromTrackId: string; toTrackId: string; levelDb: number; prePost: 'pre' | 'post' }
 
@@ -17,7 +17,7 @@ export function SendsRouting({ projectId }: { projectId?: string }) {
     if (!projectId) { setSends([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'studio', action: 'sends-list', input: { projectId } });
+      const res = await lensRun({ domain: 'studio', action: 'sends-list', input: { projectId } });
       setSends((res.data?.result?.sends || []) as Send[]);
     } catch (e) { console.error('[Sends] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function SendsRouting({ projectId }: { projectId?: string }) {
   async function set() {
     if (!projectId || !form.fromTrackId.trim() || !form.toTrackId.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'sends-set', input: { projectId, ...form, levelDb: Number(form.levelDb) } });
+      await lensRun({ domain: 'studio', action: 'sends-set', input: { projectId, ...form, levelDb: Number(form.levelDb) } });
       setForm({ fromTrackId: '', toTrackId: '', levelDb: '-6', prePost: 'post' });
       await refresh();
     } catch (e) { console.error('[Sends] set', e); }
@@ -34,7 +34,7 @@ export function SendsRouting({ projectId }: { projectId?: string }) {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'sends-delete', input: { id } });
+      await lensRun({ domain: 'studio', action: 'sends-delete', input: { id } });
       setSends(prev => prev.filter(s => s.id !== id));
     } catch (e) { console.error('[Sends] delete', e); }
   }

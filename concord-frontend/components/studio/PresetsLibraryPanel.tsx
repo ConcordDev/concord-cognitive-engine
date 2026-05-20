@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Sliders, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Preset { id: string; name: string; pluginName: string; category: string; tags: string[]; createdAt: string }
 
@@ -17,7 +17,7 @@ export function PresetsLibraryPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'studio', action: 'presets-list', input: {} });
+      const res = await lensRun({ domain: 'studio', action: 'presets-list', input: {} });
       setPresets((res.data?.result?.presets || []) as Preset[]);
     } catch (e) { console.error('[Presets] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function PresetsLibraryPanel() {
   async function save() {
     if (!form.name.trim() || !form.pluginName.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'studio', action: 'presets-save',
         input: { name: form.name, pluginName: form.pluginName, category: form.category, tags: form.tags.split(',').map(t => t.trim()).filter(Boolean) },
       });
@@ -37,7 +37,7 @@ export function PresetsLibraryPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'presets-delete', input: { id } });
+      await lensRun({ domain: 'studio', action: 'presets-delete', input: { id } });
       setPresets(prev => prev.filter(p => p.id !== id));
     } catch (e) { console.error('[Presets] delete', e); }
   }

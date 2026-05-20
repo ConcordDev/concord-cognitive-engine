@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Tractor, Plus, Trash2, Loader2, Fuel, Activity } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Equipment {
@@ -31,7 +31,7 @@ export function EquipmentPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'agriculture', action: 'equipment-list', input: {} });
+      const res = await lensRun({ domain: 'agriculture', action: 'equipment-list', input: {} });
       setEquipment((res.data?.result?.equipment || []) as Equipment[]);
     } catch (e) { console.error('[Equipment] failed', e); }
     finally { setLoading(false); }
@@ -40,7 +40,7 @@ export function EquipmentPanel() {
   async function add() {
     if (!form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'equipment-add', input: { ...form, year: Number(form.year) || undefined } });
+      await lensRun({ domain: 'agriculture', action: 'equipment-add', input: { ...form, year: Number(form.year) || undefined } });
       setForm({ name: '', kind: 'tractor', make: '', model: '', year: '' });
       await refresh();
     } catch (e) { console.error('[Equipment] add', e); }
@@ -48,14 +48,14 @@ export function EquipmentPanel() {
 
   async function setStatus(id: string, status: Equipment['status']) {
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'equipment-update-telemetry', input: { id, status } });
+      await lensRun({ domain: 'agriculture', action: 'equipment-update-telemetry', input: { id, status } });
       await refresh();
     } catch (e) { console.error('[Equipment] status', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'equipment-delete', input: { id } });
+      await lensRun({ domain: 'agriculture', action: 'equipment-delete', input: { id } });
       setEquipment(prev => prev.filter(e => e.id !== id));
     } catch (e) { console.error('[Equipment] delete', e); }
   }

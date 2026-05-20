@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Gauge, Plus, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Change { id: string; projectId: string; bpm: number; atBeats: number; timeSignatureNum: number; timeSignatureDen: number }
 
@@ -17,7 +17,7 @@ export function TempoMap({ projectId }: { projectId?: string }) {
     if (!projectId) { setChanges([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'studio', action: 'tempo-changes', input: { projectId } });
+      const res = await lensRun({ domain: 'studio', action: 'tempo-changes', input: { projectId } });
       setChanges((res.data?.result?.changes || []) as Change[]);
     } catch (e) { console.error('[Tempo] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function TempoMap({ projectId }: { projectId?: string }) {
   async function add() {
     if (!projectId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'tempo-add', input: { projectId, bpm: Number(form.bpm), atBeats: Number(form.atBeats), timeSignatureNum: Number(form.tsNum), timeSignatureDen: Number(form.tsDen) } });
+      await lensRun({ domain: 'studio', action: 'tempo-add', input: { projectId, bpm: Number(form.bpm), atBeats: Number(form.atBeats), timeSignatureNum: Number(form.tsNum), timeSignatureDen: Number(form.tsDen) } });
       await refresh();
     } catch (e) { console.error('[Tempo] add', e); }
   }

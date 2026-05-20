@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Snapshot {
@@ -33,7 +33,7 @@ export function NetWorthTracker({ range: initialRange = '1Y' }: NetWorthTrackerP
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'finance', action: 'net-worth-history', input: { range },
       });
       setSnapshots((res.data?.result?.snapshots || []) as Snapshot[]);

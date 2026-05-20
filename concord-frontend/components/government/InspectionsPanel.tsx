@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ClipboardCheck, Plus, Loader2, Check, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Inspection { id: string; permitId: string; kind: string; date: string; inspectorName: string; timeSlot: string; status: string; result: string | null; notes: string }
@@ -20,8 +20,8 @@ export function InspectionsPanel() {
     setLoading(true);
     try {
       const [i, p] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'government', action: 'inspections-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'government', action: 'permits-list', input: {} }),
+        lensRun({ domain: 'government', action: 'inspections-list', input: {} }),
+        lensRun({ domain: 'government', action: 'permits-list', input: {} }),
       ]);
       setInspections((i.data?.result?.inspections || []) as Inspection[]);
       setPermits((p.data?.result?.permits || []) as Permit[]);
@@ -32,7 +32,7 @@ export function InspectionsPanel() {
   async function schedule() {
     if (!form.permitId || !form.kind.trim() || !form.date) return;
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'inspections-schedule', input: form });
+      await lensRun({ domain: 'government', action: 'inspections-schedule', input: form });
       setForm({ ...form, inspectorName: '' });
       await refresh();
     } catch (e) { console.error('[Insp] schedule', e); }
@@ -41,7 +41,7 @@ export function InspectionsPanel() {
   async function complete(id: string, result: 'pass' | 'fail' | 'needs_followup') {
     const notes = prompt(`Notes for ${result} result?`) || '';
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'inspections-complete', input: { id, result, notes } });
+      await lensRun({ domain: 'government', action: 'inspections-complete', input: { id, result, notes } });
       await refresh();
     } catch (e) { console.error('[Insp] complete', e); }
   }

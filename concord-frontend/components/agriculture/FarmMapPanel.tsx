@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Map as MapIcon, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 const FieldsMap = dynamic(() => import('./FieldsMap').then(m => m.FieldsMap), { ssr: false });
 
@@ -21,8 +21,8 @@ export function FarmMapPanel() {
     setLoading(true);
     try {
       const [f, e] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'agriculture', action: 'field-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'agriculture', action: 'equipment-list', input: {} }),
+        lensRun({ domain: 'agriculture', action: 'field-list', input: {} }),
+        lensRun({ domain: 'agriculture', action: 'equipment-list', input: {} }),
       ]);
       setFields((f.data?.result?.fields || []) as Field[]);
       setEquipment((e.data?.result?.equipment || []) as Equipment[]);

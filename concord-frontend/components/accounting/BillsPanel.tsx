@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Receipt, Loader2, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
@@ -33,10 +33,10 @@ export function BillsPanel() {
     setLoading(true);
     try {
       const [b, v, a, ag] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'accounting', action: 'bills-list', input: { status: filter } }),
-        api.post('/api/lens/run', { domain: 'accounting', action: 'vendors-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'accounting', action: 'coa-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'accounting', action: 'aging-ap', input: {} }),
+        lensRun({ domain: 'accounting', action: 'bills-list', input: { status: filter } }),
+        lensRun({ domain: 'accounting', action: 'vendors-list', input: {} }),
+        lensRun({ domain: 'accounting', action: 'coa-list', input: {} }),
+        lensRun({ domain: 'accounting', action: 'aging-ap', input: {} }),
       ]);
       setBills((b.data?.result?.bills || []) as Bill[]);
       setVendors((v.data?.result?.vendors || []) as Vendor[]);
@@ -55,7 +55,7 @@ export function BillsPanel() {
     const expenseAccountId = draft.expenseAccountId || vendor?.defaultExpenseAccountId || '';
     if (!expenseAccountId) { alert('Pick an expense account'); return; }
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'accounting', action: 'bills-create',
         input: { ...draft, total: Number(draft.total), expenseAccountId },
       });
@@ -67,7 +67,7 @@ export function BillsPanel() {
 
   async function pay(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'bills-pay', input: { id } });
+      await lensRun({ domain: 'accounting', action: 'bills-pay', input: { id } });
       await refresh();
     } catch (e) { console.error('[Bills] pay failed', e); }
   }
@@ -75,7 +75,7 @@ export function BillsPanel() {
   async function remove(id: string) {
     if (!confirm('Delete this bill and reverse its journal entries?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'bills-delete', input: { id } });
+      await lensRun({ domain: 'accounting', action: 'bills-delete', input: { id } });
       await refresh();
     } catch (e) { console.error('[Bills] delete failed', e); }
   }

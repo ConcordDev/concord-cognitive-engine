@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Truck, Loader2, Plus, Trash2, Mail, Phone, Building2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
@@ -32,8 +32,8 @@ export function VendorsPanel() {
     setLoading(true);
     try {
       const [v, a] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'accounting', action: 'vendors-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'accounting', action: 'coa-list', input: {} }),
+        lensRun({ domain: 'accounting', action: 'vendors-list', input: {} }),
+        lensRun({ domain: 'accounting', action: 'coa-list', input: {} }),
       ]);
       setList((v.data?.result?.vendors || []) as Vendor[]);
       setAccounts((a.data?.result?.accounts || []) as Account[]);
@@ -44,7 +44,7 @@ export function VendorsPanel() {
   async function create() {
     if (!draft.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'vendors-create', input: draft });
+      await lensRun({ domain: 'accounting', action: 'vendors-create', input: draft });
       setDraft({ name: '', email: '', phone: '', taxId: '', is1099: false, defaultExpenseAccountId: '', paymentTerms: 'net30' });
       setCreating(false);
       await refresh();
@@ -54,7 +54,7 @@ export function VendorsPanel() {
   async function remove(id: string) {
     if (!confirm('Delete this vendor?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'vendors-delete', input: { id } });
+      await lensRun({ domain: 'accounting', action: 'vendors-delete', input: { id } });
       setList(prev => prev.filter(v => v.id !== id));
     } catch (e) { console.error('[Vendors] delete failed', e); }
   }

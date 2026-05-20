@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FileSearch, Loader2, Plus, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface SmartPhrase { id: string; name: string; text: string; createdAt: string }
 
@@ -17,7 +17,7 @@ export function SmartPhrasesPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'smartphrases-list', input: {} });
+      const r = await lensRun({ domain: 'healthcare', action: 'smartphrases-list', input: {} });
       setList((r.data?.result?.smartPhrases || []) as SmartPhrase[]);
     } catch (e) { console.error('[SmartPhrases] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function SmartPhrasesPanel() {
   async function create() {
     if (!draft.name.trim() || !draft.text.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'smartphrases-create', input: draft });
+      await lensRun({ domain: 'healthcare', action: 'smartphrases-create', input: draft });
       setDraft({ name: '', text: '' });
       setCreating(false);
       await refresh();
@@ -36,7 +36,7 @@ export function SmartPhrasesPanel() {
   async function remove(id: string) {
     if (!confirm('Delete this SmartPhrase?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'smartphrases-delete', input: { id } });
+      await lensRun({ domain: 'healthcare', action: 'smartphrases-delete', input: { id } });
       await refresh();
     } catch (e) { console.error('[SmartPhrases] remove', e); }
   }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Star, Plus, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Review { id: string; jobId: string; rating: number; nps: number | null; text: string; customerName: string; submittedAt: string }
@@ -19,7 +19,7 @@ export function ReviewsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'trades', action: 'reviews-list', input: {} });
+      const res = await lensRun({ domain: 'trades', action: 'reviews-list', input: {} });
       setReviews((res.data?.result?.reviews || []) as Review[]);
       setAvgRating(res.data?.result?.avgRating || 0);
       setNps(res.data?.result?.nps || 0);
@@ -30,7 +30,7 @@ export function ReviewsPanel() {
   async function submit() {
     if (!form.jobId.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'trades', action: 'reviews-submit',
         input: { jobId: form.jobId, rating: Number(form.rating), nps: Number(form.nps), customerName: form.customerName, text: form.text },
       });

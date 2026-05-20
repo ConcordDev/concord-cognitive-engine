@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Truck, Plus, X, Loader2, Hash } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Pickup { id: string; carrierId: string; carrierName: string; address: string; date: string; timeWindow: string; packageCount: number; status: string; confirmationNumber: string }
@@ -20,8 +20,8 @@ export function PickupsPanel() {
     setLoading(true);
     try {
       const [a, b] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'logistics', action: 'pickups-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'logistics', action: 'carriers-list', input: {} }),
+        lensRun({ domain: 'logistics', action: 'pickups-list', input: {} }),
+        lensRun({ domain: 'logistics', action: 'carriers-list', input: {} }),
       ]);
       setPickups((a.data?.result?.pickups || []) as Pickup[]);
       setCarriers((b.data?.result?.carriers || []) as Carrier[]);
@@ -32,7 +32,7 @@ export function PickupsPanel() {
   async function schedule() {
     if (!form.carrierId || !form.address.trim() || !form.date) return;
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'pickups-schedule', input: { ...form, packageCount: Number(form.packageCount) || 1 } });
+      await lensRun({ domain: 'logistics', action: 'pickups-schedule', input: { ...form, packageCount: Number(form.packageCount) || 1 } });
       setForm({ carrierId: '', address: '', date: '', timeWindow: '9am-5pm', packageCount: '1' });
       await refresh();
     } catch (e) { console.error('[Pickups] schedule', e); }
@@ -40,7 +40,7 @@ export function PickupsPanel() {
 
   async function cancel(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'pickups-cancel', input: { id } });
+      await lensRun({ domain: 'logistics', action: 'pickups-cancel', input: { id } });
       await refresh();
     } catch (e) { console.error('[Pickups] cancel', e); }
   }

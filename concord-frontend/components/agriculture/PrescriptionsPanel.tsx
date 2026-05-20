@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FlaskConical, Plus, Loader2, Check, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Rx {
@@ -23,7 +23,7 @@ export function PrescriptionsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'agriculture', action: 'prescriptions-list', input: {} });
+      const res = await lensRun({ domain: 'agriculture', action: 'prescriptions-list', input: {} });
       setRxs((res.data?.result?.prescriptions || []) as Rx[]);
     } catch (e) { console.error('[Rx] failed', e); }
     finally { setLoading(false); }
@@ -32,7 +32,7 @@ export function PrescriptionsPanel() {
   async function create() {
     if (!form.fieldId.trim() || !form.product.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'agriculture', action: 'prescriptions-create',
         input: { ...form, flatRate: Number(form.flatRate) || undefined, unit: form.unit || undefined },
       });
@@ -43,14 +43,14 @@ export function PrescriptionsPanel() {
 
   async function approve(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'prescriptions-approve', input: { id } });
+      await lensRun({ domain: 'agriculture', action: 'prescriptions-approve', input: { id } });
       await refresh();
     } catch (e) { console.error('[Rx] approve', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'prescriptions-delete', input: { id } });
+      await lensRun({ domain: 'agriculture', action: 'prescriptions-delete', input: { id } });
       setRxs(prev => prev.filter(r => r.id !== id));
     } catch (e) { console.error('[Rx] delete', e); }
   }

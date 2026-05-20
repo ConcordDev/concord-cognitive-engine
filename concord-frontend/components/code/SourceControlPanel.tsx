@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GitBranch, Save, RefreshCw, FileText, Loader2, GitCommit, AlertCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 const MonacoDiffViewer = dynamic(() => import('./MonacoDiffViewer'), { ssr: false });
@@ -52,7 +52,7 @@ export function SourceControlPanel({ tabs, savedScripts, onJumpToTab, onCommitAl
 
   async function refreshSnapshotCount() {
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'code',
         action: 'snapshots-list',
         input: { limit: 100 },

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Tag, Loader2, Plus, Eye, EyeOff, Trash2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Listing {
@@ -53,7 +53,7 @@ export function ListingsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'listings-list', input: { status: filter } });
+      const r = await lensRun({ domain: 'marketplace', action: 'listings-list', input: { status: filter } });
       setList((r.data?.result?.listings || []) as Listing[]);
     } catch (e) { console.error('[Listings] failed', e); }
     finally { setLoading(false); }
@@ -62,7 +62,7 @@ export function ListingsPanel() {
   async function create() {
     if (!draft.title.trim() || !draft.priceUsd) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'listings-create', input: {
+      const r = await lensRun({ domain: 'marketplace', action: 'listings-create', input: {
         title: draft.title.trim(),
         kind: draft.kind,
         priceUsd: Number(draft.priceUsd),
@@ -79,16 +79,16 @@ export function ListingsPanel() {
   }
 
   async function publish(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'marketplace', action: 'listings-publish', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'marketplace', action: 'listings-publish', input: { id } }); await refresh(); }
     catch (e) { console.error('[Listings] publish', e); }
   }
   async function unpublish(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'marketplace', action: 'listings-unpublish', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'marketplace', action: 'listings-unpublish', input: { id } }); await refresh(); }
     catch (e) { console.error('[Listings] unpublish', e); }
   }
   async function remove(id: string) {
     if (!confirm('Delete this listing?')) return;
-    try { await api.post('/api/lens/run', { domain: 'marketplace', action: 'listings-delete', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'marketplace', action: 'listings-delete', input: { id } }); await refresh(); }
     catch (e) { console.error('[Listings] delete', e); }
   }
 
@@ -96,7 +96,7 @@ export function ListingsPanel() {
     setAILoading(true);
     setAIResult(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'ai-optimize-listing', input: { id } });
+      const r = await lensRun({ domain: 'marketplace', action: 'ai-optimize-listing', input: { id } });
       setAIResult(r.data?.result || null);
     } catch (e) { console.error('[Listings] ai-optimize', e); }
     finally { setAILoading(false); }
@@ -105,7 +105,7 @@ export function ListingsPanel() {
     setAILoading(true);
     setPriceResult(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'ai-price-suggest', input: { id } });
+      const r = await lensRun({ domain: 'marketplace', action: 'ai-price-suggest', input: { id } });
       setPriceResult(r.data?.result || null);
     } catch (e) { console.error('[Listings] ai-price', e); }
     finally { setAILoading(false); }

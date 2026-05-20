@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Users, Loader2, Plus, Search } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Patient {
@@ -23,7 +23,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
   async function refresh(query = '') {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'patients-list', input: query ? { q: query } : {} });
+      const r = await lensRun({ domain: 'healthcare', action: 'patients-list', input: query ? { q: query } : {} });
       setList((r.data?.result?.patients || []) as Patient[]);
     } catch (e) { console.error('[Patients] list failed', e); }
     finally { setLoading(false); }
@@ -32,7 +32,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
   async function create() {
     if (!draft.firstName.trim() || !draft.lastName.trim()) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'patients-create', input: draft });
+      const r = await lensRun({ domain: 'healthcare', action: 'patients-create', input: draft });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setDraft({ firstName: '', lastName: '', dob: '', sex: 'U', phone: '', email: '', insurancePlan: '', insuranceMemberId: '', address: '' });
       setCreating(false);

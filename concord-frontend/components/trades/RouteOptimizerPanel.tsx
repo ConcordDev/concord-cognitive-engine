@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Route, Loader2, MapPin, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Stop { id: string; lat: number; lng: number; label?: string }
 
@@ -21,7 +21,7 @@ export function RouteOptimizerPanel() {
     if (stops.length === 0) return;
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'trades', action: 'route-optimize',
         input: {
           start: { lat: Number(start.lat), lng: Number(start.lng) },

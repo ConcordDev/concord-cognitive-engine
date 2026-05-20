@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { DollarSign, Loader2, Clock, Shield } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Quote {
@@ -20,7 +20,7 @@ export function RateQuoter() {
     if (!form.origin.trim() || !form.destination.trim()) return;
     setLoading(true); setError(null); setQuotes([]);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'rates-quote', input: { ...form, weightLbs: Number(form.weightLbs) || 1 } });
+      const res = await lensRun({ domain: 'logistics', action: 'rates-quote', input: { ...form, weightLbs: Number(form.weightLbs) || 1 } });
       if (res.data?.ok === false) setError((res.data?.error as string) || 'Quote failed');
       else setQuotes((res.data?.result?.quotes || []) as Quote[]);
     } catch (e) { console.error('[Rates]', e); setError(e instanceof Error ? e.message : 'failed'); }

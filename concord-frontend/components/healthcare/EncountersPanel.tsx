@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ClipboardList, Loader2, Plus, Sparkles, CheckCircle, Save } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Patient { id: string; firstName: string; lastName: string; mrn: string }
@@ -39,9 +39,9 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
     setLoading(true);
     try {
       const [list, det, sp] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'healthcare', action: 'encounters-list', input: { patientId } }),
-        api.post('/api/lens/run', { domain: 'healthcare', action: 'patients-detail', input: { id: patientId } }),
-        api.post('/api/lens/run', { domain: 'healthcare', action: 'smartphrases-list', input: {} }),
+        lensRun({ domain: 'healthcare', action: 'encounters-list', input: { patientId } }),
+        lensRun({ domain: 'healthcare', action: 'patients-detail', input: { id: patientId } }),
+        lensRun({ domain: 'healthcare', action: 'smartphrases-list', input: {} }),
       ]);
       setPatient((det.data?.result?.patient || null) as Patient | null);
       const encs = (list.data?.result?.encounters || []) as Encounter[];
@@ -57,7 +57,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
 
   async function create() {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'encounters-create', input: { patientId, ...newEnc } });
+      const r = await lensRun({ domain: 'healthcare', action: 'encounters-create', input: { patientId, ...newEnc } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setNewEnc({ encounterType: 'office_visit', chiefComplaint: '', provider: '' });
       setCreating(false);
@@ -71,7 +71,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
     if (!active) return;
     setSaving(true);
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'encounters-save-soap', input: {
+      await lensRun({ domain: 'healthcare', action: 'encounters-save-soap', input: {
         id: active.id, chiefComplaint: active.chiefComplaint,
         subjective: active.subjective, objective: active.objective,
         assessment: active.assessment, plan: active.plan,
@@ -86,7 +86,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
     if (!active) return;
     setSigning(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'encounters-sign', input: { id: active.id } });
+      const r = await lensRun({ domain: 'healthcare', action: 'encounters-sign', input: { id: active.id } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       await refresh();
     } catch (e) { console.error('[Encounters] sign', e); }
@@ -96,7 +96,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
   async function expand(field: 'subjective' | 'objective' | 'assessment' | 'plan') {
     if (!active) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'smartphrases-expand', input: { text: active[field] } });
+      const r = await lensRun({ domain: 'healthcare', action: 'smartphrases-expand', input: { text: active[field] } });
       const expanded = r.data?.result?.expanded || '';
       setActive({ ...active, [field]: expanded });
     } catch (e) { console.error('[Encounters] expand', e); }

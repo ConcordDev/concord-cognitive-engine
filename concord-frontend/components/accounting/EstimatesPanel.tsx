@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ScrollText, Loader2, Plus, ArrowRight } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Estimate {
@@ -25,7 +25,7 @@ export function EstimatesPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'estimates-list', input: {} });
+      const r = await lensRun({ domain: 'accounting', action: 'estimates-list', input: {} });
       setList((r.data?.result?.estimates || []) as Estimate[]);
     } catch (e) { console.error('[Estimates] list failed', e); }
     finally { setLoading(false); }
@@ -34,7 +34,7 @@ export function EstimatesPanel() {
   async function create() {
     if (!draft.customerName.trim() || !draft.total) return;
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'estimates-create', input: { ...draft, total: Number(draft.total) } });
+      await lensRun({ domain: 'accounting', action: 'estimates-create', input: { ...draft, total: Number(draft.total) } });
       setDraft({ customerName: '', total: '', memo: '', expiresAt: '' });
       setCreating(false);
       await refresh();
@@ -43,7 +43,7 @@ export function EstimatesPanel() {
 
   async function convert(id: string) {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'estimates-convert', input: { id } });
+      const r = await lensRun({ domain: 'accounting', action: 'estimates-convert', input: { id } });
       if (r.data?.ok === false) alert(r.data?.error);
       await refresh();
     } catch (e) { console.error('[Estimates] convert failed', e); }

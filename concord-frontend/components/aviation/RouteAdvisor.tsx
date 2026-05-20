@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Compass, Loader2, ArrowRight } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Suggestion { route: string[]; rationale: string; flownCount: number; altitudeFt: number }
 
@@ -15,7 +15,7 @@ export function RouteAdvisor() {
     if (!form.from.trim() || !form.to.trim()) return;
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'aviation', action: 'route-advisor', input: { from: form.from, to: form.to, altitudeFt: Number(form.altitudeFt) } });
+      const res = await lensRun({ domain: 'aviation', action: 'route-advisor', input: { from: form.from, to: form.to, altitudeFt: Number(form.altitudeFt) } });
       setSuggestions((res.data?.result?.suggestions || []) as Suggestion[]);
     } catch (e) { console.error('[Route] failed', e); }
     finally { setLoading(false); }

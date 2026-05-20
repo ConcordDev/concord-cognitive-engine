@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FolderOpen, Loader2, Plus, FileText, Send, Eye } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Matter { id: string; name: string }
@@ -37,9 +37,9 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
     setLoading(true);
     try {
       const [t, d, m] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'legal', action: 'doc-templates-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'legal', action: 'documents-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
+        lensRun({ domain: 'legal', action: 'doc-templates-list', input: {} }),
+        lensRun({ domain: 'legal', action: 'documents-list', input: {} }),
+        lensRun({ domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
       ]);
       setTemplates((t.data?.result?.templates || []) as Template[]);
       setDocs((d.data?.result?.documents || []) as LegalDoc[]);
@@ -51,7 +51,7 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
   async function generate() {
     if (!genTemplate || !genMatter) return;
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'legal', action: 'doc-generate',
         input: { templateId: genTemplate, matterId: genMatter, ...genExtras },
       });
@@ -65,7 +65,7 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
   async function createTemplate() {
     if (!tplForm.name.trim() || !tplForm.body.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'doc-templates-create', input: tplForm });
+      await lensRun({ domain: 'legal', action: 'doc-templates-create', input: tplForm });
       setTplForm({ name: '', body: '', kind: 'document' });
       setShowTplForm(false);
       await refresh();
@@ -77,7 +77,7 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
     const recipients = esignRecipients.filter(r => r.name && r.email);
     if (recipients.length === 0) { alert('Add at least one recipient with name + email.'); return; }
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'legal', action: 'esign-envelope-create',
         input: { documentId: esignDoc.id, recipients },
       });

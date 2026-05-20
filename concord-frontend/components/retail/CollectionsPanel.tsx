@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FolderTree, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Collection { id: string; name: string; description: string; productSkus: string[]; kind: string }
 
@@ -17,7 +17,7 @@ export function CollectionsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'retail', action: 'collections-list', input: {} });
+      const res = await lensRun({ domain: 'retail', action: 'collections-list', input: {} });
       setCollections((res.data?.result?.collections || []) as Collection[]);
     } catch (e) { console.error('[Collections] list failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function CollectionsPanel() {
   async function create() {
     if (!form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'collections-create', input: form });
+      await lensRun({ domain: 'retail', action: 'collections-create', input: form });
       setForm({ name: '', description: '' });
       await refresh();
     } catch (e) { console.error('[Collections] create failed', e); }
@@ -36,7 +36,7 @@ export function CollectionsPanel() {
     const sku = (skuInput[collectionId] || '').trim().toUpperCase();
     if (!sku) return;
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'collections-add-product', input: { id: collectionId, sku } });
+      await lensRun({ domain: 'retail', action: 'collections-add-product', input: { id: collectionId, sku } });
       setSkuInput({ ...skuInput, [collectionId]: '' });
       await refresh();
     } catch (e) { console.error('[Collections] add-product failed', e); }
@@ -44,7 +44,7 @@ export function CollectionsPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'collections-delete', input: { id } });
+      await lensRun({ domain: 'retail', action: 'collections-delete', input: { id } });
       setCollections(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error('[Collections] delete failed', e); }
   }

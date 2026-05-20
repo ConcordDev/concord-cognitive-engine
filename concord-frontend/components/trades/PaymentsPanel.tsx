@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CreditCard, Plus, Loader2, Copy, Check } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Payment { id: string; invoiceRef: string; amount: number; status: 'pending' | 'paid'; hostedUrl: string; createdAt: string; paidAt?: string }
@@ -17,7 +17,7 @@ export function PaymentsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'trades', action: 'payments-list', input: {} });
+      const res = await lensRun({ domain: 'trades', action: 'payments-list', input: {} });
       setPayments((res.data?.result?.payments || []) as Payment[]);
     } catch (e) { console.error('[Payments] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function PaymentsPanel() {
   async function createLink() {
     if (!form.invoiceRef.trim() || !form.amount) return;
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'payments-create-link', input: { invoiceRef: form.invoiceRef, amount: Number(form.amount) } });
+      await lensRun({ domain: 'trades', action: 'payments-create-link', input: { invoiceRef: form.invoiceRef, amount: Number(form.amount) } });
       setForm({ invoiceRef: '', amount: '' });
       await refresh();
     } catch (e) { console.error('[Payments] create', e); }
@@ -34,7 +34,7 @@ export function PaymentsPanel() {
 
   async function markPaid(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'payments-mark-paid', input: { id } });
+      await lensRun({ domain: 'trades', action: 'payments-mark-paid', input: { id } });
       await refresh();
     } catch (e) { console.error('[Payments] mark', e); }
   }

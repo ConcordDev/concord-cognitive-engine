@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Loader2, PieChart as PieIcon } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Holding {
   id: string; symbol: string; name: string; shares: number; price: number; value: number;
@@ -26,7 +26,7 @@ export function AllocationPie() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'holdings-list', input: {} });
+      const res = await lensRun({ domain: 'finance', action: 'holdings-list', input: {} });
       setHoldings((res.data?.result?.holdings || []) as Holding[]);
     } catch (e) { console.error('[AllocationPie] failed', e); }
     finally { setLoading(false); }

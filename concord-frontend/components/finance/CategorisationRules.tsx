@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Filter, Plus, Trash2, Loader2, Play } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Rule {
@@ -26,7 +26,7 @@ export function CategorisationRules() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'rules-list', input: {} });
+      const res = await lensRun({ domain: 'finance', action: 'rules-list', input: {} });
       setRules((res.data?.result?.rules || []) as Rule[]);
     } catch (e) { console.error('[Rules] list failed', e); }
     finally { setLoading(false); }
@@ -35,7 +35,7 @@ export function CategorisationRules() {
   async function create() {
     if (!form.matchText.trim() || !form.category.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'rules-create',
         input: { matchText: form.matchText.trim(), category: form.category.trim(), matchKind: form.matchKind, priority: Number(form.priority) || 100 },
       });
@@ -46,7 +46,7 @@ export function CategorisationRules() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'rules-delete', input: { id } });
+      await lensRun({ domain: 'finance', action: 'rules-delete', input: { id } });
       setRules(prev => prev.filter(r => r.id !== id));
     } catch (e) { console.error('[Rules] delete failed', e); }
   }
@@ -54,7 +54,7 @@ export function CategorisationRules() {
   async function runTest() {
     if (!testInput.trim()) return;
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'rules-apply', input: { description: testInput } });
+      const res = await lensRun({ domain: 'finance', action: 'rules-apply', input: { description: testInput } });
       setTestResult(res.data?.result || null);
     } catch (e) { console.error('[Rules] apply failed', e); }
   }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MapPin, Plus, Trash2, Loader2, Heart, BedDouble, Bath, Maximize2, SlidersHorizontal } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Listing {
@@ -49,9 +49,9 @@ export function ListingsBrowser({
     try {
       const [a, b] = await Promise.all([
         Object.keys(filters).length > 0
-          ? api.post('/api/lens/run', { domain: 'realestate', action: 'listings-search', input: { filters } })
-          : api.post('/api/lens/run', { domain: 'realestate', action: 'listings-list', input: { sortBy } }),
-        api.post('/api/lens/run', { domain: 'realestate', action: 'favourites-list', input: {} }),
+          ? lensRun({ domain: 'realestate', action: 'listings-search', input: { filters } })
+          : lensRun({ domain: 'realestate', action: 'listings-list', input: { sortBy } }),
+        lensRun({ domain: 'realestate', action: 'favourites-list', input: {} }),
       ]);
       const items = (a.data?.result?.matches || a.data?.result?.listings || []) as Listing[];
       setListings(items);
@@ -65,7 +65,7 @@ export function ListingsBrowser({
   async function add() {
     if (!form.address.trim() || !form.price) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'realestate', action: 'listings-add',
         input: {
           address: form.address.trim(), city: form.city, state: form.state, zip: form.zip,
@@ -81,14 +81,14 @@ export function ListingsBrowser({
 
   async function toggleFav(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'realestate', action: 'favourites-toggle', input: { id } });
+      await lensRun({ domain: 'realestate', action: 'favourites-toggle', input: { id } });
       setFavIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     } catch (e) { console.error('[Listings] favourite failed', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'realestate', action: 'listings-delete', input: { id } });
+      await lensRun({ domain: 'realestate', action: 'listings-delete', input: { id } });
       setListings(prev => prev.filter(l => l.id !== id));
     } catch (e) { console.error('[Listings] delete failed', e); }
   }

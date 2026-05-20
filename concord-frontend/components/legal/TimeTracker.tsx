@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Timer, Loader2, Plus, Play, Square, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Matter { id: string; name: string; number: string; hourlyRate: number }
@@ -49,9 +49,9 @@ export function TimeTracker() {
     setLoading(true);
     try {
       const [m, t, e] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
-        api.post('/api/lens/run', { domain: 'legal', action: 'timer-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'legal', action: 'time-entries-list', input: {} }),
+        lensRun({ domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
+        lensRun({ domain: 'legal', action: 'timer-list', input: {} }),
+        lensRun({ domain: 'legal', action: 'time-entries-list', input: {} }),
       ]);
       setMatters((m.data?.result?.matters || []) as Matter[]);
       setTimers((t.data?.result?.timers || []) as RunningTimer[]);
@@ -63,7 +63,7 @@ export function TimeTracker() {
   async function startTimer() {
     if (!draft.matterId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'timer-start', input: draft });
+      await lensRun({ domain: 'legal', action: 'timer-start', input: draft });
       setDraft({ matterId: '', description: '' });
       await refresh();
     } catch (e) { console.error('[Time] start failed', e); }
@@ -71,7 +71,7 @@ export function TimeTracker() {
 
   async function stopTimer(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'timer-stop', input: { id } });
+      await lensRun({ domain: 'legal', action: 'timer-stop', input: { id } });
       await refresh();
     } catch (e) { console.error('[Time] stop failed', e); }
   }
@@ -79,7 +79,7 @@ export function TimeTracker() {
   async function addManual() {
     if (!manualDraft.matterId || !manualDraft.hours) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'legal', action: 'time-entries-create',
         input: { ...manualDraft, hours: Number(manualDraft.hours) },
       });
@@ -91,7 +91,7 @@ export function TimeTracker() {
 
   async function deleteEntry(id: string) {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'legal', action: 'time-entries-delete', input: { id } });
+      const r = await lensRun({ domain: 'legal', action: 'time-entries-delete', input: { id } });
       if (r.data?.ok === false) alert(r.data?.error);
       await refresh();
     } catch (e) { console.error('[Time] delete failed', e); }

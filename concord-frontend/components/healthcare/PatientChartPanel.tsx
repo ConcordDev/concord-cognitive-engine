@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Patient { id: string; mrn: string; firstName: string; lastName: string; dob: string; sex: string; phone: string; email: string; insurancePlan: string; address: string }
@@ -62,7 +62,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'patients-detail', input: { id: patientId } });
+      const r = await lensRun({ domain: 'healthcare', action: 'patients-detail', input: { id: patientId } });
       setData((r.data?.result as ChartDetail) || null);
     } catch (e) { console.error('[Chart] failed', e); }
     finally { setLoading(false); }
@@ -72,7 +72,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
     setIcdQuery(q);
     if (q.length < 2) { setIcdMatches([]); return; }
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'icd10-search', input: { q } });
+      const r = await lensRun({ domain: 'healthcare', action: 'icd10-search', input: { q } });
       setIcdMatches((r.data?.result?.matches || []) as ICDMatch[]);
     } catch {}
   }
@@ -80,7 +80,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   async function addProblem() {
     if (!problemDraft.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'problems-add', input: { ...problemDraft, patientId } });
+      await lensRun({ domain: 'healthcare', action: 'problems-add', input: { ...problemDraft, patientId } });
       setProblemDraft({ name: '', icd10: '', notes: '' });
       setIcdQuery(''); setIcdMatches([]); setShowProblemForm(false);
       await refresh();
@@ -89,7 +89,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
 
   async function resolveProblem(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'problems-update', input: { id, status: 'resolved' } });
+      await lensRun({ domain: 'healthcare', action: 'problems-update', input: { id, status: 'resolved' } });
       await refresh();
     } catch (e) { console.error('[Chart] resolve', e); }
   }
@@ -97,7 +97,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   async function addAllergy() {
     if (!allergyDraft.allergen.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'allergies-add', input: { ...allergyDraft, patientId } });
+      await lensRun({ domain: 'healthcare', action: 'allergies-add', input: { ...allergyDraft, patientId } });
       setAllergyDraft({ allergen: '', kind: 'drug', severity: 'moderate', reaction: '' });
       setShowAllergyForm(false);
       await refresh();
@@ -107,7 +107,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   async function deleteAllergy(id: string) {
     if (!confirm('Remove this allergy?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'allergies-delete', input: { id } });
+      await lensRun({ domain: 'healthcare', action: 'allergies-delete', input: { id } });
       await refresh();
     } catch (e) { console.error('[Chart] deleteAllergy', e); }
   }
@@ -119,7 +119,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
     }
     if (Object.keys(input).length === 1) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'vitals-record', input });
+      await lensRun({ domain: 'healthcare', action: 'vitals-record', input });
       setVitalsDraft({ systolic: '', diastolic: '', heartRate: '', tempF: '', spo2: '', weightLb: '', heightIn: '', painScore: '' });
       setShowVitalsForm(false);
       await refresh();
@@ -129,7 +129,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   async function recordLab() {
     if (!labDraft.test || !labDraft.value) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'labs-record', input: { patientId, test: labDraft.test, value: Number(labDraft.value) } });
+      await lensRun({ domain: 'healthcare', action: 'labs-record', input: { patientId, test: labDraft.test, value: Number(labDraft.value) } });
       setLabDraft({ test: 'glucose', value: '' });
       setShowLabForm(false);
       await refresh();

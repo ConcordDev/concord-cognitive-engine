@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { CodeWorkbenchShell, CodeNav } from './CodeWorkbenchShell';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { FileExplorer } from './FileExplorer';
@@ -22,7 +22,7 @@ export function CodeWorkbenchSection() {
   async function refreshStatus() {
     if (!projectId) { setBranch('main'); setModifiedCount(0); return; }
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'git-status', input: { projectId } });
+      const r = await lensRun({ domain: 'code', action: 'git-status', input: { projectId } });
       const s = r.data?.result;
       if (s) {
         setBranch(s.branch || 'main');

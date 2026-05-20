@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Repeat, Plus, Trash2, Pause, Play, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface DCAPlan {
@@ -29,7 +29,7 @@ export function RecurringInvestments() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'recurring-list', input: {} });
+      const res = await lensRun({ domain: 'finance', action: 'recurring-list', input: {} });
       setPlans((res.data?.result?.plans || []) as DCAPlan[]);
     } catch (e) { console.error('[Recurring] list failed', e); }
     finally { setLoading(false); }
@@ -38,7 +38,7 @@ export function RecurringInvestments() {
   async function create() {
     if (!form.symbol.trim() || !form.amount) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'recurring-create',
         input: { symbol: form.symbol.trim(), amount: Number(form.amount), cadence: form.cadence },
       });
@@ -50,14 +50,14 @@ export function RecurringInvestments() {
 
   async function togglePause(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'recurring-pause', input: { id } });
+      await lensRun({ domain: 'finance', action: 'recurring-pause', input: { id } });
       await refresh();
     } catch (e) { console.error('[Recurring] pause failed', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'recurring-cancel', input: { id } });
+      await lensRun({ domain: 'finance', action: 'recurring-cancel', input: { id } });
       setPlans(prev => prev.filter(p => p.id !== id));
     } catch (e) { console.error('[Recurring] cancel failed', e); }
   }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, AlertTriangle, ShieldAlert, HeartPulse, Stethoscope } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface SymptomCandidate {
@@ -53,7 +53,7 @@ export function SymptomChecker() {
     }
     setError(null); setLoading(true); setResult(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'healthcare', action: 'symptom-triage',
         input: { regions: [...regions], description: freeText.trim(), age, sex },
       });

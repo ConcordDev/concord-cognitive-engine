@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Building2, Plus, Trash2, Loader2, Edit3, Check, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Account {
@@ -38,7 +38,7 @@ export function AccountsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'accounts-list', input: {} });
+      const res = await lensRun({ domain: 'finance', action: 'accounts-list', input: {} });
       setAccounts((res.data?.result?.accounts || []) as Account[]);
       setTotals({
         totalAssets: res.data?.result?.totalAssets || 0,
@@ -52,7 +52,7 @@ export function AccountsPanel() {
   async function link() {
     if (!form.institution.trim() || !form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'accounts-link',
         input: { institution: form.institution.trim(), name: form.name.trim(), kind: form.kind, mask: form.mask || '0000', balance: Number(form.balance) || 0 },
       });
@@ -64,7 +64,7 @@ export function AccountsPanel() {
 
   async function unlink(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'accounts-unlink', input: { id } });
+      await lensRun({ domain: 'finance', action: 'accounts-unlink', input: { id } });
       setAccounts(prev => prev.filter(a => a.id !== id));
       await refresh();
     } catch (e) { console.error('[Accounts] unlink failed', e); }
@@ -75,7 +75,7 @@ export function AccountsPanel() {
     const v = Number(editing.value);
     if (!Number.isFinite(v)) return;
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'accounts-update-balance', input: { id, balance: v } });
+      await lensRun({ domain: 'finance', action: 'accounts-update-balance', input: { id, balance: v } });
       setEditing(null);
       await refresh();
     } catch (e) { console.error('[Accounts] update failed', e); }

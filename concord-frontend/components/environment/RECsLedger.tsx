@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Zap, Plus, Loader2, Award } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface REC { id: string; mwh: number; tech: string; vintage: string; registry: string; certificateNumber: string; pricePerMwhUsd: number; status: 'purchased' | 'retired'; retiredAt: string | null; retirementReason?: string; purchasedAt: string }
@@ -17,7 +17,7 @@ export function RECsLedger() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'recs-list', input: {} });
+      const r = await lensRun({ domain: 'environment', action: 'recs-list', input: {} });
       setRecs((r.data?.result?.recs || []) as REC[]);
     } catch (e) { console.error('[RECs] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function RECsLedger() {
   async function purchase() {
     if (!form.mwh) return;
     try {
-      await api.post('/api/lens/run', { domain: 'environment', action: 'recs-purchase', input: { ...form, mwh: Number(form.mwh), pricePerMwhUsd: Number(form.pricePerMwhUsd) || 0 } });
+      await lensRun({ domain: 'environment', action: 'recs-purchase', input: { ...form, mwh: Number(form.mwh), pricePerMwhUsd: Number(form.pricePerMwhUsd) || 0 } });
       setForm({ ...form, mwh: '', pricePerMwhUsd: '' });
       await refresh();
     } catch (e) { console.error('[RECs] purchase', e); }
@@ -35,7 +35,7 @@ export function RECsLedger() {
   async function retire(id: string) {
     const reason = prompt('Retirement reason (e.g. Scope 2 market-based)?') || 'voluntary';
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'recs-retire', input: { id, reason } });
+      const r = await lensRun({ domain: 'environment', action: 'recs-retire', input: { id, reason } });
       if (r.data?.ok === false) alert(r.data?.error);
       await refresh();
     } catch (e) { console.error('[RECs] retire', e); }

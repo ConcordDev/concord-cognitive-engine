@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { GraduationCap, TrendingUp, BookOpen, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -100,8 +100,8 @@ export function EducationActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Class — ${lessonTopic}`, tags: ['education', 'class', `grade-${lessonGrade}`], source: 'education:class:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ed: { grade: gradeResult, prog: progResult, lesson: lessonResult, quiz: quizResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Class — ${lessonTopic}`, tags: ['education', 'class', `grade-${lessonGrade}`], source: 'education:class:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ed: { grade: gradeResult, prog: progResult, lesson: lessonResult, quiz: quizResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('education.mintedDtuId', id, { label: `Class DTU ${id.slice(0, 8)}…` }); ok(`Class DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -129,8 +129,8 @@ export function EducationActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Lesson — ${lessonTopic} (G${lessonGrade})`, tags: ['education', 'lesson', 'public', `grade-${lessonGrade}`], source: 'education:lesson:publish', meta: { visibility: 'public', consent: { allowCitations: true }, lesson: lessonResult, quiz: quizResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Lesson — ${lessonTopic} (G${lessonGrade})`, tags: ['education', 'lesson', 'public', `grade-${lessonGrade}`], source: 'education:lesson:publish', meta: { visibility: 'public', consent: { allowCitations: true }, lesson: lessonResult, quiz: quizResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -143,8 +143,8 @@ export function EducationActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Teacher feedback brief. ${gradeResult ? `Student ${gradeResult.studentName}: ${gradeResult.letterGrade} (${gradeResult.finalPercent}%).` : ''} ${progResult ? `Progress trend: ${progResult.trend} (${progResult.improvement >= 0 ? '+' : ''}${progResult.improvement}), mastery ${progResult.mastery}.` : ''} ${lessonResult ? `Current topic: ${lessonResult.topic}.` : ''} Give one concrete strength to praise + one specific area for next-week focus. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Feedback ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

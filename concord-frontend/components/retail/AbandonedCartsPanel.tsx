@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ShoppingCart, AlertTriangle, Loader2, Send } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface AbCart {
   id: string; openedAt: string; ageHours: number;
@@ -22,7 +22,7 @@ export function AbandonedCartsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'retail', action: 'abandoned-carts-list',
         input: { thresholdHours: Number(thresholdHours) || 1 },
       });
@@ -34,7 +34,7 @@ export function AbandonedCartsPanel() {
 
   async function recover(cartId: string) {
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'retail', action: 'abandoned-cart-recover',
         input: { cartId, discountCode: recoveryCode.trim().toUpperCase() || undefined },
       });

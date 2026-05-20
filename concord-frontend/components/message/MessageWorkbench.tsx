@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Bookmark, Search, Mic, Smile, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface SavedEntry {
@@ -96,7 +96,7 @@ function SavedTab() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'saved-list', input: {} });
+      const r = await lensRun({ domain: 'message', action: 'saved-list', input: {} });
       setSaved(((r.data as { result?: { saved?: SavedEntry[] } }).result?.saved) || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -106,7 +106,7 @@ function SavedTab() {
 
   const unsave = async (messageId: string) => {
     try {
-      await api.post('/api/lens/run', { domain: 'message', action: 'unsave-message', input: { messageId } });
+      await lensRun({ domain: 'message', action: 'unsave-message', input: { messageId } });
       await refresh();
     } catch (e) { console.error(e); }
   };
@@ -145,7 +145,7 @@ function SearchTab() {
     if (query.trim().length < 2) return;
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'message', action: 'search-messages',
         input: { query, sender: sender || undefined, limit: 30 },
       });
@@ -196,7 +196,7 @@ function VoiceTab() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await api.post('/api/lens/run', { domain: 'message', action: 'voice-list', input: {} });
+        const r = await lensRun({ domain: 'message', action: 'voice-list', input: {} });
         setVoices(((r.data as { result?: { voices?: VoiceMeta[] } }).result?.voices) || []);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
@@ -232,7 +232,7 @@ function ReactionsTab() {
   const load = async () => {
     if (!messageId.trim()) return;
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'message', action: 'reactions-for', input: { messageId },
       });
       setReactions(((r.data as { result?: { reactions?: Record<string, number> } }).result?.reactions) || {});
@@ -242,7 +242,7 @@ function ReactionsTab() {
   const react = async (emoji: string) => {
     if (!messageId.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'message', action: 'react', input: { messageId, emoji } });
+      await lensRun({ domain: 'message', action: 'react', input: { messageId, emoji } });
       await load();
     } catch (e) { console.error(e); }
   };

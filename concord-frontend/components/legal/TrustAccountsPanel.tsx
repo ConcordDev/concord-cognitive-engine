@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Scale, Loader2, Plus, ArrowDown, ArrowUp, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Matter { id: string; name: string; clientName: string }
@@ -36,8 +36,8 @@ export function TrustAccountsPanel() {
     setLoading(true);
     try {
       const [a, m] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'legal', action: 'trust-accounts-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
+        lensRun({ domain: 'legal', action: 'trust-accounts-list', input: {} }),
+        lensRun({ domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
       ]);
       const accts = (a.data?.result?.accounts || []) as TrustAccount[];
       setAccounts(accts);
@@ -50,8 +50,8 @@ export function TrustAccountsPanel() {
   async function refreshAccount(accountId: string) {
     try {
       const [b, r] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'legal', action: 'trust-balance', input: { accountId } }),
-        api.post('/api/lens/run', { domain: 'legal', action: 'trust-reconcile', input: { accountId } }),
+        lensRun({ domain: 'legal', action: 'trust-balance', input: { accountId } }),
+        lensRun({ domain: 'legal', action: 'trust-reconcile', input: { accountId } }),
       ]);
       setBalance({ total: b.data?.result?.total || 0, byMatter: (b.data?.result?.byMatter || []) as MatterLedger[] });
       setRecon(r.data?.result as Reconciliation);
@@ -61,7 +61,7 @@ export function TrustAccountsPanel() {
   async function createAccount() {
     if (!acctForm.name.trim()) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'legal', action: 'trust-account-create', input: acctForm });
+      const r = await lensRun({ domain: 'legal', action: 'trust-account-create', input: acctForm });
       setShowAcctForm(false);
       setAcctForm({ name: '', bankName: '', accountNumber: '' });
       await refresh();
@@ -73,7 +73,7 @@ export function TrustAccountsPanel() {
     if (!activeAcct || !txnForm.matterId || !txnForm.amount) return;
     const action = txnForm.kind === 'deposit' ? 'trust-deposit' : 'trust-disburse';
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'legal', action,
         input: { ...txnForm, accountId: activeAcct.id, amount: Number(txnForm.amount) },
       });
@@ -87,7 +87,7 @@ export function TrustAccountsPanel() {
   async function reconcile() {
     if (!activeAcct) return;
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'trust-reconcile', input: { accountId: activeAcct.id, bankBalance: Number(reconForm.bankBalance) || 0 } });
+      await lensRun({ domain: 'legal', action: 'trust-reconcile', input: { accountId: activeAcct.id, bankBalance: Number(reconForm.bankBalance) || 0 } });
       setReconForm({ bankBalance: '' });
       await refreshAccount(activeAcct.id);
     } catch (e) { console.error('[Trust] reconcile failed', e); }

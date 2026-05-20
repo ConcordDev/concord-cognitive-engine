@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { CloudRain, Loader2, Cloud, Wind } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Briefing {
@@ -25,7 +25,7 @@ export function BriefingPanel() {
     if (list.length === 0) return;
     setLoading(true); setError(null);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'aviation', action: 'briefing-graphical', input: { icaos: list } });
+      const res = await lensRun({ domain: 'aviation', action: 'briefing-graphical', input: { icaos: list } });
       if (res.data?.ok === false) setError((res.data?.error as string) || 'briefing failed');
       else setData(res.data?.result as Briefing);
     } catch (e) { setError(e instanceof Error ? e.message : 'failed'); }

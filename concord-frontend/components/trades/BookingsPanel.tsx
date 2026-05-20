@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Inbox, Plus, Loader2, Check } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Booking {
@@ -23,7 +23,7 @@ export function BookingsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'trades', action: 'bookings-list', input: {} });
+      const res = await lensRun({ domain: 'trades', action: 'bookings-list', input: {} });
       setBookings((res.data?.result?.bookings || []) as Booking[]);
     } catch (e) { console.error('[Bookings] failed', e); }
     finally { setLoading(false); }
@@ -32,7 +32,7 @@ export function BookingsPanel() {
   async function create() {
     if (!form.customerName.trim() || !form.customerEmail.trim() || !form.serviceType.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'bookings-create', input: form });
+      await lensRun({ domain: 'trades', action: 'bookings-create', input: form });
       setForm({ customerName: '', customerEmail: '', customerPhone: '', serviceType: '', address: '', preferredDate: '', notes: '' });
       setCreating(false);
       await refresh();
@@ -41,7 +41,7 @@ export function BookingsPanel() {
 
   async function confirm(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'bookings-confirm', input: { id } });
+      await lensRun({ domain: 'trades', action: 'bookings-confirm', input: { id } });
       await refresh();
     } catch (e) { console.error('[Bookings] confirm', e); }
   }

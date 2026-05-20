@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Megaphone, Plus, Loader2, MapPin, CheckCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 const ServiceRequestsMap = dynamic(() => import('./ServiceRequestsMap').then(m => m.ServiceRequestsMap), { ssr: false });
@@ -40,8 +40,8 @@ export function ServiceRequestsPanel() {
     setLoading(true);
     try {
       const [r, d] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'government', action: 'service-requests-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'government', action: 'departments-list', input: {} }),
+        lensRun({ domain: 'government', action: 'service-requests-list', input: {} }),
+        lensRun({ domain: 'government', action: 'departments-list', input: {} }),
       ]);
       setRequests((r.data?.result?.requests || []) as Request[]);
       setDepts((d.data?.result?.departments || []) as Department[]);
@@ -52,7 +52,7 @@ export function ServiceRequestsPanel() {
   async function create() {
     if (!form.description.trim() || !form.lat || !form.lng) return;
     try {
-      const res = await api.post('/api/lens/run', { domain: 'government', action: 'service-requests-create', input: { ...form, lat: Number(form.lat), lng: Number(form.lng) } });
+      const res = await lensRun({ domain: 'government', action: 'service-requests-create', input: { ...form, lat: Number(form.lat), lng: Number(form.lng) } });
       if (res.data?.ok === false) alert(res.data?.error);
       setForm({ ...form, description: '', address: '', reporterName: '', reporterEmail: '' });
       await refresh();
@@ -62,14 +62,14 @@ export function ServiceRequestsPanel() {
   async function assign(id: string, departmentId: string) {
     if (!departmentId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'service-requests-assign', input: { id, departmentId } });
+      await lensRun({ domain: 'government', action: 'service-requests-assign', input: { id, departmentId } });
       await refresh();
     } catch (e) { console.error('[SR] assign', e); }
   }
 
   async function setStatus(id: string, status: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'service-requests-update-status', input: { id, status } });
+      await lensRun({ domain: 'government', action: 'service-requests-update-status', input: { id, status } });
       await refresh();
     } catch (e) { console.error('[SR] status', e); }
   }

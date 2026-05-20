@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Users, Plus, Trash2, Loader2, Phone, Mail } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Tech {
@@ -30,7 +30,7 @@ export function TechniciansPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'trades', action: 'technicians-list', input: {} });
+      const res = await lensRun({ domain: 'trades', action: 'technicians-list', input: {} });
       setTechs((res.data?.result?.technicians || []) as Tech[]);
     } catch (e) { console.error('[Techs] failed', e); }
     finally { setLoading(false); }
@@ -39,7 +39,7 @@ export function TechniciansPanel() {
   async function add() {
     if (!form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'trades', action: 'technicians-add',
         input: { name: form.name, phone: form.phone, email: form.email, skills: form.skills.split(',').map(s => s.trim()).filter(Boolean) },
       });
@@ -51,14 +51,14 @@ export function TechniciansPanel() {
 
   async function setStatus(id: string, status: Tech['status']) {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'technicians-set-status', input: { id, status } });
+      await lensRun({ domain: 'trades', action: 'technicians-set-status', input: { id, status } });
       await refresh();
     } catch (e) { console.error('[Techs] status', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'technicians-delete', input: { id } });
+      await lensRun({ domain: 'trades', action: 'technicians-delete', input: { id } });
       setTechs(prev => prev.filter(t => t.id !== id));
     } catch (e) { console.error('[Techs] remove', e); }
   }

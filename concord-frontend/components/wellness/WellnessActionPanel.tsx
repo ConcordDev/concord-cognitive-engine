@@ -11,7 +11,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -120,7 +120,7 @@ export function WellnessActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: {
           title: `Wellness — ${new Date().toISOString().slice(0, 10)}`,
@@ -129,7 +129,7 @@ export function WellnessActionPanel() {
           meta: { visibility: 'private', consent: { allowCitations: false }, wellness: { sleep: sleepResult, strain: strainResult, recovery: recoveryResult, hrv: hrvResult } },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) { setMintedDtuId(id); pipe.publish('wellness.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`Wellness DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
@@ -162,7 +162,7 @@ export function WellnessActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', {
+        const r = await lensRun({
           domain: 'dtu', name: 'create',
           input: {
             title: `Wellness trend — ${hrvResult?.trend ?? 'snapshot'}`,
@@ -171,7 +171,7 @@ export function WellnessActionPanel() {
             meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, trends: { hrv: hrvResult, recovery: recoveryResult } },
           },
         });
-        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;
         if (!newId) throw new Error('No DTU id returned.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -195,8 +195,8 @@ export function WellnessActionPanel() {
         'Recommend a 24-hour plan: what to do, what to avoid, one specific tweak that compounds the trend.',
         'Plain text. Practical, not vague.',
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('24-hour plan ready.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }

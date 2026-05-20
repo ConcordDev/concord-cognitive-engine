@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Building, Plus, Trash2, Loader2, Mail, Phone } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Department { id: string; name: string; shortCode: string; email: string; phone: string; head: string; categories: string[] }
 
@@ -16,7 +16,7 @@ export function DepartmentsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'government', action: 'departments-list', input: {} });
+      const res = await lensRun({ domain: 'government', action: 'departments-list', input: {} });
       setDepts((res.data?.result?.departments || []) as Department[]);
     } catch (e) { console.error('[Depts] failed', e); }
     finally { setLoading(false); }
@@ -25,7 +25,7 @@ export function DepartmentsPanel() {
   async function add() {
     if (!form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'departments-add', input: form });
+      await lensRun({ domain: 'government', action: 'departments-add', input: form });
       setForm({ name: '', shortCode: '', email: '', phone: '', head: '' });
       await refresh();
     } catch (e) { console.error('[Depts] add', e); }
@@ -33,7 +33,7 @@ export function DepartmentsPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'departments-delete', input: { id } });
+      await lensRun({ domain: 'government', action: 'departments-delete', input: { id } });
       setDepts(prev => prev.filter(d => d.id !== id));
     } catch (e) { console.error('[Depts] delete', e); }
   }

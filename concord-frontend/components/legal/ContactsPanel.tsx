@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Users, Loader2, Plus, Trash2, AlertTriangle, Search } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Contact {
@@ -31,7 +31,7 @@ export function ContactsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'legal', action: 'contacts-list', input: filterKind === 'all' ? {} : { kind: filterKind } });
+      const r = await lensRun({ domain: 'legal', action: 'contacts-list', input: filterKind === 'all' ? {} : { kind: filterKind } });
       setList((r.data?.result?.contacts || []) as Contact[]);
     } catch (e) { console.error('[Contacts] list failed', e); }
     finally { setLoading(false); }
@@ -40,7 +40,7 @@ export function ContactsPanel() {
   async function create() {
     if (!draft.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'contacts-create', input: draft });
+      await lensRun({ domain: 'legal', action: 'contacts-create', input: draft });
       setDraft({ name: '', kind: 'client', email: '', phone: '', organization: '', address: '', notes: '' });
       setCreating(false);
       await refresh();
@@ -50,7 +50,7 @@ export function ContactsPanel() {
   async function remove(id: string) {
     if (!confirm('Delete this contact?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'contacts-delete', input: { id } });
+      await lensRun({ domain: 'legal', action: 'contacts-delete', input: { id } });
       setList(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error('[Contacts] delete failed', e); }
   }
@@ -58,7 +58,7 @@ export function ContactsPanel() {
   async function runConflict() {
     if (!conflictQ.trim()) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'legal', action: 'conflict-search', input: { name: conflictQ.trim() } });
+      const r = await lensRun({ domain: 'legal', action: 'conflict-search', input: { name: conflictQ.trim() } });
       setConflicts({ hits: r.data?.result?.hits || 0, matches: (r.data?.result?.matches || []) as ConflictMatch[] });
     } catch (e) { console.error('[Contacts] conflict failed', e); }
   }

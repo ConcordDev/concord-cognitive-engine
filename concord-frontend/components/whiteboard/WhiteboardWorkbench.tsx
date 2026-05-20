@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Square, BookOpen, ThumbsUp, Trash2, Save, Plus } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Template {
@@ -83,7 +83,7 @@ function BoardsTab() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-list', input: {} });
+      const r = await lensRun({ domain: 'whiteboard', action: 'board-list', input: {} });
       setBoards(((r.data as { result?: { boards?: Board[] } }).result?.boards) || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -93,7 +93,7 @@ function BoardsTab() {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-save', input: { title, scene: { elements: [], appState: {} } } });
+      await lensRun({ domain: 'whiteboard', action: 'board-save', input: { title, scene: { elements: [], appState: {} } } });
       setCreating(false); setTitle('');
       await refresh();
     } catch (e) { console.error(e); }
@@ -102,7 +102,7 @@ function BoardsTab() {
   const remove = async (id: string) => {
     if (!window.confirm('Delete board?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'whiteboard', action: 'board-delete', input: { id } });
+      await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id } });
       await refresh();
     } catch (e) { console.error(e); }
   };
@@ -147,7 +147,7 @@ function TemplatesTab() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'templates-list', input: {} });
+        const r = await lensRun({ domain: 'whiteboard', action: 'templates-list', input: {} });
         setTemplates(((r.data as { result?: { templates?: Template[] } }).result?.templates) || []);
       } catch (e) { console.error(e); }
     })();
@@ -155,10 +155,10 @@ function TemplatesTab() {
 
   const apply = async (id: string, name: string) => {
     try {
-      const t = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'template-load', input: { id } });
+      const t = await lensRun({ domain: 'whiteboard', action: 'template-load', input: { id } });
       const template = ((t.data as { result?: { template?: { elements: unknown[] } } }).result?.template);
       if (!template) return;
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'whiteboard', action: 'board-save',
         input: { title: name, scene: { elements: template.elements, appState: {} } },
       });
@@ -189,7 +189,7 @@ function VotingTab() {
   const refresh = async () => {
     if (!boardId) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'whiteboard', action: 'vote-tally', input: { boardId } });
+      const r = await lensRun({ domain: 'whiteboard', action: 'vote-tally', input: { boardId } });
       const data = (r.data as { result?: { tally?: typeof tally; total?: number } }).result;
       setTally(data?.tally || []);
       setTotal(data?.total || 0);
@@ -199,7 +199,7 @@ function VotingTab() {
   const vote = async () => {
     if (!boardId || !elementId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'whiteboard', action: 'vote-cast', input: { boardId, elementId } });
+      await lensRun({ domain: 'whiteboard', action: 'vote-cast', input: { boardId, elementId } });
       await refresh();
     } catch (e) { console.error(e); }
   };

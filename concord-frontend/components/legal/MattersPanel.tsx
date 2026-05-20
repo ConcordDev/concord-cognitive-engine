@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Briefcase, Loader2, Plus, X, Archive, ChevronRight } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Contact { id: string; name: string; kind: string }
@@ -44,8 +44,8 @@ export function MattersPanel() {
     setLoading(true);
     try {
       const [m, c] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'legal', action: 'matters-list', input: filter === 'all' ? {} : { status: filter } }),
-        api.post('/api/lens/run', { domain: 'legal', action: 'contacts-list', input: {} }),
+        lensRun({ domain: 'legal', action: 'matters-list', input: filter === 'all' ? {} : { status: filter } }),
+        lensRun({ domain: 'legal', action: 'contacts-list', input: {} }),
       ]);
       setList((m.data?.result?.matters || []) as Matter[]);
       setContacts((c.data?.result?.contacts || []) as Contact[]);
@@ -56,7 +56,7 @@ export function MattersPanel() {
   async function create() {
     if (!draft.name.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'legal', action: 'matters-create',
         input: { ...draft, hourlyRate: Number(draft.hourlyRate) || 0 },
       });
@@ -69,7 +69,7 @@ export function MattersPanel() {
   async function close(id: string) {
     if (!confirm('Close this matter?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'matters-close', input: { id } });
+      await lensRun({ domain: 'legal', action: 'matters-close', input: { id } });
       await refresh();
     } catch (e) { console.error('[Matters] close failed', e); }
   }
@@ -77,7 +77,7 @@ export function MattersPanel() {
   async function openDetail(id: string) {
     setActiveId(id);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'legal', action: 'matters-detail', input: { id } });
+      const r = await lensRun({ domain: 'legal', action: 'matters-detail', input: { id } });
       setDetail((r.data?.result as Detail) || null);
     } catch (e) { console.error('[Matters] detail failed', e); }
   }

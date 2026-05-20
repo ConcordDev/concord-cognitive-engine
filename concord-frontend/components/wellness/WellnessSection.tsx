@@ -12,7 +12,7 @@ import {
   TrendingUp, TrendingDown, Minus, Dumbbell, Sparkles, Check,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 type Tab = 'today' | 'habits' | 'mood' | 'workouts' | 'goals';
@@ -60,13 +60,13 @@ export function WellnessSection() {
     setLoading(true);
     try {
       const [su, rec, hb, md, mc, wo, gl] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'wellness', action: 'wellness-dashboard-summary', input: {} }),
-        api.post('/api/lens/run', { domain: 'wellness', action: 'recovery-score', input: {} }),
-        api.post('/api/lens/run', { domain: 'wellness', action: 'habits-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'wellness', action: 'mood-list', input: { days: 30 } }),
-        api.post('/api/lens/run', { domain: 'wellness', action: 'mood-correlate', input: { days: 90 } }),
-        api.post('/api/lens/run', { domain: 'wellness', action: 'workouts-list', input: { days: 30 } }),
-        api.post('/api/lens/run', { domain: 'wellness', action: 'goals-list', input: {} }),
+        lensRun({ domain: 'wellness', action: 'wellness-dashboard-summary', input: {} }),
+        lensRun({ domain: 'wellness', action: 'recovery-score', input: {} }),
+        lensRun({ domain: 'wellness', action: 'habits-list', input: {} }),
+        lensRun({ domain: 'wellness', action: 'mood-list', input: { days: 30 } }),
+        lensRun({ domain: 'wellness', action: 'mood-correlate', input: { days: 90 } }),
+        lensRun({ domain: 'wellness', action: 'workouts-list', input: { days: 30 } }),
+        lensRun({ domain: 'wellness', action: 'goals-list', input: {} }),
       ]);
       setSummary(su.data?.result || null);
       setRecovery(rec.data?.result || null);
@@ -83,7 +83,7 @@ export function WellnessSection() {
 
   const loadTrend = useCallback(async (type: string) => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'wellness', action: 'metrics-trend', input: { type, days: 30 } });
+      const r = await lensRun({ domain: 'wellness', action: 'metrics-trend', input: { type, days: 30 } });
       setTrend(r.data?.result || null);
     } catch (e) { console.error('[Wellness] trend', e); }
   }, []);
@@ -95,7 +95,7 @@ export function WellnessSection() {
     const value = prompt('Value?');
     if (value === null || value === '') return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'wellness', action: 'metrics-log', input: { type: type.trim(), value: Number(value) } });
+      const r = await lensRun({ domain: 'wellness', action: 'metrics-log', input: { type: type.trim(), value: Number(value) } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       await refresh();
     } catch (e) { console.error('[Wellness] logMetric', e); }
@@ -105,24 +105,24 @@ export function WellnessSection() {
     const name = prompt('Habit name?'); if (!name?.trim()) return;
     const unit = prompt('Unit (blank for simple check, e.g. "glasses")') || '';
     const target = unit ? Number(prompt('Daily target?') || '1') : 1;
-    try { await api.post('/api/lens/run', { domain: 'wellness', action: 'habits-create', input: { name: name.trim(), unit, target } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'habits-create', input: { name: name.trim(), unit, target } }); await refresh(); }
     catch (e) { console.error('[Wellness] addHabit', e); }
   }
   async function checkinHabit(h: Habit) {
     try {
       if (h.unit === '' && h.target === 1) {
-        await api.post('/api/lens/run', { domain: 'wellness', action: 'habits-checkin', input: { habitId: h.id, toggle: true } });
+        await lensRun({ domain: 'wellness', action: 'habits-checkin', input: { habitId: h.id, toggle: true } });
       } else {
         const v = prompt(`${h.name} — ${h.unit || 'count'} today? (target ${h.target})`, String(h.todayValue || ''));
         if (v === null) return;
-        await api.post('/api/lens/run', { domain: 'wellness', action: 'habits-checkin', input: { habitId: h.id, value: Number(v) } });
+        await lensRun({ domain: 'wellness', action: 'habits-checkin', input: { habitId: h.id, value: Number(v) } });
       }
       await refresh();
     } catch (e) { console.error('[Wellness] checkin', e); }
   }
   async function archiveHabit(id: string) {
     if (!confirm('Archive this habit?')) return;
-    try { await api.post('/api/lens/run', { domain: 'wellness', action: 'habits-archive', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'habits-archive', input: { id } }); await refresh(); }
     catch (e) { console.error('[Wellness] archive', e); }
   }
 
@@ -130,7 +130,7 @@ export function WellnessSection() {
     const actStr = prompt('Activities today? (comma-separated — e.g. exercise, friends, work)') || '';
     const note = prompt('Note (optional)?') || '';
     try {
-      await api.post('/api/lens/run', { domain: 'wellness', action: 'mood-log', input: { mood, activities: actStr.split(',').map(a => a.trim()).filter(Boolean), note } });
+      await lensRun({ domain: 'wellness', action: 'mood-log', input: { mood, activities: actStr.split(',').map(a => a.trim()).filter(Boolean), note } });
       await refresh();
     } catch (e) { console.error('[Wellness] logMood', e); }
   }
@@ -139,11 +139,11 @@ export function WellnessSection() {
     const kind = prompt(`Workout kind (${WORKOUT_KINDS.join('/')})?`); if (!kind?.trim()) return;
     const dur = prompt('Duration (minutes)?'); if (!dur) return;
     const intensity = prompt('Intensity (easy/moderate/hard/max)?') || 'moderate';
-    try { await api.post('/api/lens/run', { domain: 'wellness', action: 'workouts-log', input: { kind: kind.trim(), durationMin: Number(dur), intensity } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'workouts-log', input: { kind: kind.trim(), durationMin: Number(dur), intensity } }); await refresh(); }
     catch (e) { console.error('[Wellness] logWorkout', e); }
   }
   async function delWorkout(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'wellness', action: 'workouts-delete', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'workouts-delete', input: { id } }); await refresh(); }
     catch (e) { console.error('[Wellness] delWorkout', e); }
   }
 
@@ -151,17 +151,17 @@ export function WellnessSection() {
     const name = prompt('Goal name?'); if (!name?.trim()) return;
     const target = prompt('Target value?'); if (!target) return;
     const unit = prompt('Unit?') || '';
-    try { await api.post('/api/lens/run', { domain: 'wellness', action: 'goals-create', input: { name: name.trim(), target: Number(target), unit } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'goals-create', input: { name: name.trim(), target: Number(target), unit } }); await refresh(); }
     catch (e) { console.error('[Wellness] addGoal', e); }
   }
   async function updateGoal(g: Goal) {
     const v = prompt(`${g.name} — current progress (${g.unit})?`, String(g.current));
     if (v === null) return;
-    try { await api.post('/api/lens/run', { domain: 'wellness', action: 'goals-update-progress', input: { id: g.id, current: Number(v) } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'goals-update-progress', input: { id: g.id, current: Number(v) } }); await refresh(); }
     catch (e) { console.error('[Wellness] updateGoal', e); }
   }
   async function delGoal(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'wellness', action: 'goals-delete', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'goals-delete', input: { id } }); await refresh(); }
     catch (e) { console.error('[Wellness] delGoal', e); }
   }
 

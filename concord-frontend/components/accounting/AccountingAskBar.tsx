@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 
 const SAMPLES = [
   'Show me overdue invoices',
@@ -35,7 +35,7 @@ export function AccountingAskBar() {
     setLoading(true);
     setAnswer(null);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'accounting', action: 'ask', input: { question } });
+      const res = await lensRun({ domain: 'accounting', action: 'ask', input: { question } });
       setAnswer((res.data?.result as Answer) || null);
     } catch (e) { console.error('[ask] failed', e); }
     finally { setLoading(false); }

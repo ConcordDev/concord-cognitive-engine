@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, PieChart as PieIcon } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Line { id: string; code: string; name: string; amount: number }
@@ -28,7 +28,7 @@ export function PLStatement() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'pl-compute', input: { start, end } });
+      const r = await lensRun({ domain: 'accounting', action: 'pl-compute', input: { start, end } });
       setPL((r.data?.result as PL) || null);
     } catch (e) { console.error('[PL] failed', e); }
     finally { setLoading(false); }

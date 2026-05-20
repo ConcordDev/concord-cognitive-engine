@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, Search, Loader2, Video, MapPin, CreditCard } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 
@@ -44,7 +44,7 @@ export function AppointmentScheduler() {
   async function search() {
     setLoading(true); setSelectedProvider(null); setSlots([]); setConfirmed(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'healthcare', action: 'providers-search',
         input: { specialty, insurance: insurance || undefined, zipCode: zipCode || undefined },
       });
@@ -56,7 +56,7 @@ export function AppointmentScheduler() {
   async function loadSlots(p: Provider) {
     setSelectedProvider(p); setSlots([]);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'healthcare', action: 'provider-slots', input: { providerId: p.id, days: 14 },
       });
       setSlots((res.data?.result?.slots || []) as AppointmentSlot[]);
@@ -68,7 +68,7 @@ export function AppointmentScheduler() {
     setBookingId(slot.date + slot.time);
     try {
       const copayNum = Number(copayUsd);
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'healthcare', action: 'appointment-book',
         input: {
           providerId: selectedProvider.id, date: slot.date, time: slot.time, kind: slot.kind,
@@ -85,7 +85,7 @@ export function AppointmentScheduler() {
     if (!confirmed?.appointmentId) return;
     setCopayMessage(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'healthcare', action: 'appointment-charge-copay',
         input: { appointmentId: confirmed.appointmentId },
       });

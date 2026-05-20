@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { Banknote, Loader2, Sparkles, Check, RefreshCw, Plus, Upload } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
@@ -44,8 +44,8 @@ export function BankFeedsInbox() {
     setLoading(true);
     try {
       const [a, t] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'accounting', action: 'coa-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'accounting', action: 'bank-feeds-list', input: { status: 'uncategorized' } }),
+        lensRun({ domain: 'accounting', action: 'coa-list', input: {} }),
+        lensRun({ domain: 'accounting', action: 'bank-feeds-list', input: { status: 'uncategorized' } }),
       ]);
       setAccounts((a.data?.result?.accounts || []) as Account[]);
       setTxns((t.data?.result?.txns || []) as BankTxn[]);
@@ -56,7 +56,7 @@ export function BankFeedsInbox() {
   async function suggestAll() {
     setSuggesting(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'accounting', action: 'bank-feeds-bulk-suggest', input: {} });
+      const res = await lensRun({ domain: 'accounting', action: 'bank-feeds-bulk-suggest', input: {} });
       const items = (res.data?.result?.suggestions || []) as Suggestion[];
       const map = new Map<string, Suggestion>();
       for (const s of items) map.set(s.txnId, s);
@@ -70,7 +70,7 @@ export function BankFeedsInbox() {
     const pickAccountId = accountId || sugg?.suggestedAccountId;
     if (!pickAccountId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'bank-feeds-categorize', input: { txnId, accountId: pickAccountId } });
+      await lensRun({ domain: 'accounting', action: 'bank-feeds-categorize', input: { txnId, accountId: pickAccountId } });
       setSuggestions(prev => { const next = new Map(prev); next.delete(txnId); return next; });
       setTxns(prev => prev.filter(t => t.id !== txnId));
     } catch (e) { console.error('[BankFeeds] categorize failed', e); }
@@ -82,7 +82,7 @@ export function BankFeedsInbox() {
       .map(s => ({ txnId: s.txnId, accountId: s.suggestedAccountId }));
     if (picks.length === 0) return;
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'bank-feeds-bulk-accept', input: { picks } });
+      await lensRun({ domain: 'accounting', action: 'bank-feeds-bulk-accept', input: { picks } });
       const accepted = new Set(picks.map(p => p.txnId));
       setTxns(prev => prev.filter(t => !accepted.has(t.id)));
       setSuggestions(prev => { const next = new Map(prev); for (const id of accepted) next.delete(id); return next; });
@@ -92,7 +92,7 @@ export function BankFeedsInbox() {
   async function importTxn() {
     if (!importDraft.description.trim() || !importDraft.amount) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'accounting', action: 'bank-feeds-import',
         input: { description: importDraft.description.trim(), amount: Number(importDraft.amount), date: importDraft.date || undefined },
       });

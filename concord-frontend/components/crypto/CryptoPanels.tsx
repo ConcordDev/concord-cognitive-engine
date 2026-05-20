@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Pause, Play, Sparkles, Activity, Repeat, Coins, ImageIcon, Eye, Receipt, Zap } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 const CHAINS = ['ethereum','solana','bitcoin','polygon','base','arbitrum','optimism','sui','avalanche'];
@@ -21,7 +21,7 @@ export function WatchlistPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'watchlist-list', input: {} });
+      const r = await lensRun({ domain: 'crypto', action: 'watchlist-list', input: {} });
       setList((r.data?.result?.watchlist || []) as Watch[]);
     } catch (e) { console.error('[Watchlist] failed', e); }
     finally { setLoading(false); }
@@ -30,7 +30,7 @@ export function WatchlistPanel() {
   async function add() {
     if (!draft.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'crypto', action: 'watchlist-add', input: { symbol: draft.trim().toLowerCase() } });
+      await lensRun({ domain: 'crypto', action: 'watchlist-add', input: { symbol: draft.trim().toLowerCase() } });
       setDraft('');
       await refresh();
     } catch (e) { console.error('[Watchlist] add', e); }
@@ -38,7 +38,7 @@ export function WatchlistPanel() {
 
   async function remove(symbol: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'crypto', action: 'watchlist-remove', input: { symbol } });
+      await lensRun({ domain: 'crypto', action: 'watchlist-remove', input: { symbol } });
       await refresh();
     } catch (e) { console.error('[Watchlist] remove', e); }
   }
@@ -90,7 +90,7 @@ export function RecurringBuysPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'recurring-buys-list', input: {} });
+      const r = await lensRun({ domain: 'crypto', action: 'recurring-buys-list', input: {} });
       setList((r.data?.result?.recurringBuys || []) as Recurring[]);
     } catch (e) { console.error('[DCA] failed', e); }
     finally { setLoading(false); }
@@ -99,7 +99,7 @@ export function RecurringBuysPanel() {
   async function create() {
     if (!draft.symbol.trim() || !draft.amountUsd) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'recurring-buys-create', input: {
+      const r = await lensRun({ domain: 'crypto', action: 'recurring-buys-create', input: {
         symbol: draft.symbol.trim().toLowerCase(),
         ticker: draft.ticker.trim() || draft.symbol.trim().toUpperCase(),
         amountUsd: Number(draft.amountUsd),
@@ -114,14 +114,14 @@ export function RecurringBuysPanel() {
   }
 
   async function toggle(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'crypto', action: 'recurring-buys-toggle', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'crypto', action: 'recurring-buys-toggle', input: { id } }); await refresh(); }
     catch (e) { console.error('[DCA] toggle', e); }
   }
 
   async function runDue() {
     setRunning(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'recurring-buys-run-due', input: {} });
+      const r = await lensRun({ domain: 'crypto', action: 'recurring-buys-run-due', input: {} });
       const n = r.data?.result?.ran || 0;
       alert(`Ran ${n} DCA buy${n === 1 ? '' : 's'} at live CoinGecko prices.`);
       await refresh();
@@ -189,7 +189,7 @@ export function StakingPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'staking-positions-list', input: {} });
+      const r = await lensRun({ domain: 'crypto', action: 'staking-positions-list', input: {} });
       setList((r.data?.result?.positions || []) as StakingPos[]);
     } catch (e) { console.error('[Staking] failed', e); }
     finally { setLoading(false); }
@@ -198,7 +198,7 @@ export function StakingPanel() {
   async function stake() {
     if (!draft.symbol || !draft.qty) return;
     try {
-      await api.post('/api/lens/run', { domain: 'crypto', action: 'staking-stake', input: { ...draft, qty: Number(draft.qty), aprPct: Number(draft.aprPct) || undefined } });
+      await lensRun({ domain: 'crypto', action: 'staking-stake', input: { ...draft, qty: Number(draft.qty), aprPct: Number(draft.aprPct) || undefined } });
       setDraft({ symbol: 'solana', ticker: 'SOL', qty: '', validator: '', aprPct: '', chain: 'solana' });
       setShow(false);
       await refresh();
@@ -207,14 +207,14 @@ export function StakingPanel() {
 
   async function unstake(id: string) {
     if (!confirm('Unstake this position?')) return;
-    try { await api.post('/api/lens/run', { domain: 'crypto', action: 'staking-unstake', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'crypto', action: 'staking-unstake', input: { id } }); await refresh(); }
     catch (e) { console.error('[Staking] unstake', e); }
   }
 
   async function recordReward() {
     if (!rewardFor || !rewardDraft.rewardQty || !rewardDraft.rewardUsd) return;
     try {
-      await api.post('/api/lens/run', { domain: 'crypto', action: 'staking-rewards-record', input: { positionId: rewardFor.id, rewardQty: Number(rewardDraft.rewardQty), rewardUsd: Number(rewardDraft.rewardUsd) } });
+      await lensRun({ domain: 'crypto', action: 'staking-rewards-record', input: { positionId: rewardFor.id, rewardQty: Number(rewardDraft.rewardQty), rewardUsd: Number(rewardDraft.rewardUsd) } });
       setRewardFor(null);
       setRewardDraft({ rewardQty: '', rewardUsd: '' });
       await refresh();
@@ -287,7 +287,7 @@ export function NFTsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'nfts-list', input: {} });
+      const r = await lensRun({ domain: 'crypto', action: 'nfts-list', input: {} });
       setList((r.data?.result?.nfts || []) as NFT[]);
     } catch (e) { console.error('[NFT] failed', e); }
     finally { setLoading(false); }
@@ -296,7 +296,7 @@ export function NFTsPanel() {
   async function add() {
     if (!draft.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'crypto', action: 'nfts-add', input: { ...draft, costBasisUsd: Number(draft.costBasisUsd) || 0 } });
+      await lensRun({ domain: 'crypto', action: 'nfts-add', input: { ...draft, costBasisUsd: Number(draft.costBasisUsd) || 0 } });
       setDraft({ name: '', collection: '', chain: 'ethereum', contractAddress: '', tokenId: '', imageUrl: '', costBasisUsd: '' });
       setShow(false);
       await refresh();
@@ -305,7 +305,7 @@ export function NFTsPanel() {
 
   async function remove(id: string) {
     if (!confirm('Remove this NFT from your tracker?')) return;
-    try { await api.post('/api/lens/run', { domain: 'crypto', action: 'nfts-delete', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'crypto', action: 'nfts-delete', input: { id } }); await refresh(); }
     catch (e) { console.error('[NFT] delete', e); }
   }
 
@@ -376,7 +376,7 @@ export function ActivityPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'transactions-list', input: kind === 'all' ? { limit: 200 } : { kind, limit: 200 } });
+      const r = await lensRun({ domain: 'crypto', action: 'transactions-list', input: kind === 'all' ? { limit: 200 } : { kind, limit: 200 } });
       setList((r.data?.result?.transactions || []) as Tx[]);
     } catch (e) { console.error('[Activity] failed', e); }
     finally { setLoading(false); }
@@ -438,7 +438,7 @@ export function TaxPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'tax-report', input: { year } });
+      const r = await lensRun({ domain: 'crypto', action: 'tax-report', input: { year } });
       setReport((r.data?.result as TaxReport) || null);
     } catch (e) { console.error('[Tax] failed', e); }
     finally { setLoading(false); }
@@ -521,7 +521,7 @@ export function InsightsPanel() {
     setLoading(true);
     setData(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'crypto', action: 'ai-portfolio-insight', input: {} });
+      const r = await lensRun({ domain: 'crypto', action: 'ai-portfolio-insight', input: {} });
       setData((r.data?.result as Insight) || null);
     } catch (e) { console.error('[Insight] failed', e); }
     finally { setLoading(false); }

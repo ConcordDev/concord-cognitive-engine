@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Store, Loader2, Save } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Shop {
   id: string; name: string; slug: string; tagline: string; bio: string;
@@ -23,7 +23,7 @@ export function ShopSettingsPanel({ onUpdated }: { onUpdated?: (shop: Shop) => v
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'shop-get', input: {} });
+      const r = await lensRun({ domain: 'marketplace', action: 'shop-get', input: {} });
       setShop(r.data?.result?.shop || null);
     } catch (e) { console.error('[Shop] get', e); }
     finally { setLoading(false); }
@@ -33,7 +33,7 @@ export function ShopSettingsPanel({ onUpdated }: { onUpdated?: (shop: Shop) => v
     if (!shop) return;
     setSaving(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'shop-update', input: shop });
+      const r = await lensRun({ domain: 'marketplace', action: 'shop-update', input: shop as unknown as Record<string, unknown> });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       const updated = r.data?.result?.shop as Shop;
       setShop(updated);

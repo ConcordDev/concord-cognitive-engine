@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Repeat, Trash2, Loader2, AlertCircle, ArrowDownAZ } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Subscription {
@@ -27,7 +27,7 @@ export function SubscriptionDetector() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'finance', action: 'subscriptions-detect', input: {},
       });
       setSubs((res.data?.result?.subscriptions || []) as Subscription[]);
@@ -38,7 +38,7 @@ export function SubscriptionDetector() {
   async function cancel(id: string) {
     if (!confirm('Mark as cancelled (you handle the actual cancellation off-app)?')) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'subscriptions-cancel', input: { id },
       });
       setSubs(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled' } : s));

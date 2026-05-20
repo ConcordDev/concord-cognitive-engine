@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Leaf, Plus, Trash2, Loader2, Factory, Zap, Plane } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Activity { id: string; factorKey: string; amount: number; unit: string; scope: 1 | 2 | 3; co2eKg: number; co2eTonnes: number; date: string; facility: string; category: string; source: string }
@@ -28,8 +28,8 @@ export function EmissionsActivitiesPanel() {
     setLoading(true);
     try {
       const [a, f] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'environment', action: 'activities-list', input: filter ? { scope: Number(filter) } : {} }),
-        api.post('/api/lens/run', { domain: 'environment', action: 'emission-factors-list', input: {} }),
+        lensRun({ domain: 'environment', action: 'activities-list', input: filter ? { scope: Number(filter) } : {} }),
+        lensRun({ domain: 'environment', action: 'emission-factors-list', input: {} }),
       ]);
       setActivities((a.data?.result?.activities || []) as Activity[]);
       setFactors((f.data?.result?.factors || []) as Factor[]);
@@ -40,7 +40,7 @@ export function EmissionsActivitiesPanel() {
   async function log() {
     if (!form.amount) return;
     try {
-      const res = await api.post('/api/lens/run', { domain: 'environment', action: 'activities-log', input: { ...form, amount: Number(form.amount) } });
+      const res = await lensRun({ domain: 'environment', action: 'activities-log', input: { ...form, amount: Number(form.amount) } });
       if (res.data?.ok === false) alert(res.data?.error);
       setForm({ ...form, amount: '', facility: '', category: '' });
       await refresh();
@@ -49,7 +49,7 @@ export function EmissionsActivitiesPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'environment', action: 'activities-delete', input: { id } });
+      await lensRun({ domain: 'environment', action: 'activities-delete', input: { id } });
       setActivities(prev => prev.filter(a => a.id !== id));
     } catch (e) { console.error('[Activities] delete', e); }
   }

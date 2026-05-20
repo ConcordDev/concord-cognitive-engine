@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Activity, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Event { id: string; shipmentId: string; kind: string; timestamp: string; location: string }
@@ -26,7 +26,7 @@ export function ShipmentEventsTimeline({ shipmentId }: { shipmentId?: string }) 
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'shipment-events', input: shipmentId ? { shipmentId } : {} });
+      const res = await lensRun({ domain: 'logistics', action: 'shipment-events', input: shipmentId ? { shipmentId } : {} });
       setEvents((res.data?.result?.events || []) as Event[]);
     } catch (e) { console.error('[Events] failed', e); }
     finally { setLoading(false); }

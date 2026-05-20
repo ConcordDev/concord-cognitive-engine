@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { EtsyShell, ShopNav } from './EtsyShell';
 import { ShopDashboard } from './ShopDashboard';
 import { ListingsPanel } from './ListingsPanel';
@@ -19,7 +19,7 @@ export function EtsySection() {
   const [badges, setBadges] = useState<Partial<Record<ShopNav, number>>>({});
 
   useEffect(() => {
-    api.post('/api/lens/run', { domain: 'marketplace', action: 'shop-get', input: {} })
+    lensRun({ domain: 'marketplace', action: 'shop-get', input: {} })
       .then(r => setShop(r.data?.result?.shop || null))
       .catch(() => {});
   }, []);
@@ -27,7 +27,7 @@ export function EtsySection() {
 
   async function refreshBadges() {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'dashboard-summary', input: {} });
+      const r = await lensRun({ domain: 'marketplace', action: 'dashboard-summary', input: {} });
       const d = r.data?.result;
       if (d) {
         setBadges({

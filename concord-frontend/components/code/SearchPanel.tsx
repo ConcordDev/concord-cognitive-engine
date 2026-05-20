@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Search, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Ref { path: string; line: number; snippet: string }
 
@@ -15,7 +15,7 @@ export function SearchPanel({ projectId, onOpen }: { projectId: string | null; o
     if (!projectId || q.trim().length < 2) return;
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'find-references', input: { projectId, symbol: q.trim() } });
+      const r = await lensRun({ domain: 'code', action: 'find-references', input: { projectId, symbol: q.trim() } });
       setRefs((r.data?.result?.references || []) as Ref[]);
     } catch (e) { console.error('[Search] failed', e); }
     finally { setLoading(false); }

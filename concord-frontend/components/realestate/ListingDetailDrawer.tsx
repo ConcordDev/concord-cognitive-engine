@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { X, MapPin, BedDouble, Bath, Maximize2, Heart, Calendar, Flame } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { Listing } from './ListingsBrowser';
 
@@ -23,9 +23,9 @@ export function ListingDetailDrawer({ listing, onClose, onRequestTour }: { listi
     (async () => {
       try {
         const [g, h, f] = await Promise.all([
-          api.post('/api/lens/run', { domain: 'realestate', action: 'listings-get', input: { id: listing.id } }),
-          api.post('/api/lens/run', { domain: 'realestate', action: 'hot-score', input: { listingId: listing.id } }),
-          api.post('/api/lens/run', { domain: 'realestate', action: 'favourites-list', input: {} }),
+          lensRun({ domain: 'realestate', action: 'listings-get', input: { id: listing.id } }),
+          lensRun({ domain: 'realestate', action: 'hot-score', input: { listingId: listing.id } }),
+          lensRun({ domain: 'realestate', action: 'favourites-list', input: {} }),
         ]);
         setFull((g.data?.result?.listing as FullListing) || null);
         setHot((h.data?.result as HotScore) || null);
@@ -37,7 +37,7 @@ export function ListingDetailDrawer({ listing, onClose, onRequestTour }: { listi
   async function toggleFav() {
     if (!listing) return;
     try {
-      const res = await api.post('/api/lens/run', { domain: 'realestate', action: 'favourites-toggle', input: { id: listing.id } });
+      const res = await lensRun({ domain: 'realestate', action: 'favourites-toggle', input: { id: listing.id } });
       setFav(Boolean(res.data?.result?.favourited));
     } catch (e) { console.error('[Detail] favourite failed', e); }
   }

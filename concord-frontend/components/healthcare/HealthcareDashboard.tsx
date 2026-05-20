@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Users, ClipboardList, Mail, Pill, AlertTriangle, FlaskConical, Calendar, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { EpicNav } from './EpicShell';
 
@@ -25,7 +25,7 @@ export function HealthcareDashboard({ onJumpTo }: { onJumpTo?: (n: EpicNav) => v
     let cancelled = false;
     async function refresh() {
       try {
-        const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'dashboard-summary', input: {} });
+        const r = await lensRun({ domain: 'healthcare', action: 'dashboard-summary', input: {} });
         if (!cancelled) setData((r.data?.result as Summary) || null);
       } catch (e) { console.error('[Dash] failed', e); }
       finally { if (!cancelled) setLoading(false); }

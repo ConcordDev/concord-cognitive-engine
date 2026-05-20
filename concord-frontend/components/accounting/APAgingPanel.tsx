@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Bill {
@@ -20,7 +20,7 @@ export function APAgingPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'aging-ap', input: {} });
+      const r = await lensRun({ domain: 'accounting', action: 'aging-ap', input: {} });
       const result = r.data?.result;
       if (result) setData({ buckets: result.buckets as Bucket[], totalOpen: result.totalOpen, asOf: result.asOf });
     } catch (e) { console.error('[APAging] failed', e); }

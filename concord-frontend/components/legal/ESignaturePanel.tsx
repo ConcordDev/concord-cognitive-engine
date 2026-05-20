@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Mail, Loader2, CheckCircle, Clock } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Recipient {
@@ -28,7 +28,7 @@ export function ESignaturePanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'legal', action: 'esign-envelopes-list', input: filter === 'all' ? {} : { status: filter } });
+      const r = await lensRun({ domain: 'legal', action: 'esign-envelopes-list', input: filter === 'all' ? {} : { status: filter } });
       setList((r.data?.result?.envelopes || []) as Envelope[]);
     } catch (e) { console.error('[Esign] list failed', e); }
     finally { setLoading(false); }
@@ -36,7 +36,7 @@ export function ESignaturePanel() {
 
   async function recipientSign(envelopeId: string, recipientId: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'esign-envelope-sign', input: { envelopeId, recipientId, ip: window.location.host, userAgent: navigator.userAgent } });
+      await lensRun({ domain: 'legal', action: 'esign-envelope-sign', input: { envelopeId, recipientId, ip: window.location.host, userAgent: navigator.userAgent } });
       await refresh();
     } catch (e) { console.error('[Esign] sign failed', e); }
   }

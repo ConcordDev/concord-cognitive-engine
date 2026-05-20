@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Activity, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Lane { id: string; trackId: string; parameter: string; points: Array<{ id: string; timeBeats: number; value: number }>; visible: boolean }
 
@@ -19,7 +19,7 @@ export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
     if (!trackId) { setLanes([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'studio', action: 'automation-list', input: { trackId } });
+      const res = await lensRun({ domain: 'studio', action: 'automation-list', input: { trackId } });
       setLanes((res.data?.result?.lanes || []) as Lane[]);
     } catch (e) { console.error('[Automation] failed', e); }
     finally { setLoading(false); }
@@ -28,21 +28,21 @@ export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
   async function addLane() {
     if (!trackId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'automation-add-lane', input: { trackId, parameter } });
+      await lensRun({ domain: 'studio', action: 'automation-add-lane', input: { trackId, parameter } });
       await refresh();
     } catch (e) { console.error('[Automation] add-lane', e); }
   }
 
   async function addPoint(laneId: string, timeBeats: number, value: number) {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'automation-add-point', input: { laneId, timeBeats, value } });
+      await lensRun({ domain: 'studio', action: 'automation-add-point', input: { laneId, timeBeats, value } });
       await refresh();
     } catch (e) { console.error('[Automation] add-point', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'automation-delete-lane', input: { id } });
+      await lensRun({ domain: 'studio', action: 'automation-delete-lane', input: { id } });
       setLanes(prev => prev.filter(l => l.id !== id));
     } catch (e) { console.error('[Automation] delete', e); }
   }

@@ -28,7 +28,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface AqiObservation {
@@ -128,7 +128,7 @@ export function AirQualityActionStack() {
     if (!dominant) { err('Load an AQI reading first.'); return; }
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu',
         name: 'create',
         input: {
@@ -152,7 +152,7 @@ export function AirQualityActionStack() {
           },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) { setSnapshotDtuId(id); ok(`Snapshot minted ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
@@ -180,7 +180,7 @@ export function AirQualityActionStack() {
     if (!dominant) { err('Load an AQI reading first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu',
         name: 'create',
         input: {
@@ -204,7 +204,7 @@ export function AirQualityActionStack() {
           },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (!id) { err('No DTU id returned.'); return; }
       const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
@@ -229,12 +229,12 @@ export function AirQualityActionStack() {
         'Return a short plaintext brief: who should adjust today\'s plans, what activities are still fine,',
         'and what indoor/mask/ventilation steps make sense.',
       ].join(' ');
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'chat_agent',
         name: 'do',
         input: { task, maxTurns: 4 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Agent finished risk brief.');

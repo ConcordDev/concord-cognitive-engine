@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { MapPin, Phone, Mail, Globe, Search, Loader2, Users, Twitter } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface Rep {
   name: string;
@@ -28,7 +28,7 @@ export function RepresentativeFinder() {
     if (!address.trim()) { setError('Enter address or ZIP'); return; }
     setError(null); setLoading(true); setReps([]);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'government', action: 'representatives-find', input: { address: address.trim() },
       });
       setReps((res.data?.result?.representatives || []) as Rep[]);

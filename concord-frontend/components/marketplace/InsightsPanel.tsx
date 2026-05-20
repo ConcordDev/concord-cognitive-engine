@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Sparkles, Search, Loader2, Bookmark, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface SavedSearch { id: string; keyword: string; savedAt: string }
 interface InsightResult {
@@ -22,7 +22,7 @@ export function InsightsPanel() {
 
   async function refreshSaved() {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'saved-searches-list', input: {} });
+      const r = await lensRun({ domain: 'marketplace', action: 'saved-searches-list', input: {} });
       setSaved((r.data?.result?.savedSearches || []) as SavedSearch[]);
     } catch (e) { console.error('[Insights] saved', e); }
   }
@@ -31,7 +31,7 @@ export function InsightsPanel() {
     if (!keyword.trim()) return;
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'insights-keyword-search', input: { keyword: keyword.trim() } });
+      const r = await lensRun({ domain: 'marketplace', action: 'insights-keyword-search', input: { keyword: keyword.trim() } });
       setResult(r.data?.result || null);
     } catch (e) { console.error('[Insights] search', e); }
     finally { setLoading(false); }
@@ -40,14 +40,14 @@ export function InsightsPanel() {
   async function save() {
     if (!result) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'marketplace', action: 'saved-searches-save', input: { keyword: result.keyword } });
+      const r = await lensRun({ domain: 'marketplace', action: 'saved-searches-save', input: { keyword: result.keyword } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       await refreshSaved();
     } catch (e) { console.error('[Insights] save', e); }
   }
 
   async function remove(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'marketplace', action: 'saved-searches-delete', input: { id } }); await refreshSaved(); }
+    try { await lensRun({ domain: 'marketplace', action: 'saved-searches-delete', input: { id } }); await refreshSaved(); }
     catch (e) { console.error('[Insights] remove', e); }
   }
 

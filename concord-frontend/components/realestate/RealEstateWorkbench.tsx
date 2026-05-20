@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Home, Calculator, Save, Trash2, Plus, ScrollText } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -73,7 +73,7 @@ function MortgageTab() {
 
   const calc = async () => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'realestate', action: 'calc-mortgage', input: vals });
+      const r = await lensRun({ domain: 'realestate', action: 'calc-mortgage', input: vals });
       setResult(((r.data as { result?: typeof result }).result) || null);
     } catch (e) { console.error(e); }
   };
@@ -134,7 +134,7 @@ function AffordTab() {
 
   const calc = async () => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'realestate', action: 'calc-affordability', input: vals });
+      const r = await lensRun({ domain: 'realestate', action: 'calc-affordability', input: vals });
       setResult(((r.data as { result?: typeof result }).result) || null);
     } catch (e) { console.error(e); }
   };
@@ -189,7 +189,7 @@ function RentBuyTab() {
 
   const calc = async () => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'realestate', action: 'calc-rent-vs-buy', input: vals });
+      const r = await lensRun({ domain: 'realestate', action: 'calc-rent-vs-buy', input: vals });
       setResult(((r.data as { result?: typeof result }).result) || null);
     } catch (e) { console.error(e); }
   };
@@ -251,7 +251,7 @@ function SearchesTab() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'realestate', action: 'saved-searches-list', input: {} });
+      const r = await lensRun({ domain: 'realestate', action: 'saved-searches-list', input: {} });
       setSearches(((r.data as { result?: { searches?: typeof searches } }).result?.searches) || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -261,7 +261,7 @@ function SearchesTab() {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'realestate', action: 'save-search', input: { ...draft, filters: {} } });
+      await lensRun({ domain: 'realestate', action: 'save-search', input: { ...draft, filters: {} } });
       setCreating(false); setDraft({ name: '', alertCadence: 'weekly' });
       await refresh();
     } catch (e) { console.error(e); }
@@ -269,7 +269,7 @@ function SearchesTab() {
 
   const remove = async (id: string) => {
     try {
-      await api.post('/api/lens/run', { domain: 'realestate', action: 'delete-search', input: { id } });
+      await lensRun({ domain: 'realestate', action: 'delete-search', input: { id } });
       await refresh();
     } catch (e) { console.error(e); }
   };

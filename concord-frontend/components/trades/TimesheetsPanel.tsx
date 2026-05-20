@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Clock, Loader2, Play, Square } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Entry { id: string; technicianId: string; jobId: string | null; clockIn: string; clockOut: string | null; durationMin: number | null }
@@ -21,8 +21,8 @@ export function TimesheetsPanel() {
     setLoading(true);
     try {
       const [a, b] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'trades', action: 'timesheets-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'trades', action: 'technicians-list', input: {} }),
+        lensRun({ domain: 'trades', action: 'timesheets-list', input: {} }),
+        lensRun({ domain: 'trades', action: 'technicians-list', input: {} }),
       ]);
       setEntries((a.data?.result?.entries || []) as Entry[]);
       setTechs((b.data?.result?.technicians || []) as Tech[]);
@@ -33,7 +33,7 @@ export function TimesheetsPanel() {
   async function clockIn() {
     if (!selectedTech) return;
     try {
-      const res = await api.post('/api/lens/run', { domain: 'trades', action: 'timesheets-clock-in', input: { technicianId: selectedTech, jobId: jobId || undefined } });
+      const res = await lensRun({ domain: 'trades', action: 'timesheets-clock-in', input: { technicianId: selectedTech, jobId: jobId || undefined } });
       if (res.data?.ok === false) alert(res.data?.error);
       setJobId('');
       await refresh();
@@ -42,7 +42,7 @@ export function TimesheetsPanel() {
 
   async function clockOut(technicianId: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'timesheets-clock-out', input: { technicianId } });
+      await lensRun({ domain: 'trades', action: 'timesheets-clock-out', input: { technicianId } });
       await refresh();
     } catch (e) { console.error('[Timesheets] clock-out', e); }
   }

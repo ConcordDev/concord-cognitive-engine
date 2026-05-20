@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Package, Plus, Trash2, Loader2, ArrowRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 const ShipmentsMap = dynamic(() => import('./ShipmentsMap').then(m => m.ShipmentsMap), { ssr: false });
@@ -37,7 +37,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'shipments-list', input: {} });
+      const res = await lensRun({ domain: 'logistics', action: 'shipments-list', input: {} });
       const items = (res.data?.result?.shipments || res.data?.result?.items || []);
       setShipments(items as Shipment[]);
     } catch (e) { console.error('[Shipments] failed', e); }
@@ -47,7 +47,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
   async function create() {
     if (!form.origin.trim() || !form.destination.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'logistics', action: 'shipments-create',
         input: { origin: form.origin, destination: form.destination, mode: form.mode, weightLbs: Number(form.weightLbs) || 0, poNumber: form.poNumber, consignee: form.consignee },
       });
@@ -59,14 +59,14 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
 
   async function setStatus(id: string, status: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'shipments-set-status', input: { id, status } });
+      await lensRun({ domain: 'logistics', action: 'shipments-set-status', input: { id, status } });
       await refresh();
     } catch (e) { console.error('[Shipments] status', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'shipments-delete', input: { id } });
+      await lensRun({ domain: 'logistics', action: 'shipments-delete', input: { id } });
       setShipments(prev => prev.filter(s => s.id !== id));
     } catch (e) { console.error('[Shipments] delete', e); }
   }

@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { Car, AlertOctagon, Wrench, Search, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -96,8 +96,8 @@ export function AutomotiveActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Vehicle — ${year} ${make} ${model}`, tags: ['automotive', 'vehicle', make.toLowerCase()], source: 'automotive:vehicle:mint', meta: { visibility: 'private', consent: { allowCitations: false }, auto: { vin: vinResult, recalls: recallResult, maint: maintResult, diag: diagResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Vehicle — ${year} ${make} ${model}`, tags: ['automotive', 'vehicle', make.toLowerCase()], source: 'automotive:vehicle:mint', meta: { visibility: 'private', consent: { allowCitations: false }, auto: { vin: vinResult, recalls: recallResult, maint: maintResult, diag: diagResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('auto.mintedDtuId', id, { label: `Vehicle DTU ${id.slice(0, 8)}…` }); ok(`Vehicle DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -125,8 +125,8 @@ export function AutomotiveActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `${year} ${make} ${model} reference`, tags: ['automotive', 'vehicle', 'public', make.toLowerCase()], source: 'automotive:reference:publish', meta: { visibility: 'public', consent: { allowCitations: true }, vin: vinResult, recalls: recallResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `${year} ${make} ${model} reference`, tags: ['automotive', 'vehicle', 'public', make.toLowerCase()], source: 'automotive:reference:publish', meta: { visibility: 'public', consent: { allowCitations: true }, vin: vinResult, recalls: recallResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -139,8 +139,8 @@ export function AutomotiveActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Vehicle advisory for ${year} ${make} ${model} @ ${currentMiles} mi. ${vinResult ? `${vinResult.engineDisplacementL}L ${vinResult.engineCylinders}-cyl ${vinResult.fuelType}.` : ''} ${(recallResult?.count ?? recallResult?.recalls?.length ?? 0) > 0 ? `Open recalls: ${recallResult?.recalls?.[0]?.component}.` : 'No active recalls.'} ${maintResult ? `${maintResult.overdueCount ?? 0} maintenance items overdue.` : ''} ${diagResult ? `OBD code ${diagResult.code}: ${diagResult.description}.` : ''} Identify the single most important action for the owner this month + estimated cost. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Advisory ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

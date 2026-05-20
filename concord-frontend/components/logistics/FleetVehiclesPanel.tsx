@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Truck, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Vehicle { id: string; number: string; kind: string; make: string; model: string; year: number | null; mileage: number; capacityLbs: number; status: 'available' | 'in_use' | 'maintenance' | 'out_of_service' }
@@ -27,7 +27,7 @@ export function FleetVehiclesPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'fleet-vehicles-list', input: {} });
+      const res = await lensRun({ domain: 'logistics', action: 'fleet-vehicles-list', input: {} });
       setVehicles((res.data?.result?.vehicles || []) as Vehicle[]);
     } catch (e) { console.error('[Fleet] failed', e); }
     finally { setLoading(false); }
@@ -36,7 +36,7 @@ export function FleetVehiclesPanel() {
   async function add() {
     if (!form.number.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'logistics', action: 'fleet-vehicles-add',
         input: { ...form, year: Number(form.year) || undefined, capacityLbs: Number(form.capacityLbs) || 0 },
       });
@@ -47,14 +47,14 @@ export function FleetVehiclesPanel() {
 
   async function setStatus(id: string, status: Vehicle['status']) {
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'fleet-vehicles-update-status', input: { id, status } });
+      await lensRun({ domain: 'logistics', action: 'fleet-vehicles-update-status', input: { id, status } });
       await refresh();
     } catch (e) { console.error('[Fleet] status', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'fleet-vehicles-delete', input: { id } });
+      await lensRun({ domain: 'logistics', action: 'fleet-vehicles-delete', input: { id } });
       setVehicles(prev => prev.filter(v => v.id !== id));
     } catch (e) { console.error('[Fleet] delete', e); }
   }

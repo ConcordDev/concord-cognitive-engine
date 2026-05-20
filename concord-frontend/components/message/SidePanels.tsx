@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Bell, Calendar, Bookmark, Inbox, Loader2, XCircle, Sparkles } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Mention { messageId: string; channelId: string; senderId: string; body: string; ts: string }
 interface Scheduled { id: string; number: string; channelId: string; body: string; sendAt: string }
@@ -12,7 +12,7 @@ export function ActivityFeed() {
   const [list, setList] = useState<Mention[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    api.post('/api/lens/run', { domain: 'message', action: 'activity-feed', input: {} })
+    lensRun({ domain: 'message', action: 'activity-feed', input: {} })
       .then(r => setList((r.data?.result?.mentions || []) as Mention[]))
       .catch(e => console.error('[Activity] failed', e))
       .finally(() => setLoading(false));
@@ -47,19 +47,19 @@ export function ScheduledList({ onChanged }: { onChanged?: () => void }) {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'schedule-list', input: {} });
+      const r = await lensRun({ domain: 'message', action: 'schedule-list', input: {} });
       setList((r.data?.result?.scheduled || []) as Scheduled[]);
     } catch (e) { console.error('[Sched] failed', e); }
     finally { setLoading(false); }
   }
   async function cancel(id: string) {
     if (!confirm('Cancel this scheduled send?')) return;
-    try { await api.post('/api/lens/run', { domain: 'message', action: 'schedule-cancel', input: { id } }); await refresh(); onChanged?.(); }
+    try { await lensRun({ domain: 'message', action: 'schedule-cancel', input: { id } }); await refresh(); onChanged?.(); }
     catch (e) { console.error('[Sched] cancel', e); }
   }
   async function flush() {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'schedule-flush-due', input: {} });
+      const r = await lensRun({ domain: 'message', action: 'schedule-flush-due', input: {} });
       const n = r.data?.result?.sentCount || 0;
       alert(`Sent ${n} due message(s).`);
       await refresh();
@@ -97,7 +97,7 @@ export function SnoozedList() {
   const [list, setList] = useState<Snoozed[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    api.post('/api/lens/run', { domain: 'message', action: 'snooze-list', input: {} })
+    lensRun({ domain: 'message', action: 'snooze-list', input: {} })
       .then(r => setList((r.data?.result?.snoozed || []) as Snoozed[]))
       .catch(e => console.error('[Snoozed] failed', e))
       .finally(() => setLoading(false));
@@ -129,7 +129,7 @@ export function InboxOverview({ onJump }: { onJump: () => void }) {
   const [data, setData] = useState<{ channelCount: number; totalUnread: number; channelsWithUnread: number; mentionCount: number; scheduledCount: number; snoozedCount: number } | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    api.post('/api/lens/run', { domain: 'message', action: 'inbox-summary', input: {} })
+    lensRun({ domain: 'message', action: 'inbox-summary', input: {} })
       .then(r => setData(r.data?.result || null))
       .catch(e => console.error('[Inbox] failed', e))
       .finally(() => setLoading(false));

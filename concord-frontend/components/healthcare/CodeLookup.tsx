@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Database, Search, Loader2, Copy } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Match { code: string; description: string }
 
@@ -16,7 +16,7 @@ export function CodeLookup() {
     if (q.length < 2) return;
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'healthcare', action: 'icd10-search', input: { q } });
+      const r = await lensRun({ domain: 'healthcare', action: 'icd10-search', input: { q } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setMatches((r.data?.result?.matches || []) as Match[]);
       setSource(r.data?.result?.source || '');

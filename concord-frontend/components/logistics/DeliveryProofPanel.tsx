@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CheckCircle, Plus, Loader2, MapPin, FileSignature, Camera } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface POD { id: string; shipmentId: string; signatureName: string; signatureUrl: string | null; photoUrl: string | null; gpsLat: number | null; gpsLng: number | null; deliveredAt: string; receivedBy: string }
 interface Shipment { id: string; trackingNumber: string; origin: string; destination: string; status: string }
@@ -19,8 +19,8 @@ export function DeliveryProofPanel() {
     setLoading(true);
     try {
       const [p, s] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'logistics', action: 'pods-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'logistics', action: 'shipments-list', input: {} }),
+        lensRun({ domain: 'logistics', action: 'pods-list', input: {} }),
+        lensRun({ domain: 'logistics', action: 'shipments-list', input: {} }),
       ]);
       setPods((p.data?.result?.pods || []) as POD[]);
       const items = (s.data?.result?.shipments || s.data?.result?.items || []) as Shipment[];
@@ -32,7 +32,7 @@ export function DeliveryProofPanel() {
   async function confirm() {
     if (!form.shipmentId) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'logistics', action: 'delivery-confirm',
         input: { ...form, gpsLat: form.gpsLat ? Number(form.gpsLat) : undefined, gpsLng: form.gpsLng ? Number(form.gpsLng) : undefined },
       });

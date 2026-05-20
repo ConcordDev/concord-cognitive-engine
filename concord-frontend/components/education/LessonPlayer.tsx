@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Play, CheckCircle, BookOpen, Loader2, ChevronRight, FileText, Clock } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Lesson {
@@ -49,7 +49,7 @@ export function LessonPlayer() {
   async function refreshEnrollments() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'education', action: 'enrollments-list', input: {} });
+      const res = await lensRun({ domain: 'education', action: 'enrollments-list', input: {} });
       const data = (res.data?.result?.enrollments || []) as Enrollment[];
       setEnrollments(data);
       if (data.length > 0 && !courseId) setCourseId(data[0].courseId);
@@ -59,7 +59,7 @@ export function LessonPlayer() {
 
   async function loadCourse(cid: string) {
     try {
-      const res = await api.post('/api/lens/run', { domain: 'education', action: 'lessons-list', input: { courseId: cid } });
+      const res = await lensRun({ domain: 'education', action: 'lessons-list', input: { courseId: cid } });
       const ls = ((res.data?.result?.lessons || []) as Lesson[]).sort((a, b) => a.order - b.order);
       setLessons(ls);
       setActiveLesson(ls[0] || null);
@@ -79,7 +79,7 @@ export function LessonPlayer() {
   async function markComplete(lessonId: string) {
     if (!courseId || completedIds.has(lessonId)) return;
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'lessons-complete', input: { courseId, lessonId } });
+      await lensRun({ domain: 'education', action: 'lessons-complete', input: { courseId, lessonId } });
       setCompletedIds(prev => new Set([...prev, lessonId]));
       await refreshEnrollments();
     } catch (e) { console.error('[LessonPlayer] complete failed', e); }

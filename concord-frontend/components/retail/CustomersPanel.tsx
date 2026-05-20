@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Users, Plus, Trash2, Loader2, Star, Mail } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Customer {
@@ -26,8 +26,8 @@ export function CustomersPanel() {
     setLoading(true);
     try {
       const [a, b] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'retail', action: 'customers-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'retail', action: 'customers-segments', input: {} }),
+        lensRun({ domain: 'retail', action: 'customers-list', input: {} }),
+        lensRun({ domain: 'retail', action: 'customers-segments', input: {} }),
       ]);
       setCustomers((a.data?.result?.customers || []) as Customer[]);
       setSegments(b.data?.result?.segments || null);
@@ -38,7 +38,7 @@ export function CustomersPanel() {
   async function add() {
     if (!form.name.trim() || !form.email.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'customers-add', input: form });
+      await lensRun({ domain: 'retail', action: 'customers-add', input: form });
       setForm({ name: '', email: '', phone: '', city: '', state: '' });
       setCreating(false);
       await refresh();
@@ -47,7 +47,7 @@ export function CustomersPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'customers-delete', input: { id } });
+      await lensRun({ domain: 'retail', action: 'customers-delete', input: { id } });
       setCustomers(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error('[Customers] delete failed', e); }
   }

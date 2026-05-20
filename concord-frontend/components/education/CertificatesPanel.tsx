@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Award, Loader2, Copy } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Cert { id: string; courseTitle: string; institution: string; instructor: string; issuedAt: string; verificationCode: string }
 
@@ -15,7 +15,7 @@ export function CertificatesPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'education', action: 'certificates-list', input: {} });
+      const res = await lensRun({ domain: 'education', action: 'certificates-list', input: {} });
       setCerts((res.data?.result?.certificates || []) as Cert[]);
     } catch (e) { console.error('[Certs] failed', e); }
     finally { setLoading(false); }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, Loader2, Plus, Play, Pause, Zap } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Recurring {
@@ -33,7 +33,7 @@ export function RecurringInvoicesPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'recurring-invoices-list', input: {} });
+      const r = await lensRun({ domain: 'accounting', action: 'recurring-invoices-list', input: {} });
       setList((r.data?.result?.recurring || []) as Recurring[]);
     } catch (e) { console.error('[Recurring] list failed', e); }
     finally { setLoading(false); }
@@ -42,7 +42,7 @@ export function RecurringInvoicesPanel() {
   async function create() {
     if (!draft.customerName.trim() || !draft.total) return;
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'recurring-invoices-create', input: { ...draft, total: Number(draft.total) } });
+      await lensRun({ domain: 'accounting', action: 'recurring-invoices-create', input: { ...draft, total: Number(draft.total) } });
       setDraft({ customerName: '', total: '', cadence: 'monthly', startAt: '', memo: '' });
       setCreating(false);
       await refresh();
@@ -51,7 +51,7 @@ export function RecurringInvoicesPanel() {
 
   async function toggle(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'accounting', action: 'recurring-invoices-toggle', input: { id } });
+      await lensRun({ domain: 'accounting', action: 'recurring-invoices-toggle', input: { id } });
       await refresh();
     } catch (e) { console.error('[Recurring] toggle failed', e); }
   }
@@ -59,7 +59,7 @@ export function RecurringInvoicesPanel() {
   async function runDue() {
     setRunning(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'recurring-invoices-run-due', input: {} });
+      const r = await lensRun({ domain: 'accounting', action: 'recurring-invoices-run-due', input: {} });
       const count = r.data?.result?.count || 0;
       alert(`Generated ${count} invoice${count === 1 ? '' : 's'}.`);
       await refresh();

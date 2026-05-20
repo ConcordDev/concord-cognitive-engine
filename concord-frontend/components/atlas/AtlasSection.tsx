@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2, Plus, Trash2, Search, MapPin, ListChecks, Route, Navigation, Sparkles, History, ChevronRight, Star, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { AtlasShell, AtlasNav } from './AtlasShell';
 
@@ -34,9 +34,9 @@ export function AtlasSection() {
     setLoading(true);
     try {
       const [p, l, t] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'atlas', action: 'places-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'atlas', action: 'lists-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'atlas', action: 'trips-list', input: {} }),
+        lensRun({ domain: 'atlas', action: 'places-list', input: {} }),
+        lensRun({ domain: 'atlas', action: 'lists-list', input: {} }),
+        lensRun({ domain: 'atlas', action: 'trips-list', input: {} }),
       ]);
       const pl = (p.data?.result?.places || []) as Place[];
       setPlaces(pl);
@@ -96,8 +96,8 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
     if (!q.trim()) return;
     setLoading(true);
     try {
-      api.post('/api/lens/run', { domain: 'atlas', action: 'recent-searches-record', input: { query: q.trim() } }).catch(() => {});
-      const r = await api.post('/api/lens/run', { domain: 'atlas', action: 'nominatim-geocode', input: { query: q.trim() } });
+      lensRun({ domain: 'atlas', action: 'recent-searches-record', input: { query: q.trim() } }).catch(() => {});
+      const r = await lensRun({ domain: 'atlas', action: 'nominatim-geocode', input: { query: q.trim() } });
       const matches = (r.data?.result?.matches || r.data?.result?.results || []) as Array<{ displayName?: string; display_name?: string; lat: number | string; lng?: number | string; lon?: number | string }>;
       const parsed = matches.map(m => ({
         name: String(m.displayName || m.display_name || '').split(',')[0] || 'Result',
@@ -113,7 +113,7 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
 
   async function save(r: { name: string; lat: number; lng: number; address: string }) {
     try {
-      await api.post('/api/lens/run', { domain: 'atlas', action: 'places-save', input: { name: r.name, lat: r.lat, lng: r.lng, address: r.address } });
+      await lensRun({ domain: 'atlas', action: 'places-save', input: { name: r.name, lat: r.lat, lng: r.lng, address: r.address } });
       onSaved();
     } catch (e) { console.error('[Explore] save', e); }
   }
@@ -157,7 +157,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
   async function create() {
     if (!draft.name.trim() || !draft.lat || !draft.lng) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'atlas', action: 'places-save', input: { ...draft, lat: Number(draft.lat), lng: Number(draft.lng) } });
+      const r = await lensRun({ domain: 'atlas', action: 'places-save', input: { ...draft, lat: Number(draft.lat), lng: Number(draft.lng) } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setDraft({ name: '', lat: '', lng: '', category: 'other', address: '', notes: '' });
       setCreating(false);
@@ -166,7 +166,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
   }
   async function remove(id: string) {
     if (!confirm('Delete this place?')) return;
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'places-delete', input: { id } }); onChanged(); }
+    try { await lensRun({ domain: 'atlas', action: 'places-delete', input: { id } }); onChanged(); }
     catch (e) { console.error('[Places] delete', e); }
   }
 
@@ -222,21 +222,21 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
 
   async function create() {
     if (!name.trim()) return;
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'lists-create', input: { name: name.trim() } }); setName(''); setCreating(false); onChanged(); }
+    try { await lensRun({ domain: 'atlas', action: 'lists-create', input: { name: name.trim() } }); setName(''); setCreating(false); onChanged(); }
     catch (e) { console.error('[Lists] create', e); }
   }
   async function addPlace(listId: string, placeId: string) {
     if (!placeId) return;
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'lists-add-place', input: { listId, placeId } }); setAddTo(''); onChanged(); }
+    try { await lensRun({ domain: 'atlas', action: 'lists-add-place', input: { listId, placeId } }); setAddTo(''); onChanged(); }
     catch (e) { console.error('[Lists] add', e); }
   }
   async function removePlace(listId: string, placeId: string) {
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'lists-remove-place', input: { listId, placeId } }); onChanged(); }
+    try { await lensRun({ domain: 'atlas', action: 'lists-remove-place', input: { listId, placeId } }); onChanged(); }
     catch (e) { console.error('[Lists] remove', e); }
   }
   async function del(id: string) {
     if (!confirm('Delete this list?')) return;
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'lists-delete', input: { id } }); onChanged(); }
+    try { await lensRun({ domain: 'atlas', action: 'lists-delete', input: { id } }); onChanged(); }
     catch (e) { console.error('[Lists] delete', e); }
   }
 
@@ -303,21 +303,21 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
 
   async function create() {
     if (!name.trim()) return;
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'trips-create', input: { name: name.trim() } }); setName(''); onChanged(); }
+    try { await lensRun({ domain: 'atlas', action: 'trips-create', input: { name: name.trim() } }); setName(''); onChanged(); }
     catch (e) { console.error('[Trips] create', e); }
   }
   async function addStopToTrip(tripId: string, placeId: string) {
     if (!placeId) return;
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'trips-add-stop', input: { tripId, placeId } }); setAddStop(''); onChanged(); }
+    try { await lensRun({ domain: 'atlas', action: 'trips-add-stop', input: { tripId, placeId } }); setAddStop(''); onChanged(); }
     catch (e) { console.error('[Trips] addStop', e); }
   }
   async function removeStop(tripId: string, stopId: string) {
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'trips-remove-stop', input: { tripId, stopId } }); onChanged(); }
+    try { await lensRun({ domain: 'atlas', action: 'trips-remove-stop', input: { tripId, stopId } }); onChanged(); }
     catch (e) { console.error('[Trips] removeStop', e); }
   }
   async function del(id: string) {
     if (!confirm('Delete this trip?')) return;
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'trips-delete', input: { id } }); onChanged(); }
+    try { await lensRun({ domain: 'atlas', action: 'trips-delete', input: { id } }); onChanged(); }
     catch (e) { console.error('[Trips] delete', e); }
   }
 
@@ -389,7 +389,7 @@ function DirectionsPanel({ places, onShowOnMap }: { places: Place[]; onShowOnMap
     setLoading(true);
     setResult(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'atlas', action: 'directions', input: {
+      const r = await lensRun({ domain: 'atlas', action: 'directions', input: {
         waypoints: [{ lat: fp.lat, lng: fp.lng }, { lat: tp.lat, lng: tp.lng }],
         mode,
       } });
@@ -444,7 +444,7 @@ function PlannerPanel({ places, onShowOnMap }: { places: Place[]; onShowOnMap: (
     setLoading(true);
     setResult(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'atlas', action: 'ai-trip-plan', input: { prompt: prompt.trim(), days } });
+      const r = await lensRun({ domain: 'atlas', action: 'ai-trip-plan', input: { prompt: prompt.trim(), days } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setResult(r.data?.result);
       const allStops = (r.data?.result?.itinerary || []).flatMap((d: { stops: Array<{ name: string; lat: number; lng: number }> }) => d.stops);
@@ -499,13 +499,13 @@ function RecentPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'atlas', action: 'recent-searches-list', input: {} });
+      const r = await lensRun({ domain: 'atlas', action: 'recent-searches-list', input: {} });
       setRecent((r.data?.result?.recent || []) as Array<{ query: string; at: string }>);
     } catch (e) { console.error('[Recent] failed', e); }
     finally { setLoading(false); }
   }
   async function clear() {
-    try { await api.post('/api/lens/run', { domain: 'atlas', action: 'recent-searches-clear', input: {} }); refresh(); }
+    try { await lensRun({ domain: 'atlas', action: 'recent-searches-clear', input: {} }); refresh(); }
     catch (e) { console.error('[Recent] clear', e); }
   }
 

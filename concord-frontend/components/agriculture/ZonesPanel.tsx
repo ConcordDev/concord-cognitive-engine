@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Layers, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Zone { id: string; fieldId: string; name: string; productivityClass: 'high' | 'medium' | 'low'; areaAcres: number; soilType: string; organicMatterPct: number }
@@ -17,7 +17,7 @@ export function ZonesPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'agriculture', action: 'zones-list', input: {} });
+      const res = await lensRun({ domain: 'agriculture', action: 'zones-list', input: {} });
       setZones((res.data?.result?.zones || []) as Zone[]);
     } catch (e) { console.error('[Zones] failed', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function ZonesPanel() {
   async function create() {
     if (!form.fieldId.trim() || !form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'zones-create', input: { ...form, areaAcres: Number(form.areaAcres) || 0 } });
+      await lensRun({ domain: 'agriculture', action: 'zones-create', input: { ...form, areaAcres: Number(form.areaAcres) || 0 } });
       setForm({ fieldId: '', name: '', productivityClass: 'medium', areaAcres: '', soilType: 'loam' });
       await refresh();
     } catch (e) { console.error('[Zones] create', e); }
@@ -34,7 +34,7 @@ export function ZonesPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'zones-delete', input: { id } });
+      await lensRun({ domain: 'agriculture', action: 'zones-delete', input: { id } });
       setZones(prev => prev.filter(z => z.id !== id));
     } catch (e) { console.error('[Zones] delete', e); }
   }

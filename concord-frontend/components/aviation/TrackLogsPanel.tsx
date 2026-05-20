@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { MapPin, Play, Square, Loader2, Activity } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 const TrackMap = dynamic(() => import('./TrackMap').then(m => m.TrackMap), { ssr: false });
@@ -28,8 +28,8 @@ export function TrackLogsPanel() {
     setLoading(true);
     try {
       const [t, a] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'aviation', action: 'track-logs-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'aviation', action: 'aircraft-list', input: {} }),
+        lensRun({ domain: 'aviation', action: 'track-logs-list', input: {} }),
+        lensRun({ domain: 'aviation', action: 'aircraft-list', input: {} }),
       ]);
       setTracks((t.data?.result?.tracks || []) as Track[]);
       setAircraft((a.data?.result?.aircraft || []) as Aircraft[]);
@@ -40,7 +40,7 @@ export function TrackLogsPanel() {
   async function start() {
     if (!form.aircraftId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'track-logs-start', input: form });
+      await lensRun({ domain: 'aviation', action: 'track-logs-start', input: form });
       setForm({ aircraftId: '', from: '', to: '' });
       await refresh();
     } catch (e) { console.error('[Tracks] start', e); }
@@ -48,7 +48,7 @@ export function TrackLogsPanel() {
 
   async function end(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'track-logs-end', input: { trackId: id } });
+      await lensRun({ domain: 'aviation', action: 'track-logs-end', input: { trackId: id } });
       await refresh();
     } catch (e) { console.error('[Tracks] end', e); }
   }
@@ -57,7 +57,7 @@ export function TrackLogsPanel() {
     if (!navigator.geolocation) { alert('Geolocation not available'); return; }
     navigator.geolocation.getCurrentPosition(async (pos) => {
       try {
-        await api.post('/api/lens/run', { domain: 'aviation', action: 'track-logs-append', input: { trackId: id, lat: pos.coords.latitude, lng: pos.coords.longitude, altitudeFt: pos.coords.altitude ? pos.coords.altitude * 3.28084 : 0, groundSpeedKts: pos.coords.speed ? pos.coords.speed * 1.94384 : 0 } });
+        await lensRun({ domain: 'aviation', action: 'track-logs-append', input: { trackId: id, lat: pos.coords.latitude, lng: pos.coords.longitude, altitudeFt: pos.coords.altitude ? pos.coords.altitude * 3.28084 : 0, groundSpeedKts: pos.coords.speed ? pos.coords.speed * 1.94384 : 0 } });
         await refresh();
       } catch (e) { console.error('[Tracks] append', e); }
     }, err => alert(`Position error: ${err.message}`));

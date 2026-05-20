@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Trees, Plus, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Offset { id: string; tonnes: number; project: string; kind: string; registry: string; vintage: string; pricePerTonneUsd: number; serialNumber: string; status: 'purchased' | 'retired'; retiredAt: string | null; retirementReason?: string }
@@ -28,7 +28,7 @@ export function OffsetsLedger() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'offsets-list', input: {} });
+      const r = await lensRun({ domain: 'environment', action: 'offsets-list', input: {} });
       setOffsets((r.data?.result?.offsets || []) as Offset[]);
     } catch (e) { console.error('[Offsets] failed', e); }
     finally { setLoading(false); }
@@ -37,7 +37,7 @@ export function OffsetsLedger() {
   async function purchase() {
     if (!form.tonnes) return;
     try {
-      await api.post('/api/lens/run', { domain: 'environment', action: 'offsets-purchase', input: { ...form, tonnes: Number(form.tonnes), pricePerTonneUsd: Number(form.pricePerTonneUsd) || 0 } });
+      await lensRun({ domain: 'environment', action: 'offsets-purchase', input: { ...form, tonnes: Number(form.tonnes), pricePerTonneUsd: Number(form.pricePerTonneUsd) || 0 } });
       setForm({ ...form, tonnes: '', project: '', pricePerTonneUsd: '' });
       await refresh();
     } catch (e) { console.error('[Offsets] purchase', e); }
@@ -46,7 +46,7 @@ export function OffsetsLedger() {
   async function retire(id: string) {
     const reason = prompt('Retirement reason?') || 'voluntary';
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'offsets-retire', input: { id, reason } });
+      const r = await lensRun({ domain: 'environment', action: 'offsets-retire', input: { id, reason } });
       if (r.data?.ok === false) alert(r.data?.error);
       await refresh();
     } catch (e) { console.error('[Offsets] retire', e); }

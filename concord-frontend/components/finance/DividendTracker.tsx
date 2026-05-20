@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Coins, Calendar, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Summary {
@@ -27,9 +27,9 @@ export function DividendTracker() {
     setLoading(true);
     try {
       const [a, b, c] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'finance', action: 'dividends-summary', input: {} }),
-        api.post('/api/lens/run', { domain: 'finance', action: 'dividends-calendar', input: { days: 180 } }),
-        api.post('/api/lens/run', { domain: 'finance', action: 'earnings-calendar', input: { days: 90 } }),
+        lensRun({ domain: 'finance', action: 'dividends-summary', input: {} }),
+        lensRun({ domain: 'finance', action: 'dividends-calendar', input: { days: 180 } }),
+        lensRun({ domain: 'finance', action: 'earnings-calendar', input: { days: 90 } }),
       ]);
       setSummary(a.data?.result || null);
       setCalendar((b.data?.result?.events || []) as CalEvent[]);

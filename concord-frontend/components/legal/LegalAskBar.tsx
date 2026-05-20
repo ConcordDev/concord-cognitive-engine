@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 const SAMPLES = [
   'Show me upcoming deadlines',
@@ -37,26 +37,26 @@ export function LegalAskBar() {
       const ql = question.toLowerCase();
       // Route deterministically to existing macros where we have them
       if (/dead?line|upcoming|hearing|trial|calendar/.test(ql)) {
-        const r = await api.post('/api/lens/run', { domain: 'legal', action: 'dashboard-summary', input: {} });
+        const r = await lensRun({ domain: 'legal', action: 'dashboard-summary', input: {} });
         const ev = (r.data?.result?.upcomingEvents || []) as Array<{ title: string; date: string; kind: string }>;
         setAnswer({
           answer: ev.length ? `${ev.length} upcoming event(s): ${ev.slice(0, 3).map(e => `${e.title} (${e.date})`).join('; ')}` : 'No upcoming events scheduled.',
           data: { upcomingEvents: ev },
         });
       } else if (/unbilled|how much.*time|hours/.test(ql)) {
-        const r = await api.post('/api/lens/run', { domain: 'legal', action: 'dashboard-summary', input: {} });
+        const r = await lensRun({ domain: 'legal', action: 'dashboard-summary', input: {} });
         const d = r.data?.result;
         setAnswer({ answer: `${d?.unbilledHours || 0} unbilled hours ($${(d?.unbilledTime || 0).toLocaleString()}) across all matters.`, data: d });
       } else if (/trust|iolta|balance/.test(ql)) {
-        const r = await api.post('/api/lens/run', { domain: 'legal', action: 'trust-balance', input: {} });
+        const r = await lensRun({ domain: 'legal', action: 'trust-balance', input: {} });
         setAnswer({ answer: `Trust balance: $${(r.data?.result?.total || 0).toLocaleString()} across ${r.data?.result?.byMatter?.length || 0} matter ledger(s).`, data: r.data?.result });
       } else if (/open matter|active matter|matters/.test(ql)) {
-        const r = await api.post('/api/lens/run', { domain: 'legal', action: 'matters-list', input: { status: 'open' } });
+        const r = await lensRun({ domain: 'legal', action: 'matters-list', input: { status: 'open' } });
         const matters = (r.data?.result?.matters || []) as Array<{ name: string }>;
         setAnswer({ answer: `${matters.length} open matter(s)${matters.length ? `: ${matters.slice(0, 5).map(m => m.name).join('; ')}` : ''}.`, data: { openMatters: matters.length } });
       } else {
         // Long-tail — pass through to legal-question (brain-backed with required not-legal-advice caveat)
-        const r = await api.post('/api/lens/run', { domain: 'legal', action: 'legal-question', input: { question } });
+        const r = await lensRun({ domain: 'legal', action: 'legal-question', input: { question } });
         const ans = r.data?.result?.answer || 'Could not answer.';
         const caveat = (r.data?.result?.caveats || [])[0] || '';
         setAnswer({ answer: `${ans}${caveat ? `\n\n${caveat}` : ''}`, data: r.data?.result });

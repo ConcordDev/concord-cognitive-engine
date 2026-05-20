@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { GitBranch, Loader2, GitCommit, GitMerge, Check, Plus } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface GitStatus { branch: string; branches: string[]; modified: string[]; staged: string[]; head: string | null; clean: boolean }
@@ -22,8 +22,8 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
     setLoading(true);
     try {
       const [s, l] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'code', action: 'git-status', input: { projectId } }),
-        api.post('/api/lens/run', { domain: 'code', action: 'git-log', input: { projectId } }),
+        lensRun({ domain: 'code', action: 'git-status', input: { projectId } }),
+        lensRun({ domain: 'code', action: 'git-log', input: { projectId } }),
       ]);
       setStatus((s.data?.result as GitStatus) || null);
       setLog((l.data?.result?.log || []) as GitCommitRow[]);
@@ -33,18 +33,18 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
 
   async function stage(path?: string) {
     if (!projectId) return;
-    try { await api.post('/api/lens/run', { domain: 'code', action: 'git-stage', input: { projectId, paths: path ? [path] : undefined } }); await refresh(); }
+    try { await lensRun({ domain: 'code', action: 'git-stage', input: { projectId, paths: path ? [path] : undefined } }); await refresh(); }
     catch (e) { console.error('[Git] stage', e); }
   }
   async function unstage(path?: string) {
     if (!projectId) return;
-    try { await api.post('/api/lens/run', { domain: 'code', action: 'git-unstage', input: { projectId, paths: path ? [path] : undefined } }); await refresh(); }
+    try { await lensRun({ domain: 'code', action: 'git-unstage', input: { projectId, paths: path ? [path] : undefined } }); await refresh(); }
     catch (e) { console.error('[Git] unstage', e); }
   }
   async function commit() {
     if (!projectId || !message.trim()) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'git-commit', input: { projectId, message: message.trim() } });
+      const r = await lensRun({ domain: 'code', action: 'git-commit', input: { projectId, message: message.trim() } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setMessage('');
       await refresh();
@@ -54,14 +54,14 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
   async function createBranch() {
     if (!projectId || !branchDraft.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'code', action: 'git-branch-create', input: { projectId, name: branchDraft.trim(), checkout: true } });
+      await lensRun({ domain: 'code', action: 'git-branch-create', input: { projectId, name: branchDraft.trim(), checkout: true } });
       setBranchDraft('');
       await refresh();
     } catch (e) { console.error('[Git] branch', e); }
   }
   async function checkout(name: string) {
     if (!projectId) return;
-    try { await api.post('/api/lens/run', { domain: 'code', action: 'git-checkout', input: { projectId, branch: name } }); await refresh(); }
+    try { await lensRun({ domain: 'code', action: 'git-checkout', input: { projectId, branch: name } }); await refresh(); }
     catch (e) { console.error('[Git] checkout', e); }
   }
 

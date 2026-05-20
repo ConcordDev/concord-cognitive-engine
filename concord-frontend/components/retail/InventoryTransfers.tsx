@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Truck, Plus, Loader2, ArrowRight, Check } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Transfer {
@@ -23,7 +23,7 @@ export function InventoryTransfers() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'retail', action: 'transfers-list', input: {} });
+      const res = await lensRun({ domain: 'retail', action: 'transfers-list', input: {} });
       setTransfers((res.data?.result?.transfers || []) as Transfer[]);
     } catch (e) { console.error('[Transfers] list failed', e); }
     finally { setLoading(false); }
@@ -38,7 +38,7 @@ export function InventoryTransfers() {
   async function create() {
     if (!form.fromLocation.trim() || !form.toLocation.trim() || pendingLines.length === 0) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'retail', action: 'transfers-create',
         input: { fromLocation: form.fromLocation, toLocation: form.toLocation, lines: pendingLines },
       });
@@ -50,7 +50,7 @@ export function InventoryTransfers() {
 
   async function receive(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'transfers-receive', input: { id } });
+      await lensRun({ domain: 'retail', action: 'transfers-receive', input: { id } });
       await refresh();
     } catch (e) { console.error('[Transfers] receive failed', e); }
   }

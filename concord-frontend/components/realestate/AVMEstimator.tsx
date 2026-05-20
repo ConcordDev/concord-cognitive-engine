@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Calculator, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface AVMResult {
@@ -24,7 +24,7 @@ export function AVMEstimator() {
     if (!form.sqft) return;
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'realestate', action: 'avm-estimate',
         input: { sqft: Number(form.sqft), beds: Number(form.beds), baths: Number(form.baths), yearBuilt: Number(form.yearBuilt), lotSqft: Number(form.lotSqft), zipMedianPpsf: Number(form.zipMedianPpsf), condition: form.condition },
       });

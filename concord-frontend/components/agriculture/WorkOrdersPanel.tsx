@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ClipboardCheck, Plus, Loader2, Check } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Order { id: string; fieldId: string; operation: string; kind: string; scheduledFor: string | null; status: string; notes: string }
@@ -19,7 +19,7 @@ export function WorkOrdersPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'agriculture', action: 'work-orders-list', input: {} });
+      const res = await lensRun({ domain: 'agriculture', action: 'work-orders-list', input: {} });
       setOrders((res.data?.result?.orders || []) as Order[]);
     } catch (e) { console.error('[WO] failed', e); }
     finally { setLoading(false); }
@@ -28,7 +28,7 @@ export function WorkOrdersPanel() {
   async function create() {
     if (!form.fieldId.trim() || !form.operation.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'work-orders-create', input: form });
+      await lensRun({ domain: 'agriculture', action: 'work-orders-create', input: form });
       setForm({ fieldId: '', operation: '', kind: 'spraying', scheduledFor: '', notes: '' });
       await refresh();
     } catch (e) { console.error('[WO] create', e); }
@@ -36,7 +36,7 @@ export function WorkOrdersPanel() {
 
   async function complete(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'work-orders-complete', input: { id } });
+      await lensRun({ domain: 'agriculture', action: 'work-orders-complete', input: { id } });
       await refresh();
     } catch (e) { console.error('[WO] complete', e); }
   }

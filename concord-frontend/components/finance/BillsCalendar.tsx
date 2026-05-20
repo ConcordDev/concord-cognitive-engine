@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Plus, Trash2, Check, AlertTriangle, Loader2, Zap } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Bill {
@@ -46,7 +46,7 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'bills-list', input: {} });
+      const res = await lensRun({ domain: 'finance', action: 'bills-list', input: {} });
       setBills((res.data?.result?.bills || []) as Bill[]);
     } catch (e) { console.error('[Bills] list failed', e); }
     finally { setLoading(false); }
@@ -54,7 +54,7 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
 
   async function refreshForecast() {
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'finance', action: 'cashflow-forecast',
         input: { startBalance, horizonDays: 60 },
       });
@@ -65,7 +65,7 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
   async function create() {
     if (!form.name.trim() || !form.amount) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'bills-add',
         input: { name: form.name.trim(), amount: Number(form.amount), dueDay: Number(form.dueDay), cadence: form.cadence, autopay: form.autopay },
       });
@@ -77,14 +77,14 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
 
   async function pay(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'bills-pay', input: { id } });
+      await lensRun({ domain: 'finance', action: 'bills-pay', input: { id } });
       await refresh();
     } catch (e) { console.error('[Bills] pay failed', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'bills-delete', input: { id } });
+      await lensRun({ domain: 'finance', action: 'bills-delete', input: { id } });
       setBills(prev => prev.filter(b => b.id !== id));
     } catch (e) { console.error('[Bills] delete failed', e); }
   }

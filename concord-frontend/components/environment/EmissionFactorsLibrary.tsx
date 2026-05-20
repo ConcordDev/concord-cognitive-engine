@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BookOpen, Loader2, Search } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Factor { key: string; co2e: number; unit: string; scope: 1 | 2 | 3; source: string }
@@ -24,7 +24,7 @@ export function EmissionFactorsLibrary() {
     (async () => {
       setLoading(true);
       try {
-        const r = await api.post('/api/lens/run', { domain: 'environment', action: 'emission-factors-list', input: {} });
+        const r = await lensRun({ domain: 'environment', action: 'emission-factors-list', input: {} });
         setFactors((r.data?.result?.factors || []) as Factor[]);
         setSource(String(r.data?.result?.source || ''));
       } catch (e) { console.error('[Factors] failed', e); }

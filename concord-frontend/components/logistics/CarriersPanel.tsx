@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Building, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Carrier { id: string; name: string; code: string; scac: string; modes: string[]; accountNumber: string; active: boolean }
 
@@ -18,7 +18,7 @@ export function CarriersPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'carriers-list', input: {} });
+      const res = await lensRun({ domain: 'logistics', action: 'carriers-list', input: {} });
       setCarriers((res.data?.result?.carriers || []) as Carrier[]);
     } catch (e) { console.error('[Carriers] failed', e); }
     finally { setLoading(false); }
@@ -27,7 +27,7 @@ export function CarriersPanel() {
   async function add() {
     if (!form.name.trim() || !form.code.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'carriers-add', input: form });
+      await lensRun({ domain: 'logistics', action: 'carriers-add', input: form });
       setForm({ name: '', code: '', scac: '', modes: ['parcel'], accountNumber: '' });
       await refresh();
     } catch (e) { console.error('[Carriers] add', e); }
@@ -35,7 +35,7 @@ export function CarriersPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'carriers-delete', input: { id } });
+      await lensRun({ domain: 'logistics', action: 'carriers-delete', input: { id } });
       setCarriers(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error('[Carriers] delete', e); }
   }

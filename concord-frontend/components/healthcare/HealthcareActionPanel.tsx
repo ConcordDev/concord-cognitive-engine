@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Stethoscope, Search, Pill, DollarSign, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -93,8 +93,8 @@ export function HealthcareActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Health visit prep`, tags: ['healthcare', 'visit', triageResult?.severity].filter((t): t is string => !!t), source: 'healthcare:visit:mint', meta: { visibility: 'private', consent: { allowCitations: false }, health: { triage: triageResult, providers: providerResult, meds: medsResult, rx: rxResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Health visit prep`, tags: ['healthcare', 'visit', triageResult?.severity].filter((t): t is string => !!t), source: 'healthcare:visit:mint', meta: { visibility: 'private', consent: { allowCitations: false }, health: { triage: triageResult, providers: providerResult, meds: medsResult, rx: rxResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('healthcare.mintedDtuId', id, { label: `Visit DTU ${id.slice(0, 8)}…` }); ok(`Visit DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -123,8 +123,8 @@ export function HealthcareActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Provider directory — ${specialty} ${zip}`, tags: ['healthcare', 'providers', 'public', specialty.toLowerCase().replace(/\s/g, '-')], source: 'healthcare:providers:publish', meta: { visibility: 'public', consent: { allowCitations: true }, providers: providerResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Provider directory — ${specialty} ${zip}`, tags: ['healthcare', 'providers', 'public', specialty.toLowerCase().replace(/\s/g, '-')], source: 'healthcare:providers:publish', meta: { visibility: 'public', consent: { allowCitations: true }, providers: providerResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -137,8 +137,8 @@ export function HealthcareActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Patient visit prep. ${triageResult ? `Triage: ${triageResult.severity}. Candidates: ${triageResult.candidates.map(c => `${c.condition} (${Math.round(c.confidence * 100)}%)`).join(', ')}.` : ''} Patient: age ${age}, sex ${sex}. ${description ? `Sx: ${description}` : ''} ${medsResult ? `Currently on ${medsResult.medications.length} meds.` : ''} List the 3 most important questions to ask the provider in this visit. Plain text. End with: "This is not medical advice."`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Questions ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

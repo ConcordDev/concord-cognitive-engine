@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Target, Plus, Trash2, TrendingUp, Loader2, Calendar } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Goal {
@@ -34,7 +34,7 @@ export function GoalsTracker() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'finance', action: 'goals-list', input: {} });
+      const res = await lensRun({ domain: 'finance', action: 'goals-list', input: {} });
       setGoals((res.data?.result?.goals || []) as Goal[]);
     } catch (e) { console.error('[Goals] list failed', e); }
     finally { setLoading(false); }
@@ -43,7 +43,7 @@ export function GoalsTracker() {
   async function create() {
     if (!form.name.trim() || !form.target) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'finance', action: 'goals-create',
         input: { name: form.name.trim(), target: Number(form.target), monthlyContribution: Number(form.monthlyContribution) || 0, category: form.category },
       });
@@ -57,7 +57,7 @@ export function GoalsTracker() {
     const amt = Number(contribAmt);
     if (!amt) return;
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'goals-contribute', input: { id, amount: amt } });
+      await lensRun({ domain: 'finance', action: 'goals-contribute', input: { id, amount: amt } });
       setContributing(null); setContribAmt('');
       await refresh();
     } catch (e) { console.error('[Goals] contribute failed', e); }
@@ -65,7 +65,7 @@ export function GoalsTracker() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'finance', action: 'goals-delete', input: { id } });
+      await lensRun({ domain: 'finance', action: 'goals-delete', input: { id } });
       setGoals(prev => prev.filter(g => g.id !== id));
     } catch (e) { console.error('[Goals] delete failed', e); }
   }

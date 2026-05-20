@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Droplet, Plus, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Plan {
@@ -23,7 +23,7 @@ export function NitrogenPlanner() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'agriculture', action: 'nitrogen-plans', input: {} });
+      const res = await lensRun({ domain: 'agriculture', action: 'nitrogen-plans', input: {} });
       setPlans((res.data?.result?.plans || []) as Plan[]);
     } catch (e) { console.error('[N] failed', e); }
     finally { setLoading(false); }
@@ -32,7 +32,7 @@ export function NitrogenPlanner() {
   async function create() {
     if (!form.fieldId.trim() || !form.targetLbsPerAcre) return;
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'nitrogen-plan-create', input: { ...form, targetLbsPerAcre: Number(form.targetLbsPerAcre) } });
+      await lensRun({ domain: 'agriculture', action: 'nitrogen-plan-create', input: { ...form, targetLbsPerAcre: Number(form.targetLbsPerAcre) } });
       setForm({ fieldId: '', crop: '', targetLbsPerAcre: '' });
       await refresh();
     } catch (e) { console.error('[N] create', e); }
@@ -41,7 +41,7 @@ export function NitrogenPlanner() {
   async function apply() {
     if (!applyFor || !applyForm.lbsPerAcre) return;
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'nitrogen-apply', input: { planId: applyFor, lbsPerAcre: Number(applyForm.lbsPerAcre), product: applyForm.product, timing: applyForm.timing } });
+      await lensRun({ domain: 'agriculture', action: 'nitrogen-apply', input: { planId: applyFor, lbsPerAcre: Number(applyForm.lbsPerAcre), product: applyForm.product, timing: applyForm.timing } });
       setApplyFor(null); setApplyForm({ lbsPerAcre: '', product: 'UAN-32', timing: 'sidedress' });
       await refresh();
     } catch (e) { console.error('[N] apply', e); }

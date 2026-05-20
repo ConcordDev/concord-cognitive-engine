@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Play, Plus, Loader2, Grid3x3 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Scene { id: string; projectId: string; name: string; order: number; tempoBpm: number | null; launchedAt: string | null }
@@ -18,7 +18,7 @@ export function ScenesLauncher({ projectId }: { projectId?: string }) {
     if (!projectId) { setScenes([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'studio', action: 'scenes-list', input: { projectId } });
+      const res = await lensRun({ domain: 'studio', action: 'scenes-list', input: { projectId } });
       setScenes((res.data?.result?.scenes || []) as Scene[]);
     } catch (e) { console.error('[Scenes] failed', e); }
     finally { setLoading(false); }
@@ -27,7 +27,7 @@ export function ScenesLauncher({ projectId }: { projectId?: string }) {
   async function create() {
     if (!projectId || !name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'scenes-create', input: { projectId, name } });
+      await lensRun({ domain: 'studio', action: 'scenes-create', input: { projectId, name } });
       setName('');
       await refresh();
     } catch (e) { console.error('[Scenes] create', e); }
@@ -35,7 +35,7 @@ export function ScenesLauncher({ projectId }: { projectId?: string }) {
 
   async function launch(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'scenes-launch', input: { id } });
+      await lensRun({ domain: 'studio', action: 'scenes-launch', input: { id } });
       await refresh();
     } catch (e) { console.error('[Scenes] launch', e); }
   }

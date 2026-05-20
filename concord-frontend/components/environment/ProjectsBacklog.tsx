@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Lightbulb, Plus, Loader2, TrendingDown } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Project { id: string; name: string; description: string; expectedReductionTonnesPerYear: number; costUsd: number; paybackYears: number | null; status: string; startDate: string | null; actualReductionTonnes: number }
@@ -25,7 +25,7 @@ export function ProjectsBacklog() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'environment', action: 'projects-list', input: {} });
+      const r = await lensRun({ domain: 'environment', action: 'projects-list', input: {} });
       setProjects((r.data?.result?.projects || []) as Project[]);
     } catch (e) { console.error('[Projects] failed', e); }
     finally { setLoading(false); }
@@ -34,7 +34,7 @@ export function ProjectsBacklog() {
   async function create() {
     if (!form.name.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'environment', action: 'projects-create', input: { ...form, expectedReductionTonnesPerYear: Number(form.expectedReductionTonnesPerYear) || 0, costUsd: Number(form.costUsd) || 0, paybackYears: Number(form.paybackYears) || undefined } });
+      await lensRun({ domain: 'environment', action: 'projects-create', input: { ...form, expectedReductionTonnesPerYear: Number(form.expectedReductionTonnesPerYear) || 0, costUsd: Number(form.costUsd) || 0, paybackYears: Number(form.paybackYears) || undefined } });
       setForm({ name: '', description: '', expectedReductionTonnesPerYear: '', costUsd: '', paybackYears: '' });
       await refresh();
     } catch (e) { console.error('[Projects] create', e); }
@@ -42,7 +42,7 @@ export function ProjectsBacklog() {
 
   async function setStatus(id: string, status: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'environment', action: 'projects-update-status', input: { id, status } });
+      await lensRun({ domain: 'environment', action: 'projects-update-status', input: { id, status } });
       await refresh();
     } catch (e) { console.error('[Projects] status', e); }
   }

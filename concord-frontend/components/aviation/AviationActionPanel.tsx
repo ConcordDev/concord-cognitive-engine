@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Plane, Cloud, MapPin, ArrowDown, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -98,8 +98,8 @@ export function AviationActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Flight prep — ${aptResult?.airport?.ident ?? ident}`, tags: ['aviation', 'preflight', aptResult?.airport?.ident].filter((t): t is string => !!t), source: 'aviation:preflight:mint', meta: { visibility: 'private', consent: { allowCitations: false }, aviation: { airport: aptResult, wx: wxResult, takeoff: toResult, landing: ldgResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Flight prep — ${aptResult?.airport?.ident ?? ident}`, tags: ['aviation', 'preflight', aptResult?.airport?.ident].filter((t): t is string => !!t), source: 'aviation:preflight:mint', meta: { visibility: 'private', consent: { allowCitations: false }, aviation: { airport: aptResult, wx: wxResult, takeoff: toResult, landing: ldgResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('av.mintedDtuId', id, { label: `Prep DTU ${id.slice(0, 8)}…` }); ok(`Prep DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -128,8 +128,8 @@ export function AviationActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Airport profile — ${aptResult.airport.ident}`, tags: ['aviation', 'airport', 'public'], source: 'aviation:airport:publish', meta: { visibility: 'public', consent: { allowCitations: true }, airport: aptResult.airport } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Airport profile — ${aptResult.airport.ident}`, tags: ['aviation', 'airport', 'public'], source: 'aviation:airport:publish', meta: { visibility: 'public', consent: { allowCitations: true }, airport: aptResult.airport } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -143,8 +143,8 @@ export function AviationActionPanel() {
     try {
       const m = wxResult?.reports?.[0];
       const task = `Pre-flight brief. ${aptResult ? `Departing ${aptResult.airport.ident} (${aptResult.airport.name}), elev ${aptResult.airport.elev_ft} ft, ${aptResult.airport.runways[0]?.length ?? '?'} ft longest runway.` : ''} ${m ? `Wx: ${m.flightCategory}, ${m.tempC}°C, wind ${m.windDir}@${m.windSpd}${m.windGust ? `G${m.windGust}` : ''} kt, vis ${m.visibilityMi} sm.` : ''} ${toResult ? `Takeoff ground roll ${toResult.groundRoll_ft} ft / over50 ${toResult.over50ft_ft} ft.` : ''} Identify the go/no-go call + one specific risk to brief. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Briefed.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

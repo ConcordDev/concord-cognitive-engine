@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Reply { id: string; rootId: string; channelId: string; senderName: string; body: string; ts: string }
 interface RootMsg { id: string; body: string; senderName: string; ts: string }
@@ -26,7 +26,7 @@ export function ThreadPane({
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'thread-list', input: { rootId } });
+      const r = await lensRun({ domain: 'message', action: 'thread-list', input: { rootId } });
       setReplies((r.data?.result?.replies || []) as Reply[]);
     } catch (e) { console.error('[Thread] failed', e); }
     finally { setLoading(false); }
@@ -36,7 +36,7 @@ export function ThreadPane({
     if (!body.trim()) return;
     setSending(true);
     try {
-      await api.post('/api/lens/run', { domain: 'message', action: 'thread-reply', input: { channelId, rootId, body: body.trim() } });
+      await lensRun({ domain: 'message', action: 'thread-reply', input: { channelId, rootId, body: body.trim() } });
       setBody('');
       await refresh();
       onActivity?.();

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { ChannelIcon } from './SlackShell';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +36,7 @@ export function ChannelList({
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'channels-list', input: {} });
+      const r = await lensRun({ domain: 'message', action: 'channels-list', input: {} });
       setList((r.data?.result?.channels || []) as Channel[]);
       onRefresh?.();
     } catch (e) { console.error('[Channels] failed', e); }
@@ -46,7 +46,7 @@ export function ChannelList({
   async function create() {
     if (!draft.name.trim()) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'channels-create', input: draft });
+      const r = await lensRun({ domain: 'message', action: 'channels-create', input: draft });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setDraft({ name: '', kind: 'channel', isPrivate: false });
       setCreating(false);

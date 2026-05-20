@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Briefcase, Timer, FileText, Scale, AlertCircle, Loader2, Calendar } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { ClioNav } from './ClioShell';
 
@@ -27,7 +27,7 @@ export function LegalDashboard({ onJumpTo }: { onJumpTo?: (n: ClioNav) => void }
     async function refresh() {
       setLoading(true);
       try {
-        const r = await api.post('/api/lens/run', { domain: 'legal', action: 'dashboard-summary', input: {} });
+        const r = await lensRun({ domain: 'legal', action: 'dashboard-summary', input: {} });
         if (!cancelled) setData((r.data?.result as Summary) || null);
       } catch (e) { console.error('[LegalDash] failed', e); }
       finally { if (!cancelled) setLoading(false); }

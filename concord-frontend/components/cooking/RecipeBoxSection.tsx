@@ -12,7 +12,7 @@ import {
   ChefHat, Loader2, Plus, Trash2, X, CalendarDays, ShoppingCart, Package,
   Sparkles, BookOpen, Check, Scaling,
 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 type Tab = 'recipes' | 'plan' | 'shopping' | 'pantry';
@@ -57,11 +57,11 @@ export function RecipeBoxSection() {
     setLoading(true);
     try {
       const [r, p, sh, pa, sg] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'cooking', action: 'recipes-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'cooking', action: 'meal-plan-get', input: { start: dates[0], end: dates[6] } }),
-        api.post('/api/lens/run', { domain: 'cooking', action: 'shopping-list-get', input: {} }),
-        api.post('/api/lens/run', { domain: 'cooking', action: 'pantry-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'cooking', action: 'pantry-cook-suggestions', input: {} }),
+        lensRun({ domain: 'cooking', action: 'recipes-list', input: {} }),
+        lensRun({ domain: 'cooking', action: 'meal-plan-get', input: { start: dates[0], end: dates[6] } }),
+        lensRun({ domain: 'cooking', action: 'shopping-list-get', input: {} }),
+        lensRun({ domain: 'cooking', action: 'pantry-list', input: {} }),
+        lensRun({ domain: 'cooking', action: 'pantry-cook-suggestions', input: {} }),
       ]);
       setRecipes((r.data?.result?.recipes || []) as Recipe[]);
       setPlanEntries((p.data?.result?.entries || []) as PlanEntry[]);
@@ -87,42 +87,42 @@ export function RecipeBoxSection() {
       cuisine: editRecipe.cuisine, notes: editRecipe.notes,
     };
     try {
-      if (editRecipe._new) await api.post('/api/lens/run', { domain: 'cooking', action: 'recipes-create', input });
-      else await api.post('/api/lens/run', { domain: 'cooking', action: 'recipes-update', input: { id: editRecipe.id, ...input } });
+      if (editRecipe._new) await lensRun({ domain: 'cooking', action: 'recipes-create', input });
+      else await lensRun({ domain: 'cooking', action: 'recipes-update', input: { id: editRecipe.id, ...input } });
       setEditRecipe(null);
       await refresh();
     } catch (e) { console.error('[RecipeBox] saveRecipe', e); }
   }
   async function deleteRecipe(id: string) {
     if (!confirm('Delete this recipe?')) return;
-    try { await api.post('/api/lens/run', { domain: 'cooking', action: 'recipes-delete', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'cooking', action: 'recipes-delete', input: { id } }); await refresh(); }
     catch (e) { console.error('[RecipeBox] deleteRecipe', e); }
   }
   async function openScale(recipe: Recipe) {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'cooking', action: 'recipes-scale', input: { id: recipe.id, targetServings: recipe.servings } });
+      const r = await lensRun({ domain: 'cooking', action: 'recipes-scale', input: { id: recipe.id, targetServings: recipe.servings } });
       setScaleFor({ recipe, target: recipe.servings, scaled: r.data?.result?.ingredients || [] });
     } catch (e) { console.error('[RecipeBox] scale', e); }
   }
   async function rescale(target: number) {
     if (!scaleFor) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'cooking', action: 'recipes-scale', input: { id: scaleFor.recipe.id, targetServings: target } });
+      const r = await lensRun({ domain: 'cooking', action: 'recipes-scale', input: { id: scaleFor.recipe.id, targetServings: target } });
       setScaleFor({ ...scaleFor, target, scaled: r.data?.result?.ingredients || [] });
     } catch (e) { console.error('[RecipeBox] rescale', e); }
   }
 
   // ── Meal plan ──
   async function assignMeal(date: string, slot: string, recipeId: string) {
-    if (!recipeId) { await api.post('/api/lens/run', { domain: 'cooking', action: 'meal-plan-clear', input: { date, slot } }); }
-    else { await api.post('/api/lens/run', { domain: 'cooking', action: 'meal-plan-set', input: { date, slot, recipeId } }); }
+    if (!recipeId) { await lensRun({ domain: 'cooking', action: 'meal-plan-clear', input: { date, slot } }); }
+    else { await lensRun({ domain: 'cooking', action: 'meal-plan-set', input: { date, slot, recipeId } }); }
     await refresh();
   }
   async function aiMealPlan() {
     setAiBusy(true);
     try {
       const pref = prompt('Diet preference (optional — e.g. vegan, quick, italian)?') || '';
-      await api.post('/api/lens/run', { domain: 'cooking', action: 'ai-meal-plan', input: { days: 7, slots: ['dinner'], start: dates[0], preference: pref } });
+      await lensRun({ domain: 'cooking', action: 'ai-meal-plan', input: { days: 7, slots: ['dinner'], start: dates[0], preference: pref } });
       await refresh();
       setTab('plan');
     } catch (e) { console.error('[RecipeBox] aiMealPlan', e); }
@@ -132,28 +132,28 @@ export function RecipeBoxSection() {
   // ── Shopping ──
   async function generateShopping() {
     try {
-      await api.post('/api/lens/run', { domain: 'cooking', action: 'shopping-list-generate', input: { start: dates[0], end: dates[6], subtractPantry: true } });
+      await lensRun({ domain: 'cooking', action: 'shopping-list-generate', input: { start: dates[0], end: dates[6], subtractPantry: true } });
       await refresh();
       setTab('shopping');
     } catch (e) { console.error('[RecipeBox] genShopping', e); }
   }
   async function toggleShopItem(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'cooking', action: 'shopping-list-toggle', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'cooking', action: 'shopping-list-toggle', input: { id } }); await refresh(); }
     catch (e) { console.error('[RecipeBox] toggleShop', e); }
   }
   async function clearChecked() {
-    try { await api.post('/api/lens/run', { domain: 'cooking', action: 'shopping-list-clear', input: { checkedOnly: true } }); await refresh(); }
+    try { await lensRun({ domain: 'cooking', action: 'shopping-list-clear', input: { checkedOnly: true } }); await refresh(); }
     catch (e) { console.error('[RecipeBox] clearChecked', e); }
   }
 
   // ── Pantry ──
   async function addPantry() {
     const name = prompt('Pantry item?'); if (!name?.trim()) return;
-    try { await api.post('/api/lens/run', { domain: 'cooking', action: 'pantry-add', input: { name: name.trim() } }); await refresh(); }
+    try { await lensRun({ domain: 'cooking', action: 'pantry-add', input: { name: name.trim() } }); await refresh(); }
     catch (e) { console.error('[RecipeBox] addPantry', e); }
   }
   async function delPantry(id: string) {
-    try { await api.post('/api/lens/run', { domain: 'cooking', action: 'pantry-delete', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'cooking', action: 'pantry-delete', input: { id } }); await refresh(); }
     catch (e) { console.error('[RecipeBox] delPantry', e); }
   }
 

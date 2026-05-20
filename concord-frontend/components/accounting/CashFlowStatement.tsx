@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, TrendingUp } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 
 interface MonthRow { month: string; in: number; out: number; net: number }
@@ -25,7 +25,7 @@ export function CashFlowStatement() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'accounting', action: 'cashflow-compute', input: { start, end } });
+      const r = await lensRun({ domain: 'accounting', action: 'cashflow-compute', input: { start, end } });
       setCF((r.data?.result as CashFlow) || null);
     } catch (e) { console.error('[CashFlow] failed', e); }
     finally { setLoading(false); }

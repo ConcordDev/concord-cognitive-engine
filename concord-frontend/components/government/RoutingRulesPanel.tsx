@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Workflow, Plus, Trash2, Loader2, ArrowRight } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Rule { id: string; category: string; departmentId: string; departmentName: string }
 interface Department { id: string; name: string }
@@ -21,8 +21,8 @@ export function RoutingRulesPanel() {
     setLoading(true);
     try {
       const [r, d] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'government', action: 'routing-rules-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'government', action: 'departments-list', input: {} }),
+        lensRun({ domain: 'government', action: 'routing-rules-list', input: {} }),
+        lensRun({ domain: 'government', action: 'departments-list', input: {} }),
       ]);
       setRules((r.data?.result?.rules || []) as Rule[]);
       setDepts((d.data?.result?.departments || []) as Department[]);
@@ -33,7 +33,7 @@ export function RoutingRulesPanel() {
   async function set() {
     if (!form.departmentId) return;
     try {
-      const res = await api.post('/api/lens/run', { domain: 'government', action: 'routing-rules-set', input: form });
+      const res = await lensRun({ domain: 'government', action: 'routing-rules-set', input: form });
       if (res.data?.ok === false) alert(res.data?.error);
       await refresh();
     } catch (e) { console.error('[Rules] set', e); }
@@ -41,7 +41,7 @@ export function RoutingRulesPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'routing-rules-delete', input: { id } });
+      await lensRun({ domain: 'government', action: 'routing-rules-delete', input: { id } });
       setRules(prev => prev.filter(r => r.id !== id));
     } catch (e) { console.error('[Rules] delete', e); }
   }

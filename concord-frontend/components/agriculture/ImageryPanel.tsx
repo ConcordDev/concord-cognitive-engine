@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Image as ImageIcon, Plus, Loader2, Satellite, Plane } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Imagery { id: string; fieldId: string; url: string; source: 'satellite' | 'drone' | 'uav' | 'handheld'; kind: 'rgb' | 'ndvi' | 'ndre' | 'thermal' | 'elevation' | 'orthomosaic'; capturedAt: string; cloudCoverPct: number | null; gsd: string; notes: string }
@@ -26,7 +26,7 @@ export function ImageryPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'agriculture', action: 'imagery-list', input: {} });
+      const res = await lensRun({ domain: 'agriculture', action: 'imagery-list', input: {} });
       setImagery((res.data?.result?.imagery || []) as Imagery[]);
     } catch (e) { console.error('[Imagery] failed', e); }
     finally { setLoading(false); }
@@ -35,7 +35,7 @@ export function ImageryPanel() {
   async function attach() {
     if (!form.fieldId.trim() || !form.url.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'imagery-attach', input: form });
+      await lensRun({ domain: 'agriculture', action: 'imagery-attach', input: form });
       setForm({ fieldId: '', url: '', source: 'drone', kind: 'ndvi', notes: '' });
       await refresh();
     } catch (e) { console.error('[Imagery] attach', e); }

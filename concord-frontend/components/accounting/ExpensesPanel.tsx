@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Receipt, Loader2, Plus, Paperclip } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
 interface Expense {
@@ -23,8 +23,8 @@ export function ExpensesPanel() {
     setLoading(true);
     try {
       const [e, a] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'accounting', action: 'expenses-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'accounting', action: 'coa-list', input: {} }),
+        lensRun({ domain: 'accounting', action: 'expenses-list', input: {} }),
+        lensRun({ domain: 'accounting', action: 'coa-list', input: {} }),
       ]);
       setList((e.data?.result?.expenses || []) as Expense[]);
       setAccounts((a.data?.result?.accounts || []) as Account[]);
@@ -35,7 +35,7 @@ export function ExpensesPanel() {
   async function create() {
     if (!draft.accountId || !draft.amount) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'accounting', action: 'expenses-create',
         input: { ...draft, amount: Number(draft.amount) },
       });

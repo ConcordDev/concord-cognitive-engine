@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Loader2, Send } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Hit { id: string; channelName: string; channelId: string; senderName: string; body: string; ts: string }
 
@@ -17,7 +17,7 @@ export function MessageAskBar({ onOpenChannel }: { onOpenChannel: (channelId: st
     if (!query.trim()) return;
     setLoading(true); setHits(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'ai-search-messages', input: { query } });
+      const r = await lensRun({ domain: 'message', action: 'ai-search-messages', input: { query } });
       setHits((r.data?.result?.hits || []) as Hit[]);
     } catch (e) { console.error('[Ask] failed', e); }
     finally { setLoading(false); }

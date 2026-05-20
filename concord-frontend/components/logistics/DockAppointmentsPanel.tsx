@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, Plus, Loader2, Anchor, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Dock { id: string; name: string; facility: string; kind: string; status: string; hoursStart: string; hoursEnd: string }
@@ -22,8 +22,8 @@ export function DockAppointmentsPanel() {
     setLoading(true);
     try {
       const [d, a] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'logistics', action: 'docks-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'logistics', action: 'dock-appointments-list', input: { date } }),
+        lensRun({ domain: 'logistics', action: 'docks-list', input: {} }),
+        lensRun({ domain: 'logistics', action: 'dock-appointments-list', input: { date } }),
       ]);
       setDocks((d.data?.result?.docks || []) as Dock[]);
       setAppts((a.data?.result?.appointments || []) as Appt[]);
@@ -34,7 +34,7 @@ export function DockAppointmentsPanel() {
   async function addDock() {
     if (!dockForm.name.trim() || !dockForm.facility.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'docks-create', input: dockForm });
+      await lensRun({ domain: 'logistics', action: 'docks-create', input: dockForm });
       setDockForm({ name: '', facility: '', kind: 'loading' });
       await refresh();
     } catch (e) { console.error('[Docks] add', e); }
@@ -43,7 +43,7 @@ export function DockAppointmentsPanel() {
   async function book() {
     if (!aptForm.dockId || !aptForm.startTime) return;
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'dock-appointments-book', input: { ...aptForm, date, durationMin: Number(aptForm.durationMin) || 60 } });
+      const res = await lensRun({ domain: 'logistics', action: 'dock-appointments-book', input: { ...aptForm, date, durationMin: Number(aptForm.durationMin) || 60 } });
       if (res.data?.ok === false) alert(res.data?.error);
       else {
         setAptForm({ dockId: '', startTime: '09:00', durationMin: '60', truckNumber: '', kind: 'delivery' });
@@ -54,7 +54,7 @@ export function DockAppointmentsPanel() {
 
   async function cancel(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'logistics', action: 'dock-appointments-cancel', input: { id } });
+      await lensRun({ domain: 'logistics', action: 'dock-appointments-cancel', input: { id } });
       await refresh();
     } catch (e) { console.error('[Docks] cancel', e); }
   }

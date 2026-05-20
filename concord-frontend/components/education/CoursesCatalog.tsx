@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BookOpen, Plus, Trash2, Loader2, Search, Star } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Course {
@@ -33,9 +33,9 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
     try {
       const [a, b] = await Promise.all([
         searchQuery.trim()
-          ? api.post('/api/lens/run', { domain: 'education', action: 'courses-search', input: { query: searchQuery } })
-          : api.post('/api/lens/run', { domain: 'education', action: 'courses-list', input: filterCategory ? { category: filterCategory } : {} }),
-        api.post('/api/lens/run', { domain: 'education', action: 'enrollments-list', input: {} }),
+          ? lensRun({ domain: 'education', action: 'courses-search', input: { query: searchQuery } })
+          : lensRun({ domain: 'education', action: 'courses-list', input: filterCategory ? { category: filterCategory } : {} }),
+        lensRun({ domain: 'education', action: 'enrollments-list', input: {} }),
       ]);
       setCourses((a.data?.result?.courses || a.data?.result?.matches || []) as Course[]);
       const enrIds = new Set<string>(((b.data?.result?.enrollments || []) as Array<{ courseId: string }>).map(e => e.courseId));
@@ -47,7 +47,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
   async function add() {
     if (!form.title.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'education', action: 'courses-create',
         input: { ...form, durationHours: Number(form.durationHours) || 0 },
       });
@@ -59,14 +59,14 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'courses-delete', input: { id } });
+      await lensRun({ domain: 'education', action: 'courses-delete', input: { id } });
       setCourses(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error('[Courses] delete failed', e); }
   }
 
   async function enroll(c: Course) {
     try {
-      await api.post('/api/lens/run', { domain: 'education', action: 'enrollments-enroll', input: { courseId: c.id } });
+      await lensRun({ domain: 'education', action: 'enrollments-enroll', input: { courseId: c.id } });
       setEnrolledIds(prev => new Set(prev).add(c.id));
       onEnroll?.(c);
     } catch (e) { console.error('[Courses] enroll failed', e); }

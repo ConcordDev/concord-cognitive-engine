@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BookOpen, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Entry {
@@ -27,9 +27,9 @@ export function LogbookPanel() {
     setLoading(true);
     try {
       const [e, t, a] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'aviation', action: 'logbook-list', input: {} }),
-        api.post('/api/lens/run', { domain: 'aviation', action: 'logbook-totals', input: {} }),
-        api.post('/api/lens/run', { domain: 'aviation', action: 'aircraft-list', input: {} }),
+        lensRun({ domain: 'aviation', action: 'logbook-list', input: {} }),
+        lensRun({ domain: 'aviation', action: 'logbook-totals', input: {} }),
+        lensRun({ domain: 'aviation', action: 'aircraft-list', input: {} }),
       ]);
       setEntries((e.data?.result?.entries || []) as Entry[]);
       setTotals((t.data?.result as Totals) || null);
@@ -41,7 +41,7 @@ export function LogbookPanel() {
   async function add() {
     if (!form.aircraftId || !form.date || !form.from.trim() || !form.to.trim() || !form.totalHours) return;
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'logbook-add', input: { ...form, totalHours: Number(form.totalHours), pic: Number(form.pic) || 0, night: Number(form.night) || 0, instrument: Number(form.instrument) || 0, dayLandings: Number(form.dayLandings) || 0, nightLandings: Number(form.nightLandings) || 0 } });
+      await lensRun({ domain: 'aviation', action: 'logbook-add', input: { ...form, totalHours: Number(form.totalHours), pic: Number(form.pic) || 0, night: Number(form.night) || 0, instrument: Number(form.instrument) || 0, dayLandings: Number(form.dayLandings) || 0, nightLandings: Number(form.nightLandings) || 0 } });
       setForm({ ...form, from: '', to: '', totalHours: '', pic: '', night: '', instrument: '', remarks: '' });
       await refresh();
     } catch (e) { console.error('[Logbook] add', e); }
@@ -49,7 +49,7 @@ export function LogbookPanel() {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'logbook-delete', input: { id } });
+      await lensRun({ domain: 'aviation', action: 'logbook-delete', input: { id } });
       await refresh();
     } catch (e) { console.error('[Logbook] delete', e); }
   }

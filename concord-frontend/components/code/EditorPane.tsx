@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Loader2, Save, Wand2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { EditorTabs } from './CodeWorkbenchShell';
 
 const MonacoWrapper = dynamic(() => import('./MonacoWrapper'), { ssr: false });
@@ -35,7 +35,7 @@ export function EditorPane({
     const existing = files.find(f => f.path === openPath);
     if (existing) return;
     setLoadingFile(true);
-    api.post('/api/lens/run', { domain: 'code', action: 'files-read', input: { projectId, path: openPath } })
+    lensRun({ domain: 'code', action: 'files-read', input: { projectId, path: openPath } })
       .then(r => {
         if (r.data?.ok === false) { alert(r.data?.error); return; }
         const { content, language } = r.data?.result || { content: '', language: 'plaintext' };
@@ -64,7 +64,7 @@ export function EditorPane({
   async function save() {
     if (!active || !projectId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'code', action: 'files-write', input: { projectId, path: active.path, content: active.content } });
+      await lensRun({ domain: 'code', action: 'files-write', input: { projectId, path: active.path, content: active.content } });
       setFiles(prev => prev.map(f => f.path === active.path ? { ...f, original: f.content, modified: false } : f));
       onContentSaved?.();
     } catch (e) { console.error('[Editor] save', e); }
@@ -74,7 +74,7 @@ export function EditorPane({
     if (!active || !selection.trim() || !inlineInstruction.trim()) return;
     setInlineLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'inline-edit', input: { code: selection, instruction: inlineInstruction, language: active.language } });
+      const r = await lensRun({ domain: 'code', action: 'inline-edit', input: { code: selection, instruction: inlineInstruction, language: active.language } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       const edited = String(r.data?.result?.edited || '');
       const updated = active.content.replace(selection, edited);
@@ -88,7 +88,7 @@ export function EditorPane({
   async function format() {
     if (!active) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'format-code', input: { code: active.content, language: active.language } });
+      const r = await lensRun({ domain: 'code', action: 'format-code', input: { code: active.content, language: active.language } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       const formatted = String(r.data?.result?.formatted || '');
       updateContent(active.path, formatted);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Radar, Plus, X, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Watched { id: string; ident: string; addedAt: string; lastSeenAt: string | null; lastPosition: { lat: number; lng: number; altitudeFt: number } | null }
 
@@ -16,7 +16,7 @@ export function LiveFlightsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'aviation', action: 'live-flights-tracked', input: {} });
+      const res = await lensRun({ domain: 'aviation', action: 'live-flights-tracked', input: {} });
       setWatched((res.data?.result?.flights || []) as Watched[]);
     } catch (e) { console.error('[Live] failed', e); }
     finally { setLoading(false); }
@@ -25,7 +25,7 @@ export function LiveFlightsPanel() {
   async function watch() {
     if (!ident.trim()) return;
     try {
-      const res = await api.post('/api/lens/run', { domain: 'aviation', action: 'live-flights-watch', input: { ident } });
+      const res = await lensRun({ domain: 'aviation', action: 'live-flights-watch', input: { ident } });
       if (res.data?.ok === false) alert(res.data?.error);
       setIdent('');
       await refresh();
@@ -34,7 +34,7 @@ export function LiveFlightsPanel() {
 
   async function unwatch(i: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'aviation', action: 'live-flights-unwatch', input: { ident: i } });
+      await lensRun({ domain: 'aviation', action: 'live-flights-unwatch', input: { ident: i } });
       await refresh();
     } catch (e) { console.error('[Live] unwatch', e); }
   }

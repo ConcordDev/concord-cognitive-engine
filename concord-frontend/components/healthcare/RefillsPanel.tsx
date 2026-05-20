@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Pill, Loader2, Plus, CheckCircle, XCircle, Package } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Patient { id: string; firstName: string; lastName: string; mrn: string }
@@ -27,8 +27,8 @@ export function RefillsPanel() {
     setLoading(true);
     try {
       const [r, p] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'healthcare', action: 'refills-list', input: filter === 'all' ? {} : { status: filter } }),
-        api.post('/api/lens/run', { domain: 'healthcare', action: 'patients-list', input: {} }),
+        lensRun({ domain: 'healthcare', action: 'refills-list', input: filter === 'all' ? {} : { status: filter } }),
+        lensRun({ domain: 'healthcare', action: 'patients-list', input: {} }),
       ]);
       setList((r.data?.result?.refills || []) as Refill[]);
       setPatients((p.data?.result?.patients || []) as Patient[]);
@@ -39,7 +39,7 @@ export function RefillsPanel() {
   async function create() {
     if (!draft.patientId || !draft.medication.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'refills-request', input: draft });
+      await lensRun({ domain: 'healthcare', action: 'refills-request', input: draft });
       setDraft({ patientId: '', medication: '', dose: '', pharmacy: '', notes: '' });
       setCreating(false);
       await refresh();
@@ -48,7 +48,7 @@ export function RefillsPanel() {
 
   async function respond(id: string, status: 'approved' | 'denied' | 'filled') {
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'refills-respond', input: { id, status } });
+      await lensRun({ domain: 'healthcare', action: 'refills-respond', input: { id, status } });
       await refresh();
     } catch (e) { console.error('[Refills] respond', e); }
   }

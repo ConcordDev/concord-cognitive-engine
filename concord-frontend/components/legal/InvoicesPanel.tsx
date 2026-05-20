@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Matter { id: string; name: string }
@@ -31,8 +31,8 @@ export function InvoicesPanel() {
     setLoading(true);
     try {
       const [i, m] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'legal', action: 'invoices-list', input: filter === 'all' ? {} : { status: filter } }),
-        api.post('/api/lens/run', { domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
+        lensRun({ domain: 'legal', action: 'invoices-list', input: filter === 'all' ? {} : { status: filter } }),
+        lensRun({ domain: 'legal', action: 'matters-list', input: { status: 'open' } }),
       ]);
       setInvoices((i.data?.result?.invoices || []) as LegalInvoice[]);
       setMatters((m.data?.result?.matters || []) as Matter[]);
@@ -43,7 +43,7 @@ export function InvoicesPanel() {
   async function billFromTime() {
     if (!billMatter) return;
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'legal', action: 'invoices-from-time',
         input: { matterId: billMatter, taxRate: Number(taxRate) || 0 },
       });
@@ -55,7 +55,7 @@ export function InvoicesPanel() {
 
   async function markPaid(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'invoices-mark-paid', input: { id } });
+      await lensRun({ domain: 'legal', action: 'invoices-mark-paid', input: { id } });
       await refresh();
     } catch (e) { console.error('[Invoices] mark-paid failed', e); }
   }

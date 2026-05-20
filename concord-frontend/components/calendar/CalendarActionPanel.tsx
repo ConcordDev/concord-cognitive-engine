@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Calendar, AlertOctagon, Clock, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -104,8 +104,8 @@ export function CalendarActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Day plan — ${TODAY}`, tags: ['calendar', 'plan'], source: 'calendar:plan:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cal: { conf: confResult, avail: availResult, opt: optResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Day plan — ${TODAY}`, tags: ['calendar', 'plan'], source: 'calendar:plan:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cal: { conf: confResult, avail: availResult, opt: optResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('calendar.mintedDtuId', id, { label: `Plan DTU ${id.slice(0, 8)}…` }); ok(`Plan DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -132,8 +132,8 @@ export function CalendarActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Day-plan template`, tags: ['calendar', 'template', 'public'], source: 'calendar:template:publish', meta: { visibility: 'public', consent: { allowCitations: true }, opt: optResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Day-plan template`, tags: ['calendar', 'template', 'public'], source: 'calendar:template:publish', meta: { visibility: 'public', consent: { allowCitations: true }, opt: optResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -146,8 +146,8 @@ export function CalendarActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Day planner. ${confResult ? `${confResult.conflictCount} calendar conflicts.` : ''} ${availResult ? `${availResult.availableSlots.length} free slots totaling ${availResult.totalFreeMinutes}min.` : ''} ${optResult ? `Task load: ${optResult.totalHours}h, ${optResult.fitsInWorkday ? 'fits in workday' : 'overflows'}.` : ''} Recommend the single biggest schedule change for today + one task to defer. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Plan ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

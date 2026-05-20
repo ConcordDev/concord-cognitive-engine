@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { ClioShell, ClioNav } from './ClioShell';
 import { LegalAskBar } from './LegalAskBar';
 import { LegalDashboard } from './LegalDashboard';
@@ -22,7 +22,7 @@ export function ClioSection() {
 
   async function refreshBadges() {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'legal', action: 'dashboard-summary', input: {} });
+      const r = await lensRun({ domain: 'legal', action: 'dashboard-summary', input: {} });
       const d = r.data?.result;
       if (d) {
         setBadges({

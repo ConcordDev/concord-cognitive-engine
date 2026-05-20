@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Music, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Note { id: string; clipId: string; pitch: number; velocity: number; startBeats: number; lengthBeats: number }
@@ -21,7 +21,7 @@ export function MidiPianoRoll({ clipId }: { clipId?: string }) {
     if (!clipId) { setNotes([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'studio', action: 'midi-notes-list', input: { clipId } });
+      const res = await lensRun({ domain: 'studio', action: 'midi-notes-list', input: { clipId } });
       setNotes((res.data?.result?.notes || []) as Note[]);
     } catch (e) { console.error('[MIDI] failed', e); }
     finally { setLoading(false); }
@@ -30,14 +30,14 @@ export function MidiPianoRoll({ clipId }: { clipId?: string }) {
   async function add() {
     if (!clipId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'midi-notes-add', input: { clipId, pitch: Number(form.pitch), velocity: Number(form.velocity), startBeats: Number(form.startBeats), lengthBeats: Number(form.lengthBeats) } });
+      await lensRun({ domain: 'studio', action: 'midi-notes-add', input: { clipId, pitch: Number(form.pitch), velocity: Number(form.velocity), startBeats: Number(form.startBeats), lengthBeats: Number(form.lengthBeats) } });
       await refresh();
     } catch (e) { console.error('[MIDI] add', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'midi-notes-delete', input: { id } });
+      await lensRun({ domain: 'studio', action: 'midi-notes-delete', input: { id } });
       setNotes(prev => prev.filter(n => n.id !== id));
     } catch (e) { console.error('[MIDI] delete', e); }
   }

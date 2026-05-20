@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { StickyNote, Plus, Trash2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Note { id: string; listingId: string; text: string; timestamp: string }
 
@@ -16,7 +16,7 @@ export function PropertyNotes({ listingId }: { listingId?: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'realestate', action: 'notes-list', input: listingId ? { listingId } : {} });
+      const res = await lensRun({ domain: 'realestate', action: 'notes-list', input: listingId ? { listingId } : {} });
       setNotes((res.data?.result?.notes || []) as Note[]);
     } catch (e) { console.error('[Notes] list failed', e); }
     finally { setLoading(false); }
@@ -25,7 +25,7 @@ export function PropertyNotes({ listingId }: { listingId?: string }) {
   async function save() {
     if (!draft.trim() || !listingId) return;
     try {
-      await api.post('/api/lens/run', { domain: 'realestate', action: 'notes-save', input: { listingId, text: draft.trim() } });
+      await lensRun({ domain: 'realestate', action: 'notes-save', input: { listingId, text: draft.trim() } });
       setDraft('');
       await refresh();
     } catch (e) { console.error('[Notes] save failed', e); }
@@ -33,7 +33,7 @@ export function PropertyNotes({ listingId }: { listingId?: string }) {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'realestate', action: 'notes-delete', input: { id } });
+      await lensRun({ domain: 'realestate', action: 'notes-delete', input: { id } });
       setNotes(prev => prev.filter(n => n.id !== id));
     } catch (e) { console.error('[Notes] delete failed', e); }
   }

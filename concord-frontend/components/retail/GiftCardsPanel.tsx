@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Gift, Plus, Loader2, Copy } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface GiftCard {
@@ -24,7 +24,7 @@ export function GiftCardsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'retail', action: 'gift-cards-list', input: {} });
+      const res = await lensRun({ domain: 'retail', action: 'gift-cards-list', input: {} });
       setCards((res.data?.result?.giftCards || []) as GiftCard[]);
     } catch (e) { console.error('[GiftCards] list failed', e); }
     finally { setLoading(false); }
@@ -33,7 +33,7 @@ export function GiftCardsPanel() {
   async function issue() {
     if (!form.initialValue) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'retail', action: 'gift-cards-create',
         input: { initialValue: Number(form.initialValue), recipientEmail: form.recipientEmail, recipientName: form.recipientName, message: form.message },
       });
@@ -45,7 +45,7 @@ export function GiftCardsPanel() {
   async function redeem() {
     if (!redeemCode || !redeemAmount) return;
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'retail', action: 'gift-cards-redeem',
         input: { code: redeemCode, amount: Number(redeemAmount) },
       });

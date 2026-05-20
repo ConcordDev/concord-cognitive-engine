@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Folder, Plus, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface Project { id: string; number: string; name: string; description: string; language: string; createdAt: string }
 
@@ -17,7 +17,7 @@ export function ProjectSwitcher({ value, onChange, onCreated }: { value: string 
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'projects-list', input: {} });
+      const r = await lensRun({ domain: 'code', action: 'projects-list', input: {} });
       setList((r.data?.result?.projects || []) as Project[]);
     } catch (e) { console.error('[Projects] list', e); }
     finally { setLoading(false); }
@@ -26,7 +26,7 @@ export function ProjectSwitcher({ value, onChange, onCreated }: { value: string 
   async function create() {
     if (!draft.name.trim()) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'code', action: 'projects-create', input: draft });
+      const r = await lensRun({ domain: 'code', action: 'projects-create', input: draft });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setDraft({ name: '', description: '', scaffold: 'node-ts' });
       setCreating(false);

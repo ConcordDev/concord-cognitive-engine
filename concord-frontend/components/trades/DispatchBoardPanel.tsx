@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, Loader2, RefreshCw } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Tech { id: string; name: string; status: string }
@@ -29,7 +29,7 @@ export function DispatchBoardPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'trades', action: 'dispatch-board', input: { date } });
+      const res = await lensRun({ domain: 'trades', action: 'dispatch-board', input: { date } });
       setRows((res.data?.result?.rows || []) as Row[]);
       setUnassigned((res.data?.result?.unassigned || []) as Job[]);
     } catch (e) { console.error('[Dispatch] failed', e); }
@@ -46,7 +46,7 @@ export function DispatchBoardPanel() {
   async function assignJob(jobId: string, techId: string | null) {
     if (techId == null) return;
     try {
-      await api.post('/api/lens/run', { domain: 'trades', action: 'job-assign', input: { id: jobId, tech: techId } });
+      await lensRun({ domain: 'trades', action: 'job-assign', input: { id: jobId, tech: techId } });
       await refresh();
     } catch (e) { console.error('[Dispatch] assign', e); }
   }

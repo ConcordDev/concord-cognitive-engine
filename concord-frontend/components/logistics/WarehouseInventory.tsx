@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Warehouse, Plus, Loader2, AlertTriangle, Search } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface InventoryItem {
@@ -27,7 +27,7 @@ export function WarehouseInventory() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'logistics', action: 'inventory-list', input: {} });
+      const res = await lensRun({ domain: 'logistics', action: 'inventory-list', input: {} });
       setItems((res.data?.result?.items || []) as InventoryItem[]);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

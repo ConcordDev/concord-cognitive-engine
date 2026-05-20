@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Wrench, Plus, Trash2, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Asset { id: string; kind: string; label: string; lat: number; lng: number; condition: 'good' | 'fair' | 'poor' | 'broken'; lastInspectedAt: string | null; maintenanceLog: Array<{ id: string; work: string; crew: string; condition: string; at: string }> }
@@ -26,7 +26,7 @@ export function AssetsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'government', action: 'assets-list', input: {} });
+      const res = await lensRun({ domain: 'government', action: 'assets-list', input: {} });
       setAssets((res.data?.result?.assets || []) as Asset[]);
     } catch (e) { console.error('[Assets] failed', e); }
     finally { setLoading(false); }
@@ -35,7 +35,7 @@ export function AssetsPanel() {
   async function add() {
     if (!form.lat || !form.lng) return;
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'assets-add', input: { ...form, lat: Number(form.lat), lng: Number(form.lng) } });
+      await lensRun({ domain: 'government', action: 'assets-add', input: { ...form, lat: Number(form.lat), lng: Number(form.lng) } });
       setForm({ ...form, label: '', lat: '', lng: '' });
       await refresh();
     } catch (e) { console.error('[Assets] add', e); }
@@ -46,14 +46,14 @@ export function AssetsPanel() {
     if (!work) return;
     const condition = prompt('Updated condition (good/fair/poor/broken)?', 'good') || undefined;
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'assets-log-maintenance', input: { id, work, condition } });
+      await lensRun({ domain: 'government', action: 'assets-log-maintenance', input: { id, work, condition } });
       await refresh();
     } catch (e) { console.error('[Assets] maint', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'government', action: 'assets-delete', input: { id } });
+      await lensRun({ domain: 'government', action: 'assets-delete', input: { id } });
       setAssets(prev => prev.filter(a => a.id !== id));
     } catch (e) { console.error('[Assets] delete', e); }
   }

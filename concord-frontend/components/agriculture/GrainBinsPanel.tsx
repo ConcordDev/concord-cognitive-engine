@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Warehouse, Plus, Loader2, ArrowDown, ArrowUp } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Bin { id: string; name: string; capacityBushels: number; crop: string; currentBushels: number; moisturePct: number | null; tempF: number | null; location: string }
@@ -20,7 +20,7 @@ export function GrainBinsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'agriculture', action: 'grain-bins-list', input: {} });
+      const res = await lensRun({ domain: 'agriculture', action: 'grain-bins-list', input: {} });
       setBins((res.data?.result?.bins || []) as Bin[]);
     } catch (e) { console.error('[Bins] failed', e); }
     finally { setLoading(false); }
@@ -29,7 +29,7 @@ export function GrainBinsPanel() {
   async function create() {
     if (!form.name.trim() || !form.capacityBushels) return;
     try {
-      await api.post('/api/lens/run', { domain: 'agriculture', action: 'grain-bins-create', input: { ...form, capacityBushels: Number(form.capacityBushels) } });
+      await lensRun({ domain: 'agriculture', action: 'grain-bins-create', input: { ...form, capacityBushels: Number(form.capacityBushels) } });
       setForm({ name: '', capacityBushels: '', crop: '', location: '' });
       await refresh();
     } catch (e) { console.error('[Bins] create', e); }
@@ -38,7 +38,7 @@ export function GrainBinsPanel() {
   async function tx(binId: string) {
     if (!txAmt) return;
     try {
-      const res = await api.post('/api/lens/run', { domain: 'agriculture', action: txKind === 'load' ? 'grain-bins-load' : 'grain-bins-unload', input: { id: binId, bushels: Number(txAmt) } });
+      const res = await lensRun({ domain: 'agriculture', action: txKind === 'load' ? 'grain-bins-load' : 'grain-bins-unload', input: { id: binId, bushels: Number(txAmt) } });
       if (res.data?.ok === false) alert(res.data?.error);
       else {
         setTxFor(null); setTxAmt('');

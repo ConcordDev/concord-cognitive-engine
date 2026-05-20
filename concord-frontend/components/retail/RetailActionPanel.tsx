@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { ShoppingCart, Target, Users, Clock, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -102,8 +102,8 @@ export function RetailActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Retail ops`, tags: ['retail', 'ops'], source: 'retail:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, retail: { reorder: reorderResult, pipe: pipeResult, ltv: ltvResult, sla: slaResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Retail ops`, tags: ['retail', 'ops'], source: 'retail:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, retail: { reorder: reorderResult, pipe: pipeResult, ltv: ltvResult, sla: slaResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('retail.mintedDtuId', id, { label: `Ops DTU ${id.slice(0, 8)}…` }); ok(`Ops DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -131,8 +131,8 @@ export function RetailActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Retail unit econ`, tags: ['retail', 'ltv', 'public'], source: 'retail:ltv:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ltv: ltvResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Retail unit econ`, tags: ['retail', 'ltv', 'public'], source: 'retail:ltv:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ltv: ltvResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -145,8 +145,8 @@ export function RetailActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Retail ops review. ${reorderResult ? `${reorderResult.criticalCount} critical stockouts, ${reorderResult.reorderCount} below reorder.` : ''} ${pipeResult ? `Weighted pipeline $${pipeResult.totalWeighted?.toLocaleString()}.` : ''} ${ltvResult ? `LTV $${ltvResult.ltv} on CAC $${ltvResult.cac} (${ltvResult.ltvToCacRatio?.toFixed(1)}× ratio).` : ''} ${slaResult ? `SLA ${slaResult.complianceRate}% compliance.` : ''} Identify the single most urgent operational lever. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Lever ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { SlackShell, MsgNav } from './SlackShell';
 import { ChannelList, Channel } from './ChannelList';
 import { MessageStream, Message } from './MessageStream';
@@ -21,7 +21,7 @@ export function SlackSection() {
 
   async function refreshBadges() {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'inbox-summary', input: {} });
+      const r = await lensRun({ domain: 'message', action: 'inbox-summary', input: {} });
       const d = r.data?.result;
       if (d) {
         setBadges({
@@ -40,7 +40,7 @@ export function SlackSection() {
     setNav('channels');
     try {
       // Fetch channel meta by re-listing then finding
-      const r = await api.post('/api/lens/run', { domain: 'message', action: 'channels-list', input: {} });
+      const r = await lensRun({ domain: 'message', action: 'channels-list', input: {} });
       const ch = ((r.data?.result?.channels || []) as Channel[]).find(c => c.id === id);
       setActiveChannel(ch || null);
     } catch {}
@@ -51,7 +51,7 @@ export function SlackSection() {
     setThreadRootId(rootId);
     // Find the root message
     if (!activeChannelId) return;
-    api.post('/api/lens/run', { domain: 'message', action: 'messages-list', input: { channelId: activeChannelId, limit: 200 } })
+    lensRun({ domain: 'message', action: 'messages-list', input: { channelId: activeChannelId, limit: 200 } })
       .then(r => {
         const msgs = (r.data?.result?.messages || []) as Message[];
         setThreadRoot(msgs.find(m => m.id === rootId) || null);
