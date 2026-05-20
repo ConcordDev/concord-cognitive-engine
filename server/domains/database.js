@@ -53,4 +53,195 @@ export default function registerDatabaseActions(registerLensAction) {
     const unique = [...new Map(recommendations.map(r => [r.column, r])).values()];
     return { ok: true, result: { recommendations: unique, queriesAnalyzed: queries.length, suggestedIndexes: unique.length, estimatedSpeedup: unique.length > 0 ? `${unique.length * 20}-${unique.length * 50}% faster queries` : "Queries already optimized" } };
   });
+
+  // ─── dbdiagram.io / DrawSQL-shape schema designer (per-user) ─────────
+
+  function getDatabaseState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.databaseLens) STATE.databaseLens = {};
+    if (!(STATE.databaseLens.schemas instanceof Map)) STATE.databaseLens.schemas = new Map(); // userId -> Array
+    return STATE.databaseLens;
+  }
+  function saveDatabase() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const dbId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const dbActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const dbClean = (v, max = 120) => String(v == null ? "" : v).trim().slice(0, max);
+  const dbIdent = (v, max = 64) => dbClean(v, max).replace(/[^A-Za-z0-9_]/g, "_");
+  const dbSchemas = (s, userId) => { if (!s.schemas.has(userId)) s.schemas.set(userId, []); return s.schemas.get(userId); };
+  const COL_TYPES = ["integer", "bigint", "text", "varchar", "boolean", "real", "numeric", "timestamp", "date", "uuid", "json"];
+
+  registerLensAction("database", "schema-create", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = dbClean(params.name, 120);
+    if (!name) return { ok: false, error: "schema name required" };
+    const schema = { id: dbId("sc"), name, tables: [], relations: [], createdAt: new Date().toISOString() };
+    dbSchemas(s, dbActor(ctx)).push(schema);
+    saveDatabase();
+    return { ok: true, result: { schema } };
+  });
+
+  registerLensAction("database", "schema-list", (ctx, _a, _params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const schemas = dbSchemas(s, dbActor(ctx)).map((sc) => ({
+      id: sc.id, name: sc.name, tableCount: sc.tables.length,
+      columnCount: sc.tables.reduce((n, t) => n + t.columns.length, 0), relationCount: sc.relations.length,
+    }));
+    return { ok: true, result: { schemas, count: schemas.length } };
+  });
+
+  registerLensAction("database", "schema-detail", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sc = dbSchemas(s, dbActor(ctx)).find((x) => x.id === params.id);
+    if (!sc) return { ok: false, error: "schema not found" };
+    return { ok: true, result: { schema: sc } };
+  });
+
+  registerLensAction("database", "schema-delete", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = dbSchemas(s, dbActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "schema not found" };
+    arr.splice(i, 1);
+    saveDatabase();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  function findSchema(s, ctx, id) { return dbSchemas(s, dbActor(ctx)).find((x) => x.id === id); }
+
+  registerLensAction("database", "table-add", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sc = findSchema(s, ctx, params.schemaId);
+    if (!sc) return { ok: false, error: "schema not found" };
+    const name = dbIdent(params.name, 64);
+    if (!name) return { ok: false, error: "table name required" };
+    if (sc.tables.some((t) => t.name === name)) return { ok: false, error: "table name already exists" };
+    const table = {
+      id: dbId("tbl"), name,
+      columns: [{ id: dbId("col"), name: "id", type: "integer", pk: true, nullable: false, fk: false, references: null }],
+    };
+    sc.tables.push(table);
+    saveDatabase();
+    return { ok: true, result: { table } };
+  });
+
+  registerLensAction("database", "table-delete", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sc = findSchema(s, ctx, params.schemaId);
+    if (!sc) return { ok: false, error: "schema not found" };
+    const i = sc.tables.findIndex((t) => t.id === params.tableId);
+    if (i < 0) return { ok: false, error: "table not found" };
+    const removed = sc.tables[i].name;
+    sc.tables.splice(i, 1);
+    sc.relations = sc.relations.filter((r) => r.fromTable !== removed && r.toTable !== removed);
+    saveDatabase();
+    return { ok: true, result: { deleted: params.tableId } };
+  });
+
+  registerLensAction("database", "column-add", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sc = findSchema(s, ctx, params.schemaId);
+    if (!sc) return { ok: false, error: "schema not found" };
+    const table = sc.tables.find((t) => t.id === params.tableId);
+    if (!table) return { ok: false, error: "table not found" };
+    const name = dbIdent(params.name, 64);
+    if (!name) return { ok: false, error: "column name required" };
+    if (table.columns.some((c) => c.name === name)) return { ok: false, error: "column name already exists" };
+    const column = {
+      id: dbId("col"), name,
+      type: COL_TYPES.includes(params.type) ? params.type : "text",
+      pk: params.pk === true,
+      nullable: params.nullable !== false,
+      fk: params.fk === true,
+      references: dbClean(params.references, 130) || null,
+    };
+    table.columns.push(column);
+    saveDatabase();
+    return { ok: true, result: { column } };
+  });
+
+  registerLensAction("database", "column-delete", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sc = findSchema(s, ctx, params.schemaId);
+    if (!sc) return { ok: false, error: "schema not found" };
+    const table = sc.tables.find((t) => t.id === params.tableId);
+    if (!table) return { ok: false, error: "table not found" };
+    const i = table.columns.findIndex((c) => c.id === params.columnId);
+    if (i < 0) return { ok: false, error: "column not found" };
+    table.columns.splice(i, 1);
+    saveDatabase();
+    return { ok: true, result: { deleted: params.columnId } };
+  });
+
+  registerLensAction("database", "relation-add", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sc = findSchema(s, ctx, params.schemaId);
+    if (!sc) return { ok: false, error: "schema not found" };
+    const fromTable = dbIdent(params.fromTable, 64);
+    const toTable = dbIdent(params.toTable, 64);
+    if (!sc.tables.some((t) => t.name === fromTable) || !sc.tables.some((t) => t.name === toTable)) {
+      return { ok: false, error: "both tables must exist in the schema" };
+    }
+    const relation = {
+      id: dbId("rel"),
+      fromTable, fromColumn: dbIdent(params.fromColumn, 64),
+      toTable, toColumn: dbIdent(params.toColumn, 64) || "id",
+      kind: ["one_to_one", "one_to_many", "many_to_many"].includes(params.kind) ? params.kind : "one_to_many",
+    };
+    sc.relations.push(relation);
+    saveDatabase();
+    return { ok: true, result: { relation } };
+  });
+
+  registerLensAction("database", "relation-delete", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sc = findSchema(s, ctx, params.schemaId);
+    if (!sc) return { ok: false, error: "schema not found" };
+    const i = sc.relations.findIndex((r) => r.id === params.relationId);
+    if (i < 0) return { ok: false, error: "relation not found" };
+    sc.relations.splice(i, 1);
+    saveDatabase();
+    return { ok: true, result: { deleted: params.relationId } };
+  });
+
+  // schema-export-sql — generate CREATE TABLE DDL from the visual schema.
+  registerLensAction("database", "schema-export-sql", (ctx, _a, params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sc = findSchema(s, ctx, params.id);
+    if (!sc) return { ok: false, error: "schema not found" };
+    const lines = [];
+    for (const table of sc.tables) {
+      lines.push(`CREATE TABLE ${table.name} (`);
+      const colDefs = table.columns.map((c) => {
+        let def = `  ${c.name} ${c.type.toUpperCase()}`;
+        if (c.pk) def += " PRIMARY KEY";
+        if (!c.nullable && !c.pk) def += " NOT NULL";
+        return def;
+      });
+      lines.push(colDefs.join(",\n"));
+      lines.push(");");
+      lines.push("");
+    }
+    for (const r of sc.relations) {
+      lines.push(`ALTER TABLE ${r.fromTable} ADD FOREIGN KEY (${r.fromColumn}) REFERENCES ${r.toTable}(${r.toColumn});`);
+    }
+    return { ok: true, result: { sql: lines.join("\n").trim(), tableCount: sc.tables.length } };
+  });
+
+  registerLensAction("database", "schema-dashboard", (ctx, _a, _params = {}) => {
+    const s = getDatabaseState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const schemas = dbSchemas(s, dbActor(ctx));
+    return {
+      ok: true,
+      result: {
+        schemas: schemas.length,
+        totalTables: schemas.reduce((n, sc) => n + sc.tables.length, 0),
+        totalRelations: schemas.reduce((n, sc) => n + sc.relations.length, 0),
+      },
+    };
+  });
 }
