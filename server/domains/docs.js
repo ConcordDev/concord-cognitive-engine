@@ -492,4 +492,207 @@ export default function registerDocsActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Notion-shape page/block document substrate (per-user, STATE) ────
+
+  function getDocsState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.docsLens) STATE.docsLens = {};
+    if (!(STATE.docsLens.pages instanceof Map)) STATE.docsLens.pages = new Map(); // userId -> Array<page>
+    return STATE.docsLens;
+  }
+  function saveDocs() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const dcId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const dcNow = () => new Date().toISOString();
+  const dcActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const dcClean = (v, max = 4000) => String(v == null ? "" : v).trim().slice(0, max);
+  const dcPages = (s, userId) => { if (!s.pages.has(userId)) s.pages.set(userId, []); return s.pages.get(userId); };
+
+  const BLOCK_TYPES = [
+    "paragraph", "heading1", "heading2", "heading3",
+    "bulleted_list", "numbered_list", "todo", "code", "quote", "callout", "divider",
+  ];
+
+  registerLensAction("docs", "page-create", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = dcActor(ctx);
+    const pages = dcPages(s, userId);
+    const parentId = params.parentId && pages.some((p) => p.id === params.parentId) ? params.parentId : null;
+    const page = {
+      id: dcId("pg"),
+      title: dcClean(params.title, 200) || "Untitled",
+      icon: dcClean(params.icon, 8) || "📄",
+      parentId,
+      blocks: [],
+      createdAt: dcNow(),
+      updatedAt: dcNow(),
+    };
+    pages.push(page);
+    saveDocs();
+    return { ok: true, result: { page } };
+  });
+
+  registerLensAction("docs", "page-list", (ctx, _a, _params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pages = dcPages(s, dcActor(ctx)).map((p) => ({
+      id: p.id, title: p.title, icon: p.icon, parentId: p.parentId,
+      blockCount: p.blocks.length, updatedAt: p.updatedAt,
+    }));
+    return { ok: true, result: { pages, count: pages.length } };
+  });
+
+  registerLensAction("docs", "page-detail", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.id);
+    if (!page) return { ok: false, error: "page not found" };
+    return { ok: true, result: { page } };
+  });
+
+  registerLensAction("docs", "page-update", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.id);
+    if (!page) return { ok: false, error: "page not found" };
+    if (params.title != null) page.title = dcClean(params.title, 200) || page.title;
+    if (params.icon != null) page.icon = dcClean(params.icon, 8) || page.icon;
+    page.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { page } };
+  });
+
+  registerLensAction("docs", "page-delete", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = dcActor(ctx);
+    const pages = dcPages(s, userId);
+    if (!pages.some((p) => p.id === params.id)) return { ok: false, error: "page not found" };
+    const toDelete = new Set([params.id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const p of pages) {
+        if (p.parentId && toDelete.has(p.parentId) && !toDelete.has(p.id)) { toDelete.add(p.id); grew = true; }
+      }
+    }
+    s.pages.set(userId, pages.filter((p) => !toDelete.has(p.id)));
+    saveDocs();
+    return { ok: true, result: { deleted: [...toDelete] } };
+  });
+
+  registerLensAction("docs", "page-move", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pages = dcPages(s, dcActor(ctx));
+    const page = pages.find((p) => p.id === params.id);
+    if (!page) return { ok: false, error: "page not found" };
+    const parentId = params.parentId || null;
+    if (parentId === page.id) return { ok: false, error: "a page cannot be its own parent" };
+    if (parentId && !pages.some((p) => p.id === parentId)) return { ok: false, error: "parent page not found" };
+    page.parentId = parentId;
+    page.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { page } };
+  });
+
+  registerLensAction("docs", "block-add", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const type = BLOCK_TYPES.includes(params.type) ? params.type : "paragraph";
+    const block = {
+      id: dcId("bl"),
+      type,
+      text: type === "divider" ? "" : dcClean(params.text, 8000),
+      checked: type === "todo" ? params.checked === true : false,
+      createdAt: dcNow(),
+    };
+    const afterIdx = params.afterId ? page.blocks.findIndex((b) => b.id === params.afterId) : -1;
+    if (afterIdx >= 0) page.blocks.splice(afterIdx + 1, 0, block);
+    else page.blocks.push(block);
+    page.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { block, blockCount: page.blocks.length } };
+  });
+
+  registerLensAction("docs", "block-update", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const block = page.blocks.find((b) => b.id === params.blockId);
+    if (!block) return { ok: false, error: "block not found" };
+    if (params.text != null) block.text = dcClean(params.text, 8000);
+    if (params.type != null && BLOCK_TYPES.includes(params.type)) block.type = params.type;
+    if (params.checked != null) block.checked = params.checked === true;
+    page.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { block } };
+  });
+
+  registerLensAction("docs", "block-delete", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const i = page.blocks.findIndex((b) => b.id === params.blockId);
+    if (i < 0) return { ok: false, error: "block not found" };
+    page.blocks.splice(i, 1);
+    page.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { deleted: params.blockId, blockCount: page.blocks.length } };
+  });
+
+  registerLensAction("docs", "block-reorder", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const i = page.blocks.findIndex((b) => b.id === params.blockId);
+    if (i < 0) return { ok: false, error: "block not found" };
+    const j = Math.max(0, Math.min(page.blocks.length - 1, i + (params.direction === "down" ? 1 : -1)));
+    if (i !== j) {
+      const [m] = page.blocks.splice(i, 1);
+      page.blocks.splice(j, 0, m);
+      page.updatedAt = dcNow();
+      saveDocs();
+    }
+    return { ok: true, result: { order: page.blocks.map((b) => b.id) } };
+  });
+
+  registerLensAction("docs", "docs-search", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const q = dcClean(params.query, 100).toLowerCase();
+    if (!q) return { ok: false, error: "query required" };
+    const results = [];
+    for (const p of dcPages(s, dcActor(ctx))) {
+      const titleHit = p.title.toLowerCase().includes(q);
+      const blockHit = p.blocks.find((b) => b.text.toLowerCase().includes(q));
+      if (titleHit || blockHit) {
+        results.push({
+          id: p.id, title: p.title, icon: p.icon,
+          snippet: blockHit ? blockHit.text.slice(0, 160) : "",
+          matchedIn: titleHit ? "title" : "content",
+        });
+      }
+    }
+    return { ok: true, result: { results, count: results.length } };
+  });
+
+  registerLensAction("docs", "docs-dashboard", (ctx, _a, _params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pages = dcPages(s, dcActor(ctx));
+    const totalBlocks = pages.reduce((n, p) => n + p.blocks.length, 0);
+    const todos = pages.flatMap((p) => p.blocks.filter((b) => b.type === "todo"));
+    const words = pages.reduce((n, p) => n + p.blocks.reduce((w, b) => w + b.text.split(/\s+/).filter(Boolean).length, 0), 0);
+    return {
+      ok: true,
+      result: {
+        pages: pages.length,
+        topLevelPages: pages.filter((p) => !p.parentId).length,
+        totalBlocks,
+        words,
+        openTodos: todos.filter((t) => !t.checked).length,
+        doneTodos: todos.filter((t) => t.checked).length,
+      },
+    };
+  });
 }
