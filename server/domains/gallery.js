@@ -298,4 +298,38 @@ export default function registerGalleryActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest artworks from the Art Institute of Chicago (free, no
+  // key) as visible DTUs.
+  registerLensAction("gallery", "feed", async (ctx, _a, params = {}) => {
+    const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const page = Math.max(1, Math.min(100, Math.round(Number(params.page) || 1)));
+    try {
+      const r = await fetch(`https://api.artic.edu/api/v1/artworks?page=${page}&limit=${limit}&fields=id,title,artist_display,date_display,image_id,medium_display`);
+      if (!r.ok) return { ok: false, error: `artic ${r.status}` };
+      const data = await r.json();
+      const works = data.data || [];
+      let ingested = 0, skipped = 0;
+      const dtuIds = [];
+      for (const w of works) {
+        if (s.feedSeen.has(String(w.id))) { skipped++; continue; }
+        const image = w.image_id ? `https://www.artic.edu/iiif/2/${w.image_id}/full/843,/0/default.jpg` : null;
+        const title = `${w.title || "Untitled"} — ${w.artist_display || "Unknown"}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${w.title || "Untitled"}\n${w.artist_display || "Unknown artist"}\n${w.date_display || ""}\n${w.medium_display || ""}${image ? `\n\n${image}` : ""}`,
+          tags: ["gallery", "feed", "artwork", "art-institute-chicago"],
+          source: "artic-feed",
+          meta: { articId: w.id, title: w.title, artist: w.artist_display, date: w.date_display, image },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(String(w.id)); }
+      }
+      saveGallery();
+      return { ok: true, result: { ingested, skipped, source: "art-institute-of-chicago", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `artic unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

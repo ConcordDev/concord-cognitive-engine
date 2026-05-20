@@ -15,6 +15,7 @@ import registerCalendar from "../domains/calendar.js";
 import registerMusic from "../domains/music.js";
 import registerDaily from "../domains/daily.js";
 import registerOcean from "../domains/ocean.js";
+import registerGallery from "../domains/gallery.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -23,7 +24,7 @@ before(() => {
   registerGeology(register); registerSpace(register); registerHistory(register);
   registerAnswers(register); registerLaw(register); registerPoetry(register);
   registerPaper(register); registerCalendar(register); registerMusic(register);
-  registerDaily(register); registerOcean(register);
+  registerDaily(register); registerOcean(register); registerGallery(register);
 });
 
 let createdDtus;
@@ -203,5 +204,19 @@ describe("ocean.feed — NWS marine alerts → DTUs", () => {
     const r = await callFeed("ocean", makeCtx());
     assert.equal(r.result.ingested, 1);
     assert.match(createdDtus[0].title, /Small Craft Advisory/);
+  });
+});
+
+describe("gallery.feed — Art Institute of Chicago → DTUs", () => {
+  it("ingests artworks", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      data: [
+        { id: 27992, title: "A Sunday on La Grande Jatte", artist_display: "Georges Seurat", date_display: "1884", image_id: "img1", medium_display: "Oil on canvas" },
+      ],
+    }) });
+    const r = await callFeed("gallery", makeCtx());
+    assert.equal(r.result.ingested, 1);
+    assert.match(createdDtus[0].title, /La Grande Jatte/);
+    assert.ok(createdDtus[0].meta.image.includes("img1"));
   });
 });

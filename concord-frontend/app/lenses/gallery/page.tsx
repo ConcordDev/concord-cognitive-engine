@@ -22,6 +22,7 @@ import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { MetMuseumPanel } from '@/components/art/MetMuseumPanel';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
 import { SavedCollections } from '@/components/gallery/SavedCollections';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { GalleryActionPanel } from '@/components/gallery/GalleryActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { Loader2, Image as ImageIcon } from 'lucide-react';
@@ -179,6 +180,7 @@ export default function GalleryPage() {
       </section>
 
       <section className="mt-6">
+        <LensFeedButton domain="gallery" />
         <SavedCollections />
       </section>
 
