@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
+import { PaperLibrary } from '@/components/paper/PaperLibrary';
 import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
 import { CrossRefPanel } from '@/components/research/CrossRefPanel';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
@@ -1129,6 +1130,9 @@ export default function PaperLensPage() {
     {/* Bespoke arXiv search with Save-as-DTU */}
     <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
       <ArxivSearch />
+    </section>
+    <section className="mt-4 mx-4">
+      <PaperLibrary />
     </section>
     {/* Phase 4 — REAL Open Library book search. */}
     <section className="mt-4 mx-4">
