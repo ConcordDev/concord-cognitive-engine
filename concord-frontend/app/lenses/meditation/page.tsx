@@ -24,6 +24,7 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { MeditationStudio } from '@/components/meditation/MeditationStudio';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wind, Play, Pause, RotateCcw, Sparkles, Send, Globe, Wand2,
@@ -537,6 +538,9 @@ export default function MeditationLensPage() {
           </AnimatePresence>
         </div>
       </div>
+      <section className="mt-6">
+        <MeditationStudio />
+      </section>
           <RecentMineCard domain="meditation" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="meditation" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="meditation" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
