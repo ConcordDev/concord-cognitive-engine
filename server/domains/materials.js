@@ -420,4 +420,105 @@ export default function registerMaterialsActions(registerLensAction) {
       return { ok: false, error: `materials project unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Saved materials shortlist (Granta MI-shape comparison set) ──────
+
+  function getMaterialsState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.materialsLens) STATE.materialsLens = {};
+    if (!(STATE.materialsLens.saved instanceof Map)) STATE.materialsLens.saved = new Map(); // userId -> Array
+    return STATE.materialsLens;
+  }
+  function saveMaterials() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const mtId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const mtActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const mtClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const mtNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const mtSaved = (s, userId) => { if (!s.saved.has(userId)) s.saved.set(userId, []); return s.saved.get(userId); };
+
+  registerLensAction("materials", "shortlist-add", (ctx, _a, params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = mtClean(params.name, 160);
+    if (!name) return { ok: false, error: "material name required" };
+    const list = mtSaved(s, mtActor(ctx));
+    const refId = mtClean(params.refId, 120) || name.toLowerCase();
+    if (list.some((m) => m.refId === refId)) return { ok: false, error: "material already shortlisted" };
+    const material = {
+      id: mtId("mt"),
+      refId,
+      name,
+      formula: mtClean(params.formula, 80) || null,
+      category: mtClean(params.category, 60) || "general",
+      properties: {
+        density: mtNum(params.density),
+        tensileStrengthMPa: mtNum(params.tensileStrengthMPa),
+        meltingPointC: mtNum(params.meltingPointC),
+        youngsModulusGPa: mtNum(params.youngsModulusGPa),
+        costPerKg: mtNum(params.costPerKg),
+      },
+      notes: mtClean(params.notes, 1000) || "",
+      addedAt: new Date().toISOString(),
+    };
+    list.push(material);
+    saveMaterials();
+    return { ok: true, result: { material } };
+  });
+
+  registerLensAction("materials", "shortlist-list", (ctx, _a, params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let list = [...mtSaved(s, mtActor(ctx))];
+    if (params.category) list = list.filter((m) => m.category === params.category);
+    return { ok: true, result: { materials: list, count: list.length } };
+  });
+
+  registerLensAction("materials", "shortlist-remove", (ctx, _a, params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = mtSaved(s, mtActor(ctx));
+    const i = list.findIndex((m) => m.id === params.id);
+    if (i < 0) return { ok: false, error: "material not found" };
+    list.splice(i, 1);
+    saveMaterials();
+    return { ok: true, result: { removed: params.id } };
+  });
+
+  // shortlist-compare — side-by-side property table + the best material
+  // per property (Granta MI's core selection workflow).
+  registerLensAction("materials", "shortlist-compare", (ctx, _a, _params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = mtSaved(s, mtActor(ctx));
+    if (list.length < 2) return { ok: false, error: "shortlist at least 2 materials to compare" };
+    const PROPS = [
+      { key: "density", label: "Density", lowerBetter: true },
+      { key: "tensileStrengthMPa", label: "Tensile strength (MPa)", lowerBetter: false },
+      { key: "meltingPointC", label: "Melting point (°C)", lowerBetter: false },
+      { key: "youngsModulusGPa", label: "Young's modulus (GPa)", lowerBetter: false },
+      { key: "costPerKg", label: "Cost per kg", lowerBetter: true },
+    ];
+    const comparison = PROPS.map((p) => {
+      const vals = list.map((m) => ({ id: m.id, name: m.name, value: m.properties[p.key] }))
+        .filter((v) => v.value != null);
+      let best = null;
+      if (vals.length > 0) {
+        best = vals.reduce((acc, v) => {
+          if (!acc) return v;
+          return p.lowerBetter ? (v.value < acc.value ? v : acc) : (v.value > acc.value ? v : acc);
+        }, null);
+      }
+      return { property: p.label, key: p.key, values: vals, best: best ? best.name : null };
+    });
+    return { ok: true, result: { materials: list.map((m) => ({ id: m.id, name: m.name, formula: m.formula })), comparison } };
+  });
+
+  registerLensAction("materials", "shortlist-dashboard", (ctx, _a, _params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = mtSaved(s, mtActor(ctx));
+    const byCategory = {};
+    for (const m of list) byCategory[m.category] = (byCategory[m.category] || 0) + 1;
+    return { ok: true, result: { shortlisted: list.length, byCategory } };
+  });
 }
