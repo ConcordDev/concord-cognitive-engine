@@ -86,4 +86,14 @@ Sources:
 | Step debugger (breakpoints / watch) | debug adapter on a live runtime | sandbox exec with stdout/stderr + diagnostics |
 
 ## Verification log
-- (in progress) — backend macros + tests; frontend panels; feature walkthrough.
+- 2026-05-20: Backend — 58 macros (workspace / files / git / search / diagnostics /
+  symbols / agent / run-configs / bookmarks); `node --check` clean. search-project
+  made workspace-aware (accepts projectId).
+- 2026-05-20: Tests — `tests/code-domain-parity.test.js` 68/68 green (symbol outline,
+  diagnostics rules, todo-scan, replace + rename, git diff/blame/discard, stash
+  round-trip, branch tree isolation + merge + conflict detection, run configs,
+  bookmarks). Fixed a latent commit-id collision found by the new multi-commit tests.
+- 2026-05-20: Frontend — Problems panel (bottom), Outline view (Explorer), Search
+  with replace + rename, Source Control with diff/blame/discard/stash/merge, Run &
+  Bookmarks panel; line-jump from every result row; `npx tsc --noEmit` exit 0.
+- 2026-05-20: `npm run score-lenses` → code 7/7 PASS.

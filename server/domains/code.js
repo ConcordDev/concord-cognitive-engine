@@ -396,11 +396,20 @@ export default function registerCodeActions(registerLensAction) {
    * params.files: [{ name, language?, content }]. Returns line hits with
    * preview, capped at SEARCH_RESULT_CAP. Supports plain + regex + case toggle.
    */
-  registerLensAction("code", "search-project", (_ctx, _artifact, params = {}) => {
+  registerLensAction("code", "search-project", (ctx, _artifact, params = {}) => {
     const query = String(params.query || "");
     if (query.length < 1) return { ok: true, result: { hits: [], totalFiles: 0, totalLines: 0 } };
 
-    const files = Array.isArray(params.files) ? params.files : [];
+    // Two modes: an explicit `files` array (stateless), or a `projectId`
+    // that pulls the live virtual-workspace files.
+    let files = Array.isArray(params.files) ? params.files : [];
+    if (files.length === 0 && params.projectId) {
+      const ws = getWorkspaceState();
+      if (ws) {
+        const wsFiles = ensureFiles(ws, aidC(ctx), String(params.projectId));
+        files = Array.from(wsFiles.entries()).map(([name, blob]) => ({ name, content: blob.content }));
+      }
+    }
     const caseSensitive = params.caseSensitive === true;
     const regex = params.regex === true;
     const wholeWord = params.wholeWord === true;

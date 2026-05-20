@@ -13,11 +13,13 @@ interface OpenFile { path: string; content: string; original: string; language: 
 export function EditorPane({
   projectId,
   openPath,
+  openLine,
   onOpenChange,
   onContentSaved,
 }: {
   projectId: string | null;
   openPath: string | null;
+  openLine?: number | null;
   onOpenChange: (path: string | null) => void;
   onContentSaved?: () => void;
 }) {
@@ -27,7 +29,20 @@ export function EditorPane({
   const [inlineInstruction, setInlineInstruction] = useState('');
   const [inlineLoading, setInlineLoading] = useState(false);
   const [selection, setSelection] = useState<string>('');
-  const editorRef = useRef<unknown>(null);
+  const editorRef = useRef<{ revealLineInCenter?: (n: number) => void; setPosition?: (p: { lineNumber: number; column: number }) => void; focus?: () => void } | null>(null);
+
+  // Reveal a requested line once the editor + the target file are ready.
+  useEffect(() => {
+    if (!openLine || !openPath) return;
+    const ed = editorRef.current;
+    if (!ed?.revealLineInCenter) return;
+    const t = setTimeout(() => {
+      ed.revealLineInCenter?.(openLine);
+      ed.setPosition?.({ lineNumber: openLine, column: 1 });
+      ed.focus?.();
+    }, 60);
+    return () => clearTimeout(t);
+  }, [openLine, openPath, loadingFile]);
 
   // Open a file when openPath changes
   useEffect(() => {
@@ -153,7 +168,7 @@ export function EditorPane({
                 value={active.content}
                 onChange={(value) => updateContent(active.path, value || '')}
                 language={active.language}
-                onEditorReady={(ed) => { editorRef.current = ed; }}
+                onEditorReady={(ed) => { editorRef.current = ed as typeof editorRef.current; }}
                 onSelectionChange={(sel: { text: string } | string | null) => {
                   const text = typeof sel === 'string' ? sel : (sel?.text || '');
                   setSelection(text);
