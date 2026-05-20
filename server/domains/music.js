@@ -225,7 +225,7 @@ export default function registerMusicActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.musicLens) STATE.musicLens = {};
     const s = STATE.musicLens;
-    for (const k of ["tracks", "playlists", "plays", "queue", "following", "nowPlaying"]) {
+    for (const k of ["tracks", "playlists", "plays", "queue", "following", "nowPlaying", "audioSettings", "sleepTimers", "radio"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -590,5 +590,268 @@ export default function registerMusicActions(registerLensAction) {
         queued: (s.queue.get(userId) || []).length,
       },
     };
+  });
+
+  // ── Lyrics (Spotify/Apple Music timed-lyrics parity) ────────────────
+  registerLensAction("music", "track-lyrics-set", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const track = findTrack(s, muAid(ctx), params.id);
+    if (!track) return { ok: false, error: "track not found" };
+    const raw = params.lyrics;
+    if (Array.isArray(raw)) {
+      track.lyrics = raw
+        .map((l) => ({ timeSec: Math.max(0, muNum(l.timeSec)), line: muClean(l.line ?? l.text, 240) }))
+        .filter((l) => l.line)
+        .sort((a, b) => a.timeSec - b.timeSec);
+      track.lyricsSynced = true;
+    } else {
+      const text = muClean(raw, 8000);
+      track.lyrics = text ? text.split(/\r?\n/).map((line) => ({ timeSec: null, line: line.slice(0, 240) })) : [];
+      track.lyricsSynced = false;
+    }
+    saveMusicState();
+    return { ok: true, result: { id: track.id, lineCount: track.lyrics.length, synced: track.lyricsSynced } };
+  });
+
+  registerLensAction("music", "track-lyrics-get", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const track = findTrack(s, muAid(ctx), params.id);
+    if (!track) return { ok: false, error: "track not found" };
+    return { ok: true, result: { id: track.id, title: track.title, lyrics: track.lyrics || [], synced: !!track.lyricsSynced } };
+  });
+
+  // ── Radio / autoplay station (seed → continuous queue) ──────────────
+  registerLensAction("music", "radio-start", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const lib = s.tracks.get(userId) || [];
+    if (lib.length === 0) return { ok: false, error: "library empty — add tracks before starting radio" };
+    let seedTrack = null, seedGenre = null, seedArtist = null, label = "";
+    if (params.seedTrackId) {
+      seedTrack = findTrack(s, userId, params.seedTrackId);
+      if (!seedTrack) return { ok: false, error: "seed track not found" };
+      seedGenre = seedTrack.genre; seedArtist = seedTrack.artist;
+      label = `${seedTrack.title} Radio`;
+    } else if (params.seedArtist) {
+      seedArtist = muClean(params.seedArtist, 120);
+      label = `${seedArtist} Radio`;
+    } else if (params.seedGenre) {
+      seedGenre = muClean(params.seedGenre, 60).toLowerCase();
+      label = `${seedGenre} Radio`;
+    } else {
+      return { ok: false, error: "provide seedTrackId, seedArtist, or seedGenre" };
+    }
+    const scored = lib
+      .filter((t) => !seedTrack || t.id !== seedTrack.id)
+      .map((t) => {
+        let score = 1;
+        if (seedGenre && t.genre === seedGenre) score += 3;
+        if (seedArtist && t.artist === seedArtist) score += 2;
+        score += Math.min(2, t.playCount * 0.2);
+        if (t.liked) score += 1;
+        return { t, score: score + Math.random() * 0.5 };
+      })
+      .sort((a, b) => b.score - a.score);
+    const limit = Math.max(5, Math.min(50, Math.round(muNum(params.limit, 25))));
+    const stationTracks = scored.slice(0, limit).map((x) => x.t);
+    s.queue.set(userId, stationTracks.map((t) => t.id));
+    s.radio.set(userId, { label, seedGenre, seedArtist, startedAt: muNow(), trackCount: stationTracks.length });
+    saveMusicState();
+    return { ok: true, result: { station: s.radio.get(userId), tracks: stationTracks } };
+  });
+
+  registerLensAction("music", "radio-status", (ctx, _a, _params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { station: s.radio.get(muAid(ctx)) || null } };
+  });
+
+  // ── Smart Shuffle / AI DJ — weighted favorites + discovery mix ──────
+  registerLensAction("music", "smart-shuffle", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    let pool = s.tracks.get(userId) || [];
+    if (params.playlistId) {
+      const pl = (s.playlists.get(userId) || []).find((p) => p.id === params.playlistId);
+      if (!pl) return { ok: false, error: "playlist not found" };
+      pool = pl.trackIds.map((id) => findTrack(s, userId, id)).filter(Boolean);
+    }
+    if (pool.length < 2) return { ok: false, error: "need 2+ tracks to shuffle" };
+    const liked = pool.filter((t) => t.liked);
+    const familiar = pool.filter((t) => t.playCount > 0 && !t.liked);
+    const fresh = pool.filter((t) => t.playCount === 0 && !t.liked);
+    const buckets = [liked, familiar, fresh];
+    const weights = [0.45, 0.35, 0.2];
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const session = [];
+    const used = new Set();
+    const target = Math.max(2, Math.min(40, pool.length));
+    let guard = 0;
+    while (session.length < target && guard++ < target * 8) {
+      const r = Math.random();
+      const bi = r < weights[0] ? 0 : r < weights[0] + weights[1] ? 1 : 2;
+      let b = buckets[bi].filter((t) => !used.has(t.id));
+      if (b.length === 0) b = pool.filter((t) => !used.has(t.id));
+      if (b.length === 0) break;
+      const t = pick(b);
+      used.add(t.id);
+      session.push(t);
+    }
+    s.queue.set(userId, session.map((t) => t.id));
+    saveMusicState();
+    const genreCount = {};
+    session.forEach((t) => { genreCount[t.genre] = (genreCount[t.genre] || 0) + 1; });
+    const dominantGenre = Object.entries(genreCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "mixed";
+    return {
+      ok: true,
+      result: {
+        tracks: session,
+        count: session.length,
+        dj: `Here's your mix — leaning ${dominantGenre}, ${liked.length ? "built around your liked songs" : "fresh picks from your library"}. Enjoy the ride.`,
+        breakdown: {
+          liked: session.filter((t) => t.liked).length,
+          familiar: session.filter((t) => t.playCount > 0 && !t.liked).length,
+          fresh: session.filter((t) => t.playCount === 0 && !t.liked).length,
+        },
+      },
+    };
+  });
+
+  // ── Sleep timer ─────────────────────────────────────────────────────
+  registerLensAction("music", "sleep-timer-set", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const minutes = Math.max(1, Math.min(720, Math.round(muNum(params.minutes, 30))));
+    const endsAt = new Date(Date.now() + minutes * 60000).toISOString();
+    s.sleepTimers.set(muAid(ctx), { endsAt, minutes, setAt: muNow() });
+    saveMusicState();
+    return { ok: true, result: { active: true, endsAt, minutes } };
+  });
+
+  registerLensAction("music", "sleep-timer-get", (ctx, _a, _params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const t = s.sleepTimers.get(userId);
+    if (!t) return { ok: true, result: { active: false } };
+    const remainingMs = new Date(t.endsAt).getTime() - Date.now();
+    if (remainingMs <= 0) {
+      s.sleepTimers.delete(userId);
+      saveMusicState();
+      return { ok: true, result: { active: false, expired: true } };
+    }
+    return { ok: true, result: { active: true, endsAt: t.endsAt, remainingSec: Math.round(remainingMs / 1000), remainingMin: Math.ceil(remainingMs / 60000) } };
+  });
+
+  registerLensAction("music", "sleep-timer-cancel", (ctx, _a, _params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    s.sleepTimers.delete(muAid(ctx));
+    saveMusicState();
+    return { ok: true, result: { active: false } };
+  });
+
+  // ── Blend — round-robin merge of taste sources into a playlist ──────
+  registerLensAction("music", "blend", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const name = muClean(params.name, 120) || "Your Blend";
+    let sources = [];
+    if (Array.isArray(params.playlistIds) && params.playlistIds.length >= 1) {
+      const pls = s.playlists.get(userId) || [];
+      for (const pid of params.playlistIds) {
+        const pl = pls.find((p) => p.id === pid);
+        if (pl) sources.push(pl.trackIds.map((id) => findTrack(s, userId, id)).filter(Boolean));
+      }
+      if (sources.length === 0) return { ok: false, error: "no valid playlists in playlistIds" };
+    } else {
+      const lib = s.tracks.get(userId) || [];
+      sources = [
+        lib.filter((t) => t.liked),
+        [...lib].filter((t) => t.playCount > 0).sort((a, b) => b.playCount - a.playCount).slice(0, 25),
+      ];
+    }
+    const blended = [];
+    const seen = new Set();
+    let added = true;
+    for (let i = 0; added; i++) {
+      added = false;
+      for (const src of sources) {
+        if (src[i]) {
+          added = true;
+          if (!seen.has(src[i].id)) { seen.add(src[i].id); blended.push(src[i].id); }
+        }
+      }
+    }
+    if (blended.length === 0) return { ok: false, error: "nothing to blend — like or play some tracks first" };
+    const playlist = {
+      id: muId("pl"), name,
+      description: `Blend of ${sources.length} source${sources.length === 1 ? "" : "s"} — ${blended.length} tracks`,
+      collaborative: false, trackIds: blended, createdAt: muNow(), blend: true,
+    };
+    muListB(s.playlists, userId).push(playlist);
+    saveMusicState();
+    return { ok: true, result: { playlist, trackCount: blended.length } };
+  });
+
+  // ── Recommendations (seed-based or taste-profile) ───────────────────
+  registerLensAction("music", "recommend", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const lib = s.tracks.get(userId) || [];
+    if (lib.length === 0) return { ok: true, result: { tracks: [], count: 0, basis: "empty-library" } };
+    const seed = params.seedTrackId ? findTrack(s, userId, params.seedTrackId) : null;
+    const genreScore = {};
+    for (const t of lib) genreScore[t.genre] = (genreScore[t.genre] || 0) + t.playCount + (t.liked ? 2 : 0);
+    const recs = lib
+      .filter((t) => !seed || t.id !== seed.id)
+      .map((t) => {
+        let score = (genreScore[t.genre] || 0) * 0.5;
+        if (seed) {
+          if (t.genre === seed.genre) score += 4;
+          if (t.artist === seed.artist) score += 3;
+        }
+        if (t.playCount === 0) score += 1.5;
+        return { ...t, matchScore: Math.round(score * 10) / 10 };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 20);
+    return { ok: true, result: { tracks: recs, count: recs.length, basis: seed ? `seed:${seed.title}` : "taste-profile" } };
+  });
+
+  // ── Genre browse hub ────────────────────────────────────────────────
+  registerLensAction("music", "genre-hub", (ctx, _a, _params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const lib = s.tracks.get(muAid(ctx)) || [];
+    const byGenre = {};
+    for (const t of lib) {
+      const g = t.genre || "unknown";
+      if (!byGenre[g]) byGenre[g] = { genre: g, trackCount: 0, totalPlays: 0, liked: 0 };
+      byGenre[g].trackCount++;
+      byGenre[g].totalPlays += t.playCount;
+      if (t.liked) byGenre[g].liked++;
+    }
+    const genres = Object.values(byGenre).sort((a, b) => b.trackCount - a.trackCount);
+    return { ok: true, result: { genres, count: genres.length } };
+  });
+
+  // ── Audio settings (crossfade, gapless, normalize, quality) ─────────
+  registerLensAction("music", "audio-settings-get", (ctx, _a, _params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const defaults = { crossfadeSec: 0, gapless: true, normalize: true, quality: "high", monoAudio: false };
+    return { ok: true, result: { settings: { ...defaults, ...(s.audioSettings.get(muAid(ctx)) || {}) } } };
+  });
+
+  registerLensAction("music", "audio-settings-set", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const defaults = { crossfadeSec: 0, gapless: true, normalize: true, quality: "high", monoAudio: false };
+    const cur = { ...defaults, ...(s.audioSettings.get(muAid(ctx)) || {}) };
+    if (params.crossfadeSec != null) cur.crossfadeSec = Math.max(0, Math.min(12, Math.round(muNum(params.crossfadeSec))));
+    if (params.gapless != null) cur.gapless = params.gapless === true;
+    if (params.normalize != null) cur.normalize = params.normalize === true;
+    if (params.monoAudio != null) cur.monoAudio = params.monoAudio === true;
+    if (params.quality != null) {
+      const q = String(params.quality).toLowerCase();
+      if (["low", "normal", "high", "lossless"].includes(q)) cur.quality = q;
+    }
+    s.audioSettings.set(muAid(ctx), cur);
+    saveMusicState();
+    return { ok: true, result: { settings: cur } };
   });
 }
