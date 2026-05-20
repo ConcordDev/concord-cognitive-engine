@@ -8,6 +8,8 @@ import { HealthcareDashboard } from './HealthcareDashboard';
 import { PatientsPanel } from './PatientsPanel';
 import { PatientChartPanel } from './PatientChartPanel';
 import { EncountersPanel } from './EncountersPanel';
+import { OrdersPanel } from './OrdersPanel';
+import { CareManagementPanel } from './CareManagementPanel';
 import { AIScribePanel } from './AIScribePanel';
 import { InboxPanel } from './InboxPanel';
 import { RefillsPanel } from './RefillsPanel';
@@ -62,6 +64,8 @@ export function EpicSection() {
       {nav === 'dashboard'    && <HealthcareDashboard onJumpTo={(n) => setNav(n)} />}
       {nav === 'patients'     && <PatientsPanel onSelect={selectPatient} />}
       {nav === 'chart'        && (patientId ? <PatientChartPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
+      {nav === 'orders'       && (patientId ? <OrdersPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
+      {nav === 'care'         && (patientId ? <CareManagementPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'encounters'   && (patientId ? <EncountersPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'schedule'     && <ScheduleHint />}
       {nav === 'inbox'        && <InboxPanel />}

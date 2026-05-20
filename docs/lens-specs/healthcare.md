@@ -66,4 +66,12 @@ Sources:
 | e-Prescribe (Surescripts) | Surescripts network credentials | medication orders + refill request/respond workflow + preferred pharmacy |
 
 ## Verification log
-- (in progress) — backend macros + tests; frontend panels; feature walkthrough.
+- 2026-05-20: Backend — 59 macros; `node --check` clean.
+- 2026-05-20: Tests — `tests/healthcare-domain-parity.test.js` 35/35 green (CPOE
+  order lifecycle, drug-drug + drug-allergy interaction check, care-team CRUD,
+  care-gap computation from age/sex/problems/immunizations/labs, after-visit
+  summary generation).
+- 2026-05-20: Frontend — Orders tab (CPOE + interaction checker), Care tab (health
+  maintenance gaps + care team), and an After-visit summary modal on signed
+  encounters; `npx tsc --noEmit` exit 0.
+- 2026-05-20: `npm run score-lenses` → healthcare 7/7 PASS.
