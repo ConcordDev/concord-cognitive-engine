@@ -260,3 +260,126 @@ describe("automotive.repairEstimate", () => {
     assert.equal(r.result.totalWithTax, 680.4);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  Drivvo + Fuelly + CARFAX Car Care 2026 parity — garage, fuel +
+//  MPG, service log + schedule + reminders, expenses, trips, docs.
+// ═════════════════════════════════════════════════════════════════
+
+const ctxAu = { actor: { userId: "auto_u" }, userId: "auto_u" };
+
+describe("automotive — 2026 parity macros", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("vehicles-create + list + delete cascades records", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Daily", make: "Toyota", model: "Corolla", year: 2022, odometer: 30000 });
+    assert.equal(v.ok, true);
+    assert.match(v.result.vehicle.number, /^V-\d{3}$/);
+    assert.equal(call("vehicles-list", ctxAu).result.vehicles.length, 1);
+    call("fuel-log", ctxAu, { vehicleId: v.result.vehicle.id, volume: 10, totalCost: 40, odometer: 30100 });
+    call("vehicles-delete", ctxAu, { id: v.result.vehicle.id });
+    assert.equal(call("vehicles-list", ctxAu).result.vehicles.length, 0);
+    assert.equal(call("fuel-list", ctxAu).result.fuel.length, 0);
+  });
+
+  it("fuel-log computes MPG against the previous full-tank fill", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car", odometer: 1000 }).result.vehicle;
+    call("fuel-log", ctxAu, { vehicleId: v.id, volume: 10, totalCost: 35, odometer: 1000 });
+    call("fuel-log", ctxAu, { vehicleId: v.id, volume: 10, totalCost: 36, odometer: 1300 });
+    const list = call("fuel-list", ctxAu, { vehicleId: v.id }).result.fuel;
+    // newest first; the 1300-odo fill should show 300 mi / 10 gal = 30 mpg
+    const second = list.find(f => f.odometer === 1300);
+    assert.equal(second.mpg, 30);
+  });
+
+  it("fuel-log mirrors an expense and bumps odometer", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car", odometer: 500 }).result.vehicle;
+    call("fuel-log", ctxAu, { vehicleId: v.id, volume: 12, totalCost: 48, odometer: 900 });
+    const exp = call("expenses-list", ctxAu, { vehicleId: v.id }).result;
+    assert.equal(exp.byCategory.fuel, 48);
+    assert.equal(call("vehicles-list", ctxAu).result.vehicles[0].odometer, 900);
+  });
+
+  it("fuel-log rejects non-positive volume", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car" }).result.vehicle;
+    assert.equal(call("fuel-log", ctxAu, { vehicleId: v.id, volume: 0, totalCost: 10, odometer: 1 }).ok, false);
+  });
+
+  it("service-log records + mirrors a maintenance expense", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car", odometer: 5000 }).result.vehicle;
+    call("service-log", ctxAu, { vehicleId: v.id, serviceType: "Oil change", cost: 65, odometer: 5000 });
+    assert.equal(call("service-list", ctxAu, { vehicleId: v.id }).result.service.length, 1);
+    assert.equal(call("expenses-list", ctxAu, { vehicleId: v.id }).result.byCategory.maintenance, 65);
+  });
+
+  it("service-reminders flags overdue + due-soon by mileage", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car", odometer: 12000 }).result.vehicle;
+    // oil change every 5000 mi, last done at 6000 → due at 11000 → overdue (12000 > 11000)
+    call("schedule-create", ctxAu, { vehicleId: v.id, serviceType: "Oil change", intervalMiles: 5000, lastDoneOdometer: 6000 });
+    // tire rotation every 7500, last at 10000 → due at 17500, 5500 remaining → ok
+    call("schedule-create", ctxAu, { vehicleId: v.id, serviceType: "Tire rotation", intervalMiles: 7500, lastDoneOdometer: 10000 });
+    // brake check every 1000, last at 11200 → due at 12200, 200 remaining → due_soon
+    call("schedule-create", ctxAu, { vehicleId: v.id, serviceType: "Brake check", intervalMiles: 1000, lastDoneOdometer: 11200 });
+    const r = call("service-reminders", ctxAu, { vehicleId: v.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.overdueCount, 1);
+    assert.equal(r.result.dueSoonCount, 1);
+    assert.equal(r.result.reminders[0].status, "overdue");
+  });
+
+  it("expenses-list aggregates by category", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car" }).result.vehicle;
+    call("expenses-log", ctxAu, { vehicleId: v.id, category: "insurance", amount: 1200 });
+    call("expenses-log", ctxAu, { vehicleId: v.id, category: "repair", amount: 300 });
+    call("expenses-log", ctxAu, { vehicleId: v.id, category: "repair", amount: 150 });
+    const r = call("expenses-list", ctxAu, { vehicleId: v.id });
+    assert.equal(r.result.total, 1650);
+    assert.equal(r.result.byCategory.repair, 450);
+  });
+
+  it("trips-log tracks business vs total miles", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car" }).result.vehicle;
+    call("trips-log", ctxAu, { vehicleId: v.id, distance: 40, purpose: "business" });
+    call("trips-log", ctxAu, { vehicleId: v.id, distance: 15, purpose: "personal" });
+    const r = call("trips-list", ctxAu, { vehicleId: v.id });
+    assert.equal(r.result.totalMiles, 55);
+    assert.equal(r.result.businessMiles, 40);
+  });
+
+  it("documents flag expired + expiring-soon", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car" }).result.vehicle;
+    const past = new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10);
+    const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    call("documents-create", ctxAu, { vehicleId: v.id, kind: "registration", expiryDate: past });
+    call("documents-create", ctxAu, { vehicleId: v.id, kind: "insurance", expiryDate: soon });
+    const docs = call("documents-list", ctxAu, { vehicleId: v.id }).result.documents;
+    assert.equal(docs.find(d => d.kind === "registration").expired, true);
+    assert.equal(docs.find(d => d.kind === "insurance").expiringSoon, true);
+  });
+
+  it("vehicle-stats computes lifetime MPG + cost per mile", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car", odometer: 0 }).result.vehicle;
+    call("fuel-log", ctxAu, { vehicleId: v.id, volume: 10, totalCost: 40, odometer: 0 });
+    call("fuel-log", ctxAu, { vehicleId: v.id, volume: 10, totalCost: 40, odometer: 300 });
+    call("fuel-log", ctxAu, { vehicleId: v.id, volume: 10, totalCost: 40, odometer: 600 });
+    const r = call("vehicle-stats", ctxAu, { vehicleId: v.id });
+    assert.equal(r.ok, true);
+    // 600 mi total / 20 gal (fills after the first) = 30 mpg
+    assert.equal(r.result.lifetimeMpg, 30);
+    assert.ok(r.result.costPerMile > 0);
+  });
+
+  it("automotive-dashboard-summary rolls up vehicles + reminders", () => {
+    const v = call("vehicles-create", ctxAu, { name: "Car", odometer: 20000 }).result.vehicle;
+    call("schedule-create", ctxAu, { vehicleId: v.id, serviceType: "Oil change", intervalMiles: 5000, lastDoneOdometer: 10000 });
+    call("expenses-log", ctxAu, { vehicleId: v.id, category: "repair", amount: 500 });
+    const r = call("automotive-dashboard-summary", ctxAu);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.vehicleCount, 1);
+    assert.equal(r.result.overdueServices, 1);
+    assert.equal(r.result.spend12moUsd, 500);
+  });
+});

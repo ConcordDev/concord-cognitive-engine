@@ -75,6 +75,18 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import RealEstateWorkbench from '@/components/realestate/RealEstateWorkbench';
+import ListingsBrowser, { type Listing as REListing } from '@/components/realestate/ListingsBrowser';
+import ListingDetailDrawer from '@/components/realestate/ListingDetailDrawer';
+import FavouritesPanel from '@/components/realestate/FavouritesPanel';
+import ToursPanel from '@/components/realestate/ToursPanel';
+import AVMEstimator from '@/components/realestate/AVMEstimator';
+import SchoolWalkPanel from '@/components/realestate/SchoolWalkPanel';
+import AgentMessenger from '@/components/realestate/AgentMessenger';
+import OpenHouseCalendar from '@/components/realestate/OpenHouseCalendar';
+import AISearchBar from '@/components/realestate/AISearchBar';
+import PropertyCompare from '@/components/realestate/PropertyCompare';
+import PropertyNotes from '@/components/realestate/PropertyNotes';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -919,6 +931,8 @@ export default function RealEstateLensPage() {
       <FirstRunTour lensId="realestate" />
       <DepthBadge lensId="realestate" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
+      <RivalShapePreview lensId="realestate" defaultOpen={true} />
+      <RealtorWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -3394,5 +3408,69 @@ export default function RealEstateLensPage() {
             onSelect={(id) => setActiveTab(id as ModeTab)}
           />
     </LensShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Zillow / Redfin-parity workbench section                            */
+/* ------------------------------------------------------------------ */
+
+function RealtorWorkbenchSection() {
+  const [active, setActive] = useState<'browse' | 'detail' | 'favs' | 'tours' | 'avm' | 'scores' | 'agents' | 'open' | 'ai' | 'compare' | 'notes'>('browse');
+  const [selected, setSelected] = useState<REListing | null>(null);
+  const [comparePicks, setComparePicks] = useState<string[]>([]);
+  const [tourFor, setTourFor] = useState<string | undefined>(undefined);
+
+  const togglePick = (id: string) => setComparePicks(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 4 ? [...prev, id] : prev);
+  const requestTour = (id: string) => { setTourFor(id); setActive('tours'); };
+
+  const TABS = [
+    { id: 'browse', label: 'Browse', icon: Search },
+    { id: 'favs', label: 'Saved', icon: Star },
+    { id: 'tours', label: 'Tours', icon: Calendar },
+    { id: 'avm', label: 'AVM', icon: Calculator },
+    { id: 'scores', label: 'Schools/Walk', icon: MapPin },
+    { id: 'agents', label: 'Agents', icon: User },
+    { id: 'open', label: 'Open houses', icon: Calendar },
+    { id: 'ai', label: 'AI search', icon: TrendingUp },
+    { id: 'compare', label: 'Compare', icon: ArrowLeftRight },
+    { id: 'notes', label: 'Notes', icon: FileText },
+  ] as const;
+
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-cyan-300 uppercase tracking-wider">Realtor workbench · Zillow/Redfin parity</h2>
+      <nav className="flex items-center gap-1 border-b border-cyan-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition',
+              active === t.id
+                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
+                : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent'
+            )}
+          >
+            <t.icon className="w-3.5 h-3.5" />
+            {t.label}
+            {t.id === 'compare' && comparePicks.length > 0 && <span className="text-[9px] bg-cyan-500/30 px-1 rounded">{comparePicks.length}</span>}
+          </button>
+        ))}
+      </nav>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {active === 'browse' && <div className="lg:col-span-3"><ListingsBrowser onSelect={setSelected} onPickForCompare={togglePick} comparePicks={comparePicks} /></div>}
+        {active === 'favs' && <div className="lg:col-span-3"><FavouritesPanel onSelect={setSelected} /></div>}
+        {active === 'tours' && <div className="lg:col-span-3"><ToursPanel defaultListingId={tourFor} /></div>}
+        {active === 'avm' && <div className="lg:col-span-2"><AVMEstimator /></div>}
+        {active === 'scores' && <div className="lg:col-span-3"><SchoolWalkPanel /></div>}
+        {active === 'agents' && <div className="lg:col-span-3"><AgentMessenger /></div>}
+        {active === 'open' && <div className="lg:col-span-3"><OpenHouseCalendar /></div>}
+        {active === 'ai' && <div className="lg:col-span-3"><AISearchBar /></div>}
+        {active === 'compare' && <div className="lg:col-span-3"><PropertyCompare ids={comparePicks} onClear={() => setComparePicks([])} onRemove={togglePick} /></div>}
+        {active === 'notes' && <div className="lg:col-span-3"><PropertyNotes listingId={selected?.id} /></div>}
+      </div>
+      <ListingDetailDrawer listing={selected} onClose={() => setSelected(null)} onRequestTour={requestTour} />
+    </section>
   );
 }

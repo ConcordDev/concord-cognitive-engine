@@ -8,6 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
+import { MentalHealthSection } from '@/components/mental-health/MentalHealthSection';
 import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealthActionPanel';
 import { MedlinePlusPanel } from '@/components/health/MedlinePlusPanel';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
@@ -163,6 +164,9 @@ export default function MentalHealthLensPage() {
       <FirstRunTour lensId="mental-health" />
       <ManifestActionBar />
       <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <MentalHealthSection />
+      </div>
     <div data-lens-theme="mental-health" className="p-6 space-y-6">
       {/* Phase 4 — REAL MedlinePlus (NIH/NLM) consumer-health topic search. */}
       <MedlinePlusPanel initialQuery="" />

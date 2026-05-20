@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Gavel, Plus, Loader2, Calendar, Clock, FileText } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface CaseEvent {
@@ -36,7 +36,7 @@ export function CaseTracker() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'legal', action: 'case-list', input: {} });
+      const res = await lensRun({ domain: 'legal', action: 'case-list', input: {} });
       setCases((res.data?.result?.cases || []) as Case[]);
     } catch (e) { console.error('[Cases] failed', e); }
     finally { setLoading(false); }
@@ -45,7 +45,7 @@ export function CaseTracker() {
   async function add() {
     if (!draft.caption?.trim() || !draft.caseNumber?.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'legal', action: 'case-add', input: draft });
+      await lensRun({ domain: 'legal', action: 'case-add', input: draft });
       setDraft({ matterType: 'civil' });
       setAdding(false);
       await refresh();

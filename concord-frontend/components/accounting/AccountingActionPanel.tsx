@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { Calculator, TrendingUp, FileText, Scale, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -92,8 +92,8 @@ export function AccountingActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Books — ${plResult?.period ?? 'period'}`, tags: ['accounting', 'books', plResult?.period].filter((t): t is string => !!t), source: 'accounting:books:mint', meta: { visibility: 'private', consent: { allowCitations: false }, books: { tb: tbResult, pl: plResult, aging: agingResult, var: varResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Books — ${plResult?.period ?? 'period'}`, tags: ['accounting', 'books', plResult?.period].filter((t): t is string => !!t), source: 'accounting:books:mint', meta: { visibility: 'private', consent: { allowCitations: false }, books: { tb: tbResult, pl: plResult, aging: agingResult, var: varResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('accounting.mintedDtuId', id, { label: `Books DTU ${id.slice(0, 8)}…` }); ok(`Books DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -121,8 +121,8 @@ export function AccountingActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `P&L summary — ${plResult.period}`, tags: ['accounting', 'pl', 'public'], source: 'accounting:pl:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, pl: plResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `P&L summary — ${plResult.period}`, tags: ['accounting', 'pl', 'public'], source: 'accounting:pl:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, pl: plResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -135,8 +135,8 @@ export function AccountingActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `CFO brief. ${plResult ? `Net income $${plResult.netIncome.toLocaleString()} on $${plResult.revenue.toLocaleString()} revenue${plResult.grossMargin != null ? ` (${plResult.grossMargin}% margin)` : ''}.` : ''} ${agingResult ? `AR outstanding $${agingResult.totalOutstanding.toLocaleString()}, overdue $${agingResult.totalOverdue.toLocaleString()}, ${agingResult.avgDaysOutstanding}d avg.` : ''} ${varResult ? `Budget variance ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varResult.status}).` : ''} Identify single biggest cash-flow lever this month + one cost to address. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
         setAgentReply(text); pipe.publish('accounting.agentReply', text, { label: 'CFO brief' });

@@ -180,4 +180,482 @@ export default function registerPharmacyActions(registerLensAction) {
       return { ok: false, error: `openfda unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── GoodRx + MyTherapy 2026 parity ─────────────────────────────────
+  // Medications, dose schedules + adherence, refills, pharmacy price
+  // comparison, coupons, health measurements, journal. All STATE-backed,
+  // per-user scoped, real math. Not medical advice.
+
+  function getRxState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.pharmacyLens) STATE.pharmacyLens = {};
+    const s = STATE.pharmacyLens;
+    for (const k of [
+      "medications", "schedules", "doses", "refills", "pharmacies",
+      "prices", "coupons", "measurements", "journal",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveRxState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const rid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const rnow = () => new Date().toISOString();
+  const raid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const rlistB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const rnum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const rclean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const rday = (v) => rclean(v, 10).slice(0, 10);
+  const findMed = (s, userId, medId) => (s.medications.get(userId) || []).find((m) => m.id === medId) || null;
+  const RX_DAY = 86400000;
+
+  // ── Medications ─────────────────────────────────────────────────────
+  registerLensAction("pharmacy", "med-add", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = rclean(params.name, 120);
+    if (!name) return { ok: false, error: "medication name required" };
+    const med = {
+      id: rid("rx"), name,
+      strength: rclean(params.strength, 60) || null,
+      form: rclean(params.form, 40).toLowerCase() || "tablet",
+      condition: rclean(params.condition, 120) || null,
+      prescriber: rclean(params.prescriber || params.prescribingDoctor, 120) || null,
+      quantity: Math.max(0, Math.round(rnum(params.quantity))),
+      refillsRemaining: Math.max(0, Math.round(rnum(params.refillsRemaining))),
+      archived: false, createdAt: rnow(),
+    };
+    rlistB(s.medications, raid(ctx)).push(med);
+    saveRxState();
+    return { ok: true, result: { medication: med } };
+  });
+
+  registerLensAction("pharmacy", "med-list", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let meds = (s.medications.get(raid(ctx)) || []);
+    if (!params.includeArchived) meds = meds.filter((m) => !m.archived);
+    return {
+      ok: true,
+      result: {
+        medications: meds.map((m) => ({ ...m, hasSchedule: s.schedules.has(m.id) })),
+        count: meds.length,
+      },
+    };
+  });
+
+  registerLensAction("pharmacy", "med-update", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const med = findMed(s, raid(ctx), params.id);
+    if (!med) return { ok: false, error: "medication not found" };
+    for (const f of ["strength", "condition", "prescriber"]) {
+      if (params[f] != null) med[f] = rclean(params[f], 120) || null;
+    }
+    if (params.quantity != null) med.quantity = Math.max(0, Math.round(rnum(params.quantity)));
+    if (params.refillsRemaining != null) med.refillsRemaining = Math.max(0, Math.round(rnum(params.refillsRemaining)));
+    saveRxState();
+    return { ok: true, result: { medication: med } };
+  });
+
+  registerLensAction("pharmacy", "med-archive", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const med = findMed(s, raid(ctx), params.id);
+    if (!med) return { ok: false, error: "medication not found" };
+    med.archived = !(params.unarchive === true);
+    saveRxState();
+    return { ok: true, result: { medication: med } };
+  });
+
+  // dose math helpers
+  function scheduledPerDay(schedule) {
+    if (!schedule) return 0;
+    return (schedule.times || []).length;
+  }
+  function adherenceFor(s, medId, days) {
+    const schedule = s.schedules.get(medId);
+    if (!schedule) return { scheduled: 0, taken: 0, pct: null };
+    const perDay = scheduledPerDay(schedule);
+    const logs = s.doses.get(medId) || [];
+    const cutoff = Date.now() - days * RX_DAY;
+    const recent = logs.filter((d) => new Date(d.createdAt).getTime() >= cutoff);
+    const taken = recent.filter((d) => d.status === "taken").length;
+    const scheduled = perDay * days;
+    return { scheduled, taken, pct: scheduled > 0 ? Math.round((taken / scheduled) * 100) : null };
+  }
+
+  registerLensAction("pharmacy", "med-detail", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const med = findMed(s, raid(ctx), params.id);
+    if (!med) return { ok: false, error: "medication not found" };
+    const schedule = s.schedules.get(med.id) || null;
+    const perDay = scheduledPerDay(schedule);
+    return {
+      ok: true,
+      result: {
+        medication: med, schedule,
+        adherence30d: adherenceFor(s, med.id, 30),
+        daysOfSupply: perDay > 0 ? Math.floor(med.quantity / perDay) : null,
+      },
+    };
+  });
+
+  // ── Dose schedules + logging ────────────────────────────────────────
+  registerLensAction("pharmacy", "schedule-set", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const med = findMed(s, raid(ctx), params.medId);
+    if (!med) return { ok: false, error: "medication not found" };
+    const times = Array.isArray(params.times)
+      ? params.times.map((t) => rclean(t, 5)).filter((t) => /^\d{1,2}:\d{2}$/.test(t)).slice(0, 12)
+      : [];
+    if (!times.length) return { ok: false, error: "at least one valid HH:MM time required" };
+    const schedule = {
+      medId: med.id, times: times.sort(),
+      doseAmount: rclean(params.doseAmount, 40) || "1 dose",
+      daysOfWeek: Array.isArray(params.daysOfWeek) && params.daysOfWeek.length
+        ? params.daysOfWeek.map((d) => Math.max(0, Math.min(6, Math.round(rnum(d)))))
+        : [0, 1, 2, 3, 4, 5, 6],
+      updatedAt: rnow(),
+    };
+    s.schedules.set(med.id, schedule);
+    saveRxState();
+    return { ok: true, result: { schedule } };
+  });
+
+  registerLensAction("pharmacy", "dose-log", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const med = findMed(s, raid(ctx), params.medId);
+    if (!med) return { ok: false, error: "medication not found" };
+    const status = ["taken", "skipped", "missed"].includes(String(params.status).toLowerCase())
+      ? String(params.status).toLowerCase() : "taken";
+    const entry = {
+      id: rid("dose"), medId: med.id, status,
+      scheduledTime: rclean(params.scheduledTime, 5) || null,
+      date: rday(params.date) || rday(rnow()),
+      createdAt: rnow(),
+    };
+    rlistB(s.doses, med.id).push(entry);
+    if (status === "taken" && med.quantity > 0) med.quantity -= 1;
+    saveRxState();
+    return { ok: true, result: { dose: entry, quantityRemaining: med.quantity } };
+  });
+
+  registerLensAction("pharmacy", "dose-history", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const meds = s.medications.get(userId) || [];
+    const medIds = params.medId
+      ? (findMed(s, userId, params.medId) ? [String(params.medId)] : [])
+      : meds.map((m) => m.id);
+    const medName = new Map(meds.map((m) => [m.id, m.name]));
+    const doses = [];
+    for (const id of medIds) {
+      for (const d of s.doses.get(id) || []) doses.push({ ...d, medName: medName.get(id) || null });
+    }
+    doses.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { doses: doses.slice(0, 100), count: doses.length } };
+  });
+
+  registerLensAction("pharmacy", "adherence-report", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const days = Math.max(1, Math.min(365, Math.round(rnum(params.days, 30))));
+    const meds = (s.medications.get(userId) || []).filter((m) => !m.archived);
+    const perMed = meds.map((m) => ({ medId: m.id, name: m.name, ...adherenceFor(s, m.id, days) }));
+    const scored = perMed.filter((x) => x.pct != null);
+    const overall = scored.length
+      ? Math.round(scored.reduce((a, x) => a + x.pct, 0) / scored.length)
+      : null;
+    return { ok: true, result: { windowDays: days, overall, perMed } };
+  });
+
+  registerLensAction("pharmacy", "today-doses", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const today = rday(rnow());
+    const dow = new Date().getDay();
+    const doses = [];
+    for (const med of (s.medications.get(userId) || []).filter((m) => !m.archived)) {
+      const schedule = s.schedules.get(med.id);
+      if (!schedule || !schedule.daysOfWeek.includes(dow)) continue;
+      const logs = (s.doses.get(med.id) || []).filter((d) => d.date === today);
+      for (const time of schedule.times) {
+        const log = logs.find((d) => d.scheduledTime === time);
+        doses.push({
+          medId: med.id, medName: med.name, time,
+          doseAmount: schedule.doseAmount,
+          status: log ? log.status : "pending",
+        });
+      }
+    }
+    doses.sort((a, b) => a.time.localeCompare(b.time));
+    return {
+      ok: true,
+      result: {
+        doses,
+        total: doses.length,
+        taken: doses.filter((d) => d.status === "taken").length,
+        pending: doses.filter((d) => d.status === "pending").length,
+      },
+    };
+  });
+
+  // ── Refills ─────────────────────────────────────────────────────────
+  registerLensAction("pharmacy", "refill-request", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const med = findMed(s, raid(ctx), params.medId);
+    if (!med) return { ok: false, error: "medication not found" };
+    const refill = {
+      id: rid("rf"), medId: med.id, medName: med.name,
+      pharmacy: rclean(params.pharmacy, 120) || null,
+      status: "requested",
+      requestedAt: rnow(),
+    };
+    rlistB(s.refills, raid(ctx)).push(refill);
+    saveRxState();
+    return { ok: true, result: { refill } };
+  });
+
+  registerLensAction("pharmacy", "refill-list", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const refills = [...(s.refills.get(raid(ctx)) || [])]
+      .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+    return { ok: true, result: { refills, count: refills.length } };
+  });
+
+  registerLensAction("pharmacy", "refill-update", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const refill = (s.refills.get(userId) || []).find((r) => r.id === params.id);
+    if (!refill) return { ok: false, error: "refill not found" };
+    const status = ["requested", "processing", "ready", "picked_up", "cancelled"].includes(String(params.status).toLowerCase())
+      ? String(params.status).toLowerCase() : refill.status;
+    refill.status = status;
+    if (status === "picked_up") {
+      const med = findMed(s, userId, refill.medId);
+      if (med) {
+        if (med.refillsRemaining > 0) med.refillsRemaining -= 1;
+        med.quantity += Math.max(0, Math.round(rnum(params.quantityAdded, 30)));
+      }
+    }
+    saveRxState();
+    return { ok: true, result: { refill } };
+  });
+
+  registerLensAction("pharmacy", "refills-due", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const due = [];
+    for (const med of (s.medications.get(userId) || []).filter((m) => !m.archived)) {
+      const perDay = scheduledPerDay(s.schedules.get(med.id));
+      const daysOfSupply = perDay > 0 ? Math.floor(med.quantity / perDay) : null;
+      if (daysOfSupply != null && daysOfSupply <= 7) {
+        due.push({
+          medId: med.id, name: med.name, quantity: med.quantity,
+          daysOfSupply, refillsRemaining: med.refillsRemaining,
+          urgency: daysOfSupply <= 2 ? "critical" : "soon",
+        });
+      }
+    }
+    due.sort((a, b) => a.daysOfSupply - b.daysOfSupply);
+    return { ok: true, result: { due, count: due.length } };
+  });
+
+  // ── Pharmacies + price comparison ───────────────────────────────────
+  registerLensAction("pharmacy", "pharmacy-add", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = rclean(params.name, 120);
+    if (!name) return { ok: false, error: "pharmacy name required" };
+    const ph = {
+      id: rid("ph"), name,
+      address: rclean(params.address, 200) || null,
+      phone: rclean(params.phone, 40) || null,
+      createdAt: rnow(),
+    };
+    rlistB(s.pharmacies, raid(ctx)).push(ph);
+    saveRxState();
+    return { ok: true, result: { pharmacy: ph } };
+  });
+
+  registerLensAction("pharmacy", "pharmacy-list", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { pharmacies: s.pharmacies.get(raid(ctx)) || [] } };
+  });
+
+  registerLensAction("pharmacy", "price-record", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const drugName = rclean(params.drugName, 120);
+    if (!drugName) return { ok: false, error: "drugName required" };
+    const cashPrice = rnum(params.cashPrice);
+    if (cashPrice <= 0) return { ok: false, error: "cashPrice must be > 0" };
+    const userId = raid(ctx);
+    const pharmacy = (s.pharmacies.get(userId) || []).find((p) => p.id === params.pharmacyId);
+    const couponPrice = params.couponPrice != null ? Math.max(0, rnum(params.couponPrice)) : null;
+    const rec = {
+      id: rid("pr"), drugName: drugName.toLowerCase(),
+      pharmacyId: params.pharmacyId ? String(params.pharmacyId) : null,
+      pharmacyName: pharmacy ? pharmacy.name : rclean(params.pharmacyName, 120) || "Unknown pharmacy",
+      cashPrice: Math.round(cashPrice * 100) / 100,
+      couponPrice: couponPrice != null ? Math.round(couponPrice * 100) / 100 : null,
+      recordedAt: rnow(),
+    };
+    rlistB(s.prices, userId).push(rec);
+    saveRxState();
+    return { ok: true, result: { price: rec } };
+  });
+
+  registerLensAction("pharmacy", "price-list", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const prices = [...(s.prices.get(raid(ctx)) || [])].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
+    return { ok: true, result: { prices, count: prices.length } };
+  });
+
+  registerLensAction("pharmacy", "price-compare", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const drugName = rclean(params.drugName, 120).toLowerCase();
+    if (!drugName) return { ok: false, error: "drugName required" };
+    const rows = (s.prices.get(raid(ctx)) || [])
+      .filter((p) => p.drugName === drugName)
+      .map((p) => ({ ...p, effectivePrice: p.couponPrice != null ? p.couponPrice : p.cashPrice }))
+      .sort((a, b) => a.effectivePrice - b.effectivePrice);
+    if (!rows.length) {
+      return { ok: true, result: { drugName, quotes: [], lowest: null, highest: null, savings: 0 } };
+    }
+    const lowest = rows[0].effectivePrice;
+    const highest = rows[rows.length - 1].effectivePrice;
+    return {
+      ok: true,
+      result: {
+        drugName,
+        quotes: rows.map((r, i) => ({ ...r, rank: i + 1, isBest: i === 0 })),
+        lowest, highest,
+        savings: Math.round((highest - lowest) * 100) / 100,
+        savingsPct: highest > 0 ? Math.round(((highest - lowest) / highest) * 100) : 0,
+      },
+    };
+  });
+
+  // ── Coupons ─────────────────────────────────────────────────────────
+  registerLensAction("pharmacy", "coupon-save", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const drugName = rclean(params.drugName, 120);
+    if (!drugName) return { ok: false, error: "drugName required" };
+    const coupon = {
+      id: rid("cp"), drugName,
+      pharmacyName: rclean(params.pharmacyName, 120) || null,
+      discountedPrice: Math.max(0, rnum(params.discountedPrice)),
+      code: rclean(params.code, 60) || null,
+      createdAt: rnow(),
+    };
+    rlistB(s.coupons, raid(ctx)).push(coupon);
+    saveRxState();
+    return { ok: true, result: { coupon } };
+  });
+
+  registerLensAction("pharmacy", "coupon-list", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { coupons: [...(s.coupons.get(raid(ctx)) || [])].reverse() } };
+  });
+
+  // ── Health measurements ─────────────────────────────────────────────
+  const MEASUREMENT_KINDS = ["blood_pressure", "weight", "glucose", "heart_rate", "temperature", "oxygen"];
+  registerLensAction("pharmacy", "measurement-log", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const kind = String(params.kind || "").toLowerCase();
+    if (!MEASUREMENT_KINDS.includes(kind)) return { ok: false, error: `kind must be one of ${MEASUREMENT_KINDS.join("/")}` };
+    const value = rnum(params.value);
+    if (value <= 0) return { ok: false, error: "value must be > 0" };
+    const entry = {
+      id: rid("ms"), kind, value: Math.round(value * 100) / 100,
+      value2: params.value2 != null ? Math.round(rnum(params.value2) * 100) / 100 : null,
+      date: rday(params.date) || rday(rnow()),
+      note: rclean(params.note, 200) || null,
+      createdAt: rnow(),
+    };
+    rlistB(s.measurements, raid(ctx)).push(entry);
+    saveRxState();
+    return { ok: true, result: { measurement: entry } };
+  });
+
+  registerLensAction("pharmacy", "measurement-history", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const all = s.measurements.get(raid(ctx)) || [];
+    const kind = params.kind ? String(params.kind).toLowerCase() : null;
+    let series = kind ? all.filter((m) => m.kind === kind) : all.slice();
+    series.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    let trend = "no_data";
+    if (kind && series.length >= 2) {
+      const delta = series[series.length - 1].value - series[series.length - 2].value;
+      trend = delta > 0.5 ? "up" : delta < -0.5 ? "down" : "stable";
+    }
+    const kinds = [...new Set(all.map((m) => m.kind))];
+    return {
+      ok: true,
+      result: {
+        series, trend, kinds,
+        latest: series.length ? series[series.length - 1] : null,
+      },
+    };
+  });
+
+  // ── Symptom / health journal ────────────────────────────────────────
+  registerLensAction("pharmacy", "journal-add", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const note = rclean(params.note, 1000);
+    if (!note) return { ok: false, error: "note required" };
+    const entry = {
+      id: rid("jr"), note,
+      mood: rclean(params.mood, 40).toLowerCase() || null,
+      symptoms: Array.isArray(params.symptoms)
+        ? params.symptoms.map((x) => rclean(x, 60)).filter(Boolean).slice(0, 20) : [],
+      date: rday(params.date) || rday(rnow()),
+      createdAt: rnow(),
+    };
+    rlistB(s.journal, raid(ctx)).push(entry);
+    saveRxState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("pharmacy", "journal-list", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entries = [...(s.journal.get(raid(ctx)) || [])]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { entries, count: entries.length } };
+  });
+
+  // ── Dashboard ───────────────────────────────────────────────────────
+  registerLensAction("pharmacy", "pharmacy-dashboard", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const meds = (s.medications.get(userId) || []).filter((m) => !m.archived);
+    const today = rday(rnow());
+    const dow = new Date().getDay();
+    let todayTotal = 0, todayTaken = 0, refillsDue = 0;
+    for (const med of meds) {
+      const schedule = s.schedules.get(med.id);
+      if (schedule && schedule.daysOfWeek.includes(dow)) {
+        const logs = (s.doses.get(med.id) || []).filter((d) => d.date === today);
+        for (const time of schedule.times) {
+          todayTotal++;
+          if (logs.some((d) => d.scheduledTime === time && d.status === "taken")) todayTaken++;
+        }
+      }
+      const perDay = scheduledPerDay(schedule);
+      if (perDay > 0 && Math.floor(med.quantity / perDay) <= 7) refillsDue++;
+    }
+    const adh = adherenceFor;
+    const scored = meds.map((m) => adh(s, m.id, 30).pct).filter((x) => x != null);
+    return {
+      ok: true,
+      result: {
+        medications: meds.length,
+        todayDoses: { total: todayTotal, taken: todayTaken, pending: todayTotal - todayTaken },
+        adherence30d: scored.length ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length) : null,
+        refillsDue,
+        openRefillRequests: (s.refills.get(userId) || []).filter((r) => ["requested", "processing", "ready"].includes(r.status)).length,
+      },
+    };
+  });
 }

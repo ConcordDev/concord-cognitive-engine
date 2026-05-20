@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sparkles, Send, Loader2, RotateCcw, BookOpen, Lightbulb } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -55,7 +55,7 @@ export function SocraticTutor({ subject = 'general', level = 'high school', cont
     setDraft('');
     setPending(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'education',
         action: 'tutor-ask',
         input: {

@@ -705,13 +705,49 @@ export default function registerAccountingActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.accountingLens) {
       STATE.accountingLens = {
-        coa: new Map(),      // userId -> Map<accountId, account>
-        journal: new Map(),  // userId -> Array<{ id, date, memo, lines: [{ accountId, debit, credit }] }>
-        invoices: new Map(), // userId -> Array<{ id, customerId, customerName, total, status, issuedAt, dueAt, paidAt? }>
-        seq: new Map(),      // userId -> { je: 1, inv: 1 }
+        coa: new Map(),         // userId -> Map<accountId, account>
+        journal: new Map(),     // userId -> Array<entry>
+        invoices: new Map(),    // userId -> Array<invoice>
+        customers: new Map(),   // userId -> Array<customer>
+        vendors: new Map(),     // userId -> Array<vendor>
+        bills: new Map(),       // userId -> Array<bill>
+        estimates: new Map(),   // userId -> Array<estimate>
+        recurring: new Map(),   // userId -> Array<recurringInvoice>
+        bankTxns: new Map(),    // userId -> Array<bankTxn>
+        catRules: new Map(),    // userId -> Array<categoryRule>
+        expenses: new Map(),    // userId -> Array<expense>
+        seq: new Map(),         // userId -> { je, inv, bill, est, exp, cust, vend, btxn, rule, rec }
       };
     }
-    return STATE.accountingLens;
+    const s = STATE.accountingLens;
+    // Backfill new buckets if STATE was created by older code path.
+    if (!s.customers) s.customers = new Map();
+    if (!s.vendors) s.vendors = new Map();
+    if (!s.bills) s.bills = new Map();
+    if (!s.estimates) s.estimates = new Map();
+    if (!s.recurring) s.recurring = new Map();
+    if (!s.bankTxns) s.bankTxns = new Map();
+    if (!s.catRules) s.catRules = new Map();
+    if (!s.expenses) s.expenses = new Map();
+    if (!s.employees) s.employees = new Map();
+    if (!s.payRuns) s.payRuns = new Map();
+    if (!s.budgets) s.budgets = new Map();
+    if (!s.items) s.items = new Map();
+    if (!s.taxCodes) s.taxCodes = new Map();
+    if (!s.purchaseOrders) s.purchaseOrders = new Map();
+    return s;
+  }
+  function ensureSeq(s, userId) {
+    if (!s.seq.has(userId)) s.seq.set(userId, { je: 1, inv: 1, bill: 1, est: 1, exp: 1, cust: 1, vend: 1, btxn: 1, rule: 1, rec: 1 });
+    const seq = s.seq.get(userId);
+    for (const k of ['je','inv','bill','est','exp','cust','vend','btxn','rule','rec']) {
+      if (!Number.isFinite(seq[k])) seq[k] = 1;
+    }
+    return seq;
+  }
+  function ensureList(map, userId) {
+    if (!map.has(userId)) map.set(userId, []);
+    return map.get(userId);
   }
   function saveAccountingState() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
@@ -1206,5 +1242,1685 @@ export default function registerAccountingActions(registerLensAction) {
       totalOpen += inv.total;
     }
     return { ok: true, result: { asOf, buckets: Object.values(buckets).map((b, i) => ({ ...b, key: Object.keys(buckets)[i] })), totalOpen } };
+  });
+
+  // ── Customers (CRM-lite for invoicing) ─────────────────────────
+
+  registerLensAction("accounting", "customers-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureList(s.customers, actId(ctx));
+    return { ok: true, result: { customers: list.slice().sort((a, b) => a.name.localeCompare(b.name)) } };
+  });
+
+  registerLensAction("accounting", "customers-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const seq = ensureSeq(s, userId);
+    const c = {
+      id: nextId("cust"),
+      number: `C-${String(seq.cust).padStart(4, "0")}`,
+      name, email: String(params.email || "").trim(),
+      phone: String(params.phone || "").trim(),
+      company: String(params.company || "").trim(),
+      billingAddress: String(params.billingAddress || "").trim(),
+      taxId: String(params.taxId || "").trim(),
+      notes: String(params.notes || "").slice(0, 500),
+      createdAt: nowIso(),
+    };
+    seq.cust++;
+    ensureList(s.customers, userId).push(c);
+    saveAccountingState();
+    return { ok: true, result: { customer: c } };
+  });
+
+  registerLensAction("accounting", "customers-update", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const id = String(params.id || "");
+    const list = ensureList(s.customers, actId(ctx));
+    const c = list.find(x => x.id === id);
+    if (!c) return { ok: false, error: "customer not found" };
+    for (const k of ["name", "email", "phone", "company", "billingAddress", "taxId", "notes"]) {
+      if (typeof params[k] === "string") c[k] = params[k];
+    }
+    saveAccountingState();
+    return { ok: true, result: { customer: c } };
+  });
+
+  registerLensAction("accounting", "customers-delete", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const id = String(params.id || "");
+    const list = ensureList(s.customers, actId(ctx));
+    const i = list.findIndex(x => x.id === id);
+    if (i < 0) return { ok: false, error: "customer not found" };
+    list.splice(i, 1);
+    saveAccountingState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Vendors (AP suppliers) ─────────────────────────────────────
+
+  registerLensAction("accounting", "vendors-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureList(s.vendors, actId(ctx));
+    return { ok: true, result: { vendors: list.slice().sort((a, b) => a.name.localeCompare(b.name)) } };
+  });
+
+  registerLensAction("accounting", "vendors-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const seq = ensureSeq(s, userId);
+    const v = {
+      id: nextId("vend"),
+      number: `V-${String(seq.vend).padStart(4, "0")}`,
+      name, email: String(params.email || "").trim(),
+      phone: String(params.phone || "").trim(),
+      taxId: String(params.taxId || "").trim(),         // EIN/SSN
+      is1099: Boolean(params.is1099),
+      defaultExpenseAccountId: String(params.defaultExpenseAccountId || ""),
+      paymentTerms: String(params.paymentTerms || "net30"),
+      notes: String(params.notes || "").slice(0, 500),
+      createdAt: nowIso(),
+    };
+    seq.vend++;
+    ensureList(s.vendors, userId).push(v);
+    saveAccountingState();
+    return { ok: true, result: { vendor: v } };
+  });
+
+  registerLensAction("accounting", "vendors-update", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const id = String(params.id || "");
+    const list = ensureList(s.vendors, actId(ctx));
+    const v = list.find(x => x.id === id);
+    if (!v) return { ok: false, error: "vendor not found" };
+    for (const k of ["name", "email", "phone", "taxId", "defaultExpenseAccountId", "paymentTerms", "notes"]) {
+      if (typeof params[k] === "string") v[k] = params[k];
+    }
+    if (typeof params.is1099 === "boolean") v.is1099 = params.is1099;
+    saveAccountingState();
+    return { ok: true, result: { vendor: v } };
+  });
+
+  registerLensAction("accounting", "vendors-delete", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const id = String(params.id || "");
+    const list = ensureList(s.vendors, actId(ctx));
+    const i = list.findIndex(x => x.id === id);
+    if (i < 0) return { ok: false, error: "vendor not found" };
+    list.splice(i, 1);
+    saveAccountingState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Bills (AP — incoming invoices from vendors) ───────────────
+
+  registerLensAction("accounting", "bills-list", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const status = ["open", "paid", "all"].includes(params.status) ? params.status : "all";
+    const list = ensureList(s.bills, actId(ctx));
+    const filtered = status === "all" ? list : list.filter(b => b.status === status);
+    return { ok: true, result: { bills: filtered.slice().sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || "")) } };
+  });
+
+  registerLensAction("accounting", "bills-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const vendorId = String(params.vendorId || "");
+    const vendors = ensureList(s.vendors, userId);
+    const vendor = vendors.find(v => v.id === vendorId);
+    if (!vendor) return { ok: false, error: "vendor not found" };
+    const total = Number(params.total);
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0" };
+    const expenseAccountId = String(params.expenseAccountId || vendor.defaultExpenseAccountId || "");
+    const coa = s.coa.get(userId);
+    if (!coa.has(expenseAccountId)) return { ok: false, error: "expenseAccountId invalid" };
+    const issuedAt = String(params.issuedAt || nowIso().slice(0, 10));
+    const termsDays = vendor.paymentTerms === "net60" ? 60 : vendor.paymentTerms === "net15" ? 15 : vendor.paymentTerms === "due_on_receipt" ? 0 : 30;
+    const dueAt = String(params.dueAt || new Date(new Date(issuedAt).getTime() + termsDays * 86_400_000).toISOString().slice(0, 10));
+    const seq = ensureSeq(s, userId);
+    const bill = {
+      id: nextId("bill"),
+      number: `BILL-${String(seq.bill).padStart(5, "0")}`,
+      vendorId, vendorName: vendor.name,
+      total,
+      expenseAccountId,
+      memo: String(params.memo || "").slice(0, 200),
+      status: "open",
+      issuedAt, dueAt,
+      paidAt: null,
+      jeEntryId: null, // will hold the AP-side JE id if we post a bill JE
+      payJeEntryId: null,
+    };
+    seq.bill++;
+    ensureList(s.bills, userId).push(bill);
+
+    // Auto-post the bill: Debit Expense, Credit AP (account code 2000 by default)
+    const apAcct = Array.from(coa.values()).find(a => a.code === "2000" && a.category === "liability");
+    if (apAcct) {
+      const seq2 = seq;
+      const entry = {
+        id: nextId("je"),
+        number: `JE-${String(seq2.je).padStart(5, "0")}`,
+        date: issuedAt,
+        memo: `${bill.number} · ${vendor.name}`,
+        lines: [
+          { accountId: expenseAccountId, debit: total, credit: 0, memo: bill.memo },
+          { accountId: apAcct.id, debit: 0, credit: total, memo: `AP · ${vendor.name}` },
+        ],
+        totalDebit: total, totalCredit: total,
+        postedAt: nowIso(),
+        autoFrom: bill.id,
+      };
+      seq.je++;
+      ensureList(s.journal, userId).push(entry);
+      bill.jeEntryId = entry.id;
+    }
+
+    saveAccountingState();
+    return { ok: true, result: { bill } };
+  });
+
+  registerLensAction("accounting", "bills-pay", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const id = String(params.id || "");
+    const list = ensureList(s.bills, userId);
+    const bill = list.find(b => b.id === id);
+    if (!bill) return { ok: false, error: "bill not found" };
+    if (bill.status === "paid") return { ok: false, error: "bill already paid" };
+    const paidAt = String(params.paidAt || nowIso().slice(0, 10));
+    const cashAccountId = String(params.cashAccountId || "");
+    const coa = s.coa.get(userId);
+    const cashAcct = cashAccountId
+      ? coa.get(cashAccountId)
+      : Array.from(coa.values()).find(a => a.code === "1000" && a.category === "asset");
+    if (!cashAcct) return { ok: false, error: "cash account not found (default code 1000)" };
+    const apAcct = Array.from(coa.values()).find(a => a.code === "2000" && a.category === "liability");
+    if (!apAcct) return { ok: false, error: "AP account not found (default code 2000)" };
+
+    // Pay JE: Debit AP, Credit Cash
+    const seq = ensureSeq(s, userId);
+    const entry = {
+      id: nextId("je"),
+      number: `JE-${String(seq.je).padStart(5, "0")}`,
+      date: paidAt,
+      memo: `Pay ${bill.number} · ${bill.vendorName}`,
+      lines: [
+        { accountId: apAcct.id, debit: bill.total, credit: 0, memo: `Clear AP · ${bill.vendorName}` },
+        { accountId: cashAcct.id, debit: 0, credit: bill.total, memo: `Cash out · ${bill.number}` },
+      ],
+      totalDebit: bill.total, totalCredit: bill.total,
+      postedAt: nowIso(),
+      autoFrom: bill.id,
+    };
+    seq.je++;
+    ensureList(s.journal, userId).push(entry);
+    bill.status = "paid";
+    bill.paidAt = paidAt;
+    bill.payJeEntryId = entry.id;
+    saveAccountingState();
+    return { ok: true, result: { bill, paymentEntry: entry } };
+  });
+
+  registerLensAction("accounting", "bills-delete", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const id = String(params.id || "");
+    const list = ensureList(s.bills, userId);
+    const i = list.findIndex(b => b.id === id);
+    if (i < 0) return { ok: false, error: "bill not found" };
+    const bill = list[i];
+    // Reverse any auto-posted JEs.
+    const journal = ensureList(s.journal, userId);
+    for (const jeId of [bill.jeEntryId, bill.payJeEntryId]) {
+      if (!jeId) continue;
+      const k = journal.findIndex(e => e.id === jeId);
+      if (k >= 0) journal.splice(k, 1);
+    }
+    list.splice(i, 1);
+    saveAccountingState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("accounting", "aging-ap", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const asOf = params.asOf ? String(params.asOf) : nowIso().slice(0, 10);
+    const asOfMs = new Date(asOf).getTime();
+    const buckets = {
+      current: { label: "Current (0–30)", total: 0, bills: [] },
+      d30:     { label: "31–60 days",     total: 0, bills: [] },
+      d60:     { label: "61–90 days",     total: 0, bills: [] },
+      d90plus: { label: "90+ days",       total: 0, bills: [] },
+    };
+    let totalOpen = 0;
+    for (const bill of ensureList(s.bills, userId)) {
+      if (bill.status !== "open") continue;
+      const dueMs = new Date(bill.dueAt).getTime();
+      const daysPastDue = Math.floor((asOfMs - dueMs) / 86_400_000);
+      const key = daysPastDue <= 30 ? "current" : daysPastDue <= 60 ? "d30" : daysPastDue <= 90 ? "d60" : "d90plus";
+      buckets[key].total += bill.total;
+      buckets[key].bills.push({ ...bill, daysPastDue });
+      totalOpen += bill.total;
+    }
+    return { ok: true, result: { asOf, buckets: Object.entries(buckets).map(([k, b]) => ({ key: k, ...b })), totalOpen } };
+  });
+
+  // ── P&L from journal (real, not artifact-driven) ──────────────
+
+  registerLensAction("accounting", "pl-compute", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const today = nowIso().slice(0, 10);
+    const start = params.start ? String(params.start) : today.slice(0, 4) + "-01-01";
+    const end = params.end ? String(params.end) : today;
+    const coa = s.coa.get(userId);
+    const entries = ensureList(s.journal, userId);
+    const totals = new Map();
+    for (const e of entries) {
+      if (e.date < start || e.date > end) continue;
+      for (const l of e.lines) {
+        totals.set(l.accountId, (totals.get(l.accountId) || 0) + (l.credit - l.debit));
+      }
+    }
+    const revLines = [], cogsLines = [], expLines = [];
+    let totalRev = 0, totalCogs = 0, totalExp = 0;
+    for (const [accId, bal] of totals) {
+      const a = coa.get(accId); if (!a || a.archived) continue;
+      const line = { id: accId, code: a.code, name: a.name, amount: 0 };
+      if (a.category === "revenue") { line.amount = bal; revLines.push(line); totalRev += bal; }
+      else if (a.category === "cogs") { line.amount = -bal; cogsLines.push(line); totalCogs += -bal; }
+      else if (a.category === "expense") { line.amount = -bal; expLines.push(line); totalExp += -bal; }
+    }
+    revLines.sort((a, b) => b.amount - a.amount);
+    cogsLines.sort((a, b) => b.amount - a.amount);
+    expLines.sort((a, b) => b.amount - a.amount);
+    const grossProfit = totalRev - totalCogs;
+    const netIncome = grossProfit - totalExp;
+    return {
+      ok: true,
+      result: {
+        period: { start, end },
+        revenue: { lines: revLines, total: totalRev },
+        cogs: { lines: cogsLines, total: totalCogs },
+        grossProfit,
+        grossMarginPct: totalRev > 0 ? (grossProfit / totalRev) * 100 : 0,
+        operatingExpenses: { lines: expLines, total: totalExp },
+        netIncome,
+        netMarginPct: totalRev > 0 ? (netIncome / totalRev) * 100 : 0,
+      },
+    };
+  });
+
+  // ── Cash flow (direct method, from cash-account journal activity) ─
+
+  registerLensAction("accounting", "cashflow-compute", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const today = nowIso().slice(0, 10);
+    const start = params.start ? String(params.start) : today.slice(0, 4) + "-01-01";
+    const end = params.end ? String(params.end) : today;
+    const coa = s.coa.get(userId);
+    const cashIds = new Set(Array.from(coa.values()).filter(a => a.category === "asset" && /^1[01]/.test(a.code)).map(a => a.id));
+    if (cashIds.size === 0) {
+      // fall back to just account code 1000
+      const cash = Array.from(coa.values()).find(a => a.code === "1000");
+      if (cash) cashIds.add(cash.id);
+    }
+    const months = new Map(); // 'YYYY-MM' -> { in, out, net }
+    let totalIn = 0, totalOut = 0;
+    for (const e of ensureList(s.journal, userId)) {
+      if (e.date < start || e.date > end) continue;
+      const mk = e.date.slice(0, 7);
+      if (!months.has(mk)) months.set(mk, { month: mk, in: 0, out: 0, net: 0 });
+      const m = months.get(mk);
+      for (const l of e.lines) {
+        if (!cashIds.has(l.accountId)) continue;
+        if (l.debit > 0) { m.in += l.debit; totalIn += l.debit; }
+        if (l.credit > 0) { m.out += l.credit; totalOut += l.credit; }
+      }
+      m.net = m.in - m.out;
+    }
+    const series = Array.from(months.values()).sort((a, b) => a.month.localeCompare(b.month));
+    return {
+      ok: true,
+      result: {
+        period: { start, end },
+        series,
+        totalIn,
+        totalOut,
+        netCashFlow: totalIn - totalOut,
+      },
+    };
+  });
+
+  // ── Runway forecast (cash + AR − AP, projected months) ────────
+
+  registerLensAction("accounting", "runway-forecast", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const months = Math.max(3, Math.min(24, Number(params.months) || 12));
+    const today = new Date(nowIso().slice(0, 10));
+    const coa = s.coa.get(userId);
+    const journal = ensureList(s.journal, userId);
+
+    const cashIds = new Set(Array.from(coa.values()).filter(a => a.category === "asset" && /^1[01]/.test(a.code)).map(a => a.id));
+    let cashOnHand = 0;
+    for (const e of journal) {
+      for (const l of e.lines) {
+        if (cashIds.has(l.accountId)) cashOnHand += (l.debit - l.credit);
+      }
+    }
+
+    const openInvTotal = ensureList(s.invoices, userId).filter(i => i.status === "open").reduce((sum, i) => sum + i.total, 0);
+    const openBillsTotal = ensureList(s.bills, userId).filter(b => b.status === "open").reduce((sum, b) => sum + b.total, 0);
+    const liquidity = cashOnHand + openInvTotal - openBillsTotal;
+
+    // Estimate burn rate from last 3 months' net cash flow.
+    const cutoff = new Date(today.getTime() - 90 * 86_400_000).toISOString().slice(0, 10);
+    let trailingIn = 0, trailingOut = 0;
+    for (const e of journal) {
+      if (e.date < cutoff) continue;
+      for (const l of e.lines) {
+        if (!cashIds.has(l.accountId)) continue;
+        if (l.debit > 0) trailingIn += l.debit;
+        if (l.credit > 0) trailingOut += l.credit;
+      }
+    }
+    const monthlyNet = (trailingIn - trailingOut) / 3; // positive = net inflow
+    const monthlyBurn = monthlyNet < 0 ? -monthlyNet : 0;
+    const monthlyGrowth = monthlyNet > 0 ? monthlyNet : 0;
+
+    const forecast = [];
+    let running = liquidity;
+    for (let i = 1; i <= months; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      running += monthlyNet;
+      forecast.push({
+        month: d.toISOString().slice(0, 7),
+        projected: Math.round(running),
+        out: Math.round(monthlyBurn),
+        in: Math.round(monthlyGrowth),
+      });
+    }
+    const runwayMonths = monthlyBurn > 0 ? Math.round((liquidity / monthlyBurn) * 10) / 10 : null;
+
+    return {
+      ok: true,
+      result: {
+        cashOnHand: Math.round(cashOnHand),
+        openInvTotal: Math.round(openInvTotal),
+        openBillsTotal: Math.round(openBillsTotal),
+        liquidity: Math.round(liquidity),
+        monthlyNet: Math.round(monthlyNet),
+        monthlyBurn: Math.round(monthlyBurn),
+        runwayMonths,
+        forecast,
+      },
+    };
+  });
+
+  // ── Recurring invoices ────────────────────────────────────────
+
+  registerLensAction("accounting", "recurring-invoices-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { recurring: ensureList(s.recurring, actId(ctx)) } };
+  });
+
+  registerLensAction("accounting", "recurring-invoices-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const customerName = String(params.customerName || "").trim();
+    const total = Number(params.total);
+    const cadence = ["weekly", "monthly", "quarterly", "annually"].includes(params.cadence) ? params.cadence : "monthly";
+    if (!customerName || !Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required" };
+    const seq = ensureSeq(s, userId);
+    const startAt = String(params.startAt || nowIso().slice(0, 10));
+    const r = {
+      id: nextId("rec"),
+      number: `R-${String(seq.rec).padStart(4, "0")}`,
+      customerName,
+      customerId: params.customerId ? String(params.customerId) : null,
+      total,
+      cadence,
+      startAt,
+      nextRunAt: startAt,
+      memo: String(params.memo || ""),
+      active: true,
+      lastRunAt: null,
+      runCount: 0,
+      createdAt: nowIso(),
+    };
+    seq.rec++;
+    ensureList(s.recurring, userId).push(r);
+    saveAccountingState();
+    return { ok: true, result: { recurring: r } };
+  });
+
+  registerLensAction("accounting", "recurring-invoices-toggle", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const r = ensureList(s.recurring, actId(ctx)).find(x => x.id === String(params.id || ""));
+    if (!r) return { ok: false, error: "recurring not found" };
+    r.active = !r.active;
+    saveAccountingState();
+    return { ok: true, result: { recurring: r } };
+  });
+
+  registerLensAction("accounting", "recurring-invoices-run-due", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const seq = ensureSeq(s, userId);
+    const today = nowIso().slice(0, 10);
+    const created = [];
+    for (const r of ensureList(s.recurring, userId)) {
+      if (!r.active) continue;
+      if (r.nextRunAt > today) continue;
+      const invoice = {
+        id: nextId("inv"),
+        number: `INV-${String(seq.inv).padStart(5, "0")}`,
+        customerId: r.customerId,
+        customerName: r.customerName,
+        total: r.total,
+        status: "open",
+        issuedAt: today,
+        dueAt: new Date(new Date(today).getTime() + 30 * 86_400_000).toISOString().slice(0, 10),
+        paidAt: null,
+        recurringId: r.id,
+      };
+      seq.inv++;
+      ensureList(s.invoices, userId).push(invoice);
+      created.push(invoice);
+      r.lastRunAt = today;
+      r.runCount += 1;
+      const days = r.cadence === "weekly" ? 7 : r.cadence === "quarterly" ? 90 : r.cadence === "annually" ? 365 : 30;
+      r.nextRunAt = new Date(new Date(r.nextRunAt).getTime() + days * 86_400_000).toISOString().slice(0, 10);
+    }
+    saveAccountingState();
+    return { ok: true, result: { created, count: created.length } };
+  });
+
+  // ── Estimates → Invoice ────────────────────────────────────────
+
+  registerLensAction("accounting", "estimates-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { estimates: ensureList(s.estimates, actId(ctx)) } };
+  });
+
+  registerLensAction("accounting", "estimates-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const customerName = String(params.customerName || "").trim();
+    const total = Number(params.total);
+    if (!customerName || !Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required" };
+    const seq = ensureSeq(s, userId);
+    const e = {
+      id: nextId("est"),
+      number: `EST-${String(seq.est).padStart(5, "0")}`,
+      customerName,
+      customerId: params.customerId ? String(params.customerId) : null,
+      total,
+      status: "pending",
+      issuedAt: String(params.issuedAt || nowIso().slice(0, 10)),
+      expiresAt: String(params.expiresAt || new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)),
+      memo: String(params.memo || ""),
+      convertedInvoiceId: null,
+    };
+    seq.est++;
+    ensureList(s.estimates, userId).push(e);
+    saveAccountingState();
+    return { ok: true, result: { estimate: e } };
+  });
+
+  registerLensAction("accounting", "estimates-convert", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const id = String(params.id || "");
+    const e = ensureList(s.estimates, userId).find(x => x.id === id);
+    if (!e) return { ok: false, error: "estimate not found" };
+    if (e.convertedInvoiceId) return { ok: false, error: "estimate already converted" };
+    const seq = ensureSeq(s, userId);
+    const inv = {
+      id: nextId("inv"),
+      number: `INV-${String(seq.inv).padStart(5, "0")}`,
+      customerId: e.customerId,
+      customerName: e.customerName,
+      total: e.total,
+      status: "open",
+      issuedAt: nowIso().slice(0, 10),
+      dueAt: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
+      paidAt: null,
+      fromEstimateId: e.id,
+    };
+    seq.inv++;
+    ensureList(s.invoices, userId).push(inv);
+    e.status = "accepted";
+    e.convertedInvoiceId = inv.id;
+    saveAccountingState();
+    return { ok: true, result: { estimate: e, invoice: inv } };
+  });
+
+  // ── Bank feeds (transaction inbox) ─────────────────────────────
+
+  registerLensAction("accounting", "bank-feeds-list", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const status = ["uncategorized", "categorized", "all"].includes(params.status) ? params.status : "uncategorized";
+    const list = ensureList(s.bankTxns, actId(ctx));
+    const filtered = status === "all" ? list : list.filter(t => (status === "uncategorized") ? !t.accountId : !!t.accountId);
+    return { ok: true, result: { txns: filtered.slice().sort((a, b) => b.date.localeCompare(a.date)) } };
+  });
+
+  registerLensAction("accounting", "bank-feeds-import", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const seq = ensureSeq(s, userId);
+    const rows = Array.isArray(params.txns) ? params.txns : [];
+    const description = String(params.description || "").trim();
+    const amount = Number(params.amount);
+    // Accept either bulk import or single-txn add.
+    let imported = [];
+    if (rows.length === 0 && description && Number.isFinite(amount) && amount !== 0) {
+      rows.push({ description, amount, date: params.date, bankRef: params.bankRef });
+    }
+    for (const row of rows) {
+      const desc = String(row.description || "").trim();
+      const amt = Number(row.amount);
+      if (!desc || !Number.isFinite(amt) || amt === 0) continue;
+      const txn = {
+        id: nextId("btxn"),
+        number: `BT-${String(seq.btxn).padStart(6, "0")}`,
+        date: String(row.date || nowIso().slice(0, 10)),
+        description: desc.slice(0, 200),
+        amount: amt,                              // negative = withdrawal, positive = deposit
+        bankRef: String(row.bankRef || ""),
+        accountId: null,                          // null = uncategorized
+        jeEntryId: null,
+        importedAt: nowIso(),
+      };
+      seq.btxn++;
+      ensureList(s.bankTxns, userId).push(txn);
+      imported.push(txn);
+    }
+    saveAccountingState();
+    return { ok: true, result: { imported, count: imported.length } };
+  });
+
+  registerLensAction("accounting", "bank-feeds-categorize", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const txnId = String(params.txnId || "");
+    const accountId = String(params.accountId || "");
+    const txn = ensureList(s.bankTxns, userId).find(t => t.id === txnId);
+    if (!txn) return { ok: false, error: "txn not found" };
+    const coa = s.coa.get(userId);
+    if (!coa.has(accountId)) return { ok: false, error: "accountId invalid" };
+    if (txn.accountId) return { ok: false, error: "txn already categorized" };
+    const cashAcct = Array.from(coa.values()).find(a => a.code === "1000" && a.category === "asset");
+    if (!cashAcct) return { ok: false, error: "cash account 1000 not found" };
+    const seq = ensureSeq(s, userId);
+    // amount > 0 = deposit (debit cash, credit the picked account, e.g. revenue)
+    // amount < 0 = withdrawal (credit cash, debit the picked account, e.g. expense)
+    const isDeposit = txn.amount > 0;
+    const abs = Math.abs(txn.amount);
+    const entry = {
+      id: nextId("je"),
+      number: `JE-${String(seq.je).padStart(5, "0")}`,
+      date: txn.date,
+      memo: `Bank · ${txn.description}`.slice(0, 200),
+      lines: isDeposit
+        ? [
+            { accountId: cashAcct.id, debit: abs, credit: 0, memo: txn.description },
+            { accountId, debit: 0, credit: abs, memo: txn.description },
+          ]
+        : [
+            { accountId, debit: abs, credit: 0, memo: txn.description },
+            { accountId: cashAcct.id, debit: 0, credit: abs, memo: txn.description },
+          ],
+      totalDebit: abs, totalCredit: abs,
+      postedAt: nowIso(),
+      autoFrom: txn.id,
+    };
+    seq.je++;
+    ensureList(s.journal, userId).push(entry);
+    txn.accountId = accountId;
+    txn.jeEntryId = entry.id;
+    saveAccountingState();
+    return { ok: true, result: { txn, entry } };
+  });
+
+  registerLensAction("accounting", "bank-feeds-uncategorize", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const txn = ensureList(s.bankTxns, userId).find(t => t.id === String(params.txnId || ""));
+    if (!txn) return { ok: false, error: "txn not found" };
+    if (!txn.accountId) return { ok: false, error: "txn already uncategorized" };
+    const journal = ensureList(s.journal, userId);
+    if (txn.jeEntryId) {
+      const i = journal.findIndex(e => e.id === txn.jeEntryId);
+      if (i >= 0) journal.splice(i, 1);
+    }
+    txn.accountId = null;
+    txn.jeEntryId = null;
+    saveAccountingState();
+    return { ok: true, result: { txn } };
+  });
+
+  // ── AI-suggest a category for an uncategorized bank txn ────────
+  // Uses Concord's brain (utility) on the txn description + amount.
+
+  // Confidence scorer — keyword overlap between txn description and account name.
+  // Returns 0..1; > 0.7 considered "high confidence".
+  function confidenceFor(txn, account) {
+    const desc = txn.description.toLowerCase();
+    const name = account.name.toLowerCase();
+    if (!desc || !name) return 0.3;
+    const tokens = name.split(/[\s_\-/]+/).filter(t => t.length >= 3);
+    if (tokens.length === 0) return 0.35;
+    let hits = 0;
+    for (const t of tokens) if (desc.includes(t)) hits++;
+    const direct = hits / tokens.length;
+    // Boost for known merchant signatures.
+    const signatures = [
+      [/aws|amazon web services|gcp|google cloud|azure|digitalocean|netlify|vercel|github/, /software|hosting|office|technology/],
+      [/uber|lyft|delta air|united air|amtrak|hertz|enterprise rent|hotel|marriott|hilton/, /travel|auto|fuel|meals/],
+      [/payroll|adp|gusto|paychex|justworks|onpay/, /payroll|wages|salary/],
+      [/wework|regus|rent|lease/, /rent/],
+      [/pg&e|con edison|electric|water|comcast|verizon|att|t-mobile|internet/, /utilities/],
+      [/staples|office depot|amazon\.com|costco/, /office|supplies/],
+      [/restaurant|starbucks|chipotle|coffee|panera|doordash/, /meals|food|entertainment/],
+    ];
+    let sigBoost = 0;
+    for (const [descRe, nameRe] of signatures) {
+      if (descRe.test(desc) && nameRe.test(name)) { sigBoost = 0.45; break; }
+    }
+    return Math.min(1, direct * 0.55 + sigBoost + 0.2);
+  }
+
+  // Shared core for ai-categorize-txn AND bank-feeds-bulk-suggest.
+  async function suggestCategoryForTxn(ctx, txn) {
+    const s = getAccountingState();
+    const userId = actId(ctx);
+    const coa = s.coa.get(userId);
+    const accounts = Array.from(coa.values()).filter(a => !a.archived);
+    const isDeposit = txn.amount > 0;
+    const candidates = accounts
+      .filter(a => isDeposit ? a.category === "revenue" : (a.category === "expense" || a.category === "cogs"))
+      .map(a => ({ id: a.id, code: a.code, name: a.name, category: a.category }));
+    if (candidates.length === 0) return { ok: false, error: "no candidate accounts" };
+    const rules = ensureList(s.catRules, userId);
+    const ruleMatch = rules.find(r => txn.description.toLowerCase().includes(r.pattern.toLowerCase()) && candidates.some(c => c.id === r.accountId));
+    if (ruleMatch) {
+      const acct = candidates.find(c => c.id === ruleMatch.accountId);
+      return { ok: true, result: { txnId: txn.id, suggestedAccountId: ruleMatch.accountId, suggestedAccountName: acct?.name, source: "rule", ruleId: ruleMatch.id, confidence: 1.0 } };
+    }
+    const desc = txn.description.toLowerCase();
+    function heuristicPick() {
+      if (isDeposit) return candidates.find(c => /sales|revenue/i.test(c.name)) || candidates[0];
+      const map = [
+        [/uber|lyft|fuel|gas|chevron|shell|exxon/, /auto|fuel|travel/i],
+        [/aws|google|cloud|saas|hosting|domain|github/, /software|hosting|office/i],
+        [/payroll|adp|gusto|salar/, /payroll/i],
+        [/rent|wework/, /rent/i],
+        [/pg&e|electric|utility|water|gas bill|comcast|internet|verizon/, /utilities/i],
+        [/restaurant|starbucks|food|coffee|chipotle|meals/, /meals|entertainment|food/i],
+        [/office|staples|amazon|supplies/, /office/i],
+      ];
+      for (const [re, nameRe] of map) {
+        if (!re.test(desc)) continue;
+        const match = candidates.find(c => nameRe.test(c.name));
+        if (match) return match;
+      }
+      return candidates[0];
+    }
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== "function") {
+      const pick = heuristicPick();
+      return { ok: true, result: { txnId: txn.id, suggestedAccountId: pick.id, suggestedAccountName: pick.name, source: "heuristic", confidence: confidenceFor(txn, pick) } };
+    }
+    try {
+      const prompt = `You are categorizing a bank transaction for accounting. Reply with ONLY the account code from the list — nothing else.
+
+Transaction: ${txn.description} (amount $${txn.amount.toFixed(2)}, ${isDeposit ? "deposit" : "withdrawal"})
+
+Candidate accounts:
+${candidates.map(c => `${c.code} ${c.name}`).join("\n")}
+
+Output the single best account code:`;
+      const r = await brain({ messages: [{ role: "user", content: prompt }] });
+      const raw = String(r?.content || r?.text || r || "").trim();
+      const code = (raw.match(/\b\d{3,5}\b/) || [])[0] || raw.split(/\s+/)[0];
+      const picked = candidates.find(c => c.code === code) || heuristicPick();
+      const heur = heuristicPick();
+      const base = confidenceFor(txn, picked);
+      const agree = heur.id === picked.id ? 0.15 : 0;
+      return { ok: true, result: { txnId: txn.id, suggestedAccountId: picked.id, suggestedAccountName: picked.name, source: "brain", confidence: Math.min(1, base + agree) } };
+    } catch (e) {
+      const pick = heuristicPick();
+      return { ok: true, result: { txnId: txn.id, suggestedAccountId: pick.id, suggestedAccountName: pick.name, source: "heuristic_after_brain_error", error: String(e), confidence: confidenceFor(txn, pick) } };
+    }
+  }
+
+  registerLensAction("accounting", "ai-categorize-txn", async (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const txnId = String(params.txnId || "");
+    const txn = ensureList(s.bankTxns, userId).find(t => t.id === txnId);
+    if (!txn) return { ok: false, error: "txn not found" };
+    return await suggestCategoryForTxn(ctx, txn);
+  });
+
+  // ── Bulk AI suggest across all uncategorized txns (QBO "Accounting AI" parity) ─
+
+  registerLensAction("accounting", "bank-feeds-bulk-suggest", async (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const txns = ensureList(s.bankTxns, userId).filter(t => !t.accountId);
+    const suggestions = [];
+    for (const txn of txns) {
+      const r = await suggestCategoryForTxn(ctx, txn);
+      if (r?.ok) {
+        suggestions.push({
+          txnId: txn.id,
+          description: txn.description,
+          amount: txn.amount,
+          date: txn.date,
+          suggestedAccountId: r.result.suggestedAccountId,
+          suggestedAccountName: r.result.suggestedAccountName,
+          source: r.result.source,
+          confidence: r.result.confidence || 0,
+          highConfidence: (r.result.confidence || 0) >= 0.7,
+        });
+      }
+    }
+    const high = suggestions.filter(s => s.highConfidence).length;
+    return { ok: true, result: { suggestions, totalUncategorized: txns.length, highConfidenceCount: high } };
+  });
+
+  // bulk-accept — accept an explicit batch of {txnId, accountId} pairs.
+  registerLensAction("accounting", "bank-feeds-bulk-accept", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const picks = Array.isArray(params.picks) ? params.picks : [];
+    if (picks.length === 0) return { ok: false, error: "picks array required" };
+    const coa = s.coa.get(userId);
+    const cashAcct = Array.from(coa.values()).find(a => a.code === "1000" && a.category === "asset");
+    if (!cashAcct) return { ok: false, error: "cash account 1000 not found" };
+    const seq = ensureSeq(s, userId);
+    const txns = ensureList(s.bankTxns, userId);
+    const journal = ensureList(s.journal, userId);
+    const accepted = [], errors = [];
+    for (const pick of picks) {
+      const txnId = String(pick.txnId || "");
+      const accountId = String(pick.accountId || "");
+      const txn = txns.find(t => t.id === txnId);
+      if (!txn) { errors.push({ txnId, error: "txn not found" }); continue; }
+      if (txn.accountId) { errors.push({ txnId, error: "already categorized" }); continue; }
+      if (!coa.has(accountId)) { errors.push({ txnId, error: "account invalid" }); continue; }
+      const isDeposit = txn.amount > 0;
+      const abs = Math.abs(txn.amount);
+      const entry = {
+        id: nextId("je"),
+        number: `JE-${String(seq.je).padStart(5, "0")}`,
+        date: txn.date,
+        memo: `Bank · ${txn.description}`.slice(0, 200),
+        lines: isDeposit
+          ? [
+              { accountId: cashAcct.id, debit: abs, credit: 0, memo: txn.description },
+              { accountId, debit: 0, credit: abs, memo: txn.description },
+            ]
+          : [
+              { accountId, debit: abs, credit: 0, memo: txn.description },
+              { accountId: cashAcct.id, debit: 0, credit: abs, memo: txn.description },
+            ],
+        totalDebit: abs, totalCredit: abs,
+        postedAt: nowIso(),
+        autoFrom: txn.id,
+      };
+      seq.je++;
+      journal.push(entry);
+      txn.accountId = accountId;
+      txn.jeEntryId = entry.id;
+      accepted.push(txnId);
+    }
+    saveAccountingState();
+    return { ok: true, result: { accepted: accepted.length, errors, total: picks.length } };
+  });
+
+  // ── AI suggest vendor for a bank txn description ──────────────
+
+  registerLensAction("accounting", "ai-suggest-vendor", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const description = String(params.description || "").toLowerCase();
+    if (!description) return { ok: false, error: "description required" };
+    const vendors = ensureList(s.vendors, userId);
+    // Match by name token overlap.
+    let best = null;
+    let bestScore = 0;
+    for (const v of vendors) {
+      const tokens = v.name.toLowerCase().split(/\s+/).filter(t => t.length >= 3);
+      if (tokens.length === 0) continue;
+      let hits = 0;
+      for (const t of tokens) if (description.includes(t)) hits++;
+      const score = hits / tokens.length;
+      if (score > bestScore) { best = v; bestScore = score; }
+    }
+    if (best && bestScore >= 0.5) {
+      return { ok: true, result: { matched: true, vendorId: best.id, vendorName: best.name, score: bestScore } };
+    }
+    // Suggest a new-vendor name extracted from the description (first 1-2 capitalized-ish tokens).
+    const newName = String(params.description || "")
+      .split(/[\s\-_]+/)
+      .filter(t => t.length >= 3 && !/^\d+$/.test(t))
+      .slice(0, 2)
+      .join(" ");
+    return { ok: true, result: { matched: false, suggestedNewVendor: newName || description.slice(0, 30) } };
+  });
+
+  // ── Natural-language Q&A ("JAX"-style: Show me overdue invoices) ─
+
+  registerLensAction("accounting", "ask", async (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const q = String(params.question || "").trim().toLowerCase();
+    if (!q) return { ok: false, error: "question required" };
+    const today = nowIso().slice(0, 10);
+
+    // Intent routing — deterministic for the common questions, brain for the long tail.
+    function answerOverdue() {
+      const list = ensureList(s.invoices, userId).filter(i => i.status === "open" && i.dueAt < today);
+      const total = list.reduce((sum, i) => sum + i.total, 0);
+      return {
+        intent: "overdue_invoices",
+        answer: `You have ${list.length} overdue invoice${list.length === 1 ? "" : "s"} totaling $${total.toFixed(2)}.`,
+        data: { invoices: list, totalOverdue: total },
+      };
+    }
+    function answerOpenInvoices() {
+      const list = ensureList(s.invoices, userId).filter(i => i.status === "open");
+      const total = list.reduce((sum, i) => sum + i.total, 0);
+      return { intent: "open_invoices", answer: `${list.length} open invoices, $${total.toFixed(2)} outstanding.`, data: { invoices: list, total } };
+    }
+    function answerCash() {
+      const coa = s.coa.get(userId);
+      const cashIds = new Set(Array.from(coa.values()).filter(a => a.category === "asset" && /^1[01]/.test(a.code)).map(a => a.id));
+      let bal = 0;
+      for (const e of ensureList(s.journal, userId)) for (const l of e.lines) if (cashIds.has(l.accountId)) bal += (l.debit - l.credit);
+      return { intent: "cash_balance", answer: `Cash on hand is $${bal.toFixed(2)}.`, data: { cashOnHand: bal } };
+    }
+    function answerPL() {
+      // year-to-date
+      const yearStart = today.slice(0, 4) + "-01-01";
+      const coa = s.coa.get(userId);
+      let rev = 0, exp = 0;
+      for (const e of ensureList(s.journal, userId)) {
+        if (e.date < yearStart) continue;
+        for (const l of e.lines) {
+          const a = coa.get(l.accountId); if (!a) continue;
+          if (a.category === "revenue") rev += (l.credit - l.debit);
+          if (a.category === "expense" || a.category === "cogs") exp += (l.debit - l.credit);
+        }
+      }
+      const net = rev - exp;
+      return { intent: "ytd_pl", answer: `YTD: revenue $${rev.toFixed(2)}, expense $${exp.toFixed(2)}, net income $${net.toFixed(2)}.`, data: { revenue: rev, expense: exp, netIncome: net } };
+    }
+    function answerBills() {
+      const list = ensureList(s.bills, userId).filter(b => b.status === "open");
+      const total = list.reduce((sum, b) => sum + b.total, 0);
+      return { intent: "open_bills", answer: `${list.length} open bills, $${total.toFixed(2)} owed.`, data: { bills: list, total } };
+    }
+    function answerRunway() {
+      // reuse runway logic inline (cannot call sibling macros without indirection)
+      const coa = s.coa.get(userId);
+      const cashIds = new Set(Array.from(coa.values()).filter(a => a.category === "asset" && /^1[01]/.test(a.code)).map(a => a.id));
+      let cash = 0;
+      for (const e of ensureList(s.journal, userId)) for (const l of e.lines) if (cashIds.has(l.accountId)) cash += (l.debit - l.credit);
+      const cutoff = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+      let inMo = 0, outMo = 0;
+      for (const e of ensureList(s.journal, userId)) {
+        if (e.date < cutoff) continue;
+        for (const l of e.lines) {
+          if (!cashIds.has(l.accountId)) continue;
+          inMo += l.debit; outMo += l.credit;
+        }
+      }
+      const netMo = (inMo - outMo) / 3;
+      const burn = netMo < 0 ? -netMo : 0;
+      const months = burn > 0 ? Math.round((cash / burn) * 10) / 10 : null;
+      return { intent: "runway", answer: months !== null ? `Runway: ${months} months at current burn rate.` : `No burn — net cash flow is positive ($${netMo.toFixed(2)}/mo).`, data: { cashOnHand: cash, monthlyBurn: burn, runwayMonths: months } };
+    }
+
+    // Keyword routing.
+    if (/overdue|past due|late/.test(q)) return { ok: true, result: answerOverdue() };
+    if (/open invoice|outstanding invoice|unpaid invoice|invoice list/.test(q)) return { ok: true, result: answerOpenInvoices() };
+    if (/cash (on hand|balance|in bank)|how much (cash|money)/.test(q)) return { ok: true, result: answerCash() };
+    if (/p&?l|profit.*loss|net income|how (am i|are we) doing|profit/.test(q)) return { ok: true, result: answerPL() };
+    if (/open bill|unpaid bill|bills (owed|to pay)|accounts payable/.test(q)) return { ok: true, result: answerBills() };
+    if (/runway|burn rate|how long (until|do)/.test(q)) return { ok: true, result: answerRunway() };
+
+    // Fall back to brain summarising the dashboard.
+    const brain = ctx?.llm?.chat;
+    const dashRes = answerCash();
+    const pl = answerPL();
+    const inv = answerOpenInvoices();
+    const bills = answerBills();
+    const context = `Cash: $${dashRes.data.cashOnHand.toFixed(2)} · YTD revenue: $${pl.data.revenue.toFixed(2)} · YTD expense: $${pl.data.expense.toFixed(2)} · Open invoices: ${inv.data.invoices.length} ($${inv.data.total.toFixed(2)}) · Open bills: ${bills.data.bills.length} ($${bills.data.total.toFixed(2)})`;
+    if (typeof brain !== "function") {
+      return { ok: true, result: { intent: "general", answer: `Current snapshot: ${context}.`, data: { context } } };
+    }
+    try {
+      const r = await brain({ messages: [
+        { role: "system", content: "You are a small-business CFO assistant. Reply in 1-2 plain English sentences. Only use facts from the snapshot." },
+        { role: "user", content: `Snapshot: ${context}\n\nQuestion: ${params.question}` },
+      ] });
+      const answer = String(r?.content || r?.text || r || "").trim();
+      return { ok: true, result: { intent: "general", answer: answer || `Snapshot: ${context}`, data: { context } } };
+    } catch (e) {
+      return { ok: true, result: { intent: "general", answer: `Snapshot: ${context}`, data: { context }, error: String(e) } };
+    }
+  });
+
+  registerLensAction("accounting", "category-rules-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { rules: ensureList(s.catRules, actId(ctx)) } };
+  });
+
+  registerLensAction("accounting", "category-rules-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const pattern = String(params.pattern || "").trim();
+    const accountId = String(params.accountId || "");
+    if (!pattern || !accountId) return { ok: false, error: "pattern and accountId required" };
+    seedDefaultCoA(userId, s);
+    if (!s.coa.get(userId).has(accountId)) return { ok: false, error: "accountId invalid" };
+    const seq = ensureSeq(s, userId);
+    const rule = {
+      id: nextId("rule"),
+      number: `RULE-${String(seq.rule).padStart(4, "0")}`,
+      pattern,
+      accountId,
+      createdAt: nowIso(),
+    };
+    seq.rule++;
+    ensureList(s.catRules, userId).push(rule);
+    saveAccountingState();
+    return { ok: true, result: { rule } };
+  });
+
+  registerLensAction("accounting", "category-rules-delete", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureList(s.catRules, actId(ctx));
+    const i = list.findIndex(r => r.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "rule not found" };
+    list.splice(i, 1);
+    saveAccountingState();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Expenses (out-of-pocket / card spend) ─────────────────────
+
+  registerLensAction("accounting", "expenses-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureList(s.expenses, actId(ctx));
+    return { ok: true, result: { expenses: list.slice().sort((a, b) => (b.date || "").localeCompare(a.date || "")) } };
+  });
+
+  registerLensAction("accounting", "expenses-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const accountId = String(params.accountId || "");
+    const amount = Number(params.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const coa = s.coa.get(userId);
+    if (!coa.has(accountId)) return { ok: false, error: "accountId invalid" };
+    const cashAcct = Array.from(coa.values()).find(a => a.code === "1000" && a.category === "asset");
+    if (!cashAcct) return { ok: false, error: "cash account 1000 not found" };
+    const seq = ensureSeq(s, userId);
+    const date = String(params.date || nowIso().slice(0, 10));
+    const vendor = String(params.vendor || "").trim();
+    const memo = String(params.memo || "").slice(0, 200);
+    const exp = {
+      id: nextId("exp"),
+      number: `EXP-${String(seq.exp).padStart(5, "0")}`,
+      date,
+      vendor,
+      accountId,
+      amount,
+      memo,
+      receiptUrl: String(params.receiptUrl || ""),
+      createdAt: nowIso(),
+    };
+    seq.exp++;
+    ensureList(s.expenses, userId).push(exp);
+    // Auto-post JE: Debit expense, Credit cash
+    const entry = {
+      id: nextId("je"),
+      number: `JE-${String(seq.je).padStart(5, "0")}`,
+      date,
+      memo: vendor ? `${vendor} · ${memo}` : memo,
+      lines: [
+        { accountId, debit: amount, credit: 0, memo },
+        { accountId: cashAcct.id, debit: 0, credit: amount, memo: vendor || memo },
+      ],
+      totalDebit: amount, totalCredit: amount,
+      postedAt: nowIso(),
+      autoFrom: exp.id,
+    };
+    seq.je++;
+    ensureList(s.journal, userId).push(entry);
+    exp.jeEntryId = entry.id;
+    saveAccountingState();
+    return { ok: true, result: { expense: exp, entry } };
+  });
+
+  // ── 1099 summary (vendor totals for the tax year) ──────────────
+
+  registerLensAction("accounting", "summary-1099", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const year = Number(params.year) || new Date().getFullYear();
+    const start = `${year}-01-01`;
+    const end = `${year}-12-31`;
+    const totals = new Map();
+    const vendors = ensureList(s.vendors, userId);
+    for (const bill of ensureList(s.bills, userId)) {
+      if (bill.status !== "paid") continue;
+      if ((bill.paidAt || "") < start || (bill.paidAt || "") > end) continue;
+      const v = vendors.find(x => x.id === bill.vendorId);
+      if (!v || !v.is1099) continue;
+      const cur = totals.get(v.id) || { vendorId: v.id, vendorName: v.name, taxId: v.taxId, total: 0, billCount: 0 };
+      cur.total += bill.total;
+      cur.billCount += 1;
+      totals.set(v.id, cur);
+    }
+    const THRESHOLD = 600; // IRS reporting threshold for 1099-NEC
+    const rows = Array.from(totals.values()).map(r => ({ ...r, reportable: r.total >= THRESHOLD }));
+    return { ok: true, result: { year, threshold: THRESHOLD, vendors: rows.sort((a, b) => b.total - a.total) } };
+  });
+
+  // ── Dashboard summary (KPI strip) ──────────────────────────────
+
+  registerLensAction("accounting", "dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const today = nowIso().slice(0, 10);
+    const yearStart = today.slice(0, 4) + "-01-01";
+    const coa = s.coa.get(userId);
+    const journal = ensureList(s.journal, userId);
+    const cashIds = new Set(Array.from(coa.values()).filter(a => a.category === "asset" && /^1[01]/.test(a.code)).map(a => a.id));
+    let cashOnHand = 0, ytdRev = 0, ytdExp = 0;
+    for (const e of journal) {
+      for (const l of e.lines) {
+        if (cashIds.has(l.accountId)) cashOnHand += (l.debit - l.credit);
+        if (e.date < yearStart) continue;
+        const a = coa.get(l.accountId); if (!a) continue;
+        if (a.category === "revenue") ytdRev += (l.credit - l.debit);
+        if (a.category === "expense" || a.category === "cogs") ytdExp += (l.debit - l.credit);
+      }
+    }
+    const openInvCount = ensureList(s.invoices, userId).filter(i => i.status === "open").length;
+    const openInvTotal = ensureList(s.invoices, userId).filter(i => i.status === "open").reduce((sum, i) => sum + i.total, 0);
+    const openBillsCount = ensureList(s.bills, userId).filter(b => b.status === "open").length;
+    const openBillsTotal = ensureList(s.bills, userId).filter(b => b.status === "open").reduce((sum, b) => sum + b.total, 0);
+    const uncatTxns = ensureList(s.bankTxns, userId).filter(t => !t.accountId).length;
+    return {
+      ok: true,
+      result: {
+        cashOnHand: Math.round(cashOnHand),
+        openInvTotal: Math.round(openInvTotal),
+        openInvCount,
+        openBillsTotal: Math.round(openBillsTotal),
+        openBillsCount,
+        ytdRevenue: Math.round(ytdRev),
+        ytdExpense: Math.round(ytdExp),
+        ytdNetIncome: Math.round(ytdRev - ytdExp),
+        uncategorizedTxns: uncatTxns,
+        customerCount: ensureList(s.customers, userId).length,
+        vendorCount: ensureList(s.vendors, userId).length,
+      },
+    };
+  });
+
+  // ─── QuickBooks parity — payroll, budgets, inventory, sales tax, ────
+  // purchase orders, financial ratios.
+
+  const acN = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0; };
+  const acStr = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  function acAcctByCode(s, userId, code) {
+    for (const a of (s.coa.get(userId) || new Map()).values()) {
+      if (a.code === code) return a.id;
+    }
+    return null;
+  }
+  function acEnsureAccount(s, userId, code, name, category) {
+    let id = acAcctByCode(s, userId, code);
+    if (id) return id;
+    const coa = s.coa.get(userId) || new Map();
+    id = `acct_${code}`;
+    coa.set(id, {
+      id, code, name, category,
+      normal: COA_CATEGORIES[category]?.normal || "debit",
+      parent: null, archived: false, createdAt: nowIso(),
+    });
+    s.coa.set(userId, coa);
+    return id;
+  }
+  // Post a balanced journal entry directly into the ledger.
+  function acPostJE(s, userId, date, memo, lines) {
+    let td = 0; let tc = 0;
+    for (const l of lines) { td += Number(l.debit) || 0; tc += Number(l.credit) || 0; }
+    if (Math.abs(td - tc) > 0.01) return null;
+    if (!s.journal.has(userId)) s.journal.set(userId, []);
+    const seq = ensureSeq(s, userId);
+    const entry = {
+      id: nextId("je"), number: `JE-${String(seq.je).padStart(5, "0")}`,
+      date, memo, lines: lines.map((l) => ({
+        accountId: l.accountId, debit: Number(l.debit) || 0, credit: Number(l.credit) || 0,
+        memo: acStr(l.memo, 120),
+      })),
+      totalDebit: Math.round(td * 100) / 100, totalCredit: Math.round(tc * 100) / 100,
+      postedAt: nowIso(),
+    };
+    seq.je++;
+    s.journal.get(userId).push(entry);
+    return entry;
+  }
+
+  // ── Payroll ─────────────────────────────────────────────────────────
+  const PR_RATES = { federal: 0.12, fica: 0.0765, state: 0.05 };
+  const PR_PERIODS = 24;   // semi-monthly
+
+  registerLensAction("accounting", "employee-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const name = acStr(params.name, 100);
+    if (!name) return { ok: false, error: "employee name required" };
+    const employee = {
+      id: nextId("emp"), name,
+      payType: ["salary", "hourly"].includes(String(params.payType)) ? String(params.payType) : "salary",
+      rate: Math.max(0, acN(params.rate)),
+      title: acStr(params.title, 80) || null,
+      active: true, createdAt: nowIso(),
+    };
+    ensureList(s.employees, userId).push(employee);
+    saveAccountingState();
+    return { ok: true, result: { employee } };
+  });
+
+  registerLensAction("accounting", "employee-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const employees = ensureList(s.employees, actId(ctx));
+    return { ok: true, result: { employees, count: employees.length } };
+  });
+
+  registerLensAction("accounting", "employee-update", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const emp = ensureList(s.employees, actId(ctx)).find((e) => e.id === params.id);
+    if (!emp) return { ok: false, error: "employee not found" };
+    if (params.name != null) emp.name = acStr(params.name, 100) || emp.name;
+    if (params.payType != null && ["salary", "hourly"].includes(String(params.payType))) emp.payType = String(params.payType);
+    if (params.rate != null) emp.rate = Math.max(0, acN(params.rate));
+    if (params.title != null) emp.title = acStr(params.title, 80) || null;
+    if (params.active != null) emp.active = !!params.active;
+    saveAccountingState();
+    return { ok: true, result: { employee: emp } };
+  });
+
+  registerLensAction("accounting", "employee-delete", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureList(s.employees, actId(ctx));
+    const i = arr.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "employee not found" };
+    arr.splice(i, 1);
+    saveAccountingState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("accounting", "payrun-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const employees = ensureList(s.employees, userId);
+    const lines = Array.isArray(params.lines) ? params.lines : [];
+    if (!lines.length) return { ok: false, error: "at least one payroll line required" };
+    const stubs = [];
+    for (const line of lines) {
+      const emp = employees.find((e) => e.id === line.employeeId);
+      if (!emp) continue;
+      const hours = Math.max(0, acN(line.hours));
+      const gross = emp.payType === "hourly" ? acN(emp.rate * hours) : acN(emp.rate / PR_PERIODS);
+      const federal = acN(gross * PR_RATES.federal);
+      const fica = acN(gross * PR_RATES.fica);
+      const state = acN(gross * PR_RATES.state);
+      const withholding = acN(federal + fica + state);
+      const net = acN(gross - withholding);
+      stubs.push({
+        id: nextId("stub"), employeeId: emp.id, employeeName: emp.name,
+        hours: emp.payType === "hourly" ? hours : null,
+        gross, federal, fica, state, withholding, net,
+      });
+    }
+    if (!stubs.length) return { ok: false, error: "no valid employees in payroll lines" };
+    const totalGross = acN(stubs.reduce((a, x) => a + x.gross, 0));
+    const totalNet = acN(stubs.reduce((a, x) => a + x.net, 0));
+    const totalWithholding = acN(stubs.reduce((a, x) => a + x.withholding, 0));
+    const expenseAcct = acAcctByCode(s, userId, "6300") || acEnsureAccount(s, userId, "6300", "Payroll", "expense");
+    const cashAcct = acAcctByCode(s, userId, "1000") || acEnsureAccount(s, userId, "1000", "Cash", "asset");
+    const liabAcct = acEnsureAccount(s, userId, "2200", "Payroll Liabilities", "liability");
+    const je = acPostJE(s, userId, acStr(params.payDate, 10) || nowIso().slice(0, 10),
+      `Payroll ${acStr(params.periodStart, 10)}–${acStr(params.periodEnd, 10)}`, [
+        { accountId: expenseAcct, debit: totalGross, credit: 0, memo: "Gross wages" },
+        { accountId: cashAcct, debit: 0, credit: totalNet, memo: "Net pay" },
+        { accountId: liabAcct, debit: 0, credit: totalWithholding, memo: "Withholdings" },
+      ]);
+    const run = {
+      id: nextId("payrun"),
+      periodStart: acStr(params.periodStart, 10) || nowIso().slice(0, 10),
+      periodEnd: acStr(params.periodEnd, 10) || nowIso().slice(0, 10),
+      payDate: acStr(params.payDate, 10) || nowIso().slice(0, 10),
+      stubs, totalGross, totalNet, totalWithholding,
+      journalEntryId: je ? je.id : null,
+      createdAt: nowIso(),
+    };
+    ensureList(s.payRuns, userId).push(run);
+    saveAccountingState();
+    return { ok: true, result: { run } };
+  });
+
+  registerLensAction("accounting", "payrun-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const runs = ensureList(s.payRuns, actId(ctx))
+      .map((r) => ({
+        id: r.id, periodStart: r.periodStart, periodEnd: r.periodEnd, payDate: r.payDate,
+        employeeCount: r.stubs.length, totalGross: r.totalGross, totalNet: r.totalNet,
+      }))
+      .sort((a, b) => b.payDate.localeCompare(a.payDate));
+    return { ok: true, result: { runs, count: runs.length } };
+  });
+
+  registerLensAction("accounting", "payrun-detail", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const run = ensureList(s.payRuns, actId(ctx)).find((r) => r.id === params.id);
+    if (!run) return { ok: false, error: "pay run not found" };
+    return { ok: true, result: { run } };
+  });
+
+  registerLensAction("accounting", "payroll-summary", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const runs = ensureList(s.payRuns, actId(ctx));
+    const ytd = nowIso().slice(0, 4);
+    const ytdRuns = runs.filter((r) => r.payDate.startsWith(ytd));
+    return {
+      ok: true,
+      result: {
+        runs: runs.length,
+        employees: ensureList(s.employees, actId(ctx)).filter((e) => e.active).length,
+        ytdGross: acN(ytdRuns.reduce((a, r) => a + r.totalGross, 0)),
+        ytdNet: acN(ytdRuns.reduce((a, r) => a + r.totalNet, 0)),
+        ytdWithholding: acN(ytdRuns.reduce((a, r) => a + r.totalWithholding, 0)),
+      },
+    };
+  });
+
+  // ── Budgets ─────────────────────────────────────────────────────────
+  registerLensAction("accounting", "budget-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = acStr(params.name, 100);
+    if (!name) return { ok: false, error: "budget name required" };
+    const budget = {
+      id: nextId("budget"), name,
+      fiscalYear: Math.round(Number(params.fiscalYear) || new Date().getUTCFullYear()),
+      lines: {},   // accountId -> annual amount
+      createdAt: nowIso(),
+    };
+    ensureList(s.budgets, actId(ctx)).push(budget);
+    saveAccountingState();
+    return { ok: true, result: { budget } };
+  });
+
+  registerLensAction("accounting", "budget-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const budgets = ensureList(s.budgets, actId(ctx));
+    return { ok: true, result: { budgets, count: budgets.length } };
+  });
+
+  registerLensAction("accounting", "budget-set-line", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const budget = ensureList(s.budgets, userId).find((b) => b.id === params.budgetId);
+    if (!budget) return { ok: false, error: "budget not found" };
+    const accountId = acStr(params.accountId, 60);
+    if (!(s.coa.get(userId) || new Map()).has(accountId)) return { ok: false, error: "unknown account" };
+    const amount = acN(params.annualAmount);
+    if (amount === 0) delete budget.lines[accountId];
+    else budget.lines[accountId] = amount;
+    saveAccountingState();
+    return { ok: true, result: { budgetId: budget.id, lines: budget.lines } };
+  });
+
+  registerLensAction("accounting", "budget-vs-actual", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const budget = ensureList(s.budgets, userId).find((b) => b.id === params.budgetId);
+    if (!budget) return { ok: false, error: "budget not found" };
+    const coa = s.coa.get(userId) || new Map();
+    const journal = s.journal.get(userId) || [];
+    const yr = String(budget.fiscalYear);
+    const rows = Object.entries(budget.lines).map(([accountId, budgeted]) => {
+      const acct = coa.get(accountId);
+      let actual = 0;
+      for (const e of journal) {
+        if (!e.date.startsWith(yr)) continue;
+        for (const l of e.lines) {
+          if (l.accountId !== accountId) continue;
+          actual += (acct && acct.normal === "credit") ? (l.credit - l.debit) : (l.debit - l.credit);
+        }
+      }
+      actual = acN(actual);
+      return {
+        accountId, account: acct ? acct.name : accountId,
+        budgeted, actual, variance: acN(actual - budgeted),
+      };
+    });
+    return {
+      ok: true,
+      result: {
+        budget: budget.name, fiscalYear: budget.fiscalYear, rows,
+        totalBudgeted: acN(rows.reduce((a, r) => a + r.budgeted, 0)),
+        totalActual: acN(rows.reduce((a, r) => a + r.actual, 0)),
+      },
+    };
+  });
+
+  registerLensAction("accounting", "budget-delete", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureList(s.budgets, actId(ctx));
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "budget not found" };
+    arr.splice(i, 1);
+    saveAccountingState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Products & inventory ────────────────────────────────────────────
+  registerLensAction("accounting", "item-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = acStr(params.name, 120);
+    if (!name) return { ok: false, error: "item name required" };
+    const type = ["service", "inventory"].includes(String(params.type)) ? String(params.type) : "service";
+    const item = {
+      id: nextId("item"), name, type,
+      sku: acStr(params.sku, 40) || null,
+      price: Math.max(0, acN(params.price)),
+      cost: Math.max(0, acN(params.cost)),
+      qtyOnHand: type === "inventory" ? Math.max(0, Math.round(Number(params.qtyOnHand) || 0)) : null,
+      reorderPoint: type === "inventory" ? Math.max(0, Math.round(Number(params.reorderPoint) || 0)) : null,
+      createdAt: nowIso(),
+    };
+    ensureList(s.items, actId(ctx)).push(item);
+    saveAccountingState();
+    return { ok: true, result: { item } };
+  });
+
+  registerLensAction("accounting", "item-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const items = ensureList(s.items, actId(ctx));
+    return { ok: true, result: { items, count: items.length } };
+  });
+
+  registerLensAction("accounting", "item-update", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const item = ensureList(s.items, actId(ctx)).find((x) => x.id === params.id);
+    if (!item) return { ok: false, error: "item not found" };
+    if (params.name != null) item.name = acStr(params.name, 120) || item.name;
+    if (params.sku != null) item.sku = acStr(params.sku, 40) || null;
+    if (params.price != null) item.price = Math.max(0, acN(params.price));
+    if (params.cost != null) item.cost = Math.max(0, acN(params.cost));
+    if (params.reorderPoint != null && item.type === "inventory") {
+      item.reorderPoint = Math.max(0, Math.round(Number(params.reorderPoint) || 0));
+    }
+    saveAccountingState();
+    return { ok: true, result: { item } };
+  });
+
+  registerLensAction("accounting", "item-delete", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureList(s.items, actId(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "item not found" };
+    arr.splice(i, 1);
+    saveAccountingState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("accounting", "item-adjust-stock", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const item = ensureList(s.items, actId(ctx)).find((x) => x.id === params.id);
+    if (!item) return { ok: false, error: "item not found" };
+    if (item.type !== "inventory") return { ok: false, error: "only inventory items track stock" };
+    const delta = Math.round(Number(params.delta) || 0);
+    item.qtyOnHand = Math.max(0, (item.qtyOnHand || 0) + delta);
+    saveAccountingState();
+    return { ok: true, result: { id: item.id, qtyOnHand: item.qtyOnHand, reason: acStr(params.reason, 100) || null } };
+  });
+
+  registerLensAction("accounting", "inventory-low-stock", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const items = ensureList(s.items, actId(ctx))
+      .filter((x) => x.type === "inventory" && (x.qtyOnHand || 0) <= (x.reorderPoint || 0));
+    return {
+      ok: true,
+      result: {
+        items: items.map((x) => ({ id: x.id, name: x.name, qtyOnHand: x.qtyOnHand, reorderPoint: x.reorderPoint })),
+        count: items.length,
+        inventoryValue: acN(ensureList(s.items, actId(ctx))
+          .filter((x) => x.type === "inventory").reduce((a, x) => a + (x.qtyOnHand || 0) * x.cost, 0)),
+      },
+    };
+  });
+
+  // ── Sales tax ───────────────────────────────────────────────────────
+  registerLensAction("accounting", "tax-code-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = acStr(params.name, 80);
+    if (!name) return { ok: false, error: "tax code name required" };
+    const code = {
+      id: nextId("tax"), name,
+      rate: Math.max(0, Math.min(100, acN(params.rate))),
+      createdAt: nowIso(),
+    };
+    ensureList(s.taxCodes, actId(ctx)).push(code);
+    saveAccountingState();
+    return { ok: true, result: { taxCode: code } };
+  });
+
+  registerLensAction("accounting", "tax-code-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const taxCodes = ensureList(s.taxCodes, actId(ctx));
+    return { ok: true, result: { taxCodes, count: taxCodes.length } };
+  });
+
+  registerLensAction("accounting", "tax-code-delete", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureList(s.taxCodes, actId(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "tax code not found" };
+    arr.splice(i, 1);
+    saveAccountingState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("accounting", "tax-liability", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const acctId = acAcctByCode(s, userId, "2100");
+    let owed = 0;
+    if (acctId) {
+      for (const e of s.journal.get(userId) || []) {
+        for (const l of e.lines) {
+          if (l.accountId === acctId) owed += (l.credit - l.debit);
+        }
+      }
+    }
+    return { ok: true, result: { salesTaxPayable: acN(owed) } };
+  });
+
+  registerLensAction("accounting", "tax-payment-record", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    seedDefaultCoA(userId, s);
+    const amount = acN(params.amount);
+    if (amount <= 0) return { ok: false, error: "payment amount must be positive" };
+    const taxAcct = acAcctByCode(s, userId, "2100") || acEnsureAccount(s, userId, "2100", "Sales Tax Payable", "liability");
+    const cashAcct = acAcctByCode(s, userId, "1000") || acEnsureAccount(s, userId, "1000", "Cash", "asset");
+    const je = acPostJE(s, userId, acStr(params.date, 10) || nowIso().slice(0, 10), "Sales tax remittance", [
+      { accountId: taxAcct, debit: amount, credit: 0, memo: "Sales tax paid" },
+      { accountId: cashAcct, debit: 0, credit: amount, memo: "Cash" },
+    ]);
+    saveAccountingState();
+    return { ok: true, result: { amount, journalEntryId: je ? je.id : null } };
+  });
+
+  // ── Purchase orders ─────────────────────────────────────────────────
+  registerLensAction("accounting", "po-create", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const vendorId = acStr(params.vendorId, 60);
+    const vendor = ensureList(s.vendors, userId).find((v) => v.id === vendorId);
+    if (!vendor) return { ok: false, error: "vendor not found" };
+    const lines = (Array.isArray(params.lines) ? params.lines : [])
+      .map((l) => ({
+        description: acStr(l.description, 160) || "Item",
+        qty: Math.max(1, Math.round(Number(l.qty) || 1)),
+        unitCost: Math.max(0, acN(l.unitCost)),
+      }))
+      .filter((l) => l.unitCost >= 0);
+    if (!lines.length) return { ok: false, error: "at least one line required" };
+    const total = acN(lines.reduce((a, l) => a + l.qty * l.unitCost, 0));
+    const seq = ensureSeq(s, userId);
+    if (!Number.isFinite(seq.po)) seq.po = 1;
+    const po = {
+      id: nextId("po"), number: `PO-${String(seq.po).padStart(5, "0")}`,
+      vendorId, vendorName: vendor.name, lines, total,
+      status: "open", billId: null,
+      createdAt: nowIso(),
+    };
+    seq.po++;
+    ensureList(s.purchaseOrders, userId).push(po);
+    saveAccountingState();
+    return { ok: true, result: { purchaseOrder: po } };
+  });
+
+  registerLensAction("accounting", "po-list", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const purchaseOrders = ensureList(s.purchaseOrders, actId(ctx))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { purchaseOrders, count: purchaseOrders.length } };
+  });
+
+  registerLensAction("accounting", "po-receive", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const po = ensureList(s.purchaseOrders, userId).find((p) => p.id === params.id);
+    if (!po) return { ok: false, error: "purchase order not found" };
+    if (po.status === "received") return { ok: false, error: "purchase order already received" };
+    const seq = ensureSeq(s, userId);
+    const bill = {
+      id: nextId("bill"), number: `BILL-${String(seq.bill).padStart(5, "0")}`,
+      vendorId: po.vendorId, vendorName: po.vendorName,
+      amount: po.total, memo: `From ${po.number}`,
+      issueDate: nowIso().slice(0, 10),
+      dueDate: acStr(params.dueDate, 10) || nowIso().slice(0, 10),
+      status: "open", paidAt: null, createdAt: nowIso(),
+    };
+    seq.bill++;
+    ensureList(s.bills, userId).push(bill);
+    po.status = "received";
+    po.billId = bill.id;
+    saveAccountingState();
+    return { ok: true, result: { purchaseOrder: po, bill } };
+  });
+
+  registerLensAction("accounting", "po-delete", (ctx, _a, params = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureList(s.purchaseOrders, actId(ctx));
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "purchase order not found" };
+    arr.splice(i, 1);
+    saveAccountingState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Financial ratios ────────────────────────────────────────────────
+  registerLensAction("accounting", "financial-ratios", (ctx, _a, _p = {}) => {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const coa = s.coa.get(userId) || new Map();
+    const journal = s.journal.get(userId) || [];
+    const netByAccount = {};
+    for (const e of journal) {
+      for (const l of e.lines) {
+        netByAccount[l.accountId] = (netByAccount[l.accountId] || 0) + (l.debit - l.credit);
+      }
+    }
+    let currentAssets = 0; let inventory = 0; let totalAssets = 0;
+    let currentLiab = 0; let totalLiab = 0; let equity = 0;
+    let revenue = 0; let cogs = 0; let expense = 0;
+    for (const [id, net] of Object.entries(netByAccount)) {
+      const a = coa.get(id);
+      if (!a) continue;
+      const codeNum = parseInt(a.code, 10) || 0;
+      if (a.category === "asset") {
+        totalAssets += net;
+        if (codeNum < 1500) currentAssets += net;
+        if (a.name.toLowerCase().includes("inventory")) inventory += net;
+      } else if (a.category === "liability") {
+        totalLiab += -net;
+        if (codeNum < 2500) currentLiab += -net;
+      } else if (a.category === "equity") {
+        equity += -net;
+      } else if (a.category === "revenue") {
+        revenue += -net;
+      } else if (a.category === "cogs") {
+        cogs += net;
+      } else if (a.category === "expense") {
+        expense += net;
+      }
+    }
+    const safeDiv = (n, d) => (d !== 0 ? Math.round((n / d) * 100) / 100 : null);
+    const grossProfit = revenue - cogs;
+    const netIncome = revenue - cogs - expense;
+    return {
+      ok: true,
+      result: {
+        currentRatio: safeDiv(currentAssets, currentLiab),
+        quickRatio: safeDiv(currentAssets - inventory, currentLiab),
+        debtToEquity: safeDiv(totalLiab, equity + netIncome),
+        grossMarginPct: revenue !== 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : null,
+        netMarginPct: revenue !== 0 ? Math.round((netIncome / revenue) * 1000) / 10 : null,
+        workingCapital: acN(currentAssets - currentLiab),
+        totals: {
+          currentAssets: acN(currentAssets), totalAssets: acN(totalAssets),
+          currentLiabilities: acN(currentLiab), totalLiabilities: acN(totalLiab),
+          revenue: acN(revenue), netIncome: acN(netIncome),
+        },
+        note: "Current vs. long-term split approximated by account code (<1500 assets, <2500 liabilities).",
+      },
+    };
   });
 };

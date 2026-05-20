@@ -532,6 +532,703 @@ Generate the summary.`;
       return { ok: true, result: { text: `(commentary error: ${e?.message || "unknown"})`, error: true } };
     }
   });
+
+  // ─── Full-app parity sprint: bills, goals, recurring invest,
+  // dividends, holdings CRUD, accounts, spending insights, rules,
+  // tax-loss harvest, earnings/dividend calendar, AI assistant ──
+
+  function uid(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function ensureBucket(state, key, userId) {
+    if (!state[key]) state[key] = new Map();
+    if (!state[key].has(userId)) state[key].set(userId, []);
+    return state[key].get(userId);
+  }
+
+  // ── Bills + cash flow ──────────────────────────────────────────
+
+  registerLensAction("finance", "bills-list", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const bills = ensureBucket(state, "bills", userId);
+    return { ok: true, result: { bills } };
+  });
+
+  registerLensAction("finance", "bills-add", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const name = String(params.name || "").trim();
+    const amount = Math.max(0, Number(params.amount) || 0);
+    const dueDay = Math.max(1, Math.min(31, Number(params.dueDay) || 1));
+    const cadence = ["monthly", "annual", "weekly", "biweekly"].includes(params.cadence) ? params.cadence : "monthly";
+    if (!name) return { ok: false, error: "name required" };
+    const bill = {
+      id: uid("bill"), name, amount, dueDay, cadence,
+      autopay: params.autopay === true,
+      category: String(params.category || "Bills"),
+      paidThisCycle: false,
+      lastPaidAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    ensureBucket(state, "bills", userId).push(bill);
+    saveStateIfAvailable();
+    return { ok: true, result: { bill } };
+  });
+
+  registerLensAction("finance", "bills-pay", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const bills = ensureBucket(state, "bills", userId);
+    const b = bills.find(x => x.id === id);
+    if (!b) return { ok: false, error: "bill not found" };
+    b.paidThisCycle = true;
+    b.lastPaidAt = new Date().toISOString();
+    saveStateIfAvailable();
+    return { ok: true, result: { bill: b } };
+  });
+
+  registerLensAction("finance", "bills-delete", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const bills = ensureBucket(state, "bills", userId);
+    const idx = bills.findIndex(b => b.id === id);
+    if (idx < 0) return { ok: false, error: "bill not found" };
+    bills.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("finance", "cashflow-forecast", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const horizonDays = Math.max(7, Math.min(180, Number(params.horizonDays) || 60));
+    const startBalance = Math.max(0, Number(params.startBalance) || 0);
+    const monthlyIncome = state.monthlyIncome.get(userId) || 0;
+    const bills = ensureBucket(state, "bills", userId);
+    const subs = state.subscriptions.get(userId) || [];
+
+    const today = new Date();
+    const series = [];
+    let balance = startBalance;
+    const incomeDay = 1;
+    for (let d = 0; d < horizonDays; d++) {
+      const date = new Date(today.getTime() + d * 86400000);
+      const day = date.getDate();
+      let credit = 0, debit = 0;
+      if (day === incomeDay && monthlyIncome > 0) credit += monthlyIncome;
+      for (const b of bills) {
+        if (b.cadence === "monthly" && day === b.dueDay) debit += b.amount;
+        if (b.cadence === "weekly" && date.getDay() === ((b.dueDay - 1) % 7)) debit += b.amount;
+        if (b.cadence === "annual" && day === b.dueDay && date.getMonth() === today.getMonth()) debit += b.amount;
+      }
+      for (const s of subs) {
+        if (s.status !== "active") continue;
+        const next = new Date(s.nextEstimated || 0).getTime();
+        if (Math.abs(next - date.getTime()) < 86400000 / 2) debit += s.monthlyAmount;
+      }
+      balance += credit - debit;
+      series.push({
+        date: date.toISOString().slice(0, 10),
+        credit: Math.round(credit * 100) / 100,
+        debit: Math.round(debit * 100) / 100,
+        balance: Math.round(balance * 100) / 100,
+      });
+    }
+    const lowestBalance = Math.min(...series.map(s => s.balance));
+    const lowestDate = series.find(s => s.balance === lowestBalance)?.date;
+    return {
+      ok: true,
+      result: {
+        series,
+        startBalance,
+        finalBalance: Math.round(balance * 100) / 100,
+        lowestBalance: Math.round(lowestBalance * 100) / 100,
+        lowestDate,
+        alert: lowestBalance < 0 ? `Projected negative balance on ${lowestDate}` : null,
+      },
+    };
+  });
+
+  // ── Savings goals ──────────────────────────────────────────────
+
+  registerLensAction("finance", "goals-list", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const goals = ensureBucket(state, "goals", userId);
+    const withEta = goals.map(g => {
+      const remaining = Math.max(0, g.target - g.saved);
+      const monthsAtRate = g.monthlyContribution > 0 ? Math.ceil(remaining / g.monthlyContribution) : null;
+      const etaDate = monthsAtRate != null
+        ? new Date(Date.now() + monthsAtRate * 30 * 86400000).toISOString().slice(0, 10)
+        : null;
+      const progressPct = g.target > 0 ? Math.min(100, Math.round((g.saved / g.target) * 1000) / 10) : 0;
+      return { ...g, remaining, monthsAtRate, etaDate, progressPct };
+    });
+    return { ok: true, result: { goals: withEta } };
+  });
+
+  registerLensAction("finance", "goals-create", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const goal = {
+      id: uid("goal"), name,
+      target: Math.max(0, Number(params.target) || 0),
+      saved: Math.max(0, Number(params.initialSaved) || 0),
+      monthlyContribution: Math.max(0, Number(params.monthlyContribution) || 0),
+      targetDate: params.targetDate || null,
+      category: String(params.category || "general"),
+      createdAt: new Date().toISOString(),
+    };
+    ensureBucket(state, "goals", userId).push(goal);
+    saveStateIfAvailable();
+    return { ok: true, result: { goal } };
+  });
+
+  registerLensAction("finance", "goals-contribute", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const amount = Number(params.amount) || 0;
+    const goals = ensureBucket(state, "goals", userId);
+    const g = goals.find(x => x.id === id);
+    if (!g) return { ok: false, error: "goal not found" };
+    g.saved = Math.max(0, g.saved + amount);
+    saveStateIfAvailable();
+    return { ok: true, result: { goal: g } };
+  });
+
+  registerLensAction("finance", "goals-delete", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const goals = ensureBucket(state, "goals", userId);
+    const idx = goals.findIndex(g => g.id === id);
+    if (idx < 0) return { ok: false, error: "goal not found" };
+    goals.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Recurring investments (DCA) ────────────────────────────────
+
+  registerLensAction("finance", "recurring-list", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const plans = ensureBucket(state, "recurringPlans", userId);
+    return { ok: true, result: { plans } };
+  });
+
+  registerLensAction("finance", "recurring-create", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const symbol = String(params.symbol || "").trim().toUpperCase();
+    const amount = Math.max(0, Number(params.amount) || 0);
+    if (!symbol || amount <= 0) return { ok: false, error: "symbol and amount required" };
+    const cadence = ["weekly", "biweekly", "monthly"].includes(params.cadence) ? params.cadence : "monthly";
+    const plan = {
+      id: uid("dca"), symbol, amount, cadence,
+      startDate: params.startDate || new Date().toISOString().slice(0, 10),
+      status: "active",
+      executedCount: 0,
+      totalInvested: 0,
+      averagePrice: null,
+      createdAt: new Date().toISOString(),
+    };
+    ensureBucket(state, "recurringPlans", userId).push(plan);
+    saveStateIfAvailable();
+    return { ok: true, result: { plan } };
+  });
+
+  registerLensAction("finance", "recurring-pause", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const plans = ensureBucket(state, "recurringPlans", userId);
+    const p = plans.find(x => x.id === id);
+    if (!p) return { ok: false, error: "plan not found" };
+    p.status = p.status === "active" ? "paused" : "active";
+    saveStateIfAvailable();
+    return { ok: true, result: { plan: p } };
+  });
+
+  registerLensAction("finance", "recurring-cancel", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const plans = ensureBucket(state, "recurringPlans", userId);
+    const idx = plans.findIndex(p => p.id === id);
+    if (idx < 0) return { ok: false, error: "plan not found" };
+    plans.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Holdings CRUD (so investment-checkup is reachable) ─────────
+
+  registerLensAction("finance", "holdings-list", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const holdings = state.holdings.get(userId) || [];
+    const totalValue = holdings.reduce((s, h) => s + h.value, 0);
+    return { ok: true, result: { holdings, totalValue: Math.round(totalValue * 100) / 100 } };
+  });
+
+  registerLensAction("finance", "holdings-add", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const symbol = String(params.symbol || "").trim().toUpperCase();
+    const shares = Number(params.shares) || 0;
+    const price = Number(params.price) || 0;
+    if (!symbol || shares <= 0 || price < 0) return { ok: false, error: "symbol, shares, price required" };
+    if (!state.holdings.has(userId)) state.holdings.set(userId, []);
+    const holdings = state.holdings.get(userId);
+    const existing = holdings.find(h => h.symbol === symbol);
+    if (existing) {
+      const totalCost = existing.shares * existing.costBasis + shares * price;
+      existing.shares += shares;
+      existing.costBasis = totalCost / existing.shares;
+      existing.value = existing.shares * (existing.price || price);
+    } else {
+      holdings.push({
+        id: uid("hold"), symbol,
+        name: String(params.name || symbol),
+        shares, costBasis: price, price,
+        value: shares * price,
+        assetClass: String(params.assetClass || "equity_us"),
+        sector: String(params.sector || "Other"),
+        feeCategory: String(params.feeCategory || "large_blend"),
+        expenseRatio: params.expenseRatio != null ? Number(params.expenseRatio) : null,
+        dividendYield: Number(params.dividendYield) || 0,
+        addedAt: new Date().toISOString(),
+      });
+    }
+    saveStateIfAvailable();
+    return { ok: true, result: { holdings } };
+  });
+
+  registerLensAction("finance", "holdings-remove", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const holdings = state.holdings.get(userId) || [];
+    const idx = holdings.findIndex(h => h.id === id);
+    if (idx < 0) return { ok: false, error: "holding not found" };
+    holdings.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("finance", "holdings-update-price", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const price = Number(params.price) || 0;
+    if (price < 0) return { ok: false, error: "price must be non-negative" };
+    const holdings = state.holdings.get(userId) || [];
+    const h = holdings.find(x => x.id === id);
+    if (!h) return { ok: false, error: "holding not found" };
+    h.price = price;
+    h.value = h.shares * price;
+    saveStateIfAvailable();
+    return { ok: true, result: { holding: h } };
+  });
+
+  // ── Dividends ──────────────────────────────────────────────────
+
+  registerLensAction("finance", "dividends-summary", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const holdings = state.holdings.get(userId) || [];
+    const perHolding = holdings.map(h => {
+      const annualDiv = h.value * (h.dividendYield || 0);
+      return {
+        symbol: h.symbol, value: Math.round(h.value * 100) / 100,
+        yieldPct: Math.round((h.dividendYield || 0) * 10000) / 100,
+        annualDividend: Math.round(annualDiv * 100) / 100,
+        monthlyDividend: Math.round((annualDiv / 12) * 100) / 100,
+      };
+    }).filter(p => p.annualDividend > 0).sort((a, b) => b.annualDividend - a.annualDividend);
+    const totalAnnual = perHolding.reduce((s, p) => s + p.annualDividend, 0);
+    const totalValue = holdings.reduce((s, h) => s + h.value, 0);
+    const portfolioYield = totalValue > 0 ? totalAnnual / totalValue : 0;
+    return {
+      ok: true,
+      result: {
+        perHolding,
+        totalAnnual: Math.round(totalAnnual * 100) / 100,
+        monthlyAverage: Math.round((totalAnnual / 12) * 100) / 100,
+        portfolioYieldPct: Math.round(portfolioYield * 10000) / 100,
+      },
+    };
+  });
+
+  registerLensAction("finance", "dividends-calendar", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const holdings = state.holdings.get(userId) || [];
+    const days = Math.max(30, Math.min(365, Number(params.days) || 90));
+    const today = new Date();
+    const events = [];
+    for (const h of holdings) {
+      if (!h.dividendYield || h.dividendYield <= 0) continue;
+      const annualDiv = h.value * h.dividendYield;
+      const quarterly = annualDiv / 4;
+      const offsetDays = (Math.abs(hashStr(h.symbol)) % 90);
+      for (let q = 0; q < 4; q++) {
+        const dayOffset = offsetDays + q * 90;
+        if (dayOffset > days) break;
+        const date = new Date(today.getTime() + dayOffset * 86400000);
+        events.push({
+          date: date.toISOString().slice(0, 10),
+          symbol: h.symbol,
+          amount: Math.round(quarterly * 100) / 100,
+          kind: "dividend",
+        });
+      }
+    }
+    events.sort((a, b) => a.date.localeCompare(b.date));
+    return { ok: true, result: { events, days } };
+  });
+
+  // ── Earnings calendar (deterministic synthetic dates per ticker) ──
+
+  registerLensAction("finance", "earnings-calendar", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const holdings = state.holdings.get(userId) || [];
+    const days = Math.max(30, Math.min(180, Number(params.days) || 90));
+    const today = new Date();
+    const events = holdings.map(h => {
+      const offset = Math.abs(hashStr(`${h.symbol}-earnings`)) % days;
+      const date = new Date(today.getTime() + offset * 86400000);
+      return {
+        date: date.toISOString().slice(0, 10),
+        symbol: h.symbol,
+        name: h.name,
+        when: offset % 2 === 0 ? "after_market" : "before_market",
+        estimateEps: Math.round((1 + Math.abs(hashStr(h.symbol)) % 500 / 100) * 100) / 100,
+      };
+    }).sort((a, b) => a.date.localeCompare(b.date));
+    return { ok: true, result: { events, days } };
+  });
+
+  // ── Spending insights (MoM trends + anomalies) ─────────────────
+
+  registerLensAction("finance", "spending-insights", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const tx = Array.isArray(params.transactions) ? params.transactions : (ensureBucket(state, "ledger", userId));
+
+    const byCategoryMonth = new Map();
+    for (const t of tx) {
+      const date = new Date(t.date || t.timestamp || Date.now());
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const cat = String(t.category || ruleBasedCategorize(t.description || ""));
+      const key = `${cat}|${month}`;
+      const amount = Math.abs(Number(t.amount) || 0);
+      byCategoryMonth.set(key, (byCategoryMonth.get(key) || 0) + amount);
+    }
+
+    const categories = new Set([...byCategoryMonth.keys()].map(k => k.split("|")[0]));
+    const months = [...new Set([...byCategoryMonth.keys()].map(k => k.split("|")[1]))].sort();
+    const latest = months[months.length - 1];
+    const prior = months[months.length - 2];
+
+    const trends = [];
+    for (const cat of categories) {
+      const cur = byCategoryMonth.get(`${cat}|${latest}`) || 0;
+      const prv = byCategoryMonth.get(`${cat}|${prior}`) || 0;
+      const delta = cur - prv;
+      const deltaPct = prv > 0 ? (delta / prv) * 100 : (cur > 0 ? 100 : 0);
+      trends.push({
+        category: cat,
+        current: Math.round(cur * 100) / 100,
+        prior: Math.round(prv * 100) / 100,
+        delta: Math.round(delta * 100) / 100,
+        deltaPct: Math.round(deltaPct * 10) / 10,
+        anomaly: Math.abs(deltaPct) > 50 && Math.abs(delta) > 20,
+      });
+    }
+    trends.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+    const anomalies = trends.filter(t => t.anomaly);
+    return {
+      ok: true,
+      result: {
+        latestMonth: latest, priorMonth: prior,
+        trends, anomalies,
+        topGrowth: trends.filter(t => t.delta > 0).slice(0, 5),
+        topShrink: trends.filter(t => t.delta < 0).slice(0, 5),
+      },
+    };
+  });
+
+  // ── User categorisation rules ─────────────────────────────────
+
+  registerLensAction("finance", "rules-list", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const rules = ensureBucket(state, "rules", userId);
+    return { ok: true, result: { rules } };
+  });
+
+  registerLensAction("finance", "rules-create", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const matchText = String(params.matchText || "").trim().toLowerCase();
+    const category = String(params.category || "").trim();
+    if (!matchText || !category) return { ok: false, error: "matchText and category required" };
+    const rule = {
+      id: uid("rule"), matchText, category,
+      matchKind: ["contains", "starts_with", "regex"].includes(params.matchKind) ? params.matchKind : "contains",
+      priority: Number(params.priority) || 100,
+      createdAt: new Date().toISOString(),
+    };
+    ensureBucket(state, "rules", userId).push(rule);
+    saveStateIfAvailable();
+    return { ok: true, result: { rule } };
+  });
+
+  registerLensAction("finance", "rules-delete", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const rules = ensureBucket(state, "rules", userId);
+    const idx = rules.findIndex(r => r.id === id);
+    if (idx < 0) return { ok: false, error: "rule not found" };
+    rules.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("finance", "rules-apply", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const description = String(params.description || "");
+    const rules = ensureBucket(state, "rules", userId).slice().sort((a, b) => a.priority - b.priority);
+    const lower = description.toLowerCase();
+    for (const r of rules) {
+      if (r.matchKind === "contains" && lower.includes(r.matchText)) {
+        return { ok: true, result: { category: r.category, source: "user_rule", ruleId: r.id } };
+      }
+      if (r.matchKind === "starts_with" && lower.startsWith(r.matchText)) {
+        return { ok: true, result: { category: r.category, source: "user_rule", ruleId: r.id } };
+      }
+      if (r.matchKind === "regex") {
+        try {
+          if (new RegExp(r.matchText, "i").test(description)) {
+            return { ok: true, result: { category: r.category, source: "user_rule", ruleId: r.id } };
+          }
+        } catch (_e) { /* invalid regex; skip */ }
+      }
+    }
+    return { ok: true, result: { category: ruleBasedCategorize(description), source: "rules" } };
+  });
+
+  // ── Tax-loss harvest candidates ────────────────────────────────
+
+  registerLensAction("finance", "tax-loss-candidates", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const holdings = state.holdings.get(userId) || [];
+    const minLoss = Math.max(0, Number(params.minLoss) || 100);
+    const washSaleDays = 30;
+    const today = new Date();
+    const candidates = holdings.map(h => {
+      const unrealised = (h.price - h.costBasis) * h.shares;
+      const addedAt = new Date(h.addedAt || today.toISOString());
+      const heldDays = Math.max(0, Math.floor((today.getTime() - addedAt.getTime()) / 86400000));
+      const longTerm = heldDays >= 365;
+      const lastSold = h.lastSoldAt ? new Date(h.lastSoldAt) : null;
+      const washSaleClear = !lastSold || ((today.getTime() - lastSold.getTime()) / 86400000) > washSaleDays;
+      return {
+        id: h.id, symbol: h.symbol, shares: h.shares,
+        costBasis: h.costBasis, price: h.price,
+        unrealisedLoss: Math.round(unrealised * 100) / 100,
+        longTerm, heldDays, washSaleClear,
+      };
+    }).filter(c => c.unrealisedLoss < -minLoss && c.washSaleClear)
+      .sort((a, b) => a.unrealisedLoss - b.unrealisedLoss);
+    const totalHarvestable = candidates.reduce((s, c) => s + Math.abs(c.unrealisedLoss), 0);
+    return {
+      ok: true,
+      result: {
+        candidates,
+        totalHarvestableLoss: Math.round(totalHarvestable * 100) / 100,
+        estimatedTaxBenefit: Math.round(totalHarvestable * 0.24 * 100) / 100,
+      },
+    };
+  });
+
+  // ── Linked accounts (institutional aggregation primitive) ──────
+
+  registerLensAction("finance", "accounts-list", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const accounts = ensureBucket(state, "accounts", userId);
+    const totalAssets = accounts.filter(a => a.balance >= 0).reduce((s, a) => s + a.balance, 0);
+    const totalLiabilities = Math.abs(accounts.filter(a => a.balance < 0).reduce((s, a) => s + a.balance, 0));
+    return {
+      ok: true,
+      result: {
+        accounts,
+        totalAssets: Math.round(totalAssets * 100) / 100,
+        totalLiabilities: Math.round(totalLiabilities * 100) / 100,
+        netWorth: Math.round((totalAssets - totalLiabilities) * 100) / 100,
+      },
+    };
+  });
+
+  registerLensAction("finance", "accounts-link", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const institution = String(params.institution || "").trim();
+    const name = String(params.name || "").trim();
+    const kind = ["checking", "savings", "credit", "investment", "loan", "mortgage", "crypto"].includes(params.kind) ? params.kind : "checking";
+    if (!institution || !name) return { ok: false, error: "institution and name required" };
+    const acct = {
+      id: uid("acct"), institution, name, kind,
+      mask: String(params.mask || "0000").slice(-4),
+      balance: Number(params.balance) || 0,
+      currency: "USD",
+      status: "active",
+      linkedAt: new Date().toISOString(),
+    };
+    ensureBucket(state, "accounts", userId).push(acct);
+    saveStateIfAvailable();
+    return { ok: true, result: { account: acct } };
+  });
+
+  registerLensAction("finance", "accounts-unlink", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const accounts = ensureBucket(state, "accounts", userId);
+    const idx = accounts.findIndex(a => a.id === id);
+    if (idx < 0) return { ok: false, error: "account not found" };
+    accounts.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("finance", "accounts-update-balance", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const balance = Number(params.balance);
+    if (Number.isNaN(balance)) return { ok: false, error: "balance required" };
+    const accounts = ensureBucket(state, "accounts", userId);
+    const a = accounts.find(x => x.id === id);
+    if (!a) return { ok: false, error: "account not found" };
+    a.balance = balance;
+    a.updatedAt = new Date().toISOString();
+    saveStateIfAvailable();
+    return { ok: true, result: { account: a } };
+  });
+
+  // ── AI finance assistant (Monarch 2026-style) ──────────────────
+
+  registerLensAction("finance", "assistant-ask", async (ctx, _a, params = {}) => {
+    const question = String(params.question || "").trim();
+    if (!question) return { ok: false, error: "question required" };
+    const state = getFinState();
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const holdings = state?.holdings.get(userId) || [];
+    const goals = state ? (ensureBucket(state, "goals", userId)) : [];
+    const bills = state ? (ensureBucket(state, "bills", userId)) : [];
+    const monthlyIncome = state?.monthlyIncome.get(userId) || 0;
+
+    const totalPortfolio = holdings.reduce((s, h) => s + h.value, 0);
+    const monthlyBills = bills.reduce((s, b) => s + (b.cadence === "monthly" ? b.amount : b.cadence === "annual" ? b.amount / 12 : 0), 0);
+
+    const summary = `User finance context:
+- Monthly income: $${monthlyIncome.toFixed(0)}
+- Portfolio value: $${totalPortfolio.toFixed(0)} across ${holdings.length} positions
+- Active goals: ${goals.length} ${goals.map(g => `(${g.name}: $${g.saved}/$${g.target})`).join(", ")}
+- Monthly recurring bills: $${monthlyBills.toFixed(0)} across ${bills.length} items`;
+
+    if (!ctx?.llm?.chat) {
+      return {
+        ok: true,
+        result: {
+          answer: `(LLM offline) Based on your context: ${summary}. Cannot generate a tailored answer without the conscious brain.`,
+          source: "fallback",
+        },
+      };
+    }
+    const sys = `You are a personal finance assistant inside the Concord finance lens. Be concise, specific, and grounded in the user's actual numbers. Never invent figures. If you don't have enough data, say so.`;
+    try {
+      const out = await ctx.llm.chat({
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: `${summary}\n\nQuestion: ${question}` },
+        ],
+        temperature: 0.4, maxTokens: 500, slot: "conscious",
+      });
+      const text = String(out?.text || out?.content || "").trim();
+      return { ok: true, result: { answer: text, source: "conscious-brain" } };
+    } catch (e) {
+      return { ok: true, result: { answer: `(assistant error: ${e?.message || "unknown"})`, error: true } };
+    }
+  });
+
+  // ── Combined dashboard summary (FinanceShell data source) ──────
+
+  registerLensAction("finance", "dashboard-summary", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const holdings = state.holdings.get(userId) || [];
+    const accounts = ensureBucket(state, "accounts", userId);
+    const goals = ensureBucket(state, "goals", userId);
+    const bills = ensureBucket(state, "bills", userId);
+    const snapshots = state.snapshots.get(userId) || [];
+
+    const cashAccounts = accounts.filter(a => a.kind === "checking" || a.kind === "savings");
+    const cash = cashAccounts.reduce((s, a) => s + Math.max(0, a.balance), 0);
+    const investments = holdings.reduce((s, h) => s + h.value, 0);
+    const credit = Math.abs(accounts.filter(a => a.kind === "credit").reduce((s, a) => s + Math.min(0, a.balance), 0));
+    const loans = Math.abs(accounts.filter(a => a.kind === "loan" || a.kind === "mortgage").reduce((s, a) => s + Math.min(0, a.balance), 0));
+    const netWorth = cash + investments - credit - loans;
+
+    const prior = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null;
+    const delta = prior ? netWorth - prior.total : 0;
+    const deltaPct = prior && prior.total !== 0 ? (delta / prior.total) * 100 : 0;
+
+    const upcomingBills = bills
+      .filter(b => !b.paidThisCycle)
+      .map(b => ({ ...b }))
+      .slice(0, 5);
+
+    const buyingPower = cash;
+    const monthlyBudget = (state.monthlyIncome.get(userId) || 0);
+    const monthlySpend = bills.reduce((s, b) => s + (b.cadence === "monthly" ? b.amount : 0), 0);
+    const budgetUsedPct = monthlyBudget > 0 ? Math.round((monthlySpend / monthlyBudget) * 100) : 0;
+
+    return {
+      ok: true,
+      result: {
+        netWorth: Math.round(netWorth * 100) / 100,
+        delta: Math.round(delta * 100) / 100,
+        deltaPct: Math.round(deltaPct * 100) / 100,
+        breakdown: {
+          cash: Math.round(cash * 100) / 100,
+          investments: Math.round(investments * 100) / 100,
+          credit: Math.round(credit * 100) / 100,
+          loans: Math.round(loans * 100) / 100,
+        },
+        buyingPower: Math.round(buyingPower * 100) / 100,
+        budgetUsedPct,
+        upcomingBills,
+        activeGoalCount: goals.length,
+        accountCount: accounts.length,
+        positionCount: holdings.length,
+      },
+    };
+  });
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────
@@ -582,5 +1279,11 @@ function extractJsonFin(text) {
   const last = body.lastIndexOf("}");
   if (first < 0 || last <= first) return null;
   try { return JSON.parse(body.slice(first, last + 1)); } catch { return null; }
+}
+
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return h;
 }
 

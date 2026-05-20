@@ -10,6 +10,7 @@ import { ChefHat as MobileTabChef, Calendar as MobileTabCal, ShoppingCart as Mob
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { FoodYelpSection } from '@/components/food/FoodYelpSection';
 import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
 import { BreweryPanel } from '@/components/food/BreweryPanel';
 import { UsdaFoodSearch } from '@/components/cooking/UsdaFoodSearch';
@@ -2665,6 +2666,9 @@ export default function FoodLensPage() {
     <LensShell lensId="food" asMain={false}>
       <FirstRunTour lensId="food" />
       <DepthBadge lensId="food" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <FoodYelpSection />
+      </div>
     <div data-lens-theme="food" className={ds.pageContainer}>
       {/* Phase 4 — REAL USDA FoodData Central search. */}
       <UsdaFoodSearch domain="food" className="mb-4" />

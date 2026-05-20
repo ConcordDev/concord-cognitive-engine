@@ -205,8 +205,15 @@ export default function registerInsuranceActions(registerLensAction) {
   function getInsState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.insLens) STATE.insLens = { policies: new Map(), claims: new Map() };
-    return STATE.insLens;
+    if (!STATE.insLens) STATE.insLens = {};
+    const s = STATE.insLens;
+    for (const k of [
+      "policies", "claims", "documents", "payments", "agents",
+      "reminders", "beneficiaries", "assets",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
   }
   function saveInsState() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
@@ -317,5 +324,399 @@ export default function registerInsuranceActions(registerLensAction) {
     }
     const score = Math.max(0, 100 - gaps.reduce((s, g) => s + (g.riskLevel === "critical" ? 25 : g.riskLevel === "moderate" ? 12 : 5), 0));
     return { ok: true, result: { gaps, score, policyCount: policies.length, activePolicies: policies.filter(p => p.status === "active").length } };
+  });
+
+  // ─── Insurance policy-wallet 2026 parity ────────────────────────────
+  // Extends the policy/claim CRUD with documents, premium payments,
+  // agents, reminders, beneficiaries, covered assets and ID cards.
+
+  const insId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const insNow = () => new Date().toISOString();
+  const insAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const insListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const insNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const insClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const insDay = (v) => insClean(v, 10).slice(0, 10);
+  const findPolicy = (s, userId, policyId) => (s.policies.get(userId) || []).find((p) => p.id === policyId) || null;
+  const findClaim = (s, userId, claimId) => (s.claims.get(userId) || []).find((c) => c.id === claimId) || null;
+  const INS_DAY = 86400000;
+
+  function dueState(dateStr) {
+    if (!dateStr) return "none";
+    const t = new Date(dateStr + "T00:00:00Z").getTime();
+    if (isNaN(t)) return "none";
+    const days = Math.floor((t - Date.now()) / INS_DAY);
+    if (days < 0) return "overdue";
+    if (days <= 30) return "due_soon";
+    return "scheduled";
+  }
+
+  // ── Policy management (extend) ──────────────────────────────────────
+  registerLensAction("insurance", "policy-update", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const policy = findPolicy(s, insAid(ctx), params.id);
+    if (!policy) return { ok: false, error: "policy not found" };
+    if (params.annualPremium != null) policy.annualPremium = Math.max(0, insNum(params.annualPremium));
+    if (params.deductible != null) policy.deductible = Math.max(0, insNum(params.deductible));
+    if (params.renewalDate != null) policy.renewalDate = insDay(params.renewalDate) || policy.renewalDate;
+    if (params.status != null && ["active", "lapsed", "cancelled", "pending"].includes(params.status)) {
+      policy.status = params.status;
+    }
+    if (params.liabilityLimit != null) policy.liabilityLimit = insNum(params.liabilityLimit);
+    saveInsState();
+    return { ok: true, result: { policy } };
+  });
+
+  registerLensAction("insurance", "policy-delete", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.policies.get(insAid(ctx)) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "policy not found" };
+    arr.splice(i, 1);
+    s.documents.delete(params.id);
+    s.payments.delete(params.id);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("insurance", "policy-detail", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const policy = findPolicy(s, userId, params.id);
+    if (!policy) return { ok: false, error: "policy not found" };
+    const payments = s.payments.get(policy.id) || [];
+    return {
+      ok: true,
+      result: {
+        policy,
+        documents: s.documents.get(policy.id) || [],
+        payments,
+        paidToDate: Math.round(payments.reduce((a, p) => a + insNum(p.amount), 0) * 100) / 100,
+        claims: (s.claims.get(userId) || []).filter((c) => c.policyId === policy.id),
+        renewalStatus: dueState(policy.renewalDate),
+      },
+    };
+  });
+
+  // ── Policy documents ────────────────────────────────────────────────
+  registerLensAction("insurance", "policy-document-add", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const policy = findPolicy(s, insAid(ctx), params.policyId);
+    if (!policy) return { ok: false, error: "policy not found" };
+    const title = insClean(params.title, 120);
+    if (!title) return { ok: false, error: "title required" };
+    const doc = {
+      id: insId("doc"), policyId: policy.id, title,
+      kind: insClean(params.kind, 40).toLowerCase() || "other",
+      url: insClean(params.url, 500) || null,
+      createdAt: insNow(),
+    };
+    insListB(s.documents, policy.id).push(doc);
+    policy.documents = s.documents.get(policy.id).length;
+    saveInsState();
+    return { ok: true, result: { document: doc } };
+  });
+
+  registerLensAction("insurance", "policy-document-list", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPolicy(s, insAid(ctx), params.policyId)) return { ok: false, error: "policy not found" };
+    return { ok: true, result: { documents: (s.documents.get(String(params.policyId)) || []).slice().reverse() } };
+  });
+
+  // ── Premium payments ────────────────────────────────────────────────
+  registerLensAction("insurance", "payment-log", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const policy = findPolicy(s, insAid(ctx), params.policyId);
+    if (!policy) return { ok: false, error: "policy not found" };
+    const amount = insNum(params.amount);
+    if (amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const payment = {
+      id: insId("pay"), policyId: policy.id,
+      amount: Math.round(amount * 100) / 100,
+      date: insDay(params.date) || insDay(insNow()),
+      method: insClean(params.method, 40) || null,
+      createdAt: insNow(),
+    };
+    insListB(s.payments, policy.id).push(payment);
+    saveInsState();
+    return { ok: true, result: { payment } };
+  });
+
+  registerLensAction("insurance", "payment-list", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPolicy(s, insAid(ctx), params.policyId)) return { ok: false, error: "policy not found" };
+    const payments = (s.payments.get(String(params.policyId)) || [])
+      .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    return {
+      ok: true,
+      result: { payments, totalPaid: Math.round(payments.reduce((a, p) => a + insNum(p.amount), 0) * 100) / 100 },
+    };
+  });
+
+  registerLensAction("insurance", "premium-schedule", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const policy = findPolicy(s, insAid(ctx), params.policyId);
+    if (!policy) return { ok: false, error: "policy not found" };
+    const freq = ["monthly", "quarterly", "semiannual", "annual"].includes(params.frequency)
+      ? params.frequency : "monthly";
+    const perYear = { monthly: 12, quarterly: 4, semiannual: 2, annual: 1 }[freq];
+    const installment = Math.round((policy.annualPremium / perYear) * 100) / 100;
+    const payments = s.payments.get(policy.id) || [];
+    const last = payments.length
+      ? payments.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))[0].date
+      : policy.effectiveDate;
+    const intervalDays = Math.round(365 / perYear);
+    const nextDue = insDay(new Date(new Date(last).getTime() + intervalDays * INS_DAY).toISOString());
+    return {
+      ok: true,
+      result: {
+        frequency: freq, installment, perYear,
+        annualPremium: policy.annualPremium,
+        lastPaymentDate: last, nextDueDate: nextDue, nextDueStatus: dueState(nextDue),
+      },
+    };
+  });
+
+  // ── Claims (extend) ─────────────────────────────────────────────────
+  registerLensAction("insurance", "claim-update", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const claim = findClaim(s, insAid(ctx), params.id);
+    if (!claim) return { ok: false, error: "claim not found" };
+    if (params.status != null && ["submitted", "under_review", "approved", "denied", "paid", "closed"].includes(params.status)) {
+      claim.status = params.status;
+    }
+    if (params.payoutAmount != null) claim.payoutAmount = Math.max(0, insNum(params.payoutAmount));
+    if (params.adjuster != null) claim.adjuster = insClean(params.adjuster, 120) || null;
+    if (params.note != null) {
+      claim.notes = claim.notes || [];
+      claim.notes.push({ text: insClean(params.note, 300), at: insNow() });
+    }
+    saveInsState();
+    return { ok: true, result: { claim } };
+  });
+
+  registerLensAction("insurance", "claim-detail", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const claim = findClaim(s, insAid(ctx), params.id);
+    if (!claim) return { ok: false, error: "claim not found" };
+    return {
+      ok: true,
+      result: {
+        claim: {
+          ...claim,
+          daysSinceSubmit: claim.submittedDate
+            ? Math.floor((Date.now() - new Date(claim.submittedDate).getTime()) / INS_DAY) : null,
+        },
+      },
+    };
+  });
+
+  registerLensAction("insurance", "claim-delete", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.claims.get(insAid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "claim not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Agents / contacts ───────────────────────────────────────────────
+  registerLensAction("insurance", "agent-add", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = insClean(params.name, 120);
+    if (!name) return { ok: false, error: "name required" };
+    const agent = {
+      id: insId("agt"), name,
+      agency: insClean(params.agency, 120) || null,
+      phone: insClean(params.phone, 40) || null,
+      email: insClean(params.email, 120) || null,
+      role: insClean(params.role, 40).toLowerCase() || "agent",
+      createdAt: insNow(),
+    };
+    insListB(s.agents, insAid(ctx)).push(agent);
+    saveInsState();
+    return { ok: true, result: { agent } };
+  });
+
+  registerLensAction("insurance", "agent-list", (ctx, _a, _params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { agents: s.agents.get(insAid(ctx)) || [] } };
+  });
+
+  // ── Reminders ───────────────────────────────────────────────────────
+  registerLensAction("insurance", "reminder-create", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = insClean(params.title, 120);
+    if (!title) return { ok: false, error: "title required" };
+    const rem = {
+      id: insId("rem"), title,
+      kind: ["renewal", "payment", "inspection", "review", "general"].includes(params.kind)
+        ? params.kind : "general",
+      policyId: params.policyId ? String(params.policyId) : null,
+      dueDate: insDay(params.dueDate) || null,
+      done: false, createdAt: insNow(),
+    };
+    insListB(s.reminders, insAid(ctx)).push(rem);
+    saveInsState();
+    return { ok: true, result: { reminder: rem } };
+  });
+
+  registerLensAction("insurance", "reminder-list", (ctx, _a, _params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const reminders = (s.reminders.get(insAid(ctx)) || [])
+      .map((r) => ({ ...r, status: r.done ? "done" : dueState(r.dueDate) }))
+      .sort((a, b) => String(a.dueDate || "9999").localeCompare(String(b.dueDate || "9999")));
+    return {
+      ok: true,
+      result: {
+        reminders,
+        overdue: reminders.filter((r) => r.status === "overdue").length,
+        dueSoon: reminders.filter((r) => r.status === "due_soon").length,
+      },
+    };
+  });
+
+  registerLensAction("insurance", "reminder-complete", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rem = (s.reminders.get(insAid(ctx)) || []).find((r) => r.id === params.id);
+    if (!rem) return { ok: false, error: "reminder not found" };
+    rem.done = !(params.reopen === true);
+    saveInsState();
+    return { ok: true, result: { reminder: rem } };
+  });
+
+  // ── Beneficiaries ───────────────────────────────────────────────────
+  registerLensAction("insurance", "beneficiary-add", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const policy = findPolicy(s, insAid(ctx), params.policyId);
+    if (!policy) return { ok: false, error: "policy not found" };
+    const name = insClean(params.name, 120);
+    if (!name) return { ok: false, error: "beneficiary name required" };
+    const bene = {
+      id: insId("ben"), policyId: policy.id, name,
+      relationship: insClean(params.relationship, 60) || null,
+      sharePct: Math.max(0, Math.min(100, Math.round(insNum(params.sharePct, 100)))),
+      isPrimary: params.isPrimary !== false,
+      createdAt: insNow(),
+    };
+    insListB(s.beneficiaries, policy.id).push(bene);
+    saveInsState();
+    return { ok: true, result: { beneficiary: bene } };
+  });
+
+  registerLensAction("insurance", "beneficiary-list", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPolicy(s, insAid(ctx), params.policyId)) return { ok: false, error: "policy not found" };
+    const beneficiaries = s.beneficiaries.get(String(params.policyId)) || [];
+    const totalShare = beneficiaries.reduce((a, b) => a + insNum(b.sharePct), 0);
+    return {
+      ok: true,
+      result: { beneficiaries, totalShare, balanced: totalShare === 100 || beneficiaries.length === 0 },
+    };
+  });
+
+  // ── Covered assets ──────────────────────────────────────────────────
+  registerLensAction("insurance", "asset-add", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = insClean(params.name, 120);
+    if (!name) return { ok: false, error: "asset name required" };
+    const asset = {
+      id: insId("ast"), name,
+      kind: ["vehicle", "property", "valuable", "electronics", "jewelry", "other"]
+        .includes(String(params.kind).toLowerCase()) ? String(params.kind).toLowerCase() : "other",
+      value: Math.max(0, insNum(params.value)),
+      policyId: params.policyId ? String(params.policyId) : null,
+      serialNumber: insClean(params.serialNumber, 60) || null,
+      createdAt: insNow(),
+    };
+    insListB(s.assets, insAid(ctx)).push(asset);
+    saveInsState();
+    return { ok: true, result: { asset } };
+  });
+
+  registerLensAction("insurance", "asset-list", (ctx, _a, _params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const assets = s.assets.get(insAid(ctx)) || [];
+    return {
+      ok: true,
+      result: { assets, totalValue: Math.round(assets.reduce((a, x) => a + insNum(x.value), 0) * 100) / 100 },
+    };
+  });
+
+  // ── ID card ─────────────────────────────────────────────────────────
+  registerLensAction("insurance", "id-card", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const policy = findPolicy(s, insAid(ctx), params.policyId);
+    if (!policy) return { ok: false, error: "policy not found" };
+    return {
+      ok: true,
+      result: {
+        card: {
+          carrier: policy.carrier,
+          policyNumber: policy.policyNumber,
+          kind: policy.kind,
+          effectiveDate: policy.effectiveDate,
+          renewalDate: policy.renewalDate,
+          status: policy.status,
+          deductible: policy.deductible,
+          liabilityLimit: policy.liabilityLimit ?? null,
+        },
+      },
+    };
+  });
+
+  // ── Renewals + coverage summary ─────────────────────────────────────
+  registerLensAction("insurance", "renewals-due", (ctx, _a, _params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const due = (s.policies.get(insAid(ctx)) || [])
+      .map((p) => ({ id: p.id, carrier: p.carrier, kind: p.kind, renewalDate: p.renewalDate, status: dueState(p.renewalDate) }))
+      .filter((p) => p.status === "overdue" || p.status === "due_soon")
+      .sort((a, b) => String(a.renewalDate).localeCompare(String(b.renewalDate)));
+    return { ok: true, result: { due, count: due.length } };
+  });
+
+  registerLensAction("insurance", "coverage-summary", (ctx, _a, _params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const policies = (s.policies.get(insAid(ctx)) || []);
+    const byKind = {};
+    let totalPremium = 0;
+    for (const p of policies) {
+      byKind[p.kind] = (byKind[p.kind] || 0) + 1;
+      if (p.status === "active") totalPremium += insNum(p.annualPremium);
+    }
+    return {
+      ok: true,
+      result: {
+        policies: policies.length,
+        activePolicies: policies.filter((p) => p.status === "active").length,
+        totalAnnualPremium: Math.round(totalPremium * 100) / 100,
+        monthlyPremium: Math.round((totalPremium / 12) * 100) / 100,
+        byKind,
+      },
+    };
+  });
+
+  // ── Dashboard ───────────────────────────────────────────────────────
+  registerLensAction("insurance", "insurance-dashboard", (ctx, _a, _params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const policies = s.policies.get(userId) || [];
+    const claims = s.claims.get(userId) || [];
+    let totalPremium = 0;
+    for (const p of policies) if (p.status === "active") totalPremium += insNum(p.annualPremium);
+    const reminders = s.reminders.get(userId) || [];
+    return {
+      ok: true,
+      result: {
+        activePolicies: policies.filter((p) => p.status === "active").length,
+        totalPolicies: policies.length,
+        openClaims: claims.filter((c) => !["paid", "closed", "denied"].includes(c.status)).length,
+        annualPremium: Math.round(totalPremium * 100) / 100,
+        renewalsDue: policies.filter((p) => ["overdue", "due_soon"].includes(dueState(p.renewalDate))).length,
+        openReminders: reminders.filter((r) => !r.done).length,
+        coveredAssetValue: Math.round((s.assets.get(userId) || []).reduce((a, x) => a + insNum(x.value), 0) * 100) / 100,
+      },
+    };
   });
 };

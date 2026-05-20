@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Loader2, Calendar, Dumbbell } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface PlannedDay {
   day: string;
@@ -33,7 +33,7 @@ export function WorkoutPlanner() {
   async function generate() {
     setLoading(true); setError(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'fitness', action: 'workout-plan-generate',
         input: { goal, daysPerWeek, weeks, equipment, experience },
       });

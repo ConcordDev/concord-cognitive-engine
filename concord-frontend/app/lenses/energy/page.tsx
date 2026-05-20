@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { EnergyMonitorSection } from '@/components/energy/EnergyMonitorSection';
 import { EiaPanel } from '@/components/energy/EiaPanel';
 import { SolarCarbonPanel } from '@/components/energy/SolarCarbonPanel';
 import { EnergyActionStack } from '@/components/energy/EnergyActionStack';
@@ -173,6 +174,9 @@ export default function EnergyLensPage() {
       <FirstRunTour lensId="energy" />
       <ManifestActionBar />
       <DepthBadge lensId="energy" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <EnergyMonitorSection />
+      </div>
     <LensPageShell
       domain="energy"
       title="Energy Lens"

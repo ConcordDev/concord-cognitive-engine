@@ -30,7 +30,7 @@ import {
   Loader2, Check, AlertTriangle, MapPin, ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface PlaceLike {
@@ -124,15 +124,14 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
         'Return a brief plaintext brief covering: what it is, why you might go there,',
         'best time of day/year, accessibility, and 1–2 things to know before visiting.',
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'chat_agent',
         name: 'do',
         input: { task, maxTurns: 5 },
       });
       const reply = r.data?.result?.reply
         ?? r.data?.result?.summary
-        ?? r.data?.result?.output
-        ?? r.data?.reply;
+        ?? r.data?.result?.output;
       if (reply) {
         setAgentFindings(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Agent finished.');
@@ -144,7 +143,7 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
   async function actPublish() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu',
         name: 'create',
         input: {
@@ -167,7 +166,7 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
           },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (!id) { err('No DTU id returned.'); return; }
       const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
@@ -182,7 +181,7 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
   async function actAddToGuide() {
     setBusy('guide'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu',
         name: 'create',
         input: {
@@ -206,7 +205,7 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
           },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) {
         if (!guideDtuId) setGuideDtuId(id);

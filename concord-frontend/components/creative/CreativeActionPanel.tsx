@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Film, FolderOpen, DollarSign, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -91,8 +91,8 @@ export function CreativeActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Production pkg`, tags: ['creative', 'production'], source: 'creative:pkg:mint', meta: { visibility: 'private', consent: { allowCitations: false }, prod: { shots: shotsResult, assets: assetsResult, budget: budgetResult, dist: distResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Production pkg`, tags: ['creative', 'production'], source: 'creative:pkg:mint', meta: { visibility: 'private', consent: { allowCitations: false }, prod: { shots: shotsResult, assets: assetsResult, budget: budgetResult, dist: distResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id.slice(0, 8)}…` }); ok(`Pkg DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -120,8 +120,8 @@ export function CreativeActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Production handoff`, tags: ['creative', 'handoff', 'public'], source: 'creative:handoff:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, shots: shotsResult, dist: distResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Production handoff`, tags: ['creative', 'handoff', 'public'], source: 'creative:handoff:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, shots: shotsResult, dist: distResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -134,8 +134,8 @@ export function CreativeActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Production status review. ${shotsResult ? `Shot list: ${shotsResult.totalShots} shots / ~${shotsResult.estimatedRuntime}min.` : ''} ${budgetResult ? `Budget: $${budgetResult.totalActual.toLocaleString()} of $${budgetResult.totalBudgeted.toLocaleString()}${budgetResult.overBudget ? ' (over)' : ''}.` : ''} ${distResult ? `${distResult.platform} delivery: ${distResult.percent}% ready by ${distResult.deliveryDate}.` : ''} Identify the single biggest schedule or budget risk + one mitigation. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Review ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

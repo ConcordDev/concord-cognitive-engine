@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Music, Sliders, Plus, Trash2, Save, Volume2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Track {
@@ -73,7 +73,7 @@ function ProjectList({ onSelect }: { onSelect: (id: string) => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'studio', action: 'project-list', input: {} });
+      const r = await lensRun({ domain: 'studio', action: 'project-list', input: {} });
       setProjects(((r.data as { result?: { projects?: Project[] } }).result?.projects) || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -83,7 +83,7 @@ function ProjectList({ onSelect }: { onSelect: (id: string) => void }) {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'project-create', input: draft });
+      await lensRun({ domain: 'studio', action: 'project-create', input: draft });
       setCreating(false); setDraft({ name: '', bpm: 120, timeSignature: '4/4' });
       await refresh();
     } catch (e) { console.error(e); }
@@ -92,7 +92,7 @@ function ProjectList({ onSelect }: { onSelect: (id: string) => void }) {
   const remove = async (id: string) => {
     if (!window.confirm('Delete this project?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'project-delete', input: { id } });
+      await lensRun({ domain: 'studio', action: 'project-delete', input: { id } });
       await refresh();
     } catch (e) { console.error(e); }
   };
@@ -148,7 +148,7 @@ function ProjectView({ projectId, onBack }: { projectId: string; onBack: () => v
 
   const refresh = useCallback(async () => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'studio', action: 'project-get', input: { id: projectId } });
+      const r = await lensRun({ domain: 'studio', action: 'project-get', input: { id: projectId } });
       setProject(((r.data as { result?: { project?: Project } }).result?.project) || null);
     } catch (e) { console.error(e); }
   }, [projectId]);
@@ -157,28 +157,28 @@ function ProjectView({ projectId, onBack }: { projectId: string; onBack: () => v
 
   const addTrack = async (kind: Track['kind']) => {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'track-add', input: { projectId, kind } });
+      await lensRun({ domain: 'studio', action: 'track-add', input: { projectId, kind } });
       await refresh();
     } catch (e) { console.error(e); }
   };
 
   const updateTrack = async (trackId: string, patch: Partial<Track>) => {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'track-update', input: { projectId, trackId, ...patch } });
+      await lensRun({ domain: 'studio', action: 'track-update', input: { projectId, trackId, ...patch } });
       await refresh();
     } catch (e) { console.error(e); }
   };
 
   const removeTrack = async (trackId: string) => {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'track-delete', input: { projectId, trackId } });
+      await lensRun({ domain: 'studio', action: 'track-delete', input: { projectId, trackId } });
       await refresh();
     } catch (e) { console.error(e); }
   };
 
   const addEffect = async (trackId: string, kind: Effect['kind']) => {
     try {
-      await api.post('/api/lens/run', { domain: 'studio', action: 'effect-add', input: { projectId, trackId, kind } });
+      await lensRun({ domain: 'studio', action: 'effect-add', input: { projectId, trackId, kind } });
       await refresh();
     } catch (e) { console.error(e); }
   };

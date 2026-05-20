@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Camera, Loader2, Clock, Check, X, DollarSign } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Claim {
@@ -42,7 +42,7 @@ export function ClaimTracker() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'insurance', action: 'claim-list', input: {} });
+      const res = await lensRun({ domain: 'insurance', action: 'claim-list', input: {} });
       setClaims((res.data?.result?.claims || []) as Claim[]);
     } catch (e) { console.error('[Claims] failed', e); }
     finally { setLoading(false); }
@@ -51,7 +51,7 @@ export function ClaimTracker() {
   async function fileNew() {
     if (!draft.carrier?.trim() || !draft.description?.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'insurance', action: 'claim-file', input: draft });
+      await lensRun({ domain: 'insurance', action: 'claim-file', input: draft });
       setDraft({ kind: 'collision', claimAmount: 0 });
       setAdding(false);
       await refresh();

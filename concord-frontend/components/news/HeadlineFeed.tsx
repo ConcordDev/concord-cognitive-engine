@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Newspaper, Loader2, ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Headline {
@@ -34,7 +34,7 @@ export function HeadlineFeed() {
     setLoading(true);
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', { domain: 'news', action: 'headlines', input: { category, limit: 30 } });
+        const res = await lensRun({ domain: 'news', action: 'headlines', input: { category, limit: 30 } });
         setHeadlines((res.data?.result?.headlines || []) as Headline[]);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }

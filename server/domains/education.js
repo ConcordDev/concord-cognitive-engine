@@ -738,6 +738,522 @@ Constraints:
       return { ok: false, error: e?.message || "generation failed" };
     }
   });
+
+  // ─── Full-app parity: Khan Academy + Coursera 2026 ─────────────────
+
+  function uidEdu(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function eduActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function ensureEduBucket(state, key, userId) {
+    if (!state[key]) state[key] = new Map();
+    if (!state[key].has(userId)) state[key].set(userId, []);
+    return state[key].get(userId);
+  }
+  function hashEdu(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return h;
+  }
+
+  // ── Courses CRUD + catalog search ─────────────────────────────
+
+  registerLensAction("education", "courses-list", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courses = ensureEduBucket(s, "courses", userId);
+    const category = params.category ? String(params.category) : null;
+    const filtered = category ? courses.filter(c => c.category === category) : courses;
+    return { ok: true, result: { courses: filtered, total: filtered.length } };
+  });
+
+  registerLensAction("education", "courses-create", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    const course = {
+      id: uidEdu("course"), title,
+      description: String(params.description || ""),
+      category: String(params.category || "general"),
+      level: ["beginner", "intermediate", "advanced"].includes(params.level) ? params.level : "beginner",
+      durationHours: Math.max(0, Number(params.durationHours) || 0),
+      instructor: String(params.instructor || ""),
+      institution: String(params.institution || ""),
+      kind: ["course", "specialization", "certificate", "guided_project"].includes(params.kind) ? params.kind : "course",
+      lessons: [],
+      enrollmentCount: 0,
+      rating: Math.max(0, Math.min(5, Number(params.rating) || 0)),
+      createdAt: new Date().toISOString(),
+    };
+    ensureEduBucket(s, "courses", userId).push(course);
+    saveStateIfAvailable();
+    return { ok: true, result: { course } };
+  });
+
+  registerLensAction("education", "courses-get", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === id);
+    if (!course) return { ok: false, error: "course not found" };
+    return { ok: true, result: { course } };
+  });
+
+  registerLensAction("education", "courses-delete", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureEduBucket(s, "courses", userId);
+    const idx = list.findIndex(c => c.id === id);
+    if (idx < 0) return { ok: false, error: "course not found" };
+    list.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("education", "courses-search", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const query = String(params.query || "").trim().toLowerCase();
+    if (!query) return { ok: false, error: "query required" };
+    const all = ensureEduBucket(s, "courses", userId);
+    const matches = all.filter(c =>
+      c.title.toLowerCase().includes(query) ||
+      c.description.toLowerCase().includes(query) ||
+      c.category.toLowerCase().includes(query) ||
+      c.instructor.toLowerCase().includes(query) ||
+      c.institution.toLowerCase().includes(query)
+    );
+    return { ok: true, result: { matches, total: matches.length, query } };
+  });
+
+  // ── Lessons within a course ───────────────────────────────────
+
+  registerLensAction("education", "lessons-list", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = String(params.courseId || "");
+    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === courseId);
+    if (!course) return { ok: false, error: "course not found" };
+    return { ok: true, result: { lessons: course.lessons || [] } };
+  });
+
+  registerLensAction("education", "lessons-create", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = String(params.courseId || "");
+    const title = String(params.title || "").trim();
+    if (!courseId || !title) return { ok: false, error: "courseId and title required" };
+    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === courseId);
+    if (!course) return { ok: false, error: "course not found" };
+    const lesson = {
+      id: uidEdu("less"), title,
+      videoUrl: String(params.videoUrl || ""),
+      durationMin: Math.max(0, Number(params.durationMin) || 0),
+      kind: ["video", "reading", "quiz", "assignment", "discussion"].includes(params.kind) ? params.kind : "video",
+      order: course.lessons.length + 1,
+      createdAt: new Date().toISOString(),
+    };
+    course.lessons.push(lesson);
+    saveStateIfAvailable();
+    return { ok: true, result: { lesson } };
+  });
+
+  registerLensAction("education", "lessons-complete", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = String(params.courseId || "");
+    const lessonId = String(params.lessonId || "");
+    if (!courseId || !lessonId) return { ok: false, error: "courseId and lessonId required" };
+    const progressMap = ensureEduBucket(s, "lessonProgress", userId);
+    const existing = progressMap.find(p => p.courseId === courseId && p.lessonId === lessonId);
+    if (existing) {
+      existing.completedAt = new Date().toISOString();
+    } else {
+      progressMap.push({ courseId, lessonId, completedAt: new Date().toISOString() });
+    }
+    // Award energy points + check streak
+    const points = ensureEduBucket(s, "energyPoints", userId);
+    points.push({ amount: 50, source: "lesson_complete", lessonId, timestamp: new Date().toISOString() });
+    saveStateIfAvailable();
+    return { ok: true, result: { completedAt: new Date().toISOString(), pointsAwarded: 50 } };
+  });
+
+  // ── Enrollments + course progress ─────────────────────────────
+
+  registerLensAction("education", "enrollments-list", (ctx, _a, _p = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const enrollments = ensureEduBucket(s, "enrollments", userId);
+    const courses = ensureEduBucket(s, "courses", userId);
+    const progress = ensureEduBucket(s, "lessonProgress", userId);
+    const enriched = enrollments.map(e => {
+      const course = courses.find(c => c.id === e.courseId);
+      const total = course?.lessons?.length || 0;
+      const completed = progress.filter(p => p.courseId === e.courseId).length;
+      return {
+        ...e, course,
+        totalLessons: total,
+        completedLessons: completed,
+        progressPct: total > 0 ? Math.round((completed / total) * 100) : 0,
+      };
+    });
+    return { ok: true, result: { enrollments: enriched } };
+  });
+
+  registerLensAction("education", "enrollments-enroll", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = String(params.courseId || "");
+    if (!courseId) return { ok: false, error: "courseId required" };
+    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === courseId);
+    if (!course) return { ok: false, error: "course not found" };
+    const enrollments = ensureEduBucket(s, "enrollments", userId);
+    if (enrollments.find(e => e.courseId === courseId)) return { ok: false, error: "already enrolled" };
+    const enrollment = {
+      id: uidEdu("enr"), courseId,
+      enrolledAt: new Date().toISOString(),
+      status: "in_progress",
+    };
+    enrollments.push(enrollment);
+    course.enrollmentCount = (course.enrollmentCount || 0) + 1;
+    saveStateIfAvailable();
+    return { ok: true, result: { enrollment } };
+  });
+
+  registerLensAction("education", "enrollments-unenroll", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const enrollments = ensureEduBucket(s, "enrollments", userId);
+    const idx = enrollments.findIndex(e => e.id === id);
+    if (idx < 0) return { ok: false, error: "enrollment not found" };
+    enrollments.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Skill tree + mastery levels (Khan-style) ──────────────────
+
+  const MASTERY_LEVELS = ["not_started", "attempted", "familiar", "proficient", "mastered"];
+
+  registerLensAction("education", "skills-tree", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const subject = String(params.subject || "");
+    const skills = ensureEduBucket(s, "skills", userId);
+    const filtered = subject ? skills.filter(k => k.subject === subject) : skills;
+    const counts = MASTERY_LEVELS.reduce((acc, lvl) => { acc[lvl] = filtered.filter(k => k.mastery === lvl).length; return acc; }, {});
+    return { ok: true, result: { skills: filtered, counts, subject } };
+  });
+
+  registerLensAction("education", "skills-create", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const skill = {
+      id: uidEdu("skill"), name,
+      subject: String(params.subject || "general"),
+      mastery: "not_started",
+      prerequisites: Array.isArray(params.prerequisites) ? params.prerequisites : [],
+      attempts: 0,
+      lastPracticedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    ensureEduBucket(s, "skills", userId).push(skill);
+    saveStateIfAvailable();
+    return { ok: true, result: { skill } };
+  });
+
+  registerLensAction("education", "skills-practice", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const success = params.success !== false;
+    const skills = ensureEduBucket(s, "skills", userId);
+    const skill = skills.find(k => k.id === id);
+    if (!skill) return { ok: false, error: "skill not found" };
+    skill.attempts++;
+    skill.lastPracticedAt = new Date().toISOString();
+    if (success) {
+      const idx = MASTERY_LEVELS.indexOf(skill.mastery);
+      if (idx < MASTERY_LEVELS.length - 1) skill.mastery = MASTERY_LEVELS[idx + 1];
+    } else {
+      const idx = MASTERY_LEVELS.indexOf(skill.mastery);
+      if (idx > 1) skill.mastery = MASTERY_LEVELS[idx - 1];
+    }
+    // Award points for mastery progress
+    if (success) {
+      const pts = skill.mastery === "mastered" ? 200 : skill.mastery === "proficient" ? 100 : 25;
+      ensureEduBucket(s, "energyPoints", userId).push({ amount: pts, source: `skill_${skill.mastery}`, skillId: id, timestamp: new Date().toISOString() });
+    }
+    saveStateIfAvailable();
+    return { ok: true, result: { skill, pointsAwarded: success ? (skill.mastery === "mastered" ? 200 : skill.mastery === "proficient" ? 100 : 25) : 0 } };
+  });
+
+  // ── Streaks + energy points + course level ─────────────────────
+
+  registerLensAction("education", "gamification-status", (ctx, _a, _p = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const points = ensureEduBucket(s, "energyPoints", userId);
+    const totalPoints = points.reduce((sum, p) => sum + p.amount, 0);
+    // Streak: count consecutive days with at least one activity
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const day = 86400000;
+    const datesWithActivity = new Set(points.map(p => new Date(p.timestamp).toISOString().slice(0, 10)));
+    let streak = 0;
+    for (let d = 0; d < 365; d++) {
+      const check = new Date(today.getTime() - d * day).toISOString().slice(0, 10);
+      if (datesWithActivity.has(check)) streak++;
+      else if (d > 0) break;
+    }
+    // Course level = number of skills at proficient+
+    const skills = ensureEduBucket(s, "skills", userId);
+    const proficientCount = skills.filter(k => k.mastery === "proficient" || k.mastery === "mastered").length;
+    const level = Math.floor(proficientCount / 5) + 1;
+    return {
+      ok: true,
+      result: {
+        totalPoints,
+        streak,
+        level,
+        skillPoints: proficientCount,
+        nextLevelAt: level * 5,
+        recentPoints: points.slice(-10).reverse(),
+      },
+    };
+  });
+
+  registerLensAction("education", "points-award", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const amount = Math.max(0, Math.min(10000, Number(params.amount) || 0));
+    const source = String(params.source || "manual");
+    if (amount <= 0) return { ok: false, error: "amount must be > 0" };
+    ensureEduBucket(s, "energyPoints", userId).push({ amount, source, timestamp: new Date().toISOString() });
+    saveStateIfAvailable();
+    return { ok: true, result: { amount, source } };
+  });
+
+  // ── Certificates ──────────────────────────────────────────────
+
+  registerLensAction("education", "certificates-list", (ctx, _a, _p = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const certs = ensureEduBucket(s, "certificates", userId);
+    return { ok: true, result: { certificates: certs } };
+  });
+
+  registerLensAction("education", "certificates-issue", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = String(params.courseId || "");
+    if (!courseId) return { ok: false, error: "courseId required" };
+    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === courseId);
+    if (!course) return { ok: false, error: "course not found" };
+    const lessons = course.lessons || [];
+    const progress = ensureEduBucket(s, "lessonProgress", userId);
+    const completed = progress.filter(p => p.courseId === courseId).length;
+    if (completed < lessons.length) return { ok: false, error: `course incomplete (${completed}/${lessons.length} lessons)` };
+    const cert = {
+      id: uidEdu("cert"), courseId,
+      courseTitle: course.title,
+      issuedAt: new Date().toISOString(),
+      institution: course.institution,
+      instructor: course.instructor,
+      verificationCode: `CERT-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+    };
+    ensureEduBucket(s, "certificates", userId).push(cert);
+    saveStateIfAvailable();
+    return { ok: true, result: { certificate: cert } };
+  });
+
+  // ── Assignments + peer review (Coursera-style) ─────────────────
+
+  registerLensAction("education", "assignments-list", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = params.courseId ? String(params.courseId) : null;
+    const all = ensureEduBucket(s, "assignments", userId);
+    const filtered = courseId ? all.filter(a => a.courseId === courseId) : all;
+    return { ok: true, result: { assignments: filtered } };
+  });
+
+  registerLensAction("education", "assignments-create", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = String(params.courseId || "");
+    const title = String(params.title || "").trim();
+    if (!courseId || !title) return { ok: false, error: "courseId and title required" };
+    const assignment = {
+      id: uidEdu("asgn"), courseId, title,
+      description: String(params.description || ""),
+      dueAt: params.dueAt || null,
+      peerReviewCount: Math.max(0, Number(params.peerReviewCount) || 0),
+      rubric: Array.isArray(params.rubric) ? params.rubric : [],
+      maxPoints: Math.max(1, Number(params.maxPoints) || 100),
+      createdAt: new Date().toISOString(),
+    };
+    ensureEduBucket(s, "assignments", userId).push(assignment);
+    saveStateIfAvailable();
+    return { ok: true, result: { assignment } };
+  });
+
+  registerLensAction("education", "assignments-submit", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const assignmentId = String(params.assignmentId || "");
+    const text = String(params.text || "").trim();
+    if (!assignmentId || !text) return { ok: false, error: "assignmentId and text required" };
+    const assignment = ensureEduBucket(s, "assignments", userId).find(a => a.id === assignmentId);
+    if (!assignment) return { ok: false, error: "assignment not found" };
+    const submission = {
+      id: uidEdu("sub"), assignmentId, text,
+      submittedAt: new Date().toISOString(),
+      grade: null,
+      peerReviews: [],
+      status: assignment.peerReviewCount > 0 ? "awaiting_peer_review" : "submitted",
+    };
+    ensureEduBucket(s, "submissions", userId).push(submission);
+    saveStateIfAvailable();
+    return { ok: true, result: { submission } };
+  });
+
+  registerLensAction("education", "assignments-peer-review", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const submissionId = String(params.submissionId || "");
+    const score = Math.max(0, Number(params.score) || 0);
+    const feedback = String(params.feedback || "").trim();
+    if (!submissionId || !feedback) return { ok: false, error: "submissionId and feedback required" };
+    const submission = ensureEduBucket(s, "submissions", userId).find(sb => sb.id === submissionId);
+    if (!submission) return { ok: false, error: "submission not found" };
+    submission.peerReviews.push({ reviewerId: userId, score, feedback, reviewedAt: new Date().toISOString() });
+    saveStateIfAvailable();
+    return { ok: true, result: { submission } };
+  });
+
+  // ── Lesson notes ──────────────────────────────────────────────
+
+  registerLensAction("education", "notes-list", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const lessonId = params.lessonId ? String(params.lessonId) : null;
+    const all = ensureEduBucket(s, "lessonNotes", userId);
+    const notes = lessonId ? all.filter(n => n.lessonId === lessonId) : all;
+    return { ok: true, result: { notes } };
+  });
+
+  registerLensAction("education", "notes-save", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const lessonId = String(params.lessonId || "");
+    const text = String(params.text || "").trim();
+    const timestampSec = params.timestampSec != null ? Number(params.timestampSec) : null;
+    if (!lessonId || !text) return { ok: false, error: "lessonId and text required" };
+    const note = {
+      id: uidEdu("note"), lessonId, text,
+      videoTimestampSec: timestampSec,
+      createdAt: new Date().toISOString(),
+    };
+    ensureEduBucket(s, "lessonNotes", userId).push(note);
+    saveStateIfAvailable();
+    return { ok: true, result: { note } };
+  });
+
+  registerLensAction("education", "notes-delete", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const notes = ensureEduBucket(s, "lessonNotes", userId);
+    const idx = notes.findIndex(n => n.id === id);
+    if (idx < 0) return { ok: false, error: "note not found" };
+    notes.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Course discussions ────────────────────────────────────────
+
+  registerLensAction("education", "discussions-list", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = params.courseId ? String(params.courseId) : null;
+    const all = ensureEduBucket(s, "discussions", userId);
+    const filtered = courseId ? all.filter(d => d.courseId === courseId) : all;
+    return { ok: true, result: { discussions: filtered.slice().reverse() } };
+  });
+
+  registerLensAction("education", "discussions-post", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = String(params.courseId || "");
+    const text = String(params.text || "").trim();
+    const replyTo = params.replyTo ? String(params.replyTo) : null;
+    if (!courseId || !text) return { ok: false, error: "courseId and text required" };
+    const post = {
+      id: uidEdu("disc"), courseId, text, replyTo,
+      author: userId,
+      upvotes: 0,
+      createdAt: new Date().toISOString(),
+    };
+    ensureEduBucket(s, "discussions", userId).push(post);
+    saveStateIfAvailable();
+    return { ok: true, result: { post } };
+  });
+
+  registerLensAction("education", "discussions-upvote", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const post = ensureEduBucket(s, "discussions", userId).find(p => p.id === id);
+    if (!post) return { ok: false, error: "post not found" };
+    post.upvotes++;
+    saveStateIfAvailable();
+    return { ok: true, result: { upvotes: post.upvotes } };
+  });
+
+  // ── Dashboard summary (ClassroomShell data source) ─────────────
+
+  registerLensAction("education", "dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courses = ensureEduBucket(s, "courses", userId);
+    const enrollments = ensureEduBucket(s, "enrollments", userId);
+    const progress = ensureEduBucket(s, "lessonProgress", userId);
+    const skills = ensureEduBucket(s, "skills", userId);
+    const certificates = ensureEduBucket(s, "certificates", userId);
+    const points = ensureEduBucket(s, "energyPoints", userId);
+    const today = new Date().toISOString().slice(0, 10);
+    const pointsToday = points.filter(p => p.timestamp.startsWith(today)).reduce((sum, p) => sum + p.amount, 0);
+    const datesWithActivity = new Set(points.map(p => new Date(p.timestamp).toISOString().slice(0, 10)));
+    const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
+    let streak = 0;
+    for (let d = 0; d < 365; d++) {
+      const check = new Date(todayDate.getTime() - d * 86400000).toISOString().slice(0, 10);
+      if (datesWithActivity.has(check)) streak++;
+      else if (d > 0) break;
+    }
+    const proficientSkills = skills.filter(k => k.mastery === "proficient" || k.mastery === "mastered").length;
+    const masteredSkills = skills.filter(k => k.mastery === "mastered").length;
+    return {
+      ok: true,
+      result: {
+        totalCourses: courses.length,
+        enrolledCount: enrollments.length,
+        completedLessons: progress.length,
+        totalSkills: skills.length,
+        proficientSkills,
+        masteredSkills,
+        certificates: certificates.length,
+        totalPoints: points.reduce((sum, p) => sum + p.amount, 0),
+        pointsToday,
+        streak,
+        level: Math.floor(proficientSkills / 5) + 1,
+      },
+    };
+  });
 };
 
 function saveStateIfAvailable() {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { BookOpen, Loader2, Sparkles, Download, Copy, Check, FileText } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface LessonPlan {
@@ -40,7 +40,7 @@ export function LessonPlanBuilder() {
     if (!topic.trim()) { setError('Topic is required.'); return; }
     setError(null); setGenerating(true); setPlan(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'education',
         action: 'lesson-plan-generate',
         input: { subject, grade, duration, topic, standard },

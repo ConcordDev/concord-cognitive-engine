@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Dumbbell, Plus, Trash2, Loader2, Play, Pause, RotateCcw, Check } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface WorkoutSet {
@@ -50,7 +50,7 @@ export function WorkoutLogger() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'fitness', action: 'workout-list', input: {} });
+      const res = await lensRun({ domain: 'fitness', action: 'workout-list', input: {} });
       setWorkouts((res.data?.result?.workouts || []) as Workout[]);
     } catch (e) { console.error('[Workout] list failed', e); }
     finally { setLoading(false); }
@@ -120,7 +120,7 @@ export function WorkoutLogger() {
     if (!active) return;
     const finished = { ...active, finishedAt: new Date().toISOString() };
     try {
-      await api.post('/api/lens/run', { domain: 'fitness', action: 'workout-save', input: { workout: finished } });
+      await lensRun({ domain: 'fitness', action: 'workout-save', input: { workout: finished } });
       setActive(null);
       await refresh();
     } catch (e) { console.error('[Workout] save failed', e); }

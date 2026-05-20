@@ -31,6 +31,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ChildBriefPanel } from '@/components/parenting/ChildBriefPanel';
+import { ParentingSection } from '@/components/parenting/ParentingSection';
 
 type ModeTab = 'milestones' | 'schedules' | 'health' | 'activities' | 'growth' | 'education';
 type ArtifactType = 'Milestone' | 'Schedule' | 'HealthCheck' | 'Activity' | 'GrowthRecord' | 'LearningGoal';
@@ -351,6 +352,9 @@ export default function ParentingLensPage() {
       <FirstRunTour lensId="parenting" />
       <ManifestActionBar />
       <DepthBadge lensId="parenting" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <ParentingSection />
+      </div>
     <div data-lens-theme="parenting" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

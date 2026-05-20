@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Moon, Activity, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface RecoveryDay {
@@ -24,7 +24,7 @@ export function SleepRecovery() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'fitness', action: 'recovery-history', input: { days: 14 } });
+      const res = await lensRun({ domain: 'fitness', action: 'recovery-history', input: { days: 14 } });
       setDays((res.data?.result?.days || []) as RecoveryDay[]);
     } catch (e) { console.error('[Recovery] failed', e); }
     finally { setLoading(false); }

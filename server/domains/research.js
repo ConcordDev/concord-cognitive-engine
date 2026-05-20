@@ -335,7 +335,12 @@ export default function registerResearchActions(registerLensAction) {
         dailyByDate: new Map(),   // userId -> Map<YYYY-MM-DD, noteId>
       };
     }
-    return STATE.researchLens;
+    const s = STATE.researchLens;
+    // Zotero-parity buckets (backfilled append-only).
+    for (const k of ["references", "collections", "annotations"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
   }
   function saveResearchState() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
@@ -532,5 +537,348 @@ export default function registerResearchActions(registerLensAction) {
     }
     hits.sort((a, b) => b.score - a.score);
     return { ok: true, result: { hits: hits.slice(0, 50), count: hits.length } };
+  });
+
+  // ─── Zotero 2026 parity — reference manager ─────────────────────────
+  // A library of references, collections, tags, reading status,
+  // annotations, related items and citation/bibliography formatting.
+
+  const rfId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const rfNow = () => new Date().toISOString();
+  const rfAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const rfListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const rfNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const rfClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
+  const findRef = (s, userId, id) => (s.references.get(userId) || []).find((r) => r.id === id) || null;
+  const REF_TYPES = ["article", "book", "chapter", "conference", "thesis", "report", "webpage", "preprint", "dataset"];
+  const READ_STATUS = ["to_read", "reading", "read"];
+
+  function normTags(raw) {
+    if (!Array.isArray(raw)) return [];
+    return [...new Set(raw.map((t) => rfClean(t, 40).toLowerCase()).filter(Boolean))].slice(0, 30);
+  }
+  function citationKey(ref) {
+    const firstAuthor = rfClean(ref.authors, 400).split(/[,;&]/)[0].trim().split(/\s+/).pop() || "ref";
+    return `${firstAuthor.toLowerCase().replace(/[^a-z]/g, "")}${ref.year || ""}`;
+  }
+  function formatCitation(ref, style) {
+    const authors = rfClean(ref.authors, 400) || "Unknown";
+    const year = ref.year || "n.d.";
+    const title = rfClean(ref.title, 400);
+    const journal = rfClean(ref.journal, 200);
+    const doi = rfClean(ref.doi, 120);
+    switch (style) {
+      case "mla":
+        return `${authors}. "${title}." ${journal ? `${journal}, ` : ""}${year}.`;
+      case "chicago":
+        return `${authors}. "${title}." ${journal ? `${journal} ` : ""}(${year}).`;
+      case "bibtex": {
+        const fields = [
+          `  title={${title}}`,
+          `  author={${authors}}`,
+          ref.year ? `  year={${ref.year}}` : null,
+          journal ? `  journal={${journal}}` : null,
+          doi ? `  doi={${doi}}` : null,
+        ].filter(Boolean).join(",\n");
+        return `@${ref.type === "book" ? "book" : "article"}{${citationKey(ref)},\n${fields}\n}`;
+      }
+      case "apa":
+      default:
+        return `${authors} (${year}). ${title}.${journal ? ` ${journal}.` : ""}${doi ? ` https://doi.org/${doi}` : ""}`;
+    }
+  }
+
+  // ── References ──────────────────────────────────────────────────────
+  registerLensAction("research", "reference-add", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = rfClean(params.title, 400);
+    if (!title) return { ok: false, error: "title required" };
+    const ref = {
+      id: rfId("ref"), title,
+      authors: rfClean(params.authors, 400) || null,
+      year: Number.isFinite(Number(params.year)) ? Math.round(Number(params.year)) : null,
+      type: REF_TYPES.includes(String(params.type).toLowerCase()) ? String(params.type).toLowerCase() : "article",
+      journal: rfClean(params.journal, 200) || null,
+      doi: rfClean(params.doi, 120) || null,
+      url: rfClean(params.url, 500) || null,
+      abstract: rfClean(params.abstract, 4000) || null,
+      tags: normTags(params.tags),
+      status: "to_read",
+      relatedIds: [],
+      createdAt: rfNow(),
+    };
+    rfListB(s.references, rfAid(ctx)).push(ref);
+    saveResearchState();
+    return { ok: true, result: { reference: ref } };
+  });
+
+  registerLensAction("research", "reference-list", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let refs = [...(s.references.get(rfAid(ctx)) || [])];
+    if (params.type) refs = refs.filter((r) => r.type === String(params.type).toLowerCase());
+    if (params.tag) refs = refs.filter((r) => r.tags.includes(String(params.tag).toLowerCase()));
+    if (params.status) refs = refs.filter((r) => r.status === String(params.status).toLowerCase());
+    const q = rfClean(params.query, 80).toLowerCase();
+    if (q) {
+      refs = refs.filter((r) =>
+        r.title.toLowerCase().includes(q) ||
+        (r.authors || "").toLowerCase().includes(q) ||
+        (r.journal || "").toLowerCase().includes(q));
+    }
+    refs.sort((a, b) => (b.year || 0) - (a.year || 0) || b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { references: refs, count: refs.length } };
+  });
+
+  registerLensAction("research", "reference-detail", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const ref = findRef(s, userId, params.id);
+    if (!ref) return { ok: false, error: "reference not found" };
+    const annotations = (s.annotations.get(userId) || []).filter((a) => a.referenceId === ref.id);
+    return {
+      ok: true,
+      result: {
+        reference: ref,
+        annotations,
+        citations: {
+          apa: formatCitation(ref, "apa"),
+          mla: formatCitation(ref, "mla"),
+          bibtex: formatCitation(ref, "bibtex"),
+        },
+      },
+    };
+  });
+
+  registerLensAction("research", "reference-update", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ref = findRef(s, rfAid(ctx), params.id);
+    if (!ref) return { ok: false, error: "reference not found" };
+    if (params.title != null) { const t = rfClean(params.title, 400); if (t) ref.title = t; }
+    if (params.authors != null) ref.authors = rfClean(params.authors, 400) || null;
+    if (params.year != null) ref.year = Number.isFinite(Number(params.year)) ? Math.round(Number(params.year)) : null;
+    if (params.journal != null) ref.journal = rfClean(params.journal, 200) || null;
+    if (params.doi != null) ref.doi = rfClean(params.doi, 120) || null;
+    if (params.abstract != null) ref.abstract = rfClean(params.abstract, 4000) || null;
+    if (Array.isArray(params.tags)) ref.tags = normTags(params.tags);
+    saveResearchState();
+    return { ok: true, result: { reference: ref } };
+  });
+
+  registerLensAction("research", "reference-delete", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const arr = s.references.get(userId) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "reference not found" };
+    arr.splice(i, 1);
+    for (const c of s.collections.get(userId) || []) c.referenceIds = c.referenceIds.filter((x) => x !== params.id);
+    for (const r of arr) r.relatedIds = r.relatedIds.filter((x) => x !== params.id);
+    saveResearchState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("research", "reference-set-status", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ref = findRef(s, rfAid(ctx), params.id);
+    if (!ref) return { ok: false, error: "reference not found" };
+    if (!READ_STATUS.includes(String(params.status).toLowerCase())) {
+      return { ok: false, error: `status must be one of ${READ_STATUS.join("/")}` };
+    }
+    ref.status = String(params.status).toLowerCase();
+    saveResearchState();
+    return { ok: true, result: { reference: ref } };
+  });
+
+  registerLensAction("research", "reading-queue", (ctx, _a, _params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const refs = (s.references.get(rfAid(ctx)) || [])
+      .filter((r) => r.status === "to_read" || r.status === "reading")
+      .sort((a, b) => (a.status === "reading" ? -1 : 1) - (b.status === "reading" ? -1 : 1));
+    return {
+      ok: true,
+      result: {
+        queue: refs,
+        reading: refs.filter((r) => r.status === "reading").length,
+        toRead: refs.filter((r) => r.status === "to_read").length,
+      },
+    };
+  });
+
+  // ── Tags ────────────────────────────────────────────────────────────
+  registerLensAction("research", "tag-list", (ctx, _a, _params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const counts = new Map();
+    for (const r of s.references.get(rfAid(ctx)) || []) {
+      for (const t of r.tags) counts.set(t, (counts.get(t) || 0) + 1);
+    }
+    const tags = [...counts.entries()].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count);
+    return { ok: true, result: { tags } };
+  });
+
+  // ── Collections ─────────────────────────────────────────────────────
+  registerLensAction("research", "collection-create", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = rfClean(params.name, 120);
+    if (!name) return { ok: false, error: "collection name required" };
+    const collection = { id: rfId("col"), name, referenceIds: [], createdAt: rfNow() };
+    rfListB(s.collections, rfAid(ctx)).push(collection);
+    saveResearchState();
+    return { ok: true, result: { collection } };
+  });
+
+  registerLensAction("research", "collection-list", (ctx, _a, _params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const collections = (s.collections.get(rfAid(ctx)) || [])
+      .map((c) => ({ ...c, referenceCount: c.referenceIds.length }));
+    return { ok: true, result: { collections, count: collections.length } };
+  });
+
+  registerLensAction("research", "collection-add-reference", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const col = (s.collections.get(userId) || []).find((c) => c.id === params.collectionId);
+    if (!col) return { ok: false, error: "collection not found" };
+    if (!findRef(s, userId, params.referenceId)) return { ok: false, error: "reference not found" };
+    if (params.remove === true) col.referenceIds = col.referenceIds.filter((x) => x !== params.referenceId);
+    else if (!col.referenceIds.includes(params.referenceId)) col.referenceIds.push(String(params.referenceId));
+    saveResearchState();
+    return { ok: true, result: { collectionId: col.id, referenceCount: col.referenceIds.length } };
+  });
+
+  registerLensAction("research", "collection-detail", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const col = (s.collections.get(userId) || []).find((c) => c.id === params.id);
+    if (!col) return { ok: false, error: "collection not found" };
+    const references = col.referenceIds.map((id) => findRef(s, userId, id)).filter(Boolean);
+    return { ok: true, result: { collection: col, references } };
+  });
+
+  registerLensAction("research", "collection-delete", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.collections.get(rfAid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "collection not found" };
+    arr.splice(i, 1);
+    saveResearchState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Related references ──────────────────────────────────────────────
+  registerLensAction("research", "reference-relate", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const a = findRef(s, userId, params.referenceId);
+    const b = findRef(s, userId, params.relatedId);
+    if (!a || !b) return { ok: false, error: "reference not found" };
+    if (a.id === b.id) return { ok: false, error: "cannot relate a reference to itself" };
+    const unrelate = params.unrelate === true;
+    if (unrelate) {
+      a.relatedIds = a.relatedIds.filter((x) => x !== b.id);
+      b.relatedIds = b.relatedIds.filter((x) => x !== a.id);
+    } else {
+      if (!a.relatedIds.includes(b.id)) a.relatedIds.push(b.id);
+      if (!b.relatedIds.includes(a.id)) b.relatedIds.push(a.id);
+    }
+    saveResearchState();
+    return { ok: true, result: { related: !unrelate } };
+  });
+
+  registerLensAction("research", "reference-related", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const ref = findRef(s, userId, params.id);
+    if (!ref) return { ok: false, error: "reference not found" };
+    const related = ref.relatedIds.map((id) => findRef(s, userId, id)).filter(Boolean);
+    return { ok: true, result: { related, count: related.length } };
+  });
+
+  // ── Annotations ─────────────────────────────────────────────────────
+  registerLensAction("research", "annotation-add", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    if (!findRef(s, userId, params.referenceId)) return { ok: false, error: "reference not found" };
+    const text = rfClean(params.text, 2000);
+    const quote = rfClean(params.quote, 2000);
+    if (!text && !quote) return { ok: false, error: "text or quote required" };
+    const annotation = {
+      id: rfId("ann"), referenceId: String(params.referenceId),
+      page: Math.max(0, Math.round(rfNum(params.page))) || null,
+      quote: quote || null, text: text || null,
+      color: ["yellow", "green", "blue", "pink", "purple"].includes(String(params.color).toLowerCase())
+        ? String(params.color).toLowerCase() : "yellow",
+      createdAt: rfNow(),
+    };
+    rfListB(s.annotations, userId).push(annotation);
+    saveResearchState();
+    return { ok: true, result: { annotation } };
+  });
+
+  registerLensAction("research", "annotation-list", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let annotations = [...(s.annotations.get(rfAid(ctx)) || [])];
+    if (params.referenceId) annotations = annotations.filter((a) => a.referenceId === params.referenceId);
+    annotations.sort((a, b) => (a.page || 0) - (b.page || 0));
+    return { ok: true, result: { annotations, count: annotations.length } };
+  });
+
+  // ── Citations + bibliography ────────────────────────────────────────
+  registerLensAction("research", "cite-format", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ref = findRef(s, rfAid(ctx), params.id);
+    if (!ref) return { ok: false, error: "reference not found" };
+    const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
+      ? String(params.style).toLowerCase() : "apa";
+    return { ok: true, result: { style, citation: formatCitation(ref, style), key: citationKey(ref) } };
+  });
+
+  registerLensAction("research", "bibliography-build", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
+      ? String(params.style).toLowerCase() : "apa";
+    let refs;
+    if (params.collectionId) {
+      const col = (s.collections.get(userId) || []).find((c) => c.id === params.collectionId);
+      if (!col) return { ok: false, error: "collection not found" };
+      refs = col.referenceIds.map((id) => findRef(s, userId, id)).filter(Boolean);
+    } else {
+      refs = [...(s.references.get(userId) || [])];
+    }
+    refs.sort((a, b) => rfClean(a.authors, 400).localeCompare(rfClean(b.authors, 400)));
+    const entries = refs.map((r) => formatCitation(r, style));
+    return {
+      ok: true,
+      result: {
+        style, count: entries.length,
+        entries,
+        bibliography: entries.join(style === "bibtex" ? "\n\n" : "\n"),
+      },
+    };
+  });
+
+  // ── Library stats ───────────────────────────────────────────────────
+  registerLensAction("research", "library-stats", (ctx, _a, _params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const refs = s.references.get(userId) || [];
+    const byType = {};
+    const byStatus = { to_read: 0, reading: 0, read: 0 };
+    const tagSet = new Set();
+    for (const r of refs) {
+      byType[r.type] = (byType[r.type] || 0) + 1;
+      byStatus[r.status] = (byStatus[r.status] || 0) + 1;
+      for (const t of r.tags) tagSet.add(t);
+    }
+    return {
+      ok: true,
+      result: {
+        references: refs.length,
+        collections: (s.collections.get(userId) || []).length,
+        annotations: (s.annotations.get(userId) || []).length,
+        tags: tagSet.size,
+        byType, byStatus,
+      },
+    };
   });
 }

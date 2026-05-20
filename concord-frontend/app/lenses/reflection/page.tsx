@@ -31,6 +31,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { JournalActionPanel } from '@/components/reflection/JournalActionPanel';
+import { ReflectionSection } from '@/components/reflection/ReflectionSection';
 import { PipingProvider } from '@/components/panel-polish';
 
 // Mirror icon alias
@@ -157,6 +158,9 @@ export default function ReflectionLensPage() {
       <FirstRunTour lensId="reflection" />
       <ManifestActionBar />
       <DepthBadge lensId="reflection" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <ReflectionSection />
+      </div>
     <div data-lens-theme="reflection" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🪞</span>

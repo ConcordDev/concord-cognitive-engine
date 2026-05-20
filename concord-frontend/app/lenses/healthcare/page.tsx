@@ -7,6 +7,7 @@ import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { Users as MobileTabUsers, ClipboardList as MobileTabClip, Pill as MobileTabPill, Calendar as MobileTabCal, Activity as MobileTabActivity, HeartPulse as MobileTabHeart } from 'lucide-react';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { EpicSection } from '@/components/healthcare/EpicSection';
 import SymptomChecker from '@/components/healthcare/SymptomChecker';
 import MedicationTracker from '@/components/healthcare/MedicationTracker';
 import PatientChart from '@/components/healthcare/PatientChart';
@@ -1499,6 +1500,9 @@ export default function HealthcareLensPage() {
       <FirstRunTour lensId="healthcare" />
       <DepthBadge lensId="healthcare" size="sm" className="ml-2" />
       <RivalShapePreview lensId="healthcare" defaultOpen={true} />
+      <div className="px-4 mt-3">
+        <EpicSection />
+      </div>
     <div
       data-lens-theme="healthcare"
       className="p-6 space-y-6 bg-gradient-to-b from-blue-950/20 to-transparent"

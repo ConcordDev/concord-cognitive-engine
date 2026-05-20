@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { PhotographyLightroomSection } from '@/components/photography/PhotographyLightroomSection';
 import { PexelsBrowser } from '@/components/photography/PexelsBrowser';
 import { PhotographyActionPanel } from '@/components/photography/PhotographyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -393,6 +394,9 @@ export default function PhotographyPage() {
       <FirstRunTour lensId="photography" />
       <ManifestActionBar />
       <DepthBadge lensId="photography" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <PhotographyLightroomSection />
+      </div>
     <div data-lens-theme="photography" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}

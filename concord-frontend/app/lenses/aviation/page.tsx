@@ -10,6 +10,15 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AirportBrief } from '@/components/aviation/AirportBrief';
 import { AviationActionPanel } from '@/components/aviation/AviationActionPanel';
+import AircraftPanel from '@/components/aviation/AircraftPanel';
+import LogbookPanel from '@/components/aviation/LogbookPanel';
+import CurrencyPanel from '@/components/aviation/CurrencyPanel';
+import BriefingPanel from '@/components/aviation/BriefingPanel';
+import RouteAdvisor from '@/components/aviation/RouteAdvisor';
+import TrackLogsPanel from '@/components/aviation/TrackLogsPanel';
+import FuelStopsCalc from '@/components/aviation/FuelStopsCalc';
+import LiveFlightsPanel from '@/components/aviation/LiveFlightsPanel';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1666,6 +1675,8 @@ export default function AviationLensPage() {
       <FirstRunTour lensId="aviation" />
       <DepthBadge lensId="aviation" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
+      <RivalShapePreview lensId="aviation" defaultOpen={true} />
+      <ForeFlightWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -2120,5 +2131,54 @@ export default function AviationLensPage() {
           <AutoActionStrip domain="aviation" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="aviation" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ForeFlight / FlightAware-parity workbench section                   */
+/* ------------------------------------------------------------------ */
+
+function ForeFlightWorkbenchSection() {
+  const [active, setActive] = useState<'aircraft' | 'logbook' | 'currency' | 'briefing' | 'route' | 'tracks' | 'fuel' | 'live'>('aircraft');
+  const TABS = [
+    { id: 'aircraft', label: 'Aircraft' },
+    { id: 'logbook', label: 'Logbook' },
+    { id: 'currency', label: 'Currency' },
+    { id: 'briefing', label: 'Briefing' },
+    { id: 'route', label: 'Route advisor' },
+    { id: 'tracks', label: 'Track logs' },
+    { id: 'fuel', label: 'Fuel stops' },
+    { id: 'live', label: 'Live tracking' },
+  ] as const;
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-cyan-300 uppercase tracking-wider">ForeFlight/FlightAware-parity workbench</h2>
+      <nav className="flex items-center gap-1 border-b border-cyan-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={
+              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
+              (active === t.id
+                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
+                : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div>
+        {active === 'aircraft' && <AircraftPanel />}
+        {active === 'logbook' && <LogbookPanel />}
+        {active === 'currency' && <CurrencyPanel />}
+        {active === 'briefing' && <BriefingPanel />}
+        {active === 'route' && <RouteAdvisor />}
+        {active === 'tracks' && <TrackLogsPanel />}
+        {active === 'fuel' && <FuelStopsCalc />}
+        {active === 'live' && <LiveFlightsPanel />}
+      </div>
+    </section>
   );
 }

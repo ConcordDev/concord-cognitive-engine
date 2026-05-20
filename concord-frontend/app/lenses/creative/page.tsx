@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { CreativeBoardsSection } from '@/components/creative/CreativeBoardsSection';
 import { RedditCreative } from '@/components/creative/RedditCreative';
 import { CreativeActionPanel } from '@/components/creative/CreativeActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1422,6 +1423,9 @@ export default function CreativeLensPage() {
     <LensShell lensId="creative" asMain={false}>
       <FirstRunTour lensId="creative" />
       <DepthBadge lensId="creative" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <CreativeBoardsSection />
+      </div>
     <div data-lens-theme="creative" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>

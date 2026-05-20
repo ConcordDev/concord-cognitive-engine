@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Shield, AlertTriangle, TrendingDown, Calendar, Activity, Sparkles, Send, Globe, Wand2, Loader2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -103,8 +103,8 @@ export function InsuranceActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Insurance — ${riskTitle || 'book'}`, tags: ['insurance', 'risk', riskResult?.level].filter(Boolean), source: 'insurance:book:mint', meta: { visibility: 'private', consent: { allowCitations: false }, insurance: { gap: gapResult, loss: lossResult, renewal: renewalResult, risk: riskResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Insurance — ${riskTitle || 'book'}`, tags: ['insurance', 'risk', riskResult?.level].filter(Boolean), source: 'insurance:book:mint', meta: { visibility: 'private', consent: { allowCitations: false }, insurance: { gap: gapResult, loss: lossResult, renewal: renewalResult, risk: riskResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('insurance.mintedDtuId', id, { label: `Book DTU ${id.slice(0, 8)}…` }); ok(`Book DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -132,8 +132,8 @@ export function InsuranceActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Insurance benchmark — anonymised`, tags: ['insurance', 'benchmark', 'public'], source: 'insurance:benchmark:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, loss: lossResult, renewal: renewalResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Insurance benchmark — anonymised`, tags: ['insurance', 'benchmark', 'public'], source: 'insurance:benchmark:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, loss: lossResult, renewal: renewalResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -146,8 +146,8 @@ export function InsuranceActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Insurance book review. ${gapResult ? `${gapResult.gapCount} coverage gaps (${(gapResult.gaps || []).join(', ')}).` : ''} ${lossResult ? `Loss ratio ${lossResult.lossRatio}% — ${lossResult.assessment}.` : ''} ${renewalResult ? `${renewalResult.urgentCount} renewals due in 30 days.` : ''} ${riskResult ? `Top risk: ${riskResult.risk} at ${riskResult.level}.` : ''} Identify the single highest-leverage cross-sell or risk-mitigation play this quarter. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Play ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

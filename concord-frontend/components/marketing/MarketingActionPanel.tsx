@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Megaphone, FlaskConical, Filter, Users, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -96,8 +96,8 @@ export function MarketingActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Marketing — ${campaignName}`, tags: ['marketing', 'campaign', roiResult?.grade].filter((t): t is string => !!t), source: 'marketing:report:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mkt: { roi: roiResult, ab: abResult, funnel: funnelResult, seg: segResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Marketing — ${campaignName}`, tags: ['marketing', 'campaign', roiResult?.grade].filter((t): t is string => !!t), source: 'marketing:report:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mkt: { roi: roiResult, ab: abResult, funnel: funnelResult, seg: segResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('marketing.mintedDtuId', id, { label: `Report DTU ${id.slice(0, 8)}…` }); ok(`Report DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -125,8 +125,8 @@ export function MarketingActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Marketing playbook`, tags: ['marketing', 'playbook', 'public'], source: 'marketing:playbook:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ab: abResult, funnel: funnelResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Marketing playbook`, tags: ['marketing', 'playbook', 'public'], source: 'marketing:playbook:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ab: abResult, funnel: funnelResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -139,8 +139,8 @@ export function MarketingActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Growth marketing review. ${roiResult ? `Campaign ${roiResult.campaign}: ROI ${roiResult.roi}% (${roiResult.grade}).` : ''} ${abResult ? `A/B: ${abResult.recommendation}.` : ''} ${funnelResult ? `Funnel leak: ${funnelResult.biggestLeakage} (${funnelResult.leakageRate}%).` : ''} ${segResult?.highValue ? `High-value segment: ${segResult.highValue}.` : ''} Identify the single highest-ROI next action this quarter. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Play ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

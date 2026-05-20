@@ -532,11 +532,16 @@ export default function registerFoodActions(registerLensAction) {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
     if (!STATE.foodLens) STATE.foodLens = {};
-    if (!STATE.foodLens.pantry) STATE.foodLens.pantry = new Map();
-    if (!STATE.foodLens.mealPlans) STATE.foodLens.mealPlans = new Map();
-    if (!STATE.foodLens.nutritionLog) STATE.foodLens.nutritionLog = new Map();
-    if (!STATE.foodLens.recipes) STATE.foodLens.recipes = new Map();
-    return STATE.foodLens;
+    const s = STATE.foodLens;
+    // Backfill append-only so older persisted STATE upgrades cleanly.
+    for (const k of [
+      "pantry", "mealPlans", "nutritionLog", "recipes",
+      "businesses", "reviews", "photos", "tips", "checkins",
+      "collections", "reservations", "waitlist",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
   }
 
   function saveStateIfAvailable() {
@@ -839,6 +844,450 @@ export default function registerFoodActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: e?.message || "llm extract failed" };
     }
+  });
+
+  // ─── Yelp 2026 parity — restaurant discovery ────────────────────────
+  // Businesses, search/filter, reviews + ratings, photos, tips,
+  // check-ins, collections, reservations + waitlist. Businesses/reviews
+  // are a shared directory; collections/reservations are per-user.
+
+  const yid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const ynow = () => new Date().toISOString();
+  const yaid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const ylistB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const ynum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const yclamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const yclean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const GLOBAL_MEAN_RATING = 3.7; // prior for Bayesian ranking
+
+  function hhmmToMin(s) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || ""));
+    if (!m) return null;
+    return yclamp(Number(m[1]), 0, 23) * 60 + yclamp(Number(m[2]), 0, 59);
+  }
+  function isOpenNow(biz) {
+    if (!biz.hours || !biz.hours.open || !biz.hours.close) return null;
+    const o = hhmmToMin(biz.hours.open), c = hhmmToMin(biz.hours.close);
+    if (o == null || c == null) return null;
+    const now = new Date();
+    if (Array.isArray(biz.closedDays) && biz.closedDays.includes(now.getDay())) return false;
+    const cur = now.getHours() * 60 + now.getMinutes();
+    return c >= o ? (cur >= o && cur < c) : (cur >= o || cur < c); // tolerate past-midnight close
+  }
+  function bizAggregate(s, bizId) {
+    const revs = s.reviews.get(bizId) || [];
+    const sum = revs.reduce((a, r) => a + ynum(r.rating), 0);
+    return {
+      rating: revs.length ? Math.round((sum / revs.length) * 10) / 10 : 0,
+      reviewCount: revs.length,
+      photoCount: (s.photos.get(bizId) || []).length,
+      tipCount: (s.tips.get(bizId) || []).length,
+      checkinCount: (s.checkins.get(bizId) || []).length,
+    };
+  }
+  function bizView(s, biz) {
+    return { ...biz, ...bizAggregate(s, biz.id), openNow: isOpenNow(biz) };
+  }
+
+  // ── Businesses ──────────────────────────────────────────────────────
+  registerLensAction("food", "biz-create", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = yclean(params.name, 120);
+    if (!name) return { ok: false, error: "name required" };
+    const cuisine = yclean(params.cuisine || params.category, 60).toLowerCase();
+    if (!cuisine) return { ok: false, error: "cuisine required" };
+    const biz = {
+      id: yid("biz"),
+      ownerUserId: yaid(ctx),
+      name, cuisine,
+      priceTier: yclamp(Math.round(ynum(params.priceTier, 2)), 1, 4),
+      neighborhood: yclean(params.neighborhood, 80) || null,
+      address: yclean(params.address, 160) || null,
+      phone: yclean(params.phone, 32) || null,
+      lat: Number.isFinite(Number(params.lat)) ? Number(params.lat) : null,
+      lng: Number.isFinite(Number(params.lng)) ? Number(params.lng) : null,
+      hours: (params.hours && params.hours.open && params.hours.close)
+        ? { open: yclean(params.hours.open, 5), close: yclean(params.hours.close, 5) } : null,
+      closedDays: Array.isArray(params.closedDays)
+        ? params.closedDays.map((d) => yclamp(Math.round(ynum(d)), 0, 6)) : [],
+      createdAt: ynow(),
+    };
+    s.businesses.set(biz.id, biz);
+    saveStateIfAvailable();
+    return { ok: true, result: { business: bizView(s, biz) } };
+  });
+
+  registerLensAction("food", "biz-list", (ctx, _a, _params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const businesses = [...s.businesses.values()].map((b) => bizView(s, b));
+    return { ok: true, result: { businesses, count: businesses.length } };
+  });
+
+  registerLensAction("food", "biz-search", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const q = yclean(params.query, 80).toLowerCase();
+    const cuisine = yclean(params.cuisine, 60).toLowerCase();
+    const priceTier = params.priceTier != null ? Math.round(ynum(params.priceTier)) : null;
+    const minRating = ynum(params.minRating, 0);
+    const neighborhood = yclean(params.neighborhood, 80).toLowerCase();
+    let rows = [...s.businesses.values()].map((b) => bizView(s, b));
+    if (q) rows = rows.filter((b) => b.name.toLowerCase().includes(q) || b.cuisine.includes(q));
+    if (cuisine) rows = rows.filter((b) => b.cuisine === cuisine);
+    if (priceTier) rows = rows.filter((b) => b.priceTier === priceTier);
+    if (minRating > 0) rows = rows.filter((b) => b.rating >= minRating);
+    if (neighborhood) rows = rows.filter((b) => (b.neighborhood || "").toLowerCase().includes(neighborhood));
+    if (params.openNow === true) rows = rows.filter((b) => b.openNow === true);
+    const sort = params.sort === "reviews" ? "reviews" : params.sort === "name" ? "name" : "rating";
+    rows.sort((a, b) => sort === "name" ? a.name.localeCompare(b.name)
+      : sort === "reviews" ? b.reviewCount - a.reviewCount
+      : (b.rating - a.rating) || (b.reviewCount - a.reviewCount));
+    return { ok: true, result: { businesses: rows, count: rows.length } };
+  });
+
+  registerLensAction("food", "biz-detail", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const biz = s.businesses.get(String(params.id));
+    if (!biz) return { ok: false, error: "business not found" };
+    return {
+      ok: true,
+      result: {
+        business: bizView(s, biz),
+        reviews: (s.reviews.get(biz.id) || []).slice().reverse(),
+        photos: (s.photos.get(biz.id) || []).slice().reverse(),
+        tips: (s.tips.get(biz.id) || []).slice().reverse(),
+      },
+    };
+  });
+
+  registerLensAction("food", "biz-delete", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const biz = s.businesses.get(String(params.id));
+    if (!biz) return { ok: false, error: "business not found" };
+    if (biz.ownerUserId !== yaid(ctx)) return { ok: false, error: "only the owner can delete this business" };
+    s.businesses.delete(biz.id);
+    s.reviews.delete(biz.id); s.photos.delete(biz.id);
+    s.tips.delete(biz.id); s.checkins.delete(biz.id); s.waitlist.delete(biz.id);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: biz.id } };
+  });
+
+  // ── Reviews ─────────────────────────────────────────────────────────
+  registerLensAction("food", "review-create", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const biz = s.businesses.get(String(params.bizId));
+    if (!biz) return { ok: false, error: "business not found" };
+    const rating = Math.round(ynum(params.rating));
+    if (rating < 1 || rating > 5) return { ok: false, error: "rating must be 1–5" };
+    const userId = yaid(ctx);
+    const revs = ylistB(s.reviews, biz.id);
+    const existing = revs.find((r) => r.userId === userId);
+    if (existing) {
+      existing.rating = rating;
+      existing.text = yclean(params.text, 2000);
+      existing.updatedAt = ynow();
+      saveStateIfAvailable();
+      return { ok: true, result: { review: existing, updated: true, aggregate: bizAggregate(s, biz.id) } };
+    }
+    const review = {
+      id: yid("rev"), bizId: biz.id, userId, rating,
+      text: yclean(params.text, 2000),
+      votes: { useful: [], funny: [], cool: [] },
+      createdAt: ynow(),
+    };
+    revs.push(review);
+    saveStateIfAvailable();
+    return { ok: true, result: { review, updated: false, aggregate: bizAggregate(s, biz.id) } };
+  });
+
+  registerLensAction("food", "review-list", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const biz = s.businesses.get(String(params.bizId));
+    if (!biz) return { ok: false, error: "business not found" };
+    const reviews = (s.reviews.get(biz.id) || []).slice().reverse().map((r) => ({
+      ...r,
+      voteCounts: { useful: r.votes.useful.length, funny: r.votes.funny.length, cool: r.votes.cool.length },
+    }));
+    return { ok: true, result: { reviews, aggregate: bizAggregate(s, biz.id) } };
+  });
+
+  registerLensAction("food", "review-delete", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const revs = s.reviews.get(String(params.bizId)) || [];
+    const i = revs.findIndex((r) => r.id === params.id && r.userId === yaid(ctx));
+    if (i < 0) return { ok: false, error: "review not found" };
+    revs.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: params.id, aggregate: bizAggregate(s, String(params.bizId)) } };
+  });
+
+  registerLensAction("food", "review-vote", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const kind = ["useful", "funny", "cool"].includes(params.kind) ? params.kind : null;
+    if (!kind) return { ok: false, error: "kind must be useful/funny/cool" };
+    const review = (s.reviews.get(String(params.bizId)) || []).find((r) => r.id === params.id);
+    if (!review) return { ok: false, error: "review not found" };
+    const userId = yaid(ctx);
+    const arr = review.votes[kind];
+    const had = arr.includes(userId);
+    review.votes[kind] = had ? arr.filter((u) => u !== userId) : [...arr, userId];
+    saveStateIfAvailable();
+    return { ok: true, result: { kind, count: review.votes[kind].length, voted: !had } };
+  });
+
+  // ── Photos + tips ───────────────────────────────────────────────────
+  registerLensAction("food", "photo-add", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const biz = s.businesses.get(String(params.bizId));
+    if (!biz) return { ok: false, error: "business not found" };
+    const photo = {
+      id: yid("pho"), bizId: biz.id, userId: yaid(ctx),
+      caption: yclean(params.caption, 240),
+      url: yclean(params.url, 500) || null,
+      createdAt: ynow(),
+    };
+    ylistB(s.photos, biz.id).push(photo);
+    saveStateIfAvailable();
+    return { ok: true, result: { photo, photoCount: s.photos.get(biz.id).length } };
+  });
+
+  registerLensAction("food", "photo-list", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.businesses.has(String(params.bizId))) return { ok: false, error: "business not found" };
+    return { ok: true, result: { photos: (s.photos.get(String(params.bizId)) || []).slice().reverse() } };
+  });
+
+  registerLensAction("food", "tip-add", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const biz = s.businesses.get(String(params.bizId));
+    if (!biz) return { ok: false, error: "business not found" };
+    const text = yclean(params.text, 280);
+    if (!text) return { ok: false, error: "tip text required" };
+    const tip = { id: yid("tip"), bizId: biz.id, userId: yaid(ctx), text, createdAt: ynow() };
+    ylistB(s.tips, biz.id).push(tip);
+    saveStateIfAvailable();
+    return { ok: true, result: { tip } };
+  });
+
+  registerLensAction("food", "tip-list", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.businesses.has(String(params.bizId))) return { ok: false, error: "business not found" };
+    return { ok: true, result: { tips: (s.tips.get(String(params.bizId)) || []).slice().reverse() } };
+  });
+
+  // ── Check-ins ───────────────────────────────────────────────────────
+  registerLensAction("food", "checkin", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const biz = s.businesses.get(String(params.bizId));
+    if (!biz) return { ok: false, error: "business not found" };
+    const userId = yaid(ctx);
+    const entry = { id: yid("chk"), bizId: biz.id, userId, note: yclean(params.note, 200), at: ynow() };
+    ylistB(s.checkins, biz.id).push(entry);
+    const mine = (s.checkins.get(biz.id) || []).filter((c) => c.userId === userId);
+    saveStateIfAvailable();
+    return { ok: true, result: { checkin: entry, visitNumber: mine.length, totalCheckins: s.checkins.get(biz.id).length } };
+  });
+
+  registerLensAction("food", "checkin-history", (ctx, _a, _params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = yaid(ctx);
+    const history = [];
+    for (const [bizId, list] of s.checkins.entries()) {
+      const biz = s.businesses.get(bizId);
+      for (const c of list) {
+        if (c.userId === userId) history.push({ ...c, bizName: biz ? biz.name : "(removed)" });
+      }
+    }
+    history.sort((a, b) => b.at.localeCompare(a.at));
+    return { ok: true, result: { checkins: history, count: history.length } };
+  });
+
+  // ── Collections (curated lists) ─────────────────────────────────────
+  registerLensAction("food", "collection-create", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = yclean(params.name, 120);
+    if (!name) return { ok: false, error: "name required" };
+    const col = {
+      id: yid("col"), name,
+      description: yclean(params.description, 400) || null,
+      bizIds: [], createdAt: ynow(),
+    };
+    ylistB(s.collections, yaid(ctx)).push(col);
+    saveStateIfAvailable();
+    return { ok: true, result: { collection: col } };
+  });
+
+  registerLensAction("food", "collection-list", (ctx, _a, _params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cols = (s.collections.get(yaid(ctx)) || []).map((c) => ({ ...c, bizCount: c.bizIds.length }));
+    return { ok: true, result: { collections: cols, count: cols.length } };
+  });
+
+  registerLensAction("food", "collection-add-biz", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const col = (s.collections.get(yaid(ctx)) || []).find((c) => c.id === params.collectionId);
+    if (!col) return { ok: false, error: "collection not found" };
+    if (!s.businesses.has(String(params.bizId))) return { ok: false, error: "business not found" };
+    const remove = params.remove === true;
+    if (remove) col.bizIds = col.bizIds.filter((b) => b !== params.bizId);
+    else if (!col.bizIds.includes(params.bizId)) col.bizIds.push(String(params.bizId));
+    saveStateIfAvailable();
+    return { ok: true, result: { collectionId: col.id, bizCount: col.bizIds.length, added: !remove } };
+  });
+
+  registerLensAction("food", "collection-detail", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const col = (s.collections.get(yaid(ctx)) || []).find((c) => c.id === params.id);
+    if (!col) return { ok: false, error: "collection not found" };
+    const businesses = col.bizIds
+      .map((id) => s.businesses.get(id))
+      .filter(Boolean)
+      .map((b) => bizView(s, b));
+    return { ok: true, result: { collection: col, businesses } };
+  });
+
+  registerLensAction("food", "collection-delete", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.collections.get(yaid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "collection not found" };
+    arr.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Reservations + waitlist ─────────────────────────────────────────
+  registerLensAction("food", "reservation-create", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const biz = s.businesses.get(String(params.bizId));
+    if (!biz) return { ok: false, error: "business not found" };
+    const partySize = Math.round(ynum(params.partySize));
+    if (partySize < 1 || partySize > 50) return { ok: false, error: "partySize must be 1–50" };
+    const dateTime = yclean(params.dateTime, 40);
+    if (!dateTime) return { ok: false, error: "dateTime required" };
+    const resv = {
+      id: yid("res"), bizId: biz.id, bizName: biz.name,
+      userId: yaid(ctx), partySize, dateTime,
+      notes: yclean(params.notes, 300) || null,
+      status: "confirmed", createdAt: ynow(),
+    };
+    ylistB(s.reservations, yaid(ctx)).push(resv);
+    saveStateIfAvailable();
+    return { ok: true, result: { reservation: resv } };
+  });
+
+  registerLensAction("food", "reservation-list", (ctx, _a, _params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const reservations = [...(s.reservations.get(yaid(ctx)) || [])]
+      .sort((a, b) => String(a.dateTime).localeCompare(String(b.dateTime)));
+    return { ok: true, result: { reservations, count: reservations.length } };
+  });
+
+  registerLensAction("food", "reservation-cancel", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const resv = (s.reservations.get(yaid(ctx)) || []).find((r) => r.id === params.id);
+    if (!resv) return { ok: false, error: "reservation not found" };
+    resv.status = "cancelled";
+    saveStateIfAvailable();
+    return { ok: true, result: { reservation: resv } };
+  });
+
+  registerLensAction("food", "waitlist-join", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const biz = s.businesses.get(String(params.bizId));
+    if (!biz) return { ok: false, error: "business not found" };
+    const partySize = Math.round(ynum(params.partySize));
+    if (partySize < 1 || partySize > 50) return { ok: false, error: "partySize must be 1–50" };
+    const queue = ylistB(s.waitlist, biz.id).filter((e) => e.status === "waiting");
+    const userId = yaid(ctx);
+    if (queue.some((e) => e.userId === userId)) return { ok: false, error: "already on this waitlist" };
+    const position = queue.length + 1;
+    // estimate: ~12 min per party ahead + table-turn factor for larger parties
+    const estimatedWaitMin = queue.length * 12 + Math.ceil(partySize / 4) * 5;
+    const entry = {
+      id: yid("wl"), bizId: biz.id, userId, partySize,
+      position, estimatedWaitMin, status: "waiting", joinedAt: ynow(),
+    };
+    s.waitlist.get(biz.id).push(entry);
+    saveStateIfAvailable();
+    return { ok: true, result: { entry, position, estimatedWaitMin } };
+  });
+
+  registerLensAction("food", "waitlist-status", (ctx, _a, _params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = yaid(ctx);
+    const entries = [];
+    for (const [bizId, list] of s.waitlist.entries()) {
+      const biz = s.businesses.get(bizId);
+      const waiting = list.filter((e) => e.status === "waiting");
+      for (const e of waiting) {
+        if (e.userId === userId) {
+          const pos = waiting.findIndex((x) => x.id === e.id) + 1;
+          entries.push({ ...e, position: pos, estimatedWaitMin: (pos - 1) * 12 + Math.ceil(e.partySize / 4) * 5, bizName: biz ? biz.name : "(removed)" });
+        }
+      }
+    }
+    return { ok: true, result: { entries, count: entries.length } };
+  });
+
+  registerLensAction("food", "waitlist-leave", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.waitlist.get(String(params.bizId)) || [];
+    const entry = list.find((e) => e.id === params.id && e.userId === yaid(ctx));
+    if (!entry) return { ok: false, error: "waitlist entry not found" };
+    entry.status = params.seated === true ? "seated" : "left";
+    saveStateIfAvailable();
+    return { ok: true, result: { entry } };
+  });
+
+  // ── Discovery aggregates ────────────────────────────────────────────
+  registerLensAction("food", "top-restaurants", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const C = 5; // Bayesian prior weight — damps low-review-count outliers
+    const ranked = [...s.businesses.values()]
+      .map((b) => {
+        const agg = bizAggregate(s, b.id);
+        const score = (C * GLOBAL_MEAN_RATING + agg.rating * agg.reviewCount) / (C + agg.reviewCount);
+        return { ...b, ...agg, openNow: isOpenNow(b), rankScore: Math.round(score * 1000) / 1000 };
+      })
+      .filter((b) => b.reviewCount > 0)
+      .sort((a, b) => b.rankScore - a.rankScore)
+      .slice(0, yclamp(Math.round(ynum(params.limit, 25)), 1, 100))
+      .map((b, i) => ({ ...b, rank: i + 1 }));
+    return { ok: true, result: { restaurants: ranked, count: ranked.length } };
+  });
+
+  registerLensAction("food", "cuisine-facets", (ctx, _a, _params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const counts = new Map();
+    for (const b of s.businesses.values()) counts.set(b.cuisine, (counts.get(b.cuisine) || 0) + 1);
+    const facets = [...counts.entries()]
+      .map(([cuisine, count]) => ({ cuisine, count }))
+      .sort((a, b) => b.count - a.count);
+    return { ok: true, result: { facets, total: s.businesses.size } };
+  });
+
+  registerLensAction("food", "food-discover-dashboard", (ctx, _a, _params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = yaid(ctx);
+    let myReviews = 0;
+    for (const list of s.reviews.values()) myReviews += list.filter((r) => r.userId === userId).length;
+    let myCheckins = 0;
+    for (const list of s.checkins.values()) myCheckins += list.filter((c) => c.userId === userId).length;
+    const resv = (s.reservations.get(userId) || []).filter((r) => r.status === "confirmed");
+    let onWaitlists = 0;
+    for (const list of s.waitlist.values()) onWaitlists += list.filter((e) => e.userId === userId && e.status === "waiting").length;
+    return {
+      ok: true,
+      result: {
+        businesses: s.businesses.size,
+        cuisines: new Set([...s.businesses.values()].map((b) => b.cuisine)).size,
+        myReviews,
+        myCheckins,
+        myCollections: (s.collections.get(userId) || []).length,
+        upcomingReservations: resv.length,
+        onWaitlists,
+      },
+    };
   });
 };
 

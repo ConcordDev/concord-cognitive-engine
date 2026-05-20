@@ -76,6 +76,16 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import QuoteChart, { type QuoteSnapshot } from '@/components/lens/QuoteChart';
 import TradesWorkbench from '@/components/trades/TradesWorkbench';
+import TechniciansPanel from '@/components/trades/TechniciansPanel';
+import DispatchBoardPanel from '@/components/trades/DispatchBoardPanel';
+import QuotesPanel from '@/components/trades/QuotesPanel';
+import BookingsPanel from '@/components/trades/BookingsPanel';
+import TimesheetsPanel from '@/components/trades/TimesheetsPanel';
+import PaymentsPanel from '@/components/trades/PaymentsPanel';
+import RecurringPlansPanel from '@/components/trades/RecurringPlansPanel';
+import ReviewsPanel from '@/components/trades/ReviewsPanel';
+import RouteOptimizerPanel from '@/components/trades/RouteOptimizerPanel';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -2253,6 +2263,8 @@ export default function TradesLensPage() {
       <FirstRunTour lensId="trades" />
       <DepthBadge lensId="trades" size="sm" className="ml-2" />
     <div className={cn(ds.pageContainer, 'lens-trades')} data-lens-theme="trades">
+      <RivalShapePreview lensId="trades" defaultOpen={true} />
+      <ServiceTitanWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -2526,5 +2538,56 @@ export default function TradesLensPage() {
           <AutoActionStrip domain="trades" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="trades" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ServiceTitan / Jobber-parity workbench section                      */
+/* ------------------------------------------------------------------ */
+
+function ServiceTitanWorkbenchSection() {
+  const [active, setActive] = useState<'dispatch' | 'techs' | 'route' | 'quotes' | 'bookings' | 'timesheets' | 'payments' | 'recurring' | 'reviews'>('dispatch');
+  const TABS = [
+    { id: 'dispatch', label: 'Dispatch' },
+    { id: 'techs', label: 'Technicians' },
+    { id: 'route', label: 'Route opt' },
+    { id: 'quotes', label: 'Quotes' },
+    { id: 'bookings', label: 'Bookings' },
+    { id: 'timesheets', label: 'Timesheets' },
+    { id: 'payments', label: 'Payments' },
+    { id: 'recurring', label: 'Recurring' },
+    { id: 'reviews', label: 'Reviews' },
+  ] as const;
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-cyan-300 uppercase tracking-wider">ServiceTitan/Jobber-parity workbench</h2>
+      <nav className="flex items-center gap-1 border-b border-cyan-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={
+              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
+              (active === t.id
+                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
+                : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div>
+        {active === 'dispatch' && <DispatchBoardPanel />}
+        {active === 'techs' && <TechniciansPanel />}
+        {active === 'route' && <RouteOptimizerPanel />}
+        {active === 'quotes' && <QuotesPanel />}
+        {active === 'bookings' && <BookingsPanel />}
+        {active === 'timesheets' && <TimesheetsPanel />}
+        {active === 'payments' && <PaymentsPanel />}
+        {active === 'recurring' && <RecurringPlansPanel />}
+        {active === 'reviews' && <ReviewsPanel />}
+      </div>
+    </section>
   );
 }

@@ -614,4 +614,401 @@ export default function registerAtlasActions(registerLensAction) {
       return { ok: false, error: `overpass unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Google Maps + Felt 2026 parity — saved places, Lists, multi-stop
+  //  trips, real OSRM directions, recent searches, AI trip planner.
+  // ═══════════════════════════════════════════════════════════════
+
+  function getAtlasState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.atlasLens) {
+      STATE.atlasLens = {
+        places: new Map(),         // userId -> Array<Place>
+        lists: new Map(),          // userId -> Array<List>
+        trips: new Map(),          // userId -> Array<Trip>
+        recentSearches: new Map(), // userId -> Array<string>
+        seq: new Map(),            // userId -> { place, list, trip }
+      };
+    }
+    return STATE.atlasLens;
+  }
+  function saveAtlas() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function aidAt(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function uidAt(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function isoAt() { return new Date().toISOString(); }
+  function listAt(map, k) { if (!map.has(k)) map.set(k, []); return map.get(k); }
+  function ensureSeqAt(s, userId) {
+    if (!s.seq.has(userId)) s.seq.set(userId, { place: 1, list: 1, trip: 1 });
+    const seq = s.seq.get(userId);
+    for (const k of ['place','list','trip']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    return seq;
+  }
+
+  const PLACE_CATEGORIES = ['restaurant', 'cafe', 'bar', 'hotel', 'attraction', 'park', 'shop', 'museum', 'transit', 'home', 'work', 'other'];
+
+  // ── Saved places ──────────────────────────────────────────────
+
+  registerLensAction("atlas", "places-list", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const category = PLACE_CATEGORIES.includes(params.category) ? params.category : null;
+    let list = listAt(s.places, aidAt(ctx));
+    if (category) list = list.filter(p => p.category === category);
+    return { ok: true, result: { places: list.slice().sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || '')) } };
+  });
+
+  registerLensAction("atlas", "places-save", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const name = String(params.name || "").trim();
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!name) return { ok: false, error: "name required" };
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return { ok: false, error: "valid lat/lng required" };
+    }
+    const seq = ensureSeqAt(s, userId);
+    const place = {
+      id: uidAt("place"),
+      number: `PL-${String(seq.place).padStart(5, '0')}`,
+      name,
+      lat, lng,
+      category: PLACE_CATEGORIES.includes(params.category) ? params.category : 'other',
+      address: String(params.address || ""),
+      notes: String(params.notes || ""),
+      rating: Number.isFinite(Number(params.rating)) ? Math.max(0, Math.min(5, Number(params.rating))) : null,
+      savedAt: isoAt(),
+    };
+    seq.place++;
+    listAt(s.places, userId).push(place);
+    saveAtlas();
+    return { ok: true, result: { place } };
+  });
+
+  registerLensAction("atlas", "places-update", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = listAt(s.places, aidAt(ctx)).find(x => x.id === String(params.id || ""));
+    if (!p) return { ok: false, error: "place not found" };
+    for (const k of ['name', 'address', 'notes']) if (typeof params[k] === 'string') p[k] = params[k];
+    if (PLACE_CATEGORIES.includes(params.category)) p.category = params.category;
+    if (Number.isFinite(Number(params.rating))) p.rating = Math.max(0, Math.min(5, Number(params.rating)));
+    saveAtlas();
+    return { ok: true, result: { place: p } };
+  });
+
+  registerLensAction("atlas", "places-delete", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const id = String(params.id || "");
+    const list = listAt(s.places, userId);
+    const i = list.findIndex(p => p.id === id);
+    if (i < 0) return { ok: false, error: "place not found" };
+    list.splice(i, 1);
+    // Drop from any lists too.
+    for (const l of listAt(s.lists, userId)) {
+      l.placeIds = (l.placeIds || []).filter(pid => pid !== id);
+    }
+    saveAtlas();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Lists (Google Maps Lists) ─────────────────────────────────
+
+  registerLensAction("atlas", "lists-list", (ctx, _a, _p = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const lists = listAt(s.lists, userId);
+    const places = listAt(s.places, userId);
+    const enriched = lists.map(l => ({
+      ...l,
+      placeCount: (l.placeIds || []).length,
+      places: (l.placeIds || []).map(pid => places.find(p => p.id === pid)).filter(Boolean),
+    }));
+    return { ok: true, result: { lists: enriched } };
+  });
+
+  registerLensAction("atlas", "lists-create", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const seq = ensureSeqAt(s, userId);
+    const list = {
+      id: uidAt("list"),
+      number: `LS-${String(seq.list).padStart(4, '0')}`,
+      name,
+      description: String(params.description || ""),
+      color: String(params.color || '#22d3ee'),
+      placeIds: [],
+      createdAt: isoAt(),
+    };
+    seq.list++;
+    listAt(s.lists, userId).push(list);
+    saveAtlas();
+    return { ok: true, result: { list } };
+  });
+
+  registerLensAction("atlas", "lists-add-place", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const list = listAt(s.lists, userId).find(l => l.id === String(params.listId || ""));
+    if (!list) return { ok: false, error: "list not found" };
+    const placeId = String(params.placeId || "");
+    const place = listAt(s.places, userId).find(p => p.id === placeId);
+    if (!place) return { ok: false, error: "place not found" };
+    if (!list.placeIds.includes(placeId)) list.placeIds.push(placeId);
+    saveAtlas();
+    return { ok: true, result: { list } };
+  });
+
+  registerLensAction("atlas", "lists-remove-place", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listAt(s.lists, aidAt(ctx)).find(l => l.id === String(params.listId || ""));
+    if (!list) return { ok: false, error: "list not found" };
+    list.placeIds = (list.placeIds || []).filter(pid => pid !== String(params.placeId || ""));
+    saveAtlas();
+    return { ok: true, result: { list } };
+  });
+
+  registerLensAction("atlas", "lists-delete", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = listAt(s.lists, aidAt(ctx));
+    const i = arr.findIndex(l => l.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "list not found" };
+    arr.splice(i, 1);
+    saveAtlas();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Trips (multi-stop itineraries) ───────────────────────────
+
+  registerLensAction("atlas", "trips-list", (ctx, _a, _p = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { trips: listAt(s.trips, aidAt(ctx)).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')) } };
+  });
+
+  registerLensAction("atlas", "trips-create", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const seq = ensureSeqAt(s, userId);
+    const trip = {
+      id: uidAt("trip"),
+      number: `TR-${String(seq.trip).padStart(4, '0')}`,
+      name,
+      startDate: String(params.startDate || ""),
+      endDate: String(params.endDate || ""),
+      stops: [],   // Array<{ id, name, lat, lng, placeId?, day?, notes? }>
+      createdAt: isoAt(),
+    };
+    seq.trip++;
+    listAt(s.trips, userId).push(trip);
+    saveAtlas();
+    return { ok: true, result: { trip } };
+  });
+
+  registerLensAction("atlas", "trips-add-stop", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const trip = listAt(s.trips, userId).find(t => t.id === String(params.tripId || ""));
+    if (!trip) return { ok: false, error: "trip not found" };
+    // Stop can reference a saved place OR be ad-hoc lat/lng.
+    let stop;
+    if (params.placeId) {
+      const place = listAt(s.places, userId).find(p => p.id === String(params.placeId));
+      if (!place) return { ok: false, error: "place not found" };
+      stop = { id: uidAt("stop"), name: place.name, lat: place.lat, lng: place.lng, placeId: place.id, day: Number(params.day) || 1, notes: String(params.notes || "") };
+    } else {
+      const lat = Number(params.lat), lng = Number(params.lng);
+      const name = String(params.name || "").trim();
+      if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "placeId OR name+lat+lng required" };
+      stop = { id: uidAt("stop"), name, lat, lng, placeId: null, day: Number(params.day) || 1, notes: String(params.notes || "") };
+    }
+    trip.stops.push(stop);
+    saveAtlas();
+    return { ok: true, result: { trip } };
+  });
+
+  registerLensAction("atlas", "trips-remove-stop", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const trip = listAt(s.trips, aidAt(ctx)).find(t => t.id === String(params.tripId || ""));
+    if (!trip) return { ok: false, error: "trip not found" };
+    trip.stops = trip.stops.filter(st => st.id !== String(params.stopId || ""));
+    saveAtlas();
+    return { ok: true, result: { trip } };
+  });
+
+  registerLensAction("atlas", "trips-reorder-stops", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const trip = listAt(s.trips, aidAt(ctx)).find(t => t.id === String(params.tripId || ""));
+    if (!trip) return { ok: false, error: "trip not found" };
+    const order = Array.isArray(params.stopIds) ? params.stopIds.map(String) : [];
+    if (order.length !== trip.stops.length) return { ok: false, error: "stopIds must list every stop exactly once" };
+    const byId = new Map(trip.stops.map(st => [st.id, st]));
+    const reordered = order.map(id => byId.get(id)).filter(Boolean);
+    if (reordered.length !== trip.stops.length) return { ok: false, error: "stopIds contains unknown ids" };
+    trip.stops = reordered;
+    saveAtlas();
+    return { ok: true, result: { trip } };
+  });
+
+  registerLensAction("atlas", "trips-delete", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = listAt(s.trips, aidAt(ctx));
+    const i = arr.findIndex(t => t.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "trip not found" };
+    arr.splice(i, 1);
+    saveAtlas();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Directions (real OSRM routing) ───────────────────────────
+
+  registerLensAction("atlas", "directions", async (_ctx, _a, params = {}) => {
+    const waypoints = Array.isArray(params.waypoints) ? params.waypoints : [];
+    if (waypoints.length < 2) return { ok: false, error: "at least 2 waypoints required" };
+    for (const w of waypoints) {
+      if (!Number.isFinite(Number(w.lat)) || !Number.isFinite(Number(w.lng))) return { ok: false, error: "each waypoint needs numeric lat/lng" };
+    }
+    const profile = ['driving', 'walking', 'cycling'].includes(params.mode) ? params.mode : 'driving';
+    const coords = waypoints.map(w => `${Number(w.lng)},${Number(w.lat)}`).join(';');
+    try {
+      const url = `https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson&steps=false`;
+      const r = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!r.ok) return { ok: false, error: `OSRM ${r.status}` };
+      const data = await r.json();
+      if (data.code !== 'Ok' || !data.routes?.[0]) return { ok: false, error: `OSRM: ${data.code || 'no route'}` };
+      const route = data.routes[0];
+      return {
+        ok: true,
+        result: {
+          mode: profile,
+          distanceMeters: Math.round(route.distance),
+          distanceKm: Math.round(route.distance / 100) / 10,
+          distanceMiles: Math.round(route.distance / 1609.34 * 10) / 10,
+          durationSeconds: Math.round(route.duration),
+          durationText: formatDuration(route.duration),
+          geometry: route.geometry,   // GeoJSON LineString
+          legCount: route.legs?.length || 0,
+          source: 'osrm-project-osrm.org',
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `routing unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  function formatDuration(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.round((seconds % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  }
+
+  // ── Recent searches ──────────────────────────────────────────
+
+  registerLensAction("atlas", "recent-searches-list", (ctx, _a, _p = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { recent: listAt(s.recentSearches, aidAt(ctx)).slice(-20).reverse() } };
+  });
+
+  registerLensAction("atlas", "recent-searches-record", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    const list = listAt(s.recentSearches, userId);
+    // dedup + cap at 50
+    const existing = list.findIndex(x => x.query.toLowerCase() === query.toLowerCase());
+    if (existing >= 0) list.splice(existing, 1);
+    list.push({ query, at: isoAt() });
+    if (list.length > 50) list.splice(0, list.length - 50);
+    saveAtlas();
+    return { ok: true, result: { recorded: query } };
+  });
+
+  registerLensAction("atlas", "recent-searches-clear", (ctx, _a, _p = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    s.recentSearches.set(aidAt(ctx), []);
+    saveAtlas();
+    return { ok: true, result: { cleared: true } };
+  });
+
+  // ── AI trip planner (Google "Ask Maps" 2026 parity) ─────────
+
+  registerLensAction("atlas", "ai-trip-plan", async (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const prompt = String(params.prompt || "").trim();
+    if (!prompt) return { ok: false, error: "prompt required" };
+    const days = Math.max(1, Math.min(14, Number(params.days) || 1));
+    const places = listAt(s.places, userId);
+    if (places.length === 0) return { ok: false, error: "save some places first — the planner builds itineraries from your saved places" };
+
+    // Deterministic plan: distribute saved places across days, balancing count.
+    function deterministicPlan() {
+      // Score places by prompt-keyword match in name / notes / category.
+      const tokens = prompt.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+      const scored = places.map(p => {
+        const hay = `${p.name} ${p.notes} ${p.category}`.toLowerCase();
+        let score = tokens.reduce((sc, t) => sc + (hay.includes(t) ? 1 : 0), 0);
+        if (p.rating) score += p.rating * 0.2;
+        return { place: p, score };
+      }).sort((a, b) => b.score - a.score);
+      const itinerary = [];
+      const perDay = Math.ceil(scored.length / days);
+      for (let d = 0; d < days; d++) {
+        const dayPlaces = scored.slice(d * perDay, (d + 1) * perDay).map(x => ({
+          placeId: x.place.id, name: x.place.name, lat: x.place.lat, lng: x.place.lng, category: x.place.category,
+        }));
+        if (dayPlaces.length > 0) itinerary.push({ day: d + 1, stops: dayPlaces });
+      }
+      return itinerary;
+    }
+
+    const itinerary = deterministicPlan();
+    const brain = ctx?.llm?.chat;
+    if (typeof brain !== 'function') {
+      return { ok: true, result: { itinerary, prompt, days, source: 'deterministic', narration: `Distributed ${places.length} saved places across ${itinerary.length} day(s), ranked by relevance to "${prompt}".` } };
+    }
+    try {
+      const placeList = places.map(p => `${p.name} (${p.category}${p.rating ? `, ${p.rating}★` : ''})`).join('; ');
+      const r = await brain({
+        messages: [
+          { role: 'system', content: "You are a trip planner. Given a user's saved places and a request, write 2-3 sentences of advice on how to sequence them. Use ONLY the places listed — never invent new ones. NOT a booking service." },
+          { role: 'user', content: `Saved places: ${placeList}\n\nRequest: ${prompt} (${days} day trip)` },
+        ],
+        temperature: 0.4, maxTokens: 500,
+      });
+      const narration = String(r?.content || r?.text || '').trim();
+      return { ok: true, result: { itinerary, prompt, days, source: narration ? 'brain' : 'deterministic', narration: narration || `Distributed ${places.length} saved places across ${itinerary.length} day(s).` } };
+    } catch (_e) {
+      return { ok: true, result: { itinerary, prompt, days, source: 'deterministic_after_brain_error', narration: `Distributed ${places.length} saved places across ${itinerary.length} day(s).` } };
+    }
+  });
+
+  // ── Dashboard summary ────────────────────────────────────────
+
+  registerLensAction("atlas", "atlas-dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAt(ctx);
+    const places = listAt(s.places, userId);
+    const lists = listAt(s.lists, userId);
+    const trips = listAt(s.trips, userId);
+    const byCategory = {};
+    for (const p of places) byCategory[p.category] = (byCategory[p.category] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        placeCount: places.length,
+        listCount: lists.length,
+        tripCount: trips.length,
+        totalStops: trips.reduce((sum, t) => sum + t.stops.length, 0),
+        recentSearchCount: listAt(s.recentSearches, userId).length,
+        byCategory,
+      },
+    };
+  });
 }

@@ -23,7 +23,7 @@ import {
   Loader2, Check, AlertTriangle, Plus, X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface LiftEntry {
@@ -139,7 +139,7 @@ export function WorkoutFinishPanel() {
     if (!ready) { err('Add at least one logged lift.'); return; }
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: {
           title: `Workout — ${title.trim() || new Date().toISOString().slice(0, 10)}`,
@@ -160,7 +160,7 @@ export function WorkoutFinishPanel() {
           },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) { setMintedDtuId(id); ok(`Workout DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
@@ -201,7 +201,7 @@ export function WorkoutFinishPanel() {
         const top = l.sets.reduce((max, s) => s.weight > (max?.weight ?? 0) ? s : max, l.sets[0]);
         return { lift: l.name, weight: top?.weight ?? 0, reps: top?.reps ?? 0 };
       });
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: {
           title: `PR — ${topByLift[0]?.lift ?? 'Lift'} ${topByLift[0]?.weight}kg × ${topByLift[0]?.reps}`,
@@ -214,7 +214,7 @@ export function WorkoutFinishPanel() {
           },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (!id) { err('No DTU id returned.'); return; }
       const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
@@ -240,11 +240,11 @@ export function WorkoutFinishPanel() {
         `Design my next workout (same split-day). Return: 1) per-lift target weights + sets/reps;`,
         `2) one accessory lift to add; 3) a brief reasoning paragraph (linear progression vs deload).`,
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 4 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Next workout drafted.');

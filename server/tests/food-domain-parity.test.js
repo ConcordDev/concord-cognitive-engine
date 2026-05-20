@@ -182,3 +182,139 @@ describe("regression: pre-existing analytical macros still work", () => {
     assert.ok(ACTIONS.size > 12);
   });
 });
+
+// ─── Yelp 2026 parity — restaurant discovery ──────────────────────────
+
+describe("food.biz-* directory", () => {
+  it("create requires name + cuisine, then lists", () => {
+    assert.equal(call("biz-create", ctxA, { name: "X" }).ok, false);
+    assert.equal(call("biz-create", ctxA, { cuisine: "thai" }).ok, false);
+    const r = call("biz-create", ctxA, { name: "Som Tam", cuisine: "Thai", priceTier: 2, neighborhood: "Mission" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.business.cuisine, "thai");
+    assert.equal(call("biz-list", ctxB, {}).result.count, 1); // directory is shared
+  });
+
+  it("search filters by cuisine, price and rating", () => {
+    call("biz-create", ctxA, { name: "Pho 88", cuisine: "vietnamese", priceTier: 1 });
+    call("biz-create", ctxA, { name: "Bella", cuisine: "italian", priceTier: 3 });
+    assert.equal(call("biz-search", ctxA, { cuisine: "italian" }).result.count, 1);
+    assert.equal(call("biz-search", ctxA, { priceTier: 1 }).result.count, 1);
+    assert.equal(call("biz-search", ctxA, { query: "pho" }).result.count, 1);
+  });
+
+  it("open-now reflects business hours", () => {
+    const id = call("biz-create", ctxA, { name: "AllDay", cuisine: "cafe", hours: { open: "00:00", close: "23:59" } }).result.business.id;
+    assert.equal(call("biz-detail", ctxA, { id }).result.business.openNow, true);
+  });
+
+  it("only the owner can delete a business", () => {
+    const id = call("biz-create", ctxA, { name: "Owned", cuisine: "bbq" }).result.business.id;
+    assert.equal(call("biz-delete", ctxB, { id }).ok, false);
+    assert.equal(call("biz-delete", ctxA, { id }).ok, true);
+  });
+});
+
+describe("food.review-*", () => {
+  it("aggregate rating averages reviews; one review per user", () => {
+    const id = call("biz-create", ctxA, { name: "Tacos", cuisine: "mexican" }).result.business.id;
+    call("review-create", ctxA, { bizId: id, rating: 4, text: "solid" });
+    call("review-create", ctxB, { bizId: id, rating: 2, text: "meh" });
+    assert.equal(call("biz-detail", ctxA, { id }).result.business.rating, 3);
+    const upd = call("review-create", ctxA, { bizId: id, rating: 5, text: "better" });
+    assert.equal(upd.result.updated, true);
+    assert.equal(call("biz-detail", ctxA, { id }).result.business.rating, 3.5);
+  });
+
+  it("rejects out-of-range rating", () => {
+    const id = call("biz-create", ctxA, { name: "R", cuisine: "diner" }).result.business.id;
+    assert.equal(call("review-create", ctxA, { bizId: id, rating: 9 }).ok, false);
+  });
+
+  it("review vote toggles per user", () => {
+    const id = call("biz-create", ctxA, { name: "V", cuisine: "deli" }).result.business.id;
+    const rev = call("review-create", ctxA, { bizId: id, rating: 4 }).result.review;
+    assert.equal(call("review-vote", ctxB, { bizId: id, id: rev.id, kind: "useful" }).result.count, 1);
+    assert.equal(call("review-vote", ctxB, { bizId: id, id: rev.id, kind: "useful" }).result.count, 0);
+  });
+});
+
+describe("food.photo + tip + checkin", () => {
+  it("photos and tips attach to a business", () => {
+    const id = call("biz-create", ctxA, { name: "P", cuisine: "sushi" }).result.business.id;
+    call("photo-add", ctxA, { bizId: id, caption: "the omakase" });
+    call("tip-add", ctxB, { bizId: id, text: "go early" });
+    assert.equal(call("photo-list", ctxA, { bizId: id }).result.photos.length, 1);
+    assert.equal(call("tip-list", ctxA, { bizId: id }).result.tips.length, 1);
+    assert.equal(call("tip-add", ctxA, { bizId: id, text: "" }).ok, false);
+  });
+
+  it("checkin tracks visit number and history", () => {
+    const id = call("biz-create", ctxA, { name: "C", cuisine: "ramen" }).result.business.id;
+    call("checkin", ctxA, { bizId: id });
+    const second = call("checkin", ctxA, { bizId: id });
+    assert.equal(second.result.visitNumber, 2);
+    assert.equal(call("checkin-history", ctxA, {}).result.count, 2);
+    assert.equal(call("checkin-history", ctxB, {}).result.count, 0);
+  });
+});
+
+describe("food.collection-*", () => {
+  it("create, add businesses, detail resolves them", () => {
+    const b1 = call("biz-create", ctxA, { name: "One", cuisine: "thai" }).result.business.id;
+    const b2 = call("biz-create", ctxA, { name: "Two", cuisine: "thai" }).result.business.id;
+    const col = call("collection-create", ctxA, { name: "Date night" }).result.collection;
+    call("collection-add-biz", ctxA, { collectionId: col.id, bizId: b1 });
+    call("collection-add-biz", ctxA, { collectionId: col.id, bizId: b2 });
+    const detail = call("collection-detail", ctxA, { id: col.id });
+    assert.equal(detail.result.businesses.length, 2);
+    assert.equal(call("collection-list", ctxB, {}).result.count, 0); // per-user
+    assert.equal(call("collection-delete", ctxA, { id: col.id }).ok, true);
+  });
+});
+
+describe("food.reservation + waitlist", () => {
+  it("reservation create / list / cancel", () => {
+    const id = call("biz-create", ctxA, { name: "Resy", cuisine: "french" }).result.business.id;
+    const res = call("reservation-create", ctxA, { bizId: id, partySize: 4, dateTime: "2026-06-01T19:00" });
+    assert.equal(res.ok, true);
+    assert.equal(call("reservation-list", ctxA, {}).result.count, 1);
+    assert.equal(call("reservation-cancel", ctxA, { id: res.result.reservation.id }).result.reservation.status, "cancelled");
+    assert.equal(call("reservation-create", ctxA, { bizId: id, partySize: 0, dateTime: "x" }).ok, false);
+  });
+
+  it("waitlist estimates wait from queue depth", () => {
+    const id = call("biz-create", ctxA, { name: "Walk", cuisine: "burger" }).result.business.id;
+    const first = call("waitlist-join", ctxA, { bizId: id, partySize: 2 });
+    assert.equal(first.result.position, 1);
+    const second = call("waitlist-join", ctxB, { bizId: id, partySize: 4 });
+    assert.equal(second.result.position, 2);
+    assert.ok(second.result.estimatedWaitMin > first.result.estimatedWaitMin);
+    assert.equal(call("waitlist-join", ctxA, { bizId: id, partySize: 2 }).ok, false); // already on
+    assert.equal(call("waitlist-status", ctxA, {}).result.count, 1);
+  });
+});
+
+describe("food.top-restaurants + facets + dashboard", () => {
+  it("top-restaurants ranks by Bayesian score", () => {
+    const a = call("biz-create", ctxA, { name: "Hyped", cuisine: "thai" }).result.business.id;
+    const b = call("biz-create", ctxA, { name: "Steady", cuisine: "thai" }).result.business.id;
+    call("review-create", ctxA, { bizId: a, rating: 5 });             // 5.0 on 1 review
+    call("review-create", ctxA, { bizId: b, rating: 5 });
+    call("review-create", ctxB, { bizId: b, rating: 5 });             // 5.0 on 2 reviews
+    const top = call("top-restaurants", ctxA, {});
+    assert.equal(top.result.restaurants[0].id, b); // more reviews → higher Bayesian score
+  });
+
+  it("cuisine facets + dashboard aggregate", () => {
+    call("biz-create", ctxA, { name: "T1", cuisine: "thai" });
+    call("biz-create", ctxA, { name: "T2", cuisine: "thai" });
+    call("biz-create", ctxA, { name: "I1", cuisine: "italian" });
+    const facets = call("cuisine-facets", ctxA, {});
+    assert.equal(facets.result.facets[0].cuisine, "thai");
+    assert.equal(facets.result.facets[0].count, 2);
+    const dash = call("food-discover-dashboard", ctxA, {});
+    assert.equal(dash.result.businesses, 3);
+    assert.equal(dash.result.cuisines, 2);
+  });
+});

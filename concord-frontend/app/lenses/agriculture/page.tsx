@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
+const FarmMapPanel = dynamic(() => import('@/components/agriculture/FarmMapPanel'), { ssr: false });
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -60,6 +61,16 @@ import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero'
 import FarmWorkbench from '@/components/agriculture/FarmWorkbench';
 import { PestIdentifier } from '@/components/agriculture/PestIdentifier';
 import { AgricultureActionPanel } from '@/components/agriculture/AgricultureActionPanel';
+import EquipmentPanel from '@/components/agriculture/EquipmentPanel';
+import PrescriptionsPanel from '@/components/agriculture/PrescriptionsPanel';
+import PassesPanel from '@/components/agriculture/PassesPanel';
+import NitrogenPlanner from '@/components/agriculture/NitrogenPlanner';
+import ImageryPanel from '@/components/agriculture/ImageryPanel';
+import WorkOrdersPanel from '@/components/agriculture/WorkOrdersPanel';
+import GrainBinsPanel from '@/components/agriculture/GrainBinsPanel';
+import ZonesPanel from '@/components/agriculture/ZonesPanel';
+import TankMixesPanel from '@/components/agriculture/TankMixesPanel';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { PipingProvider } from '@/components/panel-polish';
 
 // ---------------------------------------------------------------------------
@@ -1458,6 +1469,8 @@ export default function AgricultureLensPage() {
       <FirstRunTour lensId="agriculture" />
       <DepthBadge lensId="agriculture" size="sm" className="ml-2" />
     <div data-lens-theme="agriculture" className={ds.pageContainer}>
+      <RivalShapePreview lensId="agriculture" defaultOpen={true} />
+      <DeereWorkbenchSection />
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
           <Wheat className="w-8 h-8 text-green-400" />
@@ -1978,5 +1991,58 @@ export default function AgricultureLensPage() {
           <AutoActionStrip domain="agriculture" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="agriculture" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  John Deere Ops Center / FieldView-parity workbench section          */
+/* ------------------------------------------------------------------ */
+
+function DeereWorkbenchSection() {
+  const [active, setActive] = useState<'map' | 'equipment' | 'zones' | 'prescriptions' | 'passes' | 'nitrogen' | 'imagery' | 'tankmix' | 'workorders' | 'grain'>('map');
+  const TABS = [
+    { id: 'map', label: 'Farm map' },
+    { id: 'equipment', label: 'Equipment' },
+    { id: 'zones', label: 'Zones' },
+    { id: 'prescriptions', label: 'Prescriptions' },
+    { id: 'passes', label: 'Passes' },
+    { id: 'nitrogen', label: 'Nitrogen' },
+    { id: 'imagery', label: 'Imagery' },
+    { id: 'tankmix', label: 'Tank mixes' },
+    { id: 'workorders', label: 'Work orders' },
+    { id: 'grain', label: 'Grain bins' },
+  ] as const;
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider">Deere Ops Center / FieldView workbench</h2>
+      <nav className="flex items-center gap-1 border-b border-emerald-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={
+              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
+              (active === t.id
+                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
+                : 'text-gray-500 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent')
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div>
+        {active === 'map' && <FarmMapPanel />}
+        {active === 'equipment' && <EquipmentPanel />}
+        {active === 'zones' && <ZonesPanel />}
+        {active === 'prescriptions' && <PrescriptionsPanel />}
+        {active === 'passes' && <PassesPanel />}
+        {active === 'nitrogen' && <NitrogenPlanner />}
+        {active === 'imagery' && <ImageryPanel />}
+        {active === 'tankmix' && <TankMixesPanel />}
+        {active === 'workorders' && <WorkOrdersPanel />}
+        {active === 'grain' && <GrainBinsPanel />}
+      </div>
+    </section>
   );
 }

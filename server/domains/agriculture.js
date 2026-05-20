@@ -856,4 +856,503 @@ export default function registerAgricultureActions(registerLensAction) {
     saveAgriState();
     return { ok: true, result: { deleted: id } };
   });
+
+  // ─── Full-app parity: John Deere Operations Center + FieldView ─────
+
+  function uidAg(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+  function ensureAgBucket(state, key, userId) {
+    if (!state[key]) state[key] = new Map();
+    if (!state[key].has(userId)) state[key].set(userId, []);
+    return state[key].get(userId);
+  }
+
+  // ── Equipment / machine fleet ─────────────────────────────────
+
+  registerLensAction("agriculture", "equipment-list", (ctx, _a, _p = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const equipment = ensureAgBucket(s, "equipment", userId);
+    return { ok: true, result: { equipment } };
+  });
+
+  registerLensAction("agriculture", "equipment-add", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const eq = {
+      id: uidAg("eq"), name,
+      kind: ["tractor", "combine", "sprayer", "planter", "tillage", "harvester", "spreader", "drone"].includes(params.kind) ? params.kind : "tractor",
+      make: String(params.make || ""),
+      model: String(params.model || ""),
+      year: Number(params.year) || null,
+      hoursEngine: Math.max(0, Number(params.hoursEngine) || 0),
+      lat: params.lat != null ? Number(params.lat) : null,
+      lng: params.lng != null ? Number(params.lng) : null,
+      speedMph: 0,
+      fuelLevelPct: 100,
+      defLevelPct: 100,
+      status: "idle",
+      operatorId: params.operatorId ? String(params.operatorId) : null,
+      addedAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "equipment", userId).push(eq);
+    saveAgriState();
+    return { ok: true, result: { equipment: eq } };
+  });
+
+  registerLensAction("agriculture", "equipment-update-telemetry", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const eq = ensureAgBucket(s, "equipment", userId).find(e => e.id === id);
+    if (!eq) return { ok: false, error: "equipment not found" };
+    if (params.lat != null) eq.lat = Number(params.lat);
+    if (params.lng != null) eq.lng = Number(params.lng);
+    if (params.speedMph != null) eq.speedMph = Math.max(0, Number(params.speedMph));
+    if (params.fuelLevelPct != null) eq.fuelLevelPct = Math.max(0, Math.min(100, Number(params.fuelLevelPct)));
+    if (params.defLevelPct != null) eq.defLevelPct = Math.max(0, Math.min(100, Number(params.defLevelPct)));
+    if (params.hoursEngine != null) eq.hoursEngine = Math.max(eq.hoursEngine, Number(params.hoursEngine));
+    if (params.status && ["idle", "working", "transporting", "maintenance", "offline"].includes(params.status)) eq.status = params.status;
+    eq.telemetryUpdatedAt = new Date().toISOString();
+    saveAgriState();
+    return { ok: true, result: { equipment: eq } };
+  });
+
+  registerLensAction("agriculture", "equipment-delete", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAgBucket(s, "equipment", userId);
+    const idx = list.findIndex(e => e.id === id);
+    if (idx < 0) return { ok: false, error: "equipment not found" };
+    list.splice(idx, 1);
+    saveAgriState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Field zones (auto-zoning + soil-based) ────────────────────
+
+  registerLensAction("agriculture", "zones-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "zones", userId);
+    const zones = fieldId ? all.filter(z => z.fieldId === fieldId) : all;
+    return { ok: true, result: { zones } };
+  });
+
+  registerLensAction("agriculture", "zones-create", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    const name = String(params.name || "").trim();
+    if (!fieldId || !name) return { ok: false, error: "fieldId and name required" };
+    const zone = {
+      id: uidAg("zone"), fieldId, name,
+      productivityClass: ["high", "medium", "low"].includes(params.productivityClass) ? params.productivityClass : "medium",
+      areaAcres: Math.max(0, Number(params.areaAcres) || 0),
+      soilType: String(params.soilType || ""),
+      organicMatterPct: Math.max(0, Number(params.organicMatterPct) || 0),
+      polygon: Array.isArray(params.polygon) ? params.polygon : [],
+      createdAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "zones", userId).push(zone);
+    saveAgriState();
+    return { ok: true, result: { zone } };
+  });
+
+  registerLensAction("agriculture", "zones-delete", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAgBucket(s, "zones", userId);
+    const idx = list.findIndex(z => z.id === id);
+    if (idx < 0) return { ok: false, error: "zone not found" };
+    list.splice(idx, 1);
+    saveAgriState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Prescription maps (variable-rate scripts) ─────────────────
+
+  registerLensAction("agriculture", "prescriptions-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "prescriptions", userId);
+    const items = fieldId ? all.filter(p => p.fieldId === fieldId) : all;
+    return { ok: true, result: { prescriptions: items } };
+  });
+
+  registerLensAction("agriculture", "prescriptions-create", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    const product = String(params.product || "").trim();
+    const kind = ["seed", "nitrogen", "phosphorus", "potassium", "herbicide", "fungicide", "insecticide"].includes(params.kind) ? params.kind : "nitrogen";
+    if (!fieldId || !product) return { ok: false, error: "fieldId and product required" };
+    const zoneRates = Array.isArray(params.zoneRates) ? params.zoneRates : [];
+    const avgRate = zoneRates.length > 0 ? zoneRates.reduce((s, r) => s + (Number(r.rate) || 0), 0) / zoneRates.length : Math.max(0, Number(params.flatRate) || 0);
+    const rx = {
+      id: uidAg("rx"), fieldId, product, kind,
+      unit: String(params.unit || (kind === "seed" ? "seeds/acre" : "lbs/acre")),
+      zoneRates,
+      flatRate: Number(params.flatRate) || null,
+      avgRate: Math.round(avgRate * 100) / 100,
+      authoredBy: params.authoredBy ? String(params.authoredBy) : "operator",
+      status: "draft",
+      createdAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "prescriptions", userId).push(rx);
+    saveAgriState();
+    return { ok: true, result: { prescription: rx } };
+  });
+
+  registerLensAction("agriculture", "prescriptions-approve", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const rx = ensureAgBucket(s, "prescriptions", userId).find(r => r.id === id);
+    if (!rx) return { ok: false, error: "prescription not found" };
+    rx.status = "approved";
+    rx.approvedAt = new Date().toISOString();
+    saveAgriState();
+    return { ok: true, result: { prescription: rx } };
+  });
+
+  registerLensAction("agriculture", "prescriptions-delete", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAgBucket(s, "prescriptions", userId);
+    const idx = list.findIndex(r => r.id === id);
+    if (idx < 0) return { ok: false, error: "prescription not found" };
+    list.splice(idx, 1);
+    saveAgriState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Planting passes ───────────────────────────────────────────
+
+  registerLensAction("agriculture", "planting-passes", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "plantingPasses", userId);
+    const passes = fieldId ? all.filter(p => p.fieldId === fieldId) : all;
+    return { ok: true, result: { passes } };
+  });
+
+  registerLensAction("agriculture", "planting-log", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    const crop = String(params.crop || "").trim();
+    const variety = String(params.variety || "").trim();
+    if (!fieldId || !crop) return { ok: false, error: "fieldId and crop required" };
+    const pass = {
+      id: uidAg("plant"), fieldId, crop, variety,
+      seedingRate: Math.max(0, Number(params.seedingRate) || 0),
+      seedingRateUnit: String(params.seedingRateUnit || "seeds/acre"),
+      depthInches: Math.max(0, Number(params.depthInches) || 0),
+      rowSpacingInches: Math.max(0, Number(params.rowSpacingInches) || 30),
+      acresPlanted: Math.max(0, Number(params.acresPlanted) || 0),
+      equipmentId: params.equipmentId ? String(params.equipmentId) : null,
+      operatorId: params.operatorId ? String(params.operatorId) : null,
+      plantedAt: params.plantedAt || new Date().toISOString(),
+      soilTemperatureF: Number(params.soilTemperatureF) || null,
+      soilMoisturePct: Number(params.soilMoisturePct) || null,
+    };
+    ensureAgBucket(s, "plantingPasses", userId).push(pass);
+    saveAgriState();
+    return { ok: true, result: { pass } };
+  });
+
+  // ── Harvest passes (yield, moisture, weight tickets) ──────────
+
+  registerLensAction("agriculture", "harvest-passes", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "harvestPasses", userId);
+    const passes = fieldId ? all.filter(p => p.fieldId === fieldId) : all;
+    return { ok: true, result: { passes } };
+  });
+
+  registerLensAction("agriculture", "harvest-log", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    const crop = String(params.crop || "").trim();
+    const acresHarvested = Math.max(0, Number(params.acresHarvested) || 0);
+    const yieldBushels = Math.max(0, Number(params.yieldBushels) || 0);
+    if (!fieldId || !crop) return { ok: false, error: "fieldId and crop required" };
+    if (acresHarvested <= 0) return { ok: false, error: "acresHarvested must be > 0" };
+    const yieldPerAcre = yieldBushels / acresHarvested;
+    const pass = {
+      id: uidAg("harv"), fieldId, crop,
+      acresHarvested, yieldBushels,
+      yieldPerAcre: Math.round(yieldPerAcre * 100) / 100,
+      moisturePct: Number(params.moisturePct) || null,
+      testWeightLbs: Number(params.testWeightLbs) || null,
+      equipmentId: params.equipmentId ? String(params.equipmentId) : null,
+      operatorId: params.operatorId ? String(params.operatorId) : null,
+      ticketNumber: `TKT-${Math.floor(Math.random() * 900000) + 100000}`,
+      harvestedAt: params.harvestedAt || new Date().toISOString(),
+    };
+    ensureAgBucket(s, "harvestPasses", userId).push(pass);
+    saveAgriState();
+    return { ok: true, result: { pass } };
+  });
+
+  // ── Nitrogen plans + applied tracking ─────────────────────────
+
+  registerLensAction("agriculture", "nitrogen-plans", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "nitrogenPlans", userId);
+    const plans = fieldId ? all.filter(p => p.fieldId === fieldId) : all;
+    return { ok: true, result: { plans } };
+  });
+
+  registerLensAction("agriculture", "nitrogen-plan-create", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    const targetLbsPerAcre = Math.max(0, Number(params.targetLbsPerAcre) || 0);
+    if (!fieldId || targetLbsPerAcre <= 0) return { ok: false, error: "fieldId and targetLbsPerAcre > 0 required" };
+    const plan = {
+      id: uidAg("npl"), fieldId, targetLbsPerAcre,
+      crop: String(params.crop || ""),
+      splitApplications: Array.isArray(params.splitApplications) ? params.splitApplications : [{ timing: "preplant", lbsPerAcre: targetLbsPerAcre }],
+      totalApplied: 0,
+      remaining: targetLbsPerAcre,
+      season: String(params.season || new Date().getFullYear()),
+      createdAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "nitrogenPlans", userId).push(plan);
+    saveAgriState();
+    return { ok: true, result: { plan } };
+  });
+
+  registerLensAction("agriculture", "nitrogen-apply", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const planId = String(params.planId || "");
+    const lbsPerAcre = Math.max(0, Number(params.lbsPerAcre) || 0);
+    const product = String(params.product || "UAN-32");
+    if (!planId || lbsPerAcre <= 0) return { ok: false, error: "planId and lbsPerAcre > 0 required" };
+    const plan = ensureAgBucket(s, "nitrogenPlans", userId).find(p => p.id === planId);
+    if (!plan) return { ok: false, error: "plan not found" };
+    plan.totalApplied = Math.round((plan.totalApplied + lbsPerAcre) * 100) / 100;
+    plan.remaining = Math.max(0, Math.round((plan.targetLbsPerAcre - plan.totalApplied) * 100) / 100);
+    const application = {
+      id: uidAg("napp"), planId, lbsPerAcre, product,
+      appliedAt: new Date().toISOString(),
+      timing: String(params.timing || "sidedress"),
+    };
+    if (!plan.applications) plan.applications = [];
+    plan.applications.push(application);
+    saveAgriState();
+    return { ok: true, result: { plan, application } };
+  });
+
+  // ── Imagery layers (satellite + drone) ────────────────────────
+
+  registerLensAction("agriculture", "imagery-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "imagery", userId);
+    const imagery = fieldId ? all.filter(i => i.fieldId === fieldId) : all;
+    return { ok: true, result: { imagery: imagery.slice().reverse() } };
+  });
+
+  registerLensAction("agriculture", "imagery-attach", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    const url = String(params.url || "").trim();
+    if (!fieldId || !url) return { ok: false, error: "fieldId and url required" };
+    const img = {
+      id: uidAg("img"), fieldId, url,
+      source: ["satellite", "drone", "uav", "handheld"].includes(params.source) ? params.source : "drone",
+      kind: ["rgb", "ndvi", "ndre", "thermal", "elevation", "orthomosaic"].includes(params.kind) ? params.kind : "rgb",
+      capturedAt: params.capturedAt || new Date().toISOString(),
+      cloudCoverPct: Number(params.cloudCoverPct) || null,
+      gsd: String(params.gsd || ""),
+      notes: String(params.notes || ""),
+      attachedAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "imagery", userId).push(img);
+    saveAgriState();
+    return { ok: true, result: { imagery: img } };
+  });
+
+  // ── Tank mixing (Bayer auto-zoning + tank mixing feature) ─────
+
+  registerLensAction("agriculture", "tank-mixes-list", (ctx, _a, _p = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const mixes = ensureAgBucket(s, "tankMixes", userId);
+    return { ok: true, result: { mixes } };
+  });
+
+  registerLensAction("agriculture", "tank-mix-create", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const name = String(params.name || "").trim();
+    const components = Array.isArray(params.components) ? params.components : [];
+    if (!name || components.length === 0) return { ok: false, error: "name and at least one component required" };
+    const carrierGalPerAcre = Math.max(0, Number(params.carrierGalPerAcre) || 10);
+    const mix = {
+      id: uidAg("mix"), name, components,
+      carrierGalPerAcre,
+      totalCostPerAcre: components.reduce((s, c) => s + (Number(c.costPerAcre) || 0), 0),
+      compatible: components.length <= 4,
+      createdAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "tankMixes", userId).push(mix);
+    saveAgriState();
+    return { ok: true, result: { mix } };
+  });
+
+  // ── Work orders (field operations) ────────────────────────────
+
+  registerLensAction("agriculture", "work-orders-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const status = params.status ? String(params.status) : null;
+    const all = ensureAgBucket(s, "workOrders", userId);
+    const orders = status ? all.filter(o => o.status === status) : all;
+    return { ok: true, result: { orders } };
+  });
+
+  registerLensAction("agriculture", "work-orders-create", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    const operation = String(params.operation || "").trim();
+    if (!fieldId || !operation) return { ok: false, error: "fieldId and operation required" };
+    const order = {
+      id: uidAg("wo"), fieldId, operation,
+      kind: ["planting", "spraying", "tillage", "harvest", "scouting", "irrigation", "fertilize"].includes(params.kind) ? params.kind : "spraying",
+      scheduledFor: params.scheduledFor || null,
+      equipmentId: params.equipmentId ? String(params.equipmentId) : null,
+      operatorId: params.operatorId ? String(params.operatorId) : null,
+      prescriptionId: params.prescriptionId ? String(params.prescriptionId) : null,
+      tankMixId: params.tankMixId ? String(params.tankMixId) : null,
+      status: "scheduled",
+      notes: String(params.notes || ""),
+      createdAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "workOrders", userId).push(order);
+    saveAgriState();
+    return { ok: true, result: { order } };
+  });
+
+  registerLensAction("agriculture", "work-orders-complete", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const order = ensureAgBucket(s, "workOrders", userId).find(o => o.id === id);
+    if (!order) return { ok: false, error: "work order not found" };
+    order.status = "completed";
+    order.completedAt = new Date().toISOString();
+    order.completionNotes = String(params.notes || "");
+    saveAgriState();
+    return { ok: true, result: { order } };
+  });
+
+  // ── Grain bins (storage tracking) ─────────────────────────────
+
+  registerLensAction("agriculture", "grain-bins-list", (ctx, _a, _p = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const bins = ensureAgBucket(s, "grainBins", userId);
+    return { ok: true, result: { bins } };
+  });
+
+  registerLensAction("agriculture", "grain-bins-create", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const name = String(params.name || "").trim();
+    const capacityBushels = Math.max(0, Number(params.capacityBushels) || 0);
+    if (!name || capacityBushels <= 0) return { ok: false, error: "name and capacityBushels > 0 required" };
+    const bin = {
+      id: uidAg("bin"), name, capacityBushels,
+      crop: String(params.crop || ""),
+      currentBushels: 0,
+      moisturePct: Number(params.moisturePct) || null,
+      tempF: Number(params.tempF) || null,
+      location: String(params.location || ""),
+      createdAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "grainBins", userId).push(bin);
+    saveAgriState();
+    return { ok: true, result: { bin } };
+  });
+
+  registerLensAction("agriculture", "grain-bins-load", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const bushels = Math.max(0, Number(params.bushels) || 0);
+    if (!id || bushels <= 0) return { ok: false, error: "id and bushels > 0 required" };
+    const bin = ensureAgBucket(s, "grainBins", userId).find(b => b.id === id);
+    if (!bin) return { ok: false, error: "bin not found" };
+    if (bin.currentBushels + bushels > bin.capacityBushels) return { ok: false, error: `would exceed capacity (${bin.currentBushels}/${bin.capacityBushels} bu)` };
+    bin.currentBushels = Math.round((bin.currentBushels + bushels) * 100) / 100;
+    saveAgriState();
+    return { ok: true, result: { bin } };
+  });
+
+  registerLensAction("agriculture", "grain-bins-unload", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const bushels = Math.max(0, Number(params.bushels) || 0);
+    if (!id || bushels <= 0) return { ok: false, error: "id and bushels > 0 required" };
+    const bin = ensureAgBucket(s, "grainBins", userId).find(b => b.id === id);
+    if (!bin) return { ok: false, error: "bin not found" };
+    if (bushels > bin.currentBushels) return { ok: false, error: `insufficient inventory (${bin.currentBushels} bu)` };
+    bin.currentBushels = Math.round((bin.currentBushels - bushels) * 100) / 100;
+    saveAgriState();
+    return { ok: true, result: { bin } };
+  });
+
+  // ── Dashboard summary (AgFarmShell data source) ───────────────
+
+  registerLensAction("agriculture", "dashboard-summary", (ctx, _a, _p = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fields = s.fields?.get(userId) ? Array.from(s.fields.get(userId).values()) : [];
+    const equipment = ensureAgBucket(s, "equipment", userId);
+    const orders = ensureAgBucket(s, "workOrders", userId);
+    const prescriptions = ensureAgBucket(s, "prescriptions", userId);
+    const harvests = ensureAgBucket(s, "harvestPasses", userId);
+    const bins = ensureAgBucket(s, "grainBins", userId);
+    const totalAcres = fields.reduce((sum, f) => sum + (Number(f.acreage ?? f.acres) || 0), 0);
+    const yieldThisSeason = harvests.reduce((sum, h) => sum + (h.yieldBushels || 0), 0);
+    const grainStored = bins.reduce((sum, b) => sum + (b.currentBushels || 0), 0);
+    const grainCapacity = bins.reduce((sum, b) => sum + (b.capacityBushels || 0), 0);
+    return {
+      ok: true,
+      result: {
+        totalFields: fields.length,
+        totalAcres: Math.round(totalAcres * 10) / 10,
+        equipmentCount: equipment.length,
+        equipmentWorking: equipment.filter(e => e.status === "working").length,
+        scheduledWorkOrders: orders.filter(o => o.status === "scheduled").length,
+        approvedPrescriptions: prescriptions.filter(p => p.status === "approved").length,
+        seasonYieldBushels: Math.round(yieldThisSeason),
+        avgYieldPerAcre: totalAcres > 0 ? Math.round((yieldThisSeason / totalAcres) * 100) / 100 : 0,
+        grainStored: Math.round(grainStored),
+        grainCapacity: Math.round(grainCapacity),
+        grainUtilizationPct: grainCapacity > 0 ? Math.round((grainStored / grainCapacity) * 100) : 0,
+      },
+    };
+  });
 };

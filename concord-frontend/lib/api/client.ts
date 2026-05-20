@@ -308,6 +308,87 @@ api.interceptors.response.use(
   }
 );
 
+interface LensRunSpec {
+  domain: string;
+  action?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+  signal?: AbortSignal;
+}
+
+/**
+ * lensRun — calls POST /api/lens/run and unwraps the response envelope.
+ *
+ * The route (server.js) wraps once: { ok, result }. registerLensAction
+ * handlers themselves return { ok, result }, so the body is double-wrapped:
+ *   { ok:true, result:{ ok:true, result:{...payload...} } }
+ * This helper unwraps every { ok, result } layer so callers reach the real
+ * payload. It returns an axios-shaped { data } object so it is a drop-in
+ * replacement for `api.post('/api/lens/run', { domain, action, input })` —
+ * callers keep reading `r.data?.result?.<field>` and `r.data?.ok`/`r.data?.error`.
+ *
+ * Two call forms:
+ *   lensRun('crypto', 'holdings-list', { ... })          // positional (new code)
+ *   lensRun({ domain: 'crypto', action: 'holdings-list', input: { ... } })  // object (drop-in)
+ *
+ * The unwrapped payload (`r.data.result`) is untyped by default so existing
+ * `r.data?.result?.<field>` reads compile unchanged. Pass an explicit type for
+ * compile-time safety in new code: `lensRun<MyShape>('domain', 'action', {})`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function lensRun<T = any>(
+  domainOrSpec: string | LensRunSpec,
+  action?: string,
+  input: Record<string, unknown> = {},
+): Promise<{ data: { ok: boolean; result: T | null; error: string | null } }> {
+  try {
+    let domain: string;
+    let act: string;
+    let inp: Record<string, unknown>;
+    let signal: AbortSignal | undefined;
+    if (typeof domainOrSpec === 'string') {
+      domain = domainOrSpec;
+      act = action || '';
+      inp = input;
+    } else {
+      domain = domainOrSpec.domain;
+      act = domainOrSpec.action || domainOrSpec.name || '';
+      inp = domainOrSpec.input || {};
+      signal = domainOrSpec.signal;
+    }
+    const res = await api.post(
+      '/api/lens/run',
+      { domain, action: act, input: inp },
+      signal ? { signal } : undefined,
+    );
+    let node: unknown = res?.data;
+    let err: string | null = null;
+    // Unwrap while the node is an { ok, result } envelope (tolerates single OR double wrap).
+    while (
+      node && typeof node === 'object'
+      && 'ok' in (node as Record<string, unknown>)
+      && 'result' in (node as Record<string, unknown>)
+    ) {
+      const n = node as { ok: boolean; result: unknown; error?: string };
+      if (n.ok === false) err = n.error || err;
+      node = n.result;
+    }
+    // Terminal { ok:false, error } (handler error path — no result key).
+    if (node && typeof node === 'object' && (node as { ok?: boolean }).ok === false) {
+      return {
+        data: {
+          ok: false,
+          result: null,
+          error: String((node as { error?: string }).error || err || 'lens error'),
+        },
+      };
+    }
+    return { data: { ok: !err, result: node as T, error: err } };
+  } catch (e) {
+    return { data: { ok: false, result: null, error: e instanceof Error ? e.message : String(e) } };
+  }
+}
+
 // Typed API helper functions matching actual backend endpoints
 export const apiHelpers = {
   // System status

@@ -9,6 +9,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { GCalSection } from '@/components/calendar/GCalSection';
 import { TimezoneTools } from '@/components/calendar/TimezoneTools';
 import { ScheduleAnalyzer } from '@/components/calendar/ScheduleAnalyzer';
 import { CalendarActionPanel } from '@/components/calendar/CalendarActionPanel';
@@ -1200,6 +1201,9 @@ export default function CalendarLensPage() {
     <LensShell lensId="calendar" asMain={false}>
       <FirstRunTour lensId="calendar" />
       <DepthBadge lensId="calendar" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <GCalSection />
+      </div>
     <div data-lens-theme="calendar" className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">

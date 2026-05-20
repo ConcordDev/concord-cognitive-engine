@@ -22,7 +22,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { cn } from '@/lib/utils';
 
@@ -131,7 +131,7 @@ export function CodeActionPanel() {
     if (!ready) { err('Paste code.'); return; }
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: {
           title: `Code review — ${snippetName.trim() || `${language} snippet`}`,
@@ -140,7 +140,7 @@ export function CodeActionPanel() {
           meta: { visibility: 'private', consent: { allowCitations: false }, codeReview: { language, code: snippetCode.slice(0, 4000), complexity: complexityResult, deps: depsResult, coverage: coverageResult, snapshotId, snippetId: savedSnippetId } },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) { setMintedDtuId(id); pipe.publish('code.mintedDtuId', id, { label: `Review DTU ${id.slice(0, 8)}…` }); ok(`Review DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
@@ -174,7 +174,7 @@ export function CodeActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', {
+        const r = await lensRun({
           domain: 'dtu', name: 'create',
           input: {
             title: `Public gist — ${snippetName.trim() || `${language} snippet`}`,
@@ -183,7 +183,7 @@ export function CodeActionPanel() {
             meta: { visibility: 'public', consent: { allowCitations: true }, gist: { language, name: snippetName.trim(), code: snippetCode } },
           },
         });
-        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;
         if (!newId) throw new Error('No DTU id returned.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -204,8 +204,8 @@ export function CodeActionPanel() {
         complexityResult ? `Context: cyclomatic ${complexityResult.cyclomatic}, risk ${complexityResult.risk}.` : '',
         '', 'Code:', snippetCode.slice(0, 3000),
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('3 refactors ready.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }

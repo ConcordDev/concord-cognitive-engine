@@ -15,7 +15,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Search, Loader2, MapPin, ExternalLink, AlertTriangle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface GeocodeResult {
@@ -32,7 +32,7 @@ interface GeocodeResult {
 
 async function runMacro<T>(name: string, input: Record<string, unknown> = {}): Promise<T | null> {
   try {
-    const r = await api.post('/api/lens/run', { domain: 'atlas', name, input });
+    const r = await lensRun({ domain: 'atlas', name, input });
     return r?.data as T;
   } catch {
     return null;

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Terminal as TerminalIcon, X, Play, RotateCcw, Loader2, Maximize2, Minimize2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 
 interface TerminalPanelProps {
   open: boolean;
@@ -128,7 +128,7 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
     const started = performance.now();
     appendLine({ kind: 'cmd', text: `▶ run ${activeName} (${activeLanguage})`, ts: Date.now() });
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'code',
         action: 'exec',
         input: { code: activeCode, language: activeLanguage, filename: activeName },
@@ -171,7 +171,7 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
     }
     setRunning(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'code',
         action: 'exec',
         input: { code: cmd, language: activeLanguage, filename: 'inline' },

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ShieldCheck, Trash2, Loader2, ExternalLink, AlertTriangle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface TokenAllowance {
@@ -33,7 +33,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'crypto',
         action: 'token-allowances',
         input: { walletAddress },
@@ -47,7 +47,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
   async function revoke(id: string) {
     setRevoking(id);
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'crypto',
         action: 'revoke-allowance',
         input: { id, walletAddress },

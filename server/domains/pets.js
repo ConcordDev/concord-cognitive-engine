@@ -486,4 +486,636 @@ export default function registerPetsActions(registerLensAction) {
       return { ok: false, error: `${species}api unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Pet-care 2026 parity — health records + Rover-shape services ────
+  // PetNoter / Petfetti / VitusVet-shape health management + Rover-shape
+  // caregiver booking. All STATE-backed, per-user scoped, real math.
+
+  function getPetState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.petsLens) STATE.petsLens = {};
+    const s = STATE.petsLens;
+    for (const k of [
+      "pets", "vaccines", "medications", "vetVisits", "weights",
+      "careActivities", "symptoms", "reminders", "documents", "expenses",
+      "caregivers", "bookings",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function savePetState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const pid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const pnow = () => new Date().toISOString();
+  const paid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const plistB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const pnum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const pclean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const pday = (v) => pclean(v, 10).slice(0, 10);
+  const findPet = (s, userId, petId) => (s.pets.get(userId) || []).find((p) => p.id === petId) || null;
+  const DAY_MS = 86400000;
+
+  function petAge(birthdate) {
+    if (!birthdate) return null;
+    const b = new Date(birthdate + "T00:00:00Z");
+    if (isNaN(b)) return null;
+    const months = Math.max(0, Math.floor((Date.now() - b.getTime()) / (DAY_MS * 30.44)));
+    return { years: Math.floor(months / 12), months: months % 12, totalMonths: months };
+  }
+  function dueState(dateStr) {
+    if (!dateStr) return "none";
+    const t = new Date(dateStr + "T00:00:00Z").getTime();
+    if (isNaN(t)) return "none";
+    const days = Math.floor((t - Date.now()) / DAY_MS);
+    if (days < 0) return "overdue";
+    if (days <= 30) return "due_soon";
+    return "scheduled";
+  }
+
+  // ── Pets ────────────────────────────────────────────────────────────
+  registerLensAction("pets", "pet-add", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = pclean(params.name, 80);
+    if (!name) return { ok: false, error: "name required" };
+    const species = pclean(params.species, 40).toLowerCase() || "dog";
+    const pet = {
+      id: pid("pet"),
+      name, species,
+      breed: pclean(params.breed, 80) || null,
+      sex: ["male", "female", "unknown"].includes(String(params.sex).toLowerCase())
+        ? String(params.sex).toLowerCase() : "unknown",
+      birthdate: pday(params.birthdate) || null,
+      weightKg: Math.max(0, pnum(params.weightKg)),
+      microchipId: pclean(params.microchipId, 40) || null,
+      photo: pclean(params.photo, 500) || null,
+      neutered: params.neutered === true,
+      createdAt: pnow(),
+    };
+    plistB(s.pets, paid(ctx)).push(pet);
+    savePetState();
+    return { ok: true, result: { pet } };
+  });
+
+  registerLensAction("pets", "pet-list", (ctx, _a, _params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pets = (s.pets.get(paid(ctx)) || []).map((p) => ({ ...p, age: petAge(p.birthdate) }));
+    return { ok: true, result: { pets, count: pets.length } };
+  });
+
+  registerLensAction("pets", "pet-update", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pet = findPet(s, paid(ctx), params.id);
+    if (!pet) return { ok: false, error: "pet not found" };
+    if (params.name != null) { const n = pclean(params.name, 80); if (n) pet.name = n; }
+    if (params.breed != null) pet.breed = pclean(params.breed, 80) || null;
+    if (params.weightKg != null) pet.weightKg = Math.max(0, pnum(params.weightKg));
+    if (params.birthdate != null) pet.birthdate = pday(params.birthdate) || null;
+    if (params.microchipId != null) pet.microchipId = pclean(params.microchipId, 40) || null;
+    if (params.photo != null) pet.photo = pclean(params.photo, 500) || null;
+    if (params.neutered != null) pet.neutered = params.neutered === true;
+    savePetState();
+    return { ok: true, result: { pet } };
+  });
+
+  registerLensAction("pets", "pet-delete", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.pets.get(paid(ctx)) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "pet not found" };
+    arr.splice(i, 1);
+    for (const m of [s.vaccines, s.medications, s.vetVisits, s.weights, s.careActivities, s.symptoms, s.reminders, s.documents, s.expenses]) {
+      m.delete(params.id);
+    }
+    savePetState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("pets", "pet-detail", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pet = findPet(s, paid(ctx), params.id);
+    if (!pet) return { ok: false, error: "pet not found" };
+    const reminders = s.reminders.get(pet.id) || [];
+    const vaccines = s.vaccines.get(pet.id) || [];
+    return {
+      ok: true,
+      result: {
+        pet: { ...pet, age: petAge(pet.birthdate) },
+        counts: {
+          vaccines: vaccines.length,
+          medications: (s.medications.get(pet.id) || []).filter((m) => m.active).length,
+          vetVisits: (s.vetVisits.get(pet.id) || []).length,
+          weightLogs: (s.weights.get(pet.id) || []).length,
+        },
+        overdueVaccines: vaccines.filter((v) => dueState(v.nextDueDate) === "overdue").length,
+        openReminders: reminders.filter((r) => !r.done).length,
+      },
+    };
+  });
+
+  // ── Vaccinations ────────────────────────────────────────────────────
+  registerLensAction("pets", "vaccine-record", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const name = pclean(params.name, 80);
+    if (!name) return { ok: false, error: "vaccine name required" };
+    const vac = {
+      id: pid("vac"), petId: String(params.petId), name,
+      date: pday(params.date) || pday(pnow()),
+      nextDueDate: pday(params.nextDueDate) || null,
+      vet: pclean(params.vet, 120) || null,
+      createdAt: pnow(),
+    };
+    plistB(s.vaccines, vac.petId).push(vac);
+    savePetState();
+    return { ok: true, result: { vaccine: vac } };
+  });
+
+  registerLensAction("pets", "vaccine-list", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const vaccines = (s.vaccines.get(String(params.petId)) || [])
+      .map((v) => ({ ...v, status: dueState(v.nextDueDate) }))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    return {
+      ok: true,
+      result: {
+        vaccines,
+        overdue: vaccines.filter((v) => v.status === "overdue").length,
+        dueSoon: vaccines.filter((v) => v.status === "due_soon").length,
+      },
+    };
+  });
+
+  registerLensAction("pets", "vaccine-delete", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const arr = s.vaccines.get(String(params.petId)) || [];
+    const i = arr.findIndex((v) => v.id === params.id);
+    if (i < 0) return { ok: false, error: "vaccine record not found" };
+    arr.splice(i, 1);
+    savePetState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Medications ─────────────────────────────────────────────────────
+  registerLensAction("pets", "medication-add", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const name = pclean(params.name, 80);
+    if (!name) return { ok: false, error: "medication name required" };
+    const med = {
+      id: pid("med"), petId: String(params.petId), name,
+      dosage: pclean(params.dosage, 80) || null,
+      frequency: pclean(params.frequency, 80) || null,
+      startDate: pday(params.startDate) || pday(pnow()),
+      endDate: pday(params.endDate) || null,
+      active: true, createdAt: pnow(),
+    };
+    plistB(s.medications, med.petId).push(med);
+    savePetState();
+    return { ok: true, result: { medication: med } };
+  });
+
+  registerLensAction("pets", "medication-list", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const medications = (s.medications.get(String(params.petId)) || []);
+    return {
+      ok: true,
+      result: { medications, active: medications.filter((m) => m.active).length },
+    };
+  });
+
+  registerLensAction("pets", "medication-delete", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const arr = s.medications.get(String(params.petId)) || [];
+    const med = arr.find((m) => m.id === params.id);
+    if (!med) return { ok: false, error: "medication not found" };
+    if (params.stop === true) { med.active = false; }
+    else { arr.splice(arr.indexOf(med), 1); }
+    savePetState();
+    return { ok: true, result: { id: params.id, stopped: params.stop === true } };
+  });
+
+  // ── Vet visits ──────────────────────────────────────────────────────
+  registerLensAction("pets", "vet-visit-log", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const reason = pclean(params.reason, 200);
+    if (!reason) return { ok: false, error: "reason required" };
+    const visit = {
+      id: pid("vis"), petId: String(params.petId), reason,
+      date: pday(params.date) || pday(pnow()),
+      diagnosis: pclean(params.diagnosis, 500) || null,
+      vet: pclean(params.vet, 120) || null,
+      cost: Math.max(0, pnum(params.cost)),
+      createdAt: pnow(),
+    };
+    plistB(s.vetVisits, visit.petId).push(visit);
+    if (visit.cost > 0) {
+      plistB(s.expenses, visit.petId).push({
+        id: pid("exp"), petId: visit.petId, category: "vet",
+        amount: visit.cost, date: visit.date, note: `Vet visit: ${reason}`, createdAt: pnow(),
+      });
+    }
+    savePetState();
+    return { ok: true, result: { visit } };
+  });
+
+  registerLensAction("pets", "vet-visit-list", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const visits = (s.vetVisits.get(String(params.petId)) || [])
+      .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    return {
+      ok: true,
+      result: { visits, totalCost: visits.reduce((x, v) => x + pnum(v.cost), 0) },
+    };
+  });
+
+  // ── Weight tracking ─────────────────────────────────────────────────
+  registerLensAction("pets", "weight-log", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pet = findPet(s, paid(ctx), params.petId);
+    if (!pet) return { ok: false, error: "pet not found" };
+    const weightKg = pnum(params.weightKg);
+    if (weightKg <= 0) return { ok: false, error: "weightKg must be > 0" };
+    const entry = {
+      id: pid("wt"), petId: pet.id,
+      weightKg: Math.round(weightKg * 100) / 100,
+      date: pday(params.date) || pday(pnow()), createdAt: pnow(),
+    };
+    plistB(s.weights, pet.id).push(entry);
+    pet.weightKg = entry.weightKg;
+    savePetState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("pets", "weight-history", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const series = (s.weights.get(String(params.petId)) || [])
+      .slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    let trend = "no_data", changeKg = 0;
+    if (series.length >= 2) {
+      changeKg = Math.round((series[series.length - 1].weightKg - series[0].weightKg) * 100) / 100;
+      const recent = series[series.length - 1].weightKg - series[series.length - 2].weightKg;
+      trend = recent > 0.1 ? "gaining" : recent < -0.1 ? "losing" : "stable";
+    } else if (series.length === 1) {
+      trend = "stable";
+    }
+    return {
+      ok: true,
+      result: {
+        series, trend, changeKg,
+        latest: series.length ? series[series.length - 1].weightKg : null,
+      },
+    };
+  });
+
+  // ── Care activity log ───────────────────────────────────────────────
+  const ACTIVITY_KINDS = ["feeding", "walk", "grooming", "nail_trim", "play", "potty", "bath", "training"];
+  registerLensAction("pets", "activity-log", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const kind = String(params.kind || "").toLowerCase();
+    if (!ACTIVITY_KINDS.includes(kind)) return { ok: false, error: `kind must be one of ${ACTIVITY_KINDS.join("/")}` };
+    const entry = {
+      id: pid("act"), petId: String(params.petId), kind,
+      note: pclean(params.note, 200) || null,
+      durationMin: Math.max(0, Math.round(pnum(params.durationMin))),
+      date: pday(params.date) || pday(pnow()),
+      at: pnow(),
+    };
+    plistB(s.careActivities, entry.petId).push(entry);
+    savePetState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("pets", "activity-history", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    let acts = (s.careActivities.get(String(params.petId)) || []).slice();
+    if (params.kind) acts = acts.filter((a) => a.kind === String(params.kind).toLowerCase());
+    acts.sort((a, b) => b.at.localeCompare(a.at));
+    const today = pday(pnow());
+    return {
+      ok: true,
+      result: {
+        activities: acts.slice(0, 100),
+        count: acts.length,
+        todayCount: acts.filter((a) => a.date === today).length,
+      },
+    };
+  });
+
+  registerLensAction("pets", "activity-delete", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const arr = s.careActivities.get(String(params.petId)) || [];
+    const i = arr.findIndex((a) => a.id === params.id);
+    if (i < 0) return { ok: false, error: "activity not found" };
+    arr.splice(i, 1);
+    savePetState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Symptoms ────────────────────────────────────────────────────────
+  registerLensAction("pets", "symptom-log", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const symptom = pclean(params.symptom, 120);
+    if (!symptom) return { ok: false, error: "symptom required" };
+    const entry = {
+      id: pid("sym"), petId: String(params.petId), symptom,
+      severity: ["mild", "moderate", "severe"].includes(String(params.severity).toLowerCase())
+        ? String(params.severity).toLowerCase() : "mild",
+      note: pclean(params.note, 300) || null,
+      date: pday(params.date) || pday(pnow()), createdAt: pnow(),
+    };
+    plistB(s.symptoms, entry.petId).push(entry);
+    savePetState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("pets", "symptom-list", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const symptoms = (s.symptoms.get(String(params.petId)) || [])
+      .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    return {
+      ok: true,
+      result: { symptoms, severeCount: symptoms.filter((x) => x.severity === "severe").length },
+    };
+  });
+
+  // ── Reminders ───────────────────────────────────────────────────────
+  registerLensAction("pets", "reminder-create", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const title = pclean(params.title, 120);
+    if (!title) return { ok: false, error: "title required" };
+    const rem = {
+      id: pid("rem"), petId: String(params.petId), title,
+      kind: pclean(params.kind, 40).toLowerCase() || "general",
+      dueDate: pday(params.dueDate) || null,
+      done: false, createdAt: pnow(),
+    };
+    plistB(s.reminders, rem.petId).push(rem);
+    savePetState();
+    return { ok: true, result: { reminder: rem } };
+  });
+
+  registerLensAction("pets", "reminder-list", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const pets = s.pets.get(userId) || [];
+    const petIds = params.petId
+      ? (findPet(s, userId, params.petId) ? [String(params.petId)] : [])
+      : pets.map((p) => p.id);
+    const petName = new Map(pets.map((p) => [p.id, p.name]));
+    const reminders = [];
+    for (const id of petIds) {
+      for (const r of s.reminders.get(id) || []) {
+        reminders.push({ ...r, petName: petName.get(id) || null, status: r.done ? "done" : dueState(r.dueDate) });
+      }
+    }
+    reminders.sort((a, b) => String(a.dueDate || "9999").localeCompare(String(b.dueDate || "9999")));
+    return {
+      ok: true,
+      result: {
+        reminders,
+        overdue: reminders.filter((r) => r.status === "overdue").length,
+        dueSoon: reminders.filter((r) => r.status === "due_soon").length,
+      },
+    };
+  });
+
+  registerLensAction("pets", "reminder-complete", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const rem = (s.reminders.get(String(params.petId)) || []).find((r) => r.id === params.id);
+    if (!rem) return { ok: false, error: "reminder not found" };
+    rem.done = !(params.reopen === true);
+    savePetState();
+    return { ok: true, result: { reminder: rem } };
+  });
+
+  registerLensAction("pets", "reminder-delete", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const arr = s.reminders.get(String(params.petId)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "reminder not found" };
+    arr.splice(i, 1);
+    savePetState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Documents ───────────────────────────────────────────────────────
+  registerLensAction("pets", "document-add", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const title = pclean(params.title, 120);
+    if (!title) return { ok: false, error: "title required" };
+    const doc = {
+      id: pid("doc"), petId: String(params.petId), title,
+      kind: pclean(params.kind, 40).toLowerCase() || "other",
+      url: pclean(params.url, 500) || null,
+      createdAt: pnow(),
+    };
+    plistB(s.documents, doc.petId).push(doc);
+    savePetState();
+    return { ok: true, result: { document: doc } };
+  });
+
+  registerLensAction("pets", "document-list", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    return { ok: true, result: { documents: (s.documents.get(String(params.petId)) || []).slice().reverse() } };
+  });
+
+  // ── Expenses ────────────────────────────────────────────────────────
+  registerLensAction("pets", "expense-log", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findPet(s, paid(ctx), params.petId)) return { ok: false, error: "pet not found" };
+    const amount = pnum(params.amount);
+    if (amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const exp = {
+      id: pid("exp"), petId: String(params.petId),
+      category: pclean(params.category, 40).toLowerCase() || "other",
+      amount: Math.round(amount * 100) / 100,
+      date: pday(params.date) || pday(pnow()),
+      note: pclean(params.note, 200) || null,
+      createdAt: pnow(),
+    };
+    plistB(s.expenses, exp.petId).push(exp);
+    savePetState();
+    return { ok: true, result: { expense: exp } };
+  });
+
+  registerLensAction("pets", "expense-summary", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const pets = s.pets.get(userId) || [];
+    const petIds = params.petId
+      ? (findPet(s, userId, params.petId) ? [String(params.petId)] : [])
+      : pets.map((p) => p.id);
+    const all = [];
+    for (const id of petIds) all.push(...(s.expenses.get(id) || []));
+    const byCategory = {};
+    for (const e of all) byCategory[e.category] = Math.round(((byCategory[e.category] || 0) + e.amount) * 100) / 100;
+    const month = pday(pnow()).slice(0, 7);
+    const thisMonth = Math.round(all.filter((e) => String(e.date).startsWith(month))
+      .reduce((x, e) => x + e.amount, 0) * 100) / 100;
+    return {
+      ok: true,
+      result: {
+        total: Math.round(all.reduce((x, e) => x + e.amount, 0) * 100) / 100,
+        thisMonth, byCategory, entries: all.length,
+      },
+    };
+  });
+
+  // ── Rover-shape caregiver booking ───────────────────────────────────
+  const SERVICES = ["boarding", "walking", "daycare", "dropin", "house_sitting", "training"];
+  registerLensAction("pets", "caregiver-register", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const name = pclean(params.name, 80);
+    if (!name) return { ok: false, error: "name required" };
+    const services = Array.isArray(params.services)
+      ? params.services.map((x) => String(x).toLowerCase()).filter((x) => SERVICES.includes(x))
+      : [];
+    if (!services.length) return { ok: false, error: `services required (${SERVICES.join("/")})` };
+    const existing = [...s.caregivers.values()].find((c) => c.userId === userId);
+    const caregiver = existing || { id: pid("cg"), userId, ratings: [], createdAt: pnow() };
+    caregiver.name = name;
+    caregiver.bio = pclean(params.bio, 500) || null;
+    caregiver.services = services;
+    caregiver.rates = {};
+    for (const sv of services) caregiver.rates[sv] = Math.max(0, pnum(params.rates?.[sv]));
+    caregiver.area = pclean(params.area, 80) || null;
+    s.caregivers.set(caregiver.id, caregiver);
+    savePetState();
+    return { ok: true, result: { caregiver } };
+  });
+
+  registerLensAction("pets", "caregiver-list", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let caregivers = [...s.caregivers.values()];
+    if (params.service) caregivers = caregivers.filter((c) => c.services.includes(String(params.service).toLowerCase()));
+    caregivers = caregivers.map((c) => ({
+      ...c,
+      rating: c.ratings.length ? Math.round((c.ratings.reduce((a, b) => a + b, 0) / c.ratings.length) * 10) / 10 : null,
+      reviewCount: c.ratings.length,
+    }));
+    return { ok: true, result: { caregivers, count: caregivers.length } };
+  });
+
+  registerLensAction("pets", "booking-create", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const caregiver = s.caregivers.get(String(params.caregiverId));
+    if (!caregiver) return { ok: false, error: "caregiver not found" };
+    const pet = findPet(s, userId, params.petId);
+    if (!pet) return { ok: false, error: "pet not found" };
+    const service = String(params.service || "").toLowerCase();
+    if (!caregiver.services.includes(service)) return { ok: false, error: "caregiver does not offer that service" };
+    const startDate = pday(params.startDate);
+    if (!startDate) return { ok: false, error: "startDate required" };
+    const endDate = pday(params.endDate) || startDate;
+    const nights = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / DAY_MS) || 1);
+    const rate = pnum(caregiver.rates[service]);
+    const booking = {
+      id: pid("bkg"), ownerUserId: userId, caregiverId: caregiver.id,
+      caregiverName: caregiver.name, petId: pet.id, petName: pet.name,
+      service, startDate, endDate, nights,
+      estimatedCost: Math.round(rate * (service === "boarding" || service === "house_sitting" ? nights : 1) * 100) / 100,
+      status: "requested", updates: [], createdAt: pnow(),
+    };
+    plistB(s.bookings, userId).push(booking);
+    savePetState();
+    return { ok: true, result: { booking } };
+  });
+
+  registerLensAction("pets", "booking-list", (ctx, _a, _params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const mine = [...(s.bookings.get(userId) || [])];
+    const asCaregiver = [];
+    const myCgIds = new Set([...s.caregivers.values()].filter((c) => c.userId === userId).map((c) => c.id));
+    for (const list of s.bookings.values()) {
+      for (const b of list) if (myCgIds.has(b.caregiverId)) asCaregiver.push(b);
+    }
+    return {
+      ok: true,
+      result: {
+        bookings: mine.sort((a, b) => String(b.createdAt).localeCompare(a.createdAt)),
+        asCaregiver: asCaregiver.sort((a, b) => String(b.createdAt).localeCompare(a.createdAt)),
+      },
+    };
+  });
+
+  registerLensAction("pets", "booking-update", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    let booking = null;
+    for (const list of s.bookings.values()) {
+      const b = list.find((x) => x.id === params.id);
+      if (b) { booking = b; break; }
+    }
+    if (!booking) return { ok: false, error: "booking not found" };
+    const isOwner = booking.ownerUserId === userId;
+    const cg = s.caregivers.get(booking.caregiverId);
+    const isCaregiver = cg && cg.userId === userId;
+    if (!isOwner && !isCaregiver) return { ok: false, error: "not your booking" };
+    const status = params.status ? String(params.status).toLowerCase() : null;
+    if (status && ["requested", "confirmed", "in_progress", "completed", "cancelled"].includes(status)) {
+      booking.status = status;
+    }
+    if (params.update) {
+      booking.updates.push({ by: isCaregiver ? "caregiver" : "owner", note: pclean(params.update, 300), at: pnow() });
+    }
+    if (params.rating != null && isOwner && booking.status === "completed" && cg) {
+      const r = Math.round(pnum(params.rating));
+      if (r >= 1 && r <= 5 && !booking.rated) { cg.ratings.push(r); booking.rated = true; }
+    }
+    savePetState();
+    return { ok: true, result: { booking } };
+  });
+
+  // ── Dashboard ───────────────────────────────────────────────────────
+  registerLensAction("pets", "pets-dashboard", (ctx, _a, _params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const pets = s.pets.get(userId) || [];
+    let overdueVaccines = 0, openReminders = 0, overdueReminders = 0;
+    for (const p of pets) {
+      overdueVaccines += (s.vaccines.get(p.id) || []).filter((v) => dueState(v.nextDueDate) === "overdue").length;
+      for (const r of s.reminders.get(p.id) || []) {
+        if (!r.done) { openReminders++; if (dueState(r.dueDate) === "overdue") overdueReminders++; }
+      }
+    }
+    let spend = 0;
+    const month = pday(pnow()).slice(0, 7);
+    for (const p of pets) {
+      for (const e of s.expenses.get(p.id) || []) if (String(e.date).startsWith(month)) spend += e.amount;
+    }
+    return {
+      ok: true,
+      result: {
+        pets: pets.length,
+        overdueVaccines, openReminders, overdueReminders,
+        monthSpend: Math.round(spend * 100) / 100,
+        activeBookings: (s.bookings.get(userId) || []).filter((b) => ["requested", "confirmed", "in_progress"].includes(b.status)).length,
+      },
+    };
+  });
 }

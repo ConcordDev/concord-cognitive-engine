@@ -11,7 +11,7 @@ import {
   Loader2, Check, AlertTriangle, Headphones,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -144,7 +144,7 @@ export function StudioActionPanel() {
     if (!currentProjectId) { err('Create or select a project first.'); return; }
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: {
           title: `Studio project — ${projectName.trim() || currentProjectId.slice(0, 8)}`,
@@ -153,7 +153,7 @@ export function StudioActionPanel() {
           meta: { visibility: 'private', consent: { allowCitations: false }, project: { id: currentProjectId, name: projectName, bpm: parseInt(projectBpm, 10), render: renderResult, timeline: timelineResult } },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (id) { setMintedDtuId(id); pipe.publish('studio.mintedDtuId', id, { label: `project ${id.slice(0, 8)}` }); ok(`Project DTU ${id.slice(0, 8)}…`); }
       else err('No DTU id returned.');
@@ -185,7 +185,7 @@ export function StudioActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', {
+        const r = await lensRun({
           domain: 'dtu', name: 'create',
           input: {
             title: `Public release — ${projectName.trim() || currentProjectId}`,
@@ -194,7 +194,7 @@ export function StudioActionPanel() {
             meta: { visibility: 'public', consent: { allowCitations: true }, release: { name: projectName, bpm: parseInt(projectBpm, 10), format: renderFormat } },
           },
         });
-        const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+        const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;
         if (!newId) throw new Error('No DTU id returned.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -214,8 +214,8 @@ export function StudioActionPanel() {
         '',
         'Suggest 3 mix-finalization moves: name the technique, the bus/track it applies to, and what change a listener would hear. Plain text, one per line.',
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Mix moves ready.'); }
       else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }

@@ -6,6 +6,14 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BillsList } from '@/components/government/BillsList';
 import { GovernmentActionPanel } from '@/components/government/GovernmentActionPanel';
+import ServiceRequestsPanel from '@/components/government/ServiceRequestsPanel';
+import DepartmentsPanel from '@/components/government/DepartmentsPanel';
+import RoutingRulesPanel from '@/components/government/RoutingRulesPanel';
+import PermitsPanel from '@/components/government/PermitsPanel';
+import InspectionsPanel from '@/components/government/InspectionsPanel';
+import AssetsPanel from '@/components/government/AssetsPanel';
+import OpenDataExplorer from '@/components/government/OpenDataExplorer';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { PipingProvider } from '@/components/panel-polish';
 import RepresentativeFinder from '@/components/government/RepresentativeFinder';
 import BillTracker from '@/components/government/BillTracker';
@@ -3189,6 +3197,8 @@ export default function GovernmentLensPage() {
       <FirstRunTour lensId="government" />
       <DepthBadge lensId="government" size="sm" className="ml-2" />
     <div data-lens-theme="government" className={ds.pageContainer}>
+      <RivalShapePreview lensId="government" defaultOpen={true} />
+      <CivicWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -3575,5 +3585,52 @@ export default function GovernmentLensPage() {
         onSelect={(id) => setMode(id as ModeTab)}
       />
     </LensShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  SeeClickFix / Accela-parity civic workbench section                  */
+/* ------------------------------------------------------------------ */
+
+function CivicWorkbenchSection() {
+  const [active, setActive] = useState<'sr' | 'departments' | 'routing' | 'permits' | 'inspections' | 'assets' | 'opendata'>('sr');
+  const TABS = [
+    { id: 'sr', label: '311 Requests' },
+    { id: 'departments', label: 'Departments' },
+    { id: 'routing', label: 'Routing rules' },
+    { id: 'permits', label: 'Permits' },
+    { id: 'inspections', label: 'Inspections' },
+    { id: 'assets', label: 'Assets' },
+    { id: 'opendata', label: 'Open data' },
+  ] as const;
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-amber-300 uppercase tracking-wider">SeeClickFix/Accela-parity civic workbench</h2>
+      <nav className="flex items-center gap-1 border-b border-amber-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={
+              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
+              (active === t.id
+                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
+                : 'text-gray-500 hover:text-amber-300 hover:bg-amber-900/10 border border-transparent')
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div>
+        {active === 'sr' && <ServiceRequestsPanel />}
+        {active === 'departments' && <DepartmentsPanel />}
+        {active === 'routing' && <RoutingRulesPanel />}
+        {active === 'permits' && <PermitsPanel />}
+        {active === 'inspections' && <InspectionsPanel />}
+        {active === 'assets' && <AssetsPanel />}
+        {active === 'opendata' && <OpenDataExplorer />}
+      </div>
+    </section>
   );
 }

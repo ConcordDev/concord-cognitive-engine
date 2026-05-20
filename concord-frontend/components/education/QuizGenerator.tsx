@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Loader2, Check, X, FileText } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface QuizCard {
@@ -38,7 +38,7 @@ export function QuizGenerator({ initialSource = '', sourceDtuId, onDeckCreated }
     }
     setError(null); setGenerating(true); setCards([]); setExcluded(new Set());
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'education',
         action: 'quiz-from-text',
         input: { source, sourceDtuId, count, difficulty },
@@ -60,7 +60,7 @@ export function QuizGenerator({ initialSource = '', sourceDtuId, onDeckCreated }
     setCreatingDeck(true);
     try {
       const accepted = cards.filter((_, i) => !excluded.has(i));
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'education',
         action: 'quiz-mint-deck',
         input: { title: deckTitle || 'Generated quiz', cards: accepted },

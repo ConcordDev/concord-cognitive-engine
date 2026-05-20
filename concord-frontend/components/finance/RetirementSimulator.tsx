@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Target, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface MonteCarloResult {
@@ -32,7 +32,7 @@ export function RetirementSimulator() {
   const run = useMemo(() => async () => {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'finance', action: 'retirement-monte-carlo',
         input: {
           currentAge, retireAge,

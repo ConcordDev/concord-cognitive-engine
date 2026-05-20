@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { TravelTripsSection } from '@/components/travel/TravelTripsSection';
 import { ZippopotamPanel } from '@/components/travel/ZippopotamPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
@@ -183,6 +184,9 @@ export default function TravelLensPage() {
       <FirstRunTour lensId="travel" />
       <ManifestActionBar />
       <DepthBadge lensId="travel" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <TravelTripsSection />
+      </div>
     <div data-lens-theme="travel" className="p-6 space-y-6">
       {/* Phase 4 (sixth wave) — REAL Zippopotam postal-code lookup. */}
       <ZippopotamPanel domain="travel" />

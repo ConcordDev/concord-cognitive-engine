@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, ShoppingCart, Package, Receipt, AlertTriangle, Plus, Trash2, Save, DollarSign, CreditCard } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 
@@ -85,14 +85,14 @@ function POSTab() {
 
   const refreshProducts = useCallback(async () => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'retail', action: 'product-list', input: {} });
+      const r = await lensRun({ domain: 'retail', action: 'product-list', input: {} });
       setProducts(((r.data as { result?: { products?: Product[] } }).result?.products) || []);
     } catch (e) { console.error(e); }
   }, []);
 
   const openCart = useCallback(async () => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'retail', action: 'cart-open', input: {} });
+      const r = await lensRun({ domain: 'retail', action: 'cart-open', input: {} });
       const c = (r.data as { result?: { cart?: { id: string; lines: [] } } }).result?.cart;
       if (c) {
         setCartId(c.id);
@@ -106,7 +106,7 @@ function POSTab() {
   const addToCart = async (sku: string) => {
     if (!cartId) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'retail', action: 'cart-add-line', input: { cartId, sku, qty: 1 } });
+      const r = await lensRun({ domain: 'retail', action: 'cart-add-line', input: { cartId, sku, qty: 1 } });
       const c = (r.data as { result?: { cart?: typeof cart } }).result?.cart;
       if (c) setCart(c);
       computeTotal();
@@ -116,7 +116,7 @@ function POSTab() {
   const computeTotal = async () => {
     if (!cartId) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'retail', action: 'cart-total', input: { cartId, taxRate: 8 } });
+      const r = await lensRun({ domain: 'retail', action: 'cart-total', input: { cartId, taxRate: 8 } });
       setTotals(((r.data as { result?: typeof totals }).result) || null);
     } catch (e) { console.error(e); }
   };
@@ -126,7 +126,7 @@ function POSTab() {
   const tender = async () => {
     if (!cartId) return;
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'retail', action: 'cart-tender',
         input: { cartId, taxRate: 8, tenders: [{ kind: 'cash', amount: Number(tenderAmount) }] },
       });
@@ -144,7 +144,7 @@ function POSTab() {
   const tenderWithCard = async () => {
     if (!cartId) return;
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'retail', action: 'cart-create-payment-intent',
         input: { cartId, taxRate: 8 },
       });
@@ -160,7 +160,7 @@ function POSTab() {
   const onCardSuccess = async ({ paymentIntentId }: { paymentIntentId: string }) => {
     if (!cartId) return;
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'retail', action: 'cart-confirm-paid-with-intent',
         input: { cartId, paymentIntentId },
       });
@@ -250,7 +250,7 @@ function CatalogTab() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'retail', action: 'product-list', input: {} });
+      const r = await lensRun({ domain: 'retail', action: 'product-list', input: {} });
       setProducts(((r.data as { result?: { products?: Product[] } }).result?.products) || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -260,7 +260,7 @@ function CatalogTab() {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'product-upsert', input: draft });
+      await lensRun({ domain: 'retail', action: 'product-upsert', input: draft });
       setCreating(false); setDraft({ sku: '', name: '', price: 0, stock: 0, category: '', barcode: '' });
       await refresh();
     } catch (e) { console.error(e); }
@@ -268,7 +268,7 @@ function CatalogTab() {
 
   const remove = async (sku: string) => {
     try {
-      await api.post('/api/lens/run', { domain: 'retail', action: 'product-delete', input: { sku } });
+      await lensRun({ domain: 'retail', action: 'product-delete', input: { sku } });
       await refresh();
     } catch (e) { console.error(e); }
   };
@@ -325,7 +325,7 @@ function OrdersTab() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await api.post('/api/lens/run', { domain: 'retail', action: 'orders-list', input: {} });
+        const r = await lensRun({ domain: 'retail', action: 'orders-list', input: {} });
         setOrders(((r.data as { result?: { orders?: typeof orders } }).result?.orders) || []);
       } catch (e) { console.error(e); }
     })();
@@ -356,7 +356,7 @@ function LowStockTab() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await api.post('/api/lens/run', { domain: 'retail', action: 'low-stock', input: { threshold } });
+        const r = await lensRun({ domain: 'retail', action: 'low-stock', input: { threshold } });
         setItems(((r.data as { result?: { lowStock?: Product[] } }).result?.lowStock) || []);
       } catch (e) { console.error(e); }
     })();

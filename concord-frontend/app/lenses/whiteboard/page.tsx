@@ -12,6 +12,7 @@ import { WhiteboardRepos } from '@/components/whiteboard/WhiteboardRepos';
 import { WhiteboardActionPanel } from '@/components/whiteboard/WhiteboardActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { MiroSection } from '@/components/whiteboard/MiroSection';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -951,6 +952,9 @@ export default function WhiteboardLensPage() {
       <FirstRunTour lensId="whiteboard" />
       <DepthBadge lensId="whiteboard" size="sm" className="ml-2" />
       <RivalShapePreview lensId="whiteboard" defaultOpen={true} />
+      <div className="px-4 mt-3">
+        <MiroSection />
+      </div>
     <div className="h-full flex bg-lattice-bg">
       {/* ===== Sidebar ===== */}
       <aside className="w-64 border-r border-lattice-border bg-lattice-surface p-4 flex flex-col">

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { DollarSign, Loader2, Search, Star } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Quote {
@@ -25,7 +25,7 @@ export function QuoteCompare() {
   async function getQuotes() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'insurance', action: 'quotes-compare',
         input: { kind, zip, coverage },
       });

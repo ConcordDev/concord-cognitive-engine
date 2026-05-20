@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Trees, RefreshCw, AlertTriangle, KeyRound, ExternalLink } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Park {
@@ -35,7 +35,7 @@ interface ParksResponse {
 const STATES = ['AK','AL','AR','AZ','CA','CO','CT','DC','DE','FL','GA','HI','IA','ID','IL','IN','KS','KY','LA','MA','MD','ME','MI','MN','MO','MS','MT','NC','ND','NE','NH','NJ','NM','NV','NY','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VA','VT','WA','WI','WV','WY'];
 
 async function runMacro(input: Record<string, unknown>) {
-  try { const r = await api.post('/api/lens/run', { domain: 'travel', name: 'live_nps_parks', input }); return r?.data as ParksResponse | null; }
+  try { const r = await lensRun({ domain: 'travel', name: 'live_nps_parks', input }); return r?.data as ParksResponse | null; }
   catch { return null; }
 }
 

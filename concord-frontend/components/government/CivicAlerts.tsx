@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Bell, Loader2, MapPin } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface CivicAlert {
@@ -38,7 +38,7 @@ export function CivicAlerts() {
     setLoading(true);
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', {
+        const res = await lensRun({
           domain: 'government', action: 'alerts-current', input: { lat: coords.lat, lng: coords.lng },
         });
         setAlerts((res.data?.result?.alerts || []) as CivicAlert[]);

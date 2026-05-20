@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { TrendingUp, AlertTriangle, CheckCircle2, Loader2, Target } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface AllocationItem {
@@ -41,7 +41,7 @@ export function InvestmentCheckup() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'finance', action: 'investment-checkup', input: {},
       });
       setData(res.data?.result as InvestmentCheckupResult || null);

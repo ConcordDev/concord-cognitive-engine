@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { MarketingDashboardSection } from '@/components/marketing/MarketingDashboardSection';
 import { MarketingFeed } from '@/components/marketing/MarketingFeed';
 import { MarketingActionPanel } from '@/components/marketing/MarketingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -413,6 +414,9 @@ export default function MarketingLensPage() {
       <FirstRunTour lensId="marketing" />
       <ManifestActionBar />
       <DepthBadge lensId="marketing" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <MarketingDashboardSection />
+      </div>
     <div data-lens-theme="marketing" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

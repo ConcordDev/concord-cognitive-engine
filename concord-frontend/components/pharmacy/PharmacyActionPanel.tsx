@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Pill, BookOpen, AlertOctagon, Calculator, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -97,8 +97,8 @@ export function PharmacyActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Rx — ${drugName}`, tags: ['pharmacy', 'rx', labelResult?.rxOtc].filter((t): t is string => !!t), source: 'pharmacy:rx:mint', meta: { visibility: 'private', consent: { allowCitations: false }, pharmacy: { label: labelResult, inter: interResult, adverse: adverseResult, dose: doseResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Rx — ${drugName}`, tags: ['pharmacy', 'rx', labelResult?.rxOtc].filter((t): t is string => !!t), source: 'pharmacy:rx:mint', meta: { visibility: 'private', consent: { allowCitations: false }, pharmacy: { label: labelResult, inter: interResult, adverse: adverseResult, dose: doseResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('pharmacy.mintedDtuId', id, { label: `rx ${id.slice(0, 8)}` }); ok(`Rx DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -120,8 +120,8 @@ export function PharmacyActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Drug brief — ${labelResult.brandName ?? labelResult.genericName ?? drugName}`, tags: ['pharmacy', 'drug', 'public'], source: 'pharmacy:drug:publish', meta: { visibility: 'public', consent: { allowCitations: true }, label: labelResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Drug brief — ${labelResult.brandName ?? labelResult.genericName ?? drugName}`, tags: ['pharmacy', 'drug', 'public'], source: 'pharmacy:drug:publish', meta: { visibility: 'public', consent: { allowCitations: true }, label: labelResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -134,8 +134,8 @@ export function PharmacyActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Pharmacy review of ${drugName}. ${labelResult ? `${labelResult.brandName ?? labelResult.genericName} (${labelResult.rxOtc}, ${labelResult.route}).` : ''} ${interResult ? `Interaction screen vs ${drug2Name}: ${interResult.interactionsFound} co-mentions.` : ''} ${doseResult ? `Dose: ${doseResult.singleDose} ${doseResult.frequency}.` : ''} Identify the single most important counseling point for the patient + one monitoring parameter. Plain text, 3 sentences max. End with: "This is not medical advice."`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Counsel ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

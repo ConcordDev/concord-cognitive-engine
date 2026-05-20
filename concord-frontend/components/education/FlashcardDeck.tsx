@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles, Plus, Loader2, RotateCcw, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Flashcard {
@@ -47,7 +47,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
 
   async function refreshDecks() {
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'education', action: 'flashcards-decks', input: {},
       });
       setDecks((res.data?.result?.decks || []) as Deck[]);
@@ -57,7 +57,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
   async function refreshQueue(deckId: string) {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'education', action: 'flashcards-due', input: { deckId, limit: 30 },
       });
       setQueue((res.data?.result?.cards || []) as Flashcard[]);
@@ -69,7 +69,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
   async function createDeck() {
     if (!newDeckTitle.trim()) return;
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'education', action: 'flashcards-deck-create',
         input: { title: newDeckTitle.trim() },
       });
@@ -83,7 +83,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
   async function createCard() {
     if (!activeDeck || !newFront.trim() || !newBack.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'education', action: 'flashcards-card-create',
         input: { deckId: activeDeck, front: newFront, back: newBack },
       });
@@ -96,7 +96,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
     const card = queue[idx];
     if (!card) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'education', action: 'flashcards-review',
         input: { cardId: card.id, quality },
       });

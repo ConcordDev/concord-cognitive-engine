@@ -31,7 +31,7 @@ import {
   Loader2, Check, AlertTriangle, Send, Wand2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { useCreateArtifact, useArtifactsByType } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 
@@ -182,15 +182,14 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
         d.location ? `Location: ${d.location}.` : 'Location not set on profile.',
         'Return the clinic name, address, phone number, and a one-line note on why it fits.',
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'chat_agent',
         name: 'do',
         input: { task, maxTurns: 5 },
       });
       const reply = r.data?.result?.reply
         ?? r.data?.result?.summary
-        ?? r.data?.result?.output
-        ?? r.data?.reply;
+        ?? r.data?.result?.output;
       if (reply) {
         setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Agent returned emergency-vet candidates.');
@@ -202,7 +201,7 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
   async function actPublishLost() {
     setBusy('publish'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', {
+      const r = await lensRun({
         domain: 'dtu',
         name: 'create',
         input: {
@@ -223,7 +222,7 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
           },
         },
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
+      const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
       if (!id) { err('No DTU id returned.'); return; }
       const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);

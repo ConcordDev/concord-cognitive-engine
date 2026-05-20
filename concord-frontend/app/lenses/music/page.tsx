@@ -8,6 +8,7 @@ import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { MusicStreamingSection } from '@/components/music/MusicStreamingSection';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -627,6 +628,9 @@ export default function MusicLensPage() {
     <LensShell lensId="music" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="music" />
       <DepthBadge lensId="music" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <MusicStreamingSection />
+      </div>
     <div className="lens-music flex flex-col h-full overflow-hidden" data-lens-theme="music">
       {/* Top Navigation */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-purple-500/10 bg-gradient-to-r from-purple-950/20 via-transparent to-indigo-950/20 flex-shrink-0">

@@ -277,3 +277,242 @@ describe("retail — Stripe PaymentIntent POS (real card tender)", () => {
     delete process.env.STRIPE_SECRET_KEY;
   });
 });
+
+// ── Full-app parity (Shopify 2026) ──────────────────────────────
+
+describe("retail.customers-* (CRUD + segments)", () => {
+  it("add / list / delete per-user scoped", () => {
+    const a = call("customers-add", ctxA, { name: "Alice", email: "alice@example.com", totalSpent: 500, orderCount: 3 });
+    assert.equal(a.ok, true);
+    const list = call("customers-list", ctxA, {});
+    assert.equal(list.result.customers.length, 1);
+    assert.equal(call("customers-list", ctxB, {}).result.customers.length, 0);
+    const del = call("customers-delete", ctxA, { id: a.result.customer.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("customers-list", ctxA, {}).result.customers.length, 0);
+  });
+  it("rejects empty name or email", () => {
+    assert.equal(call("customers-add", ctxA, { name: "", email: "x@y" }).ok, false);
+    assert.equal(call("customers-add", ctxA, { name: "A", email: "" }).ok, false);
+  });
+  it("segments classify new / repeat / vip / atRisk / dormant", () => {
+    const day = 86400000;
+    call("customers-add", ctxA, { name: "New", email: "new@x", orderCount: 1, totalSpent: 50 });
+    call("customers-add", ctxA, { name: "Repeat", email: "rep@x", orderCount: 3, totalSpent: 200 });
+    call("customers-add", ctxA, { name: "VIP", email: "vip@x", orderCount: 10, totalSpent: 5000 });
+    call("customers-add", ctxA, { name: "AtRisk", email: "ar@x", orderCount: 2, totalSpent: 100, lastOrderAt: new Date(Date.now() - 120 * day).toISOString() });
+    call("customers-add", ctxA, { name: "Dorm", email: "do@x", orderCount: 1, totalSpent: 30, lastOrderAt: new Date(Date.now() - 200 * day).toISOString() });
+    const r = call("customers-segments", ctxA, {});
+    assert.equal(r.result.totalCustomers, 5);
+    assert.ok(r.result.segments.vip >= 1);
+    assert.ok(r.result.segments.atRisk >= 1);
+    assert.ok(r.result.segments.dormant >= 1);
+  });
+});
+
+describe("retail.discounts-* (CRUD + apply)", () => {
+  it("create / list / delete cycle", () => {
+    const d = call("discounts-create", ctxA, { code: "save10", kind: "percentage", value: 10 });
+    assert.equal(d.ok, true);
+    assert.equal(d.result.discount.code, "SAVE10");
+    assert.equal(call("discounts-list", ctxA, {}).result.discounts.length, 1);
+    assert.equal(call("discounts-delete", ctxA, { id: d.result.discount.id }).ok, true);
+  });
+  it("rejects duplicate code", () => {
+    call("discounts-create", ctxA, { code: "DUP", kind: "percentage", value: 5 });
+    const r = call("discounts-create", ctxA, { code: "DUP", kind: "percentage", value: 10 });
+    assert.equal(r.ok, false);
+  });
+  it("rejects percentage > 100", () => {
+    assert.equal(call("discounts-create", ctxA, { code: "BIG", kind: "percentage", value: 150 }).ok, false);
+  });
+  it("apply percentage discount to cart", () => {
+    call("discounts-create", ctxA, { code: "TEN", kind: "percentage", value: 10 });
+    call("product-upsert", ctxA, { sku: "P1", name: "X", price: 100, stock: 10 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    const a = call("discounts-apply", ctxA, { cartId: c.result.cart.id, code: "TEN" });
+    assert.equal(a.ok, true);
+    assert.equal(a.result.discountAmount, 10);
+  });
+  it("apply rejects when min subtotal not met", () => {
+    call("discounts-create", ctxA, { code: "BIG", kind: "percentage", value: 10, minSubtotal: 200 });
+    call("product-upsert", ctxA, { sku: "P1", name: "X", price: 50, stock: 10 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    const r = call("discounts-apply", ctxA, { cartId: c.result.cart.id, code: "BIG" });
+    assert.equal(r.ok, false);
+  });
+  it("free_shipping discount sets cart.freeShipping flag", () => {
+    call("discounts-create", ctxA, { code: "FREE", kind: "free_shipping", value: 0 });
+    call("product-upsert", ctxA, { sku: "P1", name: "X", price: 10, stock: 10 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    const r = call("discounts-apply", ctxA, { cartId: c.result.cart.id, code: "FREE" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.cart.freeShipping, true);
+  });
+});
+
+describe("retail.abandoned-carts-* (recovery)", () => {
+  it("list filters by age threshold", () => {
+    call("product-upsert", ctxA, { sku: "P1", name: "X", price: 50, stock: 10 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 2 });
+    const fresh = call("abandoned-carts-list", ctxA, { thresholdHours: 24 });
+    assert.equal(fresh.result.carts.length, 0);
+    const cart = globalThis._concordSTATE.retailLens.carts.get("u").get(c.result.cart.id);
+    cart.openedAt = new Date(Date.now() - 2 * 3600000).toISOString();
+    const old = call("abandoned-carts-list", ctxA, { thresholdHours: 1 });
+    assert.equal(old.result.carts.length, 1);
+    assert.equal(old.result.totalLostValue, 100);
+  });
+  it("recovery creates discounted shareable link", () => {
+    call("product-upsert", ctxA, { sku: "P1", name: "X", price: 100, stock: 10 });
+    const c = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+    const r = call("abandoned-cart-recover", ctxA, { cartId: c.result.cart.id, discountCode: "WIN10" });
+    assert.equal(r.ok, true);
+    assert.match(r.result.recovery.shareableLink, /discount=WIN10/);
+    assert.equal(r.result.recovery.kind, "discounted_recovery");
+  });
+});
+
+describe("retail.shipping-zones-* + rate-quote", () => {
+  it("create + list + delete + quote per-country", () => {
+    const z = call("shipping-zones-create", ctxA, { name: "North America", countries: ["US", "CA"], rates: [{ id: "r1", name: "Standard", priceCents: 800, freeThreshold: 50 }, { id: "r2", name: "Express", priceCents: 2000, freeThreshold: null }] });
+    assert.equal(z.ok, true);
+    assert.equal(call("shipping-zones-list", ctxA, {}).result.zones.length, 1);
+    const q = call("shipping-rate-quote", ctxA, { country: "us", subtotal: 100 });
+    assert.equal(q.result.zone, "North America");
+    const standard = q.result.quotes.find(x => x.name === "Standard");
+    assert.equal(standard.priceCents, 0);
+    assert.equal(standard.free, true);
+    const lowQ = call("shipping-rate-quote", ctxA, { country: "us", subtotal: 20 });
+    const lowStd = lowQ.result.quotes.find(x => x.name === "Standard");
+    assert.equal(lowStd.priceCents, 800);
+    assert.equal(call("shipping-zones-delete", ctxA, { id: z.result.zone.id }).ok, true);
+  });
+  it("rate-quote returns empty for uncovered country", () => {
+    const r = call("shipping-rate-quote", ctxA, { country: "ZW", subtotal: 100 });
+    assert.equal(r.result.quotes.length, 0);
+  });
+});
+
+describe("retail.tax-rates-*", () => {
+  it("set creates or updates by region", () => {
+    call("tax-rates-set", ctxA, { region: "CA", ratePct: 7.25 });
+    call("tax-rates-set", ctxA, { region: "CA", ratePct: 7.5 });
+    const list = call("tax-rates-list", ctxA, {});
+    assert.equal(list.result.rates.length, 1);
+    assert.equal(list.result.rates[0].ratePct, 7.5);
+  });
+  it("clamps rate to 0-50%", () => {
+    call("tax-rates-set", ctxA, { region: "XX", ratePct: 100 });
+    assert.equal(call("tax-rates-list", ctxA, {}).result.rates[0].ratePct, 50);
+  });
+});
+
+describe("retail.gift-cards-* (issue + balance + redeem)", () => {
+  it("create / balance / partial redeem / full redeem cycle", () => {
+    const c = call("gift-cards-create", ctxA, { initialValue: 100, recipientEmail: "r@x" });
+    assert.equal(c.ok, true);
+    const code = c.result.card.code;
+    assert.equal(call("gift-cards-balance", ctxA, { code }).result.balance, 100);
+    const r1 = call("gift-cards-redeem", ctxA, { code, amount: 30 });
+    assert.equal(r1.result.remainingBalance, 70);
+    assert.equal(r1.result.status, "active");
+    const r2 = call("gift-cards-redeem", ctxA, { code, amount: 70 });
+    assert.equal(r2.result.status, "redeemed");
+    const r3 = call("gift-cards-redeem", ctxA, { code, amount: 10 });
+    assert.equal(r3.ok, false);
+  });
+  it("rejects unknown code / insufficient balance", () => {
+    assert.equal(call("gift-cards-balance", ctxA, { code: "NOPE" }).ok, false);
+    const c = call("gift-cards-create", ctxA, { initialValue: 10 });
+    const r = call("gift-cards-redeem", ctxA, { code: c.result.card.code, amount: 100 });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("retail.refunds-* (order refunds + restock)", () => {
+  it("creates refund and restocks inventory by default", () => {
+    call("product-upsert", ctxA, { sku: "P1", name: "X", price: 100, stock: 10 });
+    const cart = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: cart.result.cart.id, sku: "P1", qty: 2 });
+    const o = call("cart-tender", ctxA, { cartId: cart.result.cart.id, tenders: [{ kind: "cash", amount: 200 }] });
+    assert.equal(call("product-list", ctxA, {}).result.products[0].stock, 8);
+    const r = call("refunds-create", ctxA, { orderId: o.result.order.id, amount: 200, reason: "defective" });
+    assert.equal(r.ok, true);
+    assert.equal(call("product-list", ctxA, {}).result.products[0].stock, 10);
+  });
+  it("rejects refund > order total", () => {
+    call("product-upsert", ctxA, { sku: "P1", name: "X", price: 50, stock: 10 });
+    const cart = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: cart.result.cart.id, sku: "P1", qty: 1 });
+    const o = call("cart-tender", ctxA, { cartId: cart.result.cart.id, tenders: [{ kind: "cash", amount: 50 }] });
+    const r = call("refunds-create", ctxA, { orderId: o.result.order.id, amount: 100 });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("retail.collections-* (product groupings)", () => {
+  it("create + add-product + list + delete cycle", () => {
+    const c = call("collections-create", ctxA, { name: "Winter Sale", productSkus: ["P1"] });
+    assert.equal(c.ok, true);
+    call("collections-add-product", ctxA, { id: c.result.collection.id, sku: "P2" });
+    assert.equal(call("collections-list", ctxA, {}).result.collections[0].productSkus.length, 2);
+    assert.equal(call("collections-delete", ctxA, { id: c.result.collection.id }).ok, true);
+  });
+});
+
+describe("retail.transfers-* (inventory transfers)", () => {
+  it("create / list / receive cycle", () => {
+    const t = call("transfers-create", ctxA, { fromLocation: "Warehouse A", toLocation: "Store 1", lines: [{ sku: "P1", qty: 5 }] });
+    assert.equal(t.ok, true);
+    assert.equal(t.result.transfer.status, "in_transit");
+    const r = call("transfers-receive", ctxA, { id: t.result.transfer.id });
+    assert.equal(r.result.transfer.status, "received");
+  });
+  it("rejects empty lines or missing location", () => {
+    assert.equal(call("transfers-create", ctxA, { fromLocation: "", toLocation: "B", lines: [] }).ok, false);
+  });
+});
+
+describe("retail.analytics-* (revenue/top products/summary)", () => {
+  it("revenue-by-day aggregates orders", () => {
+    call("product-upsert", ctxA, { sku: "P1", name: "X", price: 100, stock: 100 });
+    for (let i = 0; i < 3; i++) {
+      const c = call("cart-open", ctxA);
+      call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
+      call("cart-tender", ctxA, { cartId: c.result.cart.id, tenders: [{ kind: "cash", amount: 100 }] });
+    }
+    const r = call("analytics-revenue-by-day", ctxA, { days: 30 });
+    assert.equal(r.result.totalOrders, 3);
+    assert.equal(r.result.totalRevenue, 300);
+    assert.equal(r.result.avgOrderValue, 100);
+  });
+  it("top-products ranks by revenue", () => {
+    call("product-upsert", ctxA, { sku: "P1", name: "Cheap", price: 10, stock: 100 });
+    call("product-upsert", ctxA, { sku: "P2", name: "Expensive", price: 100, stock: 100 });
+    const c1 = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: c1.result.cart.id, sku: "P1", qty: 5 });
+    call("cart-add-line", ctxA, { cartId: c1.result.cart.id, sku: "P2", qty: 2 });
+    call("cart-tender", ctxA, { cartId: c1.result.cart.id, tenders: [{ kind: "cash", amount: 250 }] });
+    const r = call("analytics-top-products", ctxA, { limit: 10 });
+    assert.equal(r.result.topProducts[0].sku, "P2");
+    assert.equal(r.result.topProducts[0].revenue, 200);
+  });
+  it("summary aggregates totals", () => {
+    call("product-upsert", ctxA, { sku: "P1", name: "X", price: 50, stock: 10 });
+    call("customers-add", ctxA, { name: "Alice", email: "a@x" });
+    const cart = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: cart.result.cart.id, sku: "P1", qty: 1 });
+    call("cart-tender", ctxA, { cartId: cart.result.cart.id, tenders: [{ kind: "cash", amount: 50 }] });
+    const r = call("analytics-summary", ctxA, {});
+    assert.equal(r.result.totalRevenue, 50);
+    assert.equal(r.result.totalOrders, 1);
+    assert.equal(r.result.productCount, 1);
+    assert.equal(r.result.customerCount, 1);
+  });
+});

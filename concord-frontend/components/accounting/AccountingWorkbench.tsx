@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   X, Loader2, BookOpen, TrendingUp, Landmark, Calculator, Receipt, Plus, Save, Trash2, Check, AlertTriangle, FileText, Link as LinkIcon,
 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Account {
@@ -112,7 +112,7 @@ function ChartOfAccountsTab() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'accounting',
         action: 'coa-list',
         input: {},
@@ -130,7 +130,7 @@ function ChartOfAccountsTab() {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'accounting',
         action: 'coa-create',
         input: draft,
@@ -145,7 +145,7 @@ function ChartOfAccountsTab() {
 
   const archive = async (id: string) => {
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'accounting',
         action: 'coa-archive',
         input: { id },
@@ -279,7 +279,7 @@ function JournalEntryTab() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', {
+        const res = await lensRun({
           domain: 'accounting', action: 'coa-list', input: {},
         });
         const result = (res.data as { result?: { accounts?: Account[] } })?.result;
@@ -305,7 +305,7 @@ function JournalEntryTab() {
     setSaving(true);
     setStatus({ kind: 'idle' });
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'accounting', action: 'je-post',
         input: {
           date, memo,
@@ -496,8 +496,8 @@ function LedgerTab() {
     setLoading(true);
     try {
       const [coa, ledger] = await Promise.all([
-        api.post('/api/lens/run', { domain: 'accounting', action: 'coa-list', input: {} }),
-        api.post('/api/lens/run', {
+        lensRun({ domain: 'accounting', action: 'coa-list', input: {} }),
+        lensRun({
           domain: 'accounting', action: 'ledger-list',
           input: { accountId: accountFilter || undefined, limit: 100 },
         }),
@@ -588,7 +588,7 @@ function BalanceSheetTab() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'accounting',
         action: 'balance-sheet-compute',
         input: { asOf },
@@ -690,7 +690,7 @@ function AgingTab() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'accounting', action: 'aging-ar', input: {},
       });
       const result = (res.data as { result?: { buckets?: AgingBucket[]; totalOpen?: number } })?.result;
@@ -704,7 +704,7 @@ function AgingTab() {
 
   const createInvoice = async () => {
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'accounting', action: 'invoice-create',
         input: draft,
       });
@@ -721,7 +721,7 @@ function AgingTab() {
 
   const markPaid = async (id: string) => {
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'accounting', action: 'invoice-mark-paid',
         input: { id },
       });
@@ -738,7 +738,7 @@ function AgingTab() {
     if (!linkPrompt) return;
     setLinkError(null); setLinkResult(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'accounting', action: 'invoice-create-payment-link',
         input: { id: linkPrompt, customerEmail: linkEmail.trim() },
       });

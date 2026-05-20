@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ShoppingBag, Loader2, Tag } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface TrendingItem { id: string; title?: string; kind?: string; citation_count?: number; created_at?: number; creator_id?: string; tags?: string[]; }
@@ -14,7 +14,7 @@ export function TrendingListings() {
   const trending = useQuery({
     queryKey: ['marketplace-trending', windowHours],
     queryFn: async () => {
-      const r = await api.post('/api/lens/run', { domain: 'discovery', name: 'trending', input: { windowHours, limit: 30 } });
+      const r = await lensRun({ domain: 'discovery', name: 'trending', input: { windowHours, limit: 30 } });
       const data = r.data as { ok: boolean; result?: TrendingItem[] | { items?: TrendingItem[] }; items?: TrendingItem[] };
       const arr = Array.isArray(data.result) ? data.result : (data.result as { items?: TrendingItem[] })?.items || data.items || [];
       return arr as TrendingItem[];

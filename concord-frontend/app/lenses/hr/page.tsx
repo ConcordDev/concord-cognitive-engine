@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { HrWorkdaySection } from '@/components/hr/HrWorkdaySection';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -343,6 +344,9 @@ export default function HRLensPage() {
       <FirstRunTour lensId="hr" />
       <ManifestActionBar />
       <DepthBadge lensId="hr" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <HrWorkdaySection />
+      </div>
     <div data-lens-theme="hr" className="space-y-6 p-6">
       <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between">
         <div className="flex items-center gap-4">

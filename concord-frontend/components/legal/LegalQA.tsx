@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { MessageSquare, Loader2, Send, BookOpen, ShieldAlert } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface LegalAnswer {
   answer: string;
@@ -21,7 +21,7 @@ export function LegalQA() {
     if (!question.trim()) return;
     setLoading(true); setAnswer(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'legal', action: 'legal-question',
         input: { question: question.trim(), jurisdiction },
       });

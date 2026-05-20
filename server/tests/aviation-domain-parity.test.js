@@ -231,3 +231,165 @@ describe("aviation — STATE unavailable path", () => {
     assert.match(r.error, /STATE unavailable/);
   });
 });
+
+// ── Full-app parity (ForeFlight + FlightAware 2026) ─────────────
+
+describe("aviation.aircraft-*", () => {
+  it("add / list / update / delete cycle, per-user scoped", () => {
+    const a = call("aircraft-add", ctxA, { tail: "n12345", make: "Cessna", model: "172S", year: 2018, cruiseKts: 120, fuelBurnGph: 9 });
+    assert.equal(a.ok, true);
+    assert.equal(a.result.aircraft.tail, "N12345");
+    assert.equal(call("aircraft-list", ctxA, {}).result.aircraft.length, 1);
+    assert.equal(call("aircraft-list", ctxB, {}).result.aircraft.length, 0);
+    const u = call("aircraft-update", ctxA, { id: a.result.aircraft.id, hobbsHours: 50 });
+    assert.equal(u.result.aircraft.hobbsHours, 50);
+    assert.equal(call("aircraft-delete", ctxA, { id: a.result.aircraft.id }).ok, true);
+  });
+  it("rejects missing tail/make/model", () => {
+    assert.equal(call("aircraft-add", ctxA, { tail: "", make: "X", model: "Y" }).ok, false);
+    assert.equal(call("aircraft-add", ctxA, { tail: "X", make: "", model: "Y" }).ok, false);
+  });
+});
+
+describe("aviation.logbook-* (entries + totals)", () => {
+  it("add entry, auto-rolls Hobbs on aircraft", () => {
+    const ac = call("aircraft-add", ctxA, { tail: "N111", make: "Cessna", model: "172", hobbsHours: 100 });
+    const e = call("logbook-add", ctxA, { aircraftId: ac.result.aircraft.id, date: "2026-05-01", from: "ksjc", to: "kpao", totalHours: 1.4, pic: 1.4, dayLandings: 2 });
+    assert.equal(e.ok, true);
+    assert.equal(e.result.entry.from, "KSJC");
+    const acAfter = call("aircraft-list", ctxA, {}).result.aircraft[0];
+    assert.equal(acAfter.hobbsHours, 101.4);
+  });
+  it("totals aggregates across entries", () => {
+    const ac = call("aircraft-add", ctxA, { tail: "N222", make: "P", model: "M" });
+    call("logbook-add", ctxA, { aircraftId: ac.result.aircraft.id, date: "2026-04-01", from: "KSJC", to: "KOAK", totalHours: 1.0, pic: 1.0, dayLandings: 1, instrument: 0.5 });
+    call("logbook-add", ctxA, { aircraftId: ac.result.aircraft.id, date: "2026-04-15", from: "KOAK", to: "KSJC", totalHours: 1.2, pic: 1.2, night: 0.4, nightLandings: 1, approaches: [{ type: "ILS", airport: "KSJC" }] });
+    const t = call("logbook-totals", ctxA, {});
+    assert.equal(t.result.totalHours, 2.2);
+    assert.equal(t.result.pic, 2.2);
+    assert.equal(t.result.night, 0.4);
+    assert.equal(t.result.totalFlights, 2);
+    assert.equal(t.result.totalLandings, 2);
+    assert.equal(t.result.nightLandings, 1);
+  });
+  it("rejects bad input", () => {
+    assert.equal(call("logbook-add", ctxA, { aircraftId: "", date: "x", from: "y", to: "z", totalHours: 1 }).ok, false);
+    const ac = call("aircraft-add", ctxA, { tail: "N333", make: "P", model: "M" });
+    assert.equal(call("logbook-add", ctxA, { aircraftId: ac.result.aircraft.id, date: "2026-01-01", from: "X", to: "Y", totalHours: 0 }).ok, false);
+  });
+});
+
+describe("aviation.currency-* (BFR / medical / 90-day / IFR)", () => {
+  it("BFR within 24 months is current", () => {
+    call("currency-event-add", ctxA, { kind: "flight_review", date: new Date(Date.now() - 100 * 86400000).toISOString().slice(0, 10) });
+    const r = call("currency-status", ctxA, {});
+    assert.equal(r.result.bfr.current, true);
+    assert.ok(r.result.bfr.expiresInDays > 600);
+  });
+  it("BFR beyond 24 months is not current", () => {
+    call("currency-event-add", ctxA, { kind: "flight_review", date: new Date(Date.now() - 800 * 86400000).toISOString().slice(0, 10) });
+    const r = call("currency-status", ctxA, {});
+    assert.equal(r.result.bfr.current, false);
+  });
+  it("90-day passenger-carrying requires 3 landings", () => {
+    const ac = call("aircraft-add", ctxA, { tail: "N444", make: "P", model: "M" });
+    call("logbook-add", ctxA, { aircraftId: ac.result.aircraft.id, date: new Date().toISOString().slice(0, 10), from: "A", to: "B", totalHours: 1, dayLandings: 3 });
+    const r = call("currency-status", ctxA, {});
+    assert.equal(r.result.passenger90.dayCurrent, true);
+    assert.equal(r.result.passenger90.dayCount, 3);
+  });
+  it("rejects bad kind", () => {
+    assert.equal(call("currency-event-add", ctxA, { kind: "bogus" }).ok, false);
+  });
+});
+
+describe("aviation.track-logs-* (recorded flights)", () => {
+  it("start / append points / end cycle with distance calc", () => {
+    const ac = call("aircraft-add", ctxA, { tail: "N555", make: "P", model: "M" });
+    const t = call("track-logs-start", ctxA, { aircraftId: ac.result.aircraft.id, from: "KSJC", to: "KMRY" });
+    assert.equal(t.ok, true);
+    call("track-logs-append", ctxA, { trackId: t.result.track.id, lat: 37.36, lng: -121.92, altitudeFt: 1500, groundSpeedKts: 100 });
+    call("track-logs-append", ctxA, { trackId: t.result.track.id, lat: 37.00, lng: -121.85, altitudeFt: 4500, groundSpeedKts: 120 });
+    call("track-logs-append", ctxA, { trackId: t.result.track.id, lat: 36.59, lng: -121.84, altitudeFt: 4500, groundSpeedKts: 120 });
+    const ended = call("track-logs-end", ctxA, { trackId: t.result.track.id });
+    assert.equal(ended.ok, true);
+    assert.ok(ended.result.track.totalDistanceNm > 30);
+    assert.equal(ended.result.track.maxAltitudeFt, 4500);
+  });
+  it("double-start same aircraft rejected", () => {
+    const ac = call("aircraft-add", ctxA, { tail: "N666", make: "P", model: "M" });
+    call("track-logs-start", ctxA, { aircraftId: ac.result.aircraft.id });
+    assert.equal(call("track-logs-start", ctxA, { aircraftId: ac.result.aircraft.id }).ok, false);
+  });
+});
+
+describe("aviation.briefing-graphical + notams-fetch (real APIs)", () => {
+  it("briefing rejects missing icaos", async () => {
+    const r = await call("briefing-graphical", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+  it("notams returns config error when key missing", async () => {
+    delete process.env.FAA_NOTAM_API_KEY;
+    const r = await call("notams-fetch", ctxA, { icao: "KSJC" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /FAA_NOTAM_API_KEY/);
+  });
+});
+
+describe("aviation.route-advisor (suggest from logbook history)", () => {
+  it("suggests direct route + prior-flown routes", () => {
+    const ac = call("aircraft-add", ctxA, { tail: "N777", make: "P", model: "M" });
+    call("logbook-add", ctxA, { aircraftId: ac.result.aircraft.id, date: "2026-04-01", from: "KSJC", to: "KMRY", totalHours: 0.8, pic: 0.8, route: ["KSJC", "WOODS", "KMRY"] });
+    call("logbook-add", ctxA, { aircraftId: ac.result.aircraft.id, date: "2026-04-15", from: "KSJC", to: "KMRY", totalHours: 0.7, pic: 0.7, route: ["KSJC", "WOODS", "KMRY"] });
+    const r = call("route-advisor", ctxA, { from: "ksjc", to: "kmry", altitudeFt: 6500 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.suggestions[0].rationale, "Direct");
+    const flown = r.result.suggestions.find(s => s.flownCount === 2);
+    assert.ok(flown);
+    assert.deepEqual(flown.route, ["KSJC", "WOODS", "KMRY"]);
+  });
+  it("rejects missing from/to", () => {
+    assert.equal(call("route-advisor", ctxA, { from: "", to: "X" }).ok, false);
+  });
+});
+
+describe("aviation.live-flights-* (watch list)", () => {
+  it("watch / list / unwatch cycle", () => {
+    call("live-flights-watch", ctxA, { ident: "ual123" });
+    assert.equal(call("live-flights-tracked", ctxA, {}).result.flights[0].ident, "UAL123");
+    assert.equal(call("live-flights-watch", ctxA, { ident: "UAL123" }).ok, false);
+    assert.equal(call("live-flights-unwatch", ctxA, { ident: "UAL123" }).ok, true);
+    assert.equal(call("live-flights-tracked", ctxA, {}).result.flights.length, 0);
+  });
+});
+
+describe("aviation.fuel-stops-calc", () => {
+  it("computes stops + fuel + time", () => {
+    const ac = call("aircraft-add", ctxA, { tail: "N888", make: "P", model: "M", cruiseKts: 120, fuelBurnGph: 9, fuelCapacityGal: 50 });
+    const r = call("fuel-stops-calc", ctxA, { aircraftId: ac.result.aircraft.id, totalDistanceNm: 1000, reserveGal: 5 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.maxLegNm, 600);
+    assert.equal(r.result.fuelStopsRequired, 1);
+  });
+  it("rejects invalid input", () => {
+    assert.equal(call("fuel-stops-calc", ctxA, { aircraftId: "nope", totalDistanceNm: 100 }).ok, false);
+  });
+});
+
+describe("aviation.dashboard-summary", () => {
+  it("aggregates aircraft + logbook + tracks + plans", () => {
+    const ctxC = { actor: { userId: "user_av_dash" }, userId: "user_av_dash" };
+    const ac = call("aircraft-add", ctxC, { tail: "N999", make: "P", model: "M" });
+    call("logbook-add", ctxC, { aircraftId: ac.result.aircraft.id, date: new Date().toISOString().slice(0, 10), from: "A", to: "B", totalHours: 1.5 });
+    call("logbook-add", ctxC, { aircraftId: ac.result.aircraft.id, date: new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10), from: "C", to: "D", totalHours: 2.0 });
+    call("track-logs-start", ctxC, { aircraftId: ac.result.aircraft.id });
+    call("live-flights-watch", ctxC, { ident: "DAL456" });
+    const d = call("dashboard-summary", ctxC, {});
+    assert.equal(d.result.aircraftCount, 1);
+    assert.equal(d.result.totalHours, 3.5);
+    assert.equal(d.result.hours30d, 1.5);
+    assert.equal(d.result.totalFlights, 2);
+    assert.equal(d.result.activeTracks, 1);
+    assert.equal(d.result.watchedFlights, 1);
+  });
+});

@@ -9,6 +9,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ForumSection } from '@/components/forum/ForumSection';
 import { ForumChatter } from '@/components/forum/ForumChatter';
 import { ForumActionPanel } from '@/components/forum/ForumActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -802,6 +803,9 @@ export default function ForumLensPage() {
       <FirstRunTour lensId="forum" />
       <ManifestActionBar />
       <DepthBadge lensId="forum" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <ForumSection />
+      </div>
     <div className="lens-forum min-h-full bg-lattice-bg" data-lens-theme="forum">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-lattice-surface/95 backdrop-blur border-b border-orange-500/10">

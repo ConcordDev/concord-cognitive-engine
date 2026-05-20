@@ -429,3 +429,371 @@ describe("regression: pre-existing analytical macros still work", () => {
     assert.equal(r.result.overallRisk, "critical");
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  Cursor / VS Code 2026 parity — workspace, files, git, agent.
+// ═════════════════════════════════════════════════════════════════
+
+const ctxC = { actor: { userId: "code_user" }, userId: "code_user" };
+
+describe("code — projects + virtual workspace", () => {
+  it("creates a project and scaffolds initial files", () => {
+    const r = call("projects-create", ctxC, { name: "MyApp", scaffold: "node-ts" });
+    assert.equal(r.ok, true);
+    const tree = call("files-tree", ctxC, { projectId: r.result.project.id });
+    assert.ok(tree.result.tree.find(f => f.path === "src/index.ts"));
+    assert.ok(tree.result.tree.find(f => f.path === "package.json"));
+  });
+
+  it("lists per-user (multi-tenant isolation)", () => {
+    call("projects-create", ctxC, { name: "A" });
+    assert.equal(call("projects-list", ctxC).result.projects.length, 1);
+    const ctxOther = { actor: { userId: "other" }, userId: "other" };
+    assert.equal(call("projects-list", ctxOther).result.projects.length, 0);
+  });
+});
+
+describe("code — files CRUD", () => {
+  it("writes, reads, renames, deletes a file", () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const w = call("files-write", ctxC, { projectId: proj.id, path: "src/foo.ts", content: "export const x = 1;\n" });
+    assert.equal(w.ok, true); assert.equal(w.result.created, true);
+    const r = call("files-read", ctxC, { projectId: proj.id, path: "src/foo.ts" });
+    assert.equal(r.result.content, "export const x = 1;\n");
+    assert.equal(r.result.language, "typescript");
+    const ren = call("files-rename", ctxC, { projectId: proj.id, from: "src/foo.ts", to: "src/bar.ts" });
+    assert.equal(ren.ok, true);
+    assert.equal(call("files-read", ctxC, { projectId: proj.id, path: "src/foo.ts" }).ok, false);
+    assert.equal(call("files-read", ctxC, { projectId: proj.id, path: "src/bar.ts" }).ok, true);
+    const del = call("files-delete", ctxC, { projectId: proj.id, path: "src/bar.ts" });
+    assert.equal(del.ok, true);
+  });
+
+  it("rejects content > 1MB", () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const big = "x".repeat(1_100_000);
+    const w = call("files-write", ctxC, { projectId: proj.id, path: "big.txt", content: big });
+    assert.equal(w.ok, false);
+    assert.match(w.error, /too large/);
+  });
+});
+
+describe("code — virtual git", () => {
+  it("status / stage / commit workflow", () => {
+    const proj = call("projects-create", ctxC, { name: "Git" }).result.project;
+    call("files-write", ctxC, { projectId: proj.id, path: "a.txt", content: "hi" });
+    const status1 = call("git-status", ctxC, { projectId: proj.id });
+    assert.equal(status1.result.modified.length, 1);
+    assert.equal(status1.result.clean, false);
+    call("git-stage", ctxC, { projectId: proj.id });
+    const status2 = call("git-status", ctxC, { projectId: proj.id });
+    assert.equal(status2.result.staged.length, 1);
+    const commit = call("git-commit", ctxC, { projectId: proj.id, message: "first commit" });
+    assert.equal(commit.ok, true);
+    assert.match(commit.result.commit.number, /^C-\d{5}$/);
+    const status3 = call("git-status", ctxC, { projectId: proj.id });
+    assert.equal(status3.result.staged.length, 0);
+    assert.equal(status3.result.clean, true);
+    const log = call("git-log", ctxC, { projectId: proj.id });
+    assert.equal(log.result.log.length, 1);
+  });
+
+  it("rejects empty commit", () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const r = call("git-commit", ctxC, { projectId: proj.id, message: "x" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /nothing staged/);
+  });
+
+  it("creates and switches branches", () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    call("git-branch-create", ctxC, { projectId: proj.id, name: "feature", checkout: true });
+    const s = call("git-status", ctxC, { projectId: proj.id });
+    assert.equal(s.result.branch, "feature");
+    assert.deepEqual(s.result.branches.sort(), ["feature", "main"]);
+  });
+});
+
+describe("code — agent tasks (Composer parity)", () => {
+  it("agent-task-start builds a deterministic plan without brain", async () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const r = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "Refactor auth to JWT and add tests" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.task.status, "running");
+    assert.equal(r.result.task.source, "deterministic");
+    const actions = r.result.task.plan.map(p => p.action);
+    assert.ok(actions.includes("refactor"));
+    assert.ok(actions.includes("tests"));
+  });
+
+  it("agent-task-finish marks status + records files changed", async () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    const t = await call("agent-task-start", ctxC, { projectId: proj.id, prompt: "fix bug" });
+    const fin = call("agent-task-finish", ctxC, { id: t.result.task.id, status: "completed", filesChanged: ["src/a.ts", "src/b.ts"] });
+    assert.equal(fin.result.task.status, "completed");
+    assert.equal(fin.result.task.filesChanged.length, 2);
+  });
+});
+
+describe("code — inline-edit + explain + refactor + tests + format", () => {
+  it("format-code normalizes tabs + trailing whitespace + final newline", () => {
+    const code = "function x() {\n\treturn 1;   \n}";
+    const r = call("format-code", ctxC, { code, language: "javascript" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.formatted.endsWith("\n"));
+    assert.ok(!r.result.formatted.includes("\t"));
+  });
+
+  it("explain returns deterministic result when no brain", async () => {
+    const r = await call("explain", ctxC, { code: "function add(a, b) { return a + b; }", path: "src/add.js" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "deterministic");
+  });
+
+  it("explain brain-backed when ctx.llm.chat present", async () => {
+    const ctxBrain = { ...ctxC, llm: { chat: async () => ({ content: "Adds two numbers." }) } };
+    const r = await call("explain", ctxBrain, { code: "f(a,b){return a+b}" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "brain");
+    assert.equal(r.result.explanation, "Adds two numbers.");
+  });
+
+  it("inline-edit rejects without brain", async () => {
+    const r = await call("inline-edit", ctxC, { code: "x", instruction: "make it Y" });
+    assert.equal(r.ok, false);
+  });
+
+  it("inline-edit strips code fences from brain output", async () => {
+    const ctxBrain = { ...ctxC, llm: { chat: async () => ({ content: "```ts\nconst y = 2;\n```" }) } };
+    const r = await call("inline-edit", ctxBrain, { code: "const x = 1;", instruction: "rename x to y", language: "typescript" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.edited, "const y = 2;");
+  });
+});
+
+describe("code — find-references", () => {
+  it("finds symbol across files (word boundary aware)", () => {
+    const proj = call("projects-create", ctxC, { name: "X" }).result.project;
+    call("files-write", ctxC, { projectId: proj.id, path: "src/a.ts", content: "export function deeplyNamed() { return 1; }" });
+    call("files-write", ctxC, { projectId: proj.id, path: "src/b.ts", content: "import { deeplyNamed } from './a';\ndeeplyNamed();" });
+    call("files-write", ctxC, { projectId: proj.id, path: "src/c.ts", content: "// unrelated" });
+    const r = call("find-references", ctxC, { projectId: proj.id, symbol: "deeplyNamed" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.count >= 3); // a (decl) + b (import + call)
+    assert.ok(r.result.references.every(ref => ref.path.startsWith("src/")));
+  });
+});
+
+describe("code — workspace-summary", () => {
+  it("aggregates projects, files, tasks", async () => {
+    const p = call("projects-create", ctxC, { name: "X" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "f.ts", content: "x" });
+    await call("agent-task-start", ctxC, { projectId: p.id, prompt: "test" });
+    const r = call("workspace-summary", ctxC);
+    assert.equal(r.ok, true);
+    assert.ok(r.result.projectCount >= 1);
+    assert.ok(r.result.fileCount >= 1);
+    assert.equal(r.result.runningTasks, 1);
+  });
+});
+
+describe("code — symbols-outline", () => {
+  it("extracts functions, classes and methods", () => {
+    const p = call("projects-create", ctxC, { name: "S" }).result.project;
+    const src = [
+      "export class Widget {",
+      "  render() { return 1; }",
+      "}",
+      "export function build() { return new Widget(); }",
+      "const helper = (x) => x * 2;",
+    ].join("\n");
+    call("files-write", ctxC, { projectId: p.id, path: "src/w.ts", content: src });
+    const r = call("symbols-outline", ctxC, { projectId: p.id, path: "src/w.ts" });
+    assert.equal(r.ok, true);
+    const names = r.result.symbols.map((x) => x.name);
+    assert.ok(names.includes("Widget"));
+    assert.ok(names.includes("build"));
+    assert.ok(names.includes("helper"));
+    assert.ok(names.includes("render"));
+  });
+});
+
+describe("code — diagnostics", () => {
+  it("flags debugger, console, var, loose equality and unbalanced brackets", () => {
+    const p = call("projects-create", ctxC, { name: "D" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "var x = 1;\nif (x == 1) { debugger; console.log(x); }\n" });
+    call("files-write", ctxC, { projectId: p.id, path: "b.js", content: "function broken() { return 1;\n" });
+    const r = call("diagnostics", ctxC, { projectId: p.id });
+    assert.equal(r.ok, true);
+    const rules = r.result.problems.map((x) => x.rule);
+    assert.ok(rules.includes("no-debugger"));
+    assert.ok(rules.includes("no-var"));
+    assert.ok(rules.includes("eqeqeq"));
+    assert.ok(rules.includes("bracket-balance"));
+    assert.ok(r.result.bySeverity.error >= 1);
+  });
+
+  it("scans a single file when path given", () => {
+    const p = call("projects-create", ctxC, { name: "D" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "debugger;\n" });
+    call("files-write", ctxC, { projectId: p.id, path: "b.js", content: "const ok = 1;\n" });
+    const r = call("diagnostics", ctxC, { projectId: p.id, path: "b.js" });
+    assert.equal(r.result.filesScanned, 1);
+    assert.equal(r.result.total, 0);
+  });
+});
+
+describe("code — todo-scan", () => {
+  it("collects TODO / FIXME tagged comments", () => {
+    const p = call("projects-create", ctxC, { name: "T" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "// TODO: wire this up\nconst x = 1; // FIXME later\n" });
+    const r = call("todo-scan", ctxC, { projectId: p.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 2);
+    assert.equal(r.result.byTag.TODO, 1);
+    assert.equal(r.result.byTag.FIXME, 1);
+  });
+});
+
+describe("code — replace-project + rename-symbol", () => {
+  it("replaces across the project with a dry-run mode", () => {
+    const p = call("projects-create", ctxC, { name: "R" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "color color color" });
+    const dry = call("replace-project", ctxC, { projectId: p.id, query: "color", replacement: "colour", dryRun: true });
+    assert.equal(dry.result.totalReplacements, 3);
+    assert.equal(call("files-read", ctxC, { projectId: p.id, path: "a.js" }).result.content, "color color color");
+    call("replace-project", ctxC, { projectId: p.id, query: "color", replacement: "colour" });
+    assert.equal(call("files-read", ctxC, { projectId: p.id, path: "a.js" }).result.content, "colour colour colour");
+  });
+
+  it("renames a symbol project-wide, word-boundary aware", () => {
+    const p = call("projects-create", ctxC, { name: "R" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "const total = 1; const subtotal = total;" });
+    const r = call("rename-symbol", ctxC, { projectId: p.id, from: "total", to: "sum" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalOccurrences, 2); // not "subtotal"
+    assert.equal(call("files-read", ctxC, { projectId: p.id, path: "a.js" }).result.content, "const sum = 1; const subtotal = sum;");
+  });
+
+  it("rejects an invalid rename target", () => {
+    const p = call("projects-create", ctxC, { name: "R" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "x" });
+    assert.equal(call("rename-symbol", ctxC, { projectId: p.id, from: "x", to: "2bad" }).ok, false);
+  });
+});
+
+describe("code — git diff / blame / discard", () => {
+  function committedProject() {
+    const p = call("projects-create", ctxC, { name: "G" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "line1\nline2\nline3\n" });
+    call("git-stage", ctxC, { projectId: p.id });
+    call("git-commit", ctxC, { projectId: p.id, message: "init" });
+    return p;
+  }
+
+  it("diffs a working file against HEAD", () => {
+    const p = committedProject();
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "line1\nCHANGED\nline3\n" });
+    const r = call("git-diff", ctxC, { projectId: p.id, path: "a.js" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.status, "modified");
+    assert.equal(r.result.linesAdded, 1);
+    assert.equal(r.result.linesRemoved, 1);
+  });
+
+  it("blames lines to the commit that introduced them", () => {
+    const p = committedProject();
+    const r = call("git-blame", ctxC, { projectId: p.id, path: "a.js" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.blame[0].commitId);
+    assert.equal(r.result.blame[0].message, "init");
+  });
+
+  it("discards working changes back to HEAD", () => {
+    const p = committedProject();
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "trashed" });
+    call("git-discard", ctxC, { projectId: p.id, path: "a.js" });
+    assert.equal(call("files-read", ctxC, { projectId: p.id, path: "a.js" }).result.content, "line1\nline2\nline3\n");
+  });
+});
+
+describe("code — git stash", () => {
+  it("stashes working changes, reverts files, then pops them back", () => {
+    const p = call("projects-create", ctxC, { name: "St" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "v1" });
+    call("git-stage", ctxC, { projectId: p.id });
+    call("git-commit", ctxC, { projectId: p.id, message: "init" });
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "v2-wip" });
+    const stash = call("git-stash", ctxC, { projectId: p.id, message: "wip" });
+    assert.equal(stash.ok, true);
+    assert.equal(call("files-read", ctxC, { projectId: p.id, path: "a.js" }).result.content, "v1");
+    assert.equal(call("git-stash-list", ctxC, { projectId: p.id }).result.stashes.length, 1);
+    call("git-stash-pop", ctxC, { projectId: p.id });
+    assert.equal(call("files-read", ctxC, { projectId: p.id, path: "a.js" }).result.content, "v2-wip");
+    assert.equal(call("git-stash-list", ctxC, { projectId: p.id }).result.stashes.length, 0);
+  });
+});
+
+describe("code — git branch isolation + merge", () => {
+  it("isolates file content per branch and merges cleanly", () => {
+    const p = call("projects-create", ctxC, { name: "Br" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "base" });
+    call("git-stage", ctxC, { projectId: p.id });
+    call("git-commit", ctxC, { projectId: p.id, message: "base" });
+    // branch + diverge
+    call("git-branch-create", ctxC, { projectId: p.id, name: "feature", checkout: true });
+    call("files-write", ctxC, { projectId: p.id, path: "b.js", content: "feature work" });
+    call("git-stage", ctxC, { projectId: p.id });
+    call("git-commit", ctxC, { projectId: p.id, message: "feature" });
+    // main does not have b.js
+    call("git-checkout", ctxC, { projectId: p.id, branch: "main" });
+    assert.equal(call("files-read", ctxC, { projectId: p.id, path: "b.js" }).ok, false);
+    // merge feature into main
+    const m = call("git-merge", ctxC, { projectId: p.id, from: "feature" });
+    assert.equal(m.ok, true);
+    assert.equal(call("files-read", ctxC, { projectId: p.id, path: "b.js" }).result.content, "feature work");
+  });
+
+  it("detects a merge conflict when both branches change the same file", () => {
+    const p = call("projects-create", ctxC, { name: "Cf" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "base" });
+    call("git-stage", ctxC, { projectId: p.id });
+    call("git-commit", ctxC, { projectId: p.id, message: "base" });
+    call("git-branch-create", ctxC, { projectId: p.id, name: "feature" });
+    // main changes a.js
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "main change" });
+    call("git-stage", ctxC, { projectId: p.id });
+    call("git-commit", ctxC, { projectId: p.id, message: "main edit" });
+    // feature changes a.js differently
+    call("git-checkout", ctxC, { projectId: p.id, branch: "feature" });
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "feature change" });
+    call("git-stage", ctxC, { projectId: p.id });
+    call("git-commit", ctxC, { projectId: p.id, message: "feature edit" });
+    call("git-checkout", ctxC, { projectId: p.id, branch: "main" });
+    const m = call("git-merge", ctxC, { projectId: p.id, from: "feature" });
+    assert.equal(m.ok, false);
+    assert.ok(m.conflicts.includes("a.js"));
+  });
+});
+
+describe("code — run configs + bookmarks", () => {
+  it("saves, lists and deletes run configurations", () => {
+    const p = call("projects-create", ctxC, { name: "Rc" }).result.project;
+    const c = call("run-config-save", ctxC, { projectId: p.id, name: "Test", command: "npm test" }).result.config;
+    assert.equal(call("run-config-list", ctxC, { projectId: p.id }).result.configs.length, 1);
+    call("run-config-save", ctxC, { projectId: p.id, id: c.id, name: "Test", command: "npm run test:ci" });
+    assert.equal(call("run-config-list", ctxC, { projectId: p.id }).result.configs[0].command, "npm run test:ci");
+    call("run-config-delete", ctxC, { projectId: p.id, id: c.id });
+    assert.equal(call("run-config-list", ctxC, { projectId: p.id }).result.configs.length, 0);
+  });
+
+  it("adds, dedupes, lists and deletes bookmarks", () => {
+    const p = call("projects-create", ctxC, { name: "Bm" }).result.project;
+    const b = call("bookmark-add", ctxC, { projectId: p.id, path: "a.js", line: 10, label: "entry" }).result.bookmark;
+    const dup = call("bookmark-add", ctxC, { projectId: p.id, path: "a.js", line: 10 });
+    assert.equal(dup.result.existed, true);
+    assert.equal(call("bookmark-list", ctxC, { projectId: p.id }).result.bookmarks.length, 1);
+    call("bookmark-delete", ctxC, { projectId: p.id, id: b.id });
+    assert.equal(call("bookmark-list", ctxC, { projectId: p.id }).result.bookmarks.length, 0);
+  });
+});

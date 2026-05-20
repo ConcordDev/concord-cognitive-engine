@@ -278,4 +278,512 @@ export default function registerTravelActions(registerLensAction) {
       },
     };
   });
+
+  // ─── TripAdvisor + Hopper 2026 parity — trip planning ───────────────
+  // Trips, itineraries, saved places + reviews, bookings, Hopper-style
+  // price watches, budgets, travel documents, packing checklists.
+
+  function getTravelState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.travelLens) STATE.travelLens = {};
+    const s = STATE.travelLens;
+    for (const k of [
+      "trips", "itinerary", "places", "placeReviews", "bookings",
+      "priceWatches", "budgets", "travelDocs", "checklists",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveTravelState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const tvid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const tvnow = () => new Date().toISOString();
+  const tvaid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const tvlistB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const tvnum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const tvclean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const tvday = (v) => tvclean(v, 10).slice(0, 10);
+  const findTrip = (s, userId, tripId) => (s.trips.get(userId) || []).find((t) => t.id === tripId) || null;
+  const TV_DAY = 86400000;
+
+  // ── Trips ───────────────────────────────────────────────────────────
+  registerLensAction("travel", "trip-create", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = tvclean(params.name, 120);
+    if (!name) return { ok: false, error: "trip name required" };
+    const destination = tvclean(params.destination, 120);
+    if (!destination) return { ok: false, error: "destination required" };
+    const startDate = tvday(params.startDate);
+    const endDate = tvday(params.endDate) || startDate;
+    const trip = {
+      id: tvid("trip"), name, destination, startDate: startDate || null, endDate: endDate || null,
+      travelers: Math.max(1, Math.round(tvnum(params.travelers, 1))),
+      durationDays: (startDate && endDate)
+        ? Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / TV_DAY) + 1) : null,
+      notes: tvclean(params.notes, 500) || null,
+      createdAt: tvnow(),
+    };
+    tvlistB(s.trips, tvaid(ctx)).push(trip);
+    saveTravelState();
+    return { ok: true, result: { trip } };
+  });
+
+  registerLensAction("travel", "trip-list", (ctx, _a, _params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const today = tvday(tvnow());
+    const trips = (s.trips.get(tvaid(ctx)) || [])
+      .map((t) => ({ ...t, status: !t.startDate ? "draft" : t.endDate < today ? "past" : t.startDate > today ? "upcoming" : "active" }))
+      .sort((a, b) => String(a.startDate || "9999").localeCompare(String(b.startDate || "9999")));
+    return { ok: true, result: { trips, count: trips.length } };
+  });
+
+  registerLensAction("travel", "trip-update", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const trip = findTrip(s, tvaid(ctx), params.id);
+    if (!trip) return { ok: false, error: "trip not found" };
+    if (params.name != null) { const n = tvclean(params.name, 120); if (n) trip.name = n; }
+    if (params.destination != null) { const d = tvclean(params.destination, 120); if (d) trip.destination = d; }
+    if (params.startDate != null) trip.startDate = tvday(params.startDate) || null;
+    if (params.endDate != null) trip.endDate = tvday(params.endDate) || null;
+    if (params.travelers != null) trip.travelers = Math.max(1, Math.round(tvnum(params.travelers, 1)));
+    if (params.notes != null) trip.notes = tvclean(params.notes, 500) || null;
+    if (trip.startDate && trip.endDate) {
+      trip.durationDays = Math.max(1, Math.round((new Date(trip.endDate) - new Date(trip.startDate)) / TV_DAY) + 1);
+    }
+    saveTravelState();
+    return { ok: true, result: { trip } };
+  });
+
+  registerLensAction("travel", "trip-delete", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.trips.get(tvaid(ctx)) || [];
+    const i = arr.findIndex((t) => t.id === params.id);
+    if (i < 0) return { ok: false, error: "trip not found" };
+    arr.splice(i, 1);
+    for (const m of [s.itinerary, s.bookings, s.budgets, s.checklists]) m.delete(params.id);
+    saveTravelState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("travel", "trip-detail", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const trip = findTrip(s, tvaid(ctx), params.id);
+    if (!trip) return { ok: false, error: "trip not found" };
+    const bookings = s.bookings.get(trip.id) || [];
+    return {
+      ok: true,
+      result: {
+        trip,
+        itineraryCount: (s.itinerary.get(trip.id) || []).length,
+        bookings,
+        bookedCost: Math.round(bookings.reduce((a, b) => a + tvnum(b.cost), 0) * 100) / 100,
+        checklistOpen: (s.checklists.get(trip.id) || []).filter((c) => !c.done).length,
+      },
+    };
+  });
+
+  // ── Itinerary ───────────────────────────────────────────────────────
+  const ITIN_CATEGORIES = ["sightseeing", "food", "transport", "lodging", "activity", "meeting", "rest"];
+  registerLensAction("travel", "itinerary-add", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const title = tvclean(params.title, 160);
+    if (!title) return { ok: false, error: "title required" };
+    const item = {
+      id: tvid("itin"), tripId: String(params.tripId), title,
+      day: tvday(params.day) || null,
+      time: tvclean(params.time, 5) || null,
+      category: ITIN_CATEGORIES.includes(String(params.category).toLowerCase())
+        ? String(params.category).toLowerCase() : "activity",
+      location: tvclean(params.location, 160) || null,
+      note: tvclean(params.note, 400) || null,
+      createdAt: tvnow(),
+    };
+    tvlistB(s.itinerary, item.tripId).push(item);
+    saveTravelState();
+    return { ok: true, result: { item } };
+  });
+
+  registerLensAction("travel", "itinerary-list", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const items = (s.itinerary.get(String(params.tripId)) || [])
+      .slice()
+      .sort((a, b) => String(a.day || "9999").localeCompare(String(b.day || "9999"))
+        || String(a.time || "99").localeCompare(String(b.time || "99")));
+    const byDay = {};
+    for (const it of items) {
+      const key = it.day || "unscheduled";
+      (byDay[key] = byDay[key] || []).push(it);
+    }
+    return { ok: true, result: { items, byDay, count: items.length } };
+  });
+
+  registerLensAction("travel", "itinerary-update", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const item = (s.itinerary.get(String(params.tripId)) || []).find((x) => x.id === params.id);
+    if (!item) return { ok: false, error: "itinerary item not found" };
+    if (params.title != null) { const t = tvclean(params.title, 160); if (t) item.title = t; }
+    if (params.day != null) item.day = tvday(params.day) || null;
+    if (params.time != null) item.time = tvclean(params.time, 5) || null;
+    if (params.location != null) item.location = tvclean(params.location, 160) || null;
+    if (params.note != null) item.note = tvclean(params.note, 400) || null;
+    saveTravelState();
+    return { ok: true, result: { item } };
+  });
+
+  registerLensAction("travel", "itinerary-delete", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const arr = s.itinerary.get(String(params.tripId)) || [];
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "itinerary item not found" };
+    arr.splice(i, 1);
+    saveTravelState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Saved places + reviews (TripAdvisor) ────────────────────────────
+  const PLACE_KINDS = ["hotel", "attraction", "restaurant", "beach", "museum", "tour", "transport"];
+  registerLensAction("travel", "place-add", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = tvclean(params.name, 160);
+    if (!name) return { ok: false, error: "place name required" };
+    const place = {
+      id: tvid("place"), name,
+      kind: PLACE_KINDS.includes(String(params.kind).toLowerCase()) ? String(params.kind).toLowerCase() : "attraction",
+      destination: tvclean(params.destination, 120) || null,
+      priceLevel: Math.max(0, Math.min(4, Math.round(tvnum(params.priceLevel)))),
+      address: tvclean(params.address, 200) || null,
+      saved: params.saved === true,
+      addedBy: tvaid(ctx), createdAt: tvnow(),
+    };
+    s.places.set(place.id, place);
+    saveTravelState();
+    return { ok: true, result: { place } };
+  });
+
+  function placeView(s, place) {
+    const reviews = s.placeReviews.get(place.id) || [];
+    return {
+      ...place,
+      reviewCount: reviews.length,
+      rating: reviews.length ? Math.round((reviews.reduce((a, r) => a + r.rating, 0) / reviews.length) * 10) / 10 : 0,
+    };
+  }
+
+  registerLensAction("travel", "place-list", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let places = [...s.places.values()];
+    if (params.kind) places = places.filter((p) => p.kind === String(params.kind).toLowerCase());
+    if (params.destination) {
+      const d = String(params.destination).toLowerCase();
+      places = places.filter((p) => (p.destination || "").toLowerCase().includes(d));
+    }
+    if (params.savedOnly) places = places.filter((p) => p.saved && p.addedBy === tvaid(ctx));
+    places = places.map((p) => placeView(s, p)).sort((a, b) => b.rating - a.rating);
+    return { ok: true, result: { places, count: places.length } };
+  });
+
+  registerLensAction("travel", "place-detail", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const place = s.places.get(String(params.id));
+    if (!place) return { ok: false, error: "place not found" };
+    return {
+      ok: true,
+      result: { place: placeView(s, place), reviews: (s.placeReviews.get(place.id) || []).slice().reverse() },
+    };
+  });
+
+  registerLensAction("travel", "place-review", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const place = s.places.get(String(params.placeId));
+    if (!place) return { ok: false, error: "place not found" };
+    const rating = Math.round(tvnum(params.rating));
+    if (rating < 1 || rating > 5) return { ok: false, error: "rating must be 1–5" };
+    const userId = tvaid(ctx);
+    const reviews = tvlistB(s.placeReviews, place.id);
+    let review = reviews.find((r) => r.userId === userId);
+    if (review) {
+      review.rating = rating;
+      review.text = tvclean(params.text, 1000);
+      review.updatedAt = tvnow();
+    } else {
+      review = { id: tvid("rv"), placeId: place.id, userId, rating, text: tvclean(params.text, 1000), createdAt: tvnow() };
+      reviews.push(review);
+    }
+    saveTravelState();
+    return { ok: true, result: { review, aggregate: placeView(s, place) } };
+  });
+
+  registerLensAction("travel", "place-save", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const place = s.places.get(String(params.id));
+    if (!place) return { ok: false, error: "place not found" };
+    place.saved = !(params.unsave === true);
+    saveTravelState();
+    return { ok: true, result: { placeId: place.id, saved: place.saved } };
+  });
+
+  registerLensAction("travel", "place-delete", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const place = s.places.get(String(params.id));
+    if (!place) return { ok: false, error: "place not found" };
+    if (place.addedBy !== tvaid(ctx)) return { ok: false, error: "only the contributor can remove this place" };
+    s.places.delete(place.id);
+    s.placeReviews.delete(place.id);
+    saveTravelState();
+    return { ok: true, result: { deleted: place.id } };
+  });
+
+  // ── Bookings ────────────────────────────────────────────────────────
+  const BOOKING_TYPES = ["flight", "hotel", "car", "rail", "activity", "cruise"];
+  registerLensAction("travel", "booking-add", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const type = String(params.type || "").toLowerCase();
+    if (!BOOKING_TYPES.includes(type)) return { ok: false, error: `type must be one of ${BOOKING_TYPES.join("/")}` };
+    const booking = {
+      id: tvid("bkg"), tripId: String(params.tripId), type,
+      provider: tvclean(params.provider, 120) || null,
+      confirmationCode: tvclean(params.confirmationCode, 60) || null,
+      cost: Math.max(0, tvnum(params.cost)),
+      date: tvday(params.date) || null,
+      note: tvclean(params.note, 300) || null,
+      createdAt: tvnow(),
+    };
+    tvlistB(s.bookings, booking.tripId).push(booking);
+    saveTravelState();
+    return { ok: true, result: { booking } };
+  });
+
+  registerLensAction("travel", "booking-list", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const bookings = (s.bookings.get(String(params.tripId)) || [])
+      .slice().sort((a, b) => String(a.date || "9999").localeCompare(String(b.date || "9999")));
+    return {
+      ok: true,
+      result: { bookings, totalCost: Math.round(bookings.reduce((a, b) => a + tvnum(b.cost), 0) * 100) / 100 },
+    };
+  });
+
+  registerLensAction("travel", "booking-delete", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const arr = s.bookings.get(String(params.tripId)) || [];
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "booking not found" };
+    arr.splice(i, 1);
+    saveTravelState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Hopper-style price watches ──────────────────────────────────────
+  registerLensAction("travel", "price-watch-create", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const subject = tvclean(params.subject, 160);
+    if (!subject) return { ok: false, error: "subject required (e.g. 'SFO→NRT' or hotel name)" };
+    const currentPrice = tvnum(params.currentPrice);
+    if (currentPrice <= 0) return { ok: false, error: "currentPrice must be > 0" };
+    const watch = {
+      id: tvid("pw"), subject,
+      kind: ["flight", "hotel", "car"].includes(String(params.kind).toLowerCase()) ? String(params.kind).toLowerCase() : "flight",
+      targetPrice: Math.max(0, tvnum(params.targetPrice)),
+      history: [{ price: Math.round(currentPrice * 100) / 100, at: tvnow() }],
+      createdAt: tvnow(),
+    };
+    tvlistB(s.priceWatches, tvaid(ctx)).push(watch);
+    saveTravelState();
+    return { ok: true, result: { watch } };
+  });
+
+  function watchView(w) {
+    const current = w.history[w.history.length - 1].price;
+    const first = w.history[0].price;
+    let trend = "flat";
+    if (w.history.length >= 2) {
+      const prev = w.history[w.history.length - 2].price;
+      trend = current > prev ? "rising" : current < prev ? "falling" : "flat";
+    }
+    const belowTarget = w.targetPrice > 0 && current <= w.targetPrice;
+    // Hopper-style: buy when at/below target or trending up; wait when falling.
+    const recommendation = belowTarget ? "buy_now" : trend === "rising" ? "buy_soon" : trend === "falling" ? "wait" : "watch";
+    return {
+      id: w.id, subject: w.subject, kind: w.kind, targetPrice: w.targetPrice,
+      currentPrice: current, lowestSeen: Math.min(...w.history.map((h) => h.price)),
+      changeFromStart: Math.round((current - first) * 100) / 100,
+      observations: w.history.length, trend, belowTarget, recommendation,
+      history: w.history,
+    };
+  }
+
+  registerLensAction("travel", "price-watch-list", (ctx, _a, _params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const watches = (s.priceWatches.get(tvaid(ctx)) || []).map(watchView);
+    return {
+      ok: true,
+      result: { watches, count: watches.length, triggered: watches.filter((w) => w.belowTarget).length },
+    };
+  });
+
+  registerLensAction("travel", "price-watch-update", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const watch = (s.priceWatches.get(tvaid(ctx)) || []).find((w) => w.id === params.id);
+    if (!watch) return { ok: false, error: "price watch not found" };
+    const price = tvnum(params.price);
+    if (price <= 0) return { ok: false, error: "price must be > 0" };
+    watch.history.push({ price: Math.round(price * 100) / 100, at: tvnow() });
+    if (watch.history.length > 60) watch.history = watch.history.slice(-60);
+    saveTravelState();
+    return { ok: true, result: { watch: watchView(watch) } };
+  });
+
+  registerLensAction("travel", "price-watch-delete", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.priceWatches.get(tvaid(ctx)) || [];
+    const i = arr.findIndex((w) => w.id === params.id);
+    if (i < 0) return { ok: false, error: "price watch not found" };
+    arr.splice(i, 1);
+    saveTravelState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Budget ──────────────────────────────────────────────────────────
+  registerLensAction("travel", "budget-set", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const categories = {};
+    const raw = params.categories || {};
+    for (const [k, v] of Object.entries(raw)) {
+      categories[tvclean(k, 40).toLowerCase()] = Math.max(0, tvnum(v));
+    }
+    s.budgets.set(String(params.tripId), { categories, updatedAt: tvnow() });
+    saveTravelState();
+    return { ok: true, result: { budget: s.budgets.get(String(params.tripId)) } };
+  });
+
+  registerLensAction("travel", "budget-summary", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const budget = s.budgets.get(String(params.tripId)) || { categories: {} };
+    const planned = Object.values(budget.categories).reduce((a, v) => a + tvnum(v), 0);
+    const booked = (s.bookings.get(String(params.tripId)) || []).reduce((a, b) => a + tvnum(b.cost), 0);
+    return {
+      ok: true,
+      result: {
+        categories: budget.categories,
+        planned: Math.round(planned * 100) / 100,
+        booked: Math.round(booked * 100) / 100,
+        remaining: Math.round((planned - booked) * 100) / 100,
+        overBudget: booked > planned && planned > 0,
+      },
+    };
+  });
+
+  // ── Travel documents ────────────────────────────────────────────────
+  registerLensAction("travel", "travel-doc-add", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = tvclean(params.title, 120);
+    if (!title) return { ok: false, error: "title required" };
+    const doc = {
+      id: tvid("doc"), title,
+      kind: ["passport", "visa", "insurance", "ticket", "reservation", "vaccination", "other"]
+        .includes(String(params.kind).toLowerCase()) ? String(params.kind).toLowerCase() : "other",
+      number: tvclean(params.number, 60) || null,
+      expiryDate: tvday(params.expiryDate) || null,
+      tripId: params.tripId ? String(params.tripId) : null,
+      createdAt: tvnow(),
+    };
+    tvlistB(s.travelDocs, tvaid(ctx)).push(doc);
+    saveTravelState();
+    return { ok: true, result: { document: doc } };
+  });
+
+  registerLensAction("travel", "travel-doc-list", (ctx, _a, _params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const today = tvday(tvnow());
+    const soon = tvday(new Date(Date.now() + 180 * TV_DAY).toISOString());
+    const documents = (s.travelDocs.get(tvaid(ctx)) || []).map((d) => ({
+      ...d,
+      expiryStatus: !d.expiryDate ? "none" : d.expiryDate < today ? "expired" : d.expiryDate <= soon ? "expiring_soon" : "valid",
+    }));
+    return { ok: true, result: { documents, count: documents.length } };
+  });
+
+  // ── Packing / trip checklist ────────────────────────────────────────
+  registerLensAction("travel", "checklist-add", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const item = tvclean(params.item, 120);
+    if (!item) return { ok: false, error: "item required" };
+    const entry = {
+      id: tvid("ck"), tripId: String(params.tripId), item,
+      category: tvclean(params.category, 40).toLowerCase() || "general",
+      done: false, createdAt: tvnow(),
+    };
+    tvlistB(s.checklists, entry.tripId).push(entry);
+    saveTravelState();
+    return { ok: true, result: { item: entry } };
+  });
+
+  registerLensAction("travel", "checklist-list", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const items = s.checklists.get(String(params.tripId)) || [];
+    return {
+      ok: true,
+      result: { items, total: items.length, done: items.filter((i) => i.done).length },
+    };
+  });
+
+  registerLensAction("travel", "checklist-toggle", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const list = s.checklists.get(String(params.tripId)) || [];
+    const entry = list.find((i) => i.id === params.id);
+    if (!entry) {
+      if (params.remove) return { ok: false, error: "checklist item not found" };
+      return { ok: false, error: "checklist item not found" };
+    }
+    if (params.remove === true) {
+      list.splice(list.indexOf(entry), 1);
+      saveTravelState();
+      return { ok: true, result: { deleted: params.id } };
+    }
+    entry.done = !entry.done;
+    saveTravelState();
+    return { ok: true, result: { item: entry } };
+  });
+
+  // ── Dashboard ───────────────────────────────────────────────────────
+  registerLensAction("travel", "travel-dashboard", (ctx, _a, _params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tvaid(ctx);
+    const today = tvday(tvnow());
+    const trips = s.trips.get(userId) || [];
+    const upcoming = trips.filter((t) => t.startDate && t.startDate >= today);
+    const nextTrip = upcoming.sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)))[0] || null;
+    const watches = (s.priceWatches.get(userId) || []).map(watchView);
+    let bookedCost = 0;
+    for (const list of s.bookings.values()) for (const b of list) bookedCost += tvnum(b.cost);
+    return {
+      ok: true,
+      result: {
+        trips: trips.length,
+        upcomingTrips: upcoming.length,
+        nextTrip: nextTrip ? { id: nextTrip.id, name: nextTrip.name, destination: nextTrip.destination, startDate: nextTrip.startDate } : null,
+        priceWatches: watches.length,
+        watchesTriggered: watches.filter((w) => w.belowTarget).length,
+        savedPlaces: [...s.places.values()].filter((p) => p.saved && p.addedBy === userId).length,
+        totalBooked: Math.round(bookedCost * 100) / 100,
+      },
+    };
+  });
 }

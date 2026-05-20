@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { GameDesignSection } from '@/components/game-design/GameDesignSection';
 import { GameDevRepos } from '@/components/game-design/GameDevRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -236,6 +237,9 @@ export default function GameDesignPage() {
       <FirstRunTour lensId="game-design" />
       <ManifestActionBar />
       <DepthBadge lensId="game-design" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <GameDesignSection />
+      </div>
     <div data-lens-theme="game-design" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}

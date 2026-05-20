@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { NewsReaderSection } from '@/components/news/NewsReaderSection';
 import { GdeltHeadlines } from '@/components/news-explorer/GdeltHeadlines';
 import { NewsActionPanel } from '@/components/news/NewsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -318,6 +319,9 @@ export default function NewsLensPage() {
       <FirstRunTour lensId="news" />
       <ManifestActionBar />
       <DepthBadge lensId="news" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <NewsReaderSection />
+      </div>
     <div data-lens-theme="news" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">

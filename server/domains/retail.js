@@ -676,4 +676,585 @@ export default function registerRetailActions(registerLensAction) {
     saveRetailState();
     return { ok: true, result: { order } };
   });
+
+  // ─── Full-app parity: Shopify 2026 admin ──────────────────────────
+
+  function ensureRetailBucket(state, key, userId) {
+    if (!state[key]) state[key] = new Map();
+    if (!state[key].has(userId)) state[key].set(userId, []);
+    return state[key].get(userId);
+  }
+  function ensureRetailMap(state, key, userId) {
+    if (!state[key]) state[key] = new Map();
+    if (!state[key].has(userId)) state[key].set(userId, new Map());
+    return state[key].get(userId);
+  }
+
+  // ── Customers + segments ──────────────────────────────────────
+
+  registerLensAction("retail", "customers-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const customers = ensureRetailBucket(s, "customers", userId);
+    return { ok: true, result: { customers } };
+  });
+
+  registerLensAction("retail", "customers-add", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const name = String(params.name || "").trim();
+    const email = String(params.email || "").trim().toLowerCase();
+    if (!name) return { ok: false, error: "name required" };
+    if (!email) return { ok: false, error: "email required" };
+    const customer = {
+      id: nextRetailId("cust"), name, email,
+      phone: String(params.phone || ""),
+      city: String(params.city || ""),
+      state: String(params.state || ""),
+      totalSpent: Math.max(0, Number(params.totalSpent) || 0),
+      orderCount: Math.max(0, Number(params.orderCount) || 0),
+      lastOrderAt: params.lastOrderAt || null,
+      acceptsMarketing: params.acceptsMarketing !== false,
+      tags: Array.isArray(params.tags) ? params.tags : [],
+      createdAt: nowIsoRet(),
+    };
+    ensureRetailBucket(s, "customers", userId).push(customer);
+    saveRetailState();
+    return { ok: true, result: { customer } };
+  });
+
+  registerLensAction("retail", "customers-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "customers", userId);
+    const idx = list.findIndex(c => c.id === id);
+    if (idx < 0) return { ok: false, error: "customer not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("retail", "customers-segments", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const customers = ensureRetailBucket(s, "customers", userId);
+    const now = Date.now();
+    const day = 86400000;
+    const segments = {
+      new: customers.filter(c => c.orderCount <= 1),
+      repeat: customers.filter(c => c.orderCount >= 2 && c.orderCount < 5),
+      vip: customers.filter(c => c.totalSpent >= 1000 || c.orderCount >= 5),
+      atRisk: customers.filter(c => c.lastOrderAt && (now - new Date(c.lastOrderAt).getTime()) > 90 * day && c.orderCount > 0),
+      dormant: customers.filter(c => !c.lastOrderAt || (now - new Date(c.lastOrderAt).getTime()) > 180 * day),
+      marketing: customers.filter(c => c.acceptsMarketing),
+    };
+    return {
+      ok: true,
+      result: {
+        totalCustomers: customers.length,
+        segments: {
+          new: segments.new.length,
+          repeat: segments.repeat.length,
+          vip: segments.vip.length,
+          atRisk: segments.atRisk.length,
+          dormant: segments.dormant.length,
+          marketingOptIn: segments.marketing.length,
+        },
+        detail: segments,
+      },
+    };
+  });
+
+  // ── Discount codes ─────────────────────────────────────────────
+
+  registerLensAction("retail", "discounts-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const discounts = ensureRetailBucket(s, "discounts", userId);
+    return { ok: true, result: { discounts } };
+  });
+
+  registerLensAction("retail", "discounts-create", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const code = String(params.code || "").trim().toUpperCase();
+    const kind = ["percentage", "fixed_amount", "free_shipping"].includes(params.kind) ? params.kind : "percentage";
+    const value = Math.max(0, Number(params.value) || 0);
+    if (!code) return { ok: false, error: "code required" };
+    if (kind !== "free_shipping" && value <= 0) return { ok: false, error: "value must be > 0" };
+    if (kind === "percentage" && value > 100) return { ok: false, error: "percentage must be ≤ 100" };
+    const discounts = ensureRetailBucket(s, "discounts", userId);
+    if (discounts.some(d => d.code === code)) return { ok: false, error: "code already exists" };
+    const discount = {
+      id: nextRetailId("disc"), code, kind, value,
+      minSubtotal: Math.max(0, Number(params.minSubtotal) || 0),
+      usageLimit: params.usageLimit ? Number(params.usageLimit) : null,
+      usageCount: 0,
+      expiresAt: params.expiresAt || null,
+      active: true,
+      createdAt: nowIsoRet(),
+    };
+    discounts.push(discount);
+    saveRetailState();
+    return { ok: true, result: { discount } };
+  });
+
+  registerLensAction("retail", "discounts-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "discounts", userId);
+    const idx = list.findIndex(d => d.id === id);
+    if (idx < 0) return { ok: false, error: "discount not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("retail", "discounts-apply", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const code = String(params.code || "").trim().toUpperCase();
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    const discount = ensureRetailBucket(s, "discounts", userId).find(d => d.code === code && d.active);
+    if (!discount) return { ok: false, error: "discount code invalid or expired" };
+    if (discount.expiresAt && new Date(discount.expiresAt).getTime() < Date.now()) return { ok: false, error: "discount expired" };
+    if (discount.usageLimit != null && discount.usageCount >= discount.usageLimit) return { ok: false, error: "discount usage limit reached" };
+    const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+    if (subtotal < discount.minSubtotal) return { ok: false, error: `minimum subtotal $${discount.minSubtotal} not met` };
+    let discountAmount = 0;
+    if (discount.kind === "percentage") {
+      cart.discountPercent = discount.value;
+      discountAmount = subtotal * discount.value / 100;
+    } else if (discount.kind === "fixed_amount") {
+      discountAmount = Math.min(subtotal, discount.value);
+      cart.discountPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
+    } else {
+      cart.freeShipping = true;
+    }
+    cart.appliedDiscountCode = code;
+    discount.usageCount++;
+    saveRetailState();
+    return { ok: true, result: { cart, discountAmount: Math.round(discountAmount * 100) / 100 } };
+  });
+
+  // ── Abandoned carts ───────────────────────────────────────────
+
+  registerLensAction("retail", "abandoned-carts-list", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const thresholdHours = Math.max(1, Number(params.thresholdHours) || 1);
+    const now = Date.now();
+    const carts = s.carts.get(userId);
+    if (!carts) return { ok: true, result: { carts: [] } };
+    const abandoned = [];
+    for (const cart of carts.values()) {
+      if (cart.lines.length === 0) continue;
+      const ageMs = now - new Date(cart.openedAt).getTime();
+      if (ageMs < thresholdHours * 3600000) continue;
+      const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+      abandoned.push({
+        id: cart.id,
+        openedAt: cart.openedAt,
+        ageHours: Math.round(ageMs / 3600000),
+        lineCount: cart.lines.length,
+        itemCount: cart.lines.reduce((s, l) => s + l.qty, 0),
+        subtotal: Math.round(subtotal * 100) / 100,
+        lines: cart.lines,
+      });
+    }
+    abandoned.sort((a, b) => b.subtotal - a.subtotal);
+    const totalLost = abandoned.reduce((s, c) => s + c.subtotal, 0);
+    return { ok: true, result: { carts: abandoned, totalAbandoned: abandoned.length, totalLostValue: Math.round(totalLost * 100) / 100 } };
+  });
+
+  registerLensAction("retail", "abandoned-cart-recover", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const discountCode = params.discountCode ? String(params.discountCode).trim().toUpperCase() : null;
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    const recoveries = ensureRetailBucket(s, "recoveries", userId);
+    const recovery = {
+      id: nextRetailId("rec"), cartId, discountCode,
+      sentAt: nowIsoRet(),
+      kind: discountCode ? "discounted_recovery" : "reminder",
+      shareableLink: `/cart/recover/${cartId}${discountCode ? `?discount=${discountCode}` : ""}`,
+    };
+    recoveries.push(recovery);
+    saveRetailState();
+    return { ok: true, result: { recovery } };
+  });
+
+  // ── Shipping zones + rates ────────────────────────────────────
+
+  registerLensAction("retail", "shipping-zones-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const zones = ensureRetailBucket(s, "shippingZones", userId);
+    return { ok: true, result: { zones } };
+  });
+
+  registerLensAction("retail", "shipping-zones-create", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const name = String(params.name || "").trim();
+    const countries = Array.isArray(params.countries) ? params.countries : [];
+    if (!name) return { ok: false, error: "name required" };
+    if (countries.length === 0) return { ok: false, error: "at least one country required" };
+    const zone = {
+      id: nextRetailId("zone"), name, countries,
+      rates: Array.isArray(params.rates) ? params.rates : [
+        { id: nextRetailId("rate"), name: "Standard", priceCents: 500, freeThreshold: null },
+      ],
+      createdAt: nowIsoRet(),
+    };
+    ensureRetailBucket(s, "shippingZones", userId).push(zone);
+    saveRetailState();
+    return { ok: true, result: { zone } };
+  });
+
+  registerLensAction("retail", "shipping-zones-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "shippingZones", userId);
+    const idx = list.findIndex(z => z.id === id);
+    if (idx < 0) return { ok: false, error: "zone not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("retail", "shipping-rate-quote", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const country = String(params.country || "").toUpperCase();
+    const subtotalCents = Math.max(0, Math.round(Number(params.subtotal || 0) * 100));
+    const zones = ensureRetailBucket(s, "shippingZones", userId);
+    const zone = zones.find(z => z.countries.includes(country));
+    if (!zone) return { ok: true, result: { quotes: [], message: "No shipping zone covers that country" } };
+    const quotes = zone.rates.map(r => ({
+      id: r.id, name: r.name,
+      priceCents: r.freeThreshold != null && subtotalCents >= r.freeThreshold * 100 ? 0 : r.priceCents,
+      free: r.freeThreshold != null && subtotalCents >= r.freeThreshold * 100,
+    }));
+    return { ok: true, result: { zone: zone.name, quotes } };
+  });
+
+  // ── Tax rates ─────────────────────────────────────────────────
+
+  registerLensAction("retail", "tax-rates-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const rates = ensureRetailBucket(s, "taxRates", userId);
+    return { ok: true, result: { rates } };
+  });
+
+  registerLensAction("retail", "tax-rates-set", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const region = String(params.region || "").trim().toUpperCase();
+    const ratePct = Math.max(0, Math.min(50, Number(params.ratePct) || 0));
+    if (!region) return { ok: false, error: "region required" };
+    const rates = ensureRetailBucket(s, "taxRates", userId);
+    const existing = rates.find(r => r.region === region);
+    if (existing) {
+      existing.ratePct = ratePct;
+      existing.updatedAt = nowIsoRet();
+    } else {
+      rates.push({ id: nextRetailId("tax"), region, ratePct, createdAt: nowIsoRet() });
+    }
+    saveRetailState();
+    return { ok: true, result: { rates } };
+  });
+
+  registerLensAction("retail", "tax-rates-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "taxRates", userId);
+    const idx = list.findIndex(r => r.id === id);
+    if (idx < 0) return { ok: false, error: "tax rate not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Gift cards ────────────────────────────────────────────────
+
+  registerLensAction("retail", "gift-cards-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cards = ensureRetailBucket(s, "giftCards", userId);
+    return { ok: true, result: { giftCards: cards } };
+  });
+
+  registerLensAction("retail", "gift-cards-create", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const initialValue = Math.max(1, Number(params.initialValue) || 0);
+    if (initialValue <= 0) return { ok: false, error: "initialValue must be > 0" };
+    const code = `GC-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const card = {
+      id: nextRetailId("gc"), code, initialValue,
+      balance: initialValue,
+      recipientEmail: String(params.recipientEmail || ""),
+      recipientName: String(params.recipientName || ""),
+      message: String(params.message || ""),
+      expiresAt: params.expiresAt || null,
+      issuedAt: nowIsoRet(),
+      status: "active",
+    };
+    ensureRetailBucket(s, "giftCards", userId).push(card);
+    saveRetailState();
+    return { ok: true, result: { card } };
+  });
+
+  registerLensAction("retail", "gift-cards-balance", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const code = String(params.code || "").trim().toUpperCase();
+    const card = ensureRetailBucket(s, "giftCards", userId).find(c => c.code === code);
+    if (!card) return { ok: false, error: "gift card not found" };
+    return { ok: true, result: { code, balance: card.balance, initialValue: card.initialValue, status: card.status } };
+  });
+
+  registerLensAction("retail", "gift-cards-redeem", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const code = String(params.code || "").trim().toUpperCase();
+    const amount = Math.max(0, Number(params.amount) || 0);
+    if (amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const card = ensureRetailBucket(s, "giftCards", userId).find(c => c.code === code);
+    if (!card) return { ok: false, error: "gift card not found" };
+    if (card.status !== "active") return { ok: false, error: `gift card ${card.status}` };
+    if (card.balance < amount) return { ok: false, error: `insufficient balance ($${card.balance.toFixed(2)})` };
+    card.balance = Math.round((card.balance - amount) * 100) / 100;
+    if (card.balance === 0) card.status = "redeemed";
+    saveRetailState();
+    return { ok: true, result: { redeemed: amount, remainingBalance: card.balance, status: card.status } };
+  });
+
+  // ── Refunds ───────────────────────────────────────────────────
+
+  registerLensAction("retail", "refunds-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const refunds = ensureRetailBucket(s, "refunds", userId);
+    return { ok: true, result: { refunds } };
+  });
+
+  registerLensAction("retail", "refunds-create", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const orderId = String(params.orderId || "");
+    const amount = Math.max(0, Number(params.amount) || 0);
+    const reason = String(params.reason || "customer_request");
+    const restock = params.restock !== false;
+    if (!orderId || amount <= 0) return { ok: false, error: "orderId and amount required" };
+    const orders = s.orders.get(userId) || [];
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return { ok: false, error: "order not found" };
+    const refundedTotal = ensureRetailBucket(s, "refunds", userId).filter(r => r.orderId === orderId).reduce((sum, r) => sum + r.amount, 0);
+    if (refundedTotal + amount > order.total + 0.01) return { ok: false, error: `refund exceeds order total ($${order.total})` };
+    const refund = {
+      id: nextRetailId("ref"), orderId, amount, reason, restock,
+      orderNumber: order.number,
+      processedAt: nowIsoRet(),
+    };
+    ensureRetailBucket(s, "refunds", userId).push(refund);
+    if (restock) {
+      for (const line of order.lines) {
+        const product = s.products.get(userId)?.get(line.sku);
+        if (product) product.stock += line.qty;
+      }
+    }
+    saveRetailState();
+    return { ok: true, result: { refund } };
+  });
+
+  // ── Collections (product groupings) ───────────────────────────
+
+  registerLensAction("retail", "collections-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const collections = ensureRetailBucket(s, "collections", userId);
+    return { ok: true, result: { collections } };
+  });
+
+  registerLensAction("retail", "collections-create", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const collection = {
+      id: nextRetailId("col"), name,
+      description: String(params.description || ""),
+      productSkus: Array.isArray(params.productSkus) ? params.productSkus : [],
+      kind: ["manual", "smart"].includes(params.kind) ? params.kind : "manual",
+      rule: params.rule || null,
+      createdAt: nowIsoRet(),
+    };
+    ensureRetailBucket(s, "collections", userId).push(collection);
+    saveRetailState();
+    return { ok: true, result: { collection } };
+  });
+
+  registerLensAction("retail", "collections-add-product", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const sku = String(params.sku || "");
+    const col = ensureRetailBucket(s, "collections", userId).find(c => c.id === id);
+    if (!col) return { ok: false, error: "collection not found" };
+    if (!col.productSkus.includes(sku)) col.productSkus.push(sku);
+    saveRetailState();
+    return { ok: true, result: { collection: col } };
+  });
+
+  registerLensAction("retail", "collections-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "collections", userId);
+    const idx = list.findIndex(c => c.id === id);
+    if (idx < 0) return { ok: false, error: "collection not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Inventory transfers between locations ─────────────────────
+
+  registerLensAction("retail", "transfers-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const transfers = ensureRetailBucket(s, "transfers", userId);
+    return { ok: true, result: { transfers } };
+  });
+
+  registerLensAction("retail", "transfers-create", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const fromLocation = String(params.fromLocation || "").trim();
+    const toLocation = String(params.toLocation || "").trim();
+    const lines = Array.isArray(params.lines) ? params.lines : [];
+    if (!fromLocation || !toLocation) return { ok: false, error: "fromLocation and toLocation required" };
+    if (lines.length === 0) return { ok: false, error: "at least one line required" };
+    const transfer = {
+      id: nextRetailId("xfer"), fromLocation, toLocation, lines,
+      status: "in_transit",
+      expectedArrival: params.expectedArrival || null,
+      createdAt: nowIsoRet(),
+    };
+    ensureRetailBucket(s, "transfers", userId).push(transfer);
+    saveRetailState();
+    return { ok: true, result: { transfer } };
+  });
+
+  registerLensAction("retail", "transfers-receive", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const transfer = ensureRetailBucket(s, "transfers", userId).find(t => t.id === id);
+    if (!transfer) return { ok: false, error: "transfer not found" };
+    transfer.status = "received";
+    transfer.receivedAt = nowIsoRet();
+    saveRetailState();
+    return { ok: true, result: { transfer } };
+  });
+
+  // ── Sales analytics ───────────────────────────────────────────
+
+  registerLensAction("retail", "analytics-revenue-by-day", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const days = Math.max(7, Math.min(365, Number(params.days) || 30));
+    const orders = s.orders.get(userId) || [];
+    const now = Date.now();
+    const since = now - days * 86400000;
+    const byDay = new Map();
+    for (let d = 0; d < days; d++) {
+      const date = new Date(now - d * 86400000).toISOString().slice(0, 10);
+      byDay.set(date, { date, revenue: 0, orderCount: 0 });
+    }
+    for (const order of orders) {
+      const t = new Date(order.completedAt).getTime();
+      if (t < since) continue;
+      const date = new Date(order.completedAt).toISOString().slice(0, 10);
+      const entry = byDay.get(date);
+      if (entry) {
+        entry.revenue = Math.round((entry.revenue + order.total) * 100) / 100;
+        entry.orderCount++;
+      }
+    }
+    const series = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
+    const totalRevenue = series.reduce((sum, p) => sum + p.revenue, 0);
+    const totalOrders = series.reduce((sum, p) => sum + p.orderCount, 0);
+    return {
+      ok: true,
+      result: {
+        series, days,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalOrders,
+        avgOrderValue: totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0,
+      },
+    };
+  });
+
+  registerLensAction("retail", "analytics-top-products", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 10));
+    const days = Math.max(1, Number(params.days) || 30);
+    const orders = s.orders.get(userId) || [];
+    const since = Date.now() - days * 86400000;
+    const stats = new Map();
+    for (const order of orders) {
+      if (new Date(order.completedAt).getTime() < since) continue;
+      for (const line of order.lines) {
+        const entry = stats.get(line.sku) || { sku: line.sku, name: line.name, qty: 0, revenue: 0 };
+        entry.qty += line.qty;
+        entry.revenue = Math.round((entry.revenue + line.qty * line.unitPrice) * 100) / 100;
+        stats.set(line.sku, entry);
+      }
+    }
+    const top = Array.from(stats.values()).sort((a, b) => b.revenue - a.revenue).slice(0, limit);
+    return { ok: true, result: { topProducts: top, days } };
+  });
+
+  registerLensAction("retail", "analytics-summary", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const orders = s.orders.get(userId) || [];
+    const customers = ensureRetailBucket(s, "customers", userId);
+    const products = s.products.get(userId);
+    const productCount = products ? products.size : 0;
+    const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
+    const day = 86400000;
+    const now = Date.now();
+    const ordersToday = orders.filter(o => (now - new Date(o.completedAt).getTime()) < day);
+    const orders7d = orders.filter(o => (now - new Date(o.completedAt).getTime()) < 7 * day);
+    const orders30d = orders.filter(o => (now - new Date(o.completedAt).getTime()) < 30 * day);
+    return {
+      ok: true,
+      result: {
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalOrders: orders.length,
+        ordersToday: ordersToday.length,
+        revenueToday: Math.round(ordersToday.reduce((s, o) => s + o.total, 0) * 100) / 100,
+        revenue7d: Math.round(orders7d.reduce((s, o) => s + o.total, 0) * 100) / 100,
+        revenue30d: Math.round(orders30d.reduce((s, o) => s + o.total, 0) * 100) / 100,
+        avgOrderValue: orders.length > 0 ? Math.round((totalRevenue / orders.length) * 100) / 100 : 0,
+        productCount,
+        customerCount: customers.length,
+        activeCarts: s.carts.get(userId)?.size || 0,
+      },
+    };
+  });
 };

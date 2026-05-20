@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   X, Loader2, FileText, Calendar, Search, BookOpen, Save, Trash2, Plus, ArrowLeft,
 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Note {
@@ -86,7 +86,7 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'research', action: 'notes-list', input: {} });
+      const r = await lensRun({ domain: 'research', action: 'notes-list', input: {} });
       setNotes(((r.data as { result?: { notes?: Note[] } }).result?.notes) || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -96,7 +96,7 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'research', action: 'note-create', input: draft });
+      await lensRun({ domain: 'research', action: 'note-create', input: draft });
       setCreating(false); setDraft({ title: '', body: '' });
       await refresh();
     } catch (e) { console.error(e); }
@@ -105,7 +105,7 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
   const remove = async (id: string) => {
     if (!window.confirm('Delete this note?')) return;
     try {
-      await api.post('/api/lens/run', { domain: 'research', action: 'note-delete', input: { id } });
+      await lensRun({ domain: 'research', action: 'note-delete', input: { id } });
       await refresh();
     } catch (e) { console.error(e); }
   };
@@ -162,13 +162,13 @@ function NoteEditor({ noteId, onBack }: { noteId: string; onBack: () => void }) 
 
   const refresh = useCallback(async () => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'research', action: 'note-get', input: { id: noteId } });
+      const r = await lensRun({ domain: 'research', action: 'note-get', input: { id: noteId } });
       const n = ((r.data as { result?: { note?: Note } }).result?.note) || null;
       setNote(n);
       if (n) {
         setDraft({ title: n.title, body: n.body });
         // Look up backlinks to this title
-        const b = await api.post('/api/lens/run', { domain: 'research', action: 'backlinks-for', input: { title: n.title } });
+        const b = await lensRun({ domain: 'research', action: 'backlinks-for', input: { title: n.title } });
         setBacklinks(((b.data as { result?: { backlinks?: typeof backlinks } }).result?.backlinks) || []);
       }
     } catch (e) { console.error(e); }
@@ -178,7 +178,7 @@ function NoteEditor({ noteId, onBack }: { noteId: string; onBack: () => void }) 
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', { domain: 'research', action: 'note-update', input: { id: noteId, ...draft } });
+      await lensRun({ domain: 'research', action: 'note-update', input: { id: noteId, ...draft } });
       setEditing(false);
       await refresh();
     } catch (e) { console.error(e); }
@@ -234,7 +234,7 @@ function DailyTab() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await api.post('/api/lens/run', { domain: 'research', action: 'daily-note', input: {} });
+        const r = await lensRun({ domain: 'research', action: 'daily-note', input: {} });
         setNote(((r.data as { result?: { note?: Note } }).result?.note) || null);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
@@ -260,7 +260,7 @@ function SearchTab({ onOpen }: { onOpen: (id: string) => void }) {
   const search = async () => {
     if (query.trim().length < 2) return;
     try {
-      const r = await api.post('/api/lens/run', { domain: 'research', action: 'notes-search', input: { query } });
+      const r = await lensRun({ domain: 'research', action: 'notes-search', input: { query } });
       setHits(((r.data as { result?: { hits?: typeof hits } }).result?.hits) || []);
     } catch (e) { console.error(e); }
   };
@@ -292,7 +292,7 @@ function TemplatesTab() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await api.post('/api/lens/run', { domain: 'research', action: 'templates-list', input: {} });
+        const r = await lensRun({ domain: 'research', action: 'templates-list', input: {} });
         setTemplates(((r.data as { result?: { templates?: Template[] } }).result?.templates) || []);
       } catch (e) { console.error(e); }
     })();
@@ -300,10 +300,10 @@ function TemplatesTab() {
 
   const apply = async (id: string) => {
     try {
-      const r = await api.post('/api/lens/run', { domain: 'research', action: 'template-apply', input: { id } });
+      const r = await lensRun({ domain: 'research', action: 'template-apply', input: { id } });
       const t = ((r.data as { result?: { template?: Template } }).result?.template);
       if (!t) return;
-      await api.post('/api/lens/run', { domain: 'research', action: 'note-create', input: { title: t.title, body: t.body } });
+      await lensRun({ domain: 'research', action: 'note-create', input: { title: t.title, body: t.body } });
       alert(`Created note from ${t.title} template`);
     } catch (e) { console.error(e); }
   };

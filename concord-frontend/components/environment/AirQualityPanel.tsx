@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Wind, RefreshCw, AlertTriangle, KeyRound, ExternalLink } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Observation {
@@ -41,7 +41,7 @@ function aqiTone(aqi: number | undefined) {
 }
 
 async function runMacro(input: Record<string, unknown>) {
-  try { const r = await api.post('/api/lens/run', { domain: 'environment', name: 'live_air_quality', input }); return r?.data as AQResponse | null; }
+  try { const r = await lensRun({ domain: 'environment', name: 'live_air_quality', input }); return r?.data as AQResponse | null; }
   catch { return null; }
 }
 

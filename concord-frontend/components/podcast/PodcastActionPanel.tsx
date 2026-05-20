@@ -13,7 +13,7 @@ import {
   Loader2, Check, AlertTriangle, Radio,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -103,8 +103,8 @@ export function PodcastActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Podcast — ${showTitle.trim() || 'show'}`, tags: ['podcast', monetizeResult?.tier ?? 'unknown'], source: 'podcast:show:mint', meta: { visibility: 'private', consent: { allowCitations: false }, podcast: { show: showTitle, analytics: analyticsResult, guest: guestResult, checklist: checklistResult, monetize: monetizeResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Podcast — ${showTitle.trim() || 'show'}`, tags: ['podcast', monetizeResult?.tier ?? 'unknown'], source: 'podcast:show:mint', meta: { visibility: 'private', consent: { allowCitations: false }, podcast: { show: showTitle, analytics: analyticsResult, guest: guestResult, checklist: checklistResult, monetize: monetizeResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('podcast.mintedDtuId', id, { label: `show ${id.slice(0, 8)}` }); ok(`Show DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -125,8 +125,8 @@ export function PodcastActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public show notes — ${showTitle.trim()}`, tags: ['podcast', 'public', 'show-notes'], source: 'podcast:notes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, showNotes: { show: showTitle, guest: guestResult?.name, topics: guestResult?.topics, questions: guestResult?.questionSuggestions } } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Public show notes — ${showTitle.trim()}`, tags: ['podcast', 'public', 'show-notes'], source: 'podcast:notes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, showNotes: { show: showTitle, guest: guestResult?.name, topics: guestResult?.topics, questions: guestResult?.questionSuggestions } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -139,8 +139,8 @@ export function PodcastActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Podcast: "${showTitle || 'show'}". ${analyticsResult ? `${analyticsResult.totalListens} listens, ${analyticsResult.growth}.` : ''} ${monetizeResult ? `$${monetizeResult.totalMonthlyRevenue}/mo, ${monetizeResult.tier}.` : ''} Suggest the next single growth move (audience, sponsorship, or production) that gets us to the next tier. Plain text.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Growth move ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

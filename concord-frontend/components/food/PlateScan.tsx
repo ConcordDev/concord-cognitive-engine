@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { Camera, Upload, Loader2, X, Check } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface FoodIdentification {
@@ -39,7 +39,7 @@ export function PlateScan({ onLog }: PlateScanProps) {
   async function identify(dataUrl: string) {
     setLoading(true); setError(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'food', action: 'vision-identify', input: { imageDataUrl: dataUrl },
       });
       setResult(res.data?.result as FoodIdentification || null);
@@ -50,7 +50,7 @@ export function PlateScan({ onLog }: PlateScanProps) {
   async function log() {
     if (!result || !imageDataUrl) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'food', action: 'nutrition-log',
         input: {
           source: 'photo',

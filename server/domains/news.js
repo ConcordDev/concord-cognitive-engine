@@ -598,5 +598,393 @@ export default function registerNewsActions(registerLensAction) {
     }
     return { ok: true, result: briefing };
   });
+
+  // ─── Apple News 2026 parity — personalized news reader ──────────────
+  // Article directory, followed channels + topics, a personalized feed,
+  // Today digest, saved stories, reading history + stats, reactions.
+
+  function getNewsState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.newsLens) STATE.newsLens = {};
+    const s = STATE.newsLens;
+    for (const k of [
+      "articles", "followedChannels", "followedTopics", "saved",
+      "readState", "reactions", "interestWeights",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveNewsState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const nwid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const nwnow = () => new Date().toISOString();
+  const nwaid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const nwlistB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const nwclean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+  const NW_DAY = 86400000;
+
+  function articleView(s, userId, art) {
+    const read = (s.readState.get(userId) || []).find((r) => r.articleId === art.id);
+    const saved = (s.saved.get(userId) || []).includes(art.id);
+    return { ...art, read: !!read, readAt: read ? read.readAt : null, saved };
+  }
+  function bumpInterest(s, userId, topic, source, delta) {
+    const w = s.interestWeights.get(userId) || { topics: {}, sources: {} };
+    if (topic) w.topics[topic] = Math.max(-5, Math.min(10, (w.topics[topic] || 0) + delta));
+    if (source) w.sources[source] = Math.max(-5, Math.min(10, (w.sources[source] || 0) + delta));
+    s.interestWeights.set(userId, w);
+  }
+  function interestScore(s, userId, art) {
+    const w = s.interestWeights.get(userId) || { topics: {}, sources: {} };
+    return (w.topics[art.topic] || 0) + (w.sources[art.source] || 0);
+  }
+
+  // ── Articles ────────────────────────────────────────────────────────
+  registerLensAction("news", "article-add", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = nwclean(params.title, 240);
+    if (!title) return { ok: false, error: "title required" };
+    const source = nwclean(params.source, 80) || "Unknown";
+    const art = {
+      id: nwid("art"), title, source,
+      topic: nwclean(params.topic, 60).toLowerCase() || "general",
+      summary: nwclean(params.summary, 1000) || null,
+      url: nwclean(params.url, 500) || null,
+      publishedAt: nwclean(params.publishedAt, 25) || nwnow(),
+      addedBy: nwaid(ctx), createdAt: nwnow(),
+    };
+    s.articles.set(art.id, art);
+    saveNewsState();
+    return { ok: true, result: { article: art } };
+  });
+
+  registerLensAction("news", "article-list", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    let arts = [...s.articles.values()];
+    if (params.topic) arts = arts.filter((a) => a.topic === String(params.topic).toLowerCase());
+    if (params.source) arts = arts.filter((a) => a.source === params.source);
+    arts.sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)));
+    return { ok: true, result: { articles: arts.map((a) => articleView(s, userId, a)), count: arts.length } };
+  });
+
+  registerLensAction("news", "article-detail", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = s.articles.get(String(params.id));
+    if (!art) return { ok: false, error: "article not found" };
+    return { ok: true, result: { article: articleView(s, nwaid(ctx), art) } };
+  });
+
+  registerLensAction("news", "article-search", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const q = nwclean(params.query, 80).toLowerCase();
+    const userId = nwaid(ctx);
+    let arts = [...s.articles.values()];
+    if (q) {
+      arts = arts.filter((a) =>
+        a.title.toLowerCase().includes(q) ||
+        a.source.toLowerCase().includes(q) ||
+        a.topic.includes(q) ||
+        (a.summary || "").toLowerCase().includes(q));
+    }
+    arts.sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)));
+    return { ok: true, result: { articles: arts.map((a) => articleView(s, userId, a)), count: arts.length } };
+  });
+
+  registerLensAction("news", "article-delete", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = s.articles.get(String(params.id));
+    if (!art) return { ok: false, error: "article not found" };
+    if (art.addedBy !== nwaid(ctx)) return { ok: false, error: "only the contributor can remove this article" };
+    s.articles.delete(art.id);
+    saveNewsState();
+    return { ok: true, result: { deleted: art.id } };
+  });
+
+  // ── Channels (sources) ──────────────────────────────────────────────
+  registerLensAction("news", "channel-list", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const followed = s.followedChannels.get(userId) || [];
+    const counts = new Map();
+    for (const a of s.articles.values()) counts.set(a.source, (counts.get(a.source) || 0) + 1);
+    const channels = [...counts.entries()]
+      .map(([source, count]) => ({ source, articleCount: count, followed: followed.includes(source) }))
+      .sort((a, b) => b.articleCount - a.articleCount);
+    return { ok: true, result: { channels, following: followed.length } };
+  });
+
+  registerLensAction("news", "channel-follow", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const source = nwclean(params.source, 80);
+    if (!source) return { ok: false, error: "source required" };
+    const userId = nwaid(ctx);
+    const list = nwlistB(s.followedChannels, userId);
+    const idx = list.indexOf(source);
+    const following = idx < 0;
+    if (following) list.push(source);
+    else list.splice(idx, 1);
+    bumpInterest(s, userId, null, source, following ? 2 : -2);
+    saveNewsState();
+    return { ok: true, result: { source, following } };
+  });
+
+  registerLensAction("news", "channel-articles", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const source = nwclean(params.source, 80);
+    const userId = nwaid(ctx);
+    const arts = [...s.articles.values()]
+      .filter((a) => a.source === source)
+      .sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)))
+      .map((a) => articleView(s, userId, a));
+    return { ok: true, result: { source, articles: arts, count: arts.length } };
+  });
+
+  // ── Topics ──────────────────────────────────────────────────────────
+  registerLensAction("news", "topic-list", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const followed = s.followedTopics.get(userId) || [];
+    const counts = new Map();
+    for (const a of s.articles.values()) counts.set(a.topic, (counts.get(a.topic) || 0) + 1);
+    const topics = [...counts.entries()]
+      .map(([topic, count]) => ({ topic, articleCount: count, followed: followed.includes(topic) }))
+      .sort((a, b) => b.articleCount - a.articleCount);
+    return { ok: true, result: { topics, following: followed.length } };
+  });
+
+  registerLensAction("news", "topic-follow", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const topic = nwclean(params.topic, 60).toLowerCase();
+    if (!topic) return { ok: false, error: "topic required" };
+    const userId = nwaid(ctx);
+    const list = nwlistB(s.followedTopics, userId);
+    const idx = list.indexOf(topic);
+    const following = idx < 0;
+    if (following) list.push(topic);
+    else list.splice(idx, 1);
+    bumpInterest(s, userId, topic, null, following ? 2 : -2);
+    saveNewsState();
+    return { ok: true, result: { topic, following } };
+  });
+
+  registerLensAction("news", "topic-articles", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const topic = nwclean(params.topic, 60).toLowerCase();
+    const userId = nwaid(ctx);
+    const arts = [...s.articles.values()]
+      .filter((a) => a.topic === topic)
+      .sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)))
+      .map((a) => articleView(s, userId, a));
+    return { ok: true, result: { topic, articles: arts, count: arts.length } };
+  });
+
+  // ── Personalized feed ───────────────────────────────────────────────
+  registerLensAction("news", "feed", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const channels = s.followedChannels.get(userId) || [];
+    const topics = s.followedTopics.get(userId) || [];
+    const hasFollows = channels.length > 0 || topics.length > 0;
+    let arts = [...s.articles.values()];
+    if (hasFollows) {
+      arts = arts.filter((a) => channels.includes(a.source) || topics.includes(a.topic));
+    }
+    const view = arts.map((a) => articleView(s, userId, a));
+    view.sort((a, b) => {
+      if (a.read !== b.read) return a.read ? 1 : -1; // unread first
+      return String(b.publishedAt).localeCompare(String(a.publishedAt));
+    });
+    return {
+      ok: true,
+      result: {
+        articles: view, count: view.length,
+        personalized: hasFollows,
+        unread: view.filter((a) => !a.read).length,
+      },
+    };
+  });
+
+  registerLensAction("news", "today-digest", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const cutoff = Date.now() - 2 * NW_DAY;
+    const recent = [...s.articles.values()]
+      .filter((a) => new Date(a.publishedAt).getTime() >= cutoff || true) // include all; recency-sorted below
+      .map((a) => articleView(s, userId, a))
+      .sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)));
+    const byTopic = {};
+    for (const a of recent) (byTopic[a.topic] = byTopic[a.topic] || []).push(a);
+    const sections = Object.entries(byTopic)
+      .map(([topic, items]) => ({ topic, items: items.slice(0, 5), count: items.length }))
+      .sort((a, b) => b.count - a.count);
+    return {
+      ok: true,
+      result: { topStories: recent.slice(0, 5), sections, totalArticles: recent.length },
+    };
+  });
+
+  registerLensAction("news", "recommended", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const recs = [...s.articles.values()]
+      .map((a) => ({ ...articleView(s, userId, a), score: interestScore(s, userId, a) }))
+      .filter((a) => !a.read && a.score > 0)
+      .sort((a, b) => b.score - a.score || String(b.publishedAt).localeCompare(String(a.publishedAt)));
+    return { ok: true, result: { articles: recs.slice(0, 25), count: recs.length } };
+  });
+
+  registerLensAction("news", "trending", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const reads = new Map();
+    for (const list of s.readState.values()) {
+      for (const r of list) reads.set(r.articleId, (reads.get(r.articleId) || 0) + 1);
+    }
+    const reactions = new Map();
+    for (const list of s.reactions.values()) {
+      for (const r of list) if (r.kind === "more") reactions.set(r.articleId, (reactions.get(r.articleId) || 0) + 1);
+    }
+    const userId = nwaid(ctx);
+    const ranked = [...s.articles.values()]
+      .map((a) => ({
+        ...articleView(s, userId, a),
+        readCount: reads.get(a.id) || 0,
+        engagement: (reads.get(a.id) || 0) + (reactions.get(a.id) || 0) * 2,
+      }))
+      .filter((a) => a.engagement > 0)
+      .sort((a, b) => b.engagement - a.engagement)
+      .slice(0, 20);
+    return { ok: true, result: { articles: ranked, count: ranked.length } };
+  });
+
+  // ── Saved stories ───────────────────────────────────────────────────
+  registerLensAction("news", "article-save", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.articles.has(String(params.id))) return { ok: false, error: "article not found" };
+    const userId = nwaid(ctx);
+    const list = nwlistB(s.saved, userId);
+    const idx = list.indexOf(String(params.id));
+    const saved = idx < 0;
+    if (saved) list.push(String(params.id));
+    else list.splice(idx, 1);
+    saveNewsState();
+    return { ok: true, result: { articleId: params.id, saved } };
+  });
+
+  registerLensAction("news", "saved-list", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const articles = (s.saved.get(userId) || [])
+      .map((id) => { const a = s.articles.get(id); return a ? articleView(s, userId, a) : null; })
+      .filter(Boolean)
+      .reverse();
+    return { ok: true, result: { articles, count: articles.length } };
+  });
+
+  // ── Reading history + stats ─────────────────────────────────────────
+  registerLensAction("news", "article-mark-read", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = s.articles.get(String(params.id));
+    if (!art) return { ok: false, error: "article not found" };
+    const userId = nwaid(ctx);
+    const list = nwlistB(s.readState, userId);
+    const existing = list.find((r) => r.articleId === art.id);
+    if (params.unread === true) {
+      if (existing) list.splice(list.indexOf(existing), 1);
+    } else if (!existing) {
+      list.push({ articleId: art.id, readAt: nwnow() });
+      bumpInterest(s, userId, art.topic, art.source, 0.5);
+    }
+    saveNewsState();
+    return { ok: true, result: { articleId: art.id, read: params.unread !== true } };
+  });
+
+  registerLensAction("news", "reading-history", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const history = (s.readState.get(userId) || [])
+      .map((r) => { const a = s.articles.get(r.articleId); return a ? { ...articleView(s, userId, a), readAt: r.readAt } : null; })
+      .filter(Boolean)
+      .sort((a, b) => String(b.readAt).localeCompare(String(a.readAt)));
+    return { ok: true, result: { history, count: history.length } };
+  });
+
+  registerLensAction("news", "reading-stats", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const reads = s.readState.get(userId) || [];
+    const weekAgo = Date.now() - 7 * NW_DAY;
+    const byTopic = {};
+    for (const r of reads) {
+      const a = s.articles.get(r.articleId);
+      if (a) byTopic[a.topic] = (byTopic[a.topic] || 0) + 1;
+    }
+    const topTopics = Object.entries(byTopic).sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([topic, count]) => ({ topic, count }));
+    return {
+      ok: true,
+      result: {
+        totalRead: reads.length,
+        thisWeek: reads.filter((r) => new Date(r.readAt).getTime() >= weekAgo).length,
+        topTopics,
+        saved: (s.saved.get(userId) || []).length,
+      },
+    };
+  });
+
+  // ── Personalization ─────────────────────────────────────────────────
+  registerLensAction("news", "article-react", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = s.articles.get(String(params.id));
+    if (!art) return { ok: false, error: "article not found" };
+    const kind = ["more", "less"].includes(String(params.kind).toLowerCase()) ? String(params.kind).toLowerCase() : null;
+    if (!kind) return { ok: false, error: "kind must be 'more' or 'less'" };
+    const userId = nwaid(ctx);
+    const list = nwlistB(s.reactions, userId);
+    list.push({ articleId: art.id, kind, at: nwnow() });
+    bumpInterest(s, userId, art.topic, art.source, kind === "more" ? 1.5 : -1.5);
+    saveNewsState();
+    return { ok: true, result: { articleId: art.id, kind } };
+  });
+
+  registerLensAction("news", "interests", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = s.interestWeights.get(nwaid(ctx)) || { topics: {}, sources: {} };
+    const sortWeights = (obj) => Object.entries(obj)
+      .map(([name, weight]) => ({ name, weight: Math.round(weight * 10) / 10 }))
+      .sort((a, b) => b.weight - a.weight);
+    return { ok: true, result: { topics: sortWeights(w.topics), sources: sortWeights(w.sources) } };
+  });
+
+  // ── Dashboard ───────────────────────────────────────────────────────
+  registerLensAction("news", "news-dashboard", (ctx, _a, _params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const channels = s.followedChannels.get(userId) || [];
+    const topics = s.followedTopics.get(userId) || [];
+    const reads = s.readState.get(userId) || [];
+    const readIds = new Set(reads.map((r) => r.articleId));
+    let feedUnread = 0;
+    const hasFollows = channels.length || topics.length;
+    for (const a of s.articles.values()) {
+      if ((!hasFollows || channels.includes(a.source) || topics.includes(a.topic)) && !readIds.has(a.id)) feedUnread++;
+    }
+    return {
+      ok: true,
+      result: {
+        articles: s.articles.size,
+        followedChannels: channels.length,
+        followedTopics: topics.length,
+        feedUnread,
+        saved: (s.saved.get(userId) || []).length,
+        read: reads.length,
+      },
+    };
+  });
 }
 

@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Headphones, RefreshCw, AlertTriangle, ExternalLink, Search, Rss } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface PodcastResult {
@@ -28,7 +28,7 @@ interface PodcastResult {
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
+    const r = await lensRun({ domain, name, input });
     return r?.data as T;
   } catch {
     return null;

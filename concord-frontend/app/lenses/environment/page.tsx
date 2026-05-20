@@ -7,6 +7,16 @@ import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EnviroPanel } from '@/components/environment/EnviroPanel';
+import EmissionsActivitiesPanel from '@/components/environment/EmissionsActivitiesPanel';
+import EmissionFactorsLibrary from '@/components/environment/EmissionFactorsLibrary';
+import SuppliersPortal from '@/components/environment/SuppliersPortal';
+import TargetsTracker from '@/components/environment/TargetsTracker';
+import ProjectsBacklog from '@/components/environment/ProjectsBacklog';
+import RECsLedger from '@/components/environment/RECsLedger';
+import OffsetsLedger from '@/components/environment/OffsetsLedger';
+import EJScreenLookup from '@/components/environment/EJScreenLookup';
+import ReportsBuilder from '@/components/environment/ReportsBuilder';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { GbifPanel } from '@/components/environment/GbifPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
@@ -3335,6 +3345,10 @@ export default function EnvironmentLensPage() {
     <LensShell lensId="environment" asMain={false}>
       <FirstRunTour lensId="environment" />
       <DepthBadge lensId="environment" size="sm" className="ml-2" />
+      <div className="px-4 mt-2">
+        <RivalShapePreview lensId="environment" defaultOpen={true} />
+        <CarbonWorkbenchSection />
+      </div>
     <LensPageShell
       domain="environment"
       title="Environmental Monitoring"
@@ -3741,5 +3755,56 @@ export default function EnvironmentLensPage() {
       onSelect={(id) => setMode(id as ModeTab)}
     />
     </LensShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Watershed / Persefoni-parity carbon-accounting workbench section     */
+/* ------------------------------------------------------------------ */
+
+function CarbonWorkbenchSection() {
+  const [active, setActive] = useState<'activities' | 'factors' | 'suppliers' | 'targets' | 'projects' | 'recs' | 'offsets' | 'ejscreen' | 'reports'>('activities');
+  const TABS = [
+    { id: 'activities', label: 'Activities' },
+    { id: 'factors', label: 'EPA factors' },
+    { id: 'suppliers', label: 'Suppliers' },
+    { id: 'targets', label: 'Targets' },
+    { id: 'projects', label: 'Projects' },
+    { id: 'recs', label: 'RECs' },
+    { id: 'offsets', label: 'Offsets' },
+    { id: 'ejscreen', label: 'EJScreen' },
+    { id: 'reports', label: 'Reports' },
+  ] as const;
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider">Watershed/Persefoni-parity carbon accounting</h2>
+      <nav className="flex items-center gap-1 border-b border-emerald-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={
+              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
+              (active === t.id
+                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
+                : 'text-gray-500 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent')
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div>
+        {active === 'activities' && <EmissionsActivitiesPanel />}
+        {active === 'factors' && <EmissionFactorsLibrary />}
+        {active === 'suppliers' && <SuppliersPortal />}
+        {active === 'targets' && <TargetsTracker />}
+        {active === 'projects' && <ProjectsBacklog />}
+        {active === 'recs' && <RECsLedger />}
+        {active === 'offsets' && <OffsetsLedger />}
+        {active === 'ejscreen' && <EJScreenLookup />}
+        {active === 'reports' && <ReportsBuilder />}
+      </div>
+    </section>
   );
 }

@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Orbit, Image, Satellite, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -96,8 +96,8 @@ export function AstronomyActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Sky log — ${TODAY}`, tags: ['astronomy', 'skywatch', apodResult ? 'apod' : null].filter((t): t is string => !!t), source: 'astronomy:sky:mint', meta: { visibility: 'private', consent: { allowCitations: false }, sky: { apod: apodResult, iss: issResult, neo: neoResult, pos: posResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Sky log — ${TODAY}`, tags: ['astronomy', 'skywatch', apodResult ? 'apod' : null].filter((t): t is string => !!t), source: 'astronomy:sky:mint', meta: { visibility: 'private', consent: { allowCitations: false }, sky: { apod: apodResult, iss: issResult, neo: neoResult, pos: posResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('astro.mintedDtuId', id, { label: `Sky DTU ${id.slice(0, 8)}…` }); ok(`Sky DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -125,8 +125,8 @@ export function AstronomyActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Sky card — ${TODAY}`, tags: ['astronomy', 'nasa', 'public'], source: 'astronomy:sky:publish', meta: { visibility: 'public', consent: { allowCitations: true }, apod: apodResult, neo: neoResult } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Sky card — ${TODAY}`, tags: ['astronomy', 'nasa', 'public'], source: 'astronomy:sky:publish', meta: { visibility: 'public', consent: { allowCitations: true }, apod: apodResult, neo: neoResult } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -139,8 +139,8 @@ export function AstronomyActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Tonight's sky-watching brief for observer at ${obsLat}, ${obsLng}. ${apodResult ? `Today's APOD: "${apodResult.title}".` : ''} ${issResult ? `ISS at ${issResult.latitude.toFixed(2)}, ${issResult.longitude.toFixed(2)}.` : ''} ${neoResult?.hazardousCount ? `${neoResult.hazardousCount} potentially hazardous NEOs in window.` : ''} ${posResult ? `${posResult.body} at alt ${posResult.alt}°.` : ''} Recommend one specific thing to look at tonight + best viewing time. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

@@ -13,7 +13,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -105,8 +105,8 @@ export function MusicActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Music — ${trackTitle.trim() || 'session'}`, tags: ['music', bpmResult ? `bpm:${bpmResult.bpm}` : '', keyResult?.key ? `key:${keyResult.key}` : ''].filter(Boolean), source: 'music:session:mint', meta: { visibility: 'private', consent: { allowCitations: false }, music: { title: trackTitle, bpm: bpmResult, key: keyResult, chords: chordResult, setlist: setlistResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Music — ${trackTitle.trim() || 'session'}`, tags: ['music', bpmResult ? `bpm:${bpmResult.bpm}` : '', keyResult?.key ? `key:${keyResult.key}` : ''].filter(Boolean), source: 'music:session:mint', meta: { visibility: 'private', consent: { allowCitations: false }, music: { title: trackTitle, bpm: bpmResult, key: keyResult, chords: chordResult, setlist: setlistResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('music.mintedDtuId', id, { label: `session ${id.slice(0, 8)}` }); ok(`Music DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -127,8 +127,8 @@ export function MusicActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public track — ${trackTitle.trim() || 'untitled'}`, tags: ['music', 'public', bpmResult ? `bpm:${bpmResult.bpm}` : ''].filter(Boolean), source: 'music:track:publish', meta: { visibility: 'public', consent: { allowCitations: true }, track: { title: trackTitle, bpm: bpmResult?.bpm, key: keyResult?.key, chords: chordResult?.progression, setlist: setlistResult } } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Public track — ${trackTitle.trim() || 'untitled'}`, tags: ['music', 'public', bpmResult ? `bpm:${bpmResult.bpm}` : ''].filter(Boolean), source: 'music:track:publish', meta: { visibility: 'public', consent: { allowCitations: true }, track: { title: trackTitle, bpm: bpmResult?.bpm, key: keyResult?.key, chords: chordResult?.progression, setlist: setlistResult } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -141,8 +141,8 @@ export function MusicActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Track: "${trackTitle || 'untitled'}". ${bpmResult ? `BPM ${bpmResult.bpm}.` : ''} ${keyResult ? `Key ${keyResult.key} ${keyResult.scale}.` : ''} ${chordResult ? `Chords: ${chordResult.progression?.join(' ')}.` : ''} Suggest 3 production moves (compression / EQ / arrangement) that elevate this track. Plain text.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Production moves ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

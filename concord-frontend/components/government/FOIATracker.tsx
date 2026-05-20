@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Loader2, Clock, Check, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface FOIARequest {
@@ -52,7 +52,7 @@ export function FOIATracker() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'government', action: 'foia-list', input: {} });
+      const res = await lensRun({ domain: 'government', action: 'foia-list', input: {} });
       setRequests((res.data?.result?.requests || []) as FOIARequest[]);
     } catch (e) { console.error('[FOIA] failed', e); }
     finally { setLoading(false); }
@@ -61,7 +61,7 @@ export function FOIATracker() {
   async function save() {
     if (!draftAgency.trim() || !draftSubject.trim() || !draftBody.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'government', action: 'foia-create',
         input: { agency: draftAgency.trim(), subject: draftSubject.trim(), body: draftBody.trim() },
       });

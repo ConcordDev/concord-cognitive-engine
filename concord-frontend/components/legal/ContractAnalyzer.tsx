@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { FileText, Loader2, AlertTriangle, ShieldCheck, Brain, Upload } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface RiskFlag {
@@ -41,7 +41,7 @@ export function ContractAnalyzer() {
     }
     setError(null); setLoading(true); setAnalysis(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'legal', action: 'contract-analyze',
         input: { contract, perspective },
       });

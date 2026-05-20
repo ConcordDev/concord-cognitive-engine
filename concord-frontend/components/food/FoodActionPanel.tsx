@@ -13,7 +13,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -110,8 +110,8 @@ export function FoodActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Recipe — ${recipeName.trim() || 'untitled'}`, tags: ['food', 'recipe', `servings:${recipeServings}`], source: 'food:recipe:mint', meta: { visibility: 'private', consent: { allowCitations: false }, recipe: { name: recipeName, ingredients: parseIngredients(), servings: parseInt(recipeServings, 10), scaled: scaleResult, costed: costResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Recipe — ${recipeName.trim() || 'untitled'}`, tags: ['food', 'recipe', `servings:${recipeServings}`], source: 'food:recipe:mint', meta: { visibility: 'private', consent: { allowCitations: false }, recipe: { name: recipeName, ingredients: parseIngredients(), servings: parseInt(recipeServings, 10), scaled: scaleResult, costed: costResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('food.mintedDtuId', id, { label: `Recipe DTU ${id.slice(0, 8)}…` }); ok(`Recipe DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -132,8 +132,8 @@ export function FoodActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public recipe — ${recipeName.trim() || 'untitled'}`, tags: ['food', 'recipe', 'public'], source: 'food:recipe:publish', meta: { visibility: 'public', consent: { allowCitations: true }, recipe: { name: recipeName, ingredients: parseIngredients(), servings: parseInt(recipeServings, 10) } } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Public recipe — ${recipeName.trim() || 'untitled'}`, tags: ['food', 'recipe', 'public'], source: 'food:recipe:publish', meta: { visibility: 'public', consent: { allowCitations: true }, recipe: { name: recipeName, ingredients: parseIngredients(), servings: parseInt(recipeServings, 10) } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -146,8 +146,8 @@ export function FoodActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Recipe: "${recipeName || 'untitled'}", ${recipeServings} servings. Ingredients: ${parseIngredients().map(i => `${i.name} ${i.quantity}${i.unit}`).join(', ')}. ${costResult ? `Per plate $${costResult.perPlate?.toFixed(2)}.` : ''} Suggest 3 substitutions that lower cost without sacrificing flavour. Plain text, one per line.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Substitutions ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

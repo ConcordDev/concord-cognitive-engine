@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Shield, FileText, Plus, Loader2, AlertTriangle, Calendar } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Policy {
@@ -35,7 +35,7 @@ export function PolicyVault() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'insurance', action: 'policy-list', input: {} });
+      const res = await lensRun({ domain: 'insurance', action: 'policy-list', input: {} });
       setPolicies((res.data?.result?.policies || []) as Policy[]);
     } catch (e) { console.error('[Policy] failed', e); }
     finally { setLoading(false); }
@@ -44,7 +44,7 @@ export function PolicyVault() {
   async function add() {
     if (!draft.carrier?.trim() || !draft.policyNumber?.trim()) return;
     try {
-      await api.post('/api/lens/run', { domain: 'insurance', action: 'policy-add', input: draft });
+      await lensRun({ domain: 'insurance', action: 'policy-add', input: draft });
       setDraft({ kind: 'auto', annualPremium: 0, deductible: 0 });
       setAdding(false);
       await refresh();

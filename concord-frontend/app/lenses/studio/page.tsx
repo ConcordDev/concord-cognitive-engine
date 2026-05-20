@@ -11,6 +11,16 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { StudioRepos } from '@/components/studio/StudioRepos';
 import { StudioActionPanel } from '@/components/studio/StudioActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
+import ClipsTimelinePanel from '@/components/studio/ClipsTimelinePanel';
+import MidiPianoRoll from '@/components/studio/MidiPianoRoll';
+import AutomationLanesPanel from '@/components/studio/AutomationLanesPanel';
+import BouncePanel from '@/components/studio/BouncePanel';
+import MarkersPanel from '@/components/studio/MarkersPanel';
+import TempoMap from '@/components/studio/TempoMap';
+import PresetsLibraryPanel from '@/components/studio/PresetsLibraryPanel';
+import SendsRouting from '@/components/studio/SendsRouting';
+import ScenesLauncher from '@/components/studio/ScenesLauncher';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Grid3x3 as MTabSess, LineChart as MTabArr, SlidersHorizontal as MTabMix,
@@ -102,6 +112,7 @@ import {
 
 // Studio UI components
 import { TransportBar } from '@/components/studio/TransportBar';
+import { MetronomePlayer } from '@/components/studio/MetronomePlayer';
 import { ArrangementView } from '@/components/studio/ArrangementView';
 import { PianoRoll } from '@/components/studio/PianoRoll';
 import { MixerView } from '@/components/studio/MixerView';
@@ -1594,10 +1605,20 @@ export default function StudioLensPage() {
     <LensShell lensId="studio" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="studio" />
       <DepthBadge lensId="studio" size="sm" className="ml-2" />
+      <div className="px-4 mt-2">
+        <RivalShapePreview lensId="studio" defaultOpen={true} />
+        <DawWorkbenchSection />
+      </div>
     <div
       className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
       data-lens-theme="studio"
     >
+      <MetronomePlayer
+        enabled={project.transport.metronome}
+        playing={transportState === 'playing' || transportState === 'recording'}
+        bpm={project.bpm}
+        beatsPerBar={project.timeSignature?.[0] || 4}
+      />
       {/* Transport Bar */}
       <TransportBar
         transportState={transportState}
@@ -2702,5 +2723,64 @@ export default function StudioLensPage() {
             onSelect={(id) => setStudioView(id as StudioViewType)}
           />
     </LensShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Logic / Ableton-parity workbench section                            */
+/* ------------------------------------------------------------------ */
+
+function DawWorkbenchSection() {
+  const [active, setActive] = useState<'clips' | 'midi' | 'automation' | 'bounce' | 'markers' | 'tempo' | 'presets' | 'sends' | 'scenes'>('clips');
+  const [projectId, setProjId] = useState<string>('');
+  const [trackId, setTrackId] = useState<string>('');
+  const [clipId, setClipId] = useState<string>('');
+  const TABS = [
+    { id: 'clips', label: 'Clips' },
+    { id: 'midi', label: 'Piano roll' },
+    { id: 'automation', label: 'Automation' },
+    { id: 'bounce', label: 'Bounce' },
+    { id: 'markers', label: 'Markers' },
+    { id: 'tempo', label: 'Tempo' },
+    { id: 'presets', label: 'Presets' },
+    { id: 'sends', label: 'Sends' },
+    { id: 'scenes', label: 'Scenes' },
+  ] as const;
+  return (
+    <section className="mt-6 space-y-3">
+      <h2 className="text-sm font-semibold text-violet-300 uppercase tracking-wider">Logic/Ableton-parity workbench</h2>
+      <div className="grid grid-cols-3 gap-2 text-xs">
+        <input value={projectId} onChange={e => setProjId(e.target.value)} placeholder="Project ID (paste from project list)" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input value={trackId} onChange={e => setTrackId(e.target.value)} placeholder="Track ID" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input value={clipId} onChange={e => setClipId(e.target.value)} placeholder="Clip ID (for MIDI editor)" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+      </div>
+      <nav className="flex items-center gap-1 border-b border-violet-900/30 pb-2 overflow-x-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={
+              'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
+              (active === t.id
+                ? 'bg-violet-500/15 text-violet-300 border border-violet-500/20'
+                : 'text-gray-500 hover:text-violet-300 hover:bg-violet-900/10 border border-transparent')
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div>
+        {active === 'clips' && <ClipsTimelinePanel projectId={projectId || undefined} trackId={trackId || undefined} />}
+        {active === 'midi' && <MidiPianoRoll clipId={clipId || undefined} />}
+        {active === 'automation' && <AutomationLanesPanel trackId={trackId || undefined} />}
+        {active === 'bounce' && <BouncePanel projectId={projectId || undefined} />}
+        {active === 'markers' && <MarkersPanel projectId={projectId || undefined} />}
+        {active === 'tempo' && <TempoMap projectId={projectId || undefined} />}
+        {active === 'presets' && <PresetsLibraryPanel />}
+        {active === 'sends' && <SendsRouting projectId={projectId || undefined} />}
+        {active === 'scenes' && <ScenesLauncher projectId={projectId || undefined} />}
+      </div>
+    </section>
   );
 }

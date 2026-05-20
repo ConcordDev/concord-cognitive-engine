@@ -9,6 +9,7 @@ import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ProjectsSection } from '@/components/projects/ProjectsSection';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ProjectMgmtRepos } from '@/components/projects/ProjectMgmtRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -232,6 +233,9 @@ export default function ProjectsLensPage() {
       <FirstRunTour lensId="projects" />
       <ManifestActionBar />
       <DepthBadge lensId="projects" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <ProjectsSection />
+      </div>
       <LensVerticalHero lensId="projects" className="mx-6 mt-4" />
     <div data-lens-theme="projects" className="space-y-6 p-6">
       <header className="flex items-center justify-between">

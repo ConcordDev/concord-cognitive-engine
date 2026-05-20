@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
+import { FitnessStravaSection } from '@/components/fitness/FitnessStravaSection';
 import WorkoutLogger from '@/components/fitness/WorkoutLogger';
 import HeartRateZones from '@/components/fitness/HeartRateZones';
 import SleepRecovery from '@/components/fitness/SleepRecovery';
@@ -928,6 +929,9 @@ export default function FitnessLensPage() {
     <LensShell lensId="fitness" asMain={false}>
       <FirstRunTour lensId="fitness" />
       <DepthBadge lensId="fitness" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <FitnessStravaSection />
+      </div>
     <div className={ds.pageContainer}>
       {/* Fitness Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">

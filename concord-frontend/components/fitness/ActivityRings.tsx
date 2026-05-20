@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Activity, Flame, Footprints, Clock, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 export interface ActivityDay {
   date: string;
@@ -22,7 +22,7 @@ export function ActivityRings() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'fitness', action: 'activity-summary', input: { days: 7 } });
+      const res = await lensRun({ domain: 'fitness', action: 'activity-summary', input: { days: 7 } });
       const days = (res.data?.result?.days || []) as ActivityDay[];
       setWeek(days);
       setToday(days[days.length - 1] || null);

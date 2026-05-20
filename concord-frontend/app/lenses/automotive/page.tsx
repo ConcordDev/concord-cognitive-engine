@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { GarageSection } from '@/components/automotive/GarageSection';
 import { VinDecoder } from '@/components/automotive/VinDecoder';
 import { FuelRepairPanel } from '@/components/automotive/FuelRepairPanel';
 import { VehicleHistory } from '@/components/automotive/VehicleHistory';
@@ -637,6 +638,9 @@ export default function AutomotiveLensPage() {
       <FirstRunTour lensId="automotive" />
       <ManifestActionBar />
       <DepthBadge lensId="automotive" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <GarageSection />
+      </div>
     <LensPageShell
       domain="automotive"
       title="Automotive"

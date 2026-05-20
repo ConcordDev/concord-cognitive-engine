@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Heart, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface HRZone {
@@ -28,7 +28,7 @@ export function HeartRateZones() {
   async function compute() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'fitness', action: 'hr-zones', input: { age, restingHr, method },
       });
       setZones((res.data?.result?.zones || []) as HRZone[]);

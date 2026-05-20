@@ -7,6 +7,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { SportsFanSection } from '@/components/sports/SportsFanSection';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -280,6 +281,9 @@ export default function SportsLensPage() {
       <FirstRunTour lensId="sports" />
       <ManifestActionBar />
       <DepthBadge lensId="sports" size="sm" className="ml-2" />
+      <div className="px-4 mt-3">
+        <SportsFanSection />
+      </div>
     <div data-lens-theme="sports" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Pill, Plus, Check, Bell, Trash2, Loader2, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Medication {
@@ -31,7 +31,7 @@ export function MedicationTracker() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'healthcare', action: 'medications-list', input: {} });
+      const res = await lensRun({ domain: 'healthcare', action: 'medications-list', input: {} });
       setMeds((res.data?.result?.medications || []) as Medication[]);
     } catch (e) { console.error('[Meds] failed', e); }
     finally { setLoading(false); }
@@ -40,7 +40,7 @@ export function MedicationTracker() {
   async function addMed() {
     if (!name.trim() || !dose.trim()) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'healthcare', action: 'medications-add',
         input: { name: name.trim(), dose: dose.trim(), schedule },
       });
@@ -51,14 +51,14 @@ export function MedicationTracker() {
 
   async function logDose(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'medications-log-dose', input: { id } });
+      await lensRun({ domain: 'healthcare', action: 'medications-log-dose', input: { id } });
       await refresh();
     } catch (e) { console.error('[Meds] log failed', e); }
   }
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'healthcare', action: 'medications-delete', input: { id } });
+      await lensRun({ domain: 'healthcare', action: 'medications-delete', input: { id } });
       setMeds(prev => prev.filter(m => m.id !== id));
     } catch (e) { console.error('[Meds] remove failed', e); }
   }

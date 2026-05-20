@@ -542,4 +542,502 @@ export default function registerReflectionActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Day One 2026 parity — journaling companion ─────────────────────
+  // Named journals, rich entries (mood / tags / location / weather),
+  // On This Day, streaks, a rotating prompt library, templates, search.
+
+  function getRfState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.reflectionLens) STATE.reflectionLens = {};
+    const s = STATE.reflectionLens;
+    for (const k of ["journals", "entries", "goal"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveRfState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const rfId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const rfNow = () => new Date().toISOString();
+  const rfAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const rfListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const rfNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const rfClean = (v, max = 500) => String(v == null ? "" : v).trim().slice(0, max);
+  const rfDay = (v) => rfClean(v, 10).slice(0, 10);
+  const RF_DAY = 86400000;
+  const RF_MOODS = ["great", "good", "okay", "low", "rough"];
+  const RF_WEATHER = ["sunny", "cloudy", "rainy", "snowy", "stormy", "clear", "windy", "foggy"];
+
+  // Real, evidence-informed reflective journaling prompts.
+  const RF_PROMPTS = [
+    { category: "gratitude", text: "What is one small thing today that you are grateful for, and why?" },
+    { category: "gratitude", text: "Who made your day a little better, and have you told them?" },
+    { category: "gratitude", text: "What is something about your body or health you appreciated today?" },
+    { category: "growth", text: "What did you learn today that you did not know yesterday?" },
+    { category: "growth", text: "What is a mistake you made recently, and what did it teach you?" },
+    { category: "growth", text: "What is one habit you want to be true of you a year from now?" },
+    { category: "growth", text: "Where did you step outside your comfort zone, even slightly?" },
+    { category: "relationships", text: "Describe a conversation that stayed with you today." },
+    { category: "relationships", text: "Who do you want to be more present for, and how?" },
+    { category: "relationships", text: "When did you feel most connected to someone this week?" },
+    { category: "work", text: "What is the most meaningful thing you worked on today?" },
+    { category: "work", text: "What drained your energy at work, and what restored it?" },
+    { category: "work", text: "If tomorrow had only one priority, what should it be?" },
+    { category: "mindfulness", text: "What emotion was loudest for you today? Where did you feel it in your body?" },
+    { category: "mindfulness", text: "Describe a moment today when you felt fully present." },
+    { category: "mindfulness", text: "What is your mind circling around right now? Name it plainly." },
+    { category: "creativity", text: "What idea excited you today, even if you did nothing with it?" },
+    { category: "creativity", text: "If you could redo one hour of today, how would you spend it?" },
+    { category: "reflection", text: "What would you tell yourself this morning if you could go back?" },
+    { category: "reflection", text: "What is something you are letting go of?" },
+  ];
+  const RF_PROMPT_CATEGORIES = [...new Set(RF_PROMPTS.map((p) => p.category))];
+
+  // Structured entry templates.
+  const RF_TEMPLATES = [
+    { id: "daily-review", name: "Daily review", category: "reflection",
+      body: "Highlight of the day:\n\nWhat challenged me:\n\nWhat I'm grateful for:\n\nOne thing for tomorrow:" },
+    { id: "gratitude", name: "Three good things", category: "gratitude",
+      body: "1.\n\n2.\n\n3.\n\nWhy these mattered:" },
+    { id: "morning-intention", name: "Morning intention", category: "mindfulness",
+      body: "How I feel waking up:\n\nMy intention for today:\n\nWhat would make today good:" },
+    { id: "evening-reflection", name: "Evening reflection", category: "mindfulness",
+      body: "What went well:\n\nWhat I would do differently:\n\nWhat I'm releasing before sleep:" },
+    { id: "travel", name: "Travel log", category: "travel",
+      body: "Where I am:\n\nWhat I saw:\n\nA moment I want to remember:\n\nHow this place made me feel:" },
+    { id: "weekly-review", name: "Weekly review", category: "growth",
+      body: "Wins this week:\n\nWhat I learned:\n\nWhat I'm carrying into next week:\n\nOne thing to change:" },
+  ];
+
+  function rfStreak(dateset) {
+    if (!dateset.size) return 0;
+    let streak = 0;
+    const d = new Date();
+    if (!dateset.has(d.toISOString().slice(0, 10))) d.setUTCDate(d.getUTCDate() - 1);
+    while (dateset.has(d.toISOString().slice(0, 10))) { streak += 1; d.setUTCDate(d.getUTCDate() - 1); }
+    return streak;
+  }
+  function rfLongestStreak(dates) {
+    const sorted = [...new Set(dates)].sort();
+    let longest = 0, run = 0, prev = null;
+    for (const ds of sorted) {
+      if (prev && (Date.parse(ds) - Date.parse(prev)) === RF_DAY) run += 1;
+      else run = 1;
+      if (run > longest) longest = run;
+      prev = ds;
+    }
+    return longest;
+  }
+  function rfWords(text) {
+    return rfClean(text, 100000).split(/\s+/).filter(Boolean).length;
+  }
+  function rfEntryView(e) {
+    return { ...e, wordCount: rfWords(e.text) };
+  }
+
+  // ── Journals ────────────────────────────────────────────────────────
+  registerLensAction("reflection", "journal-create", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = rfClean(params.name, 80);
+    if (!name) return { ok: false, error: "journal name required" };
+    const journal = {
+      id: rfId("jrn"), name,
+      color: rfClean(params.color, 16) || "sky",
+      createdAt: rfNow(),
+    };
+    rfListB(s.journals, rfAid(ctx)).push(journal);
+    saveRfState();
+    return { ok: true, result: { journal } };
+  });
+
+  registerLensAction("reflection", "journal-list", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const entries = s.entries.get(userId) || [];
+    const journals = (s.journals.get(userId) || []).map((j) => ({
+      ...j,
+      entryCount: entries.filter((e) => e.journalId === j.id).length,
+    }));
+    return { ok: true, result: { journals, count: journals.length } };
+  });
+
+  registerLensAction("reflection", "journal-delete", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const arr = s.journals.get(userId) || [];
+    const i = arr.findIndex((j) => j.id === params.id);
+    if (i < 0) return { ok: false, error: "journal not found" };
+    arr.splice(i, 1);
+    // detach orphaned entries rather than deleting them
+    for (const e of s.entries.get(userId) || []) {
+      if (e.journalId === params.id) e.journalId = null;
+    }
+    saveRfState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Entries ─────────────────────────────────────────────────────────
+  registerLensAction("reflection", "entry-create", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const text = rfClean(params.text, 20000);
+    if (!text) return { ok: false, error: "entry text required" };
+    const userId = rfAid(ctx);
+    let journalId = params.journalId ? String(params.journalId) : null;
+    if (journalId && !(s.journals.get(userId) || []).some((j) => j.id === journalId)) {
+      journalId = null;
+    }
+    const entry = {
+      id: rfId("ent"), journalId, text,
+      title: rfClean(params.title, 140) || null,
+      mood: RF_MOODS.includes(String(params.mood).toLowerCase()) ? String(params.mood).toLowerCase() : null,
+      tags: Array.isArray(params.tags)
+        ? [...new Set(params.tags.map((t) => rfClean(t, 30).toLowerCase()).filter(Boolean))].slice(0, 12) : [],
+      location: rfClean(params.location, 120) || null,
+      weather: RF_WEATHER.includes(String(params.weather).toLowerCase()) ? String(params.weather).toLowerCase() : null,
+      photoCount: Math.max(0, Math.round(rfNum(params.photoCount))),
+      promptText: rfClean(params.promptText, 300) || null,
+      date: rfDay(params.date) || rfDay(rfNow()),
+      at: rfNow(), updatedAt: rfNow(),
+    };
+    rfListB(s.entries, userId).push(entry);
+    saveRfState();
+    return { ok: true, result: { entry: rfEntryView(entry) } };
+  });
+
+  registerLensAction("reflection", "entry-list", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let entries = [...(s.entries.get(rfAid(ctx)) || [])];
+    if (params.journalId) entries = entries.filter((e) => e.journalId === String(params.journalId));
+    if (params.tag) entries = entries.filter((e) => e.tags.includes(String(params.tag).toLowerCase()));
+    if (params.days) {
+      const cutoff = new Date(Date.now() - Math.max(1, rfNum(params.days, 30)) * RF_DAY).toISOString().slice(0, 10);
+      entries = entries.filter((e) => e.date >= cutoff);
+    }
+    entries.sort((a, b) => b.at.localeCompare(a.at));
+    const limit = Math.max(1, Math.min(200, Math.round(rfNum(params.limit, 60))));
+    return {
+      ok: true,
+      result: { entries: entries.slice(0, limit).map(rfEntryView), count: entries.length },
+    };
+  });
+
+  registerLensAction("reflection", "entry-detail", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entry = (s.entries.get(rfAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!entry) return { ok: false, error: "entry not found" };
+    return { ok: true, result: { entry: rfEntryView(entry) } };
+  });
+
+  registerLensAction("reflection", "entry-update", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entry = (s.entries.get(rfAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!entry) return { ok: false, error: "entry not found" };
+    if (params.text != null) {
+      const text = rfClean(params.text, 20000);
+      if (!text) return { ok: false, error: "entry text cannot be empty" };
+      entry.text = text;
+    }
+    if (params.title != null) entry.title = rfClean(params.title, 140) || null;
+    if (params.mood != null) {
+      entry.mood = RF_MOODS.includes(String(params.mood).toLowerCase()) ? String(params.mood).toLowerCase() : entry.mood;
+    }
+    if (Array.isArray(params.tags)) {
+      entry.tags = [...new Set(params.tags.map((t) => rfClean(t, 30).toLowerCase()).filter(Boolean))].slice(0, 12);
+    }
+    entry.updatedAt = rfNow();
+    saveRfState();
+    return { ok: true, result: { entry: rfEntryView(entry) } };
+  });
+
+  registerLensAction("reflection", "entry-delete", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.entries.get(rfAid(ctx)) || [];
+    const i = arr.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "entry not found" };
+    arr.splice(i, 1);
+    saveRfState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("reflection", "entry-search", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const q = rfClean(params.query, 120).toLowerCase();
+    if (!q) return { ok: false, error: "search query required" };
+    const hits = (s.entries.get(rfAid(ctx)) || [])
+      .filter((e) =>
+        e.text.toLowerCase().includes(q) ||
+        (e.title || "").toLowerCase().includes(q) ||
+        e.tags.some((t) => t.includes(q)))
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 50)
+      .map(rfEntryView);
+    return { ok: true, result: { entries: hits, count: hits.length, query: q } };
+  });
+
+  // ── On This Day ─────────────────────────────────────────────────────
+  registerLensAction("reflection", "on-this-day", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ref = rfDay(params.date) || rfDay(rfNow());
+    const md = ref.slice(5);             // MM-DD
+    const year = ref.slice(0, 4);
+    const matches = (s.entries.get(rfAid(ctx)) || [])
+      .filter((e) => e.date.slice(5) === md && e.date.slice(0, 4) !== year)
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map((e) => ({ ...rfEntryView(e), yearsAgo: Number(year) - Number(e.date.slice(0, 4)) }));
+    return { ok: true, result: { date: md, entries: matches, count: matches.length } };
+  });
+
+  // ── Streaks & stats ─────────────────────────────────────────────────
+  registerLensAction("reflection", "journal-streak", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const dates = (s.entries.get(rfAid(ctx)) || []).map((e) => e.date);
+    return {
+      ok: true,
+      result: {
+        currentStreak: rfStreak(new Set(dates)),
+        longestStreak: rfLongestStreak(dates),
+        daysJournaled: new Set(dates).size,
+      },
+    };
+  });
+
+  registerLensAction("reflection", "journal-stats", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entries = s.entries.get(rfAid(ctx)) || [];
+    const byMood = {};
+    for (const m of RF_MOODS) byMood[m] = 0;
+    let totalWords = 0;
+    for (const e of entries) {
+      totalWords += rfWords(e.text);
+      if (e.mood) byMood[e.mood] = (byMood[e.mood] || 0) + 1;
+    }
+    return {
+      ok: true,
+      result: {
+        totalEntries: entries.length,
+        totalWords,
+        avgWords: entries.length ? Math.round(totalWords / entries.length) : 0,
+        totalPhotos: entries.reduce((a, e) => a + (e.photoCount || 0), 0),
+        byMood,
+      },
+    };
+  });
+
+  // ── Prompts ─────────────────────────────────────────────────────────
+  registerLensAction("reflection", "prompt-today", (_ctx, _a, params = {}) => {
+    const ref = rfDay(params.date) || rfDay(rfNow());
+    // Deterministic rotation: day-of-epoch indexes the prompt library.
+    const idx = Math.floor(Date.parse(`${ref}T00:00:00Z`) / RF_DAY) % RF_PROMPTS.length;
+    return { ok: true, result: { date: ref, prompt: RF_PROMPTS[(idx + RF_PROMPTS.length) % RF_PROMPTS.length] } };
+  });
+
+  registerLensAction("reflection", "prompt-library", (_ctx, _a, _params = {}) => {
+    return {
+      ok: true,
+      result: {
+        categories: RF_PROMPT_CATEGORIES,
+        prompts: RF_PROMPTS,
+        count: RF_PROMPTS.length,
+      },
+    };
+  });
+
+  registerLensAction("reflection", "prompt-random", (_ctx, _a, params = {}) => {
+    let pool = RF_PROMPTS;
+    if (params.category) {
+      const c = String(params.category).toLowerCase();
+      const filtered = RF_PROMPTS.filter((p) => p.category === c);
+      if (filtered.length) pool = filtered;
+    }
+    return { ok: true, result: { prompt: pool[Math.floor(Math.random() * pool.length)] } };
+  });
+
+  // ── Templates ───────────────────────────────────────────────────────
+  registerLensAction("reflection", "templates-list", (_ctx, _a, _params = {}) => {
+    return { ok: true, result: { templates: RF_TEMPLATES, count: RF_TEMPLATES.length } };
+  });
+
+  registerLensAction("reflection", "entry-from-template", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const tpl = RF_TEMPLATES.find((t) => t.id === String(params.templateId));
+    if (!tpl) return { ok: false, error: "unknown template" };
+    const userId = rfAid(ctx);
+    let journalId = params.journalId ? String(params.journalId) : null;
+    if (journalId && !(s.journals.get(userId) || []).some((j) => j.id === journalId)) {
+      journalId = null;
+    }
+    const entry = {
+      id: rfId("ent"), journalId, text: tpl.body, title: tpl.name,
+      mood: null, tags: [tpl.category], location: null, weather: null,
+      photoCount: 0, promptText: null,
+      date: rfDay(rfNow()), at: rfNow(), updatedAt: rfNow(),
+    };
+    rfListB(s.entries, userId).push(entry);
+    saveRfState();
+    return { ok: true, result: { entry: rfEntryView(entry), template: tpl.id } };
+  });
+
+  // ── Tags ────────────────────────────────────────────────────────────
+  registerLensAction("reflection", "tags-list", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const counts = {};
+    for (const e of s.entries.get(rfAid(ctx)) || []) {
+      for (const t of e.tags) counts[t] = (counts[t] || 0) + 1;
+    }
+    const tags = Object.entries(counts)
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count);
+    return { ok: true, result: { tags, count: tags.length } };
+  });
+
+  // ── Calendar ────────────────────────────────────────────────────────
+  registerLensAction("reflection", "calendar-month", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const now = new Date();
+    const year = Math.round(rfNum(params.year, now.getUTCFullYear()));
+    const month = Math.max(1, Math.min(12, Math.round(rfNum(params.month, now.getUTCMonth() + 1))));
+    const prefix = `${year}-${String(month).padStart(2, "0")}`;
+    const days = {};
+    for (const e of s.entries.get(rfAid(ctx)) || []) {
+      if (e.date.startsWith(prefix)) {
+        const d = e.date.slice(8, 10);
+        days[d] = (days[d] || 0) + 1;
+      }
+    }
+    return {
+      ok: true,
+      result: { year, month, days, daysWithEntries: Object.keys(days).length },
+    };
+  });
+
+  // ── Mood trend ──────────────────────────────────────────────────────
+  registerLensAction("reflection", "mood-trend", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const days = Math.max(1, Math.min(365, Math.round(rfNum(params.days, 30))));
+    const cutoff = new Date(Date.now() - days * RF_DAY).toISOString().slice(0, 10);
+    const scored = { great: 5, good: 4, okay: 3, low: 2, rough: 1 };
+    const moodEntries = (s.entries.get(rfAid(ctx)) || [])
+      .filter((e) => e.mood && e.date >= cutoff)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const distribution = {};
+    for (const m of RF_MOODS) distribution[m] = 0;
+    for (const e of moodEntries) distribution[e.mood] += 1;
+    const avg = moodEntries.length
+      ? Math.round((moodEntries.reduce((a, e) => a + scored[e.mood], 0) / moodEntries.length) * 100) / 100
+      : null;
+    return {
+      ok: true,
+      result: {
+        entries: moodEntries.length,
+        averageScore: avg,
+        distribution,
+        series: moodEntries.map((e) => ({ date: e.date, mood: e.mood, score: scored[e.mood] })),
+      },
+    };
+  });
+
+  // ── Reflection AI — deterministic-first, optional brain enhancement ──
+  registerLensAction("reflection", "reflect-deepen", async (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entry = (s.entries.get(rfAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!entry) return { ok: false, error: "entry not found" };
+    // Deterministic "go deeper" follow-up questions grounded in the entry.
+    const deterministic = [
+      "What part of this still feels unresolved?",
+      "If a friend wrote this, what would you want to ask them?",
+      "What does this entry tell you about what you need right now?",
+    ];
+    let questions = deterministic;
+    let composer = "deterministic";
+    if (ctx?.llm?.chat) {
+      try {
+        const out = await ctx.llm.chat({
+          system: "You help someone reflect more deeply on a journal entry. Return exactly three short, open follow-up questions, one per line. Ask only about what is in the entry — never invent events.",
+          messages: [{ role: "user", content: entry.text.slice(0, 2000) }],
+        });
+        const lines = String(out?.content || out || "")
+          .split("\n").map((l) => l.replace(/^[\d.\-)\s]+/, "").trim()).filter(Boolean);
+        if (lines.length >= 3) { questions = lines.slice(0, 3); composer = "brain"; }
+      } catch (_e) { /* fall back to deterministic */ }
+    }
+    return { ok: true, result: { entryId: entry.id, questions, composer } };
+  });
+
+  registerLensAction("reflection", "entry-summarize", async (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entry = (s.entries.get(rfAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!entry) return { ok: false, error: "entry not found" };
+    const sentences = entry.text.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+    let summary = sentences.slice(0, 2).join(" ") || entry.text.slice(0, 160);
+    let composer = "deterministic";
+    if (ctx?.llm?.chat) {
+      try {
+        const out = await ctx.llm.chat({
+          system: "Summarize this journal entry in one or two sentences. Use only what the entry says — never add events the writer did not mention.",
+          messages: [{ role: "user", content: entry.text.slice(0, 2000) }],
+        });
+        const text = rfClean(String(out?.content || out || ""), 400);
+        if (text) { summary = text; composer = "brain"; }
+      } catch (_e) { /* fall back to deterministic */ }
+    }
+    return { ok: true, result: { entryId: entry.id, summary, composer } };
+  });
+
+  // ── Goal ────────────────────────────────────────────────────────────
+  registerLensAction("reflection", "reflection-goal-set", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const weeklyEntries = Math.max(1, Math.min(21, Math.round(rfNum(params.weeklyEntries, 5))));
+    s.goal.set(rfAid(ctx), { weeklyEntries, updatedAt: rfNow() });
+    saveRfState();
+    return { ok: true, result: { weeklyEntries } };
+  });
+
+  registerLensAction("reflection", "reflection-goal-status", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const goal = s.goal.get(userId) || { weeklyEntries: 5 };
+    const weekAgo = new Date(Date.now() - 7 * RF_DAY).toISOString().slice(0, 10);
+    const thisWeek = (s.entries.get(userId) || []).filter((e) => e.date >= weekAgo).length;
+    return {
+      ok: true,
+      result: {
+        weeklyEntries: goal.weeklyEntries,
+        entriesThisWeek: thisWeek,
+        pct: Math.round((thisWeek / goal.weeklyEntries) * 100),
+        met: thisWeek >= goal.weeklyEntries,
+        isDefault: !s.goal.has(userId),
+      },
+    };
+  });
+
+  // ── Dashboard ───────────────────────────────────────────────────────
+  registerLensAction("reflection", "reflection-dashboard", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const entries = s.entries.get(userId) || [];
+    const dates = entries.map((e) => e.date);
+    const weekAgo = new Date(Date.now() - 7 * RF_DAY).toISOString().slice(0, 10);
+    const today = rfDay(rfNow());
+    const idx = Math.floor(Date.parse(`${today}T00:00:00Z`) / RF_DAY) % RF_PROMPTS.length;
+    const sorted = [...entries].sort((a, b) => b.at.localeCompare(a.at));
+    return {
+      ok: true,
+      result: {
+        currentStreak: rfStreak(new Set(dates)),
+        longestStreak: rfLongestStreak(dates),
+        totalEntries: entries.length,
+        entriesThisWeek: entries.filter((e) => e.date >= weekAgo).length,
+        journals: (s.journals.get(userId) || []).length,
+        totalWords: entries.reduce((a, e) => a + rfWords(e.text), 0),
+        latestMood: sorted.find((e) => e.mood)?.mood || null,
+        promptOfTheDay: RF_PROMPTS[(idx + RF_PROMPTS.length) % RF_PROMPTS.length],
+        wroteToday: dates.includes(today),
+      },
+    };
+  });
 }

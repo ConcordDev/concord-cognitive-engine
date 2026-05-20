@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { HeartPulse, Activity, Droplet, Thermometer, Wind, Loader2, ShieldAlert } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface VitalReading {
@@ -51,7 +51,7 @@ export function PatientChart() {
     setLoading(true);
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', { domain: 'healthcare', action: 'record-get', input: {} });
+        const res = await lensRun({ domain: 'healthcare', action: 'record-get', input: {} });
         setRecord(res.data?.result as PatientRecord || null);
       } catch (e) { console.error('[Chart] failed', e); }
       finally { setLoading(false); }

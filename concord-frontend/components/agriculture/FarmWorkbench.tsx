@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   X, Loader2, Sprout, Cloud, Eye, Plus, Trash2, Save, MapPin, Droplets, ThermometerSun,
 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface Field {
@@ -52,7 +52,7 @@ export function FarmWorkbench({ open, onClose }: Props) {
   const refreshFields = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'agriculture', action: 'field-list', input: {},
       });
       const list = (res.data as { result?: { fields?: Field[] } })?.result?.fields || [];
@@ -147,7 +147,7 @@ function FieldsTab({
 
   const save = async () => {
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'agriculture', action: 'field-create', input: draft,
       });
       setCreating(false);
@@ -159,7 +159,7 @@ function FieldsTab({
   const remove = async (id: string) => {
     if (!window.confirm('Delete this field?')) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'agriculture', action: 'field-delete', input: { id },
       });
       await onChange();
@@ -292,7 +292,7 @@ function WeatherTab({ field, fields, onSelect }: { field: Field | null; fields: 
     setWeather(null);
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', {
+        const res = await lensRun({
           domain: 'agriculture', action: 'weather-for-field',
           input: { lat: field.lat, lng: field.lng },
         });
@@ -397,7 +397,7 @@ function ScoutTab({ field, fields, onSelect }: { field: Field | null; fields: Fi
     if (!field) { setPins([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', {
+      const res = await lensRun({
         domain: 'agriculture', action: 'scout-list',
         input: { fieldId: field.id },
       });
@@ -412,7 +412,7 @@ function ScoutTab({ field, fields, onSelect }: { field: Field | null; fields: Fi
   const save = async () => {
     if (!field) return;
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'agriculture', action: 'scout-add',
         input: { fieldId: field.id, ...draft, lat: field.lat, lng: field.lng },
       });
@@ -424,7 +424,7 @@ function ScoutTab({ field, fields, onSelect }: { field: Field | null; fields: Fi
 
   const remove = async (id: string) => {
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'agriculture', action: 'scout-delete', input: { id },
       });
       await refresh();

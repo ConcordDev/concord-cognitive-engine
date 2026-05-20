@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Bell, BellOff, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 export interface PriceAlert {
@@ -37,7 +37,7 @@ export function PriceAlerts({ tokenOptions }: PriceAlertsProps) {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await api.post('/api/lens/run', { domain: 'crypto', action: 'price-alerts-list', input: {} });
+      const res = await lensRun({ domain: 'crypto', action: 'price-alerts-list', input: {} });
       setAlerts((res.data?.result?.alerts || []) as PriceAlert[]);
     } catch (e) {
       console.error('[Alerts] list failed', e);
@@ -50,7 +50,7 @@ export function PriceAlerts({ tokenOptions }: PriceAlertsProps) {
     if (!token) return;
     setSubmitting(true);
     try {
-      await api.post('/api/lens/run', {
+      await lensRun({
         domain: 'crypto',
         action: 'price-alerts-create',
         input: { tokenId, symbol: token.symbol, direction, threshold: Number(threshold) },
@@ -64,7 +64,7 @@ export function PriceAlerts({ tokenOptions }: PriceAlertsProps) {
 
   async function remove(id: string) {
     try {
-      await api.post('/api/lens/run', { domain: 'crypto', action: 'price-alerts-delete', input: { id } });
+      await lensRun({ domain: 'crypto', action: 'price-alerts-delete', input: { id } });
       setAlerts(prev => prev.filter(a => a.id !== id));
     } catch (e) {
       console.error('[Alerts] delete failed', e);

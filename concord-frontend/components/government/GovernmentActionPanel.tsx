@@ -13,7 +13,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -98,8 +98,8 @@ export function GovernmentActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Civic — ZIP ${zip}`, tags: ['government', 'civic', `zip:${zip}`], source: 'government:civic:mint', meta: { visibility: 'private', consent: { allowCitations: false }, civic: { zip, reps, bills, permit: permitResult, violation: violationResult } } } });
-      const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Civic — ZIP ${zip}`, tags: ['government', 'civic', `zip:${zip}`], source: 'government:civic:mint', meta: { visibility: 'private', consent: { allowCitations: false }, civic: { zip, reps, bills, permit: permitResult, violation: violationResult } } } });
+      const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('gov.mintedDtuId', id, { label: `Civic DTU ${id.slice(0, 8)}…` }); ok(`Civic DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -125,8 +125,8 @@ export function GovernmentActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public civic guide — ZIP ${zip}`, tags: ['government', 'civic', 'public', `zip:${zip}`], source: 'government:guide:publish', meta: { visibility: 'public', consent: { allowCitations: true }, guide: { zip, repCount: reps.length, billTopic: billQuery, billCount: bills.length, permitEstimate: permitResult?.estimatedWeeks } } } });
-        const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Public civic guide — ZIP ${zip}`, tags: ['government', 'civic', 'public', `zip:${zip}`], source: 'government:guide:publish', meta: { visibility: 'public', consent: { allowCitations: true }, guide: { zip, repCount: reps.length, billTopic: billQuery, billCount: bills.length, permitEstimate: permitResult?.estimatedWeeks } } } });
+        const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
@@ -139,8 +139,8 @@ export function GovernmentActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `Civic context: ZIP ${zip}, ${reps.length} reps known, tracking "${billQuery}" (${bills.length} bills). ${permitResult ? `Permit timeline ~${permitResult.estimatedWeeks}w.` : ''} Draft a 3-line constituent letter advocating for action on the top relevant bill. Plain text.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Letter draft ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
