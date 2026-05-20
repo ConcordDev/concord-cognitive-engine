@@ -65,4 +65,13 @@ Sources:
 | Broadcast a real on-chain transaction | signing key + RPC node + custody | portfolio-accurate send/receive ledger + address book; swaps & orders settle against live CoinGecko prices |
 
 ## Verification log
-- (in progress) — backend macros + tests; frontend panels; feature walkthrough.
+- 2026-05-20: Backend — 53 macros; `node --check` clean. Live CoinGecko prices for
+  holdings / portfolio / orders / market overview.
+- 2026-05-20: Tests — `tests/crypto-domain-parity.test.js` 53/53 green (wallets CRUD
+  + wallet-scoped holdings, send FIFO debit + insufficient/no-address rejections,
+  limit order create/cancel + buy/sell fill engine, portfolio snapshot + history,
+  market-overview network-error path).
+- 2026-05-20: Frontend — Trade (limit orders + fill check), Market (trending /
+  gainers / losers / global cap), Wallets & Send, and a Performance card on the
+  Portfolio tab; `npx tsc --noEmit` exit 0.
+- 2026-05-20: `npm run score-lenses` → crypto 7/7 PASS.

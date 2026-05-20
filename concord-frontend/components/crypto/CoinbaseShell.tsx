@@ -9,11 +9,13 @@
  */
 
 import React from 'react';
-import { Wallet, Eye, Repeat, Coins, ImageIcon, Activity, Receipt, Sparkles, Bell, Send } from 'lucide-react';
+import { Wallet, Eye, Repeat, Coins, ImageIcon, Activity, Receipt, Sparkles, Bell, Send, CandlestickChart, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type CryptoNav =
   | 'portfolio'
+  | 'trade'
+  | 'market'
   | 'watchlist'
   | 'recurring'
   | 'staking'
@@ -28,6 +30,8 @@ interface NavItem { id: CryptoNav; label: string; icon: typeof Wallet; badge?: n
 
 const NAV: NavItem[] = [
   { id: 'portfolio', label: 'Portfolio', icon: Wallet },
+  { id: 'trade',     label: 'Trade', icon: CandlestickChart },
+  { id: 'market',    label: 'Market', icon: Globe },
   { id: 'watchlist', label: 'Watchlist', icon: Eye },
   { id: 'recurring', label: 'Recurring (DCA)', icon: Repeat },
   { id: 'staking',   label: 'Staking', icon: Coins },
@@ -36,7 +40,7 @@ const NAV: NavItem[] = [
   { id: 'tax',       label: 'Tax', icon: Receipt },
   { id: 'insights',  label: 'AI Insights', icon: Sparkles },
   { id: 'alerts',    label: 'Price alerts', icon: Bell },
-  { id: 'wallet',    label: 'Wallet tools', icon: Send },
+  { id: 'wallet',    label: 'Wallets & Send', icon: Send },
 ];
 
 export interface CoinbaseShellProps {

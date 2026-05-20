@@ -5,6 +5,7 @@ import { lensRun } from '@/lib/api/client';
 import { CoinbaseShell, CryptoNav } from './CoinbaseShell';
 import { PortfolioPanel } from './PortfolioPanel';
 import { WatchlistPanel, RecurringBuysPanel, StakingPanel, NFTsPanel, ActivityPanel, TaxPanel, InsightsPanel } from './CryptoPanels';
+import { TradePanel, MarketPanel, WalletsPanel, PerformanceCard } from './CryptoTradePanels';
 
 export function CoinbaseSection() {
   const [nav, setNav] = useState<CryptoNav>('portfolio');
@@ -32,7 +33,14 @@ export function CoinbaseSection() {
       totalValueUsd={summary?.totalValueUsd}
       unrealizedPnlPct={summary?.unrealizedPnlPct}
     >
-      {nav === 'portfolio' && <PortfolioPanel />}
+      {nav === 'portfolio' && (
+        <div className="space-y-3">
+          <PortfolioPanel />
+          <PerformanceCard />
+        </div>
+      )}
+      {nav === 'trade'     && <TradePanel />}
+      {nav === 'market'    && <MarketPanel />}
       {nav === 'watchlist' && <WatchlistPanel />}
       {nav === 'recurring' && <RecurringBuysPanel />}
       {nav === 'staking'   && <StakingPanel />}
@@ -45,11 +53,7 @@ export function CoinbaseSection() {
           Price alerts live in the existing <span className="text-blue-300">PriceAlerts</span> component below. CRUD via the existing <span className="font-mono">price-alerts-*</span> macros.
         </div>
       )}
-      {nav === 'wallet'    && (
-        <div className="p-6 text-center text-sm text-gray-400 bg-black/30 border border-white/10 rounded">
-          Wallet tools — token search, swap, approvals manager, QR receive, address book — live in the existing components below this section.
-        </div>
-      )}
+      {nav === 'wallet'    && <WalletsPanel />}
     </CoinbaseShell>
   );
 }
