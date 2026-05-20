@@ -29434,7 +29434,7 @@ app.use("/api/legal", createLegalLiabilityRouter({ db }));
 // this line hit a TDZ ReferenceError at server startup and crashed
 // the whole boot sequence. Hoisted the const above its first use.
 const ALL_LENS_DOMAINS = [
-  "accounting","admin","affect","agents","agriculture","all","alliance","analytics","animation",
+  "accounting","admin","affect","agents","agriculture","all","alliance","analytics","animation","answers",
   "anon","app-maker","ar","art","artistry","astronomy","atlas","attention","audit","automotive","aviation","billing",
   "bio","board","bridge","calendar","carpentry","chat","chem","code","collab","command-center","construction",
   "commonsense","consulting","cooking","council","creative","creative-writing","cri","crypto","custom","daily",

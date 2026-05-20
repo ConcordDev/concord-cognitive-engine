@@ -38,6 +38,7 @@ import math from './math.js';
 import bio from './bio.js';
 import quantum from './quantum.js';
 import art from './art.js';
+import answers from './answers.js';
 import platform from './platform.js';
 import neuro from './neuro.js';
 import physics from './physics.js';
@@ -202,6 +203,7 @@ import classroom from './classroom.js';
 
 export default [
   healthcare,
+  answers,
   trades,
   food,
   retail,
