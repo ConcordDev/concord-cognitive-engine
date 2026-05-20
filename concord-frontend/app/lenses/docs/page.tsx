@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DocsToolingGallery } from '@/components/docs/DocsToolingGallery';
+import { DocsWorkspace } from '@/components/docs/DocsWorkspace';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -985,6 +986,9 @@ export default function DocsLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <DocsWorkspace />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <DocsToolingGallery />
       </section>
