@@ -408,3 +408,54 @@ describe("message — inbox-summary", () => {
     assert.equal(r.result.channelCount, channels.length);
   });
 });
+
+describe("message — pinned messages", () => {
+  function seedMsg(ctx = ctxA) {
+    const ch = call("channels-create", ctx, { name: "pins-ch" }).result.channel;
+    const msg = call("messages-send", ctx, { channelId: ch.id, body: "pin me" }).result.message;
+    return { ch, msg };
+  }
+  it("pin / list / unpin lifecycle", () => {
+    const { ch, msg } = seedMsg();
+    const pinned = call("pin-message", ctxA, { channelId: ch.id, messageId: msg.id });
+    assert.equal(pinned.ok, true);
+    assert.equal(pinned.result.pinCount, 1);
+    assert.equal(call("pins-list", ctxA, { channelId: ch.id }).result.count, 1);
+    assert.equal(call("pin-message", ctxA, { channelId: ch.id, messageId: msg.id }).ok, false); // dup
+    const unp = call("unpin-message", ctxA, { channelId: ch.id, messageId: msg.id });
+    assert.equal(unp.ok, true);
+    assert.equal(call("pins-list", ctxA, { channelId: ch.id }).result.count, 0);
+  });
+  it("rejects pinning an unknown message", () => {
+    const ch = call("channels-create", ctxA, { name: "empty-ch" }).result.channel;
+    assert.equal(call("pin-message", ctxA, { channelId: ch.id, messageId: "nope" }).ok, false);
+  });
+});
+
+describe("message — channel bookmarks", () => {
+  it("add / list / remove", () => {
+    const ch = call("channels-create", ctxA, { name: "bm-ch" }).result.channel;
+    const bm = call("bookmark-add", ctxA, { channelId: ch.id, title: "Spec doc", url: "https://x.test/spec" });
+    assert.equal(bm.ok, true);
+    assert.equal(call("bookmark-list", ctxA, { channelId: ch.id }).result.count, 1);
+    assert.equal(call("bookmark-remove", ctxA, { channelId: ch.id, id: bm.result.bookmark.id }).ok, true);
+    assert.equal(call("bookmark-list", ctxA, { channelId: ch.id }).result.count, 0);
+  });
+  it("requires a title", () => {
+    const ch = call("channels-create", ctxA, { name: "bm-ch2" }).result.channel;
+    assert.equal(call("bookmark-add", ctxA, { channelId: ch.id }).ok, false);
+  });
+});
+
+describe("message — status & presence", () => {
+  it("set / get / clear with per-user scope", () => {
+    assert.equal(call("status-get", ctxA, {}).result.status.presence, "active");
+    const set = call("status-set", ctxA, { emoji: "🌴", text: "On vacation", presence: "away", durationMin: 60 });
+    assert.equal(set.result.status.text, "On vacation");
+    assert.ok(set.result.status.expiresAt);
+    assert.equal(call("status-get", ctxA, {}).result.status.emoji, "🌴");
+    assert.equal(call("status-get", ctxB, {}).result.status.text, ""); // other user unaffected
+    call("status-clear", ctxA, {});
+    assert.equal(call("status-get", ctxA, {}).result.status.text, "");
+  });
+});

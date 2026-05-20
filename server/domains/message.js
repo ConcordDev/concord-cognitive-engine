@@ -29,6 +29,9 @@ export default function registerMessageActions(registerLensAction) {
     if (!s.readState)      s.readState      = new Map();
     if (!s.mentions)       s.mentions       = new Map();
     if (!s.seq)            s.seq            = new Map();
+    if (!s.pins)           s.pins           = new Map();
+    if (!s.bookmarks)      s.bookmarks      = new Map();
+    if (!s.status)         s.status         = new Map();
     return s;
   }
   function saveMessageState() {
@@ -787,5 +790,132 @@ export default function registerMessageActions(registerLensAction) {
         snoozedCount,
       },
     };
+  });
+
+  // ── Pinned messages (Slack-shape, channel-scoped) ──────────────
+  registerLensAction("message", "pin-message", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const messageId = String(params.messageId || "");
+    if (!channelId || !messageId) return { ok: false, error: "channelId + messageId required" };
+    const channel = listB(s.channels, userId).find(c => c.id === channelId);
+    if (!channel) return { ok: false, error: "channel not found" };
+    const msg = listB(mapB(s.messages, userId), channelId).find(m => m.id === messageId);
+    if (!msg) return { ok: false, error: "message not found" };
+    const pins = listB(mapB(s.pins, userId), channelId);
+    if (pins.some(p => p.messageId === messageId)) return { ok: false, error: "already pinned" };
+    const pin = { messageId, body: msg.body, senderName: msg.senderName, pinnedBy: userId, pinnedAt: nowIsoMsg() };
+    pins.push(pin);
+    msg.pinned = true;
+    saveMessageState();
+    return { ok: true, result: { pin, pinCount: pins.length } };
+  });
+
+  registerLensAction("message", "unpin-message", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const messageId = String(params.messageId || "");
+    const pins = listB(mapB(s.pins, userId), channelId);
+    const i = pins.findIndex(p => p.messageId === messageId);
+    if (i < 0) return { ok: false, error: "not pinned" };
+    pins.splice(i, 1);
+    const msg = listB(mapB(s.messages, userId), channelId).find(m => m.id === messageId);
+    if (msg) msg.pinned = false;
+    saveMessageState();
+    return { ok: true, result: { unpinned: messageId, pinCount: pins.length } };
+  });
+
+  registerLensAction("message", "pins-list", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const pins = listB(mapB(s.pins, userId), channelId);
+    return { ok: true, result: { pins, count: pins.length } };
+  });
+
+  // ── Channel bookmarks ──────────────────────────────────────────
+  registerLensAction("message", "bookmark-add", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const title = String(params.title || "").trim().slice(0, 120);
+    if (!channelId || !title) return { ok: false, error: "channelId + title required" };
+    const channel = listB(s.channels, userId).find(c => c.id === channelId);
+    if (!channel) return { ok: false, error: "channel not found" };
+    const bookmarks = listB(mapB(s.bookmarks, userId), channelId);
+    const bm = {
+      id: nextMsgId('bm'),
+      title,
+      url: String(params.url || "").trim().slice(0, 500),
+      emoji: String(params.emoji || "🔖").slice(0, 8),
+      addedBy: userId,
+      addedAt: nowIsoMsg(),
+    };
+    bookmarks.push(bm);
+    saveMessageState();
+    return { ok: true, result: { bookmark: bm, count: bookmarks.length } };
+  });
+
+  registerLensAction("message", "bookmark-list", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const bookmarks = listB(mapB(s.bookmarks, userId), channelId);
+    return { ok: true, result: { bookmarks, count: bookmarks.length } };
+  });
+
+  registerLensAction("message", "bookmark-remove", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const id = String(params.id || "");
+    const bookmarks = listB(mapB(s.bookmarks, userId), channelId);
+    const i = bookmarks.findIndex(b => b.id === id);
+    if (i < 0) return { ok: false, error: "bookmark not found" };
+    bookmarks.splice(i, 1);
+    saveMessageState();
+    return { ok: true, result: { removed: id, count: bookmarks.length } };
+  });
+
+  // ── Status & presence (Slack-shape) ────────────────────────────
+  registerLensAction("message", "status-set", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const presence = ['active', 'away', 'dnd'].includes(params.presence) ? params.presence : 'active';
+    const durationMin = Number(params.durationMin) || 0;
+    const status = {
+      emoji: String(params.emoji || "").slice(0, 8),
+      text: String(params.text || "").trim().slice(0, 100),
+      presence,
+      expiresAt: durationMin > 0 ? new Date(Date.now() + durationMin * 60000).toISOString() : null,
+      setAt: nowIsoMsg(),
+    };
+    s.status.set(userId, status);
+    saveMessageState();
+    return { ok: true, result: { status } };
+  });
+
+  registerLensAction("message", "status-get", (ctx, _a, _params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const blank = { emoji: "", text: "", presence: "active", expiresAt: null };
+    const status = s.status.get(userId);
+    if (!status) return { ok: true, result: { status: blank } };
+    if (status.expiresAt && new Date(status.expiresAt).getTime() <= Date.now()) {
+      s.status.delete(userId);
+      return { ok: true, result: { status: blank, expired: true } };
+    }
+    return { ok: true, result: { status } };
+  });
+
+  registerLensAction("message", "status-clear", (ctx, _a, _params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    s.status.delete(msgActor(ctx));
+    saveMessageState();
+    return { ok: true, result: { cleared: true } };
   });
 }
