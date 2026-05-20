@@ -179,4 +179,164 @@ export default function registerHistoryActions(registerLensAction) {
       return { ok: false, error: `wikipedia unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Timeline builder (Tiki-Toki / Sutori-shape, per-user) ───────────
+
+  function getHistoryState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.historyLens) STATE.historyLens = {};
+    if (!(STATE.historyLens.timelines instanceof Map)) STATE.historyLens.timelines = new Map(); // userId -> Array
+    return STATE.historyLens;
+  }
+  function saveHistory() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const hsId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const hsNow = () => new Date().toISOString();
+  const hsActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const hsClean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
+  const hsYear = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n) : null; };
+  const hsList = (s, userId) => { if (!s.timelines.has(userId)) s.timelines.set(userId, []); return s.timelines.get(userId); };
+
+  registerLensAction("history", "timeline-create", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = hsClean(params.title, 200);
+    if (!title) return { ok: false, error: "timeline title required" };
+    const timeline = {
+      id: hsId("tl"), title,
+      description: hsClean(params.description, 1000),
+      events: [], eras: [],
+      createdAt: hsNow(),
+    };
+    hsList(s, hsActor(ctx)).push(timeline);
+    saveHistory();
+    return { ok: true, result: { timeline } };
+  });
+
+  registerLensAction("history", "timeline-list", (ctx, _a, _params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const timelines = hsList(s, hsActor(ctx)).map((t) => ({
+      id: t.id, title: t.title, description: t.description,
+      eventCount: t.events.length, eraCount: t.eras.length, createdAt: t.createdAt,
+    }));
+    return { ok: true, result: { timelines, count: timelines.length } };
+  });
+
+  registerLensAction("history", "timeline-detail", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = hsList(s, hsActor(ctx)).find((x) => x.id === params.id);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const events = [...t.events].sort((a, b) => (a.year ?? 0) - (b.year ?? 0));
+    const eras = [...t.eras].sort((a, b) => (a.startYear ?? 0) - (b.startYear ?? 0));
+    const span = events.length > 0
+      ? { from: events[0].year, to: events[events.length - 1].year }
+      : null;
+    return { ok: true, result: { timeline: { ...t, events, eras }, span } };
+  });
+
+  registerLensAction("history", "timeline-delete", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = hsList(s, hsActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "timeline not found" };
+    arr.splice(i, 1);
+    saveHistory();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  function findTimeline(s, ctx, id) {
+    return hsList(s, hsActor(ctx)).find((t) => t.id === id);
+  }
+
+  registerLensAction("history", "event-add", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const title = hsClean(params.title, 200);
+    if (!title) return { ok: false, error: "event title required" };
+    const year = hsYear(params.year);
+    if (year == null) return { ok: false, error: "event year required (negative for BCE)" };
+    const event = {
+      id: hsId("ev"),
+      title,
+      year,
+      dateLabel: hsClean(params.dateLabel, 60) || (year < 0 ? `${Math.abs(year)} BCE` : String(year)),
+      category: hsClean(params.category, 60) || "general",
+      description: hsClean(params.description, 2000),
+      createdAt: hsNow(),
+    };
+    t.events.push(event);
+    saveHistory();
+    return { ok: true, result: { event } };
+  });
+
+  registerLensAction("history", "event-update", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const event = t.events.find((e) => e.id === params.eventId);
+    if (!event) return { ok: false, error: "event not found" };
+    if (params.title != null) event.title = hsClean(params.title, 200) || event.title;
+    if (params.year != null) { const y = hsYear(params.year); if (y != null) event.year = y; }
+    if (params.dateLabel != null) event.dateLabel = hsClean(params.dateLabel, 60) || event.dateLabel;
+    if (params.category != null) event.category = hsClean(params.category, 60) || event.category;
+    if (params.description != null) event.description = hsClean(params.description, 2000);
+    saveHistory();
+    return { ok: true, result: { event } };
+  });
+
+  registerLensAction("history", "event-delete", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const i = t.events.findIndex((e) => e.id === params.eventId);
+    if (i < 0) return { ok: false, error: "event not found" };
+    t.events.splice(i, 1);
+    saveHistory();
+    return { ok: true, result: { deleted: params.eventId } };
+  });
+
+  registerLensAction("history", "era-add", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const name = hsClean(params.name, 120);
+    if (!name) return { ok: false, error: "era name required" };
+    const era = {
+      id: hsId("era"), name,
+      startYear: hsYear(params.startYear),
+      endYear: hsYear(params.endYear),
+      color: hsClean(params.color, 9) || "#8b5cf6",
+    };
+    t.eras.push(era);
+    saveHistory();
+    return { ok: true, result: { era } };
+  });
+
+  registerLensAction("history", "era-delete", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const i = t.eras.findIndex((e) => e.id === params.eraId);
+    if (i < 0) return { ok: false, error: "era not found" };
+    t.eras.splice(i, 1);
+    saveHistory();
+    return { ok: true, result: { deleted: params.eraId } };
+  });
+
+  registerLensAction("history", "history-dashboard", (ctx, _a, _params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const timelines = hsList(s, hsActor(ctx));
+    return {
+      ok: true,
+      result: {
+        timelines: timelines.length,
+        totalEvents: timelines.reduce((n, t) => n + t.events.length, 0),
+        totalEras: timelines.reduce((n, t) => n + t.eras.length, 0),
+      },
+    };
+  });
 }
