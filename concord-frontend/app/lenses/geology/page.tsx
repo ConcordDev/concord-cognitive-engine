@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EarthquakeList } from '@/components/geology/EarthquakeList';
+import { FieldLog } from '@/components/geology/FieldLog';
 import { UsgsQuakePanel } from '@/components/geology/UsgsQuakePanel';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -584,6 +585,10 @@ export default function GeologyLensPage() {
       {/* Bespoke USGS earthquake feed with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <EarthquakeList />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
+        <FieldLog />
       </section>
     </LensPageShell>
 
