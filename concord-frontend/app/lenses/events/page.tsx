@@ -8,6 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaEarthEvents } from '@/components/events/NasaEarthEvents';
+import { EventPlanner } from '@/components/events/EventPlanner';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   LayoutDashboard as MTabDash, CalendarDays as MTabCal, MapPin as MTabPin,
@@ -2885,6 +2886,9 @@ export default function EventsLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6">
+        <EventPlanner />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <NasaEarthEvents />
       </section>
