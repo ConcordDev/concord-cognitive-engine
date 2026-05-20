@@ -68,4 +68,146 @@ export default function registerPoetryActions(registerLensAction) {
       return { ok: false, error: `poetrydb unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Poem workspace (per-user notebook with built-in prosody) ────────
+
+  function getPoetryState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.poetryLens) STATE.poetryLens = {};
+    if (!(STATE.poetryLens.poems instanceof Map)) STATE.poetryLens.poems = new Map(); // userId -> Array
+    return STATE.poetryLens;
+  }
+  function savePoetry() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const poId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const poNow = () => new Date().toISOString();
+  const poActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const poClean = (v, max = 12000) => String(v == null ? "" : v).trim().slice(0, max);
+  const poList = (s, userId) => { if (!s.poems.has(userId)) s.poems.set(userId, []); return s.poems.get(userId); };
+
+  // Compact prosody analysis shared by poem-analyze.
+  function analyzePoem(body) {
+    const lines = body.split("\n").filter((l) => l.trim());
+    const syllables = lines.map((l) =>
+      l.trim().split(/\s+/).reduce((s, w) => s + Math.max(1, (w.match(/[aeiouy]+/gi) || []).length), 0));
+    const avg = syllables.length ? Math.round(syllables.reduce((a, b) => a + b, 0) / syllables.length * 10) / 10 : 0;
+    const consistent = syllables.length > 1 && Math.max(...syllables) - Math.min(...syllables) <= 2;
+    const endWords = lines.map((l) => {
+      const w = l.trim().split(/\s+/);
+      return (w[w.length - 1] || "").toLowerCase().replace(/[^a-z]/g, "");
+    });
+    const rhymeMap = {};
+    let letter = 65;
+    const scheme = endWords.map((w) => {
+      const ending = w.length > 2 ? w.slice(-2) : w;
+      if (!rhymeMap[ending]) rhymeMap[ending] = String.fromCharCode(letter++);
+      return rhymeMap[ending];
+    });
+    const wordCount = body.toLowerCase().replace(/[^a-z\s]/g, "").split(/\s+/).filter(Boolean).length;
+    return {
+      lineCount: lines.length,
+      syllablesPerLine: syllables,
+      avgSyllables: avg,
+      meterConsistency: consistent ? "regular" : "irregular",
+      rhymeScheme: scheme.join(""),
+      rhyming: new Set(scheme).size < scheme.length,
+      wordCount,
+      detectedForm: syllables.length === 14 ? "sonnet"
+        : syllables.join(",").includes("5,7,5") ? "haiku"
+        : lines.length === 5 ? "limerick?"
+        : "free-verse",
+    };
+  }
+
+  registerLensAction("poetry", "poem-create", (ctx, _a, params = {}) => {
+    const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = poClean(params.title, 160);
+    if (!title) return { ok: false, error: "poem title required" };
+    const poem = {
+      id: poId("pm"),
+      title,
+      body: poClean(params.body, 12000),
+      form: poClean(params.form, 40).toLowerCase() || "free-verse",
+      tags: Array.isArray(params.tags) ? params.tags.map((t) => poClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8) : [],
+      status: "draft",
+      createdAt: poNow(),
+      updatedAt: poNow(),
+    };
+    poList(s, poActor(ctx)).push(poem);
+    savePoetry();
+    return { ok: true, result: { poem } };
+  });
+
+  registerLensAction("poetry", "poem-list", (ctx, _a, params = {}) => {
+    const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let poems = [...poList(s, poActor(ctx))];
+    if (params.form) poems = poems.filter((p) => p.form === String(params.form).toLowerCase());
+    if (params.status) poems = poems.filter((p) => p.status === params.status);
+    poems.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const out = poems.map((p) => ({
+      id: p.id, title: p.title, form: p.form, status: p.status,
+      lineCount: p.body.split("\n").filter((l) => l.trim()).length, updatedAt: p.updatedAt,
+    }));
+    return { ok: true, result: { poems: out, count: out.length } };
+  });
+
+  registerLensAction("poetry", "poem-detail", (ctx, _a, params = {}) => {
+    const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const poem = poList(s, poActor(ctx)).find((p) => p.id === params.id);
+    if (!poem) return { ok: false, error: "poem not found" };
+    return { ok: true, result: { poem } };
+  });
+
+  registerLensAction("poetry", "poem-update", (ctx, _a, params = {}) => {
+    const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const poem = poList(s, poActor(ctx)).find((p) => p.id === params.id);
+    if (!poem) return { ok: false, error: "poem not found" };
+    if (params.title != null) poem.title = poClean(params.title, 160) || poem.title;
+    if (params.body != null) poem.body = poClean(params.body, 12000);
+    if (params.form != null) poem.form = poClean(params.form, 40).toLowerCase() || poem.form;
+    if (params.status != null && ["draft", "revising", "finished"].includes(params.status)) poem.status = params.status;
+    if (Array.isArray(params.tags)) poem.tags = params.tags.map((t) => poClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8);
+    poem.updatedAt = poNow();
+    savePoetry();
+    return { ok: true, result: { poem } };
+  });
+
+  registerLensAction("poetry", "poem-delete", (ctx, _a, params = {}) => {
+    const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = poList(s, poActor(ctx));
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "poem not found" };
+    arr.splice(i, 1);
+    savePoetry();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("poetry", "poem-analyze", (ctx, _a, params = {}) => {
+    const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const poem = poList(s, poActor(ctx)).find((p) => p.id === params.id);
+    if (!poem) return { ok: false, error: "poem not found" };
+    if (!poem.body.trim()) return { ok: false, error: "poem has no text to analyze" };
+    return { ok: true, result: { poemId: poem.id, title: poem.title, analysis: analyzePoem(poem.body) } };
+  });
+
+  registerLensAction("poetry", "poetry-dashboard", (ctx, _a, _params = {}) => {
+    const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const poems = poList(s, poActor(ctx));
+    const byForm = {};
+    for (const p of poems) byForm[p.form] = (byForm[p.form] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        poems: poems.length,
+        finished: poems.filter((p) => p.status === "finished").length,
+        drafts: poems.filter((p) => p.status === "draft").length,
+        totalLines: poems.reduce((n, p) => n + p.body.split("\n").filter((l) => l.trim()).length, 0),
+        byForm,
+      },
+    };
+  });
 }
