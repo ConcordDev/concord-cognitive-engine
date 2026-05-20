@@ -172,4 +172,366 @@ export default function registerEnergyActions(registerLensAction) {
     const frequencyDeviation = Math.abs(frequency - 60);
     return { ok: true, result: { currentDemand: `${demandMW} MW`, totalCapacity: `${capacityMW} MW`, utilization, renewableShare: `${renewablePercent}%`, gridFrequency: `${frequency} Hz`, frequencyStable: frequencyDeviation < 0.05, status: utilization > 90 ? "critical-load" : utilization > 75 ? "high-load" : utilization > 50 ? "normal" : "low-load", reserves: `${Math.round(capacityMW - demandMW)} MW available` } };
   });
+
+  // ─── Sense 2026 parity — home energy monitor ────────────────────────
+  // Tracked devices, energy readings, monitored solar, utility rates,
+  // bill estimation, savings goals and usage analytics.
+
+  function getEnergyState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.energyLens) STATE.energyLens = {};
+    const s = STATE.energyLens;
+    for (const k of ["devices", "readings", "solar", "rates", "goals", "alerts"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveEnergyState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const enId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const enNow = () => new Date().toISOString();
+  const enAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const enListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const enNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const enClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const enDay = (v) => enClean(v, 10).slice(0, 10);
+  const findDevice = (s, userId, id) => (s.devices.get(userId) || []).find((d) => d.id === id) || null;
+  const EN_DAY = 86400000;
+  const DEFAULT_RATE = 0.17; // $/kWh fallback when no utility rate is set
+
+  const DEVICE_CATEGORIES = ["hvac", "appliance", "lighting", "electronics", "ev_charger", "water_heater", "kitchen", "laundry", "other"];
+
+  function userRate(s, userId) {
+    const r = s.rates.get(userId);
+    return r && r.ratePerKwh > 0 ? r.ratePerKwh : DEFAULT_RATE;
+  }
+
+  // ── Devices ─────────────────────────────────────────────────────────
+  registerLensAction("energy", "device-add", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = enClean(params.name, 80);
+    if (!name) return { ok: false, error: "device name required" };
+    const device = {
+      id: enId("dev"), name,
+      category: DEVICE_CATEGORIES.includes(String(params.category).toLowerCase())
+        ? String(params.category).toLowerCase() : "appliance",
+      wattage: Math.max(0, Math.round(enNum(params.wattage))),
+      alwaysOn: params.alwaysOn === true,
+      createdAt: enNow(),
+    };
+    enListB(s.devices, enAid(ctx)).push(device);
+    saveEnergyState();
+    return { ok: true, result: { device } };
+  });
+
+  registerLensAction("energy", "device-list", (ctx, _a, _params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const readings = s.readings.get(userId) || [];
+    const devices = (s.devices.get(userId) || []).map((d) => {
+      const dr = readings.filter((r) => r.deviceId === d.id);
+      return {
+        ...d,
+        totalKwh: Math.round(dr.reduce((a, r) => a + r.kwh, 0) * 100) / 100,
+        readingCount: dr.length,
+      };
+    });
+    return { ok: true, result: { devices, count: devices.length } };
+  });
+
+  registerLensAction("energy", "device-update", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const device = findDevice(s, enAid(ctx), params.id);
+    if (!device) return { ok: false, error: "device not found" };
+    if (params.name != null) { const n = enClean(params.name, 80); if (n) device.name = n; }
+    if (params.wattage != null) device.wattage = Math.max(0, Math.round(enNum(params.wattage)));
+    if (params.alwaysOn != null) device.alwaysOn = params.alwaysOn === true;
+    if (params.category != null && DEVICE_CATEGORIES.includes(String(params.category).toLowerCase())) {
+      device.category = String(params.category).toLowerCase();
+    }
+    saveEnergyState();
+    return { ok: true, result: { device } };
+  });
+
+  registerLensAction("energy", "device-delete", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const arr = s.devices.get(userId) || [];
+    const i = arr.findIndex((d) => d.id === params.id);
+    if (i < 0) return { ok: false, error: "device not found" };
+    arr.splice(i, 1);
+    s.readings.set(userId, (s.readings.get(userId) || []).filter((r) => r.deviceId !== params.id));
+    saveEnergyState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Energy readings ─────────────────────────────────────────────────
+  registerLensAction("energy", "reading-log", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const kwh = enNum(params.kwh);
+    if (kwh <= 0) return { ok: false, error: "kwh must be > 0" };
+    let deviceId = null, deviceName = "Whole home";
+    if (params.deviceId) {
+      const d = findDevice(s, userId, params.deviceId);
+      if (!d) return { ok: false, error: "device not found" };
+      deviceId = d.id; deviceName = d.name;
+    }
+    const reading = {
+      id: enId("rd"), deviceId, deviceName,
+      kwh: Math.round(kwh * 1000) / 1000,
+      date: enDay(params.date) || enDay(enNow()),
+      cost: Math.round(kwh * userRate(s, userId) * 100) / 100,
+      createdAt: enNow(),
+    };
+    enListB(s.readings, userId).push(reading);
+    saveEnergyState();
+    return { ok: true, result: { reading } };
+  });
+
+  registerLensAction("energy", "reading-history", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
+    const cutoff = Date.now() - days * EN_DAY;
+    let readings = (s.readings.get(userId) || [])
+      .filter((r) => new Date(r.date).getTime() >= cutoff);
+    if (params.deviceId) readings = readings.filter((r) => r.deviceId === params.deviceId);
+    const byDay = {};
+    for (const r of readings) {
+      if (!byDay[r.date]) byDay[r.date] = { date: r.date, kwh: 0, cost: 0 };
+      byDay[r.date].kwh = Math.round((byDay[r.date].kwh + r.kwh) * 1000) / 1000;
+      byDay[r.date].cost = Math.round((byDay[r.date].cost + r.cost) * 100) / 100;
+    }
+    const series = Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
+    return {
+      ok: true,
+      result: {
+        series,
+        totalKwh: Math.round(readings.reduce((a, r) => a + r.kwh, 0) * 1000) / 1000,
+        totalCost: Math.round(readings.reduce((a, r) => a + r.cost, 0) * 100) / 100,
+        days,
+      },
+    };
+  });
+
+  // ── Solar production ────────────────────────────────────────────────
+  registerLensAction("energy", "solar-log", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const kwh = enNum(params.kwh);
+    if (kwh < 0) return { ok: false, error: "kwh must be >= 0" };
+    const entry = {
+      id: enId("sol"), kwh: Math.round(kwh * 1000) / 1000,
+      date: enDay(params.date) || enDay(enNow()),
+      value: Math.round(kwh * userRate(s, userId) * 100) / 100,
+      createdAt: enNow(),
+    };
+    enListB(s.solar, userId).push(entry);
+    saveEnergyState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("energy", "solar-summary", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
+    const cutoff = Date.now() - days * EN_DAY;
+    const entries = (s.solar.get(userId) || []).filter((e) => new Date(e.date).getTime() >= cutoff);
+    const produced = entries.reduce((a, e) => a + e.kwh, 0);
+    const consumed = (s.readings.get(userId) || [])
+      .filter((r) => new Date(r.date).getTime() >= cutoff)
+      .reduce((a, r) => a + r.kwh, 0);
+    return {
+      ok: true,
+      result: {
+        days,
+        producedKwh: Math.round(produced * 1000) / 1000,
+        consumedKwh: Math.round(consumed * 1000) / 1000,
+        offsetPct: consumed > 0 ? Math.round((produced / consumed) * 100) : 0,
+        savings: Math.round(entries.reduce((a, e) => a + e.value, 0) * 100) / 100,
+        series: entries.slice().sort((a, b) => a.date.localeCompare(b.date)),
+      },
+    };
+  });
+
+  // ── Utility rate ────────────────────────────────────────────────────
+  registerLensAction("energy", "rate-set", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ratePerKwh = enNum(params.ratePerKwh);
+    if (ratePerKwh <= 0) return { ok: false, error: "ratePerKwh must be > 0" };
+    const rate = {
+      ratePerKwh: Math.round(ratePerKwh * 10000) / 10000,
+      utility: enClean(params.utility, 80) || null,
+      plan: enClean(params.plan, 80) || null,
+      updatedAt: enNow(),
+    };
+    s.rates.set(enAid(ctx), rate);
+    saveEnergyState();
+    return { ok: true, result: { rate } };
+  });
+
+  registerLensAction("energy", "rate-get", (ctx, _a, _params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rate = s.rates.get(enAid(ctx));
+    return {
+      ok: true,
+      result: {
+        rate: rate || { ratePerKwh: DEFAULT_RATE, utility: null, plan: null },
+        isDefault: !rate,
+      },
+    };
+  });
+
+  // ── Bill estimate ───────────────────────────────────────────────────
+  registerLensAction("energy", "bill-estimate", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const month = enClean(params.month, 7) || enDay(enNow()).slice(0, 7);
+    const readings = (s.readings.get(userId) || []).filter((r) => String(r.date).startsWith(month));
+    const solar = (s.solar.get(userId) || []).filter((e) => String(e.date).startsWith(month));
+    const consumedKwh = readings.reduce((a, r) => a + r.kwh, 0);
+    const solarKwh = solar.reduce((a, e) => a + e.kwh, 0);
+    const netKwh = Math.max(0, consumedKwh - solarKwh);
+    const rate = userRate(s, userId);
+    return {
+      ok: true,
+      result: {
+        month,
+        consumedKwh: Math.round(consumedKwh * 100) / 100,
+        solarKwh: Math.round(solarKwh * 100) / 100,
+        netKwh: Math.round(netKwh * 100) / 100,
+        ratePerKwh: rate,
+        estimatedBill: Math.round(netKwh * rate * 100) / 100,
+        grossBill: Math.round(consumedKwh * rate * 100) / 100,
+        solarSavings: Math.round(Math.min(consumedKwh, solarKwh) * rate * 100) / 100,
+      },
+    };
+  });
+
+  // ── Savings goals ───────────────────────────────────────────────────
+  registerLensAction("energy", "goal-set", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const targetKwh = enNum(params.targetKwh);
+    if (targetKwh <= 0) return { ok: false, error: "targetKwh must be > 0" };
+    const goal = {
+      id: enId("goal"),
+      label: enClean(params.label, 80) || "Monthly usage goal",
+      targetKwh: Math.round(targetKwh * 100) / 100,
+      period: ["week", "month"].includes(params.period) ? params.period : "month",
+      createdAt: enNow(),
+    };
+    enListB(s.goals, enAid(ctx)).push(goal);
+    saveEnergyState();
+    return { ok: true, result: { goal } };
+  });
+
+  registerLensAction("energy", "goal-list", (ctx, _a, _params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const readings = s.readings.get(userId) || [];
+    const now = new Date();
+    const goals = (s.goals.get(userId) || []).map((g) => {
+      let start;
+      if (g.period === "week") {
+        const d = new Date(now); const dow = (d.getDay() + 6) % 7;
+        d.setDate(d.getDate() - dow); d.setHours(0, 0, 0, 0); start = d.getTime();
+      } else {
+        const d = new Date(now); d.setDate(1); d.setHours(0, 0, 0, 0); start = d.getTime();
+      }
+      const used = readings
+        .filter((r) => new Date(r.date).getTime() >= start)
+        .reduce((a, r) => a + r.kwh, 0);
+      return {
+        ...g,
+        usedKwh: Math.round(used * 100) / 100,
+        pct: Math.round((used / g.targetKwh) * 100),
+        overBudget: used > g.targetKwh,
+      };
+    });
+    return { ok: true, result: { goals, count: goals.length } };
+  });
+
+  registerLensAction("energy", "goal-delete", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.goals.get(enAid(ctx)) || [];
+    const i = arr.findIndex((g) => g.id === params.id);
+    if (i < 0) return { ok: false, error: "goal not found" };
+    arr.splice(i, 1);
+    saveEnergyState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Usage analytics ─────────────────────────────────────────────────
+  registerLensAction("energy", "usage-breakdown", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
+    const cutoff = Date.now() - days * EN_DAY;
+    const readings = (s.readings.get(userId) || []).filter((r) => new Date(r.date).getTime() >= cutoff);
+    const devices = new Map((s.devices.get(userId) || []).map((d) => [d.id, d]));
+    const byCategory = {};
+    let total = 0, untracked = 0;
+    for (const r of readings) {
+      total += r.kwh;
+      if (r.deviceId && devices.has(r.deviceId)) {
+        const cat = devices.get(r.deviceId).category;
+        byCategory[cat] = Math.round(((byCategory[cat] || 0) + r.kwh) * 1000) / 1000;
+      } else {
+        untracked = Math.round((untracked + r.kwh) * 1000) / 1000;
+      }
+    }
+    const breakdown = Object.entries(byCategory)
+      .map(([category, kwh]) => ({ category, kwh, pct: total > 0 ? Math.round((kwh / total) * 100) : 0 }))
+      .sort((a, b) => b.kwh - a.kwh);
+    return {
+      ok: true,
+      result: { breakdown, totalKwh: Math.round(total * 1000) / 1000, untrackedKwh: untracked, days },
+    };
+  });
+
+  registerLensAction("energy", "top-consumers", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
+    const cutoff = Date.now() - days * EN_DAY;
+    const readings = (s.readings.get(userId) || []).filter((r) => new Date(r.date).getTime() >= cutoff);
+    const byDevice = new Map();
+    for (const r of readings) {
+      if (!r.deviceId) continue;
+      const cur = byDevice.get(r.deviceId) || { deviceId: r.deviceId, name: r.deviceName, kwh: 0, cost: 0 };
+      cur.kwh = Math.round((cur.kwh + r.kwh) * 1000) / 1000;
+      cur.cost = Math.round((cur.cost + r.cost) * 100) / 100;
+      byDevice.set(r.deviceId, cur);
+    }
+    const ranked = [...byDevice.values()].sort((a, b) => b.kwh - a.kwh).slice(0, 10);
+    return { ok: true, result: { devices: ranked, days } };
+  });
+
+  registerLensAction("energy", "energy-dashboard", (ctx, _a, _params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const month = enDay(enNow()).slice(0, 7);
+    const monthReadings = (s.readings.get(userId) || []).filter((r) => String(r.date).startsWith(month));
+    const monthSolar = (s.solar.get(userId) || []).filter((e) => String(e.date).startsWith(month));
+    const consumedKwh = monthReadings.reduce((a, r) => a + r.kwh, 0);
+    const solarKwh = monthSolar.reduce((a, e) => a + e.kwh, 0);
+    const rate = userRate(s, userId);
+    return {
+      ok: true,
+      result: {
+        devices: (s.devices.get(userId) || []).length,
+        monthKwh: Math.round(consumedKwh * 100) / 100,
+        monthCost: Math.round(Math.max(0, consumedKwh - solarKwh) * rate * 100) / 100,
+        solarKwh: Math.round(solarKwh * 100) / 100,
+        solarOffsetPct: consumedKwh > 0 ? Math.round((solarKwh / consumedKwh) * 100) : 0,
+        ratePerKwh: rate,
+        goals: (s.goals.get(userId) || []).length,
+      },
+    };
+  });
 }
