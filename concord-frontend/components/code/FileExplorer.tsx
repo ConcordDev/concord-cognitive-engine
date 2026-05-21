@@ -20,6 +20,7 @@ export function FileExplorer({
   const [creating, setCreating] = useState(false);
   const [draftPath, setDraftPath] = useState('');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only projectId should retrigger
   useEffect(() => { if (projectId) refresh(); else setTree([]); }, [projectId]);
 
   async function refresh() {

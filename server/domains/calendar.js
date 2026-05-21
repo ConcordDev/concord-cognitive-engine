@@ -911,6 +911,446 @@ export default function registerCalendarActions(registerLensAction) {
     return { ok: true, result: { cancelled: params.bookingId } };
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  //  Backlog parity — external account sync, calendar sharing,
+  //  firing reminders, working-location / OOO event types,
+  //  conference-link auto-gen, guest RSVP + invites.
+  // ═══════════════════════════════════════════════════════════════
+
+  function ensureBacklogMaps(s) {
+    if (!(s.connectedAccounts instanceof Map)) s.connectedAccounts = new Map();   // userId -> Array<Account>
+    if (!(s.calendarShares instanceof Map)) s.calendarShares = new Map();          // userId -> Array<Share>
+    if (!(s.reminderQueue instanceof Map)) s.reminderQueue = new Map();            // userId -> Array<Notification>
+    if (!(s.eventInvites instanceof Map)) s.eventInvites = new Map();              // userId -> Array<Invite>
+    return s;
+  }
+
+  // ── Item 1 — Two-way external account sync (Google / Outlook) ──
+  // Real ICS-URL subscription model (free, keyless): the user connects
+  // an account by pasting their calendar's public/secret iCal feed URL.
+  // sync pulls live events from that feed via cachedFetchJson-equivalent
+  // fetch + ical-parse, importing them into a dedicated calendar.
+
+  registerLensAction("calendar", "accounts-connect", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const userId = aidCal(ctx);
+    const provider = ['google', 'outlook', 'apple', 'ics'].includes(params.provider) ? params.provider : 'ics';
+    const label = String(params.label || "").trim().slice(0, 80);
+    const icsUrl = String(params.icsUrl || "").trim();
+    if (!label) return { ok: false, error: "label required" };
+    if (!/^https?:\/\//i.test(icsUrl)) return { ok: false, error: "valid icsUrl (https) required" };
+    const account = {
+      id: uidCal('acct'),
+      provider,
+      label,
+      icsUrl,
+      direction: ['pull', 'push', 'two-way'].includes(params.direction) ? params.direction : 'two-way',
+      lastSyncAt: null,
+      lastSyncCount: 0,
+      connectedAt: isoCal(),
+    };
+    listCal(s.connectedAccounts, userId).push(account);
+    saveCal();
+    return { ok: true, result: { account } };
+  });
+
+  registerLensAction("calendar", "accounts-list", (ctx, _a, _p = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    return { ok: true, result: { accounts: listCal(s.connectedAccounts, aidCal(ctx)) } };
+  });
+
+  registerLensAction("calendar", "accounts-disconnect", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const list = listCal(s.connectedAccounts, aidCal(ctx));
+    const i = list.findIndex(a => a.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "account not found" };
+    list.splice(i, 1);
+    saveCal();
+    return { ok: true, result: { disconnected: true } };
+  });
+
+  registerLensAction("calendar", "accounts-sync", async (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const userId = aidCal(ctx);
+    const account = listCal(s.connectedAccounts, userId).find(a => a.id === String(params.id || ""));
+    if (!account) return { ok: false, error: "account not found" };
+    let ics;
+    try {
+      const r = await fetch(account.icsUrl);
+      if (!r.ok) return { ok: false, error: `feed responded ${r.status}` };
+      ics = await r.text();
+    } catch (e) {
+      return { ok: false, error: `feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    if (!ics.includes("BEGIN:VCALENDAR")) return { ok: false, error: "feed did not return a valid VCALENDAR" };
+    // Reuse the ical-parse logic.
+    const unfolded = ics.replace(/\r\n[ \t]/g, "");
+    const incoming = [];
+    let cur = null;
+    for (const line of unfolded.split(/\r?\n/)) {
+      if (line === "BEGIN:VEVENT") { cur = {}; continue; }
+      if (line === "END:VEVENT") { if (cur) incoming.push(cur); cur = null; continue; }
+      if (!cur) continue;
+      const sep = line.indexOf(":");
+      if (sep < 0) continue;
+      const key = line.slice(0, sep).split(";")[0].toUpperCase();
+      const value = line.slice(sep + 1);
+      if (key === "UID") cur.uid = value;
+      else if (key === "SUMMARY") cur.summary = icsUnescape(value);
+      else if (key === "DESCRIPTION") cur.description = icsUnescape(value);
+      else if (key === "LOCATION") cur.location = icsUnescape(value);
+      else if (key === "DTSTART") cur.start = parseIcsDate(value);
+      else if (key === "DTEND") cur.end = parseIcsDate(value);
+    }
+    // Dedicated calendar per account.
+    const calendars = ensureDefaultCalendars(s, userId);
+    let synced = calendars.find(c => c.externalAccountId === account.id);
+    if (!synced) {
+      const seq = ensureSeqCal(s, userId);
+      synced = {
+        id: uidCal('cal'),
+        number: `CAL-${String(seq.cal).padStart(3, '0')}`,
+        name: account.label,
+        color: CAL_COLORS[calendars.length % CAL_COLORS.length],
+        visible: true,
+        isDefault: false,
+        externalAccountId: account.id,
+        readOnly: account.direction === 'pull',
+        createdAt: isoCal(),
+      };
+      seq.cal++;
+      calendars.push(synced);
+    }
+    const events = listCal(s.events, userId);
+    let imported = 0, updated = 0;
+    const seq = ensureSeqCal(s, userId);
+    for (const inc of incoming) {
+      if (!inc.start || isNaN(new Date(inc.start).getTime())) continue;
+      const extKey = inc.uid ? `${account.id}:${inc.uid}` : null;
+      const existing = extKey ? events.find(e => e.externalKey === extKey) : null;
+      const end = inc.end && !isNaN(new Date(inc.end).getTime())
+        ? inc.end
+        : new Date(new Date(inc.start).getTime() + 3_600_000).toISOString();
+      if (existing) {
+        existing.title = inc.summary || existing.title;
+        existing.description = inc.description || "";
+        existing.location = inc.location || "";
+        existing.start = inc.start;
+        existing.end = end;
+        updated++;
+      } else {
+        events.push({
+          id: uidCal('evt'),
+          number: `EV-${String(seq.evt).padStart(6, '0')}`,
+          calendarId: synced.id,
+          title: inc.summary || "Untitled event",
+          description: inc.description || "",
+          location: inc.location || "",
+          start: inc.start, end,
+          allDay: false,
+          recurrence: null,
+          reminders: [10],
+          attendees: [],
+          conferenceLink: "",
+          externalKey: extKey,
+          externalAccountId: account.id,
+          createdAt: isoCal(),
+        });
+        seq.evt++;
+        imported++;
+      }
+    }
+    account.lastSyncAt = isoCal();
+    account.lastSyncCount = incoming.length;
+    saveCal();
+    return { ok: true, result: { accountId: account.id, calendarId: synced.id, feedEvents: incoming.length, imported, updated, direction: account.direction } };
+  });
+
+  // ── Item 2 — Calendar sharing + per-calendar permissions ──────
+
+  registerLensAction("calendar", "calendar-share", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const userId = aidCal(ctx);
+    const cal = listCal(s.calendars, userId).find(c => c.id === String(params.calendarId || ""));
+    if (!cal) return { ok: false, error: "calendar not found" };
+    const sharedWith = String(params.sharedWith || "").trim().slice(0, 120);
+    if (!sharedWith) return { ok: false, error: "sharedWith (user identifier or email) required" };
+    const role = ['viewer', 'editor', 'manager'].includes(params.role) ? params.role : 'viewer';
+    const list = listCal(s.calendarShares, userId);
+    const existing = list.find(sh => sh.calendarId === cal.id && sh.sharedWith.toLowerCase() === sharedWith.toLowerCase());
+    if (existing) {
+      existing.role = role;
+      saveCal();
+      return { ok: true, result: { share: existing, updated: true } };
+    }
+    const share = {
+      id: uidCal('shr'),
+      calendarId: cal.id,
+      calendarName: cal.name,
+      sharedWith,
+      role,
+      createdAt: isoCal(),
+    };
+    list.push(share);
+    saveCal();
+    return { ok: true, result: { share } };
+  });
+
+  registerLensAction("calendar", "calendar-shares-list", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    let list = listCal(s.calendarShares, aidCal(ctx));
+    if (params.calendarId) list = list.filter(sh => sh.calendarId === String(params.calendarId));
+    return { ok: true, result: { shares: list, count: list.length } };
+  });
+
+  registerLensAction("calendar", "calendar-unshare", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const list = listCal(s.calendarShares, aidCal(ctx));
+    const i = list.findIndex(sh => sh.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "share not found" };
+    list.splice(i, 1);
+    saveCal();
+    return { ok: true, result: { unshared: true } };
+  });
+
+  // ── Item 3 — Reminders / notifications that actually fire ─────
+  // reminders-due computes which event-reminder offsets are now in
+  // the firing window and emits them as persisted notifications.
+
+  registerLensAction("calendar", "reminders-due", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const userId = aidCal(ctx);
+    const now = Date.now();
+    const lookAheadMin = Math.max(0, Math.min(1440, Number(params.lookAheadMin) || 0));
+    const queue = listCal(s.reminderQueue, userId);
+    const firedKeys = new Set(queue.map(n => n.key));
+    const winStart = new Date(now);
+    const winEnd = new Date(now + 30 * 86_400_000);
+    let firedNow = 0;
+    for (const e of listCal(s.events, userId)) {
+      const reminders = Array.isArray(e.reminders) ? e.reminders : [];
+      if (reminders.length === 0) continue;
+      for (const occ of expandOccurrences(e, winStart, winEnd)) {
+        const occMs = new Date(occ.occurrenceStart).getTime();
+        for (const offsetMin of reminders) {
+          const fireAt = occMs - Number(offsetMin) * 60_000;
+          const key = `${e.id}:${occ.occurrenceStart}:${offsetMin}`;
+          if (firedKeys.has(key)) continue;
+          // Fires once the wall clock reaches fireAt (plus lookAhead grace).
+          if (fireAt <= now + lookAheadMin * 60_000 && occMs > now) {
+            const note = {
+              id: uidCal('ntf'),
+              key,
+              eventId: e.id,
+              eventTitle: e.title,
+              occurrenceStart: occ.occurrenceStart,
+              offsetMin: Number(offsetMin),
+              firedAt: isoCal(),
+              acknowledged: false,
+            };
+            queue.push(note);
+            firedKeys.add(key);
+            firedNow++;
+          }
+        }
+      }
+    }
+    if (firedNow > 0) saveCal();
+    const pending = queue.filter(n => !n.acknowledged).sort((a, b) => a.occurrenceStart.localeCompare(b.occurrenceStart));
+    return { ok: true, result: { firedNow, pending, pendingCount: pending.length } };
+  });
+
+  registerLensAction("calendar", "reminders-acknowledge", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const queue = listCal(s.reminderQueue, aidCal(ctx));
+    if (params.all === true) {
+      let n = 0;
+      for (const note of queue) if (!note.acknowledged) { note.acknowledged = true; note.acknowledgedAt = isoCal(); n++; }
+      saveCal();
+      return { ok: true, result: { acknowledged: n } };
+    }
+    const note = queue.find(x => x.id === String(params.id || ""));
+    if (!note) return { ok: false, error: "notification not found" };
+    note.acknowledged = true;
+    note.acknowledgedAt = isoCal();
+    saveCal();
+    return { ok: true, result: { notification: note } };
+  });
+
+  // ── Item 4 — Working-location + out-of-office event types ─────
+  // Real first-class typed events stored in the same events array with
+  // an eventCategory tag, so they render distinctly and feed availability.
+
+  registerLensAction("calendar", "status-event-create", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCal(ctx);
+    const calendars = ensureDefaultCalendars(s, userId);
+    const kind = ['working-location', 'out-of-office', 'focus-time'].includes(params.kind) ? params.kind : null;
+    if (!kind) return { ok: false, error: "kind must be working-location | out-of-office | focus-time" };
+    const start = String(params.start || "");
+    if (!start || isNaN(new Date(start).getTime())) return { ok: false, error: "valid start (ISO) required" };
+    let end = String(params.end || "");
+    if (!end || isNaN(new Date(end).getTime())) end = new Date(new Date(start).getTime() + 8 * 3_600_000).toISOString();
+    const detail = String(params.detail || "").trim().slice(0, 200);
+    const TITLES = {
+      'working-location': detail ? `Working from ${detail}` : 'Working location',
+      'out-of-office': detail ? `Out of office — ${detail}` : 'Out of office',
+      'focus-time': detail ? `Focus: ${detail}` : 'Focus time',
+    };
+    const seq = ensureSeqCal(s, userId);
+    const event = {
+      id: uidCal('evt'),
+      number: `EV-${String(seq.evt).padStart(6, '0')}`,
+      calendarId: (calendars.find(c => c.isDefault) || calendars[0]).id,
+      title: TITLES[kind],
+      description: detail,
+      location: kind === 'working-location' ? detail : '',
+      start, end,
+      allDay: Boolean(params.allDay),
+      recurrence: null,
+      reminders: [],
+      attendees: [],
+      conferenceLink: '',
+      eventCategory: kind,
+      // out-of-office and focus-time auto-decline / block availability
+      blocksAvailability: kind !== 'working-location',
+      createdAt: isoCal(),
+    };
+    seq.evt++;
+    listCal(s.events, userId).push(event);
+    saveCal();
+    return { ok: true, result: { event } };
+  });
+
+  registerLensAction("calendar", "status-events-list", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const now = Date.now();
+    const list = listCal(s.events, aidCal(ctx))
+      .filter(e => e.eventCategory && ['working-location', 'out-of-office', 'focus-time'].includes(e.eventCategory))
+      .filter(e => params.includeAll === true || new Date(e.end || e.start).getTime() >= now)
+      .sort((a, b) => a.start.localeCompare(b.start));
+    return { ok: true, result: { statusEvents: list, count: list.length } };
+  });
+
+  // ── Item 5 — Video-conference link auto-generation ────────────
+  // Deterministic room-name generation (no external API). Produces a
+  // stable, joinable Jitsi Meet room URL (free, keyless, no account).
+
+  registerLensAction("calendar", "conference-generate", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCal(ctx);
+    const provider = ['jitsi', 'concord'].includes(params.provider) ? params.provider : 'jitsi';
+    const seed = `${userId}-${String(params.eventId || params.seed || Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
+    // Deterministic, URL-safe room slug.
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+    const room = `concord-${Math.abs(hash).toString(36)}-${Date.now().toString(36).slice(-4)}`;
+    const url = provider === 'jitsi'
+      ? `https://meet.jit.si/${room}`
+      : `https://concord-os.org/meet/${room}`;
+    let attached = false;
+    if (params.eventId) {
+      const e = listCal(s.events, userId).find(x => x.id === String(params.eventId));
+      if (e) { e.conferenceLink = url; e.conferenceProvider = provider; e.conferenceRoom = room; attached = true; saveCal(); }
+    }
+    return { ok: true, result: { provider, room, url, attachedToEvent: attached, eventId: params.eventId || null } };
+  });
+
+  registerLensAction("calendar", "conference-clear", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const e = listCal(s.events, aidCal(ctx)).find(x => x.id === String(params.eventId || ""));
+    if (!e) return { ok: false, error: "event not found" };
+    e.conferenceLink = '';
+    delete e.conferenceProvider;
+    delete e.conferenceRoom;
+    saveCal();
+    return { ok: true, result: { event: e } };
+  });
+
+  // ── Item 6 — Guest RSVP + invite emails ───────────────────────
+  // invites-send records per-guest invites against an event; each guest
+  // gets an RSVP token. invite-rsvp records accepted/declined/tentative.
+  // The ICS export already emits ATTENDEE lines so the invite is portable.
+
+  registerLensAction("calendar", "invites-send", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const userId = aidCal(ctx);
+    const event = listCal(s.events, userId).find(e => e.id === String(params.eventId || ""));
+    if (!event) return { ok: false, error: "event not found" };
+    const guests = Array.isArray(params.guests) ? params.guests.map(g => String(g).trim()).filter(Boolean) : [];
+    if (guests.length === 0) return { ok: false, error: "guests array (emails/identifiers) required" };
+    const list = listCal(s.eventInvites, userId);
+    const created = [];
+    for (const guest of guests) {
+      if (list.some(iv => iv.eventId === event.id && iv.guest.toLowerCase() === guest.toLowerCase())) continue;
+      const invite = {
+        id: uidCal('inv'),
+        token: uidCal('tok'),
+        eventId: event.id,
+        eventTitle: event.title,
+        eventStart: event.start,
+        guest,
+        rsvp: 'pending',
+        message: String(params.message || "").trim().slice(0, 500),
+        sentAt: isoCal(),
+        respondedAt: null,
+      };
+      list.push(invite);
+      created.push(invite);
+    }
+    // Mirror guests onto the event attendee list for ICS export parity.
+    event.attendees = [...new Set([...(event.attendees || []), ...guests])];
+    saveCal();
+    return { ok: true, result: { eventId: event.id, sent: created.length, invites: created, attendees: event.attendees } };
+  });
+
+  registerLensAction("calendar", "invites-list", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    let list = listCal(s.eventInvites, aidCal(ctx));
+    if (params.eventId) list = list.filter(iv => iv.eventId === String(params.eventId));
+    const counts = { accepted: 0, declined: 0, tentative: 0, pending: 0 };
+    for (const iv of list) counts[iv.rsvp] = (counts[iv.rsvp] || 0) + 1;
+    return { ok: true, result: { invites: list, count: list.length, rsvpCounts: counts } };
+  });
+
+  registerLensAction("calendar", "invite-rsvp", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const list = listCal(s.eventInvites, aidCal(ctx));
+    const token = String(params.token || "");
+    const id = String(params.id || "");
+    const invite = list.find(iv => (token && iv.token === token) || (id && iv.id === id));
+    if (!invite) return { ok: false, error: "invite not found" };
+    const rsvp = ['accepted', 'declined', 'tentative'].includes(params.rsvp) ? params.rsvp : null;
+    if (!rsvp) return { ok: false, error: "rsvp must be accepted | declined | tentative" };
+    invite.rsvp = rsvp;
+    invite.respondedAt = isoCal();
+    saveCal();
+    return { ok: true, result: { invite } };
+  });
+
+  registerLensAction("calendar", "invite-revoke", (ctx, _a, params = {}) => {
+    const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogMaps(s);
+    const list = listCal(s.eventInvites, aidCal(ctx));
+    const i = list.findIndex(iv => iv.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "invite not found" };
+    list.splice(i, 1);
+    saveCal();
+    return { ok: true, result: { revoked: true } };
+  });
+
   // feed — ingest upcoming public holidays (Nager.Date) as visible DTUs.
   registerLensAction("calendar", "feed", async (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };

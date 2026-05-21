@@ -776,6 +776,267 @@ describe("code — git branch isolation + merge", () => {
   });
 });
 
+// ═════════════════════════════════════════════════════════════════
+//  Cursor / VS Code 2026 parity — backlog: LSP IntelliSense, remote
+//  GitHub, step debugger, codebase chat, extensions, split layout,
+//  Live Share. One describe block per backlog item.
+// ═════════════════════════════════════════════════════════════════
+
+describe("code — LSP IntelliSense (lsp-hover / lsp-signature / lsp-completions)", () => {
+  function declProject() {
+    const p = call("projects-create", ctxC, { name: "Lsp" }).result.project;
+    call("files-write", ctxC, {
+      projectId: p.id,
+      path: "src/math.ts",
+      content: [
+        "/** Adds two numbers together. */",
+        "export function add(a: number, b: number): number {",
+        "  return a + b;",
+        "}",
+        "export const PI = 3.14159;",
+        "export class Vec { x = 0; }",
+      ].join("\n"),
+    });
+    return p;
+  }
+
+  it("lsp-hover resolves a project-declared function with kind + doc", () => {
+    const p = declProject();
+    const r = call("lsp-hover", ctxC, { projectId: p.id, path: "src/math.ts", symbol: "add" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.found, true);
+    assert.equal(r.result.kind, "function");
+    assert.match(r.result.doc, /Adds two numbers/);
+    assert.equal(r.result.definedAt.path, "src/math.ts");
+  });
+
+  it("lsp-hover falls back to builtin docs for runtime globals", () => {
+    const p = declProject();
+    const r = call("lsp-hover", ctxC, { projectId: p.id, path: "src/math.ts", symbol: "console" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.found, true);
+    assert.equal(r.result.source, "builtin");
+  });
+
+  it("lsp-hover reports found:false for an unknown symbol", () => {
+    const p = declProject();
+    const r = call("lsp-hover", ctxC, { projectId: p.id, path: "src/math.ts", symbol: "nonexistentXyz" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.found, false);
+  });
+
+  it("lsp-signature returns parameters + return type for a function", () => {
+    const p = declProject();
+    const r = call("lsp-signature", ctxC, { projectId: p.id, symbol: "add" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.found, true);
+    assert.equal(r.result.parameters.length, 2);
+    assert.equal(r.result.parameters[0].name, "a");
+    assert.equal(r.result.returnType, "number");
+  });
+
+  it("lsp-completions prefix-filters symbols across the project", () => {
+    const p = declProject();
+    const r = call("lsp-completions", ctxC, { projectId: p.id, path: "src/math.ts", prefix: "P" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.completions.some((c) => c.label === "PI"));
+    assert.ok(r.result.completions.every((c) => c.label.toLowerCase().startsWith("p")));
+  });
+});
+
+describe("code — step debugger (debug-run)", () => {
+  it("captures a frame for every breakpoint hit with watch values", () => {
+    const r = call("debug-run", ctxC, {
+      code: "let x = 1;\nx = x + 1;\nx = x * 3;\nconsole.log(x);\n",
+      breakpoints: [2, 3],
+      watch: ["x"],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.exitCode, 0);
+    assert.equal(r.result.hitCount, 2);
+    assert.deepEqual(r.result.frames.map((f) => f.line), [2, 3]);
+    assert.ok("x" in r.result.frames[0].watch);
+  });
+
+  it("records a call stack at each frame", () => {
+    const r = call("debug-run", ctxC, {
+      code: "function inner(){ return 1; }\nfunction outer(){ return inner(); }\nouter();\n",
+      breakpoints: [1],
+    });
+    assert.equal(r.ok, true);
+    assert.ok(Array.isArray(r.result.frames[0]?.callStack));
+  });
+
+  it("reports exitCode 1 + stderr on a runtime error", () => {
+    const r = call("debug-run", ctxC, { code: "throw new Error('boom');\n", breakpoints: [1] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.exitCode, 1);
+    assert.match(r.result.stderr, /boom/);
+  });
+
+  it("rejects non-JS/TS languages", () => {
+    const r = call("debug-run", ctxC, { code: "print('x')", language: "python", breakpoints: [1] });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /JS\/TS/);
+  });
+});
+
+describe("code — remote GitHub (github-push / github-remote-status)", () => {
+  it("github-push rejects when no remote is configured", () => {
+    const p = call("projects-create", ctxC, { name: "NoRemote" }).result.project;
+    const r = call("github-push", ctxC, { projectId: p.id, message: "x" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no remote/);
+  });
+
+  it("github-remote-status returns hasRemote:false for a fresh project", () => {
+    const p = call("projects-create", ctxC, { name: "Fresh" }).result.project;
+    const r = call("github-remote-status", ctxC, { projectId: p.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.hasRemote, false);
+    assert.deepEqual(r.result.pushLog, []);
+  });
+
+  it("github-pull rejects missing owner/repo", async () => {
+    const p = call("projects-create", ctxC, { name: "P" }).result.project;
+    const r = await call("github-pull", ctxC, { projectId: p.id, owner: "", repo: "" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /owner/);
+  });
+});
+
+describe("code — codebase chat (codebase-chat)", () => {
+  it("rejects without an llm", async () => {
+    const p = call("projects-create", ctxC, { name: "Cc" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "a.js", content: "function f(){}" });
+    const r = await call("codebase-chat", ctxC, { projectId: p.id, message: "what does a.js do" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /llm/);
+  });
+
+  it("resolves @-file references and returns the reply + context files", async () => {
+    const p = call("projects-create", ctxC, { name: "Cc2" }).result.project;
+    call("files-write", ctxC, { projectId: p.id, path: "auth.js", content: "export function login(){ return true; }" });
+    const ctxBrain = {
+      ...ctxC,
+      llm: { chat: async () => ({ text: "auth.js exports login() which always returns true." }) },
+    };
+    const r = await ACTIONS.get("code.codebase-chat")(ctxBrain, { id: null, data: {}, meta: {} }, {
+      projectId: p.id, message: "explain @auth.js",
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.contextFiles.includes("auth.js"));
+    assert.match(r.result.reply, /login/);
+  });
+});
+
+describe("code — extensions (catalog / install / toggle / uninstall)", () => {
+  it("catalog lists installable extensions", () => {
+    const r = call("extensions-catalog", ctxC);
+    assert.equal(r.ok, true);
+    assert.ok(r.result.count > 0);
+  });
+
+  it("install / list / toggle / uninstall round-trip", () => {
+    const ins = call("extensions-install", ctxC, { extensionId: "prettier-fmt" });
+    assert.equal(ins.ok, true);
+    assert.equal(ins.result.extension.enabled, true);
+
+    let list = call("extensions-list", ctxC);
+    assert.equal(list.result.count, 1);
+
+    const tog = call("extensions-toggle", ctxC, { extensionId: "prettier-fmt", enabled: false });
+    assert.equal(tog.result.extension.enabled, false);
+
+    const un = call("extensions-uninstall", ctxC, { extensionId: "prettier-fmt" });
+    assert.equal(un.result.uninstalled, true);
+    list = call("extensions-list", ctxC);
+    assert.equal(list.result.count, 0);
+  });
+
+  it("install rejects an unknown extension id", () => {
+    const r = call("extensions-install", ctxC, { extensionId: "does-not-exist" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("code — split-pane layout (layout-get / layout-save)", () => {
+  it("layout-get returns a single-pane default", () => {
+    const p = call("projects-create", ctxC, { name: "Lay" }).result.project;
+    const r = call("layout-get", ctxC, { projectId: p.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.layout.orientation, "single");
+    assert.equal(r.result.layout.panes.length, 1);
+  });
+
+  it("layout-save persists a vertical split and layout-get reads it back", () => {
+    const p = call("projects-create", ctxC, { name: "Lay2" }).result.project;
+    const saved = call("layout-save", ctxC, {
+      projectId: p.id,
+      orientation: "vertical",
+      panes: [{ id: "p1", path: "a.js" }, { id: "p2", path: "b.js" }],
+    });
+    assert.equal(saved.ok, true);
+    assert.equal(saved.result.layout.orientation, "vertical");
+    const got = call("layout-get", ctxC, { projectId: p.id });
+    assert.equal(got.result.layout.panes.length, 2);
+    assert.equal(got.result.layout.panes[0].path, "a.js");
+  });
+
+  it("layout-save rejects > 4 panes and empty pane lists", () => {
+    const p = call("projects-create", ctxC, { name: "Lay3" }).result.project;
+    assert.equal(call("layout-save", ctxC, { projectId: p.id, panes: [] }).ok, false);
+    const tooMany = call("layout-save", ctxC, {
+      projectId: p.id,
+      panes: [{ id: "1" }, { id: "2" }, { id: "3" }, { id: "4" }, { id: "5" }],
+    });
+    assert.equal(tooMany.ok, false);
+  });
+});
+
+describe("code — Live Share (start / join / edit / poll / end)", () => {
+  it("host starts a session, a peer joins, edits broadcast via the op-log", () => {
+    const p = call("projects-create", ctxC, { name: "Ls" }).result.project;
+    const started = call("liveshare-start", ctxC, { projectId: p.id, name: "pair session" });
+    assert.equal(started.ok, true);
+    const code = started.result.session.code;
+    assert.equal(started.result.session.participantCount, 1);
+
+    const ctxPeer = { actor: { userId: "peer_user" }, userId: "peer_user" };
+    const joined = call("liveshare-join", ctxPeer, { code });
+    assert.equal(joined.ok, true);
+    assert.equal(joined.result.session.participantCount, 2);
+
+    const edit = call("liveshare-edit", ctxPeer, { code, path: "a.js", content: "console.log(1)" });
+    assert.equal(edit.ok, true);
+    assert.equal(edit.result.op.kind, "edit");
+
+    const polled = call("liveshare-poll", ctxC, { code, since: 0 });
+    assert.equal(polled.ok, true);
+    assert.ok(polled.result.ops.some((o) => o.kind === "edit"));
+  });
+
+  it("only the host can end the session", () => {
+    const p = call("projects-create", ctxC, { name: "Ls2" }).result.project;
+    const started = call("liveshare-start", ctxC, { projectId: p.id });
+    const code = started.result.session.code;
+    const ctxPeer = { actor: { userId: "intruder" }, userId: "intruder" };
+    assert.equal(call("liveshare-end", ctxPeer, { code }).ok, false);
+    const ended = call("liveshare-end", ctxC, { code });
+    assert.equal(ended.ok, true);
+    assert.equal(ended.result.session.status, "closed");
+  });
+
+  it("edit rejects a non-participant", () => {
+    const p = call("projects-create", ctxC, { name: "Ls3" }).result.project;
+    const code = call("liveshare-start", ctxC, { projectId: p.id }).result.session.code;
+    const ctxStranger = { actor: { userId: "stranger" }, userId: "stranger" };
+    const r = call("liveshare-edit", ctxStranger, { code, path: "a.js", content: "x" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /participant/);
+  });
+});
+
 describe("code — run configs + bookmarks", () => {
   it("saves, lists and deletes run configurations", () => {
     const p = call("projects-create", ctxC, { name: "Rc" }).result.project;

@@ -30,6 +30,7 @@ export function SkillTree() {
   const [form, setForm] = useState({ name: '', subject: 'math' });
   const [subjectFilter, setSubjectFilter] = useState('');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [subjectFilter]);
 
   async function refresh() {

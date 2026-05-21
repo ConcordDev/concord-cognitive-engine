@@ -12,12 +12,14 @@ Backend: `education` domain macros — very deep (~50): gradeCalculation, attend
 - Grade calculation, attendance, progress tracking, report cards; Gutenberg curriculum + Open Library + dictionary panels
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Video lessons with progress scrubbing + transcript
-- [ ] `[M]` Interactive exercises with auto-grading and hints (Khan's mastery loop)
-- [ ] `[S]` Learning path / prerequisite sequencing across courses
-- [ ] `[M]` Live cohort / classroom sessions with instructor
-- [ ] `[S]` Mastery/streak dashboard with knowledge-state per skill
-- [ ] `[S]` Course discussion Q&A threaded to a specific lesson timestamp
+- [x] `[M]` Video lessons with progress scrubbing + transcript
+- [x] `[M]` Interactive exercises with auto-grading and hints (Khan's mastery loop)
+- [x] `[S]` Learning path / prerequisite sequencing across courses
+- [x] `[M]` Live cohort / classroom sessions with instructor
+- [x] `[S]` Mastery/streak dashboard with knowledge-state per skill
+- [x] `[S]` Course discussion Q&A threaded to a specific lesson timestamp
 
 ## Parity
-~70% of a Khan Academy+Coursera composite. One of the deepest lenses — courses, flashcards-SRS, tutor, quizzes, assignments, certificates, and gamification all work. Main gaps are video lessons, auto-graded interactive exercises, and live cohorts.
+~95% of a Khan Academy+Coursera composite. Courses, flashcards-SRS, tutor, quizzes, assignments, certificates, gamification plus video lessons with synced transcripts, auto-graded interactive exercises with a mastery loop, prerequisite learning paths, live cohorts, a mastery dashboard, and timestamp-anchored lesson Q&A all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

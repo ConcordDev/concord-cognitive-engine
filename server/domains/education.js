@@ -1255,6 +1255,582 @@ Constraints:
     };
   });
 
+  // ════════════════════════════════════════════════════════════════
+  //  Parity backlog — video lessons, interactive exercises, learning
+  //  paths, live cohorts, mastery dashboard, timestamped Q&A.
+  // ════════════════════════════════════════════════════════════════
+
+  // ── 1. Video lessons: progress scrubbing + transcript ──────────────
+  // A video lesson is a lesson row whose kind === "video". We track a
+  // per-user playback record (position, watched ranges, completion) and
+  // an authored transcript (array of {sec,text} cues).
+
+  registerLensAction("education", "video-progress-save", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const lessonId = String(params.lessonId || "");
+    const positionSec = Math.max(0, Number(params.positionSec) || 0);
+    const durationSec = Math.max(0, Number(params.durationSec) || 0);
+    if (!lessonId) return { ok: false, error: "lessonId required" };
+    const records = ensureEduBucket(s, "videoProgress", userId);
+    let rec = records.find(r => r.lessonId === lessonId);
+    if (!rec) {
+      rec = { lessonId, positionSec: 0, durationSec, watchedSec: 0, completed: false, updatedAt: null };
+      records.push(rec);
+    }
+    // Watched-seconds accrues monotonically by the forward delta only —
+    // scrubbing backward does not inflate watch time.
+    if (positionSec > rec.positionSec && positionSec - rec.positionSec <= 30) {
+      rec.watchedSec += positionSec - rec.positionSec;
+    }
+    rec.positionSec = positionSec;
+    if (durationSec > 0) rec.durationSec = durationSec;
+    rec.completed = rec.durationSec > 0 && rec.watchedSec >= rec.durationSec * 0.9;
+    rec.updatedAt = new Date().toISOString();
+    saveStateIfAvailable();
+    return {
+      ok: true,
+      result: {
+        lessonId, positionSec: rec.positionSec, watchedSec: Math.round(rec.watchedSec),
+        durationSec: rec.durationSec, completed: rec.completed,
+        watchedPct: rec.durationSec > 0 ? Math.round((rec.watchedSec / rec.durationSec) * 100) : 0,
+      },
+    };
+  });
+
+  registerLensAction("education", "video-progress-get", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const lessonId = String(params.lessonId || "");
+    if (!lessonId) return { ok: false, error: "lessonId required" };
+    const rec = ensureEduBucket(s, "videoProgress", userId).find(r => r.lessonId === lessonId);
+    if (!rec) return { ok: true, result: { lessonId, positionSec: 0, watchedSec: 0, durationSec: 0, completed: false, watchedPct: 0 } };
+    return {
+      ok: true,
+      result: {
+        lessonId, positionSec: rec.positionSec, watchedSec: Math.round(rec.watchedSec),
+        durationSec: rec.durationSec, completed: rec.completed,
+        watchedPct: rec.durationSec > 0 ? Math.round((rec.watchedSec / rec.durationSec) * 100) : 0,
+      },
+    };
+  });
+
+  registerLensAction("education", "video-transcript-save", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const lessonId = String(params.lessonId || "");
+    const cuesIn = Array.isArray(params.cues) ? params.cues : [];
+    if (!lessonId) return { ok: false, error: "lessonId required" };
+    const cues = cuesIn
+      .map(c => ({ sec: Math.max(0, Number(c.sec) || 0), text: String(c.text || "").trim() }))
+      .filter(c => c.text)
+      .sort((a, b) => a.sec - b.sec);
+    if (cues.length === 0) return { ok: false, error: "at least one transcript cue required" };
+    const transcripts = ensureEduBucket(s, "videoTranscripts", userId);
+    const existing = transcripts.find(t => t.lessonId === lessonId);
+    if (existing) { existing.cues = cues; existing.updatedAt = new Date().toISOString(); }
+    else transcripts.push({ lessonId, cues, updatedAt: new Date().toISOString() });
+    saveStateIfAvailable();
+    return { ok: true, result: { lessonId, cueCount: cues.length } };
+  });
+
+  registerLensAction("education", "video-transcript-get", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const lessonId = String(params.lessonId || "");
+    if (!lessonId) return { ok: false, error: "lessonId required" };
+    const t = ensureEduBucket(s, "videoTranscripts", userId).find(x => x.lessonId === lessonId);
+    return { ok: true, result: { lessonId, cues: t?.cues || [] } };
+  });
+
+  // ── 2. Interactive exercises: auto-grading + 3-tier hints ──────────
+  // An exercise has steps with a typed answer key; submissions are
+  // auto-graded (exact/numeric tolerance/multiple-choice), and hints
+  // escalate. Khan's mastery loop: streak of correct → mastery bump.
+
+  function gradeAnswer(step, raw) {
+    const answer = String(raw == null ? "" : raw).trim();
+    if (step.type === "numeric") {
+      const got = parseFloat(answer);
+      const want = parseFloat(step.answer);
+      if (!isFinite(got) || !isFinite(want)) return false;
+      const tol = Math.abs(Number(step.tolerance) || 0);
+      return Math.abs(got - want) <= tol;
+    }
+    if (step.type === "multiple_choice") {
+      return answer === String(step.answer).trim();
+    }
+    // text — case-insensitive exact, accepting any of pipe-delimited keys
+    const keys = String(step.answer).split("|").map(k => k.trim().toLowerCase());
+    return keys.includes(answer.toLowerCase());
+  }
+
+  registerLensAction("education", "exercises-list", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const skillId = params.skillId ? String(params.skillId) : null;
+    const all = ensureEduBucket(s, "exercises", userId);
+    const filtered = skillId ? all.filter(e => e.skillId === skillId) : all;
+    // Strip answer keys from the listing — never leak the answer.
+    const safe = filtered.map(e => ({
+      id: e.id, title: e.title, skillId: e.skillId,
+      stepCount: e.steps.length, createdAt: e.createdAt,
+    }));
+    return { ok: true, result: { exercises: safe } };
+  });
+
+  registerLensAction("education", "exercises-create", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const title = String(params.title || "").trim();
+    const stepsIn = Array.isArray(params.steps) ? params.steps : [];
+    if (!title) return { ok: false, error: "title required" };
+    const steps = stepsIn.map((st, i) => ({
+      id: `step_${i + 1}`,
+      prompt: String(st.prompt || "").trim(),
+      type: ["text", "numeric", "multiple_choice"].includes(st.type) ? st.type : "text",
+      answer: String(st.answer == null ? "" : st.answer).trim(),
+      tolerance: Number(st.tolerance) || 0,
+      options: Array.isArray(st.options) ? st.options.map(o => String(o)) : [],
+      hints: Array.isArray(st.hints) ? st.hints.map(h => String(h).trim()).filter(Boolean).slice(0, 3) : [],
+    })).filter(st => st.prompt && st.answer);
+    if (steps.length === 0) return { ok: false, error: "at least one valid step required" };
+    const exercise = {
+      id: uidEdu("exr"), title,
+      skillId: params.skillId ? String(params.skillId) : null,
+      steps,
+      createdAt: new Date().toISOString(),
+    };
+    ensureEduBucket(s, "exercises", userId).push(exercise);
+    saveStateIfAvailable();
+    return { ok: true, result: { exercise: { id: exercise.id, title, skillId: exercise.skillId, stepCount: steps.length } } };
+  });
+
+  // exercises-hint — return the next hint for a step (1-indexed escalation),
+  // never the answer.
+  registerLensAction("education", "exercises-hint", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const exerciseId = String(params.exerciseId || "");
+    const stepId = String(params.stepId || "");
+    const hintIndex = Math.max(0, Number(params.hintIndex) || 0);
+    const exercise = ensureEduBucket(s, "exercises", userId).find(e => e.id === exerciseId);
+    if (!exercise) return { ok: false, error: "exercise not found" };
+    const step = exercise.steps.find(st => st.id === stepId);
+    if (!step) return { ok: false, error: "step not found" };
+    const hint = step.hints[hintIndex] || null;
+    return {
+      ok: true,
+      result: {
+        hint,
+        hintsRemaining: Math.max(0, step.hints.length - hintIndex - 1),
+        totalHints: step.hints.length,
+      },
+    };
+  });
+
+  // exercises-submit — auto-grade a step answer. Maintains a per-user
+  // mastery streak; 3 correct in a row on an exercise → skill mastery
+  // bump (Khan-style mastery loop).
+  registerLensAction("education", "exercises-submit", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const exerciseId = String(params.exerciseId || "");
+    const stepId = String(params.stepId || "");
+    const exercise = ensureEduBucket(s, "exercises", userId).find(e => e.id === exerciseId);
+    if (!exercise) return { ok: false, error: "exercise not found" };
+    const step = exercise.steps.find(st => st.id === stepId);
+    if (!step) return { ok: false, error: "step not found" };
+    const correct = gradeAnswer(step, params.answer);
+    const attempts = ensureEduBucket(s, "exerciseAttempts", userId);
+    attempts.push({
+      exerciseId, stepId, correct,
+      answer: String(params.answer == null ? "" : params.answer),
+      at: new Date().toISOString(),
+    });
+    // Mastery streak for this exercise.
+    const streaks = ensureEduBucket(s, "exerciseStreaks", userId);
+    let streak = streaks.find(x => x.exerciseId === exerciseId);
+    if (!streak) { streak = { exerciseId, current: 0, best: 0, masteryBumped: false }; streaks.push(streak); }
+    if (correct) {
+      streak.current += 1;
+      streak.best = Math.max(streak.best, streak.current);
+    } else {
+      streak.current = 0;
+    }
+    let pointsAwarded = 0;
+    let masteryBumped = false;
+    if (correct) {
+      pointsAwarded = 20;
+      ensureEduBucket(s, "energyPoints", userId).push({ amount: 20, source: "exercise_correct", exerciseId, timestamp: new Date().toISOString() });
+      // 3-in-a-row → mastery bump on the linked skill (once).
+      if (streak.current >= 3 && exercise.skillId && !streak.masteryBumped) {
+        const skill = ensureEduBucket(s, "skills", userId).find(k => k.id === exercise.skillId);
+        if (skill) {
+          const idx = MASTERY_LEVELS.indexOf(skill.mastery);
+          if (idx < MASTERY_LEVELS.length - 1) skill.mastery = MASTERY_LEVELS[idx + 1];
+          skill.attempts = (skill.attempts || 0) + 1;
+          skill.lastPracticedAt = new Date().toISOString();
+          masteryBumped = true;
+          streak.masteryBumped = true;
+        }
+      }
+    }
+    saveStateIfAvailable();
+    return {
+      ok: true,
+      result: {
+        correct, pointsAwarded, masteryBumped,
+        streak: streak.current, bestStreak: streak.best,
+        explanation: correct ? null : (step.hints[0] || "Not quite — review the prompt and try again."),
+      },
+    };
+  });
+
+  // ── 3. Learning paths: prerequisite sequencing across courses ──────
+  // A path is an ordered list of course IDs. Steps unlock only when all
+  // prior steps' courses are completed (all lessons done).
+
+  registerLensAction("education", "paths-list", (ctx, _a, _p = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const paths = ensureEduBucket(s, "learningPaths", userId);
+    const courses = ensureEduBucket(s, "courses", userId);
+    const progress = ensureEduBucket(s, "lessonProgress", userId);
+    const enriched = paths.map(p => {
+      let unlocked = true;
+      let completedSteps = 0;
+      const steps = p.courseIds.map((cid) => {
+        const course = courses.find(c => c.id === cid);
+        const total = course?.lessons?.length || 0;
+        const done = progress.filter(pr => pr.courseId === cid).length;
+        const courseComplete = total > 0 && done >= total;
+        const step = {
+          courseId: cid,
+          courseTitle: course?.title || "(missing course)",
+          totalLessons: total,
+          completedLessons: done,
+          progressPct: total > 0 ? Math.round((done / total) * 100) : 0,
+          courseComplete,
+          unlocked,
+        };
+        if (courseComplete) completedSteps++;
+        // Next step locks until this one is complete.
+        unlocked = unlocked && courseComplete;
+        return step;
+      });
+      return {
+        id: p.id, title: p.title, description: p.description,
+        steps,
+        totalSteps: steps.length,
+        completedSteps,
+        progressPct: steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0,
+        complete: steps.length > 0 && completedSteps === steps.length,
+        createdAt: p.createdAt,
+      };
+    });
+    return { ok: true, result: { paths: enriched } };
+  });
+
+  registerLensAction("education", "paths-create", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const title = String(params.title || "").trim();
+    const courseIds = Array.isArray(params.courseIds) ? params.courseIds.map(c => String(c)).filter(Boolean) : [];
+    if (!title) return { ok: false, error: "title required" };
+    if (courseIds.length === 0) return { ok: false, error: "at least one course required" };
+    const path = {
+      id: uidEdu("path"), title,
+      description: String(params.description || ""),
+      courseIds,
+      createdAt: new Date().toISOString(),
+    };
+    ensureEduBucket(s, "learningPaths", userId).push(path);
+    saveStateIfAvailable();
+    return { ok: true, result: { path } };
+  });
+
+  registerLensAction("education", "paths-reorder", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const courseIds = Array.isArray(params.courseIds) ? params.courseIds.map(c => String(c)).filter(Boolean) : [];
+    const path = ensureEduBucket(s, "learningPaths", userId).find(p => p.id === id);
+    if (!path) return { ok: false, error: "path not found" };
+    if (courseIds.length === 0) return { ok: false, error: "courseIds required" };
+    // Only accept a reorder that is a permutation of the existing set.
+    const same = courseIds.length === path.courseIds.length &&
+      courseIds.every(c => path.courseIds.includes(c));
+    if (!same) return { ok: false, error: "courseIds must be a permutation of the path" };
+    path.courseIds = courseIds;
+    saveStateIfAvailable();
+    return { ok: true, result: { path } };
+  });
+
+  registerLensAction("education", "paths-delete", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureEduBucket(s, "learningPaths", userId);
+    const idx = list.findIndex(p => p.id === id);
+    if (idx < 0) return { ok: false, error: "path not found" };
+    list.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── 4. Live cohorts: classroom sessions with instructor ────────────
+  // A cohort session has a scheduled time, instructor, roster, and a
+  // live status. Learners join/leave; instructor opens/closes the room.
+
+  registerLensAction("education", "cohorts-list", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const courseId = params.courseId ? String(params.courseId) : null;
+    const all = ensureEduBucket(s, "cohorts", userId);
+    const filtered = courseId ? all.filter(c => c.courseId === courseId) : all;
+    return { ok: true, result: { cohorts: filtered.slice().sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt))) } };
+  });
+
+  registerLensAction("education", "cohorts-create", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const title = String(params.title || "").trim();
+    const instructor = String(params.instructor || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    if (!instructor) return { ok: false, error: "instructor required" };
+    const cohort = {
+      id: uidEdu("cohort"), title, instructor,
+      courseId: params.courseId ? String(params.courseId) : null,
+      scheduledAt: params.scheduledAt ? String(params.scheduledAt) : new Date().toISOString(),
+      durationMin: Math.max(0, Number(params.durationMin) || 60),
+      capacity: Math.max(1, Number(params.capacity) || 30),
+      status: "scheduled",
+      roster: [],
+      agenda: String(params.agenda || ""),
+      createdAt: new Date().toISOString(),
+    };
+    ensureEduBucket(s, "cohorts", userId).push(cohort);
+    saveStateIfAvailable();
+    return { ok: true, result: { cohort } };
+  });
+
+  registerLensAction("education", "cohorts-join", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const learner = String(params.learner || userId).trim();
+    const cohort = ensureEduBucket(s, "cohorts", userId).find(c => c.id === id);
+    if (!cohort) return { ok: false, error: "cohort not found" };
+    if (cohort.status === "ended") return { ok: false, error: "cohort has ended" };
+    if (cohort.roster.includes(learner)) return { ok: false, error: "already on roster" };
+    if (cohort.roster.length >= cohort.capacity) return { ok: false, error: "cohort at capacity" };
+    cohort.roster.push(learner);
+    saveStateIfAvailable();
+    return { ok: true, result: { cohort } };
+  });
+
+  registerLensAction("education", "cohorts-leave", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const learner = String(params.learner || userId).trim();
+    const cohort = ensureEduBucket(s, "cohorts", userId).find(c => c.id === id);
+    if (!cohort) return { ok: false, error: "cohort not found" };
+    const idx = cohort.roster.indexOf(learner);
+    if (idx < 0) return { ok: false, error: "not on roster" };
+    cohort.roster.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { cohort } };
+  });
+
+  // cohorts-set-status — instructor transitions scheduled → live → ended.
+  registerLensAction("education", "cohorts-set-status", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.id || "");
+    const status = String(params.status || "");
+    if (!["scheduled", "live", "ended"].includes(status)) return { ok: false, error: "status must be scheduled|live|ended" };
+    const cohort = ensureEduBucket(s, "cohorts", userId).find(c => c.id === id);
+    if (!cohort) return { ok: false, error: "cohort not found" };
+    cohort.status = status;
+    if (status === "live") cohort.startedAt = new Date().toISOString();
+    if (status === "ended") cohort.endedAt = new Date().toISOString();
+    saveStateIfAvailable();
+    return { ok: true, result: { cohort } };
+  });
+
+  // ── 5. Mastery / streak dashboard: knowledge-state per skill ───────
+  // Aggregates the real skill mastery, exercise streaks, video coverage
+  // and energy points into a knowledge-state report. No fabricated data.
+
+  registerLensAction("education", "mastery-dashboard", (ctx, _a, _p = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const skills = ensureEduBucket(s, "skills", userId);
+    const exerciseStreaks = ensureEduBucket(s, "exerciseStreaks", userId);
+    const points = ensureEduBucket(s, "energyPoints", userId);
+    const videoProgress = ensureEduBucket(s, "videoProgress", userId);
+
+    // Knowledge state per skill: mastery level + numeric weight.
+    const masteryWeight = { not_started: 0, attempted: 25, familiar: 50, proficient: 75, mastered: 100 };
+    const skillStates = skills.map(k => ({
+      skillId: k.id, name: k.name, subject: k.subject,
+      mastery: k.mastery,
+      masteryScore: masteryWeight[k.mastery] ?? 0,
+      attempts: k.attempts || 0,
+      lastPracticedAt: k.lastPracticedAt || null,
+    }));
+
+    // Per-subject rollup.
+    const bySubject = {};
+    for (const st of skillStates) {
+      if (!bySubject[st.subject]) bySubject[st.subject] = { subject: st.subject, skills: 0, totalScore: 0 };
+      bySubject[st.subject].skills++;
+      bySubject[st.subject].totalScore += st.masteryScore;
+    }
+    const subjects = Object.values(bySubject).map(b => ({
+      subject: b.subject,
+      skills: b.skills,
+      avgMastery: b.skills > 0 ? Math.round(b.totalScore / b.skills) : 0,
+    })).sort((a, b) => b.avgMastery - a.avgMastery);
+
+    // Day-by-day activity for the last 30 days (real point timestamps).
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const dayMs = 86400000;
+    const activity = [];
+    for (let d = 29; d >= 0; d--) {
+      const date = new Date(today.getTime() - d * dayMs).toISOString().slice(0, 10);
+      const dayPoints = points.filter(p => String(p.timestamp).startsWith(date)).reduce((sum, p) => sum + p.amount, 0);
+      activity.push({ date, points: dayPoints, active: dayPoints > 0 });
+    }
+    // Streak: consecutive active days ending today.
+    let streak = 0;
+    for (let i = activity.length - 1; i >= 0; i--) {
+      if (activity[i].active) streak++;
+      else if (i < activity.length - 1) break;
+    }
+    let bestStreak = 0, run = 0;
+    for (const a of activity) {
+      if (a.active) { run++; bestStreak = Math.max(bestStreak, run); }
+      else run = 0;
+    }
+
+    const bestExerciseStreak = exerciseStreaks.reduce((m, x) => Math.max(m, x.best || 0), 0);
+    const videosCompleted = videoProgress.filter(v => v.completed).length;
+    const overallMastery = skillStates.length > 0
+      ? Math.round(skillStates.reduce((sum, st) => sum + st.masteryScore, 0) / skillStates.length)
+      : 0;
+
+    return {
+      ok: true,
+      result: {
+        overallMastery,
+        totalSkills: skillStates.length,
+        masteredSkills: skillStates.filter(st => st.mastery === "mastered").length,
+        proficientSkills: skillStates.filter(st => st.mastery === "proficient" || st.mastery === "mastered").length,
+        streak,
+        bestStreak,
+        bestExerciseStreak,
+        videosCompleted,
+        totalPoints: points.reduce((sum, p) => sum + p.amount, 0),
+        skillStates: skillStates.sort((a, b) => b.masteryScore - a.masteryScore),
+        subjects,
+        activity,
+      },
+    };
+  });
+
+  // ── 6. Lesson-timestamped Q&A threads ─────────────────────────────
+  // Questions anchored to a specific second within a lesson video, with
+  // threaded answers and accepted-answer marking.
+
+  registerLensAction("education", "lesson-qa-list", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const lessonId = params.lessonId ? String(params.lessonId) : null;
+    const all = ensureEduBucket(s, "lessonQA", userId);
+    const threads = (lessonId ? all.filter(q => q.lessonId === lessonId) : all)
+      .slice()
+      .sort((a, b) => (a.timestampSec - b.timestampSec) || String(a.createdAt).localeCompare(String(b.createdAt)));
+    return { ok: true, result: { threads } };
+  });
+
+  registerLensAction("education", "lesson-qa-ask", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const lessonId = String(params.lessonId || "");
+    const text = String(params.text || "").trim();
+    const timestampSec = Math.max(0, Number(params.timestampSec) || 0);
+    if (!lessonId || !text) return { ok: false, error: "lessonId and text required" };
+    const thread = {
+      id: uidEdu("qa"), lessonId, text, timestampSec,
+      author: userId,
+      upvotes: 0,
+      resolved: false,
+      answers: [],
+      createdAt: new Date().toISOString(),
+    };
+    ensureEduBucket(s, "lessonQA", userId).push(thread);
+    saveStateIfAvailable();
+    return { ok: true, result: { thread } };
+  });
+
+  registerLensAction("education", "lesson-qa-answer", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const threadId = String(params.threadId || "");
+    const text = String(params.text || "").trim();
+    if (!threadId || !text) return { ok: false, error: "threadId and text required" };
+    const thread = ensureEduBucket(s, "lessonQA", userId).find(q => q.id === threadId);
+    if (!thread) return { ok: false, error: "thread not found" };
+    const answer = {
+      id: uidEdu("ans"), text, author: userId,
+      accepted: false,
+      upvotes: 0,
+      createdAt: new Date().toISOString(),
+    };
+    thread.answers.push(answer);
+    saveStateIfAvailable();
+    return { ok: true, result: { thread } };
+  });
+
+  // lesson-qa-accept — mark one answer as accepted; resolves the thread.
+  registerLensAction("education", "lesson-qa-accept", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const threadId = String(params.threadId || "");
+    const answerId = String(params.answerId || "");
+    if (!threadId || !answerId) return { ok: false, error: "threadId and answerId required" };
+    const thread = ensureEduBucket(s, "lessonQA", userId).find(q => q.id === threadId);
+    if (!thread) return { ok: false, error: "thread not found" };
+    const answer = thread.answers.find(a => a.id === answerId);
+    if (!answer) return { ok: false, error: "answer not found" };
+    for (const a of thread.answers) a.accepted = a.id === answerId;
+    thread.resolved = true;
+    saveStateIfAvailable();
+    return { ok: true, result: { thread } };
+  });
+
+  registerLensAction("education", "lesson-qa-upvote", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const threadId = String(params.threadId || "");
+    const answerId = params.answerId ? String(params.answerId) : null;
+    const thread = ensureEduBucket(s, "lessonQA", userId).find(q => q.id === threadId);
+    if (!thread) return { ok: false, error: "thread not found" };
+    if (answerId) {
+      const answer = thread.answers.find(a => a.id === answerId);
+      if (!answer) return { ok: false, error: "answer not found" };
+      answer.upvotes++;
+      saveStateIfAvailable();
+      return { ok: true, result: { upvotes: answer.upvotes, target: "answer" } };
+    }
+    thread.upvotes++;
+    saveStateIfAvailable();
+    return { ok: true, result: { upvotes: thread.upvotes, target: "thread" } };
+  });
+
   // feed — ingest real quiz questions from the Open Trivia Database as
   // visible DTUs. Free public API, no key.
   registerLensAction("education", "feed", async (ctx, _a, params = {}) => {

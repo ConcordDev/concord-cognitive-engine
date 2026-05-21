@@ -1760,6 +1760,530 @@ export default function registerCryptoActions(registerLensAction) {
     };
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  //  2026 backlog — on-chain sync, price streaming, allocation +
+  //  rebalancing, CSV cost-basis import, multi-chain filtering,
+  //  push alert delivery.
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── On-chain balance sync (read-only public RPC) ──────────────
+  // Reads a wallet's native + ERC-20 balances from free keyless
+  // public endpoints. Ethereum mainnet via the public Cloudflare /
+  // ankr RPC (eth_getBalance), other native coins via free explorers.
+  // No private keys, no signing — strictly read-only. Imports the
+  // synced balances as cost-basis-zero observation lots tagged
+  // source='onchain-sync' so they fold into the portfolio without
+  // corrupting realized G/L (a synced lot has no purchase price).
+
+  const RPC_ENDPOINTS = {
+    ethereum: 'https://ethereum-rpc.publicnode.com',
+    polygon: 'https://polygon-bor-rpc.publicnode.com',
+    base: 'https://base-rpc.publicnode.com',
+    arbitrum: 'https://arbitrum-one-rpc.publicnode.com',
+    optimism: 'https://optimism-rpc.publicnode.com',
+    avalanche: 'https://avalanche-c-chain-rpc.publicnode.com',
+  };
+  const CHAIN_NATIVE = {
+    ethereum: { symbol: 'ethereum', ticker: 'ETH', decimals: 18 },
+    polygon: { symbol: 'matic-network', ticker: 'MATIC', decimals: 18 },
+    base: { symbol: 'ethereum', ticker: 'ETH', decimals: 18 },
+    arbitrum: { symbol: 'ethereum', ticker: 'ETH', decimals: 18 },
+    optimism: { symbol: 'ethereum', ticker: 'ETH', decimals: 18 },
+    avalanche: { symbol: 'avalanche-2', ticker: 'AVAX', decimals: 18 },
+  };
+
+  async function rpcCall(endpoint, method, params) {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 8000);
+    try {
+      const r = await fetch(endpoint, {
+        method: 'POST',
+        signal: ac.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      });
+      if (!r.ok) throw new Error(`RPC HTTP ${r.status}`);
+      const j = await r.json();
+      if (j.error) throw new Error(`RPC ${j.error.code}: ${j.error.message}`);
+      return j.result;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  registerLensAction("crypto", "onchain-sync", async (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    const address = String(params.address || '').trim();
+    const chain = String(params.chain || 'ethereum').toLowerCase();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return { ok: false, error: "valid 0x EVM address required" };
+    }
+    const endpoint = RPC_ENDPOINTS[chain];
+    const native = CHAIN_NATIVE[chain];
+    if (!endpoint || !native) {
+      return { ok: false, error: `unsupported chain '${chain}' — one of: ${Object.keys(RPC_ENDPOINTS).join(', ')}` };
+    }
+    let weiHex;
+    try {
+      weiHex = await rpcCall(endpoint, 'eth_getBalance', [address, 'latest']);
+    } catch (e) {
+      return { ok: false, error: `RPC unreachable for ${chain}: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    const wei = BigInt(weiHex || '0x0');
+    const balance = Number(wei) / Math.pow(10, native.decimals);
+    // Replace any prior onchain-sync lots for (address, chain, symbol)
+    // so a re-sync reflects the current chain state, not the sum.
+    const tag = `onchain-sync:${chain}:${address.toLowerCase()}`;
+    const holdings = listCr(s.holdings, userId);
+    for (let i = holdings.length - 1; i >= 0; i--) {
+      if (holdings[i].source === tag) holdings.splice(i, 1);
+    }
+    let lot = null;
+    if (balance > 0) {
+      const seq = ensureSeqCr(s, userId);
+      lot = {
+        id: uidCr('lot'),
+        number: `H-${String(seq.lot).padStart(5, '0')}`,
+        symbol: native.symbol,
+        ticker: native.ticker,
+        chain,
+        qty: balance,
+        qtyRemaining: balance,
+        costBasisUsd: 0,           // synced — no purchase price known
+        unitCostUsd: 0,
+        acquiredAt: dayCr(),
+        source: tag,
+        walletId: params.walletId ? String(params.walletId) : null,
+        onchain: true,
+        notes: `On-chain sync of ${address}`,
+      };
+      seq.lot++;
+      holdings.push(lot);
+    }
+    // Track sync metadata per address so the UI can show "last synced".
+    if (!s.onchainSyncs) s.onchainSyncs = new Map();
+    const syncList = s.onchainSyncs.get(userId) || [];
+    const existing = syncList.findIndex(x => x.address.toLowerCase() === address.toLowerCase() && x.chain === chain);
+    const record = {
+      address, chain,
+      nativeTicker: native.ticker,
+      balance: Math.round(balance * 1e8) / 1e8,
+      syncedAt: isoCr(),
+    };
+    if (existing >= 0) syncList[existing] = record; else syncList.push(record);
+    s.onchainSyncs.set(userId, syncList);
+    saveCrypto();
+    return {
+      ok: true,
+      result: {
+        address, chain,
+        nativeTicker: native.ticker,
+        balance: record.balance,
+        lot,
+        syncedAt: record.syncedAt,
+        notes: "Synced balance imported as a zero-cost observation lot. Set a cost basis via holdings-add to track realized P&L.",
+      },
+    };
+  });
+
+  registerLensAction("crypto", "onchain-syncs-list", (ctx, _a, _p = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.onchainSyncs) s.onchainSyncs = new Map();
+    return { ok: true, result: { syncs: s.onchainSyncs.get(aidCr(ctx)) || [] } };
+  });
+
+  // ── Live price stream snapshot (poll-driven ticker) ───────────
+  // The frontend polls this on a short interval to drive a live P&L
+  // ticker. Returns each held symbol's current price plus the
+  // portfolio's live total value + unrealized P&L computed against
+  // FIFO cost basis. Real CoinGecko prices only — no synthetic ticks.
+
+  registerLensAction("crypto", "price-stream", async (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    const lots = listCr(s.holdings, userId).filter(l => l.qtyRemaining > 0);
+    // Optional extra symbols to track (e.g. watchlist) even with no holdings.
+    const extra = Array.isArray(params.symbols)
+      ? params.symbols.map(x => String(x).toLowerCase()).filter(Boolean)
+      : [];
+    const symbols = Array.from(new Set([...lots.map(l => l.symbol), ...extra]));
+    if (symbols.length === 0) {
+      return { ok: true, result: { ticks: [], totalValueUsd: 0, unrealizedPnlUsd: 0, at: isoCr() } };
+    }
+    const prices = await fetchLivePrices(symbols);
+    if (Object.keys(prices).length === 0) {
+      return { ok: true, result: { ticks: [], totalValueUsd: 0, unrealizedPnlUsd: 0, at: isoCr(), priceSource: 'unavailable' } };
+    }
+    // Aggregate holdings per symbol for the ticker.
+    const bySym = new Map();
+    for (const l of lots) {
+      const cur = bySym.get(l.symbol) || { symbol: l.symbol, ticker: l.ticker, qty: 0, cost: 0 };
+      cur.qty += l.qtyRemaining;
+      cur.cost += l.unitCostUsd * l.qtyRemaining;
+      bySym.set(l.symbol, cur);
+    }
+    let totalValue = 0, totalCost = 0;
+    const ticks = symbols.map(sym => {
+      const price = prices[sym] ?? null;
+      const agg = bySym.get(sym);
+      const qty = agg ? agg.qty : 0;
+      const cost = agg ? agg.cost : 0;
+      const value = price !== null ? price * qty : null;
+      if (value !== null) { totalValue += value; totalCost += cost; }
+      return {
+        symbol: sym,
+        ticker: agg ? agg.ticker : sym.toUpperCase(),
+        priceUsd: price,
+        qty,
+        valueUsd: value !== null ? Math.round(value * 100) / 100 : null,
+        unrealizedPnlUsd: value !== null ? Math.round((value - cost) * 100) / 100 : null,
+      };
+    });
+    return {
+      ok: true,
+      result: {
+        ticks,
+        totalValueUsd: Math.round(totalValue * 100) / 100,
+        totalCostUsd: Math.round(totalCost * 100) / 100,
+        unrealizedPnlUsd: Math.round((totalValue - totalCost) * 100) / 100,
+        unrealizedPnlPct: totalCost > 0 ? Math.round(((totalValue - totalCost) / totalCost) * 10000) / 100 : 0,
+        at: isoCr(),
+        priceSource: 'coingecko',
+      },
+    };
+  });
+
+  // ── Allocation breakdown + rebalancing suggestions ────────────
+  // Computes current allocation vs an optional target allocation and
+  // emits buy/sell suggestions to close the gap. Targets supplied as
+  // { symbol: percentWeight }; if omitted, suggests an equal-weight
+  // target across held symbols. All math against real live prices.
+
+  registerLensAction("crypto", "allocation-breakdown", async (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    const lots = listCr(s.holdings, userId).filter(l => l.qtyRemaining > 0);
+    if (lots.length === 0) {
+      return { ok: true, result: { breakdown: [], totalValueUsd: 0, rebalance: [], message: "No holdings yet." } };
+    }
+    const bySym = new Map();
+    for (const l of lots) {
+      const cur = bySym.get(l.symbol) || { symbol: l.symbol, ticker: l.ticker, qty: 0, cost: 0 };
+      cur.qty += l.qtyRemaining;
+      cur.cost += l.unitCostUsd * l.qtyRemaining;
+      bySym.set(l.symbol, cur);
+    }
+    const symbols = Array.from(bySym.keys());
+    const prices = await fetchLivePrices(symbols);
+    const priced = symbols.map(sym => {
+      const agg = bySym.get(sym);
+      const price = prices[sym] || 0;
+      return { ...agg, price, value: price * agg.qty };
+    }).filter(x => x.value > 0);
+    const totalValue = priced.reduce((sum, x) => sum + x.value, 0);
+    if (totalValue <= 0) {
+      return { ok: false, error: "no live prices available — cannot compute allocation" };
+    }
+    // Target weights: supplied or equal-weight.
+    const rawTargets = (params.targets && typeof params.targets === 'object') ? params.targets : null;
+    const targetMap = new Map();
+    if (rawTargets) {
+      let sumT = 0;
+      for (const [k, v] of Object.entries(rawTargets)) {
+        const w = Number(v);
+        if (Number.isFinite(w) && w > 0) { targetMap.set(String(k).toLowerCase(), w); sumT += w; }
+      }
+      // Normalise to 100 if the caller's numbers don't sum cleanly.
+      if (sumT > 0 && Math.abs(sumT - 100) > 0.01) {
+        for (const [k, v] of targetMap) targetMap.set(k, (v / sumT) * 100);
+      }
+    } else {
+      const eq = 100 / priced.length;
+      for (const x of priced) targetMap.set(x.symbol, eq);
+    }
+    const breakdown = priced.map(x => {
+      const currentPct = (x.value / totalValue) * 100;
+      const targetPct = targetMap.get(x.symbol) ?? 0;
+      return {
+        symbol: x.symbol,
+        ticker: x.ticker,
+        qty: x.qty,
+        priceUsd: x.price,
+        valueUsd: Math.round(x.value * 100) / 100,
+        currentPct: Math.round(currentPct * 100) / 100,
+        targetPct: Math.round(targetPct * 100) / 100,
+        driftPct: Math.round((currentPct - targetPct) * 100) / 100,
+      };
+    }).sort((a, b) => b.valueUsd - a.valueUsd);
+    // Rebalance suggestions: bring each position to its target value.
+    const driftThreshold = Math.max(0, Number(params.driftThresholdPct) || 2);
+    const rebalance = [];
+    for (const b of breakdown) {
+      const targetValue = (b.targetPct / 100) * totalValue;
+      const deltaUsd = targetValue - b.valueUsd;
+      if (Math.abs(b.driftPct) < driftThreshold) continue;
+      const deltaQty = b.priceUsd > 0 ? deltaUsd / b.priceUsd : 0;
+      rebalance.push({
+        symbol: b.symbol,
+        ticker: b.ticker,
+        action: deltaUsd > 0 ? 'buy' : 'sell',
+        deltaUsd: Math.round(Math.abs(deltaUsd) * 100) / 100,
+        deltaQty: Math.round(Math.abs(deltaQty) * 1e8) / 1e8,
+        currentPct: b.currentPct,
+        targetPct: b.targetPct,
+      });
+    }
+    rebalance.sort((a, b) => b.deltaUsd - a.deltaUsd);
+    return {
+      ok: true,
+      result: {
+        breakdown,
+        totalValueUsd: Math.round(totalValue * 100) / 100,
+        rebalance,
+        targetMode: rawTargets ? 'custom' : 'equal-weight',
+        driftThresholdPct: driftThreshold,
+        priceSource: 'coingecko',
+      },
+    };
+  });
+
+  // ── Transaction CSV import (cost-basis accuracy) ──────────────
+  // Parses an exchange-export CSV and creates holding lots / sell tx
+  // so cost basis reflects the real trade history. Accepts a flexible
+  // header set: columns matched case-insensitively. Required:
+  // date, type (buy/sell), symbol, qty. Optional: price, total, fee.
+
+  function parseCsv(text) {
+    const rows = [];
+    const lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l.trim().length > 0);
+    for (const line of lines) {
+      const cells = [];
+      let cur = '', inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+          if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+          else if (ch === '"') inQuotes = false;
+          else cur += ch;
+        } else {
+          if (ch === '"') inQuotes = true;
+          else if (ch === ',') { cells.push(cur); cur = ''; }
+          else cur += ch;
+        }
+      }
+      cells.push(cur);
+      rows.push(cells.map(c => c.trim()));
+    }
+    return rows;
+  }
+
+  registerLensAction("crypto", "import-csv", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    const csv = String(params.csv || '');
+    if (!csv.trim()) return { ok: false, error: "csv text required" };
+    const rows = parseCsv(csv);
+    if (rows.length < 2) return { ok: false, error: "CSV needs a header row and at least one data row" };
+    const header = rows[0].map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const col = (...names) => {
+      for (const n of names) {
+        const idx = header.indexOf(n);
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    };
+    const cDate = col('date', 'time', 'timestamp', 'createdat');
+    const cType = col('type', 'side', 'transactiontype', 'action');
+    const cSym = col('symbol', 'asset', 'currency', 'coin', 'token', 'pair');
+    const cQty = col('qty', 'quantity', 'amount', 'size', 'units');
+    const cPrice = col('price', 'unitprice', 'rate', 'priceusd');
+    const cTotal = col('total', 'totalusd', 'value', 'subtotal', 'usd', 'cost', 'proceeds');
+    const cFee = col('fee', 'fees', 'commission');
+    if (cType < 0 || cSym < 0 || cQty < 0) {
+      return { ok: false, error: "CSV must have type, symbol, and qty columns" };
+    }
+    const seq = ensureSeqCr(s, userId);
+    const imported = [];
+    const errors = [];
+    let buyCount = 0, sellCount = 0;
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const rawType = String(row[cType] || '').toLowerCase();
+      const kind = /sell|sold/.test(rawType) ? 'sell' : /buy|bought/.test(rawType) ? 'buy' : null;
+      if (!kind) { errors.push({ row: r + 1, reason: `unrecognised type '${row[cType]}'` }); continue; }
+      const symbol = String(row[cSym] || '').toLowerCase().replace(/[^a-z0-9-]/g, '').split(/[-/]/)[0];
+      const qty = Number(String(row[cQty] || '').replace(/[^0-9.eE-]/g, ''));
+      if (!symbol || !Number.isFinite(qty) || qty <= 0) {
+        errors.push({ row: r + 1, reason: 'missing/invalid symbol or qty' });
+        continue;
+      }
+      const price = cPrice >= 0 ? Number(String(row[cPrice] || '').replace(/[^0-9.eE-]/g, '')) : NaN;
+      let total = cTotal >= 0 ? Number(String(row[cTotal] || '').replace(/[^0-9.eE-]/g, '')) : NaN;
+      const fee = cFee >= 0 ? Number(String(row[cFee] || '').replace(/[^0-9.eE-]/g, '')) : 0;
+      const feeUsd = Number.isFinite(fee) ? fee : 0;
+      let totalSource;
+      if (!Number.isFinite(total)) {
+        if (Number.isFinite(price)) { total = price * qty; totalSource = 'price'; }
+        else { errors.push({ row: r + 1, reason: 'no total and no price — cannot derive cost basis' }); continue; }
+      } else {
+        totalSource = 'total';
+      }
+      // Roll the trade fee into BUY cost basis for accuracy — a buy fee
+      // raises what the position actually cost you. Sell rows use the
+      // gross proceeds total as reported by the exchange (any sell-side
+      // fee is already netted out of an exchange's "total"/"proceeds"
+      // column, so folding it again would double-count).
+      const buyCostUsd = total + feeUsd;
+      const sellProceedsUsd = total;
+      const at = cDate >= 0 && row[cDate]
+        ? (new Date(row[cDate]).toString() !== 'Invalid Date' ? new Date(row[cDate]).toISOString().slice(0, 10) : dayCr())
+        : dayCr();
+      const ticker = symbol.toUpperCase();
+      if (kind === 'buy') {
+        const costBasisUsd = Math.round(buyCostUsd * 100) / 100;
+        const lot = {
+          id: uidCr('lot'),
+          number: `H-${String(seq.lot).padStart(5, '0')}`,
+          symbol, ticker, chain: 'ethereum',
+          qty, qtyRemaining: qty,
+          costBasisUsd,
+          unitCostUsd: qty > 0 ? buyCostUsd / qty : 0,
+          acquiredAt: at,
+          feeUsd, totalSource,
+          source: 'csv-import',
+        };
+        seq.lot++;
+        listCr(s.holdings, userId).push(lot);
+        const tx = {
+          id: uidCr('tx'), number: `T-${String(seq.tx).padStart(6, '0')}`,
+          kind: 'buy', symbol, ticker, chain: 'ethereum',
+          qty, priceUsd: lot.unitCostUsd, totalUsd: lot.costBasisUsd,
+          feeUsd,
+          at, lotId: lot.id, source: 'csv-import',
+        };
+        seq.tx++;
+        listCr(s.transactions, userId).push(tx);
+        imported.push({ row: r + 1, kind, symbol, qty, totalUsd: lot.costBasisUsd });
+        buyCount++;
+      } else {
+        // FIFO sell against existing lots.
+        const debit = cryFifoDebit(s, userId, symbol, qty);
+        if (!debit) { errors.push({ row: r + 1, reason: `sell ${qty} ${ticker} but insufficient lots` }); continue; }
+        const proceedsUsd = Math.round(sellProceedsUsd * 100) / 100;
+        const tx = {
+          id: uidCr('tx'), number: `T-${String(seq.tx).padStart(6, '0')}`,
+          kind: 'sell', symbol, ticker, chain: debit.chain || 'ethereum',
+          qty, priceUsd: qty > 0 ? Math.round((proceedsUsd / qty) * 10000) / 10000 : 0,
+          totalUsd: proceedsUsd,
+          feeUsd,
+          costBasisUsd: debit.costBasis,
+          realizedPnlUsd: Math.round((proceedsUsd - debit.costBasis) * 100) / 100,
+          at, closedLots: debit.closedLots, source: 'csv-import',
+        };
+        seq.tx++;
+        listCr(s.transactions, userId).push(tx);
+        imported.push({ row: r + 1, kind, symbol, qty, totalUsd: tx.totalUsd, realizedPnlUsd: tx.realizedPnlUsd });
+        sellCount++;
+      }
+    }
+    saveCrypto();
+    return {
+      ok: true,
+      result: {
+        importedCount: imported.length,
+        buyCount, sellCount,
+        errorCount: errors.length,
+        imported,
+        errors,
+        detectedColumns: { type: cType >= 0, symbol: cSym >= 0, qty: cQty >= 0, price: cPrice >= 0, total: cTotal >= 0, fee: cFee >= 0 },
+      },
+    };
+  });
+
+  // ── Push price-alert delivery ─────────────────────────────────
+  // alert-deliver runs the existing price-alerts-check, then turns
+  // freshly-triggered alerts into delivered notifications (persisted
+  // per user) and emits a realtime 'crypto:alert' socket event so the
+  // UI surfaces them without the user manually running a check.
+
+  registerLensAction("crypto", "alert-deliver", async (ctx, _a, _p = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCr(ctx);
+    if (!s.alertDeliveries) s.alertDeliveries = new Map();
+    const active = (s.priceAlerts || []).filter(a => a.userId === userId && a.active && !a.triggeredAt && !a.delivered);
+    if (active.length === 0) {
+      return { ok: true, result: { delivered: [], checked: 0 } };
+    }
+    const uniqueIds = [...new Set(active.map(a => a.tokenId))];
+    let prices = {};
+    try {
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(","))}&vs_currencies=usd`;
+      prices = await safeFetchJson(url) || {};
+    } catch (_e) {
+      return { ok: true, result: { delivered: [], checked: 0, message: "price fetch failed" } };
+    }
+    const delivered = [];
+    const deliveries = s.alertDeliveries.get(userId) || [];
+    for (const a of active) {
+      const p = Number(prices?.[a.tokenId]?.usd) || 0;
+      if (p <= 0) continue;
+      if ((a.direction === "above" && p >= a.threshold) || (a.direction === "below" && p <= a.threshold)) {
+        a.triggeredAt = isoCr();
+        a.delivered = true;
+        const note = {
+          id: uidCr('notif'),
+          alertId: a.id,
+          symbol: a.symbol,
+          direction: a.direction,
+          threshold: a.threshold,
+          currentPrice: p,
+          message: `${a.symbol} is ${a.direction} $${a.threshold} — now $${p}`,
+          deliveredAt: isoCr(),
+          read: false,
+        };
+        deliveries.unshift(note);
+        delivered.push(note);
+      }
+    }
+    if (deliveries.length > 200) deliveries.length = 200;
+    s.alertDeliveries.set(userId, deliveries);
+    if (delivered.length > 0) {
+      saveCrypto();
+      // Best-effort realtime push so the UI can toast without polling.
+      try {
+        const emit = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
+        if (typeof emit === 'function') {
+          for (const d of delivered) emit('crypto:alert', d, { userId });
+        }
+      } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { delivered, checked: active.length } };
+  });
+
+  registerLensAction("crypto", "alert-deliveries-list", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.alertDeliveries) s.alertDeliveries = new Map();
+    const userId = aidCr(ctx);
+    let list = s.alertDeliveries.get(userId) || [];
+    if (params.unreadOnly) list = list.filter(d => !d.read);
+    return { ok: true, result: { deliveries: list, unreadCount: (s.alertDeliveries.get(userId) || []).filter(d => !d.read).length } };
+  });
+
+  registerLensAction("crypto", "alert-deliveries-mark-read", (ctx, _a, params = {}) => {
+    const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.alertDeliveries) s.alertDeliveries = new Map();
+    const userId = aidCr(ctx);
+    const list = s.alertDeliveries.get(userId) || [];
+    const id = params.id ? String(params.id) : null;
+    let marked = 0;
+    for (const d of list) {
+      if ((!id || d.id === id) && !d.read) { d.read = true; marked++; }
+    }
+    saveCrypto();
+    return { ok: true, result: { marked, unreadCount: list.filter(d => !d.read).length } };
+  });
+
   registerLensAction("crypto", "feed", async (ctx, _a, _params = {}) => {
     const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
     if (!STATE.cryptoLens) STATE.cryptoLens = {};

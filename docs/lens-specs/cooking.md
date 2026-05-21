@@ -14,13 +14,15 @@ Backend: `cooking` domain macros — pure-compute (scaleRecipe, nutritionEstimat
 - Kitchen timer (SVG ring), ingredient checklist, difficulty filters, TheMealDB recipe feed
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Recipe import from URL — parse schema.org/Recipe JSON-LD from any cooking site
-- [ ] `[S]` Cook mode — full-screen step-by-step view with per-step timers
-- [ ] `[M]` Photo-based recipe capture (OCR a cookbook page) — vision brain is available
-- [ ] `[S]` Recipe rating, notes history, and "made it" log with dates
-- [ ] `[M]` Per-recipe nutrition auto-computed from USDA-linked ingredients (not just rough estimate)
-- [ ] `[S]` Shopping list multi-store grouping and quantity-unit normalization
-- [ ] `[S]` Recipe export to PDF / printable card
+- [x] `[M]` Recipe import from URL — parse schema.org/Recipe JSON-LD from any cooking site
+- [x] `[S]` Cook mode — full-screen step-by-step view with per-step timers
+- [x] `[M]` Photo-based recipe capture (OCR a cookbook page) — vision brain is available
+- [x] `[S]` Recipe rating, notes history, and "made it" log with dates
+- [x] `[M]` Per-recipe nutrition auto-computed from USDA-linked ingredients (not just rough estimate)
+- [x] `[S]` Shopping list multi-store grouping and quantity-unit normalization
+- [x] `[S]` Recipe export to PDF / printable card
 
 ## Parity
-~75% of Paprika+Samsung Food. One of the deepest lenses — full meal-plan/shopping/pantry loop already works. Main gaps are URL/photo import and a dedicated cook-mode.
+~95% of Paprika+Samsung Food. The meal-plan/shopping/pantry loop plus recipe URL import, cookbook-photo import, ratings, a "made it" log + history, USDA nutrition compute, multi-store shopping breakdown, printable recipe cards, and a step-by-step cook mode all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

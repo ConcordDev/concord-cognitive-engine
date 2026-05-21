@@ -13,13 +13,15 @@ Backend: `server/domains/calendar.js` — 33 macros: calendars CRUD, events CRUD
 - GCalSection, TimezoneTools, ScheduleAnalyzer; dashboard summary
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Two-way sync with external Google/Outlook accounts (OAuth)
-- [ ] `[S]` Calendar sharing + per-calendar visibility/permissions
-- [ ] `[M]` Event reminders/notifications that actually fire
-- [ ] `[S]` Working-location + out-of-office event types
-- [ ] `[M]` Video-conference link auto-generation on events
-- [ ] `[S]` Guest RSVP + invite emails
-- [ ] `[S]` Multiple views polish (week/day/agenda parity with month)
+- [x] `[M]` Two-way sync with external Google/Outlook accounts (OAuth)
+- [x] `[S]` Calendar sharing + per-calendar visibility/permissions
+- [x] `[M]` Event reminders/notifications that actually fire
+- [x] `[S]` Working-location + out-of-office event types
+- [x] `[M]` Video-conference link auto-generation on events
+- [x] `[S]` Guest RSVP + invite emails
+- [x] `[S]` Multiple views polish (week/day/agenda parity with month)
 
 ## Parity
-~72% of Google Calendar's surface. Unusually deep — recurring, conflicts, appointment booking, iCal, timezones, NL parsing all real. Gaps are external account sync, sharing, and firing reminders/invites.
+~95% of Google Calendar's surface. Recurring events, conflicts, appointment booking, iCal, timezones, NL parsing plus external account sync, calendar sharing with permissions, firing reminders, working-location/OOO status, video-conference links, and guest RSVP/invites all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

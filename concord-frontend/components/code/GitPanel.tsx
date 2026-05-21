@@ -20,6 +20,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
   const [diff, setDiff] = useState<{ path: string; hunks: DiffHunk[] } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only projectId should retrigger
   useEffect(() => { if (projectId) refresh(); else { setStatus(null); setLog([]); setStashes([]); } }, [projectId]);
 
   async function refresh() {

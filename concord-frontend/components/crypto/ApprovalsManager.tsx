@@ -28,6 +28,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
   const [revoking, setRevoking] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'risky' | 'unlimited'>('all');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only walletAddress should retrigger
   useEffect(() => { if (walletAddress) refresh(); }, [walletAddress]);
 
   async function refresh() {

@@ -12,13 +12,13 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~88%**
-- Total buildable features in the backlog (sum of all "Missing" items): **174**
+- Average feature parity: **~89%**
+- Total buildable features in the backlog (sum of all "Missing" items): **133**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 211 |
-| 60–79% (strong) | 24 |
+| 80–100% (near-complete) | 217 |
+| 60–79% (strong) | 18 |
 | 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
@@ -35,9 +35,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | realestate | Zillow | ~65% | 7 |
 | whiteboard | Miro / FigJam | ~65% | 7 |
 | world | a 3D open-world game (Roblox / Genshin Impact) | ~65% | 8 |
-| chat | ChatGPT | ~68% | 7 |
-| crypto | Coinbase | ~70% | 7 |
-| education | Khan Academy / Coursera | ~70% | 6 |
 | feed | X (Twitter) / Threads | ~70% | 7 |
 | film-studios | StudioBinder / Final Cut Pro | ~70% | 7 |
 | finance | Monarch Money / Empower | ~70% | 7 |
@@ -45,9 +42,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | graph | Obsidian (graph view) / Kumu | ~70% | 7 |
 | healthcare | Epic MyChart / Epic EHR | ~70% | 7 |
 | root | a programmer's calculator | ~70% | 6 |
-| calendar | Google Calendar | ~72% | 7 |
-| code | Cursor / VS Code | ~72% | 7 |
-| cooking | Paprika / Samsung Food | ~75% | 7 |
 | food | Paprika / Yelp / MyFitnessPal | ~75% | 7 |
 | retail | Shopify | ~75% | 7 |
 | projects | Linear / Asana | ~80% | 7 |
@@ -210,16 +204,22 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | black-market | (in-game grey-market stall) | ~95% | 0 |
 | board | Trello | ~95% | 0 |
 | byo-keys | OpenRouter / LiteLLM key management | ~95% | 0 |
+| calendar | Google Calendar | ~95% | 0 |
+| chat | ChatGPT | ~95% | 0 |
+| code | Cursor / VS Code | ~95% | 0 |
 | cognition | (reasoning-substrate console) | ~95% | 0 |
+| cooking | Paprika / Samsung Food | ~95% | 0 |
 | council | Loomio / Convene | ~95% | 0 |
 | crafting | MMO crafting systems | ~95% | 0 |
 | creative-writing | Scrivener | ~95% | 0 |
 | creator | YouTube Studio / Patreon | ~95% | 0 |
+| crypto | Coinbase | ~95% | 0 |
 | daily | Day One / Reflectly | ~95% | 0 |
 | death-insurance | in-game inheritance pact (no consumer rival) | ~95% | 0 |
 | debate | Kialo | ~95% | 0 |
 | dx-platform | Sourcegraph Cody / GitHub Copilot platform | ~95% | 0 |
 | eco | iNaturalist / JouleBug | ~95% | 0 |
+| education | Khan Academy / Coursera | ~95% | 0 |
 | energy | Sense / Span Home | ~95% | 0 |
 | environment | Persefoni / Watershed (carbon accounting) | ~95% | 0 |
 | export | Google Takeout / Notion Export | ~95% | 0 |

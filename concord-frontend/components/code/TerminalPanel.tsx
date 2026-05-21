@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Terminal as TerminalIcon, X, Play, RotateCcw, Loader2, Maximize2, Minimize2 } from 'lucide-react';
-import { api, lensRun } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 interface TerminalPanelProps {
   open: boolean;

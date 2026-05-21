@@ -6,6 +6,9 @@
 // Branded Foods + FNDDS). Free; NASA_FDC_API_KEY env optional
 // (falls back to DEMO_KEY rate-limited 1000/hr per IP).
 
+import { fetchJsonWithTimeout } from "../lib/external-fetch.js";
+import { callVision, callVisionUrl } from "../lib/vision-inference.js";
+
 const FDC_BASE = "https://api.nal.usda.gov/fdc/v1";
 
 export default function registerCookingActions(registerLensAction) {
@@ -271,6 +274,9 @@ export default function registerCookingActions(registerLensAction) {
       photoUrl: String(params.photoUrl || ''),
       sourceUrl: String(params.sourceUrl || ''),
       notes: String(params.notes || ''),
+      ratings: [],
+      madeLog: [],
+      nutrition: null,
       createdAt: isoCk(),
     };
     seq.rec++;
@@ -686,5 +692,408 @@ export default function registerCookingActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `themealdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Paprika 3 + Samsung Food gap-closing backlog — URL import,
+  //  cook-mode timers, photo OCR, made-it log + ratings, USDA-linked
+  //  per-recipe nutrition, multi-store shopping, printable export.
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── ISO-8601 duration → minutes (schema.org cookTime/prepTime) ──
+  function isoDurationToMinutes(d) {
+    if (!d || typeof d !== "string") return 0;
+    const m = /P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?/.exec(d.trim());
+    if (!m) return 0;
+    return (Number(m[1] || 0) * 1440) + (Number(m[2] || 0) * 60) + Number(m[3] || 0);
+  }
+
+  // Split a free-text ingredient line into { qty, unit, name }.
+  const UNIT_WORDS = ["cups", "cup", "tablespoons", "tablespoon", "tbsp", "teaspoons", "teaspoon", "tsp", "grams", "gram", "g", "kg", "kilograms", "ml", "milliliters", "liters", "litre", "l", "ounces", "ounce", "oz", "pounds", "pound", "lb", "lbs", "cloves", "clove", "pinch", "pinches", "cans", "can", "slices", "slice", "pieces", "piece", "sprigs", "sprig", "sticks", "stick", "bunch", "bunches", "package", "packages", "pkg"];
+  function parseIngredientLine(line) {
+    const raw = String(line || "").trim();
+    if (!raw) return null;
+    const fracMap = { "½": 0.5, "¼": 0.25, "¾": 0.75, "⅓": 0.333, "⅔": 0.667, "⅛": 0.125 };
+    let work = raw;
+    for (const [g, v] of Object.entries(fracMap)) work = work.replace(g, ` ${v} `);
+    const qtyMatch = /^([0-9]+(?:\.[0-9]+)?(?:\s*\/\s*[0-9]+)?(?:\s+[0-9]+\s*\/\s*[0-9]+)?)\s*(.*)$/.exec(work.trim());
+    let qty = null, rest = work.trim();
+    if (qtyMatch) {
+      const parts = qtyMatch[1].trim().split(/\s+/);
+      let total = 0;
+      for (const p of parts) {
+        if (p.includes("/")) { const [a, b] = p.split("/").map(Number); if (b) total += a / b; }
+        else total += Number(p) || 0;
+      }
+      if (total > 0) { qty = Math.round(total * 1000) / 1000; rest = qtyMatch[2].trim(); }
+    }
+    let unit = "";
+    const restWords = rest.split(/\s+/);
+    if (restWords.length > 1) {
+      const candidate = restWords[0].toLowerCase().replace(/[.,]/g, "");
+      if (UNIT_WORDS.includes(candidate)) { unit = restWords[0].replace(/[.,]/g, ""); rest = restWords.slice(1).join(" "); }
+    }
+    return { name: rest.trim() || raw, qty, unit };
+  }
+
+  // ── 1. Recipe import from URL (schema.org/Recipe JSON-LD) ──────
+  function findRecipeNode(node) {
+    if (!node || typeof node !== "object") return null;
+    const types = [].concat(node["@type"] || []);
+    if (types.some((t) => String(t).toLowerCase() === "recipe")) return node;
+    if (Array.isArray(node["@graph"])) {
+      for (const g of node["@graph"]) { const f = findRecipeNode(g); if (f) return f; }
+    }
+    if (Array.isArray(node)) {
+      for (const g of node) { const f = findRecipeNode(g); if (f) return f; }
+    }
+    return null;
+  }
+
+  registerLensAction("cooking", "import-from-url", async (ctx, _a, params = {}) => {
+    const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCk(ctx);
+    const url = String(params.url || "").trim();
+    if (!/^https?:\/\/.+/i.test(url)) return { ok: false, error: "valid http(s) url required" };
+    let html;
+    try {
+      const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 ConcordCooking/1.0" }, signal: AbortSignal.timeout(12000) });
+      if (!r.ok) return { ok: false, error: `fetch failed: HTTP ${r.status}` };
+      html = await r.text();
+    } catch (e) {
+      return { ok: false, error: `page unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    // Extract every <script type="application/ld+json"> block.
+    let recipeNode = null;
+    const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      try {
+        const json = JSON.parse(m[1].trim());
+        const found = findRecipeNode(json);
+        if (found) { recipeNode = found; break; }
+      } catch { /* skip malformed block */ }
+    }
+    if (!recipeNode) return { ok: false, error: "no schema.org/Recipe JSON-LD found on that page" };
+    // Map JSON-LD → recipe shape.
+    const ingLines = []
+      .concat(recipeNode.recipeIngredient || recipeNode.ingredients || [])
+      .map((x) => String(x));
+    const steps = [];
+    const instr = recipeNode.recipeInstructions;
+    if (typeof instr === "string") {
+      for (const part of instr.split(/\n+/)) if (part.trim()) steps.push(part.trim());
+    } else if (Array.isArray(instr)) {
+      for (const it of instr) {
+        if (typeof it === "string") steps.push(it.trim());
+        else if (it && typeof it === "object") {
+          if (Array.isArray(it.itemListElement)) {
+            for (const sub of it.itemListElement) steps.push(String(sub.text || sub.name || "").trim());
+          } else steps.push(String(it.text || it.name || "").trim());
+        }
+      }
+    }
+    const img = recipeNode.image;
+    const photoUrl = typeof img === "string" ? img : Array.isArray(img) ? (typeof img[0] === "string" ? img[0] : img[0]?.url || "") : img?.url || "";
+    const yieldRaw = recipeNode.recipeYield;
+    const servings = Math.max(1, parseInt(Array.isArray(yieldRaw) ? yieldRaw[0] : yieldRaw, 10) || 4);
+    const seq = ensureSeqCk(s, userId);
+    const recipe = {
+      id: uidCk("rec"),
+      number: `R-${String(seq.rec).padStart(5, "0")}`,
+      title: String(recipeNode.name || "Imported recipe").trim(),
+      servings,
+      prepMin: isoDurationToMinutes(recipeNode.prepTime),
+      cookMin: isoDurationToMinutes(recipeNode.cookTime) || isoDurationToMinutes(recipeNode.totalTime),
+      ingredients: normalizeIngredients(ingLines.map(parseIngredientLine).filter(Boolean)),
+      steps: steps.filter(Boolean),
+      tags: [].concat(recipeNode.keywords ? String(recipeNode.keywords).split(",").map((x) => x.trim()) : []).filter(Boolean).slice(0, 8),
+      cuisine: String([].concat(recipeNode.recipeCuisine || [])[0] || ""),
+      photoUrl: String(photoUrl || ""),
+      sourceUrl: url,
+      notes: String(recipeNode.description || "").trim(),
+      ratings: [], madeLog: [], nutrition: null,
+      createdAt: isoCk(),
+    };
+    seq.rec++;
+    listCk(s.recipes, userId).push(recipe);
+    saveCook();
+    return { ok: true, result: { recipe, importedSteps: recipe.steps.length, importedIngredients: recipe.ingredients.length } };
+  });
+
+  // ── 3. Photo-based recipe capture — OCR a cookbook page via LLaVA ─
+  registerLensAction("cooking", "import-from-photo", async (ctx, _a, params = {}) => {
+    const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidCk(ctx);
+    const imageB64 = typeof params.imageB64 === "string" ? params.imageB64.replace(/^data:image\/\w+;base64,/, "") : "";
+    const imageUrl = String(params.imageUrl || "").trim();
+    if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };
+    const prompt = "You are reading a printed recipe from a cookbook page. Transcribe it as strict JSON only, no prose, with this exact shape: {\"title\":\"\",\"servings\":4,\"prepMin\":0,\"cookMin\":0,\"ingredients\":[\"1 cup flour\"],\"steps\":[\"Step one\"]}. Use the recipe's real values. If a field is not visible, use an empty string, 0, or empty array.";
+    let vis;
+    try {
+      vis = imageB64 ? await callVision(imageB64, prompt) : await callVisionUrl(imageUrl, prompt);
+    } catch (e) {
+      return { ok: false, error: `vision unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    if (!vis?.ok) return { ok: false, error: vis?.error || "vision failed" };
+    let parsed;
+    const jsonMatch = /\{[\s\S]*\}/.exec(vis.content || "");
+    try { parsed = JSON.parse(jsonMatch ? jsonMatch[0] : vis.content); }
+    catch { return { ok: false, error: "could not parse a recipe from the photo — try a clearer image", rawText: vis.content }; }
+    const title = String(parsed.title || "").trim();
+    if (!title) return { ok: false, error: "no recipe title detected in photo", rawText: vis.content };
+    const seq = ensureSeqCk(s, userId);
+    const recipe = {
+      id: uidCk("rec"),
+      number: `R-${String(seq.rec).padStart(5, "0")}`,
+      title,
+      servings: Math.max(1, Number(parsed.servings) || 4),
+      prepMin: Math.max(0, Number(parsed.prepMin) || 0),
+      cookMin: Math.max(0, Number(parsed.cookMin) || 0),
+      ingredients: normalizeIngredients((Array.isArray(parsed.ingredients) ? parsed.ingredients : []).map(parseIngredientLine).filter(Boolean)),
+      steps: (Array.isArray(parsed.steps) ? parsed.steps : []).map(String).filter(Boolean),
+      tags: ["photo-import"],
+      cuisine: "",
+      photoUrl: "",
+      sourceUrl: "",
+      notes: "Captured from photo via vision OCR.",
+      ratings: [], madeLog: [], nutrition: null,
+      createdAt: isoCk(),
+    };
+    seq.rec++;
+    listCk(s.recipes, userId).push(recipe);
+    saveCook();
+    return { ok: true, result: { recipe, model: vis.model } };
+  });
+
+  // ── 4. Ratings + notes history + "made it" log ─────────────────
+  registerLensAction("cooking", "recipe-rate", (ctx, _a, params = {}) => {
+    const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const r = listCk(s.recipes, aidCk(ctx)).find((x) => x.id === String(params.id || ""));
+    if (!r) return { ok: false, error: "recipe not found" };
+    const stars = Math.round(Number(params.stars));
+    if (!Number.isFinite(stars) || stars < 1 || stars > 5) return { ok: false, error: "stars must be 1-5" };
+    if (!Array.isArray(r.ratings)) r.ratings = [];
+    const entry = { id: uidCk("rt"), stars, note: String(params.note || "").trim(), at: isoCk() };
+    r.ratings.push(entry);
+    saveCook();
+    const avg = r.ratings.reduce((a, x) => a + x.stars, 0) / r.ratings.length;
+    return { ok: true, result: { entry, avgRating: Math.round(avg * 100) / 100, ratingCount: r.ratings.length } };
+  });
+
+  registerLensAction("cooking", "recipe-log-cooked", (ctx, _a, params = {}) => {
+    const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const r = listCk(s.recipes, aidCk(ctx)).find((x) => x.id === String(params.id || ""));
+    if (!r) return { ok: false, error: "recipe not found" };
+    if (!Array.isArray(r.madeLog)) r.madeLog = [];
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(params.date)) ? String(params.date) : new Date().toISOString().slice(0, 10);
+    const entry = { id: uidCk("ml"), date, note: String(params.note || "").trim(), at: isoCk() };
+    r.madeLog.push(entry);
+    saveCook();
+    return { ok: true, result: { entry, timesCooked: r.madeLog.length, lastCooked: date } };
+  });
+
+  registerLensAction("cooking", "recipe-history", (ctx, _a, params = {}) => {
+    const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const r = listCk(s.recipes, aidCk(ctx)).find((x) => x.id === String(params.id || ""));
+    if (!r) return { ok: false, error: "recipe not found" };
+    const ratings = (r.ratings || []).slice().sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+    const madeLog = (r.madeLog || []).slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const avg = ratings.length ? ratings.reduce((a, x) => a + x.stars, 0) / ratings.length : 0;
+    return {
+      ok: true,
+      result: {
+        recipeId: r.id, title: r.title,
+        ratings, madeLog,
+        avgRating: Math.round(avg * 100) / 100,
+        ratingCount: ratings.length,
+        timesCooked: madeLog.length,
+        lastCooked: madeLog[0]?.date || null,
+      },
+    };
+  });
+
+  // ── 5. Per-recipe USDA-linked nutrition ────────────────────────
+  // Resolve each ingredient against USDA FDC, sum real per-100g
+  // nutrients scaled by ingredient grams. Persists on the recipe.
+  const GRAM_PER_UNIT = {
+    g: 1, gram: 1, grams: 1, kg: 1000, kilograms: 1000,
+    oz: 28.35, ounce: 28.35, ounces: 28.35, lb: 453.6, lbs: 453.6, pound: 453.6, pounds: 453.6,
+    ml: 1, milliliters: 1, l: 1000, liters: 1000, litre: 1000,
+    cup: 240, cups: 240, tbsp: 15, tablespoon: 15, tablespoons: 15,
+    tsp: 5, teaspoon: 5, teaspoons: 5,
+  };
+  function ingredientGrams(ing) {
+    const u = String(ing.unit || "").toLowerCase().replace(/[.,]/g, "");
+    const factor = GRAM_PER_UNIT[u];
+    if (ing.qty != null && factor) return ing.qty * factor;
+    if (ing.qty != null && !u) return ing.qty * 100; // count items → 100g each
+    return 100; // unknown — assume one standard 100g portion
+  }
+
+  registerLensAction("cooking", "recipe-nutrition-compute", async (ctx, _a, params = {}) => {
+    const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const r = listCk(s.recipes, aidCk(ctx)).find((x) => x.id === String(params.id || ""));
+    if (!r) return { ok: false, error: "recipe not found" };
+    if (!r.ingredients.length) return { ok: false, error: "recipe has no ingredients" };
+    const apiKey = process.env.NASA_FDC_API_KEY || process.env.FDC_API_KEY || "DEMO_KEY";
+    const totals = { kcal: 0, protein: 0, fat: 0, carbs: 0, fiber: 0, sugar: 0, sodium: 0 };
+    const lines = [];
+    for (const ing of r.ingredients) {
+      const grams = ingredientGrams(ing);
+      let resolved = null;
+      try {
+        const search = await fetchJsonWithTimeout(
+          `${FDC_BASE}/foods/search?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(ing.name)}&pageSize=1`,
+          {}, 10000,
+        );
+        const food = (search.foods || [])[0];
+        if (food) {
+          const pick = (...names) => {
+            for (const n of food.foodNutrients || []) {
+              const nm = n.nutrientName || n.nutrient?.name || "";
+              if (names.some((x) => nm === x)) return n.value ?? n.amount ?? 0;
+            }
+            return 0;
+          };
+          const factor = grams / 100;
+          const per = {
+            kcal: pick("Energy") * factor,
+            protein: pick("Protein") * factor,
+            fat: pick("Total lipid (fat)") * factor,
+            carbs: pick("Carbohydrate, by difference") * factor,
+            fiber: pick("Fiber, total dietary") * factor,
+            sugar: pick("Sugars, total including NLEA", "Total Sugars") * factor,
+            sodium: pick("Sodium, Na") * factor,
+          };
+          for (const k of Object.keys(totals)) totals[k] += per[k] || 0;
+          resolved = { fdcId: food.fdcId, description: food.description, grams: Math.round(grams), kcal: Math.round(per.kcal) };
+        }
+      } catch { /* ingredient unresolved — skip, recorded below */ }
+      lines.push({ ingredient: ing.name, grams: Math.round(grams), resolved: !!resolved, match: resolved });
+    }
+    const resolvedCount = lines.filter((l) => l.resolved).length;
+    const servings = Math.max(1, r.servings || 1);
+    const nutrition = {
+      total: {
+        caloriesKcal: Math.round(totals.kcal),
+        proteinG: Math.round(totals.protein * 10) / 10,
+        fatG: Math.round(totals.fat * 10) / 10,
+        carbsG: Math.round(totals.carbs * 10) / 10,
+        fiberG: Math.round(totals.fiber * 10) / 10,
+        sugarG: Math.round(totals.sugar * 10) / 10,
+        sodiumMg: Math.round(totals.sodium),
+      },
+      perServing: {
+        caloriesKcal: Math.round(totals.kcal / servings),
+        proteinG: Math.round((totals.protein / servings) * 10) / 10,
+        fatG: Math.round((totals.fat / servings) * 10) / 10,
+        carbsG: Math.round((totals.carbs / servings) * 10) / 10,
+      },
+      lines, resolvedCount, ingredientCount: r.ingredients.length,
+      source: "usda-fooddata-central",
+      computedAt: isoCk(),
+    };
+    r.nutrition = nutrition;
+    saveCook();
+    return { ok: true, result: nutrition };
+  });
+
+  // ── 6. Shopping list — multi-store grouping + unit normalization ─
+  // Maps each aisle to a store category and normalizes quantities to
+  // a canonical unit (grams / ml / count) so duplicates consolidate.
+  const STORE_FOR_AISLE = {
+    produce: "Grocery", meat: "Grocery", seafood: "Grocery", dairy: "Grocery",
+    bakery: "Bakery", frozen: "Grocery", pantry: "Grocery", beverages: "Grocery", other: "Grocery",
+  };
+  function normalizeUnit(qty, unit) {
+    if (qty == null) return { qty: null, unit: unit || "" };
+    const u = String(unit || "").toLowerCase().replace(/[.,]/g, "");
+    const massG = { g: 1, gram: 1, grams: 1, kg: 1000, kilograms: 1000, oz: 28.35, ounce: 28.35, ounces: 28.35, lb: 453.6, lbs: 453.6, pound: 453.6, pounds: 453.6 };
+    const volMl = { ml: 1, milliliters: 1, l: 1000, liters: 1000, litre: 1000, cup: 240, cups: 240, tbsp: 15, tablespoon: 15, tablespoons: 15, tsp: 5, teaspoon: 5, teaspoons: 5 };
+    if (massG[u]) return { qty: Math.round(qty * massG[u] * 100) / 100, unit: "g", canonical: "mass" };
+    if (volMl[u]) return { qty: Math.round(qty * volMl[u] * 100) / 100, unit: "ml", canonical: "volume" };
+    return { qty, unit: u || "", canonical: "count" };
+  }
+
+  registerLensAction("cooking", "shopping-list-by-store", (ctx, _a, params = {}) => {
+    const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const items = listCk(s.shopping, aidCk(ctx));
+    // Normalize + consolidate by (name, canonical unit).
+    const merged = new Map();
+    for (const it of items) {
+      const norm = normalizeUnit(it.qty, it.unit);
+      const key = `${it.name.toLowerCase()}|${norm.unit}`;
+      const cur = merged.get(key) || { name: it.name, unit: norm.unit, qty: null, aisle: it.aisle, checked: true, ids: [], canonical: norm.canonical || "count" };
+      if (norm.qty != null) cur.qty = (cur.qty || 0) + norm.qty;
+      cur.checked = cur.checked && it.checked;
+      cur.ids.push(it.id);
+      merged.set(key, cur);
+    }
+    // Group by store.
+    const stores = {};
+    for (const it of merged.values()) {
+      const store = STORE_FOR_AISLE[it.aisle] || "Grocery";
+      const bucket = (stores[store] = stores[store] || { store, aisles: {}, itemCount: 0 });
+      (bucket.aisles[it.aisle] = bucket.aisles[it.aisle] || []).push({
+        name: it.name,
+        qty: it.qty != null ? Math.round(it.qty * 100) / 100 : null,
+        unit: it.unit,
+        aisle: it.aisle,
+        checked: it.checked,
+        normalized: it.qty != null,
+        ids: it.ids,
+      });
+      bucket.itemCount++;
+    }
+    const storeList = Object.values(stores).map((b) => ({
+      ...b,
+      aisles: Object.entries(b.aisles).map(([aisle, list]) => ({ aisle, items: list })),
+    }));
+    return { ok: true, result: { stores: storeList, storeCount: storeList.length, consolidatedFrom: items.length, totalItems: merged.size } };
+  });
+
+  // ── 7. Recipe export — printable card / PDF-ready structured doc ─
+  registerLensAction("cooking", "recipe-export-card", (ctx, _a, params = {}) => {
+    const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const r = listCk(s.recipes, aidCk(ctx)).find((x) => x.id === String(params.id || ""));
+    if (!r) return { ok: false, error: "recipe not found" };
+    const ratings = r.ratings || [];
+    const avg = ratings.length ? Math.round((ratings.reduce((a, x) => a + x.stars, 0) / ratings.length) * 100) / 100 : null;
+    const ingLine = (i) => `${i.qty != null ? i.qty : ""}${i.unit ? " " + i.unit : ""} ${i.name}`.trim();
+    // Plain-text card — printable, copy-pasteable, PDF-ready.
+    const lines = [];
+    lines.push(r.title.toUpperCase());
+    lines.push("=".repeat(Math.min(60, r.title.length)));
+    lines.push("");
+    const meta = [`Serves ${r.servings}`];
+    if (r.prepMin) meta.push(`Prep ${r.prepMin} min`);
+    if (r.cookMin) meta.push(`Cook ${r.cookMin} min`);
+    if (r.cuisine) meta.push(r.cuisine);
+    if (avg != null) meta.push(`${avg}/5 (${ratings.length})`);
+    lines.push(meta.join("  ·  "));
+    if (r.sourceUrl) lines.push(`Source: ${r.sourceUrl}`);
+    lines.push("");
+    lines.push("INGREDIENTS");
+    for (const i of r.ingredients) lines.push(`  • ${ingLine(i)}`);
+    lines.push("");
+    lines.push("METHOD");
+    r.steps.forEach((step, i) => lines.push(`  ${i + 1}. ${step}`));
+    if (r.notes) { lines.push(""); lines.push("NOTES"); lines.push(`  ${r.notes}`); }
+    const card = lines.join("\n");
+    // Minimal self-contained printable HTML.
+    const esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(r.title)}</title>` +
+      `<style>body{font-family:Georgia,serif;max-width:680px;margin:2rem auto;color:#222;line-height:1.5}` +
+      `h1{border-bottom:2px solid #d97706;padding-bottom:.3rem}.meta{color:#666;font-size:.9rem}` +
+      `h2{color:#d97706;font-size:1.1rem;margin-top:1.4rem}ol,ul{padding-left:1.4rem}` +
+      `@media print{body{margin:0}}</style></head><body>` +
+      `<h1>${esc(r.title)}</h1><p class="meta">${esc(meta.join("  ·  "))}</p>` +
+      `<h2>Ingredients</h2><ul>${r.ingredients.map((i) => `<li>${esc(ingLine(i))}</li>`).join("")}</ul>` +
+      `<h2>Method</h2><ol>${r.steps.map((stp) => `<li>${esc(stp)}</li>`).join("")}</ol>` +
+      (r.notes ? `<h2>Notes</h2><p>${esc(r.notes)}</p>` : "") +
+      (r.sourceUrl ? `<p class="meta">Source: ${esc(r.sourceUrl)}</p>` : "") +
+      `</body></html>`;
+    return { ok: true, result: { recipeId: r.id, title: r.title, card, html, format: "printable-card" } };
   });
 }

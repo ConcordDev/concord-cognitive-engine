@@ -13,13 +13,15 @@ Backend: `crypto` domain macros — deep (~60 macros): portfolioAnalysis, search
 - Recurring buys (DCA); NFT tracking; tax-report generation; AI portfolio insight
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Live on-chain balance sync from a connected wallet address (read-only RPC)
-- [ ] `[M]` Real-time price websocket streaming with live P&L ticker
-- [ ] `[S]` Staking / yield position tracking
-- [ ] `[M]` Portfolio allocation breakdown chart + rebalancing suggestions
-- [ ] `[S]` Transaction CSV import from exchanges for cost-basis accuracy
-- [ ] `[S]` Cross-chain / multi-network filtering on holdings and activity
-- [ ] `[S]` Push price-alert delivery (alerts exist but require a check macro)
+- [x] `[M]` Live on-chain balance sync from a connected wallet address (read-only RPC)
+- [x] `[M]` Real-time price websocket streaming with live P&L ticker
+- [x] `[S]` Staking / yield position tracking
+- [x] `[M]` Portfolio allocation breakdown chart + rebalancing suggestions
+- [x] `[S]` Transaction CSV import from exchanges for cost-basis accuracy
+- [x] `[S]` Cross-chain / multi-network filtering on holdings and activity
+- [x] `[S]` Push price-alert delivery (alerts exist but require a check macro)
 
 ## Parity
-~70% of Coinbase's feature surface. One of the deepest lenses — swap, limit orders, alerts, allowance revocation, DCA, and tax reporting are all real. Main gaps are live on-chain sync and real-time streaming.
+~95% of Coinbase's feature surface. Swap, limit orders, alerts, allowance revocation, DCA, tax reporting plus live on-chain balance sync, a real-time price stream + P&L ticker, staking/yield tracking, allocation breakdown + rebalancing, transaction CSV import, cross-chain filtering, and push alert delivery all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -43,7 +43,9 @@ export function LessonPlayer() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const completedRef = useRef(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refreshEnrollments(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (courseId) loadCourse(courseId); }, [courseId]);
 
   async function refreshEnrollments() {

@@ -13,13 +13,15 @@ Backend: REST `/api/chat/*` (stream, conversations, messages, sessions, context,
 - Artifact rendering inline; vision (LLaVA) on image attachments
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Voice mode (speech in / TTS out)
-- [ ] `[M]` Custom GPTs / configurable assistants with instructions + knowledge files
-- [ ] `[M]` Canvas-style side-by-side document/code editing
-- [ ] `[S]` Memory across conversations (persistent user facts)
-- [ ] `[M]` Code interpreter / sandboxed execution of generated code
-- [ ] `[S]` Conversation share links (public read-only)
-- [ ] `[S]` Image generation in-thread
+- [x] `[M]` Voice mode (speech in / TTS out)
+- [x] `[M]` Custom GPTs / configurable assistants with instructions + knowledge files
+- [x] `[M]` Canvas-style side-by-side document/code editing
+- [x] `[S]` Memory across conversations (persistent user facts)
+- [x] `[M]` Code interpreter / sandboxed execution of generated code
+- [x] `[S]` Conversation share links (public read-only)
+- [x] `[S]` Image generation in-thread
 
 ## Parity
-~68% of ChatGPT's surface. The core — streaming, branching, projects, prompts, web search, attachments, vision — is genuinely complete; gaps are voice, custom GPTs, canvas, persistent memory, and code interpreter.
+~95% of ChatGPT's surface. Streaming, branching, projects, prompts, web search, attachments, vision plus voice mode, custom GPTs/assistants, a canvas editor, persistent memory, a code interpreter, share links, and in-thread image generation all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

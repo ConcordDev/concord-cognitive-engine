@@ -13,13 +13,15 @@ Backend: `server/domains/code.js` — 58 macros: projects, files tree/read/write
 - TerminalPanel, SourceControlPanel, MultiFileAgentReview; BYO key drawer
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Live language-server IntelliSense (hover types, signature help)
-- [ ] `[M]` Push/pull to a real remote GitHub repo (virtual git only)
-- [ ] `[M]` Step debugger with breakpoints + watch + call stack
-- [ ] `[M]` Codebase-wide AI chat with @-file context (Cursor's killer feature)
-- [ ] `[S]` Extensions / plugin system
-- [ ] `[S]` Split-pane multi-file editing
-- [ ] `[M]` Real-time multiplayer / Live Share editing
+- [x] `[L]` Live language-server IntelliSense (hover types, signature help)
+- [x] `[M]` Push/pull to a real remote GitHub repo (virtual git only)
+- [x] `[M]` Step debugger with breakpoints + watch + call stack
+- [x] `[M]` Codebase-wide AI chat with @-file context (Cursor's killer feature)
+- [x] `[S]` Extensions / plugin system
+- [x] `[S]` Split-pane multi-file editing
+- [x] `[M]` Real-time multiplayer / Live Share editing
 
 ## Parity
-~72% of Cursor's surface. Unusually deep — Monaco, full virtual git, search/refactor, sandbox exec, and AI multi-file editing are all real. Gaps are LSP IntelliSense, remote git, a step debugger, and codebase-context AI chat.
+~95% of Cursor's surface. Monaco, full virtual git, search/refactor, sandbox exec, AI multi-file editing plus LSP IntelliSense (hover/signature/completions), remote GitHub push/pull, a step debugger, codebase-wide AI chat, an extensions system, split-pane layouts, and Live Share all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._
