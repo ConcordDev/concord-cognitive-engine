@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -10,11 +10,18 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { RootMetrics } from '@/components/root/RootMetrics';
+import { ExpressionEvaluator } from '@/components/root/ExpressionEvaluator';
+import { BitwisePanel } from '@/components/root/BitwisePanel';
+import { GlyphKeyboard } from '@/components/root/GlyphKeyboard';
+import { AlgebraTutorial } from '@/components/root/AlgebraTutorial';
+import { ComputationNotebook } from '@/components/root/ComputationNotebook';
+import type { NotebookHandle, ReloadPayload } from '@/components/root/ComputationNotebook';
+import { SharedComputationBanner } from '@/components/root/SharedComputationBanner';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
-import { Hash, ArrowRightLeft, X, BookOpen, AlertCircle, History } from 'lucide-react';
+import { Hash, ArrowRightLeft, X, BookOpen, AlertCircle, History, Share2 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { lensRun } from '@/lib/api/client';
 
 /* ─── Refusal Algebra types ─── */
 interface AlgebraResult {
@@ -149,25 +156,53 @@ export default function RootLens() {
     setGlyphInput(dec2glyph || '');
   }, [dec2glyph, decInput]);
 
-  // Persist saved computations as 'computation' lens artifacts so the
-  // user can build a working notebook of glyph algebra.
-  const recent = useArtifacts<{
-    a: number; b: number; op: string; result: AlgebraResult;
-  }>('root', { type: 'computation', limit: 8 });
-  const createComputation = useCreateArtifact<{
-    a: number; b: number; op: string; result: AlgebraResult;
-  }>('root');
+  // Notebook handle — lets a save / reload refresh the persisted list.
+  const notebookRef = useRef<NotebookHandle>(null);
+  const [opNotice, setOpNotice] = useState('');
 
-  const saveResult = useCallback(() => {
+  // Persist the current playground operation via the root.save macro so the
+  // notebook survives across sessions and devices (not just client artifacts).
+  const saveResult = useCallback(async () => {
     const a = parseFloat(opA); const b = parseFloat(opB);
     if (isNaN(a) || isNaN(b) || !opResult) return;
-    createComputation.mutate({
-      type: 'computation',
-      title: `${a} ${op} ${b} = ${opResult.numerical}`,
-      data: { a, b, op, result: opResult },
-      meta: { tags: ['root', 'glyph-algebra'], status: 'completed', visibility: 'private' },
+    setOpNotice('');
+    const r = await lensRun('root', 'save', {
+      kind: 'operation', a, b, op,
+      resultGlyph: opResult.numerical,
+      resultDecimal: isFinite(opResult.decimal) ? opResult.decimal : null,
     });
-  }, [opA, opB, op, opResult, createComputation]);
+    if (r.data?.ok) { setOpNotice('Saved to notebook'); notebookRef.current?.refresh(); }
+    else setOpNotice(r.data?.error || 'Save failed');
+  }, [opA, opB, op, opResult]);
+
+  // Share the current playground operation as a stable read-only link.
+  const shareResult = useCallback(async () => {
+    const a = parseFloat(opA); const b = parseFloat(opB);
+    if (isNaN(a) || isNaN(b) || !opResult) return;
+    setOpNotice('');
+    const r = await lensRun<{ link: string }>('root', 'share', {
+      kind: 'operation', a, b, op,
+      resultGlyph: opResult.numerical,
+      resultDecimal: isFinite(opResult.decimal) ? opResult.decimal : null,
+    });
+    if (r.data?.ok && r.data.result?.link) {
+      const url = `${window.location.origin}${r.data.result.link}`;
+      try { await navigator.clipboard.writeText(url); setOpNotice('Share link copied'); }
+      catch { setOpNotice(`Share link: ${url}`); }
+    } else setOpNotice(r.data?.error || 'Share failed');
+  }, [opA, opB, op, opResult]);
+
+  // Re-hydrate the playground from a saved or shared computation.
+  const applyReload = useCallback((payload: ReloadPayload) => {
+    if (payload.kind === 'expression') {
+      setGlyphInput(payload.expression || '');
+      return;
+    }
+    if (payload.a != null) setOpA(payload.a);
+    if (payload.b != null) setOpB(payload.b);
+    if (payload.op && ['+', '−', '×', '÷'].includes(payload.op)) setOp(payload.op);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   return (
     <LensShell lensId="root" asMain={false}>
@@ -186,6 +221,9 @@ export default function RootLens() {
             <p className="text-sm text-gray-500">Base-6 numeral system — where numbers carry meaning</p>
           </div>
         </div>
+
+        {/* Shared computation deep-link banner */}
+        <SharedComputationBanner onOpen={applyReload} />
 
         {/* Glyph Reference */}
         <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
@@ -275,16 +313,24 @@ export default function RootLens() {
 
           {opResult && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="text-sm text-gray-400">
                   <span className="text-gray-600">decimal: </span>{isFinite(opResult.decimal) ? opResult.decimal : '∞'}
                 </div>
-                <button
-                  onClick={saveResult}
-                  className="text-[11px] px-2 py-1 bg-violet-700/40 hover:bg-violet-700/60 border border-violet-700 rounded text-violet-200 inline-flex items-center gap-1"
-                >
-                  <History className="w-3 h-3" /> Save to notebook
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => void saveResult()}
+                    className="text-[11px] px-2 py-1 bg-violet-700/40 hover:bg-violet-700/60 border border-violet-700 rounded text-violet-200 inline-flex items-center gap-1"
+                  >
+                    <History className="w-3 h-3" /> Save to notebook
+                  </button>
+                  <button
+                    onClick={() => void shareResult()}
+                    className="text-[11px] px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-gray-300 inline-flex items-center gap-1"
+                  >
+                    <Share2 className="w-3 h-3" /> Share
+                  </button>
+                </div>
               </div>
               {showSemantic && (
                 <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
@@ -292,21 +338,25 @@ export default function RootLens() {
                   {opResult.semantic}
                 </motion.div>
               )}
-            </div>
-          )}
-          {recent.data?.artifacts && recent.data.artifacts.length > 0 && (
-            <div className="mt-4 border-t border-gray-800 pt-3">
-              <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1.5 inline-flex items-center gap-1">
-                <History className="w-3 h-3" /> Recent computations
-              </div>
-              <ul className="space-y-0.5 text-xs text-gray-400 font-mono">
-                {recent.data.artifacts.slice(0, 8).map((a) => (
-                  <li key={a.id} className="truncate">{a.title}</li>
-                ))}
-              </ul>
+              {opNotice && <div className="text-[11px] text-emerald-400">{opNotice}</div>}
             </div>
           )}
         </section>
+
+        {/* Multi-term expression evaluator */}
+        <ExpressionEvaluator onSaved={() => notebookRef.current?.refresh()} />
+
+        {/* Bitwise / modular operations */}
+        <BitwisePanel />
+
+        {/* Glyph keyboard — type semantic names */}
+        <GlyphKeyboard onInsert={setGlyphInput} />
+
+        {/* Saved notebook with history re-load + per-entry share */}
+        <ComputationNotebook ref={notebookRef} onReload={applyReload} />
+
+        {/* Worked-example tutorial */}
+        <AlgebraTutorial />
 
         {/* Glyph insertion palette */}
         <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">

@@ -1364,4 +1364,495 @@ export default function registerProjectsActions(registerLensAction) {
       .map((m) => ({ id: m.id, name: m.name, date: m.dueDate, status: m.status }));
     return { ok: true, result: { tasks, milestones } };
   });
+
+  // ════════════════════════════════════════════════════════════════════
+  //  2026 PARITY BACKLOG — Linear / Asana feature gaps
+  // ════════════════════════════════════════════════════════════════════
+  // Extra per-user state maps for the backlog features.
+  function getPjExtra() {
+    const s = getPjState();
+    if (!s) return null;
+    for (const k of ["notifications", "integrations", "presence", "triage", "slaPolicies"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  // Push a notification onto a user's inbox (deduped lightly by kind+entity).
+  function pjNotify(s, userId, n) {
+    const inbox = pjListB(s.notifications, userId);
+    inbox.push({
+      id: pjId("ntf"), kind: n.kind, title: pjClean(n.title, 200),
+      detail: n.detail == null ? null : String(n.detail).slice(0, 300),
+      projectId: n.projectId || null, taskId: n.taskId || null,
+      read: false, createdAt: pjNow(),
+    });
+    // Keep the inbox bounded.
+    if (inbox.length > 500) inbox.splice(0, inbox.length - 500);
+  }
+
+  // ── [M] Real-time multiplayer sync — live cursors + presence ─────────
+  registerLensAction("projects", "presence-ping", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const projectId = String(params.projectId || "");
+    if (!pjProject(s, userId, projectId)) return { ok: false, error: "project not found" };
+    const arr = pjListB(s.presence, projectId);
+    const collaborator = pjClean(params.collaborator, 60) || userId;
+    let row = arr.find((p) => p.collaborator === collaborator);
+    if (!row) { row = { id: pjId("prs"), collaborator }; arr.push(row); }
+    row.cursorX = Math.max(0, Math.min(100, pjNum(params.cursorX, row.cursorX || 0)));
+    row.cursorY = Math.max(0, Math.min(100, pjNum(params.cursorY, row.cursorY || 0)));
+    row.viewing = pjClean(params.viewing, 40) || row.viewing || "board";
+    row.editingTaskId = params.editingTaskId ? String(params.editingTaskId) : null;
+    row.color = pjClean(params.color, 16) || row.color || "indigo";
+    row.lastSeen = pjNow();
+    savePjState();
+    return { ok: true, result: { collaborator, lastSeen: row.lastSeen } };
+  });
+
+  registerLensAction("projects", "presence-list", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const projectId = String(params.projectId || "");
+    const cutoff = Date.now() - 45_000; // collaborators idle >45s drop off
+    const arr = (s.presence.get(projectId) || []).filter((p) => Date.parse(p.lastSeen) >= cutoff);
+    s.presence.set(projectId, arr);
+    return { ok: true, result: { collaborators: arr, count: arr.length } };
+  });
+
+  // Lightweight change-feed: returns tasks touched since a timestamp so a
+  // client can instantly reconcile without a full reload.
+  registerLensAction("projects", "sync-since", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const projectId = String(params.projectId || "");
+    if (!pjProject(s, userId, projectId)) return { ok: false, error: "project not found" };
+    const since = pjClean(params.since, 30) || "1970-01-01T00:00:00.000Z";
+    const all = (s.tasks.get(userId) || []).filter((t) => t.projectId === projectId);
+    const changed = all.filter((t) => t.updatedAt > since)
+      .map((t) => ({ id: t.id, ref: t.ref, title: t.title, status: t.status, updatedAt: t.updatedAt }));
+    return { ok: true, result: { changed, count: changed.length, now: pjNow() } };
+  });
+
+  // ── [M] Binary file attachments ─────────────────────────────────────
+  // Stores small inline binary payloads (base64 data) directly on the task,
+  // distinct from the URL-only attachment-add.
+  registerLensAction("projects", "attachment-upload", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const task = (s.tasks.get(userId) || []).find((t) => t.id === params.taskId);
+    if (!task) return { ok: false, error: "task not found" };
+    const fileName = pjClean(params.fileName, 160);
+    if (!fileName) return { ok: false, error: "fileName required" };
+    const data = String(params.data || "");
+    if (!data) return { ok: false, error: "file data required" };
+    // base64 payload, optionally with a data: prefix.
+    const b64 = data.includes(",") ? data.slice(data.indexOf(",") + 1) : data;
+    if (!/^[A-Za-z0-9+/=\s]+$/.test(b64)) return { ok: false, error: "data must be base64" };
+    const bytes = Math.floor((b64.replace(/\s/g, "").length * 3) / 4);
+    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB cap per file
+    if (bytes > MAX_BYTES) return { ok: false, error: "file exceeds 5 MB limit" };
+    const attachment = {
+      id: pjId("att"), taskId: task.id, kind: "binary",
+      name: fileName, fileName,
+      mimeType: pjClean(params.mimeType, 100) || "application/octet-stream",
+      bytes, data: b64.replace(/\s/g, ""),
+      createdAt: pjNow(),
+    };
+    pjListB(s.attachments, userId).push(attachment);
+    pjLog(s, userId, task.id, "attachment", `uploaded ${fileName}`);
+    savePjState();
+    // Return without the heavy data blob.
+    const { data: _d, ...meta } = attachment;
+    return { ok: true, result: { attachment: meta } };
+  });
+
+  // Fetch a single binary attachment's data for download/preview.
+  registerLensAction("projects", "attachment-download", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const att = (s.attachments.get(pjAid(ctx)) || []).find((a) => a.id === params.id);
+    if (!att) return { ok: false, error: "attachment not found" };
+    if (att.kind !== "binary") return { ok: false, error: "attachment is not a binary file" };
+    return {
+      ok: true,
+      result: {
+        id: att.id, fileName: att.fileName, mimeType: att.mimeType,
+        bytes: att.bytes, data: att.data,
+      },
+    };
+  });
+
+  // ── [M] GitHub / Slack / CI integrations ────────────────────────────
+  const PJ_INTEGRATION_KINDS = ["github", "slack", "ci"];
+  registerLensAction("projects", "integration-connect", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const projectId = String(params.projectId || "");
+    if (!pjProject(s, userId, projectId)) return { ok: false, error: "project not found" };
+    const kind = pjPick(params.kind, PJ_INTEGRATION_KINDS, null);
+    if (!kind) return { ok: false, error: "valid integration kind required" };
+    const target = pjClean(params.target, 200);
+    if (!target) return { ok: false, error: "target (repo / channel / pipeline) required" };
+    const arr = pjListB(s.integrations, userId);
+    const existing = arr.find((i) => i.projectId === projectId && i.kind === kind);
+    if (existing) {
+      existing.target = target;
+      existing.enabled = true;
+      existing.updatedAt = pjNow();
+      savePjState();
+      return { ok: true, result: { integration: existing } };
+    }
+    const integration = {
+      id: pjId("itg"), projectId, kind, target,
+      enabled: true, linkCount: 0, createdAt: pjNow(), updatedAt: pjNow(),
+    };
+    arr.push(integration);
+    savePjState();
+    return { ok: true, result: { integration } };
+  });
+
+  registerLensAction("projects", "integration-list", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const integrations = (s.integrations.get(pjAid(ctx)) || [])
+      .filter((i) => i.projectId === String(params.projectId));
+    return { ok: true, result: { integrations, count: integrations.length } };
+  });
+
+  registerLensAction("projects", "integration-toggle", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const itg = (s.integrations.get(pjAid(ctx)) || []).find((i) => i.id === params.id);
+    if (!itg) return { ok: false, error: "integration not found" };
+    itg.enabled = params.enabled !== false;
+    itg.updatedAt = pjNow();
+    savePjState();
+    return { ok: true, result: { id: itg.id, enabled: itg.enabled } };
+  });
+
+  registerLensAction("projects", "integration-delete", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.integrations.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "integration not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Link an external artifact (GitHub PR/issue, CI run, Slack thread) to a
+  // task. Records the link as an attachment + activity entry, and — for CI
+  // links carrying a status — can auto-advance the task status.
+  registerLensAction("projects", "integration-link", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const task = (s.tasks.get(userId) || []).find((t) => t.id === params.taskId);
+    if (!task) return { ok: false, error: "task not found" };
+    const itg = (s.integrations.get(userId) || []).find((i) => i.id === params.integrationId);
+    if (!itg) return { ok: false, error: "integration not found" };
+    if (!itg.enabled) return { ok: false, error: "integration is disabled" };
+    if (itg.projectId !== task.projectId) return { ok: false, error: "integration belongs to a different project" };
+    const url = pjClean(params.url, 600);
+    if (!/^https?:\/\//.test(url)) return { ok: false, error: "url must be http(s)" };
+    const label = pjClean(params.label, 160) || `${itg.kind} link`;
+    const link = {
+      id: pjId("att"), taskId: task.id, kind: "integration",
+      integrationKind: itg.kind, name: label, url,
+      ciStatus: itg.kind === "ci" ? pjPick(params.ciStatus, ["passed", "failed", "running"], null) : null,
+      createdAt: pjNow(),
+    };
+    pjListB(s.attachments, userId).push(link);
+    itg.linkCount += 1;
+    pjLog(s, userId, task.id, "integration", `${itg.kind}: ${label}`);
+    // CI green can auto-advance an in-review task to done.
+    let autoAdvanced = false;
+    if (itg.kind === "ci" && link.ciStatus === "passed" && task.status === "in_review"
+        && params.autoAdvance !== false) {
+      const prev = task.status;
+      task.status = "done";
+      task.completedAt = task.completedAt || pjNow();
+      task.updatedAt = pjNow();
+      autoAdvanced = true;
+      pjLog(s, userId, task.id, "status", `${prev} → done (CI passed)`);
+      pjRunRules(s, userId, task, "status_changed");
+    }
+    // Slack/GitHub links generate a posted-to-channel notification.
+    if (itg.kind === "slack" || itg.kind === "github") {
+      pjNotify(s, userId, {
+        kind: "integration", projectId: task.projectId, taskId: task.id,
+        title: `${itg.kind === "slack" ? "Posted to" : "Linked"} ${itg.target}`,
+        detail: `${task.ref} — ${label}`,
+      });
+    }
+    savePjState();
+    return { ok: true, result: { link, autoAdvanced } };
+  });
+
+  // ── [S] Notification inbox ──────────────────────────────────────────
+  registerLensAction("projects", "notifications-list", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let inbox = (s.notifications.get(pjAid(ctx)) || []).slice()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (params.unreadOnly) inbox = inbox.filter((n) => !n.read);
+    if (params.kind) inbox = inbox.filter((n) => n.kind === String(params.kind));
+    const unread = (s.notifications.get(pjAid(ctx)) || []).filter((n) => !n.read).length;
+    return { ok: true, result: { notifications: inbox.slice(0, 100), count: inbox.length, unread } };
+  });
+
+  registerLensAction("projects", "notification-mark-read", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const inbox = s.notifications.get(pjAid(ctx)) || [];
+    if (params.all) {
+      let marked = 0;
+      for (const n of inbox) if (!n.read) { n.read = true; marked += 1; }
+      savePjState();
+      return { ok: true, result: { marked } };
+    }
+    const n = inbox.find((x) => x.id === params.id);
+    if (!n) return { ok: false, error: "notification not found" };
+    n.read = params.read !== false;
+    savePjState();
+    return { ok: true, result: { id: n.id, read: n.read } };
+  });
+
+  registerLensAction("projects", "notification-clear", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const inbox = s.notifications.get(userId) || [];
+    if (params.id) {
+      const i = inbox.findIndex((n) => n.id === params.id);
+      if (i < 0) return { ok: false, error: "notification not found" };
+      inbox.splice(i, 1);
+      savePjState();
+      return { ok: true, result: { deleted: params.id } };
+    }
+    const before = inbox.length;
+    s.notifications.set(userId, params.readOnly ? inbox.filter((n) => !n.read) : []);
+    savePjState();
+    return { ok: true, result: { cleared: before - (s.notifications.get(userId) || []).length } };
+  });
+
+  // ── [S] Keyboard-driven command bar — instant navigation/search ─────
+  // Resolves a typed query into navigable results: projects, tasks (by ref
+  // or title) and quick "create" intents. Backs a Linear-style C-to-create
+  // command palette.
+  registerLensAction("projects", "command-search", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const q = pjClean(params.query, 120).toLowerCase();
+    const projectId = params.projectId ? String(params.projectId) : null;
+    const results = [];
+    const projects = (s.projects.get(userId) || []).filter((p) => !p.archived);
+    for (const p of projects) {
+      if (!q || p.name.toLowerCase().includes(q) || p.key.toLowerCase().includes(q)) {
+        results.push({ kind: "project", id: p.id, label: p.name, sub: p.key });
+      }
+    }
+    let tasks = s.tasks.get(userId) || [];
+    if (projectId) tasks = tasks.filter((t) => t.projectId === projectId);
+    for (const t of tasks) {
+      if (!q || t.title.toLowerCase().includes(q) || t.ref.toLowerCase().includes(q)) {
+        results.push({
+          kind: "task", id: t.id, projectId: t.projectId,
+          label: t.title, sub: t.ref, status: t.status, priority: t.priority,
+        });
+      }
+      if (results.length >= 50) break;
+    }
+    // Command intents the palette can execute directly.
+    const commands = [];
+    if (q) {
+      commands.push({ kind: "command", id: "create-task", label: `Create issue "${pjClean(params.query, 80)}"`, action: "task-create" });
+      commands.push({ kind: "command", id: "create-project", label: `Create project "${pjClean(params.query, 80)}"`, action: "project-create" });
+    }
+    return { ok: true, result: { results: results.slice(0, 50), commands, count: results.length } };
+  });
+
+  // ── [M] Triage / inbox workflow ─────────────────────────────────────
+  // Incoming issues land in a triage queue (status backlog + isTriage flag)
+  // before being accepted into the backlog.
+  registerLensAction("projects", "triage-submit", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const project = pjProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const title = pjClean(params.title, 240);
+    if (!title) return { ok: false, error: "issue title required" };
+    project.seq += 1;
+    const task = {
+      id: pjId("tsk"), projectId: project.id, ref: `${project.key}-${project.seq}`,
+      title, description: pjClean(params.description, 4000) || null,
+      type: pjPick(params.type, PJ_TYPES, "bug"),
+      status: "backlog", priority: "none",
+      assigneeId: null, sprintId: null, milestoneId: null, parentId: null,
+      labels: [], customFields: {}, points: 0, startDate: null, dueDate: null,
+      rank: (s.tasks.get(userId) || []).filter((t) => t.projectId === project.id).length,
+      isTriage: true,
+      triageSource: pjPick(params.source, ["user", "support", "integration", "form"], "user"),
+      createdAt: pjNow(), updatedAt: pjNow(), completedAt: null,
+    };
+    pjListB(s.tasks, userId).push(task);
+    pjLog(s, userId, task.id, "triage", `submitted via ${task.triageSource}`);
+    pjNotify(s, userId, {
+      kind: "triage", projectId: project.id, taskId: task.id,
+      title: "New issue needs triage", detail: `${task.ref} — ${title}`,
+    });
+    savePjState();
+    return { ok: true, result: { task } };
+  });
+
+  registerLensAction("projects", "triage-queue", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const queue = (s.tasks.get(userId) || [])
+      .filter((t) => t.projectId === String(params.projectId) && t.isTriage)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return { ok: true, result: { queue, count: queue.length } };
+  });
+
+  // Accept a triaged issue into the backlog — clears the flag, optionally
+  // sets priority/assignee/sprint as part of the triage decision.
+  registerLensAction("projects", "triage-accept", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const task = (s.tasks.get(userId) || []).find((t) => t.id === params.id);
+    if (!task) return { ok: false, error: "task not found" };
+    if (!task.isTriage) return { ok: false, error: "task is not in triage" };
+    task.isTriage = false;
+    if (params.priority != null) task.priority = pjPick(params.priority, PJ_PRIORITIES, task.priority);
+    if (params.status != null) task.status = pjPick(params.status, PJ_STATUSES, task.status);
+    if (params.assigneeId) {
+      const a = String(params.assigneeId);
+      if ((s.members.get(userId) || []).some((m) => m.id === a)) task.assigneeId = a;
+    }
+    if (params.sprintId) {
+      const sp = String(params.sprintId);
+      if ((s.sprints.get(userId) || []).some((x) => x.id === sp)) task.sprintId = sp;
+    }
+    task.updatedAt = pjNow();
+    pjLog(s, userId, task.id, "triage", "accepted into backlog");
+    savePjState();
+    return { ok: true, result: { task } };
+  });
+
+  // Decline a triaged issue — removes it from the queue entirely.
+  registerLensAction("projects", "triage-decline", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const arr = s.tasks.get(userId) || [];
+    const i = arr.findIndex((t) => t.id === params.id && t.isTriage);
+    if (i < 0) return { ok: false, error: "triage task not found" };
+    const ref = arr[i].ref;
+    arr.splice(i, 1);
+    s.activity.set(userId, (s.activity.get(userId) || []).filter((a) => a.taskId !== params.id));
+    s.comments.set(userId, (s.comments.get(userId) || []).filter((c) => c.taskId !== params.id));
+    savePjState();
+    return { ok: true, result: { declined: params.id, ref } };
+  });
+
+  // ── [S] SLA / due-date escalation automation ────────────────────────
+  const PJ_SLA_LEVELS = ["low", "medium", "high", "urgent"];
+  registerLensAction("projects", "sla-policy-set", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const projectId = String(params.projectId || "");
+    if (!pjProject(s, userId, projectId)) return { ok: false, error: "project not found" };
+    const priority = pjPick(params.priority, PJ_PRIORITIES, null);
+    if (!priority || priority === "none") return { ok: false, error: "valid priority required" };
+    const responseDays = Math.max(0, Math.round(pjNum(params.responseDays, 3)));
+    const escalateTo = pjPick(params.escalateTo, PJ_SLA_LEVELS, "high");
+    const arr = pjListB(s.slaPolicies, userId);
+    let policy = arr.find((p) => p.projectId === projectId && p.priority === priority);
+    if (!policy) {
+      policy = { id: pjId("sla"), projectId, priority, createdAt: pjNow() };
+      arr.push(policy);
+    }
+    policy.responseDays = responseDays;
+    policy.escalateTo = escalateTo;
+    policy.updatedAt = pjNow();
+    savePjState();
+    return { ok: true, result: { policy } };
+  });
+
+  registerLensAction("projects", "sla-policy-list", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const policies = (s.slaPolicies.get(pjAid(ctx)) || [])
+      .filter((p) => p.projectId === String(params.projectId));
+    return { ok: true, result: { policies, count: policies.length } };
+  });
+
+  registerLensAction("projects", "sla-policy-delete", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.slaPolicies.get(pjAid(ctx)) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "policy not found" };
+    arr.splice(i, 1);
+    savePjState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Evaluate every open task against its priority SLA policy + due date.
+  // Breached/at-risk tasks escalate (priority bump) and raise a
+  // notification. Idempotent — re-running won't double-escalate the same
+  // task on the same day.
+  registerLensAction("projects", "sla-escalate", (ctx, _a, params = {}) => {
+    const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const projectId = String(params.projectId || "");
+    if (!pjProject(s, userId, projectId)) return { ok: false, error: "project not found" };
+    const policies = (s.slaPolicies.get(userId) || []).filter((p) => p.projectId === projectId);
+    const polByPriority = new Map(policies.map((p) => [p.priority, p]));
+    const now = Date.now();
+    const today = pjDay(pjNow());
+    const prRank = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 };
+    const tasks = (s.tasks.get(userId) || [])
+      .filter((t) => t.projectId === projectId && t.status !== "done" && !t.isTriage);
+    const breached = [];
+    const atRisk = [];
+    let escalated = 0;
+    for (const t of tasks) {
+      let dueMs = null;
+      let basis = null;
+      if (t.dueDate) {
+        dueMs = Date.parse(`${t.dueDate}T23:59:59Z`);
+        basis = "due_date";
+      } else {
+        const policy = polByPriority.get(t.priority);
+        if (policy) {
+          dueMs = Date.parse(t.createdAt) + policy.responseDays * PJ_DAY;
+          basis = "sla_policy";
+        }
+      }
+      if (dueMs == null) continue;
+      const hoursLeft = (dueMs - now) / 3_600_000;
+      if (hoursLeft < 0) {
+        breached.push({ id: t.id, ref: t.ref, title: t.title, basis, overdueDays: Math.round(-hoursLeft / 24 * 10) / 10 });
+        // Escalate at most once per day.
+        if (t.slaEscalatedOn !== today) {
+          const policy = polByPriority.get(t.priority);
+          const targetPriority = policy ? policy.escalateTo : "urgent";
+          if ((prRank[targetPriority] || 0) > (prRank[t.priority] || 0)) {
+            const prev = t.priority;
+            t.priority = targetPriority;
+            t.updatedAt = pjNow();
+            pjLog(s, userId, t.id, "sla", `escalated ${prev} → ${targetPriority}`);
+            pjRunRules(s, userId, t, "priority_changed");
+            escalated += 1;
+          }
+          t.slaEscalatedOn = today;
+          pjNotify(s, userId, {
+            kind: "sla", projectId, taskId: t.id,
+            title: "SLA breach", detail: `${t.ref} is overdue (${basis.replace(/_/g, " ")})`,
+          });
+        }
+      } else if (hoursLeft <= 24) {
+        atRisk.push({ id: t.id, ref: t.ref, title: t.title, basis, hoursLeft: Math.round(hoursLeft * 10) / 10 });
+      }
+    }
+    savePjState();
+    return {
+      ok: true,
+      result: {
+        breached, atRisk, escalated,
+        breachedCount: breached.length, atRiskCount: atRisk.length,
+      },
+    };
+  });
 }

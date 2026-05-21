@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   FolderKanban, Plus, KanbanSquare, ListChecks, CalendarRange, Repeat, BarChart3,
-  Flag, Users, Settings2, Briefcase, Loader2,
+  Flag, Users, Settings2, Briefcase, Loader2, Radio,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -22,13 +22,14 @@ import { PjPlanningPanel } from './PjPlanningPanel';
 import { PjTeamPanel } from './PjTeamPanel';
 import { PjSettingsPanel } from './PjSettingsPanel';
 import { PjPortfolioPanel } from './PjPortfolioPanel';
+import { PjCollabPanel } from './PjCollabPanel';
 
 interface Project { id: string; name: string; key: string; color: string; status: string; health: string; archived: boolean }
 interface Dash {
   name: string; totalTasks: number; done: number; completionPct: number;
   overdue: number; activeSprints: number; openMilestones: number; members: number;
 }
-type TabId = 'board' | 'backlog' | 'timeline' | 'sprints' | 'reports' | 'planning' | 'team' | 'settings' | 'portfolio';
+type TabId = 'board' | 'backlog' | 'timeline' | 'sprints' | 'reports' | 'planning' | 'team' | 'collab' | 'settings' | 'portfolio';
 const TABS: { id: TabId; label: string; icon: typeof KanbanSquare }[] = [
   { id: 'board', label: 'Board', icon: KanbanSquare },
   { id: 'backlog', label: 'Backlog', icon: ListChecks },
@@ -37,6 +38,7 @@ const TABS: { id: TabId; label: string; icon: typeof KanbanSquare }[] = [
   { id: 'reports', label: 'Reports', icon: BarChart3 },
   { id: 'planning', label: 'Planning', icon: Flag },
   { id: 'team', label: 'Team', icon: Users },
+  { id: 'collab', label: 'Collab', icon: Radio },
   { id: 'settings', label: 'Settings', icon: Settings2 },
   { id: 'portfolio', label: 'Portfolio', icon: Briefcase },
 ];
@@ -183,6 +185,7 @@ export function ProjectsSection() {
                 {tab === 'reports' && <PjReportsPanel projectId={activeProject} />}
                 {tab === 'planning' && <PjPlanningPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'team' && <PjTeamPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'collab' && <PjCollabPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'settings' && <PjSettingsPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'portfolio' && <PjPortfolioPanel />}
               </div>

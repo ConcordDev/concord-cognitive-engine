@@ -225,6 +225,7 @@ import tools from './tools.js';
 import goddessLens from './goddess.js';
 import cognitionLens from './cognition.js';
 import sandboxLens from './sandbox.js';
+import rootLens from './root.js';
 
 export default [
   healthcare,
@@ -443,4 +444,5 @@ export default [
   goddessLens,
   cognitionLens,
   sandboxLens,
+  rootLens,
 ];

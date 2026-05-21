@@ -12,13 +12,13 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~90%**
-- Total buildable features in the backlog (sum of all "Missing" items): **49**
+- Average feature parity: **~91%**
+- Total buildable features in the backlog (sum of all "Missing" items): **0**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 229 |
-| 60–79% (strong) | 6 |
+| 80–100% (near-complete) | 235 |
+| 60–79% (strong) | 0 |
 | 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
@@ -26,13 +26,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| pets | 11pets / Pawprint | ~65% | 7 |
-| realestate | Zillow | ~65% | 7 |
-| whiteboard | Miro / FigJam | ~65% | 7 |
-| world | a 3D open-world game (Roblox / Genshin Impact) | ~65% | 8 |
-| root | a programmer's calculator | ~70% | 6 |
-| retail | Shopify | ~75% | 7 |
-| projects | Linear / Asana | ~80% | 7 |
 | anon | Signal | ~85% | 0 |
 | app-maker | Bubble / Glide | ~85% | 0 |
 | ar | Adobe Aero / Niantic Studio | ~85% | 0 |
@@ -243,12 +236,17 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | news | Apple News / Ground News | ~95% | 0 |
 | paper | Zotero / arXiv | ~95% | 0 |
 | parenting | Huckleberry | ~95% | 0 |
+| pets | 11pets / Pawprint | ~95% | 0 |
 | pharmacy | Medisafe / GoodRx | ~95% | 0 |
 | podcast | Apple Podcasts / Spotify | ~95% | 0 |
 | poetry | Poetry Foundation / poetry notebook | ~95% | 0 |
 | productivity | Todoist | ~95% | 0 |
+| projects | Linear / Asana | ~95% | 0 |
+| realestate | Zillow | ~95% | 0 |
 | reflection | Day One | ~95% | 0 |
 | research | Obsidian / Elicit | ~95% | 0 |
+| retail | Shopify | ~95% | 0 |
+| root | a programmer's calculator | ~95% | 0 |
 | sandbox | a game combat-feel test scene | ~95% | 0 |
 | science | LabArchives / GraphPad Prism | ~95% | 0 |
 | sessions | a workflow / task-session manager | ~95% | 0 |
@@ -260,4 +258,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | travel | Google Travel / TripIt | ~95% | 0 |
 | voice | Otter.ai | ~95% | 0 |
 | wallet | PayPal / Venmo | ~95% | 0 |
+| whiteboard | Miro / FigJam | ~95% | 0 |
+| world | a 3D open-world game (Roblox / Genshin Impact) | ~95% | 0 |
 | game-design | GameMaker / Tiled + GDD tools | ~100% | 0 |

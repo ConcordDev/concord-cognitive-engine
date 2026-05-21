@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Save, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 import { PjTaskDetail } from './PjTaskDetail';
 
 interface Task {

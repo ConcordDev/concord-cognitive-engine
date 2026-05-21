@@ -516,3 +516,154 @@ describe("retail.analytics-* (revenue/top products/summary)", () => {
     assert.equal(r.result.customerCount, 1);
   });
 });
+
+// ─── 2026 parity backlog — Shopify feature gaps ─────────────────────
+
+describe("retail.storefront-* (buyer-facing shop)", () => {
+  it("configure assigns a slug + publish exposes catalog + checkout writes an order", () => {
+    call("product-upsert", ctxA, { sku: "SF1", name: "Sun Hat", price: 25, stock: 10 });
+    const cfg = call("storefront-configure", ctxA, { name: "Beach Co", tagline: "Summer goods", theme: "warm" });
+    assert.equal(cfg.ok, true);
+    assert.ok(cfg.result.storefront.slug);
+    const pub = call("storefront-publish", ctxA, { published: true, publishedSkus: ["SF1"] });
+    assert.equal(pub.ok, true);
+    assert.equal(pub.result.publicUrl, `/shop/${cfg.result.storefront.slug}`);
+    const cat = call("storefront-catalog", ctxA, {});
+    assert.equal(cat.result.published, true);
+    assert.equal(cat.result.products.length, 1);
+    const co = call("storefront-checkout", ctxA, { buyerName: "Pat", buyerEmail: "pat@x.com", lines: [{ sku: "SF1", qty: 2 }] });
+    assert.equal(co.ok, true);
+    assert.equal(co.result.order.channel, "storefront");
+    assert.equal(co.result.order.total, 50);
+    assert.equal(call("product-list", ctxA).result.products[0].stock, 8);
+  });
+  it("rejects checkout when storefront not published or stock insufficient", () => {
+    call("product-upsert", ctxA, { sku: "SF2", name: "Tote", price: 5, stock: 1 });
+    assert.equal(call("storefront-checkout", ctxA, { buyerName: "A", buyerEmail: "a@x", lines: [{ sku: "SF2", qty: 1 }] }).ok, false);
+    call("storefront-configure", ctxA, { name: "Shop B" });
+    call("storefront-publish", ctxA, { published: true });
+    assert.equal(call("storefront-checkout", ctxA, { buyerName: "A", buyerEmail: "a@x", lines: [{ sku: "SF2", qty: 9 }] }).ok, false);
+  });
+});
+
+describe("retail.fulfillment-* (pick/pack/ship workflow)", () => {
+  it("advances an order through fulfillment stages + records a shipment notice", () => {
+    call("product-upsert", ctxA, { sku: "F1", name: "Box", price: 12, stock: 5 });
+    call("storefront-configure", ctxA, { name: "Fulfil Co" });
+    call("storefront-publish", ctxA, { published: true });
+    const co = call("storefront-checkout", ctxA, { buyerName: "Lee", buyerEmail: "lee@x.com", lines: [{ sku: "F1", qty: 1 }] });
+    const orderId = co.result.order.id;
+    const q = call("fulfillment-queue", ctxA, {});
+    assert.equal(q.result.queue.length, 1);
+    assert.equal(q.result.queue[0].fulfillmentStatus, "unfulfilled");
+    assert.equal(call("fulfillment-advance", ctxA, { orderId }).result.order.fulfillmentStatus, "picking");
+    assert.equal(call("fulfillment-advance", ctxA, { orderId }).result.order.fulfillmentStatus, "packed");
+    const shipped = call("fulfillment-advance", ctxA, { orderId });
+    assert.equal(shipped.result.order.fulfillmentStatus, "shipped");
+    assert.ok(shipped.result.notification);
+    assert.equal(call("fulfillment-notifications", ctxA, {}).result.notifications.length, 1);
+  });
+  it("rejects backward fulfillment moves", () => {
+    call("product-upsert", ctxA, { sku: "F2", name: "Y", price: 1, stock: 9 });
+    call("storefront-configure", ctxA, { name: "C" });
+    call("storefront-publish", ctxA, { published: true });
+    const co = call("storefront-checkout", ctxA, { buyerName: "B", buyerEmail: "b@x", lines: [{ sku: "F2", qty: 1 }] });
+    call("fulfillment-advance", ctxA, { orderId: co.result.order.id, toStatus: "packed" });
+    assert.equal(call("fulfillment-advance", ctxA, { orderId: co.result.order.id, toStatus: "picking" }).ok, false);
+  });
+});
+
+describe("retail.shipping-label-* + shipping-track (carrier integration)", () => {
+  it("label-buy returns a clear not-configured error without a provider", async () => {
+    call("product-upsert", ctxA, { sku: "L1", name: "Z", price: 1, stock: 5 });
+    call("storefront-configure", ctxA, { name: "Ship Co" });
+    call("storefront-publish", ctxA, { published: true });
+    const co = call("storefront-checkout", ctxA, { buyerName: "B", buyerEmail: "b@x", lines: [{ sku: "L1", qty: 1 }] });
+    const r = await call("shipping-label-buy", ctxA, { orderId: co.result.order.id, carrier: "usps", toAddress: { name: "B" } });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not configured/i);
+  });
+  it("shipping-track requires a tracking number + provider config", async () => {
+    assert.equal((await call("shipping-track", ctxA, {})).ok, false);
+    assert.equal((await call("shipping-track", ctxA, { trackingNumber: "1Z999" })).ok, false);
+    assert.equal(call("shipping-labels-list", ctxA, {}).result.labels.length, 0);
+  });
+});
+
+describe("retail.campaigns-* (marketing campaigns + conversion tracking)", () => {
+  it("create + send + record-conversion + performance cycle", () => {
+    call("customers-add", ctxA, { name: "Mia", email: "mia@x.com", acceptsMarketing: true });
+    const c = call("campaigns-create", ctxA, { name: "Spring", channel: "email", segment: "marketing", subject: "Sale" });
+    assert.equal(c.ok, true);
+    const sent = call("campaigns-send", ctxA, { id: c.result.campaign.id });
+    assert.equal(sent.result.campaign.status, "sent");
+    assert.equal(sent.result.recipients.length, 1);
+    call("product-upsert", ctxA, { sku: "C1", name: "Q", price: 40, stock: 5 });
+    const cart = call("cart-open", ctxA);
+    call("cart-add-line", ctxA, { cartId: cart.result.cart.id, sku: "C1", qty: 1 });
+    const ord = call("cart-tender", ctxA, { cartId: cart.result.cart.id, tenders: [{ kind: "cash", amount: 40 }] });
+    const conv = call("campaigns-record-conversion", ctxA, { id: c.result.campaign.id, orderId: ord.result.order.id });
+    assert.equal(conv.result.campaign.conversions, 1);
+    assert.equal(conv.result.campaign.revenue, 40);
+    const perf = call("campaigns-performance", ctxA, {});
+    assert.equal(perf.result.totals.totalRevenue, 40);
+  });
+  it("discount campaigns require a discount code", () => {
+    assert.equal(call("campaigns-create", ctxA, { name: "X", channel: "discount" }).ok, false);
+  });
+});
+
+describe("retail.channels-* (multi-channel listing)", () => {
+  it("connect + list-products + sync-inventory cycle", () => {
+    call("product-upsert", ctxA, { sku: "MC1", name: "Mug", price: 8, stock: 20 });
+    const conn = call("channels-connect", ctxA, { channel: "etsy", storeName: "My Etsy" });
+    assert.equal(conn.ok, true);
+    const listed = call("channels-list-products", ctxA, { id: conn.result.channel.id, skus: ["MC1"] });
+    assert.equal(listed.result.channel.listedSkus.length, 1);
+    const sync = call("channels-sync-inventory", ctxA, {});
+    assert.equal(sync.result.channels[0].updates[0].stock, 20);
+    assert.equal(call("channels-disconnect", ctxA, { id: conn.result.channel.id }).ok, true);
+  });
+  it("rejects unsupported channels", () => {
+    assert.equal(call("channels-connect", ctxA, { channel: "myspace" }).ok, false);
+  });
+});
+
+describe("retail.reviews-* (product reviews + ratings)", () => {
+  it("submit + summary + moderate cycle", () => {
+    call("product-upsert", ctxA, { sku: "RV1", name: "Lamp", price: 30, stock: 5 });
+    const sub = call("reviews-submit", ctxA, { sku: "RV1", rating: 5, authorName: "Sam", body: "Great" });
+    assert.equal(sub.ok, true);
+    assert.equal(sub.result.review.rating, 5);
+    const sum = call("reviews-summary", ctxA, {});
+    assert.equal(sum.result.totalReviews, 1);
+    assert.equal(sum.result.avgRating, 5);
+    const mod = call("reviews-moderate", ctxA, { id: sub.result.review.id, status: "hidden" });
+    assert.equal(mod.result.review.status, "hidden");
+    assert.equal(call("reviews-summary", ctxA, {}).result.totalReviews, 0);
+  });
+  it("rejects out-of-range ratings + missing product", () => {
+    assert.equal(call("reviews-submit", ctxA, { sku: "RV1", rating: 9, authorName: "A" }).ok, false);
+    assert.equal(call("reviews-submit", ctxA, { sku: "NOPE", rating: 4, authorName: "A" }).ok, false);
+  });
+});
+
+describe("retail.staff-* (staff accounts + permissions)", () => {
+  it("invite + activate + check-permission cycle", () => {
+    const inv = call("staff-invite", ctxA, { name: "Joe", email: "joe@x.com", role: "cashier" });
+    assert.equal(inv.ok, true);
+    assert.equal(inv.result.member.status, "invited");
+    const act = call("staff-activate", ctxA, { id: inv.result.member.id });
+    assert.equal(act.result.member.status, "active");
+    const ok = call("staff-check-permission", ctxA, { id: inv.result.member.id, permission: "orders" });
+    assert.equal(ok.result.allowed, true);
+    const denied = call("staff-check-permission", ctxA, { id: inv.result.member.id, permission: "staff" });
+    assert.equal(denied.result.allowed, false);
+    assert.equal(call("staff-remove", ctxA, { id: inv.result.member.id }).ok, true);
+  });
+  it("rejects unknown roles + duplicate emails", () => {
+    assert.equal(call("staff-invite", ctxA, { name: "A", email: "a@x", role: "wizard" }).ok, false);
+    call("staff-invite", ctxA, { name: "A", email: "dup@x", role: "manager" });
+    assert.equal(call("staff-invite", ctxA, { name: "B", email: "dup@x", role: "manager" }).ok, false);
+  });
+});

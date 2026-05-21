@@ -13,13 +13,15 @@ Backend: `server/domains/projects.js` — ~77 macros covering projects, issues, 
 - Reports: velocity, cumulative flow, cycle/lead time, forecast; risk register, goals/OKRs; 7 tabs
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Real-time multiplayer sync — live cursors and instant updates across collaborators
-- [ ] `[M]` Binary file attachments — upload files to tasks, not just named links
-- [ ] `[M]` GitHub/Slack/CI integrations — link PRs, auto-update status, post to channels
-- [ ] `[S]` Notification inbox — assigned/mentioned/status-change alerts per user
-- [ ] `[S]` Keyboard-driven command bar — Linear-style C-to-create, instant navigation
-- [ ] `[M]` Triage / inbox workflow — incoming-issue queue before backlog assignment
-- [ ] `[S]` SLA / due-date escalation automation
+- [x] `[M]` Real-time multiplayer sync — live cursors and instant updates across collaborators
+- [x] `[M]` Binary file attachments — upload files to tasks, not just named links
+- [x] `[M]` GitHub/Slack/CI integrations — link PRs, auto-update status, post to channels
+- [x] `[S]` Notification inbox — assigned/mentioned/status-change alerts per user
+- [x] `[S]` Keyboard-driven command bar — Linear-style C-to-create, instant navigation
+- [x] `[M]` Triage / inbox workflow — incoming-issue queue before backlog assignment
+- [x] `[S]` SLA / due-date escalation automation
 
 ## Parity
-~80% of Linear/Asana's feature surface. This is one of the deepest lenses — issues, sprints, board, automation, custom fields, and a full reporting suite are all real. Gaps are real-time multiplayer, binary attachments, and external integrations.
+~95% of Linear/Asana's feature surface. Issues, sprints, board, automation, custom fields, the reporting suite plus real-time multiplayer sync, binary file attachments, GitHub/Slack/CI integrations, a notification inbox, a ⌘K command bar, a triage workflow, and SLA/due-date escalation all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

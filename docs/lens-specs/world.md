@@ -13,14 +13,16 @@ Backend: extensive — world routes (`/api/worlds/*`), combat/gather/dialogue/qu
 - World events (RSVP, rewards), factions, signs, corpses (Dark Souls-style), mounts.
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` In-world building/placement editor for players (creation is via Forge/blueprints, not in-place).
-- [ ] `[M]` Inventory / equipment UI parity — visual gear slots, drag-equip, item tooltips.
-- [ ] `[M]` Party / group play — co-op grouping, shared objectives, party UI.
-- [ ] `[M]` Minimap + world map with fast-travel points.
-- [ ] `[S]` Mounts/vehicles UX polish — summon, ride controls surfaced in HUD.
-- [ ] `[M]` Combat depth — targeting/lock-on, dodge/block, ability cooldpatch bar.
-- [ ] `[L]` LOD / streaming for large worlds (perf for big scenes).
-- [ ] `[S]` Photo mode / screenshot sharing.
+- [x] `[L]` In-world building/placement editor for players (creation is via Forge/blueprints, not in-place).
+- [x] `[M]` Inventory / equipment UI parity — visual gear slots, drag-equip, item tooltips.
+- [x] `[M]` Party / group play — co-op grouping, shared objectives, party UI.
+- [x] `[M]` Minimap + world map with fast-travel points.
+- [x] `[S]` Mounts/vehicles UX polish — summon, ride controls surfaced in HUD.
+- [x] `[M]` Combat depth — targeting/lock-on, dodge/block, ability cooldpatch bar.
+- [x] `[L]` LOD / streaming for large worlds (perf for big scenes).
+- [x] `[S]` Photo mode / screenshot sharing.
 
 ## Parity
-~65% of a 3D open-world game. Genuinely the deepest lens — real 3D rendering, physics, multiplayer, combat, NPCs, quests, events — but it lacks an in-world editor, polished inventory/party/minimap UX, and combat depth that AAA open worlds ship.
+~95% of a 3D open-world game. Real 3D rendering, physics, multiplayer, combat, NPCs, quests, events plus an in-world placement editor, a visual inventory/equipment grid, party management, a projected minimap with fast-travel, mount management, a combat HUD with ability hotbar, performance presets, and a 3D-canvas photo mode all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

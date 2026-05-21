@@ -500,6 +500,8 @@ export default function registerPetsActions(registerLensAction) {
       "pets", "vaccines", "medications", "vetVisits", "weights",
       "careActivities", "symptoms", "reminders", "documents", "expenses",
       "caregivers", "bookings",
+      // 2026-parity additions
+      "petAccess", "photos", "appointments", "lostProfiles",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -1117,6 +1119,537 @@ export default function registerPetsActions(registerLensAction) {
         activeBookings: (s.bookings.get(userId) || []).filter((b) => ["requested", "confirmed", "in_progress"].includes(b.status)).length,
       },
     };
+  });
+
+  // ─── 2026 feature-parity backlog — 11pets / Pawprint ────────────────
+  // Vaccine ICS export · shareable record · multi-caregiver access ·
+  // photo gallery/timeline · vet appointment booking · breed-specific
+  // care guidance · lost-pet microchip ID card.
+
+  // Resolve a pet visible to a user — own pet OR a pet shared with them
+  // via household access grants. Returns { pet, ownerUserId, role }.
+  function resolveSharedPet(s, userId, petId) {
+    const own = findPet(s, userId, petId);
+    if (own) return { pet: own, ownerUserId: userId, role: "owner" };
+    for (const [ownerId, grants] of s.petAccess.entries()) {
+      const g = (grants || []).find(
+        (x) => x.petId === petId && x.userId === userId && x.revoked !== true,
+      );
+      if (g) {
+        const pet = findPet(s, ownerId, petId);
+        if (pet) return { pet, ownerUserId: ownerId, role: g.role };
+      }
+    }
+    return { pet: null, ownerUserId: null, role: null };
+  }
+  function icsEscape(v) {
+    return String(v == null ? "" : v)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;")
+      .replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  }
+  function icsStamp(dateStr) {
+    // all-day VEVENT date value (YYYYMMDD)
+    const d = pday(dateStr).replace(/-/g, "");
+    return d.length === 8 ? d : pday(pnow()).replace(/-/g, "");
+  }
+
+  // ── Vaccine due-date reminders + calendar (ICS) export ──────────────
+  registerLensAction("pets", "vaccine-due-export", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const ownPets = s.pets.get(userId) || [];
+    let pets = ownPets;
+    if (params.petId) {
+      const { pet } = resolveSharedPet(s, userId, String(params.petId));
+      if (!pet) return { ok: false, error: "pet not found" };
+      pets = [pet];
+    }
+    const petName = new Map(pets.map((p) => [p.id, p.name]));
+    const events = [];
+    for (const p of pets) {
+      for (const v of s.vaccines.get(p.id) || []) {
+        if (!v.nextDueDate) continue;
+        events.push({
+          petId: p.id, petName: petName.get(p.id) || p.name,
+          vaccine: v.name, dueDate: v.nextDueDate,
+          status: dueState(v.nextDueDate), vet: v.vet || null,
+        });
+      }
+    }
+    events.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
+    const stampNow = pnow().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    const lines = [
+      "BEGIN:VCALENDAR", "VERSION:2.0",
+      "PRODID:-//Concord//Pets Vaccine Schedule//EN", "CALSCALE:GREGORIAN",
+    ];
+    for (const e of events) {
+      const start = icsStamp(e.dueDate);
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:vac-${e.petId}-${start}-${Math.random().toString(36).slice(2, 8)}@concord-os.org`,
+        `DTSTAMP:${stampNow}`,
+        `DTSTART;VALUE=DATE:${start}`,
+        `SUMMARY:${icsEscape(`${e.vaccine} due — ${e.petName}`)}`,
+        `DESCRIPTION:${icsEscape(`${e.vaccine} vaccination due for ${e.petName}.${e.vet ? ` Vet: ${e.vet}.` : ""}`)}`,
+        "BEGIN:VALARM", "TRIGGER:-P7D", "ACTION:DISPLAY",
+        `DESCRIPTION:${icsEscape(`${e.vaccine} for ${e.petName} due in 7 days`)}`,
+        "END:VALARM", "END:VEVENT",
+      );
+    }
+    lines.push("END:VCALENDAR");
+    return {
+      ok: true,
+      result: {
+        events,
+        overdue: events.filter((e) => e.status === "overdue").length,
+        dueSoon: events.filter((e) => e.status === "due_soon").length,
+        ics: lines.join("\r\n"),
+        filename: `vaccine-schedule-${pday(pnow())}.ics`,
+      },
+    };
+  });
+
+  // ── Shareable / portable health record export ───────────────────────
+  registerLensAction("pets", "health-record-export", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const { pet } = resolveSharedPet(s, userId, String(params.petId));
+    if (!pet) return { ok: false, error: "pet not found" };
+    const vaccines = (s.vaccines.get(pet.id) || [])
+      .map((v) => ({ name: v.name, date: v.date, nextDueDate: v.nextDueDate, vet: v.vet, status: dueState(v.nextDueDate) }))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    const medications = (s.medications.get(pet.id) || [])
+      .map((m) => ({ name: m.name, dosage: m.dosage, frequency: m.frequency, startDate: m.startDate, endDate: m.endDate, active: m.active }));
+    const vetVisits = (s.vetVisits.get(pet.id) || [])
+      .map((v) => ({ date: v.date, reason: v.reason, diagnosis: v.diagnosis, vet: v.vet, cost: v.cost }))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    const weights = (s.weights.get(pet.id) || [])
+      .map((w) => ({ date: w.date, weightKg: w.weightKg }))
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const symptoms = (s.symptoms.get(pet.id) || [])
+      .map((x) => ({ date: x.date, symptom: x.symptom, severity: x.severity, note: x.note }))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    const age = petAge(pet.birthdate);
+    const record = {
+      spec: "concord-pet-health-record/v1",
+      generatedAt: pnow(),
+      pet: {
+        name: pet.name, species: pet.species, breed: pet.breed,
+        sex: pet.sex, birthdate: pet.birthdate,
+        ageYears: age ? age.years : null, ageMonths: age ? age.months : null,
+        weightKg: pet.weightKg, microchipId: pet.microchipId, neutered: pet.neutered,
+      },
+      vaccines, medications, vetVisits, weights, symptoms,
+      summary: {
+        vaccineCount: vaccines.length,
+        overdueVaccines: vaccines.filter((v) => v.status === "overdue").length,
+        activeMedications: medications.filter((m) => m.active).length,
+        vetVisitCount: vetVisits.length,
+        latestWeightKg: weights.length ? weights[weights.length - 1].weightKg : null,
+      },
+    };
+    // Plain-text rendering for vet / boarding handoff.
+    const tx = [];
+    tx.push(`PET HEALTH RECORD — ${pet.name}`);
+    tx.push(`Generated ${record.generatedAt}`);
+    tx.push("");
+    tx.push(`Species: ${pet.species}  Breed: ${pet.breed || "-"}  Sex: ${pet.sex}`);
+    tx.push(`Birthdate: ${pet.birthdate || "-"}  Age: ${age ? `${age.years}y ${age.months}m` : "-"}`);
+    tx.push(`Weight: ${pet.weightKg || "-"} kg  Microchip: ${pet.microchipId || "-"}  Neutered: ${pet.neutered ? "yes" : "no"}`);
+    tx.push("");
+    tx.push(`VACCINATIONS (${vaccines.length})`);
+    for (const v of vaccines) tx.push(`  - ${v.name}: given ${v.date || "-"}, next due ${v.nextDueDate || "-"} [${v.status}]`);
+    tx.push("");
+    tx.push(`MEDICATIONS (${medications.length})`);
+    for (const m of medications) tx.push(`  - ${m.name} ${m.dosage || ""} ${m.frequency || ""} ${m.active ? "(active)" : "(stopped)"}`);
+    tx.push("");
+    tx.push(`VET VISITS (${vetVisits.length})`);
+    for (const v of vetVisits) tx.push(`  - ${v.date || "-"}: ${v.reason}${v.diagnosis ? ` — ${v.diagnosis}` : ""}`);
+    tx.push("");
+    tx.push(`SYMPTOM HISTORY (${symptoms.length})`);
+    for (const x of symptoms) tx.push(`  - ${x.date || "-"}: ${x.symptom} [${x.severity}]`);
+    return { ok: true, result: { record, text: tx.join("\n"), filename: `health-record-${pet.name.replace(/\s+/g, "-").toLowerCase()}.json` } };
+  });
+
+  // ── Multi-caregiver shared household access ──────────────────────────
+  const ACCESS_ROLES = ["co_owner", "caregiver", "viewer"];
+  registerLensAction("pets", "access-grant", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const pet = findPet(s, userId, params.petId);
+    if (!pet) return { ok: false, error: "pet not found (only the owner can grant access)" };
+    const targetUserId = pclean(params.userId, 120);
+    if (!targetUserId) return { ok: false, error: "userId required" };
+    if (targetUserId === userId) return { ok: false, error: "you already own this pet" };
+    const role = ACCESS_ROLES.includes(String(params.role).toLowerCase())
+      ? String(params.role).toLowerCase() : "caregiver";
+    const grants = plistB(s.petAccess, userId);
+    const existing = grants.find((g) => g.petId === pet.id && g.userId === targetUserId);
+    if (existing) {
+      existing.role = role; existing.revoked = false; existing.updatedAt = pnow();
+      savePetState();
+      return { ok: true, result: { grant: existing, updated: true } };
+    }
+    const grant = {
+      id: pid("acc"), petId: pet.id, petName: pet.name,
+      ownerUserId: userId, userId: targetUserId,
+      displayName: pclean(params.displayName, 80) || null,
+      role, revoked: false, createdAt: pnow(),
+    };
+    grants.push(grant);
+    savePetState();
+    return { ok: true, result: { grant } };
+  });
+
+  registerLensAction("pets", "access-list", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    if (params.petId) {
+      const pet = findPet(s, userId, params.petId);
+      if (!pet) return { ok: false, error: "pet not found (only the owner can list access)" };
+      const grants = (s.petAccess.get(userId) || []).filter((g) => g.petId === pet.id && !g.revoked);
+      return { ok: true, result: { grants, count: grants.length } };
+    }
+    // pets shared *with* this user
+    const shared = [];
+    for (const [ownerId, grants] of s.petAccess.entries()) {
+      for (const g of grants || []) {
+        if (g.userId === userId && !g.revoked) {
+          const pet = findPet(s, ownerId, g.petId);
+          if (pet) shared.push({ ...g, pet: { ...pet, age: petAge(pet.birthdate) } });
+        }
+      }
+    }
+    return { ok: true, result: { sharedWithMe: shared, count: shared.length } };
+  });
+
+  registerLensAction("pets", "access-revoke", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const grants = s.petAccess.get(userId) || [];
+    const g = grants.find((x) => x.id === params.id);
+    if (!g) return { ok: false, error: "access grant not found" };
+    g.revoked = true; g.updatedAt = pnow();
+    savePetState();
+    return { ok: true, result: { revoked: g.id } };
+  });
+
+  // ── Photo gallery / timeline per pet ────────────────────────────────
+  registerLensAction("pets", "photo-add", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const { pet, role } = resolveSharedPet(s, userId, String(params.petId));
+    if (!pet) return { ok: false, error: "pet not found" };
+    if (role === "viewer") return { ok: false, error: "viewers cannot add photos" };
+    const url = pclean(params.url, 1000);
+    if (!url) return { ok: false, error: "url required" };
+    const photo = {
+      id: pid("pho"), petId: pet.id, url,
+      caption: pclean(params.caption, 200) || null,
+      takenOn: pday(params.takenOn) || pday(pnow()),
+      milestone: pclean(params.milestone, 60).toLowerCase() || null,
+      addedBy: userId, createdAt: pnow(),
+    };
+    plistB(s.photos, pet.id).push(photo);
+    savePetState();
+    return { ok: true, result: { photo } };
+  });
+
+  registerLensAction("pets", "photo-timeline", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const { pet } = resolveSharedPet(s, userId, String(params.petId));
+    if (!pet) return { ok: false, error: "pet not found" };
+    const photos = (s.photos.get(pet.id) || []).slice()
+      .sort((a, b) => String(b.takenOn).localeCompare(String(a.takenOn)));
+    const byMonth = {};
+    for (const p of photos) {
+      const m = String(p.takenOn).slice(0, 7);
+      if (!byMonth[m]) byMonth[m] = [];
+      byMonth[m].push(p);
+    }
+    const timeline = Object.keys(byMonth).sort((a, b) => b.localeCompare(a))
+      .map((month) => ({ month, photos: byMonth[month] }));
+    return {
+      ok: true,
+      result: {
+        photos, timeline, count: photos.length,
+        milestones: photos.filter((p) => p.milestone).length,
+      },
+    };
+  });
+
+  registerLensAction("pets", "photo-delete", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const { pet, role } = resolveSharedPet(s, userId, String(params.petId));
+    if (!pet) return { ok: false, error: "pet not found" };
+    if (role === "viewer") return { ok: false, error: "viewers cannot delete photos" };
+    const arr = s.photos.get(pet.id) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "photo not found" };
+    arr.splice(i, 1);
+    savePetState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Vet appointment booking ─────────────────────────────────────────
+  const APPT_REASONS = ["checkup", "vaccination", "illness", "surgery", "dental", "grooming", "emergency", "follow_up", "other"];
+  registerLensAction("pets", "appointment-book", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const { pet, role } = resolveSharedPet(s, userId, String(params.petId));
+    if (!pet) return { ok: false, error: "pet not found" };
+    if (role === "viewer") return { ok: false, error: "viewers cannot book appointments" };
+    const date = pday(params.date);
+    if (!date) return { ok: false, error: "date required (YYYY-MM-DD)" };
+    const reason = APPT_REASONS.includes(String(params.reason).toLowerCase())
+      ? String(params.reason).toLowerCase() : "checkup";
+    const appt = {
+      id: pid("apt"), petId: pet.id, petName: pet.name,
+      bookedBy: userId,
+      clinic: pclean(params.clinic, 120) || null,
+      vet: pclean(params.vet, 120) || null,
+      date, time: pclean(params.time, 8) || null,
+      reason, notes: pclean(params.notes, 300) || null,
+      status: "scheduled", createdAt: pnow(),
+    };
+    plistB(s.appointments, pet.id).push(appt);
+    // Auto-create a reminder so it surfaces in the unified reminder feed.
+    plistB(s.reminders, pet.id).push({
+      id: pid("rem"), petId: pet.id,
+      title: `Vet appointment: ${reason}${appt.clinic ? ` @ ${appt.clinic}` : ""}`,
+      kind: "vet_appointment", dueDate: date, done: false,
+      apptId: appt.id, createdAt: pnow(),
+    });
+    savePetState();
+    return { ok: true, result: { appointment: appt } };
+  });
+
+  registerLensAction("pets", "appointment-list", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    let appts = [];
+    if (params.petId) {
+      const { pet } = resolveSharedPet(s, userId, String(params.petId));
+      if (!pet) return { ok: false, error: "pet not found" };
+      appts = (s.appointments.get(pet.id) || []).slice();
+    } else {
+      for (const p of s.pets.get(userId) || []) appts.push(...(s.appointments.get(p.id) || []));
+    }
+    appts = appts.map((a) => ({ ...a, timing: a.status === "scheduled" ? dueState(a.date) : a.status }))
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    return {
+      ok: true,
+      result: {
+        appointments: appts,
+        upcoming: appts.filter((a) => a.status === "scheduled" && dueState(a.date) !== "overdue").length,
+        overdue: appts.filter((a) => a.status === "scheduled" && dueState(a.date) === "overdue").length,
+      },
+    };
+  });
+
+  registerLensAction("pets", "appointment-update", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const { pet, role } = resolveSharedPet(s, userId, String(params.petId));
+    if (!pet) return { ok: false, error: "pet not found" };
+    if (role === "viewer") return { ok: false, error: "viewers cannot modify appointments" };
+    const arr = s.appointments.get(pet.id) || [];
+    const appt = arr.find((a) => a.id === params.id);
+    if (!appt) return { ok: false, error: "appointment not found" };
+    const status = params.status ? String(params.status).toLowerCase() : null;
+    if (status && ["scheduled", "completed", "cancelled", "no_show"].includes(status)) {
+      appt.status = status;
+    }
+    if (params.date != null) { const d = pday(params.date); if (d) appt.date = d; }
+    if (params.time != null) appt.time = pclean(params.time, 8) || null;
+    if (params.notes != null) appt.notes = pclean(params.notes, 300) || null;
+    // If a completed checkup carries a cost, mirror into vet visits + expenses.
+    if (appt.status === "completed" && params.cost != null && !appt.loggedAsVisit) {
+      const cost = Math.max(0, pnum(params.cost));
+      plistB(s.vetVisits, pet.id).push({
+        id: pid("vis"), petId: pet.id, reason: `Appointment: ${appt.reason}`,
+        date: appt.date, diagnosis: pclean(params.diagnosis, 500) || null,
+        vet: appt.vet, cost, createdAt: pnow(),
+      });
+      if (cost > 0) {
+        plistB(s.expenses, pet.id).push({
+          id: pid("exp"), petId: pet.id, category: "vet", amount: cost,
+          date: appt.date, note: `Vet appointment: ${appt.reason}`, createdAt: pnow(),
+        });
+      }
+      appt.loggedAsVisit = true;
+    }
+    savePetState();
+    return { ok: true, result: { appointment: appt } };
+  });
+
+  // ── Breed-specific care guidance ────────────────────────────────────
+  // Surfaces health-risk + care guidance derived from real breed data
+  // (The Dog/Cat API life-span, weight, temperament, group).
+  registerLensAction("pets", "breed-care-guidance", async (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let species = String(params.species || "").toLowerCase();
+    let breedName = pclean(params.breed, 80);
+    if (params.petId) {
+      const { pet } = resolveSharedPet(s, paid(ctx), String(params.petId));
+      if (!pet) return { ok: false, error: "pet not found" };
+      species = species || pet.species;
+      breedName = breedName || pet.breed || "";
+    }
+    if (!["dog", "cat"].includes(species)) return { ok: false, error: "species must be 'dog' or 'cat'" };
+    if (!breedName) return { ok: false, error: "breed required" };
+    const base = species === "dog" ? "https://api.thedogapi.com/v1" : "https://api.thecatapi.com/v1";
+    let breed = null;
+    try {
+      const r = await fetch(`${base}/breeds/search?q=${encodeURIComponent(breedName)}`);
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data) && data.length) breed = data[0];
+      }
+    } catch (_e) { /* offline — fall through to generic guidance */ }
+
+    const risks = [];
+    const tips = [];
+    // Life-span — short-lived breeds need earlier senior screening.
+    let lifeMid = null;
+    if (breed?.life_span) {
+      const m = String(breed.life_span).match(/(\d+)\s*-\s*(\d+)/);
+      if (m) lifeMid = (Number(m[1]) + Number(m[2])) / 2;
+    }
+    if (lifeMid != null && lifeMid <= 11) {
+      risks.push(`Shorter typical lifespan (~${breed.life_span}) — begin senior wellness screening by age ${Math.max(5, Math.round(lifeMid * 0.55))}.`);
+    }
+    // Weight band — large breeds carry joint/cardiac risk.
+    const wMax = Number(String(breed?.weight?.metric || "").split("-").pop());
+    if (Number.isFinite(wMax) && species === "dog" && wMax >= 40) {
+      risks.push("Large-breed dog — elevated risk of hip/elbow dysplasia and bloat (GDV). Use joint support and avoid heavy exercise right after meals.");
+      tips.push("Feed two smaller meals rather than one large meal to lower bloat risk.");
+    }
+    if (Number.isFinite(wMax) && species === "dog" && wMax > 0 && wMax <= 7) {
+      risks.push("Toy/small breed — watch for dental disease, luxating patella, and hypoglycemia in puppies.");
+      tips.push("Daily tooth-brushing and annual dental checks are especially important for small breeds.");
+    }
+    // Brachycephalic — flat-faced breeds.
+    const flatFaced = /bulldog|pug|boxer|shih tzu|pekingese|boston|persian|himalayan|exotic/i;
+    if (flatFaced.test(breedName) || flatFaced.test(breed?.name || "")) {
+      risks.push("Brachycephalic (flat-faced) breed — prone to breathing difficulty (BOAS), heat intolerance, and eye injury.");
+      tips.push("Avoid exercise in heat/humidity; use a harness not a collar to protect the airway.");
+    }
+    // Temperament-driven enrichment guidance.
+    const temp = String(breed?.temperament || "").toLowerCase();
+    if (/active|energetic|alert|working|intelligent/.test(temp)) {
+      tips.push("High-drive temperament — needs daily structured exercise and mental enrichment to prevent destructive boredom.");
+    }
+    if (/affectionate|gentle|calm|companion/.test(temp)) {
+      tips.push("Companion temperament — thrives on social contact; minimise long periods alone.");
+    }
+    // Coat / grooming from breed group.
+    const grp = String(breed?.breed_group || "").toLowerCase();
+    if (/herding|sporting|working/.test(grp)) {
+      tips.push("Double-coated working breed — brush weekly and never shave the coat (it regulates temperature).");
+    }
+    if (species === "cat") {
+      tips.push("Schedule annual FVRCP + rabies boosters and a yearly wellness exam; indoor cats still need parasite prevention.");
+    }
+    // Universal baseline.
+    tips.push("Keep core vaccinations current and log weight monthly to catch trends early.");
+    if (!risks.length) {
+      risks.push("No breed-specific high-risk conditions flagged from available data — maintain routine preventive care.");
+    }
+    return {
+      ok: true,
+      result: {
+        species, breed: breed?.name || breedName,
+        matched: !!breed,
+        lifeSpan: breed?.life_span || null,
+        temperament: breed?.temperament || null,
+        breedGroup: breed?.breed_group || null,
+        weightMetric: breed?.weight?.metric || null,
+        healthRisks: risks,
+        careTips: [...new Set(tips)],
+        source: breed ? `the-${species}-api` : "generic",
+      },
+    };
+  });
+
+  // ── Lost-pet / microchip public ID card ─────────────────────────────
+  registerLensAction("pets", "lost-card-create", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const { pet, role } = resolveSharedPet(s, userId, String(params.petId));
+    if (!pet) return { ok: false, error: "pet not found" };
+    if (role === "viewer") return { ok: false, error: "viewers cannot publish a lost-pet card" };
+    const contactName = pclean(params.contactName, 80);
+    const contactPhone = pclean(params.contactPhone, 40);
+    if (!contactName || !contactPhone) return { ok: false, error: "contactName and contactPhone required" };
+    const existing = s.lostProfiles.get(pet.id);
+    const card = existing || { id: pid("lost"), petId: pet.id, ownerUserId: userId, createdAt: pnow() };
+    card.status = ["lost", "found", "safe"].includes(String(params.status).toLowerCase())
+      ? String(params.status).toLowerCase() : "lost";
+    card.petName = pet.name;
+    card.species = pet.species;
+    card.breed = pet.breed || null;
+    card.sex = pet.sex;
+    card.microchipId = pet.microchipId || pclean(params.microchipId, 40) || null;
+    card.color = pclean(params.color, 80) || null;
+    card.distinguishingMarks = pclean(params.distinguishingMarks, 300) || null;
+    card.photo = pclean(params.photo, 1000) || pet.photo || null;
+    card.lastSeenLocation = pclean(params.lastSeenLocation, 160) || null;
+    card.lastSeenDate = pday(params.lastSeenDate) || pday(pnow());
+    card.contactName = contactName;
+    card.contactPhone = contactPhone;
+    card.contactEmail = pclean(params.contactEmail, 120) || null;
+    card.reward = Math.max(0, pnum(params.reward));
+    card.notes = pclean(params.notes, 400) || null;
+    card.publicToken = card.publicToken || pid("ptk");
+    card.updatedAt = pnow();
+    s.lostProfiles.set(pet.id, card);
+    savePetState();
+    return { ok: true, result: { card } };
+  });
+
+  registerLensAction("pets", "lost-card-get", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // Lookup by public token (shareable, no auth needed) OR by petId for the owner.
+    if (params.publicToken) {
+      const token = String(params.publicToken);
+      for (const card of s.lostProfiles.values()) {
+        if (card.publicToken === token) return { ok: true, result: { card } };
+      }
+      return { ok: false, error: "lost-pet card not found" };
+    }
+    const { pet } = resolveSharedPet(s, paid(ctx), String(params.petId));
+    if (!pet) return { ok: false, error: "pet not found" };
+    const card = s.lostProfiles.get(pet.id);
+    if (!card) return { ok: false, error: "no lost-pet card for this pet" };
+    return { ok: true, result: { card } };
+  });
+
+  registerLensAction("pets", "lost-card-list", (ctx, _a, _params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const myPetIds = new Set((s.pets.get(userId) || []).map((p) => p.id));
+    const cards = [...s.lostProfiles.values()].filter((c) => myPetIds.has(c.petId));
+    return {
+      ok: true,
+      result: { cards, active: cards.filter((c) => c.status === "lost").length, count: cards.length },
+    };
+  });
+
+  registerLensAction("pets", "lost-card-resolve", (ctx, _a, params = {}) => {
+    const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = paid(ctx);
+    const pet = findPet(s, userId, params.petId);
+    if (!pet) return { ok: false, error: "pet not found (only the owner can resolve)" };
+    const card = s.lostProfiles.get(pet.id);
+    if (!card) return { ok: false, error: "no lost-pet card for this pet" };
+    card.status = "safe";
+    card.resolvedAt = pnow();
+    card.updatedAt = pnow();
+    savePetState();
+    return { ok: true, result: { card } };
   });
 
   // feed — ingest real dog-breed reference profiles from The Dog API as

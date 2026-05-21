@@ -10,7 +10,7 @@
  * a home-search app inside 200ms.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import dynamic from 'next/dynamic';
 import {
   Search, MapPin, Heart, Calendar, MessageSquare, Star,

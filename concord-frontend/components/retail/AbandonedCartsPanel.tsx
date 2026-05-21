@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ShoppingCart, AlertTriangle, Loader2, Send } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -17,9 +17,7 @@ export function AbandonedCartsPanel() {
   const [recoveryCode, setRecoveryCode] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { refresh(); }, []);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const res = await lensRun({
@@ -30,7 +28,9 @@ export function AbandonedCartsPanel() {
       setTotalLost(res.data?.result?.totalLostValue || 0);
     } catch (e) { console.error('[Abandoned] list failed', e); }
     finally { setLoading(false); }
-  }
+  }, [thresholdHours]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function recover(cartId: string) {
     try {

@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils';
 
 interface Reminder { id: string; title: string; kind: string; dueDate: string | null; done: boolean; status: string }
 interface PetDocument { id: string; title: string; kind: string }
-interface Expense { id: string; category: string; amount: number; date: string; note: string | null }
 
 const STATUS_COLOR: Record<string, string> = {
   overdue: 'text-rose-400', due_soon: 'text-amber-400', scheduled: 'text-emerald-400', done: 'text-zinc-500', none: 'text-zinc-500',

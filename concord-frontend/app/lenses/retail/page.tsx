@@ -92,6 +92,7 @@ import RefundsPanel from '@/components/retail/RefundsPanel';
 import CollectionsPanel from '@/components/retail/CollectionsPanel';
 import InventoryTransfers from '@/components/retail/InventoryTransfers';
 import SalesAnalytics from '@/components/retail/SalesAnalytics';
+import CommerceSuite from '@/components/retail/CommerceSuite';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 
 /* ------------------------------------------------------------------ */
@@ -1885,6 +1886,7 @@ export default function RetailLensPage() {
     <div data-lens-theme="retail" className={ds.pageContainer}>
       <RivalShapePreview lensId="retail" defaultOpen={true} />
       <ShopifyWorkbenchSection />
+      <CommerceSuite />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">

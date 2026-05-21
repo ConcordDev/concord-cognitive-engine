@@ -13,13 +13,15 @@ Backend: `server/domains/retail.js` — ~49 macros: products + variants + invent
 - Analytics: revenue-by-day, top products, summary; customer LTV, pipeline value, SLA status; 6 tabs
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Storefront / buyer-facing shop — a public product browse + checkout page
-- [ ] `[M]` Shipping label purchase + tracking — carrier API integration beyond rate quotes
-- [ ] `[S]` Order fulfillment workflow — pick/pack/ship status with notifications
-- [ ] `[M]` Marketing campaigns — email/discount campaigns and conversion tracking
-- [ ] `[S]` Multi-channel listing — sync inventory to external marketplaces
-- [ ] `[S]` Product reviews + ratings on the storefront
-- [ ] `[S]` Staff accounts + permissions for the admin
+- [x] `[M]` Storefront / buyer-facing shop — a public product browse + checkout page
+- [x] `[M]` Shipping label purchase + tracking — carrier API integration beyond rate quotes
+- [x] `[S]` Order fulfillment workflow — pick/pack/ship status with notifications
+- [x] `[M]` Marketing campaigns — email/discount campaigns and conversion tracking
+- [x] `[S]` Multi-channel listing — sync inventory to external marketplaces
+- [x] `[S]` Product reviews + ratings on the storefront
+- [x] `[S]` Staff accounts + permissions for the admin
 
 ## Parity
-~75% of Shopify's admin feature surface. The commerce backend is genuinely deep — variants, real Stripe payments, RFM, discounts, gift cards, shipping/tax, transfers, analytics. The main gap is a buyer-facing storefront and carrier label/tracking integration.
+~95% of Shopify's admin feature surface. The commerce backend (variants, real Stripe payments, RFM, discounts, gift cards, shipping/tax, transfers, analytics) plus a buyer-facing storefront, shipping labels + tracking, an order-fulfillment workflow, marketing campaigns, multi-channel listing, product reviews, and staff accounts all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

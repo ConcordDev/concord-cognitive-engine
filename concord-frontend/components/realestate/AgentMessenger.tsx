@@ -23,6 +23,7 @@ export function AgentMessenger() {
   const [addingAgent, setAddingAgent] = useState(false);
   const [agentForm, setAgentForm] = useState({ name: '', brokerage: '', email: '', phone: '', rating: '5' });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, []);
   useEffect(() => { if (activeAgent) loadMessages(activeAgent.id); }, [activeAgent]);
 

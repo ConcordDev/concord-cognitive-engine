@@ -16,10 +16,12 @@ export function PropertyCompare({ ids, onClear, onRemove }: { ids: string[]; onC
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const idsKey = ids.join('|');
   useEffect(() => {
     if (ids.length < 2) { setListings([]); setRows([]); setError(null); return; }
     refresh();
-  }, [ids.join('|')]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
 
   async function refresh() {
     setLoading(true); setError(null);

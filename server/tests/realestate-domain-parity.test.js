@@ -382,3 +382,178 @@ describe("realestate.dashboard-summary (RealtorShell data source)", () => {
   });
 });
 
+// ── 2026 Zillow-parity backlog ─────────────────────────────────
+
+describe("realestate.listings-in-bounds (interactive map / draw-area)", () => {
+  it("returns only listings inside the bounding box", () => {
+    call("listings-add", ctxA, { address: "in", price: 400000, lat: 30.27, lng: -97.74 });
+    call("listings-add", ctxA, { address: "out", price: 400000, lat: 40.71, lng: -74.0 });
+    call("listings-add", ctxA, { address: "nocoords", price: 400000 });
+    const r = call("listings-in-bounds", ctxA, { bounds: { north: 31, south: 29, east: -96, west: -99 } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 1);
+    assert.equal(r.result.listings[0].address, "in");
+    assert.equal(r.result.withoutCoords, 1);
+  });
+  it("applies price/beds filters within bounds", () => {
+    call("listings-add", ctxA, { address: "cheap", price: 200000, beds: 2, lat: 30.2, lng: -97.7 });
+    call("listings-add", ctxA, { address: "rich", price: 900000, beds: 4, lat: 30.3, lng: -97.8 });
+    const r = call("listings-in-bounds", ctxA, {
+      bounds: { north: 31, south: 29, east: -96, west: -99 },
+      filters: { maxPrice: 500000, minBeds: 2 },
+    });
+    assert.equal(r.result.total, 1);
+    assert.equal(r.result.listings[0].address, "cheap");
+  });
+  it("rejects malformed bounds", () => {
+    assert.equal(call("listings-in-bounds", ctxA, { bounds: {} }).ok, false);
+    assert.equal(call("listings-in-bounds", ctxA, { bounds: { north: 1, south: 2, east: 1, west: 0 } }).ok, false);
+  });
+});
+
+describe("realestate.listing-photos-* + listing-tour-set", () => {
+  it("add / list / delete photos, first photo becomes thumbnail", () => {
+    const lst = call("listings-add", ctxA, { address: "x", price: 500000 });
+    const id = lst.result.listing.id;
+    const p1 = call("listing-photos-add", ctxA, { listingId: id, url: "https://img/1.jpg", room: "kitchen" });
+    assert.equal(p1.ok, true);
+    assert.equal(p1.result.photoCount, 1);
+    call("listing-photos-add", ctxA, { listingId: id, url: "https://img/2.jpg" });
+    const list = call("listing-photos-list", ctxA, { listingId: id });
+    assert.equal(list.result.photos.length, 2);
+    const del = call("listing-photos-delete", ctxA, { listingId: id, photoId: p1.result.photo.id });
+    assert.equal(del.ok, true);
+    assert.equal(del.result.photoCount, 1);
+  });
+  it("rejects non-url and unknown listing", () => {
+    const lst = call("listings-add", ctxA, { address: "x", price: 500000 });
+    assert.equal(call("listing-photos-add", ctxA, { listingId: lst.result.listing.id, url: "notaurl" }).ok, false);
+    assert.equal(call("listing-photos-add", ctxA, { listingId: "nope", url: "https://x/y.jpg" }).ok, false);
+  });
+  it("sets virtual tour url", () => {
+    const lst = call("listings-add", ctxA, { address: "x", price: 500000 });
+    const r = call("listing-tour-set", ctxA, { listingId: lst.result.listing.id, virtualTourUrl: "https://my3dtour/abc" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.virtualTourUrl, "https://my3dtour/abc");
+    const got = call("listing-photos-list", ctxA, { listingId: lst.result.listing.id });
+    assert.equal(got.result.virtualTourUrl, "https://my3dtour/abc");
+  });
+});
+
+describe("realestate.price-history (Zestimate-style time series)", () => {
+  it("add entries and compute change stats", () => {
+    const lst = call("listings-add", ctxA, { address: "x", price: 500000, sqft: 2000 });
+    const id = lst.result.listing.id;
+    // Future-dated changes so they sort after the auto "listed" entry.
+    call("price-history-add", ctxA, { listingId: id, price: 480000, kind: "price_change", date: "2099-03-01" });
+    call("price-history-add", ctxA, { listingId: id, price: 520000, kind: "price_change", date: "2099-05-01" });
+    const r = call("price-history", ctxA, { listingId: id });
+    assert.equal(r.ok, true);
+    // initial listed + 2 changes
+    assert.ok(r.result.history.length >= 3);
+    assert.equal(r.result.lastPrice, 520000);
+    assert.equal(r.result.lowestPrice, 480000);
+    assert.ok(r.result.history[0].date <= r.result.history[r.result.history.length - 1].date);
+    assert.equal(typeof r.result.totalChangePct, "number");
+  });
+  it("rejects invalid price and unknown listing", () => {
+    const lst = call("listings-add", ctxA, { address: "x", price: 500000 });
+    assert.equal(call("price-history-add", ctxA, { listingId: lst.result.listing.id, price: 0 }).ok, false);
+    assert.equal(call("price-history", ctxA, { listingId: "nope" }).ok, false);
+  });
+});
+
+describe("realestate mortgage pre-approval / lender connect", () => {
+  it("add lender, request pre-approval, list", () => {
+    const ld = call("lenders-add", ctxA, { name: "Acme Mortgage", quotedRate: 6.5, loanType: "conventional" });
+    assert.equal(ld.ok, true);
+    const pa = call("preapproval-request", ctxA, {
+      lenderId: ld.result.lender.id, annualIncome: 150000, monthlyDebts: 500, downPayment: 60000, creditScore: 760,
+    });
+    assert.equal(pa.ok, true);
+    assert.equal(pa.result.preapproval.status, "approved");
+    assert.equal(pa.result.preapproval.creditTier, "excellent");
+    assert.ok(pa.result.preapproval.maxHomePrice > 0);
+    const list = call("preapprovals-list", ctxA, {});
+    assert.equal(list.result.preapprovals.length, 1);
+  });
+  it("low credit yields conditional, per-user scoped", () => {
+    const ld = call("lenders-add", ctxA, { name: "X" });
+    const pa = call("preapproval-request", ctxA, { lenderId: ld.result.lender.id, annualIncome: 90000, creditScore: 600 });
+    assert.equal(pa.result.preapproval.status, "conditional");
+    assert.equal(call("preapprovals-list", ctxB, {}).result.preapprovals.length, 0);
+  });
+  it("rejects unknown lender and zero income", () => {
+    assert.equal(call("preapproval-request", ctxA, { lenderId: "nope", annualIncome: 100000, creditScore: 700 }).ok, false);
+    const ld = call("lenders-add", ctxA, { name: "Y" });
+    assert.equal(call("preapproval-request", ctxA, { lenderId: ld.result.lender.id, annualIncome: 0, creditScore: 700 }).ok, false);
+  });
+});
+
+describe("realestate.saved-search-check-alerts", () => {
+  it("reports new matching listings since last check", () => {
+    const ss = call("save-search", ctxA, { name: "3BR Austin", filters: { minBeds: 3, city: "austin" } });
+    const searchId = ss.result.search.id;
+    call("listings-add", ctxA, { address: "match", price: 500000, beds: 3, city: "Austin" });
+    call("listings-add", ctxA, { address: "nomatch", price: 500000, beds: 1, city: "Austin" });
+    const r1 = call("saved-search-check-alerts", ctxA, { searchId });
+    assert.equal(r1.ok, true);
+    assert.equal(r1.result.totalMatches, 1);
+    assert.equal(r1.result.newMatchCount, 1);
+    // second check finds no new matches
+    const r2 = call("saved-search-check-alerts", ctxA, { searchId });
+    assert.equal(r2.result.newMatchCount, 0);
+    assert.equal(r2.result.totalMatches, 1);
+  });
+  it("rejects unknown search", () => {
+    assert.equal(call("saved-search-check-alerts", ctxA, { searchId: "nope" }).ok, false);
+  });
+});
+
+describe("realestate.property-detail (tax history + lot + similar)", () => {
+  it("returns tax history, lot facts, and similar homes", () => {
+    const a = call("listings-add", ctxA, { address: "subject", price: 500000, sqft: 2000, beds: 3, baths: 2, lotSqft: 8000, yearBuilt: 2010 });
+    call("listings-add", ctxA, { address: "near", price: 510000, sqft: 2050, beds: 3, baths: 2 });
+    call("listings-add", ctxA, { address: "far", price: 1500000, sqft: 6000, beds: 6, baths: 5 });
+    const r = call("property-detail", ctxA, { listingId: a.result.listing.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.taxHistory.length, 5);
+    assert.ok(r.result.taxHistory.every(t => t.taxPaid > 0 && t.assessedValue > 0));
+    assert.ok(r.result.lot.lotAcres > 0);
+    assert.equal(r.result.lot.pricePerSqft, 250);
+    assert.ok(r.result.similarHomes.length >= 1);
+    // nearest similar home is "near"
+    assert.equal(r.result.similarHomes[0].address, "near");
+  });
+  it("rejects unknown listing", () => {
+    assert.equal(call("property-detail", ctxA, { listingId: "nope" }).ok, false);
+  });
+});
+
+describe("realestate contact-agent lead form + scheduling", () => {
+  it("submit lead, list, update status", () => {
+    const r = call("agent-lead-submit", ctxA, {
+      name: "Pat Buyer", contact: "pat@x.com", message: "Interested in 123 Main",
+      intent: "buying", preferredDate: "2026-07-01", preferredTime: "14:00",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.lead.status, "new");
+    assert.equal(r.result.lead.preferredDate, "2026-07-01");
+    const list = call("leads-list", ctxA, {});
+    assert.equal(list.result.total, 1);
+    const upd = call("lead-update-status", ctxA, { id: r.result.lead.id, status: "scheduled" });
+    assert.equal(upd.result.lead.status, "scheduled");
+  });
+  it("filters leads by listingId, per-user scoped", () => {
+    call("agent-lead-submit", ctxA, { name: "A", contact: "a@x.com", message: "hi", listingId: "lst_1" });
+    call("agent-lead-submit", ctxA, { name: "B", contact: "b@x.com", message: "hi", listingId: "lst_2" });
+    assert.equal(call("leads-list", ctxA, { listingId: "lst_1" }).result.total, 1);
+    assert.equal(call("leads-list", ctxB, {}).result.total, 0);
+  });
+  it("rejects missing required fields", () => {
+    assert.equal(call("agent-lead-submit", ctxA, { name: "", contact: "x", message: "y" }).ok, false);
+    assert.equal(call("agent-lead-submit", ctxA, { name: "x", contact: "", message: "y" }).ok, false);
+    assert.equal(call("agent-lead-submit", ctxA, { name: "x", contact: "y", message: "" }).ok, false);
+  });
+});
+

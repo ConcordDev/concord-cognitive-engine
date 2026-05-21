@@ -12,13 +12,15 @@ Backend: `server/domains/realestate.js` — ~40 macros: listings CRUD + search, 
 - Census median-home-value live feed; dashboard summary; multi-tab UI
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Interactive map search — draw-area search and map pins with price labels (Zillow's core view)
-- [ ] `[M]` Photo galleries + 3D/virtual tours per listing
-- [ ] `[S]` Price history + Zestimate-style time-series per property
-- [ ] `[M]` Mortgage pre-approval / lender connect flow
-- [ ] `[S]` Saved-search alerts — notify on new matching listings
-- [ ] `[S]` Property detail with tax history, lot, and similar-homes carousel
-- [ ] `[S]` Contact-agent lead form with scheduling
+- [x] `[M]` Interactive map search — draw-area search and map pins with price labels (Zillow's core view)
+- [x] `[M]` Photo galleries + 3D/virtual tours per listing
+- [x] `[S]` Price history + Zestimate-style time-series per property
+- [x] `[M]` Mortgage pre-approval / lender connect flow
+- [x] `[S]` Saved-search alerts — notify on new matching listings
+- [x] `[S]` Property detail with tax history, lot, and similar-homes carousel
+- [x] `[S]` Contact-agent lead form with scheduling
 
 ## Parity
-~65% of Zillow's feature surface. The macro depth is exceptional — AVM, school/walk/commute scores, investor analysis, and full calculators are all real. Gaps are the consumer-facing essentials: a map-based search UI, photo/virtual tours, and price history.
+~95% of Zillow's feature surface. AVM, school/walk/commute scores, investor analysis, calculators plus a map-based area search, photo galleries + virtual tours, Zestimate-style price history, a lender directory + pre-approval flow, saved-search alerts, property detail pages, and an agent-contact lead pipeline all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

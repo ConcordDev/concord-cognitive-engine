@@ -44,6 +44,7 @@ import FactionOverlay from '@/components/world/FactionOverlay';
 import WorldShareButton from '@/components/world/WorldShareButton';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
+import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
 import {
   DeformationStore,
   replayDeformations,
@@ -814,6 +815,7 @@ import {
   Briefcase,
   Store,
   ScrollText,
+  Backpack,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -1552,6 +1554,7 @@ export default function WorldLensPage() {
   const [factionOverlayOpen, setFactionOverlayOpen] = useState(false);
   const [questLogOpen, setQuestLogOpen] = useState(false);
   const [marketplacePanelOpen, setMarketplacePanelOpen] = useState(false);
+  const [adventureKitOpen, setAdventureKitOpen] = useState(false);
   const [currentWorldId] = useState<string>('concordia-hub');
 
   // District tools state
@@ -5670,6 +5673,20 @@ export default function WorldLensPage() {
           <Store className="w-3 h-3" />
           Marketplace
         </button>
+        <button
+          type="button"
+          onClick={() => setAdventureKitOpen((v) => !v)}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition-colors',
+            adventureKitOpen
+              ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-200'
+              : 'border-white/10 text-gray-400 hover:border-emerald-500/30 hover:text-emerald-300',
+          )}
+          title="Adventure kit — build, bag, party, map, mounts, combat, perf, photos"
+        >
+          <Backpack className="w-3 h-3" />
+          Adventure kit
+        </button>
         <WorldShareButton worldId={currentWorldId} />
       </div>
 
@@ -5691,6 +5708,11 @@ export default function WorldLensPage() {
         worldId={currentWorldId}
         open={marketplacePanelOpen}
         onClose={() => setMarketplacePanelOpen(false)}
+      />
+      <WorldAdventureKitPanel
+        worldId={currentWorldId}
+        open={adventureKitOpen}
+        onClose={() => setAdventureKitOpen(false)}
       />
 
       {/* World Actions Panel */}

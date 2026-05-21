@@ -528,4 +528,673 @@ export default function registerWorldActions(registerLensAction) {
     if (swept > 0) saveWorldLensState();
     return { ok: true, result: { swept } };
   });
+
+  // ════════════════════════════════════════════════════════════════
+  // 3D open-world feature-parity backlog (vs Roblox / Genshin Impact)
+  // ════════════════════════════════════════════════════════════════
+  //
+  // Eight gameplay-UX systems the open-world spec calls out. Each
+  // persists in a dedicated STATE.worldLens Map keyed by ctx.userId.
+  // All data is real user input — no seed/demo content. Empty maps
+  // produce empty lists, never invented samples.
+
+  function getKitState() {
+    const s = getWorldLensState();
+    if (!s) return null;
+    if (!s.placements)   s.placements   = new Map(); // userId -> Map<placementId, placement>
+    if (!s.inventory)    s.inventory    = new Map(); // userId -> { slots, items }
+    if (!s.parties)      s.parties      = new Map(); // partyId -> party
+    if (!s.partyOf)      s.partyOf      = new Map(); // userId -> partyId
+    if (!s.mapMarkers)   s.mapMarkers   = new Map(); // userId -> Map<markerId, marker>
+    if (!s.mounts)       s.mounts       = new Map(); // userId -> { roster, activeId }
+    if (!s.combatPrefs)  s.combatPrefs  = new Map(); // userId -> { lockOn, dodge, abilities }
+    if (!s.streamPrefs)  s.streamPrefs  = new Map(); // userId -> { lodBias, drawDistance, ... }
+    if (!s.photos)       s.photos       = new Map(); // userId -> Map<photoId, photo>
+    return s;
+  }
+
+  // ── 1. In-world building / placement editor ──────────────────────
+  // A player places, moves, and removes structures directly in the
+  // 3D scene. Each placement is a real DTU-shaped record with world
+  // coords, rotation, scale, and a kit kind.
+
+  const PLACEMENT_KINDS = new Set([
+    "wall", "floor", "roof", "door", "window", "pillar",
+    "fence", "light", "decoration", "prop", "platform", "stair",
+  ]);
+
+  registerLensAction("world", "placement-create", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const worldId = String(params.worldId || "").trim();
+    if (!worldId) return { ok: false, error: "worldId required" };
+    const kind = String(params.kind || "").trim();
+    if (!PLACEMENT_KINDS.has(kind)) {
+      return { ok: false, error: `kind must be one of: ${[...PLACEMENT_KINDS].join(", ")}` };
+    }
+    const x = Number(params.x), y = Number(params.y), z = Number(params.z);
+    if (![x, y, z].every(Number.isFinite)) return { ok: false, error: "x, y, z required (numeric)" };
+    const placement = {
+      id: nextWorldId("place"),
+      worldId, kind,
+      x, y, z,
+      rotation: Number.isFinite(Number(params.rotation)) ? Number(params.rotation) % 360 : 0,
+      scale: Number.isFinite(Number(params.scale)) ? Math.max(0.1, Math.min(20, Number(params.scale))) : 1,
+      color: typeof params.color === "string" ? params.color.slice(0, 16) : null,
+      label: String(params.label || "").slice(0, 60),
+      ownerId: userId,
+      createdAt: nowIsoWorld(),
+      updatedAt: nowIsoWorld(),
+    };
+    if (!s.placements.has(userId)) s.placements.set(userId, new Map());
+    s.placements.get(userId).set(placement.id, placement);
+    saveWorldLensState();
+    return { ok: true, result: { placement } };
+  });
+
+  registerLensAction("world", "placement-update", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const map = s.placements.get(userId);
+    const id = String(params.id || "");
+    const p = map?.get(id);
+    if (!p) return { ok: false, error: "placement not found" };
+    for (const axis of ["x", "y", "z"]) {
+      if (params[axis] != null && Number.isFinite(Number(params[axis]))) p[axis] = Number(params[axis]);
+    }
+    if (params.rotation != null && Number.isFinite(Number(params.rotation))) p.rotation = Number(params.rotation) % 360;
+    if (params.scale != null && Number.isFinite(Number(params.scale))) p.scale = Math.max(0.1, Math.min(20, Number(params.scale)));
+    if (typeof params.color === "string") p.color = params.color.slice(0, 16);
+    if (typeof params.label === "string") p.label = params.label.slice(0, 60);
+    p.updatedAt = nowIsoWorld();
+    saveWorldLensState();
+    return { ok: true, result: { placement: p } };
+  });
+
+  registerLensAction("world", "placement-delete", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const map = s.placements.get(userId);
+    const id = String(params.id || "");
+    if (!map || !map.has(id)) return { ok: false, error: "placement not found" };
+    map.delete(id);
+    saveWorldLensState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("world", "placement-list", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const worldId = params.worldId ? String(params.worldId) : null;
+    const map = s.placements.get(userId);
+    let placements = map ? Array.from(map.values()) : [];
+    if (worldId) placements = placements.filter((p) => p.worldId === worldId);
+    placements.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return { ok: true, result: { placements, count: placements.length } };
+  });
+
+  // ── 2. Inventory / equipment ─────────────────────────────────────
+  // A bag of items + named equipment slots. Items carry a rarity and
+  // a quantity; equip moves an item id into a slot, unequip clears it.
+
+  const EQUIP_SLOTS = ["head", "chest", "legs", "feet", "hands", "mainhand", "offhand", "trinket"];
+
+  function ensureInventory(s, userId) {
+    if (!s.inventory.has(userId)) {
+      s.inventory.set(userId, {
+        items: [],
+        slots: Object.fromEntries(EQUIP_SLOTS.map((k) => [k, null])),
+      });
+    }
+    return s.inventory.get(userId);
+  }
+
+  registerLensAction("world", "inventory-get", (ctx, _artifact, _params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = ensureInventory(s, worldActorId(ctx));
+    return { ok: true, result: { items: inv.items, slots: inv.slots, slotNames: EQUIP_SLOTS } };
+  });
+
+  registerLensAction("world", "inventory-add-item", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = ensureInventory(s, worldActorId(ctx));
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const qty = Math.max(1, Math.floor(Number(params.quantity) || 1));
+    const item = {
+      id: nextWorldId("item"),
+      name: name.slice(0, 80),
+      kind: String(params.kind || "misc").slice(0, 24),
+      slot: EQUIP_SLOTS.includes(params.slot) ? params.slot : null,
+      rarity: ["common", "uncommon", "rare", "epic", "legendary"].includes(params.rarity) ? params.rarity : "common",
+      quantity: qty,
+      stats: params.stats && typeof params.stats === "object" ? params.stats : {},
+      icon: String(params.icon || "").slice(0, 24) || null,
+      acquiredAt: nowIsoWorld(),
+    };
+    inv.items.push(item);
+    saveWorldLensState();
+    return { ok: true, result: { item } };
+  });
+
+  registerLensAction("world", "inventory-remove-item", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = ensureInventory(s, worldActorId(ctx));
+    const id = String(params.id || "");
+    const idx = inv.items.findIndex((i) => i.id === id);
+    if (idx === -1) return { ok: false, error: "item not found" };
+    inv.items.splice(idx, 1);
+    for (const slot of EQUIP_SLOTS) if (inv.slots[slot] === id) inv.slots[slot] = null;
+    saveWorldLensState();
+    return { ok: true, result: { removed: id } };
+  });
+
+  registerLensAction("world", "inventory-equip", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = ensureInventory(s, worldActorId(ctx));
+    const id = String(params.id || "");
+    const item = inv.items.find((i) => i.id === id);
+    if (!item) return { ok: false, error: "item not found" };
+    const slot = String(params.slot || item.slot || "");
+    if (!EQUIP_SLOTS.includes(slot)) return { ok: false, error: `slot must be one of: ${EQUIP_SLOTS.join(", ")}` };
+    if (item.slot && item.slot !== slot) return { ok: false, error: `item ${item.name} cannot go in ${slot}` };
+    inv.slots[slot] = id;
+    saveWorldLensState();
+    return { ok: true, result: { slot, equipped: id, slots: inv.slots } };
+  });
+
+  registerLensAction("world", "inventory-unequip", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = ensureInventory(s, worldActorId(ctx));
+    const slot = String(params.slot || "");
+    if (!EQUIP_SLOTS.includes(slot)) return { ok: false, error: `slot must be one of: ${EQUIP_SLOTS.join(", ")}` };
+    const wasEquipped = inv.slots[slot];
+    inv.slots[slot] = null;
+    saveWorldLensState();
+    return { ok: true, result: { slot, unequipped: wasEquipped, slots: inv.slots } };
+  });
+
+  // ── 3. Party / group play ────────────────────────────────────────
+  // Co-op grouping with a shared objective. The leader creates the
+  // party; others join by id. A party is destroyed when the last
+  // member leaves.
+
+  function partyView(party) {
+    return {
+      id: party.id,
+      name: party.name,
+      leaderId: party.leaderId,
+      members: party.members,
+      memberCount: party.members.length,
+      objective: party.objective,
+      worldId: party.worldId,
+      createdAt: party.createdAt,
+    };
+  }
+
+  registerLensAction("world", "party-create", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    if (s.partyOf.has(userId)) return { ok: false, error: "already in a party — leave first" };
+    const party = {
+      id: nextWorldId("party"),
+      name: String(params.name || "").slice(0, 50) || "Adventuring party",
+      leaderId: userId,
+      members: [userId],
+      objective: String(params.objective || "").slice(0, 200) || null,
+      worldId: String(params.worldId || "concordia-hub"),
+      createdAt: nowIsoWorld(),
+    };
+    s.parties.set(party.id, party);
+    s.partyOf.set(userId, party.id);
+    saveWorldLensState();
+    return { ok: true, result: { party: partyView(party) } };
+  });
+
+  registerLensAction("world", "party-join", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    if (s.partyOf.has(userId)) return { ok: false, error: "already in a party — leave first" };
+    const party = s.parties.get(String(params.partyId || ""));
+    if (!party) return { ok: false, error: "party not found" };
+    if (party.members.length >= 8) return { ok: false, error: "party is full (8 max)" };
+    party.members.push(userId);
+    s.partyOf.set(userId, party.id);
+    saveWorldLensState();
+    return { ok: true, result: { party: partyView(party) } };
+  });
+
+  registerLensAction("world", "party-leave", (ctx, _artifact, _params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const partyId = s.partyOf.get(userId);
+    if (!partyId) return { ok: false, error: "not in a party" };
+    const party = s.parties.get(partyId);
+    s.partyOf.delete(userId);
+    if (party) {
+      party.members = party.members.filter((m) => m !== userId);
+      if (party.members.length === 0) {
+        s.parties.delete(partyId);
+      } else if (party.leaderId === userId) {
+        party.leaderId = party.members[0];
+      }
+    }
+    saveWorldLensState();
+    return { ok: true, result: { left: partyId } };
+  });
+
+  registerLensAction("world", "party-get", (ctx, _artifact, _params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const partyId = s.partyOf.get(userId);
+    const party = partyId ? s.parties.get(partyId) : null;
+    return { ok: true, result: { party: party ? partyView(party) : null } };
+  });
+
+  registerLensAction("world", "party-set-objective", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const partyId = s.partyOf.get(userId);
+    const party = partyId ? s.parties.get(partyId) : null;
+    if (!party) return { ok: false, error: "not in a party" };
+    if (party.leaderId !== userId) return { ok: false, error: "only the party leader can set the objective" };
+    party.objective = String(params.objective || "").slice(0, 200) || null;
+    saveWorldLensState();
+    return { ok: true, result: { party: partyView(party) } };
+  });
+
+  // ── 4. Minimap + world map fast-travel points ────────────────────
+  // Players drop named map markers. A marker flagged fastTravel is a
+  // teleport destination surfaced in the world map.
+
+  const MARKER_KINDS = ["waypoint", "town", "dungeon", "vendor", "resource", "danger", "home", "portal"];
+
+  registerLensAction("world", "marker-create", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const worldId = String(params.worldId || "").trim();
+    if (!worldId) return { ok: false, error: "worldId required" };
+    const x = Number(params.x), z = Number(params.z);
+    if (![x, z].every(Number.isFinite)) return { ok: false, error: "x, z required (numeric)" };
+    const marker = {
+      id: nextWorldId("mark"),
+      worldId,
+      name: String(params.name || "").slice(0, 60) || "Marker",
+      kind: MARKER_KINDS.includes(params.kind) ? params.kind : "waypoint",
+      x, y: Number.isFinite(Number(params.y)) ? Number(params.y) : 0, z,
+      fastTravel: params.fastTravel === true,
+      ownerId: userId,
+      createdAt: nowIsoWorld(),
+    };
+    if (!s.mapMarkers.has(userId)) s.mapMarkers.set(userId, new Map());
+    s.mapMarkers.get(userId).set(marker.id, marker);
+    saveWorldLensState();
+    return { ok: true, result: { marker } };
+  });
+
+  registerLensAction("world", "marker-delete", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const map = s.mapMarkers.get(worldActorId(ctx));
+    const id = String(params.id || "");
+    if (!map || !map.has(id)) return { ok: false, error: "marker not found" };
+    map.delete(id);
+    saveWorldLensState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("world", "marker-list", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const map = s.mapMarkers.get(worldActorId(ctx));
+    const worldId = params.worldId ? String(params.worldId) : null;
+    let markers = map ? Array.from(map.values()) : [];
+    if (worldId) markers = markers.filter((m) => m.worldId === worldId);
+    markers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return {
+      ok: true,
+      result: { markers, count: markers.length, fastTravelPoints: markers.filter((m) => m.fastTravel) },
+    };
+  });
+
+  registerLensAction("world", "marker-fast-travel", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const map = s.mapMarkers.get(worldActorId(ctx));
+    const marker = map?.get(String(params.id || ""));
+    if (!marker) return { ok: false, error: "marker not found" };
+    if (!marker.fastTravel) return { ok: false, error: "marker is not a fast-travel point" };
+    // The route layer / 3D scene teleports the avatar; this returns
+    // the destination coords + emits a realtime hint.
+    emitVoiceToRoom(`user:${worldActorId(ctx)}`, "world:fast-travel", {
+      worldId: marker.worldId, x: marker.x, y: marker.y, z: marker.z, markerId: marker.id,
+    });
+    return {
+      ok: true,
+      result: { destination: { worldId: marker.worldId, x: marker.x, y: marker.y, z: marker.z }, marker },
+    };
+  });
+
+  // ── 5. Mounts / vehicles UX ──────────────────────────────────────
+  // A roster of summonable mounts. Summon sets the active mount;
+  // dismiss clears it.
+
+  function ensureMounts(s, userId) {
+    if (!s.mounts.has(userId)) s.mounts.set(userId, { roster: [], activeId: null });
+    return s.mounts.get(userId);
+  }
+
+  registerLensAction("world", "mount-add", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = ensureMounts(s, worldActorId(ctx));
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const mount = {
+      id: nextWorldId("mount"),
+      name: name.slice(0, 60),
+      species: String(params.species || "horse").slice(0, 32),
+      speed: Math.max(1, Math.min(100, Math.floor(Number(params.speed) || 12))),
+      stamina: Math.max(1, Math.min(100, Math.floor(Number(params.stamina) || 50))),
+      kind: ["ground", "flying", "aquatic"].includes(params.kind) ? params.kind : "ground",
+      acquiredAt: nowIsoWorld(),
+    };
+    m.roster.push(mount);
+    saveWorldLensState();
+    return { ok: true, result: { mount } };
+  });
+
+  registerLensAction("world", "mount-remove", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = ensureMounts(s, worldActorId(ctx));
+    const id = String(params.id || "");
+    const idx = m.roster.findIndex((x) => x.id === id);
+    if (idx === -1) return { ok: false, error: "mount not found" };
+    m.roster.splice(idx, 1);
+    if (m.activeId === id) m.activeId = null;
+    saveWorldLensState();
+    return { ok: true, result: { removed: id } };
+  });
+
+  registerLensAction("world", "mount-summon", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const m = ensureMounts(s, userId);
+    const id = String(params.id || "");
+    const mount = m.roster.find((x) => x.id === id);
+    if (!mount) return { ok: false, error: "mount not found" };
+    m.activeId = id;
+    saveWorldLensState();
+    emitVoiceToRoom(`user:${userId}`, "world:mount-summoned", { mountId: id, species: mount.species });
+    return { ok: true, result: { active: mount } };
+  });
+
+  registerLensAction("world", "mount-dismiss", (ctx, _artifact, _params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = ensureMounts(s, worldActorId(ctx));
+    const was = m.activeId;
+    m.activeId = null;
+    saveWorldLensState();
+    return { ok: true, result: { dismissed: was } };
+  });
+
+  registerLensAction("world", "mount-list", (ctx, _artifact, _params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = ensureMounts(s, worldActorId(ctx));
+    const active = m.roster.find((x) => x.id === m.activeId) || null;
+    return { ok: true, result: { roster: m.roster, activeId: m.activeId, active } };
+  });
+
+  // ── 6. Combat depth — targeting / dodge / ability cooldowns ──────
+  // Persists per-user combat config: lock-on toggle, dodge style, and
+  // a hotbar of abilities each with a cooldown clock. Cooldown state
+  // is computed live from a lastUsedMs timestamp.
+
+  function ensureCombatPrefs(s, userId) {
+    if (!s.combatPrefs.has(userId)) {
+      s.combatPrefs.set(userId, { lockOn: true, dodgeStyle: "roll", blockEnabled: true, abilities: [] });
+    }
+    return s.combatPrefs.get(userId);
+  }
+
+  function abilityView(a, nowMs) {
+    const elapsed = nowMs - (a.lastUsedMs || 0);
+    const remaining = Math.max(0, a.cooldownMs - elapsed);
+    return {
+      id: a.id, name: a.name, slot: a.slot, element: a.element,
+      cooldownMs: a.cooldownMs,
+      cooldownRemainingMs: remaining,
+      ready: remaining === 0,
+    };
+  }
+
+  registerLensAction("world", "combat-prefs-get", (ctx, _artifact, _params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const cp = ensureCombatPrefs(s, worldActorId(ctx));
+    const now = Date.now();
+    return {
+      ok: true,
+      result: {
+        lockOn: cp.lockOn, dodgeStyle: cp.dodgeStyle, blockEnabled: cp.blockEnabled,
+        abilities: cp.abilities.map((a) => abilityView(a, now)),
+      },
+    };
+  });
+
+  registerLensAction("world", "combat-prefs-set", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const cp = ensureCombatPrefs(s, worldActorId(ctx));
+    if (typeof params.lockOn === "boolean") cp.lockOn = params.lockOn;
+    if (typeof params.blockEnabled === "boolean") cp.blockEnabled = params.blockEnabled;
+    if (["roll", "dash", "blink", "sidestep"].includes(params.dodgeStyle)) cp.dodgeStyle = params.dodgeStyle;
+    saveWorldLensState();
+    return { ok: true, result: { lockOn: cp.lockOn, dodgeStyle: cp.dodgeStyle, blockEnabled: cp.blockEnabled } };
+  });
+
+  registerLensAction("world", "combat-ability-add", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const cp = ensureCombatPrefs(s, worldActorId(ctx));
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const slot = Math.max(1, Math.min(8, Math.floor(Number(params.slot) || cp.abilities.length + 1)));
+    if (cp.abilities.some((a) => a.slot === slot)) return { ok: false, error: `slot ${slot} already bound` };
+    const ability = {
+      id: nextWorldId("abil"),
+      name: name.slice(0, 50),
+      slot,
+      element: ["physical", "fire", "ice", "lightning", "bio", "energy", "poison"].includes(params.element) ? params.element : "physical",
+      cooldownMs: Math.max(0, Math.min(600000, Math.floor(Number(params.cooldownMs) || 5000))),
+      lastUsedMs: 0,
+    };
+    cp.abilities.push(ability);
+    cp.abilities.sort((a, b) => a.slot - b.slot);
+    saveWorldLensState();
+    return { ok: true, result: { ability: abilityView(ability, Date.now()) } };
+  });
+
+  registerLensAction("world", "combat-ability-remove", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const cp = ensureCombatPrefs(s, worldActorId(ctx));
+    const id = String(params.id || "");
+    const idx = cp.abilities.findIndex((a) => a.id === id);
+    if (idx === -1) return { ok: false, error: "ability not found" };
+    cp.abilities.splice(idx, 1);
+    saveWorldLensState();
+    return { ok: true, result: { removed: id } };
+  });
+
+  registerLensAction("world", "combat-ability-trigger", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const cp = ensureCombatPrefs(s, worldActorId(ctx));
+    const id = String(params.id || "");
+    const ability = cp.abilities.find((a) => a.id === id);
+    if (!ability) return { ok: false, error: "ability not found" };
+    const now = Date.now();
+    const remaining = Math.max(0, ability.cooldownMs - (now - (ability.lastUsedMs || 0)));
+    if (remaining > 0) {
+      return { ok: false, error: `ability on cooldown — ${Math.ceil(remaining / 1000)}s remaining`, result: { cooldownRemainingMs: remaining } };
+    }
+    ability.lastUsedMs = now;
+    saveWorldLensState();
+    return { ok: true, result: { ability: abilityView(ability, now) } };
+  });
+
+  // ── 7. LOD / streaming preferences ───────────────────────────────
+  // Per-user perf knobs the 3D scene reads to budget draw calls in
+  // big worlds — draw distance, LOD bias, shadow quality, etc.
+
+  registerLensAction("world", "streaming-prefs-get", (ctx, _artifact, _params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const prefs = s.streamPrefs.get(userId) || {
+      drawDistanceM: 400,
+      lodBias: 1.0,
+      shadowQuality: "medium",
+      maxVisibleEntities: 200,
+      foliageDensity: 1.0,
+      streamingEnabled: true,
+    };
+    return { ok: true, result: { prefs } };
+  });
+
+  registerLensAction("world", "streaming-prefs-set", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const cur = s.streamPrefs.get(userId) || {
+      drawDistanceM: 400, lodBias: 1.0, shadowQuality: "medium",
+      maxVisibleEntities: 200, foliageDensity: 1.0, streamingEnabled: true,
+    };
+    if (Number.isFinite(Number(params.drawDistanceM))) cur.drawDistanceM = Math.max(50, Math.min(4000, Number(params.drawDistanceM)));
+    if (Number.isFinite(Number(params.lodBias))) cur.lodBias = Math.max(0.25, Math.min(4, Number(params.lodBias)));
+    if (["low", "medium", "high", "off"].includes(params.shadowQuality)) cur.shadowQuality = params.shadowQuality;
+    if (Number.isFinite(Number(params.maxVisibleEntities))) cur.maxVisibleEntities = Math.max(20, Math.min(2000, Math.floor(Number(params.maxVisibleEntities))));
+    if (Number.isFinite(Number(params.foliageDensity))) cur.foliageDensity = Math.max(0, Math.min(2, Number(params.foliageDensity)));
+    if (typeof params.streamingEnabled === "boolean") cur.streamingEnabled = params.streamingEnabled;
+    s.streamPrefs.set(userId, cur);
+    saveWorldLensState();
+    return { ok: true, result: { prefs: cur } };
+  });
+
+  registerLensAction("world", "streaming-prefs-preset", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const PRESETS = {
+      potato:      { drawDistanceM: 120, lodBias: 0.4, shadowQuality: "off",    maxVisibleEntities: 60,  foliageDensity: 0.2, streamingEnabled: true },
+      balanced:    { drawDistanceM: 400, lodBias: 1.0, shadowQuality: "medium", maxVisibleEntities: 200, foliageDensity: 1.0, streamingEnabled: true },
+      ultra:       { drawDistanceM: 1600, lodBias: 2.5, shadowQuality: "high",  maxVisibleEntities: 800, foliageDensity: 2.0, streamingEnabled: true },
+    };
+    const preset = PRESETS[String(params.preset || "")];
+    if (!preset) return { ok: false, error: `preset must be one of: ${Object.keys(PRESETS).join(", ")}` };
+    s.streamPrefs.set(userId, { ...preset });
+    saveWorldLensState();
+    return { ok: true, result: { preset: String(params.preset), prefs: { ...preset } } };
+  });
+
+  // ── 8. Photo mode / screenshot sharing ───────────────────────────
+  // A player saves a captured screenshot (data URL or external link)
+  // with camera metadata + a caption; the gallery lists them and a
+  // share flips visibility public so other players can view.
+
+  registerLensAction("world", "photo-save", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = worldActorId(ctx);
+    const imageUrl = String(params.imageUrl || "").trim();
+    if (!imageUrl) return { ok: false, error: "imageUrl required (data URL or hosted link)" };
+    if (imageUrl.length > 6_000_000) return { ok: false, error: "image payload too large" };
+    const photo = {
+      id: nextWorldId("photo"),
+      worldId: String(params.worldId || "concordia-hub"),
+      imageUrl,
+      caption: String(params.caption || "").slice(0, 200),
+      camera: params.camera && typeof params.camera === "object" ? params.camera : null,
+      filter: String(params.filter || "none").slice(0, 24),
+      ownerId: userId,
+      public: false,
+      likes: 0,
+      createdAt: nowIsoWorld(),
+    };
+    if (!s.photos.has(userId)) s.photos.set(userId, new Map());
+    s.photos.get(userId).set(photo.id, photo);
+    saveWorldLensState();
+    return { ok: true, result: { photo } };
+  });
+
+  registerLensAction("world", "photo-delete", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const map = s.photos.get(worldActorId(ctx));
+    const id = String(params.id || "");
+    if (!map || !map.has(id)) return { ok: false, error: "photo not found" };
+    map.delete(id);
+    saveWorldLensState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("world", "photo-list", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const map = s.photos.get(worldActorId(ctx));
+    const worldId = params.worldId ? String(params.worldId) : null;
+    let photos = map ? Array.from(map.values()) : [];
+    if (worldId) photos = photos.filter((p) => p.worldId === worldId);
+    photos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return { ok: true, result: { photos, count: photos.length } };
+  });
+
+  registerLensAction("world", "photo-share", (ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const map = s.photos.get(worldActorId(ctx));
+    const photo = map?.get(String(params.id || ""));
+    if (!photo) return { ok: false, error: "photo not found" };
+    photo.public = params.public !== false;
+    saveWorldLensState();
+    return { ok: true, result: { id: photo.id, public: photo.public } };
+  });
+
+  // photo-gallery-public — cross-user read of every photo flagged
+  // public (the community photo wall).
+  registerLensAction("world", "photo-gallery-public", (_ctx, _artifact, params = {}) => {
+    const s = getKitState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const worldId = params.worldId ? String(params.worldId) : null;
+    const out = [];
+    for (const map of s.photos.values()) {
+      for (const photo of map.values()) {
+        if (!photo.public) continue;
+        if (worldId && photo.worldId !== worldId) continue;
+        out.push(photo);
+      }
+    }
+    out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return { ok: true, result: { photos: out.slice(0, 60), count: out.length } };
+  });
 }

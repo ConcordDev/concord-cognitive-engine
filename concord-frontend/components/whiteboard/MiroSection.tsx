@@ -13,6 +13,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FolderPlus, Trash2, Loader2, Save, Sparkles, MessageSquare, Download, ChevronRight, ChevronDown, Plus, Copy, Timer, Square } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
+import { WhiteboardCollabPanel } from './WhiteboardCollabPanel';
 import { cn } from '@/lib/utils';
 
 interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number }
@@ -37,7 +38,7 @@ export function MiroSection() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [aiTab, setAITab] = useState<'cluster' | 'summarize' | 'generate' | 'comments' | 'export'>('cluster');
+  const [aiTab, setAITab] = useState<'cluster' | 'summarize' | 'generate' | 'comments' | 'export' | 'collab'>('cluster');
   const [clusters, setClusters] = useState<Cluster[] | null>(null);
   const [clustering, setClustering] = useState(false);
   const [summary, setSummary] = useState<SummaryResult | null>(null);
@@ -49,6 +50,7 @@ export function MiroSection() {
   const [showAI, setShowAI] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refreshBoards(); }, []);
 
   // Autosave on shape changes (1.5s debounce).
@@ -298,6 +300,7 @@ export function MiroSection() {
               { id: 'generate',  label: 'Generate' },
               { id: 'comments',  label: `Comments${totalOpenComments > 0 ? ` (${totalOpenComments})` : ''}` },
               { id: 'export',    label: 'Export' },
+              { id: 'collab',    label: 'Collab' },
             ] as const).map(t => (
               <button key={t.id} onClick={() => setAITab(t.id)} className={cn(
                 'px-2 py-1 text-[11px] rounded whitespace-nowrap',
@@ -306,28 +309,34 @@ export function MiroSection() {
             ))}
           </nav>
 
-          <div className="flex-1 overflow-y-auto p-3 text-xs">
-            {aiTab === 'cluster' && (
-              <ClusterTab clusters={clusters} loading={clustering} onRun={runCluster} active={!!activeId} stickyCount={activeShapes.filter(s => s.kind === 'sticky').length} />
-            )}
-            {aiTab === 'summarize' && (
-              <SummarizeTab summary={summary} loading={summarizing} onRun={runSummarize} active={!!activeId} />
-            )}
-            {aiTab === 'generate' && (
-              <GenerateTab prompt={genPrompt} setPrompt={setGenPrompt} kind={genKind} setKind={setGenKind} loading={generating} onRun={runGenerate} />
-            )}
-            {aiTab === 'comments' && (
-              <CommentsTab activeId={activeId} shapes={activeShapes} comments={comments} onAdd={addComment} onResolve={resolveComment} />
-            )}
-            {aiTab === 'export' && (
-              <div className="space-y-2">
-                <p className="text-gray-400">Download a portable <span className="font-mono text-pink-300">concord-whiteboard/v1</span> JSON envelope including the board, all elements, and all comments. Import is round-trippable.</p>
-                <button onClick={exportBoard} disabled={!activeId} className="px-3 py-1.5 text-xs rounded bg-pink-500 text-white font-bold hover:bg-pink-400 disabled:opacity-40 inline-flex items-center gap-1">
-                  <Download className="w-3 h-3" />Download JSON
-                </button>
-              </div>
-            )}
-          </div>
+          {aiTab === 'collab' ? (
+            <div className="flex-1 overflow-hidden">
+              <WhiteboardCollabPanel boardId={activeId} shapes={activeShapes} />
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-3 text-xs">
+              {aiTab === 'cluster' && (
+                <ClusterTab clusters={clusters} loading={clustering} onRun={runCluster} active={!!activeId} stickyCount={activeShapes.filter(s => s.kind === 'sticky').length} />
+              )}
+              {aiTab === 'summarize' && (
+                <SummarizeTab summary={summary} loading={summarizing} onRun={runSummarize} active={!!activeId} />
+              )}
+              {aiTab === 'generate' && (
+                <GenerateTab prompt={genPrompt} setPrompt={setGenPrompt} kind={genKind} setKind={setGenKind} loading={generating} onRun={runGenerate} />
+              )}
+              {aiTab === 'comments' && (
+                <CommentsTab activeId={activeId} shapes={activeShapes} comments={comments} onAdd={addComment} onResolve={resolveComment} />
+              )}
+              {aiTab === 'export' && (
+                <div className="space-y-2">
+                  <p className="text-gray-400">Download a portable <span className="font-mono text-pink-300">concord-whiteboard/v1</span> JSON envelope including the board, all elements, and all comments. Import is round-trippable.</p>
+                  <button onClick={exportBoard} disabled={!activeId} className="px-3 py-1.5 text-xs rounded bg-pink-500 text-white font-bold hover:bg-pink-400 disabled:opacity-40 inline-flex items-center gap-1">
+                    <Download className="w-3 h-3" />Download JSON
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </aside>
       )}
     </div>
@@ -354,13 +363,14 @@ function BoardTimer({ boardId }: { boardId: string }) {
     const poll = setInterval(() => { void sync(); }, 15000);
     return () => clearInterval(poll);
   }, [sync]);
+  const countingDown = remaining != null;
   useEffect(() => {
-    if (remaining == null) return;
+    if (!countingDown) return;
     const tick = setInterval(() => {
       setRemaining(v => (v == null ? v : Math.max(0, v - 1)));
     }, 1000);
     return () => clearInterval(tick);
-  }, [remaining == null]);
+  }, [countingDown]);
 
   async function start(minutes: number) {
     setMenuOpen(false);
