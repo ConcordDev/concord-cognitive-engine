@@ -13,14 +13,16 @@ Backend: cartographer report endpoint + `/api/analytics` + `/api/plugins`; reads
 - Keyboard tab navigation.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Live time-series metrics — CPU/memory/heap/request-rate graphs (Prometheus is wired in the stack but not surfaced here).
-- [ ] `[M]` Alerting UI — Prometheus alert rules exist; surface fired alerts and acknowledge them.
-- [ ] `[M]` Log viewer / search over server logs.
-- [ ] `[S]` Auto-refresh / live polling of the system report.
-- [ ] `[M]` Per-heartbeat health — last-run time, error count, skipped-tick counter per module.
-- [ ] `[M]` Distributed-trace / request-latency view.
-- [ ] `[S]` Customizable dashboard panels.
-- [ ] `[S]` Historical trend of coverage/drift over time, not just current snapshot.
+- [x] `[M]` Live time-series metrics — CPU/memory/heap/request-rate graphs (`system.sample`/`metrics` macros + `MetricsPanel.tsx`, real `process.memoryUsage()`/`cpuUsage()` ring buffer).
+- [x] `[M]` Alerting UI — Prometheus alert rules parsed from `alerts.yml`, evaluated against the live sample, acknowledgeable per-user (`system.alerts`/`alert-ack` + `AlertsPanel.tsx`).
+- [x] `[M]` Log viewer / search over server logs (`system.logs` over the in-process logger buffer + `LogViewer.tsx` with level/source/text filters).
+- [x] `[S]` Auto-refresh / live polling of the system report (`system.live-status` + `useLiveStatus.ts` hook, shared pause/play across all realtime panels).
+- [x] `[M]` Per-heartbeat health — last-run time, error count, skipped-tick counter per module (`system.heartbeat-health` + `HeartbeatHealthPanel.tsx`).
+- [x] `[M]` Distributed-trace / request-latency view (`system.trace-record`/`traces` with p50/p95/p99 + per-route rollup + `TracesPanel.tsx`).
+- [x] `[S]` Customizable dashboard panels (`system.dashboard-load`/`save`/`reset` per-user layout + `CustomDashboard.tsx`).
+- [x] `[S]` Historical trend of coverage/drift over time (`system.history-snapshot`/`history` snapshot timeline + `TrendPanel.tsx`).
 
 ## Parity
-~45% of Datadog/Grafana. It is a strong static self-audit (heartbeats, coverage, drift, gaps) but lacks live time-series metrics, alerting surface, and log search — the realtime observability that defines the category.
+~90% of Datadog/Grafana. Static self-audit (heartbeats, coverage, drift, gaps) plus the realtime layer that defines the category: live time-series metrics, fired-alert surface with acknowledgement, log search, per-heartbeat health, request-latency traces, customizable dashboards, and historical coverage/drift trend.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

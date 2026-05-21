@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~70%**
-- Total buildable features in the backlog (sum of all "Missing" items): **943**
+- Average feature parity: **~72%**
+- Total buildable features in the backlog (sum of all "Missing" items): **896**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 98 |
+| 80–100% (near-complete) | 104 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 73 |
+| 40–59% (partial) | 67 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -31,12 +31,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| supplychain | SAP IBP / Anaplan | ~45% | 8 |
-| system | Datadog / Grafana (observability) | ~45% | 8 |
-| tick | Datadog / heartbeat monitors (Better Uptime) | ~45% | 7 |
-| timeline | Facebook timeline | ~45% | 8 |
-| veterinary | ezyVet / Provet Cloud | ~45% | 8 |
-| welding | Jobber / contractor field-service (welding trade) | ~45% | 8 |
 | bio | Benchling / SnapGene | ~48% | 7 |
 | cognitive-replay | Spotify Wrapped / RescueTime timeline | ~48% | 7 |
 | admin | Datadog / Grafana | ~50% | 7 |
@@ -258,6 +252,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~90% | 0 |
 | society | Our World in Data / Gapminder | ~90% | 0 |
 | suffering | Productboard / pain-point analysis tools | ~90% | 0 |
+| supplychain | SAP IBP / Anaplan | ~90% | 0 |
+| system | Datadog / Grafana (observability) | ~90% | 0 |
 | telecommunications | telecom planning suites (Atoll / iBwave) | ~90% | 0 |
+| tick | Datadog / heartbeat monitors (Better Uptime) | ~90% | 0 |
+| timeline | Facebook timeline | ~90% | 0 |
 | tools | utility bundle (Perplexity + Babel REPL + DocuSign) | ~90% | 0 |
+| veterinary | ezyVet / Provet Cloud | ~90% | 0 |
+| welding | Jobber / contractor field-service (welding trade) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |

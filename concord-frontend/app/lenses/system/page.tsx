@@ -43,10 +43,20 @@ const LensPluginSystem = dynamic(
 );
 import { DomainProbeCard } from '@/components/system/DomainProbeCard';
 import { probesByGroup } from '@/lib/headless-probes';
+import { MetricsPanel } from '@/components/system/MetricsPanel';
+import { AlertsPanel } from '@/components/system/AlertsPanel';
+import { LogViewer } from '@/components/system/LogViewer';
+import { HeartbeatHealthPanel } from '@/components/system/HeartbeatHealthPanel';
+import { TracesPanel } from '@/components/system/TracesPanel';
+import { TrendPanel } from '@/components/system/TrendPanel';
+import { CustomDashboard } from '@/components/system/CustomDashboard';
+import { useLiveStatus } from '@/components/system/useLiveStatus';
 import {
   Activity, Database, Globe, Heart, Layers, Map as MapIcon,
   RefreshCw, AlertTriangle, CheckCircle2, XCircle, Loader2,
   Zap, BookOpen, GitBranch, BarChart3, Puzzle,
+  LineChart, Bell, ScrollText, Gauge, LayoutDashboard, TrendingUp,
+  Play, Pause,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -96,35 +106,34 @@ interface SystemsReport {
 export default function SystemLensPage() {
   useLensNav('system');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins' | 'substrate'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'metrics' | 'alerts' | 'logs' | 'hbhealth' | 'traces' | 'dashboard'
+    | 'trend' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins' | 'substrate'
+  >('overview');
 
+  // Live-poll loop — shared `live` flag pauses every realtime panel at once.
+  const { live, setLive, status: liveStatus } = useLiveStatus();
 
-  // Lens-scoped keyboard commands (auto-wired by codemod).
-
+  // Lens-scoped keyboard commands.
   useLensCommand(
-
     [
-
       { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
-
-      { id: 'tab-heartbeats', keys: 'h', description: 'Heartbeats', category: 'navigation', action: () => setActiveTab('heartbeats') },
-
+      { id: 'tab-metrics', keys: 'm', description: 'Metrics', category: 'navigation', action: () => setActiveTab('metrics') },
+      { id: 'tab-alerts', keys: 'l', description: 'Alerts', category: 'navigation', action: () => setActiveTab('alerts') },
+      { id: 'tab-logs', keys: 'v', description: 'Logs', category: 'navigation', action: () => setActiveTab('logs') },
+      { id: 'tab-hbhealth', keys: 'h', description: 'Heartbeat health', category: 'navigation', action: () => setActiveTab('hbhealth') },
+      { id: 'tab-traces', keys: 't', description: 'Traces', category: 'navigation', action: () => setActiveTab('traces') },
+      { id: 'tab-dashboard', keys: 'k', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('dashboard') },
+      { id: 'tab-trend', keys: 'r', description: 'Trend', category: 'navigation', action: () => setActiveTab('trend') },
       { id: 'tab-gaps', keys: 'g', description: 'Gaps', category: 'navigation', action: () => setActiveTab('gaps') },
-
       { id: 'tab-coverage', keys: 'c', description: 'Coverage', category: 'navigation', action: () => setActiveTab('coverage') },
-
       { id: 'tab-drift', keys: 'd', description: 'Drift', category: 'navigation', action: () => setActiveTab('drift') },
-
       { id: 'tab-analytics', keys: 'a', description: 'Analytics', category: 'navigation', action: () => setActiveTab('analytics') },
-
       { id: 'tab-plugins', keys: 'p', description: 'Plugins', category: 'navigation', action: () => setActiveTab('plugins') },
-
       { id: 'tab-substrate', keys: 's', description: 'Substrate', category: 'navigation', action: () => setActiveTab('substrate') },
-
+      { id: 'toggle-live', keys: 'shift+l', description: 'Toggle live polling', category: 'actions', action: () => setLive((v) => !v) },
     ],
-
     { lensId: 'system' }
-
   );
   const [coverageFilter, setCoverageFilter] = useState<'all' | 'present' | 'partial' | 'missing'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -376,6 +385,19 @@ export default function SystemLensPage() {
               Last cartograph: {new Date(data.generatedAt).toLocaleTimeString()}
             </span>
             <button
+              onClick={() => setLive((v) => !v)}
+              className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
+                live
+                  ? 'border-emerald-700/50 bg-emerald-900/20 text-emerald-300'
+                  : 'border-cyan-800/50 bg-cyan-950/30 text-cyan-600'
+              }`}
+              aria-label={live ? 'Pause live polling' : 'Resume live polling'}
+              aria-pressed={live}
+            >
+              {live ? <Pause className="h-3 w-3" aria-hidden /> : <Play className="h-3 w-3" aria-hidden />}
+              {live ? 'Live' : 'Paused'}
+            </button>
+            <button
               onClick={handleRefresh}
               className="inline-flex items-center gap-2 rounded border border-cyan-700/50 bg-cyan-900/20 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-800/40 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               aria-label="Refresh cartographer data"
@@ -384,6 +406,17 @@ export default function SystemLensPage() {
             </button>
           </div>
         </div>
+        {liveStatus && (
+          <div className="mx-auto mt-2 flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-cyan-600">
+            <span>CPU <span className="text-cyan-300">{liveStatus.sample.cpuPct}%</span></span>
+            <span>Heap <span className="text-cyan-300">{liveStatus.sample.heapUsedMB}MB ({liveStatus.sample.heapPct}%)</span></span>
+            <span>RSS <span className="text-cyan-300">{liveStatus.sample.rssMB}MB</span></span>
+            <span>Req <span className="text-cyan-300">{liveStatus.sample.requestRate}/s</span></span>
+            <span>HB <span className={liveStatus.heartbeats.unhealthy > 0 ? 'text-yellow-400' : 'text-emerald-400'}>{liveStatus.heartbeats.ok}/{liveStatus.heartbeats.total}</span></span>
+            <span>Alerts <span className={liveStatus.alerts.firing > 0 ? 'text-rose-400' : 'text-emerald-400'}>{liveStatus.alerts.firing} firing</span></span>
+            <span className="ml-auto">poll {new Date(liveStatus.pollAt).toLocaleTimeString()}</span>
+          </div>
+        )}
       </header>
 
       {/* Tabs */}
@@ -391,6 +424,13 @@ export default function SystemLensPage() {
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
           {([
             { key: 'overview', label: 'Overview', icon: Activity as LucideIcon },
+            { key: 'metrics', label: 'Metrics', icon: LineChart as LucideIcon },
+            { key: 'alerts', label: liveStatus ? `Alerts (${liveStatus.alerts.firing})` : 'Alerts', icon: Bell as LucideIcon },
+            { key: 'logs', label: 'Logs', icon: ScrollText as LucideIcon },
+            { key: 'hbhealth', label: liveStatus ? `HB Health (${liveStatus.heartbeats.ok}/${liveStatus.heartbeats.total})` : 'HB Health', icon: Heart as LucideIcon },
+            { key: 'traces', label: 'Traces', icon: Gauge as LucideIcon },
+            { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard as LucideIcon },
+            { key: 'trend', label: 'Trend', icon: TrendingUp as LucideIcon },
             { key: 'heartbeats', label: `Heartbeats (${heartbeats.length})`, icon: Heart as LucideIcon },
             { key: 'gaps', label: `Gaps (${data.crossRef.dormantModules.length + data.crossRef.headlessBackends.length})`, icon: AlertTriangle as LucideIcon },
             { key: 'coverage', label: `Coverage (${coveragePct}%)`, icon: MapIcon as LucideIcon },
@@ -447,6 +487,125 @@ export default function SystemLensPage() {
                   <div><dt className="inline text-cyan-700">Drift entries:</dt> <dd className="inline">{data.drift.length}</dd></div>
                 </dl>
               </div>
+            </motion.section>
+          )}
+
+          {activeTab === 'metrics' && (
+            <motion.section
+              key="metrics"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              aria-labelledby="metrics-heading"
+            >
+              <h2 id="metrics-heading" className="mb-1 text-base font-semibold text-cyan-200">Live process metrics</h2>
+              <p className="mb-3 text-xs text-cyan-700">
+                Real process.memoryUsage()/cpuUsage() time-series — CPU, heap, RSS, and request rate sampled every 15s.
+              </p>
+              <MetricsPanel live={live} />
+            </motion.section>
+          )}
+
+          {activeTab === 'alerts' && (
+            <motion.section
+              key="alerts"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              aria-labelledby="alerts-heading"
+            >
+              <h2 id="alerts-heading" className="mb-1 text-base font-semibold text-cyan-200">Prometheus alert rules</h2>
+              <p className="mb-3 text-xs text-cyan-700">
+                Rules from monitoring/prometheus/alerts.yml, evaluated against the live sample. Acknowledge fired alerts.
+              </p>
+              <AlertsPanel live={live} />
+            </motion.section>
+          )}
+
+          {activeTab === 'logs' && (
+            <motion.section
+              key="logs"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              aria-labelledby="logs-heading"
+            >
+              <h2 id="logs-heading" className="mb-1 text-base font-semibold text-cyan-200">Server log viewer</h2>
+              <p className="mb-3 text-xs text-cyan-700">
+                Search + filter over the in-process logger ring buffer by level, source, and free text.
+              </p>
+              <LogViewer live={live} />
+            </motion.section>
+          )}
+
+          {activeTab === 'hbhealth' && (
+            <motion.section
+              key="hbhealth"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              aria-labelledby="hbhealth-heading"
+            >
+              <h2 id="hbhealth-heading" className="mb-1 text-base font-semibold text-cyan-200">Per-heartbeat health</h2>
+              <p className="mb-3 text-xs text-cyan-700">
+                Last-run age, run / error / skipped-tick counters and a derived verdict per heartbeat module.
+              </p>
+              <HeartbeatHealthPanel live={live} />
+            </motion.section>
+          )}
+
+          {activeTab === 'traces' && (
+            <motion.section
+              key="traces"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              aria-labelledby="traces-heading"
+            >
+              <h2 id="traces-heading" className="mb-1 text-base font-semibold text-cyan-200">Request traces & latency</h2>
+              <p className="mb-3 text-xs text-cyan-700">
+                Distributed-trace spans with p50/p95/p99 latency percentiles and per-route rollup.
+              </p>
+              <TracesPanel live={live} />
+            </motion.section>
+          )}
+
+          {activeTab === 'dashboard' && (
+            <motion.section
+              key="dashboard"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              aria-labelledby="dashboard-heading"
+            >
+              <h2 id="dashboard-heading" className="mb-1 text-base font-semibold text-cyan-200">Customizable dashboard</h2>
+              <p className="mb-3 text-xs text-cyan-700">
+                Build your own observability panel grid. Layout persists per-user.
+              </p>
+              <CustomDashboard live={live} />
+            </motion.section>
+          )}
+
+          {activeTab === 'trend' && (
+            <motion.section
+              key="trend"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              aria-labelledby="trend-heading"
+            >
+              <h2 id="trend-heading" className="mb-1 text-base font-semibold text-cyan-200">Coverage & drift trend</h2>
+              <p className="mb-3 text-xs text-cyan-700">
+                Historical trajectory of coverage / drift / dormant-module counts, not just the current snapshot.
+              </p>
+              <TrendPanel />
             </motion.section>
           )}
 

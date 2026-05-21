@@ -11,14 +11,16 @@ Backend: DTU store (`apiHelpers.dtus.paginated` filtered by `timeline`/`story` t
 - Left nav (Friends/Groups/Watch/Memories/Saved), date-tick timeline scrubber.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Comments on posts with nested replies.
-- [ ] `[S]` Reaction counts and "who reacted" breakdown per post.
-- [ ] `[M]` Photo/video upload in the composer and media albums.
-- [ ] `[S]` Share / repost a post to your own timeline.
-- [ ] `[M]` Privacy controls per post (public / friends / only-me).
-- [ ] `[S]` Profile cover photo, bio, and "about" section.
-- [ ] `[M]` "On this day" / Memories actually wired (nav item exists, no view).
-- [ ] `[M]` Notifications for reactions/comments/tags.
+- [x] `[M]` Comments on posts with nested replies. — `timeline.comment-add/list/delete`; `CommentThread.tsx` recursive reply tree.
+- [x] `[S]` Reaction counts and "who reacted" breakdown per post. — `timeline.react` + `reactions-breakdown`; `ReactionBreakdown.tsx` modal.
+- [x] `[M]` Photo/video upload in the composer and media albums. — `timeline.album-create/add-media/list` + `post-create` media; `PostComposer.tsx` + `AlbumsPanel.tsx`.
+- [x] `[S]` Share / repost a post to your own timeline. — `timeline.share-post`; `ShareModal.tsx`, shared-from quote in `PostCard.tsx`.
+- [x] `[M]` Privacy controls per post (public / friends / only-me). — `post-create` privacy + privacy-aware `feed-list`; composer audience toggle.
+- [x] `[S]` Profile cover photo, bio, and "about" section. — `timeline.profile-get/update`; `ProfilePanel.tsx`.
+- [x] `[M]` "On this day" / Memories actually wired. — `timeline.memories`; `MemoriesPanel.tsx` with date override.
+- [x] `[M]` Notifications for reactions/comments/tags. — `timeline.notifications-list/mark-read`; `NotificationsPanel.tsx` + header unread badge.
 
 ## Parity
-~45% of Facebook's timeline. Posts, reactions, stories, friends, and a date scrubber are wired on the DTU substrate, but comments, media upload, sharing, and privacy controls — core to the timeline experience — are missing.
+~90% of Facebook's timeline. The full feed substrate — posts with per-post privacy, five-reaction picker plus "who reacted" breakdown, nested comment threads, share/repost, media albums, profile with cover/bio/about, "On this day" memories, and a notification centre — is wired end-to-end on the `timeline` domain macros. Remaining gap is licensed content (live video streaming), which is structural, not buildable.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

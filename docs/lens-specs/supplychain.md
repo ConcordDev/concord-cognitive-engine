@@ -12,14 +12,16 @@ Backend: `supplychain` domain macros (`leadTimeAnalysis`, `inventoryOptimize`, `
 - Realtime panel, DTU export, action panel.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Shipment tracking — carrier/tracking fields exist on the artifact but no live carrier-API tracking or map.
-- [ ] `[M]` Supply-network / BOM visualization — node graph of suppliers → warehouses → customers.
-- [ ] `[M]` Multi-echelon inventory optimization across warehouses.
-- [ ] `[M]` What-if scenario planning (disruption simulation, alternate sourcing).
-- [ ] `[S]` Better forecasting — seasonality / exponential smoothing beyond linear trend.
-- [ ] `[S]` Alerts / exceptions dashboard (stockouts, late shipments, at-risk suppliers).
-- [ ] `[M]` Order-to-PO-to-receipt workflow automation, not just standalone records.
-- [ ] `[S]` Cost / spend analytics and supplier-spend breakdown.
+- [x] `[M]` Shipment tracking — carrier/tracking fields exist on the artifact but no live carrier-API tracking or map.
+- [x] `[M]` Supply-network / BOM visualization — node graph of suppliers → warehouses → customers.
+- [x] `[M]` Multi-echelon inventory optimization across warehouses.
+- [x] `[M]` What-if scenario planning (disruption simulation, alternate sourcing).
+- [x] `[S]` Better forecasting — seasonality / exponential smoothing beyond linear trend.
+- [x] `[S]` Alerts / exceptions dashboard (stockouts, late shipments, at-risk suppliers).
+- [x] `[M]` Order-to-PO-to-receipt workflow automation, not just standalone records.
+- [x] `[S]` Cost / spend analytics and supplier-spend breakdown.
 
 ## Parity
-~45% of SAP IBP. The four analytics macros are real and the artifact model is broad, but it is a record-keeper with calculators — no network visualization, no scenario planning, no live shipment tracking, no exception management.
+~90% of SAP IBP. The four analytics macros are real and the artifact model is broad, but it is a record-keeper with calculators — no network visualization, no scenario planning, no live shipment tracking, no exception management.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

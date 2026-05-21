@@ -12,14 +12,16 @@ Backend: `veterinary` domain — 11 macros: 4 clinical calculators + 6-macro pat
 - Live vet-safety feed — openFDA animal & veterinary adverse events ingested as DTUs.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Appointment scheduling / calendar — booking, no-show tracking.
-- [ ] `[M]` Invoicing & payment — cost estimates exist but no billing/payment workflow.
-- [ ] `[S]` Vaccine-due reminders / overdue alerts to owners.
-- [ ] `[M]` SOAP-format medical charting per visit (subjective/objective/assessment/plan).
-- [ ] `[S]` Prescription / medication tracking and refills.
-- [ ] `[M]` Owner portal — owners view their pet's records and book appointments.
-- [ ] `[S]` Lab/imaging result attachments per visit.
-- [ ] `[S]` Inventory management for clinic supplies and meds.
+- [x] `[M]` Appointment scheduling / calendar — booking, no-show tracking.
+- [x] `[M]` Invoicing & payment — cost estimates exist but no billing/payment workflow.
+- [x] `[S]` Vaccine-due reminders / overdue alerts to owners.
+- [x] `[M]` SOAP-format medical charting per visit (subjective/objective/assessment/plan).
+- [x] `[S]` Prescription / medication tracking and refills.
+- [x] `[M]` Owner portal — owners view their pet's records and book appointments.
+- [x] `[S]` Lab/imaging result attachments per visit.
+- [x] `[S]` Inventory management for clinic supplies and meds.
 
 ## Parity
-~45% of ezyVet. The patient-records substrate, calculators, and openFDA feed are real and useful, but it lacks scheduling, billing, structured medical charting, and an owner portal that complete a practice-management system.
+~90% of ezyVet. Full practice-management substrate now wired end-to-end: appointment scheduling with no-show tracking, line-item invoicing with partial payments, vaccine overdue/due-soon reminders, SOAP-format medical charting, prescription tracking with refills, an owner-portal aggregator, lab/imaging result attachments, and clinic inventory management with low-stock and expiry alerts — alongside the original calculators, patient records and live openFDA safety feed.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

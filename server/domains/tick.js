@@ -403,4 +403,576 @@ export default function registerTickActions(registerLensAction) {
       },
     };
   });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Heartbeat-monitor substrate (Datadog / Better Uptime parity)
+  //
+  // The frontend polls the real `/api/perf/metrics` + `/api/events`
+  // endpoints and feeds each observed sample to `recordSample`. Every
+  // macro below computes over that real persisted history — no synthetic
+  // data. State is per-user under globalThis._concordSTATE.tickLens.
+  // ══════════════════════════════════════════════════════════════════════
+
+  const TK_MAX_SAMPLES = 2880;        // ~12h of 15s ticks
+  const TK_MAX_ALERTS = 200;
+  const TK_GOVERNOR_INTERVAL = 15000; // documented governorTick cadence
+
+  function getTickState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.tickLens) STATE.tickLens = {};
+    const s = STATE.tickLens;
+    for (const k of ["samples", "heartbeats", "alerts", "controls", "config"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveTickState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const tkAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const tkNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const tkClean = (v, max = 120) => String(v == null ? "" : v).trim().slice(0, max);
+  const tkList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+
+  /**
+   * recordSample
+   * Persist one observed tick sample from `/api/perf/metrics`. The frontend
+   * calls this every poll. Stores cumulative-counter deltas so later macros
+   * can compute per-window latency / skip / uptime over real data.
+   * params: { ticks, tickDurationMs, skippedTotal, uptimeSec, heartbeatsOk,
+   *           errorCount, heartbeats:[{id,frequency,lastRunAt,errorCount,enabled}] }
+   */
+  registerLensAction("tick", "recordSample", (ctx, _a, params = {}) => {
+    try {
+      const s = getTickState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = tkAid(ctx);
+      const samples = tkList(s.samples, uid);
+      const now = Date.now();
+      const prev = samples[samples.length - 1] || null;
+
+      const ticks = tkNum(params.ticks, prev ? prev.ticks : 0);
+      const skipped = tkNum(params.skippedTotal, prev ? prev.skipped : 0);
+      const tickDurationMs = tkNum(params.tickDurationMs, 0);
+      // Per-interval deltas — these are what the dashboards graph.
+      const tickDelta = prev ? Math.max(0, ticks - prev.ticks) : 0;
+      const skipDelta = prev ? Math.max(0, skipped - prev.skipped) : 0;
+      const wallDelta = prev ? Math.max(1, now - prev.at) : TK_GOVERNOR_INTERVAL;
+
+      const sample = {
+        at: now,
+        ticks,
+        skipped,
+        tickDurationMs,
+        uptimeSec: tkNum(params.uptimeSec, 0),
+        heartbeatsOk: params.heartbeatsOk !== false,
+        errorCount: tkNum(params.errorCount, 0),
+        tickDelta,
+        skipDelta,
+        wallDelta,
+        // observed tick rate over the wall interval (Hz)
+        rateHz: wallDelta > 0 ? tickDelta / (wallDelta / 1000) : 0,
+      };
+      samples.push(sample);
+      if (samples.length > TK_MAX_SAMPLES) samples.splice(0, samples.length - TK_MAX_SAMPLES);
+
+      // Per-heartbeat detail — store latest snapshot per module id.
+      if (Array.isArray(params.heartbeats)) {
+        const hbMap = s.heartbeats;
+        for (const hb of params.heartbeats) {
+          const id = tkClean(hb.id, 80);
+          if (!id) continue;
+          const existing = hbMap.get(id) || { id, firstSeen: now, errorDeltas: [] };
+          const errCount = tkNum(hb.errorCount, 0);
+          const errDelta = Math.max(0, errCount - tkNum(existing.errorCount, 0));
+          hbMap.set(id, {
+            id,
+            frequency: tkNum(hb.frequency, existing.frequency || 0),
+            lastRunAt: tkNum(hb.lastRunAt, existing.lastRunAt || 0),
+            errorCount: errCount,
+            enabled: hb.enabled !== false,
+            firstSeen: existing.firstSeen || now,
+            lastSampledAt: now,
+            errorDeltas: [...(existing.errorDeltas || []), errDelta].slice(-120),
+          });
+          // Auto-alert: a heartbeat that just errored.
+          if (errDelta > 0) {
+            const alerts = tkList(s.alerts, uid);
+            alerts.push({
+              id: `alrt_${now.toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+              at: now, severity: "warning", kind: "heartbeat_error",
+              subject: id,
+              message: `Heartbeat "${id}" reported ${errDelta} new error${errDelta > 1 ? "s" : ""}.`,
+              acknowledged: false,
+            });
+            if (alerts.length > TK_MAX_ALERTS) alerts.splice(0, alerts.length - TK_MAX_ALERTS);
+          }
+        }
+      }
+
+      // Auto-alert: tick rate flat-lined to 0 (governor frozen).
+      if (prev && sample.tickDelta === 0 && wallDelta >= TK_GOVERNOR_INTERVAL * 2) {
+        const alerts = tkList(s.alerts, uid);
+        const lastFlat = alerts[alerts.length - 1];
+        if (!lastFlat || lastFlat.kind !== "tick_stopped" || (now - lastFlat.at) > 60000) {
+          alerts.push({
+            id: `alrt_${now.toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+            at: now, severity: "critical", kind: "tick_stopped",
+            subject: "governorTick",
+            message: `No ticks advanced in ${Math.round(wallDelta / 1000)}s — governor loop may be frozen.`,
+            acknowledged: false,
+          });
+          if (alerts.length > TK_MAX_ALERTS) alerts.splice(0, alerts.length - TK_MAX_ALERTS);
+        }
+      }
+      // Auto-alert: a tick block overran (skipped tick observed).
+      if (skipDelta > 0) {
+        const alerts = tkList(s.alerts, uid);
+        alerts.push({
+          id: `alrt_${now.toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+          at: now, severity: "warning", kind: "tick_overrun",
+          subject: "governorTick",
+          message: `${skipDelta} tick${skipDelta > 1 ? "s" : ""} skipped — a previous tick is still running.`,
+          acknowledged: false,
+        });
+        if (alerts.length > TK_MAX_ALERTS) alerts.splice(0, alerts.length - TK_MAX_ALERTS);
+      }
+
+      saveTickState();
+      return {
+        ok: true,
+        result: {
+          recorded: true,
+          totalSamples: samples.length,
+          sample,
+          heartbeatsTracked: s.heartbeats.size,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * heartbeatList — Per-heartbeat detail (#1).
+   * Returns every observed heartbeat module with frequency, last-run,
+   * cumulative error count, error rate and a derived live/stale status.
+   */
+  registerLensAction("tick", "heartbeatList", (ctx, _a, _params = {}) => {
+    try {
+      const s = getTickState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const now = Date.now();
+      const modules = [...s.heartbeats.values()].map((hb) => {
+        const periodMs = (hb.frequency || 1) * TK_GOVERNOR_INTERVAL;
+        const sinceRun = hb.lastRunAt ? now - hb.lastRunAt : null;
+        // Stale = no run within 3 expected periods.
+        const stale = sinceRun != null && sinceRun > periodMs * 3;
+        const recentErrors = (hb.errorDeltas || []).reduce((a, b) => a + b, 0);
+        let status;
+        if (!hb.enabled) status = "paused";
+        else if (stale) status = "stale";
+        else if (recentErrors > 0) status = "erroring";
+        else status = "healthy";
+        return {
+          id: hb.id,
+          frequency: hb.frequency || 0,
+          periodMs,
+          periodHuman: periodMs >= 60000 ? `${Math.round(periodMs / 6000) / 10}m` : `${Math.round(periodMs / 1000)}s`,
+          lastRunAt: hb.lastRunAt || null,
+          sinceRunMs: sinceRun,
+          errorCount: hb.errorCount || 0,
+          recentErrors,
+          enabled: hb.enabled !== false,
+          status,
+        };
+      }).sort((a, b) => {
+        const rank = { erroring: 0, stale: 1, paused: 2, healthy: 3 };
+        return (rank[a.status] - rank[b.status]) || a.id.localeCompare(b.id);
+      });
+      return {
+        ok: true,
+        result: {
+          modules,
+          summary: {
+            total: modules.length,
+            healthy: modules.filter((m) => m.status === "healthy").length,
+            erroring: modules.filter((m) => m.status === "erroring").length,
+            stale: modules.filter((m) => m.status === "stale").length,
+            paused: modules.filter((m) => m.status === "paused").length,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * skipReport — Skipped-tick / overrun visualization (#2).
+   * Surfaces the concord_heartbeat_skipped_total counter as a per-window
+   * series the frontend can chart, plus an overrun ratio.
+   */
+  registerLensAction("tick", "skipReport", (ctx, _a, params = {}) => {
+    try {
+      const s = getTickState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = tkAid(ctx);
+      const all = s.samples.get(uid) || [];
+      const windowMs = Math.max(60000, tkNum(params.windowMs, 3600000));
+      const cutoff = Date.now() - windowMs;
+      const win = all.filter((x) => x.at >= cutoff);
+      if (win.length === 0) {
+        return { ok: true, result: { message: "No samples in window.", series: [], totals: { ticks: 0, skipped: 0, overrunRatio: 0 } } };
+      }
+      const series = win.map((x) => ({
+        at: x.at,
+        ticks: x.tickDelta,
+        skipped: x.skipDelta,
+      }));
+      const totalTicks = win.reduce((a, x) => a + x.tickDelta, 0);
+      const totalSkipped = win.reduce((a, x) => a + x.skipDelta, 0);
+      const denom = totalTicks + totalSkipped;
+      return {
+        ok: true,
+        result: {
+          windowMs,
+          series,
+          totals: {
+            ticks: totalTicks,
+            skipped: totalSkipped,
+            overrunRatio: denom > 0 ? Math.round((totalSkipped / denom) * 10000) / 100 : 0,
+          },
+          peakSkipInterval: Math.max(0, ...win.map((x) => x.skipDelta)),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * alerts — Alerting feed (#3). List / acknowledge / clear monitor alerts.
+   * params.op = 'list' (default) | 'ack' (alertId) | 'clear' | 'config'
+   */
+  registerLensAction("tick", "alerts", (ctx, _a, params = {}) => {
+    try {
+      const s = getTickState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = tkAid(ctx);
+      const op = tkClean(params.op || "list", 20);
+      const alerts = tkList(s.alerts, uid);
+
+      if (op === "ack") {
+        const id = tkClean(params.alertId, 64);
+        const a = alerts.find((x) => x.id === id);
+        if (!a) return { ok: false, error: "alert not found" };
+        a.acknowledged = true;
+        saveTickState();
+        return { ok: true, result: { acknowledged: id } };
+      }
+      if (op === "clear") {
+        const before = alerts.length;
+        s.alerts.set(uid, alerts.filter((x) => !x.acknowledged));
+        saveTickState();
+        return { ok: true, result: { cleared: before - (s.alerts.get(uid) || []).length } };
+      }
+      if (op === "config") {
+        const cfg = s.config.get(uid) || { notifyOnStop: true, notifyOnError: true, notifyOnOverrun: true };
+        if ("notifyOnStop" in params) cfg.notifyOnStop = params.notifyOnStop !== false;
+        if ("notifyOnError" in params) cfg.notifyOnError = params.notifyOnError !== false;
+        if ("notifyOnOverrun" in params) cfg.notifyOnOverrun = params.notifyOnOverrun !== false;
+        s.config.set(uid, cfg);
+        saveTickState();
+        return { ok: true, result: { config: cfg } };
+      }
+      // list
+      const sorted = [...alerts].sort((a, b) => b.at - a.at);
+      return {
+        ok: true,
+        result: {
+          alerts: sorted,
+          unacknowledged: sorted.filter((a) => !a.acknowledged).length,
+          bySeverity: {
+            critical: sorted.filter((a) => a.severity === "critical").length,
+            warning: sorted.filter((a) => a.severity === "warning").length,
+          },
+          config: s.config.get(uid) || { notifyOnStop: true, notifyOnError: true, notifyOnOverrun: true },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * stream — Time-range-filtered tick stream (#4 + #1 stream feed).
+   * params.windowMs selects the range; returns real persisted samples.
+   */
+  registerLensAction("tick", "stream", (ctx, _a, params = {}) => {
+    try {
+      const s = getTickState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = tkAid(ctx);
+      const all = s.samples.get(uid) || [];
+      const windowMs = Math.max(60000, tkNum(params.windowMs, 900000));
+      const cutoff = Date.now() - windowMs;
+      const limit = Math.min(2000, Math.max(1, tkNum(params.limit, 600)));
+      const win = all.filter((x) => x.at >= cutoff).slice(-limit);
+      return {
+        ok: true,
+        result: {
+          windowMs,
+          samples: win.map((x) => ({
+            at: x.at,
+            tickDelta: x.tickDelta,
+            rateHz: Math.round(x.rateHz * 1000) / 1000,
+            tickDurationMs: x.tickDurationMs,
+            skipDelta: x.skipDelta,
+            errorCount: x.errorCount,
+          })),
+          windowOptions: [
+            { label: "15m", ms: 900000 },
+            { label: "1h", ms: 3600000 },
+            { label: "6h", ms: 21600000 },
+            { label: "12h", ms: 43200000 },
+          ],
+          count: win.length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * latencyHistogram — Tick latency histogram (#5).
+   * Buckets observed governorTick durations into a real histogram.
+   */
+  registerLensAction("tick", "latencyHistogram", (ctx, _a, params = {}) => {
+    try {
+      const s = getTickState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = tkAid(ctx);
+      const all = s.samples.get(uid) || [];
+      const windowMs = Math.max(60000, tkNum(params.windowMs, 3600000));
+      const cutoff = Date.now() - windowMs;
+      const durations = all
+        .filter((x) => x.at >= cutoff && x.tickDurationMs > 0)
+        .map((x) => x.tickDurationMs);
+      if (durations.length === 0) {
+        return { ok: true, result: { message: "No latency samples in window.", buckets: [], percentiles: {} } };
+      }
+      // Fixed buckets relative to the 15s governor budget.
+      const edges = [0, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 15000, Infinity];
+      const labels = ["<50ms", "50-100", "100-250", "250-500", "500ms-1s", "1-2.5s", "2.5-5s", "5-10s", "10-15s", ">15s"];
+      const counts = new Array(labels.length).fill(0);
+      for (const d of durations) {
+        for (let i = 0; i < labels.length; i++) {
+          if (d >= edges[i] && d < edges[i + 1]) { counts[i]++; break; }
+        }
+      }
+      const buckets = labels.map((label, i) => ({
+        label,
+        count: counts[i],
+        pct: Math.round((counts[i] / durations.length) * 1000) / 10,
+        // Anything >15s exceeds the governor interval — flag it.
+        overBudget: i === labels.length - 1,
+      }));
+      const sortedD = [...durations].sort((a, b) => a - b);
+      const pct = (p) => sortedD[Math.min(sortedD.length - 1, Math.floor((p / 100) * sortedD.length))];
+      return {
+        ok: true,
+        result: {
+          windowMs,
+          sampleCount: durations.length,
+          buckets,
+          percentiles: {
+            p50: pct(50), p90: pct(90), p95: pct(95), p99: pct(99),
+            min: sortedD[0], max: sortedD[sortedD.length - 1],
+            mean: Math.round(durations.reduce((a, b) => a + b, 0) / durations.length),
+          },
+          overBudgetCount: counts[labels.length - 1],
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * heartbeatControl — Pause / resume / manual-trigger controls (#6).
+   * Records the operator's intent per heartbeat module. The intent is
+   * surfaced back via heartbeatList (enabled flag) and exposed for the
+   * server-side dispatcher to honour.
+   * params: { moduleId, op: 'pause'|'resume'|'trigger' }
+   */
+  registerLensAction("tick", "heartbeatControl", (ctx, _a, params = {}) => {
+    try {
+      const s = getTickState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = tkAid(ctx);
+      const moduleId = tkClean(params.moduleId, 80);
+      const op = tkClean(params.op, 20);
+      if (!moduleId) return { ok: false, error: "moduleId required" };
+      if (!["pause", "resume", "trigger"].includes(op)) {
+        return { ok: false, error: "op must be pause|resume|trigger" };
+      }
+      const now = Date.now();
+      const controls = s.controls;
+      const entry = controls.get(moduleId) || { moduleId, enabled: true, triggerRequests: 0, history: [] };
+      if (op === "pause") entry.enabled = false;
+      if (op === "resume") entry.enabled = true;
+      if (op === "trigger") {
+        entry.triggerRequests = (entry.triggerRequests || 0) + 1;
+        entry.lastTriggerAt = now;
+      }
+      entry.history = [...(entry.history || []), { at: now, op, by: uid }].slice(-50);
+      controls.set(moduleId, entry);
+      // Mirror enable/disable into the observed heartbeat record so the
+      // detail list reflects the new state immediately.
+      const hb = s.heartbeats.get(moduleId);
+      if (hb && op !== "trigger") hb.enabled = entry.enabled;
+      saveTickState();
+      return {
+        ok: true,
+        result: {
+          moduleId,
+          op,
+          enabled: entry.enabled,
+          triggerRequests: entry.triggerRequests || 0,
+          lastTriggerAt: entry.lastTriggerAt || null,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * uptimeSLA — Historical uptime / SLA percentage over rolling windows (#7).
+   * A window-tick is "up" if it advanced ≥1 tick within ~2 governor periods.
+   */
+  registerLensAction("tick", "uptimeSLA", (ctx, _a, _params = {}) => {
+    try {
+      const s = getTickState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = tkAid(ctx);
+      const all = s.samples.get(uid) || [];
+      if (all.length < 2) {
+        return { ok: true, result: { message: "Need at least 2 samples for SLA.", windows: [] } };
+      }
+      const now = Date.now();
+      const computeWindow = (label, ms) => {
+        const cutoff = now - ms;
+        const win = all.filter((x, i) => x.at >= cutoff && i > 0);
+        if (win.length === 0) return { label, windowMs: ms, uptimePct: null, samples: 0 };
+        const up = win.filter((x) => x.tickDelta > 0).length;
+        // Downtime = wall time of intervals where no tick advanced.
+        const downtimeMs = win.filter((x) => x.tickDelta === 0).reduce((a, x) => a + x.wallDelta, 0);
+        return {
+          label,
+          windowMs: ms,
+          samples: win.length,
+          upSamples: up,
+          uptimePct: Math.round((up / win.length) * 10000) / 100,
+          downtimeMs,
+          downtimeHuman: downtimeMs >= 60000 ? `${Math.round(downtimeMs / 6000) / 10}m` : `${Math.round(downtimeMs / 1000)}s`,
+        };
+      };
+      const windows = [
+        computeWindow("1h", 3600000),
+        computeWindow("6h", 21600000),
+        computeWindow("24h", 86400000),
+      ];
+      // SLA targets — surfaced so the UI can colour against a threshold.
+      const target = 99.9;
+      return {
+        ok: true,
+        result: {
+          windows: windows.map((w) => ({
+            ...w,
+            meetsTarget: w.uptimePct != null ? w.uptimePct >= target : null,
+          })),
+          slaTarget: target,
+          currentStatus: all[all.length - 1].tickDelta > 0 ? "operational" : "down",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * heartbeatRegistry — Per-heartbeat detail source (#1 / #6 backing data).
+   *
+   * Surfaces the *real* registered heartbeat modules from the runtime
+   * heartbeat-registry. Each module's `enabled` flag is the live
+   * STATE.settings.disabledHeartbeats truth, merged with the operator's
+   * own pause/resume intent stored by `heartbeatControl`. The frontend
+   * feeds the returned `modules` array straight back into `recordSample`
+   * as `heartbeats[]` so the detail / control views render real ids,
+   * frequencies and derived governor-tick periods — never synthetic data.
+   */
+  registerLensAction("tick", "heartbeatRegistry", async (ctx, _a, _params = {}) => {
+    try {
+      let registered = [];
+      try {
+        const mod = await import("../emergent/heartbeat-registry.js");
+        if (typeof mod.listHeartbeatModules === "function") {
+          registered = mod.listHeartbeatModules() || [];
+        }
+      } catch (_e) {
+        return { ok: false, error: "heartbeat-registry unavailable" };
+      }
+      const STATE = globalThis._concordSTATE;
+      const disabled = new Set(
+        (STATE && STATE.settings && Array.isArray(STATE.settings.disabledHeartbeats))
+          ? STATE.settings.disabledHeartbeats
+          : []
+      );
+      const s = getTickState();
+      const controls = s ? s.controls : new Map();
+      const now = Date.now();
+      const modules = registered.map((m) => {
+        const ctrl = controls.get(m.id);
+        // neverDisable modules cannot be paused; otherwise operator
+        // intent (heartbeatControl) overrides the global disabled set.
+        let enabled = !disabled.has(m.id);
+        if (ctrl && !m.neverDisable && typeof ctrl.enabled === "boolean") enabled = ctrl.enabled;
+        const periodMs = (m.frequency || 1) * TK_GOVERNOR_INTERVAL;
+        return {
+          id: m.id,
+          frequency: m.frequency || 1,
+          neverDisable: !!m.neverDisable,
+          periodMs,
+          periodHuman: periodMs >= 60000
+            ? `${Math.round(periodMs / 6000) / 10}m`
+            : `${Math.round(periodMs / 1000)}s`,
+          enabled,
+          triggerRequests: ctrl ? (ctrl.triggerRequests || 0) : 0,
+          lastTriggerAt: ctrl ? (ctrl.lastTriggerAt || null) : null,
+        };
+      }).sort((a, b) => a.frequency - b.frequency || a.id.localeCompare(b.id));
+      return {
+        ok: true,
+        result: {
+          modules,
+          sampledAt: now,
+          summary: {
+            total: modules.length,
+            enabled: modules.filter((m) => m.enabled).length,
+            paused: modules.filter((m) => !m.enabled).length,
+            neverDisable: modules.filter((m) => m.neverDisable).length,
+            governorIntervalMs: TK_GOVERNOR_INTERVAL,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 }

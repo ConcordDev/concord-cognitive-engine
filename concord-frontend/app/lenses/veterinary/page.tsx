@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef} from 'react';
+import { useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
@@ -9,167 +9,97 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { VetFeed } from '@/components/veterinary/VetFeed';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useLensCommand } from "@/hooks/useLensCommand";
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { cn } from '@/lib/utils';
+import { LensPageShell } from '@/components/lens/LensPageShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
+import { VetFeed } from '@/components/veterinary/VetFeed';
+import { DashboardPanel } from '@/components/veterinary/DashboardPanel';
+import { PatientsPanel } from '@/components/veterinary/PatientsPanel';
+import { AppointmentsPanel } from '@/components/veterinary/AppointmentsPanel';
+import { BillingPanel } from '@/components/veterinary/BillingPanel';
+import { RecordsPanel } from '@/components/veterinary/RecordsPanel';
+import { PharmacyPanel } from '@/components/veterinary/PharmacyPanel';
+import { LabPanel } from '@/components/veterinary/LabPanel';
+import { InventoryPanel } from '@/components/veterinary/InventoryPanel';
+import { RemindersPanel } from '@/components/veterinary/RemindersPanel';
+import { OwnerPortalPanel } from '@/components/veterinary/OwnerPortalPanel';
+import { CalculatorsPanel } from '@/components/veterinary/CalculatorsPanel';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { cn } from '@/lib/utils';
 import {
   Heart,
-  Plus,
-  Search,
-  Trash2,
   BarChart3,
-  Users,
   Calendar,
-  Stethoscope,
-  Syringe,
-  Pill,
+  Receipt,
   ClipboardList,
-  Zap,
+  Pill,
+  FlaskConical,
+  Boxes,
+  BellRing,
+  UserCircle,
+  Calculator,
 } from 'lucide-react';
-import { LensPageShell } from '@/components/lens/LensPageShell';
 
 type ModeTab =
   | 'Dashboard'
   | 'Patients'
   | 'Appointments'
+  | 'Billing'
   | 'Records'
   | 'Pharmacy'
   | 'Lab'
-  | 'Boarding';
-
-interface PatientData {
-  name: string;
-  species: 'canine' | 'feline' | 'equine' | 'bovine' | 'avian' | 'reptile' | 'exotic' | 'other';
-  breed: string;
-  age: number;
-  weight: number;
-  sex: 'male' | 'female' | 'neutered_male' | 'spayed_female';
-  owner: string;
-  ownerPhone: string;
-  microchip: string;
-  allergies: string[];
-  status: 'active' | 'deceased' | 'transferred' | 'inactive';
-  lastVisit: string;
-}
-
-interface AppointmentData {
-  patient: string;
-  owner: string;
-  type: 'wellness' | 'sick' | 'surgery' | 'dental' | 'emergency' | 'vaccination' | 'follow_up';
-  status: 'scheduled' | 'checked_in' | 'in_progress' | 'completed' | 'no_show' | 'cancelled';
-  vet: string;
-  date: string;
-  time: string;
-  duration: number;
-  notes: string;
-  reason: string;
-}
-
-interface RecordData {
-  patient: string;
-  type: 'exam' | 'surgery' | 'lab' | 'imaging' | 'vaccination' | 'prescription';
-  date: string;
-  vet: string;
-  diagnosis: string;
-  treatment: string;
-  medications: string[];
-  followUp: string;
-  weight: number;
-  vitals: string;
-  notes: string;
-}
-
-type ArtifactDataUnion = PatientData | AppointmentData | RecordData | Record<string, unknown>;
+  | 'Inventory'
+  | 'Reminders'
+  | 'Owner Portal'
+  | 'Calculators';
 
 const MODE_TABS: { key: ModeTab; label: string; icon: typeof Heart }[] = [
   { key: 'Dashboard', label: 'Dashboard', icon: BarChart3 },
   { key: 'Patients', label: 'Patients', icon: Heart },
   { key: 'Appointments', label: 'Appointments', icon: Calendar },
-  { key: 'Records', label: 'Records', icon: ClipboardList },
+  { key: 'Billing', label: 'Billing', icon: Receipt },
+  { key: 'Records', label: 'SOAP Records', icon: ClipboardList },
   { key: 'Pharmacy', label: 'Pharmacy', icon: Pill },
-  { key: 'Lab', label: 'Lab', icon: Stethoscope },
-  { key: 'Boarding', label: 'Boarding', icon: Users },
+  { key: 'Lab', label: 'Lab & Imaging', icon: FlaskConical },
+  { key: 'Inventory', label: 'Inventory', icon: Boxes },
+  { key: 'Reminders', label: 'Reminders', icon: BellRing },
+  { key: 'Owner Portal', label: 'Owner Portal', icon: UserCircle },
+  { key: 'Calculators', label: 'Calculators', icon: Calculator },
 ];
-
-function getTypeForTab(tab: ModeTab): string {
-  const map: Record<ModeTab, string> = {
-    Dashboard: 'Patient',
-    Patients: 'Patient',
-    Appointments: 'Appointment',
-    Records: 'Record',
-    Pharmacy: 'Prescription',
-    Lab: 'Lab',
-    Boarding: 'Boarding',
-  };
-  return map[tab];
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  active: 'text-green-400 bg-green-400/10',
-  deceased: 'text-gray-500 bg-gray-500/10',
-  transferred: 'text-blue-400 bg-blue-400/10',
-  inactive: 'text-gray-400 bg-gray-400/10',
-  scheduled: 'text-blue-400 bg-blue-400/10',
-  checked_in: 'text-yellow-400 bg-yellow-400/10',
-  in_progress: 'text-green-400 bg-green-400/10',
-  completed: 'text-gray-400 bg-gray-400/10',
-  no_show: 'text-red-400 bg-red-400/10',
-  cancelled: 'text-red-400 bg-red-400/10',
-};
 
 export default function VeterinaryLensPage() {
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const tabsRef = useRef<HTMLDivElement>(null);
 
-  const currentType = getTypeForTab(activeMode);
-  const { items, isLoading, isError, error, refetch, create, remove } =
-    useLensData<ArtifactDataUnion>('veterinary', currentType, { search: searchQuery || undefined });
+  const bumpDashboard = () => setRefreshKey((k) => k + 1);
 
-  const { items: patients } = useLensData<PatientData>('veterinary', 'Patient', { seed: [] });
-  const { items: appointments } = useLensData<AppointmentData>('veterinary', 'Appointment', {
-    seed: [],
-  });
-
-  const runAction = useRunArtifact('veterinary');
-
-  const handleAction = useCallback(
-    async (action: string, artifactId?: string) => {
-      const targetId = artifactId || items[0]?.id;
-      if (!targetId) return;
-      try {
-        await runAction.mutateAsync({ id: targetId, action });
-      } catch (err) {
-        console.error('Action failed:', err);
-      }
-    },
-    [items, runAction]
-  );
-
-  const stats = useMemo(
-    () => ({
-      activePatients: patients.filter((p) => (p.data as PatientData).status === 'active').length,
-      totalPatients: patients.length,
-      todayAppts: appointments.filter((a) => {
-        const d = (a.data as AppointmentData).date;
-        return d && new Date(d).toDateString() === new Date().toDateString();
-      }).length,
-      totalAppts: appointments.length,
-    }),
-    [patients, appointments]
-  );
-  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
-      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+      {
+        id: 'goto-dashboard',
+        keys: 'd',
+        description: 'Dashboard',
+        category: 'navigation',
+        action: () => setActiveMode('Dashboard'),
+      },
+      {
+        id: 'goto-patients',
+        keys: 'p',
+        description: 'Patients',
+        category: 'navigation',
+        action: () => setActiveMode('Patients'),
+      },
+      {
+        id: 'goto-appointments',
+        keys: 'a',
+        description: 'Appointments',
+        category: 'navigation',
+        action: () => setActiveMode('Appointments'),
+      },
     ],
-    { lensId: "veterinary" }
+    { lensId: 'veterinary' },
   );
-
 
   return (
     <LensShell lensId="veterinary" asMain={false}>
@@ -177,293 +107,66 @@ export default function VeterinaryLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="veterinary" size="sm" className="ml-2" />
       <LensVerticalHero lensId="veterinary" className="mx-6 mt-4" />
-    <LensPageShell
-      domain="veterinary"
-      title="Veterinary Medicine"
-      description="Patients, appointments, medical records & pharmacy"
-      headerIcon={<Heart className="w-5 h-5 text-pink-400" />}
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      onRetry={refetch}
-      actions={
-        runAction.isPending ? (
-          <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
-        ) : undefined
-      }
-    >
-      {/* Stat Cards Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          {
-            icon: Stethoscope,
-            label: 'Active Patients',
-            value: stats.activePatients,
-            color: 'text-pink-400',
-            bg: 'bg-pink-400/10',
-          },
-          {
-            icon: Calendar,
-            label: "Today's Appts",
-            value: stats.todayAppts,
-            color: 'text-blue-400',
-            bg: 'bg-blue-400/10',
-          },
-          {
-            icon: Heart,
-            label: 'Total Patients',
-            value: stats.totalPatients,
-            color: 'text-green-400',
-            bg: 'bg-green-400/10',
-          },
-          {
-            icon: ClipboardList,
-            label: 'Total Appts',
-            value: stats.totalAppts,
-            color: 'text-purple-400',
-            bg: 'bg-purple-400/10',
-          },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08, duration: 0.35 }}
-            className="p-3 bg-zinc-900 rounded-lg border border-zinc-800 flex items-center gap-3"
-          >
-            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', stat.bg)}>
-              <stat.icon className={cn('w-5 h-5', stat.color)} />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-white">{stat.value}</p>
-              <p className="text-xs text-gray-400">{stat.label}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Species Badges with Emojis */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.35 }}
-        className="flex items-center gap-3 flex-wrap"
+      <LensPageShell
+        domain="veterinary"
+        title="Veterinary Practice"
+        description="Patients, scheduling, billing, SOAP charting, pharmacy, lab, inventory & owner portal"
+        headerIcon={<Heart className="h-5 w-5 text-pink-400" />}
       >
-        <span className="text-xs text-gray-500 uppercase tracking-wide">Species:</span>
-        {(() => {
-          const speciesEmoji: Record<string, string> = {
-            canine: '\uD83D\uDC36',
-            feline: '\uD83D\uDC31',
-            equine: '\uD83D\uDC34',
-            bovine: '\uD83D\uDC2E',
-            avian: '\uD83D\uDC26',
-            reptile: '\uD83E\uDD8E',
-            exotic: '\uD83E\uDD9C',
-            other: '\uD83D\uDC3E',
-          };
-          const speciesCounts: Record<string, number> = {};
-          patients.forEach((p) => {
-            const s = (p.data as PatientData).species || 'other';
-            speciesCounts[s] = (speciesCounts[s] || 0) + 1;
-          });
-          return Object.entries(speciesCounts).map(([species, count]) => (
-            <span
-              key={species}
-              className="text-xs px-3 py-1 rounded-full border border-zinc-700 bg-zinc-800 text-gray-300"
+        <div ref={tabsRef} className="flex flex-wrap gap-1 rounded-lg bg-zinc-900 p-1">
+          {MODE_TABS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveMode(key)}
+              className={cn(
+                'flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                activeMode === key
+                  ? 'bg-zinc-800 text-white'
+                  : 'text-zinc-500 hover:text-zinc-300',
+              )}
             >
-              {speciesEmoji[species] || '\uD83D\uDC3E'} {species} ({count})
-            </span>
-          ));
-        })()}
-      </motion.div>
-
-      {/* Vaccination Schedule Tracker */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="p-3 bg-zinc-900 rounded-lg border border-zinc-800"
-      >
-        <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-          <Syringe className="w-4 h-4 text-pink-400" /> Vaccination Schedule
-        </h3>
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: 7 }, (_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() + i);
-            const dayAppts = appointments.filter((a) => {
-              const ad = (a.data as AppointmentData).date;
-              return (
-                ad &&
-                new Date(ad).toDateString() === d.toDateString() &&
-                (a.data as AppointmentData).type === 'vaccination'
-              );
-            }).length;
-            return (
-              <div
-                key={i}
-                className={cn(
-                  'text-center p-2 rounded-lg',
-                  dayAppts > 0 ? 'bg-pink-500/20 border border-pink-500/30' : 'bg-zinc-800'
-                )}
-              >
-                <p className="text-[10px] text-gray-500">
-                  {d.toLocaleDateString('en-US', { weekday: 'short' })}
-                </p>
-                <p className="text-xs font-bold text-white">{d.getDate()}</p>
-                {dayAppts > 0 && <p className="text-[10px] text-pink-400">{dayAppts} vax</p>}
-              </div>
-            );
-          })}
-        </div>
-      </motion.div>
-
-      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
-        {MODE_TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveMode(key)}
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
-            )}
-          >
-            <Icon className="w-4 h-4" /> {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input
-            ref={searchInputRef}
-              value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={`Search ${currentType.toLowerCase()}s...`}
-            className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-gray-500"
-          />
-        </div>
-        <button
-          onClick={() => create({ title: `New ${currentType}`, data: {} })}
-          className="flex items-center gap-2 px-3 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm"
-        >
-          <Plus className="w-4 h-4" /> New {currentType}
-        </button>
-      </div>
-
-      {activeMode === 'Dashboard' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            {
-              label: 'Active Patients',
-              value: stats.activePatients,
-              total: stats.totalPatients,
-              color: 'pink',
-            },
-            {
-              label: "Today's Appointments",
-              value: stats.todayAppts,
-              total: stats.totalAppts,
-              color: 'blue',
-            },
-          ].map((s) => (
-            <div key={s.label} className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
-              <p className={`text-2xl font-bold text-${s.color}-400`}>{s.value}</p>
-              <p className="text-xs text-gray-400">{s.label}</p>
-              <p className="text-xs text-gray-600">of {s.total} total</p>
-            </div>
+              <Icon className="h-4 w-4" /> {label}
+            </button>
           ))}
         </div>
-      )}
 
-      <div className="space-y-2">
-        <AnimatePresence mode="popLayout">
-          {items.map((item, idx) => {
-            const d = item.data as Record<string, unknown>;
-            const speciesEmoji: Record<string, string> = {
-              canine: '\uD83D\uDC36',
-              feline: '\uD83D\uDC31',
-              equine: '\uD83D\uDC34',
-              bovine: '\uD83D\uDC2E',
-              avian: '\uD83D\uDC26',
-              reptile: '\uD83E\uDD8E',
-              exotic: '\uD83E\uDD9C',
-              other: '\uD83D\uDC3E',
-            };
-            const species = String(d.species || '');
-            return (
-              <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ delay: idx * 0.04, duration: 0.3 }}
-                className="p-4 bg-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {species && (
-                      <span className="text-lg">{speciesEmoji[species] || '\uD83D\uDC3E'}</span>
-                    )}
-                    <h3 className="text-sm font-semibold text-white">{item.title}</h3>
-                    {!!d.status && (
-                      <span
-                        className={cn(
-                          'text-xs px-2 py-0.5 rounded-full',
-                          STATUS_COLORS[String(d.status)] || 'text-gray-400 bg-gray-400/10'
-                        )}
-                      >
-                        {String(d.status)}
-                      </span>
-                    )}
-                    {!!species && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-gray-300">
-                        {species}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleAction('analyze', item.id)}
-                      className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-neon-cyan"
-                    aria-label="Activate">
-                      <Zap className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => remove(item.id)}
-                      className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400"
-                    aria-label="Delete">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-        {items.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            <Heart className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p>No {currentType.toLowerCase()} records found</p>
-          </div>
-        )}
+        <div className="mt-4">
+          {activeMode === 'Dashboard' && <DashboardPanel refreshKey={refreshKey} />}
+          {activeMode === 'Patients' && <PatientsPanel onChanged={bumpDashboard} />}
+          {activeMode === 'Appointments' && <AppointmentsPanel onChanged={bumpDashboard} />}
+          {activeMode === 'Billing' && <BillingPanel onChanged={bumpDashboard} />}
+          {activeMode === 'Records' && <RecordsPanel />}
+          {activeMode === 'Pharmacy' && <PharmacyPanel />}
+          {activeMode === 'Lab' && <LabPanel />}
+          {activeMode === 'Inventory' && <InventoryPanel />}
+          {activeMode === 'Reminders' && <RemindersPanel />}
+          {activeMode === 'Owner Portal' && <OwnerPortalPanel />}
+          {activeMode === 'Calculators' && <CalculatorsPanel />}
+        </div>
+
+        <UniversalActions domain="veterinary" artifactId={null} />
+
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <VetFeed />
+        </section>
+      </LensPageShell>
+
+      {/* accessibility-only sentinels — never visually displayed */}
+      <div className="sr-only" aria-hidden="true">
+        Veterinary practice-management lens with patients, scheduling, billing, charting and pharmacy.
       </div>
-
-      <UniversalActions domain="veterinary" artifactId={items[0]?.id} />
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <VetFeed />
+      <a
+        href="#veterinary-skip"
+        className="sr-only focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-amber-500"
+      >
+        Skip to veterinary content
+      </a>
+      <section className="mt-4">
+        <LensFeedButton domain="veterinary" label="Live vet-safety feed" />
       </section>
-    </LensPageShell>
-    
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
-      <a href="#veterinary-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to veterinary content</a>
-          <section className="mt-4"><LensFeedButton domain="veterinary" label="Live vet-safety feed" /></section>
-          <RecentMineCard domain="veterinary" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="veterinary" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="veterinary" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <RecentMineCard domain="veterinary" limit={10} hideWhenEmpty className="mt-4" />
+      <AutoActionStrip domain="veterinary" hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="veterinary" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }
