@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MasonryFeed } from '@/components/masonry/MasonryFeed';
 import { MasonStuff } from '@/components/masonry/MasonStuff';
+import { ContractorSuite } from '@/components/masonry/ContractorSuite';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -715,6 +716,9 @@ export default function MasonryLensPage() {
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+      <section className="mt-6">
+        <ContractorSuite />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MasonryFeed />
       </section>

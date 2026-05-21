@@ -12,28 +12,23 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~60%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1338**
+- Average feature parity: **~61%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1292**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 47 |
+| 80–100% (near-complete) | 52 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 127 |
+| 40–59% (partial) | 121 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
+| organ | ChartHop | ~?% | 0 |
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
-| masonry | Buildertrend / masonry estimating tools | ~40% | 8 |
-| math | Wolfram Alpha | ~40% | 8 |
-| mentorship | MentorcliQ / ADPList | ~40% | 8 |
-| meta | Backstage / system-introspection tools | ~40% | 7 |
-| mining | MineHub / Micromine | ~40% | 8 |
-| organ | ChartHop | ~40% | 7 |
 | queue | RabbitMQ / BullMQ dashboard | ~40% | 7 |
 | saved | Twitter/X Bookmarks | ~40% | 7 |
 | sentinel | CrowdStrike Falcon / threat console | ~40% | 7 |
@@ -258,6 +253,11 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | law-enforcement | Axon Records / Mark43 (RMS/CAD) | ~90% | 0 |
 | legacy | SonarQube / CAST Imaging (legacy modernization) | ~90% | 0 |
 | markets | Polymarket / Kalshi (prediction markets) | ~90% | 0 |
+| masonry | Buildertrend / masonry estimating tools | ~90% | 0 |
+| math | Wolfram Alpha | ~90% | 0 |
+| mentorship | MentorcliQ / ADPList | ~90% | 0 |
+| meta | Backstage / system-introspection tools | ~90% | 0 |
+| mining | MineHub / Micromine | ~90% | 0 |
 | settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~90% | 0 |
 | tools | utility bundle (Perplexity + Babel REPL + DocuSign) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |

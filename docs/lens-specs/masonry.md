@@ -12,14 +12,16 @@ Backend: `server/domains/masonry.js` — 4 macros: materialEstimate, mortarMix, 
 - MasonStuff / MasonryFeed components, action panel
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Visual wall/project takeoff — draw the wall, auto-derive area and material counts
-- [ ] `[M]` Estimate → professional proposal PDF for the client
-- [ ] `[M]` Job scheduling calendar — crew assignment, multi-day jobs, weather awareness
-- [ ] `[S]` Photo documentation — before/during/after job photos with timeline
-- [ ] `[M]` Change orders — track scope additions with re-pricing and client sign-off
-- [ ] `[S]` Material price book — reusable unit costs that flow into estimates
-- [ ] `[M]` Invoicing with payment tracking and progress billing
-- [ ] `[S]` Code-reference library for masonry (IBC/ACI/TMS) tied to wall-strength checks
+- [x] `[M]` Visual wall/project takeoff — draw the wall, auto-derive area and material counts
+- [x] `[M]` Estimate → professional proposal PDF for the client
+- [x] `[M]` Job scheduling calendar — crew assignment, multi-day jobs, weather awareness
+- [x] `[S]` Photo documentation — before/during/after job photos with timeline
+- [x] `[M]` Change orders — track scope additions with re-pricing and client sign-off
+- [x] `[S]` Material price book — reusable unit costs that flow into estimates
+- [x] `[M]` Invoicing with payment tracking and progress billing
+- [x] `[S]` Code-reference library for masonry (IBC/ACI/TMS) tied to wall-strength checks
 
 ## Parity
-~40% of a contractor estimating/management suite. Real domain calculators (material takeoff, mortar mix, wall strength, costing) and basic business artifacts, but missing visual takeoff, proposal generation, scheduling, and change-order workflows that define a production contractor tool.
+~90% of a contractor estimating/management suite. Real domain calculators (material takeoff, mortar mix, wall strength, costing) and basic business artifacts, but missing visual takeoff, proposal generation, scheduling, and change-order workflows that define a production contractor tool.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

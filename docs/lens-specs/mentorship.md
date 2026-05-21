@@ -12,14 +12,16 @@ Backend: `server/domains/mentorship.js` — 4 macros: matchScore, progressTrack,
 - MentorshipFeed, action panel, search
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Mentor directory / discovery — browse mentors by skill, availability, rating
-- [ ] `[M]` Request → accept matching flow — mentee sends request, mentor accepts/declines
-- [ ] `[M]` Session scheduling — book sessions with calendar, reminders, video-link
-- [ ] `[S]` Session notes & action items per meeting
-- [ ] `[M]` Goal tracking workspace — shared goals with check-ins and progress updates
-- [ ] `[S]` Mentor reviews & ratings surfaced on profiles
-- [ ] `[M]` Program admin view — cohort tracking, match-quality reporting (MentorcliQ core)
-- [ ] `[S]` Messaging between mentor and mentee
+- [x] `[M]` Mentor directory / discovery — browse mentors by skill, availability, rating
+- [x] `[M]` Request → accept matching flow — mentee sends request, mentor accepts/declines
+- [x] `[M]` Session scheduling — book sessions with calendar, reminders, video-link
+- [x] `[S]` Session notes & action items per meeting
+- [x] `[M]` Goal tracking workspace — shared goals with check-ins and progress updates
+- [x] `[S]` Mentor reviews & ratings surfaced on profiles
+- [x] `[M]` Program admin view — cohort tracking, match-quality reporting (MentorcliQ core)
+- [x] `[S]` Messaging between mentor and mentee
 
 ## Parity
-~40% of a mentoring platform. The analytics (match score, progress, feedback, development plan) are real, but missing mentor discovery, the request/accept matching flow, scheduling, and shared goal workspaces that make mentorship actionable rather than recorded.
+~90%+ of a mentoring platform. Shipped full-stack: mentor directory/discovery with skill+rating filters and self-registration, request→accept matching flow, session scheduling with reminders/video-links, per-meeting notes & action items, a shared goal workspace with progress check-ins, mentor reviews surfaced on profiles, a MentorcliQ-style program/cohort report, and mentor↔mentee messaging — all backed by 21 `mentorship` domain macros and a purpose-built six-tab UI. The remaining gap is content volume (real mentor population fills via user signups by design).
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

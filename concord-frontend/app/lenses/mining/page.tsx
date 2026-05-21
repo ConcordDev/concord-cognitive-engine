@@ -11,6 +11,10 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MshaLookup } from '@/components/mining/MshaLookup';
 import { MiningActionPanel } from '@/components/mining/MiningActionPanel';
 import { MineSiteManager } from '@/components/mining/MineSiteManager';
+import { GeologyWorkbench } from '@/components/mining/GeologyWorkbench';
+import { MinePlanWorkbench } from '@/components/mining/MinePlanWorkbench';
+import { FleetManager } from '@/components/mining/FleetManager';
+import { GisPitMap } from '@/components/mining/GisPitMap';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -345,26 +349,38 @@ export default function MiningLensPage() {
           )}
         </div>
 
+        {/* Geology — drill-hole database, 3D block model & grade-tonnage curve */}
+        {activeMode === 'Geology' && <GeologyWorkbench />}
+
+        {/* Operations — open-pit shell design & JORC/NI 43-101 reserve reporting */}
+        {activeMode === 'Operations' && <MinePlanWorkbench />}
+
+        {/* Equipment — fleet management & production scheduling */}
+        {activeMode === 'Equipment' && <FleetManager />}
+
         {activeMode === 'Map' && (
-          <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">
-            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <Map className="w-4 h-4 text-yellow-500" /> Mine Sites
-            </h3>
-            <MapView
-              markers={sites
-                .filter((s) => (s.data as SiteData).lat && (s.data as SiteData).lng)
-                .map((s) => {
-                  const d = s.data as SiteData;
-                  return {
-                    lat: d.lat!,
-                    lng: d.lng!,
-                    label: s.title || d.name,
-                    popup: `${d.mineral || ''} - ${d.type} (${d.status})`,
-                  };
-                })}
-              className="h-[500px]"
-            />
-          </div>
+          <>
+            <GisPitMap />
+            <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">
+              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Map className="w-4 h-4 text-yellow-500" /> Artifact-tagged sites
+              </h3>
+              <MapView
+                markers={sites
+                  .filter((s) => (s.data as SiteData).lat && (s.data as SiteData).lng)
+                  .map((s) => {
+                    const d = s.data as SiteData;
+                    return {
+                      lat: d.lat!,
+                      lng: d.lng!,
+                      label: s.title || d.name,
+                      popup: `${d.mineral || ''} - ${d.type} (${d.status})`,
+                    };
+                  })}
+                className="h-[500px]"
+              />
+            </div>
+          </>
         )}
 
         <UniversalActions domain="mining" artifactId={items[0]?.id} />

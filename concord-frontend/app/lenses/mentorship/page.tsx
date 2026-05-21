@@ -10,6 +10,12 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MentorshipFeed } from '@/components/mentorship/MentorshipFeed';
 import { MentorshipActionPanel } from '@/components/mentorship/MentorshipActionPanel';
+import { MentorDirectoryPanel } from '@/components/mentorship/MentorDirectoryPanel';
+import { MentorshipRequestsPanel } from '@/components/mentorship/MentorshipRequestsPanel';
+import { MentorshipSessionsPanel } from '@/components/mentorship/MentorshipSessionsPanel';
+import { MentorshipGoalsPanel } from '@/components/mentorship/MentorshipGoalsPanel';
+import { MentorshipProgramPanel } from '@/components/mentorship/MentorshipProgramPanel';
+import { MentorshipMessagesPanel } from '@/components/mentorship/MentorshipMessagesPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,6 +28,7 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   BadgeCheck, Plus, Search, Users, MessageSquare,
   Star, Calendar, Target, Clock, Layers, ChevronDown, Send, Trash2, Loader2, Play,
+  Inbox, BarChart3, NotebookPen,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -68,6 +75,9 @@ export default function MentorshipLensPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'mentors' | 'sessions' | 'goals'>('mentors');
+  const [platformView, setPlatformView] = useState<
+    'directory' | 'requests' | 'sessions' | 'goals' | 'program' | 'messages'
+  >('directory');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -282,6 +292,52 @@ export default function MentorshipLensPage() {
             <p className="text-sm text-gray-400">{stat.label}</p>
           </motion.div>
         ))}
+      </div>
+
+      {/* ── Mentoring platform surface (real backend macros) ───────────── */}
+      <section className="panel p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <BadgeCheck className="w-4 h-4 text-neon-cyan" />
+          <h2 className="font-semibold">Mentoring Platform</h2>
+        </div>
+        <div className="flex gap-1 flex-wrap bg-lattice-void border border-lattice-border rounded-lg p-1">
+          {([
+            { key: 'directory', label: 'Directory', icon: Users },
+            { key: 'requests', label: 'Requests', icon: Inbox },
+            { key: 'sessions', label: 'Sessions', icon: Calendar },
+            { key: 'goals', label: 'Goals', icon: Target },
+            { key: 'messages', label: 'Messages', icon: MessageSquare },
+            { key: 'program', label: 'Program', icon: BarChart3 },
+          ] as const).map(v => (
+            <button
+              key={v.key}
+              onClick={() => setPlatformView(v.key)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                platformView === v.key
+                  ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30'
+                  : 'text-gray-400 hover:text-white hover:bg-lattice-surface'
+              )}
+            >
+              <v.icon className="w-3.5 h-3.5" />
+              {v.label}
+            </button>
+          ))}
+        </div>
+        <div>
+          {platformView === 'directory' && <MentorDirectoryPanel />}
+          {platformView === 'requests' && <MentorshipRequestsPanel />}
+          {platformView === 'sessions' && <MentorshipSessionsPanel />}
+          {platformView === 'goals' && <MentorshipGoalsPanel />}
+          {platformView === 'messages' && <MentorshipMessagesPanel />}
+          {platformView === 'program' && <MentorshipProgramPanel />}
+        </div>
+      </section>
+
+      {/* Legacy artifact-store relations + analysis */}
+      <div className="flex items-center gap-2 text-sm text-gray-400 pt-2">
+        <NotebookPen className="w-4 h-4" />
+        <span>Personal mentorship records & analysis</span>
       </div>
 
       {/* Tabs */}

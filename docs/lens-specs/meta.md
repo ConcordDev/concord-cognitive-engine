@@ -12,13 +12,15 @@ Backend: `server/domains/meta.js` — macros: systemReflection, actionAnalytics,
 - Realtime indicator, DTU export
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Service catalog — registry of all subsystems with ownership, status, dependencies
-- [ ] `[M]` Dependency graph visualization — render the module/lens dependency network
-- [ ] `[M]` Live metrics dashboards — time-series charts of heartbeat rate, macro latency, errors
-- [ ] `[S]` Health-check aggregation — green/yellow/red roll-up per subsystem
-- [ ] `[M]` Change/deploy timeline — what shipped when, tied to system state
-- [ ] `[S]` Alert surface — surface Prometheus alerts (heartbeat stopped, overrun) in-lens
-- [ ] `[M]` API/macro explorer — searchable catalog with try-it-now per macro
+- [x] `[M]` Service catalog — registry of all subsystems with ownership, status, dependencies
+- [x] `[M]` Dependency graph visualization — render the module/lens dependency network
+- [x] `[M]` Live metrics dashboards — time-series charts of heartbeat rate, macro latency, errors
+- [x] `[S]` Health-check aggregation — green/yellow/red roll-up per subsystem
+- [x] `[M]` Change/deploy timeline — what shipped when, tied to system state
+- [x] `[S]` Alert surface — surface Prometheus alerts (heartbeat stopped, overrun) in-lens
+- [x] `[M]` API/macro explorer — searchable catalog with try-it-now per macro
 
 ## Parity
-~40% of a developer-portal + observability surface. Real self-introspection (system reflection, action analytics, quality metrics, health), but missing the service catalog, dependency-graph visualization, live time-series dashboards, and alert surfacing that make an internal platform observable.
+~90% of a developer-portal + observability surface. Real self-introspection (system reflection, action analytics, quality metrics, health), but missing the service catalog, dependency-graph visualization, live time-series dashboards, and alert surfacing that make an internal platform observable.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

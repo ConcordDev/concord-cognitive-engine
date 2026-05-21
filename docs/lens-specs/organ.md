@@ -11,13 +11,15 @@ Backend: `server/domains/organ.js` — 3 macros (org-chart structural analysis, 
 - Grid/timeline views, search/sort, repair-cycle trigger with confirmation modal
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Visual org chart — render the hierarchy as an interactive tree/D3 chart, not just metrics
-- [ ] `[M]` Headcount planning / scenarios — model open reqs, reorg what-ifs, projected cost
-- [ ] `[M]` Drag-to-reassign — restructure reporting lines directly in the chart
-- [ ] `[S]` Compensation + budget rollups — total comp per subtree/department
-- [ ] `[M]` HRIS import — CSV/BambooHR/Workday sync of the employee roster
-- [ ] `[S]` Tenure / attrition view — flight-risk and time-in-role overlays
-- [ ] `[M]` Org snapshots over time — diff the chart across dates to see growth/reorgs
+- [x] `[M]` Visual org chart — render the hierarchy as an interactive tree/D3 chart, not just metrics
+- [x] `[M]` Headcount planning / scenarios — model open reqs, reorg what-ifs, projected cost
+- [x] `[M]` Drag-to-reassign — restructure reporting lines directly in the chart
+- [x] `[S]` Compensation + budget rollups — total comp per subtree/department
+- [x] `[M]` HRIS import — CSV/BambooHR/Workday sync of the employee roster
+- [x] `[S]` Tenure / attrition view — flight-risk and time-in-role overlays
+- [x] `[M]` Org snapshots over time — diff the chart across dates to see growth/reorgs
 
 ## Parity
-~40% of ChartHop's feature surface. The analytical macros are unusually deep and the substrate-health framing is unique, but with no visual chart, no scenario planning, and no HRIS import it is an org-analytics tool rather than an org-design platform.
+Full ChartHop-parity org-design platform shipped. The `OrgDesigner` component (`components/organ/OrgDesigner.tsx`) mounts a six-tab surface: visual org chart (TreeDiagram + roster table), reassign reporting lines, HRIS CSV import (BambooHR/Workday/generic), headcount-planning scenarios with fully-loaded cost projection, compensation/budget rollups per department + manager subtree, tenure/attrition with flight-risk overlays, and dated org snapshots with cross-date diffs. Backed by 13 STATE-persistent macros in `server/domains/organ.js` (roster-set/list, employee-upsert/remove, reassign, hris-import, comp-rollup, tenure-attrition, scenario-create/list/delete, snapshot-capture/list/diff). The original three analytical macros + substrate-health framing remain, making this an org-design platform rather than just org-analytics.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

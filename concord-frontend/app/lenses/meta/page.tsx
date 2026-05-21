@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SystemHealth } from '@/components/meta/SystemHealth';
+import { DevPortal } from '@/components/meta/DevPortal';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -35,6 +36,7 @@ import {
   Eye,
   ArrowRight,
   Cog,
+  Server,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -1116,10 +1118,11 @@ function LensInfrastructureTab() {
 // Tab definitions
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'components' | 'lenses' | 'orphans' | 'wiring' | 'search' | 'lens-infra';
+type TabKey = 'overview' | 'dev-portal' | 'components' | 'lenses' | 'orphans' | 'wiring' | 'search' | 'lens-infra';
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string; size?: number | string }> }[] = [
   { key: 'overview', label: 'Overview', icon: Layers },
+  { key: 'dev-portal', label: 'Dev Portal', icon: Server },
   { key: 'components', label: 'Components', icon: Package },
   { key: 'lenses', label: 'Lenses', icon: Eye },
   { key: 'orphans', label: 'Orphans', icon: AlertTriangle },
@@ -1145,6 +1148,7 @@ export default function MetaLensPage() {
   useLensCommand(
     [
       { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+      { id: 'tab-dev-portal', keys: 'd', description: 'Dev Portal', category: 'navigation', action: () => setActiveTab('dev-portal') },
       { id: 'tab-components', keys: 'c', description: 'Components', category: 'navigation', action: () => setActiveTab('components') },
       { id: 'tab-lenses', keys: 'l', description: 'Lenses', category: 'navigation', action: () => setActiveTab('lenses') },
       { id: 'tab-orphans', keys: 'r', description: 'Orphans', category: 'navigation', action: () => setActiveTab('orphans') },
@@ -1210,6 +1214,7 @@ export default function MetaLensPage() {
           transition={{ duration: 0.25 }}
         >
           {activeTab === 'overview' && <OverviewTab />}
+          {activeTab === 'dev-portal' && <DevPortal />}
           {activeTab === 'components' && <ComponentsTab />}
           {activeTab === 'lenses' && <LensesTab />}
           {activeTab === 'orphans' && <OrphansTab />}

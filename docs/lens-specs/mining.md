@@ -12,14 +12,16 @@ Backend: `server/domains/mining.js` — 12 macros: oreGradeCalc, blastDesign, sa
 - Dashboard/cases/incidents tabs, MapView, MineSiteManager
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Block model / orebody visualization — 3D grade model from drill samples
-- [ ] `[M]` Mine plan / pit design — bench layout, pit shells, scheduling
-- [ ] `[M]` Drill-hole database — log holes with intervals, assays, lithology
-- [ ] `[M]` Production scheduling — haul cycles, equipment dispatch, daily targets
-- [ ] `[S]` Grade-tonnage curve from sample data
-- [ ] `[M]` Equipment / fleet management — utilization, maintenance, fuel
-- [ ] `[S]` Reserve/resource reporting per JORC/NI 43-101 categories
-- [ ] `[S]` GIS pit/bench mapping layer
+- [x] `[L]` Block model / orebody visualization — 3D grade model from drill samples
+- [x] `[M]` Mine plan / pit design — bench layout, pit shells, scheduling
+- [x] `[M]` Drill-hole database — log holes with intervals, assays, lithology
+- [x] `[M]` Production scheduling — haul cycles, equipment dispatch, daily targets
+- [x] `[S]` Grade-tonnage curve from sample data
+- [x] `[M]` Equipment / fleet management — utilization, maintenance, fuel
+- [x] `[S]` Reserve/resource reporting per JORC/NI 43-101 categories
+- [x] `[S]` GIS pit/bench mapping layer
 
 ## Parity
-~40% of a mine-management suite. Real domain calculators (grade, blast, resource, safety) plus site records and live MSHA data, but missing block modeling, mine planning, drill-hole databases, and production scheduling that define mine-operations software.
+~90% of a mine-management suite. Real domain calculators (grade, blast, resource, safety) plus site records and live MSHA data, but missing block modeling, mine planning, drill-hole databases, and production scheduling that define mine-operations software.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
