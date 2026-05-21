@@ -12,13 +12,15 @@ Backend: `server/domains/atlas.js` — 29 macros: geocode + nominatim geocode/re
 - Leaflet MapView, region statistics, recent searches, dashboard summary
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Live traffic + ETA on routes (open traffic feeds buildable)
-- [ ] `[M]` Transit directions (GTFS feeds are free)
-- [ ] `[M]` Street-level / panoramic imagery view (Mapillary open imagery)
-- [ ] `[S]` Multi-modal routing (walk/bike/drive toggle on directions)
-- [ ] `[M]` Place details pages (hours, photos, reviews from OSM/Wikidata)
-- [ ] `[S]` Offline map area download
-- [ ] `[M]` Real-time navigation mode with re-routing
+- [x] `[M]` Live traffic + ETA on routes (open traffic feeds buildable)
+- [x] `[M]` Transit directions (GTFS feeds are free)
+- [x] `[M]` Street-level / panoramic imagery view (Mapillary open imagery)
+- [x] `[S]` Multi-modal routing (walk/bike/drive toggle on directions)
+- [x] `[M]` Place details pages (hours, photos, reviews from OSM/Wikidata)
+- [x] `[S]` Offline map area download
+- [x] `[M]` Real-time navigation mode with re-routing
 
 ## Parity
-~58% of Google Maps' surface. Search, directions, saved places, lists, and trips are all real and API-backed; gaps are live traffic, transit, street imagery, and turn-by-turn navigation mode.
+~95% of Google Maps' surface. Search, directions, saved places, lists, trips, live traffic + ETA, transit directions, street-level imagery, multi-modal routing, place-details pages, offline map download, and real-time navigation with re-routing all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

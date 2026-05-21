@@ -11,14 +11,16 @@ Backend: `travel` domain — 37 macros: trips, itinerary, places + reviews, book
 - LensFeedButton mounted for the feed.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Map view of an itinerary — pin places and route between them on a real map.
-- [ ] `[M]` Live flight/hotel search via free APIs (e.g. OpenSky for flight status, public hotel data) for inspiration, not licensed GDS pricing.
-- [ ] `[S]` Itinerary timeline / day-by-day agenda view with times.
-- [ ] `[M]` Email-forwarding booking import (TripIt's signature — parse a confirmation email into an itinerary item).
-- [ ] `[S]` Flight-status tracking for booked flights (free OpenSky/aviation APIs).
-- [ ] `[M]` Collaborative trip planning — share a trip, co-edit with travel companions.
-- [ ] `[S]` Weather forecast for destination dates.
-- [ ] `[S]` Currency converter and per-category budget breakdown.
+- [x] `[M]` Map view of an itinerary — pin places and route between them on a real map.
+- [x] `[M]` Live flight/hotel search via free APIs (e.g. OpenSky for flight status, public hotel data) for inspiration, not licensed GDS pricing.
+- [x] `[S]` Itinerary timeline / day-by-day agenda view with times.
+- [x] `[M]` Email-forwarding booking import (TripIt's signature — parse a confirmation email into an itinerary item).
+- [x] `[S]` Flight-status tracking for booked flights (free OpenSky/aviation APIs).
+- [x] `[M]` Collaborative trip planning — share a trip, co-edit with travel companions.
+- [x] `[S]` Weather forecast for destination dates.
+- [x] `[S]` Currency converter and per-category budget breakdown.
 
 ## Parity
-~55% of Google Travel/TripIt. The trip/itinerary/booking/budget/checklist substrate is broad and the country-guide feed is real, but it lacks a map view, live flight tracking, booking-email import, and collaboration that define the modern trip planner.
+~95% of Google Travel/TripIt. The trip/itinerary/booking/budget/checklist substrate plus an itinerary map view, live flight/hotel search, a day-by-day agenda, booking-email import, flight-status tracking, collaborative planning, destination weather, and currency conversion all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

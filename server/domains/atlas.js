@@ -640,9 +640,9 @@ export default function registerAtlasActions(registerLensAction) {
   function isoAt() { return new Date().toISOString(); }
   function listAt(map, k) { if (!map.has(k)) map.set(k, []); return map.get(k); }
   function ensureSeqAt(s, userId) {
-    if (!s.seq.has(userId)) s.seq.set(userId, { place: 1, list: 1, trip: 1 });
+    if (!s.seq.has(userId)) s.seq.set(userId, { place: 1, list: 1, trip: 1, area: 1 });
     const seq = s.seq.get(userId);
-    for (const k of ['place','list','trip']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    for (const k of ['place','list','trip','area']) if (!Number.isFinite(seq[k])) seq[k] = 1;
     return seq;
   }
 
@@ -1056,6 +1056,590 @@ export default function registerAtlasActions(registerLensAction) {
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  //  Google Maps parity backlog — multi-modal directions, live
+  //  traffic + ETA, transit, street imagery (Mapillary), place
+  //  details (OSM/Wikidata/Wikipedia), offline area download, and
+  //  real-time navigation mode with re-routing.
+  // ═══════════════════════════════════════════════════════════════
+
+  function haversineKm(la1, lo1, la2, lo2) {
+    const R = 6371, dLa = (la2 - la1) * Math.PI / 180, dLo = (lo2 - lo1) * Math.PI / 180;
+    const a = Math.sin(dLa / 2) ** 2 + Math.cos(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.sin(dLo / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // OSRM profile-per-mode. project-osrm.org only ships the driving
+  // profile; routing.openstreetmap.de hosts walking + cycling.
+  const OSRM_HOSTS = {
+    driving: "https://router.project-osrm.org",
+    walking: "https://routing.openstreetmap.de/routed-foot",
+    cycling: "https://routing.openstreetmap.de/routed-bike",
+  };
+
+  async function osrmRoute(profile, coords, withSteps) {
+    const host = OSRM_HOSTS[profile] || OSRM_HOSTS.driving;
+    // openstreetmap.de routers expect the literal profile name in the path differently.
+    const apiProfile = host.includes("project-osrm") ? profile
+      : profile === "walking" ? "foot" : profile === "cycling" ? "bike" : "driving";
+    const url = `${host}/route/v1/${apiProfile}/${coords}?overview=full&geometries=geojson&steps=${withSteps ? "true" : "false"}&annotations=duration,distance`;
+    const r = await fetch(url, { headers: { Accept: "application/json", "User-Agent": osmUserAgent() } });
+    if (!r.ok) throw new Error(`OSRM ${r.status}`);
+    const data = await r.json();
+    if (data.code !== "Ok" || !data.routes?.[0]) throw new Error(`OSRM: ${data.code || "no route"}`);
+    return data.routes[0];
+  }
+
+  // ── Multi-modal directions with turn-by-turn steps ───────────
+  // [S] Multi-modal routing (walk/bike/drive toggle on directions)
+
+  registerLensAction("atlas", "directions-multimodal", async (_ctx, _a, params = {}) => {
+    const waypoints = Array.isArray(params.waypoints) ? params.waypoints : [];
+    if (waypoints.length < 2) return { ok: false, error: "at least 2 waypoints required" };
+    for (const w of waypoints) {
+      if (!Number.isFinite(Number(w.lat)) || !Number.isFinite(Number(w.lng))) return { ok: false, error: "each waypoint needs numeric lat/lng" };
+    }
+    const profile = ["driving", "walking", "cycling"].includes(params.mode) ? params.mode : "driving";
+    const coords = waypoints.map((w) => `${Number(w.lng)},${Number(w.lat)}`).join(";");
+    try {
+      const route = await osrmRoute(profile, coords, true);
+      const steps = [];
+      for (const leg of route.legs || []) {
+        for (const st of leg.steps || []) {
+          const m = st.maneuver || {};
+          steps.push({
+            instruction: [m.modifier, m.type, st.name].filter(Boolean).join(" ").trim() || st.name || m.type || "continue",
+            type: m.type || "continue",
+            modifier: m.modifier || null,
+            roadName: st.name || "",
+            distanceMeters: Math.round(st.distance || 0),
+            durationSeconds: Math.round(st.duration || 0),
+          });
+        }
+      }
+      return {
+        ok: true,
+        result: {
+          mode: profile,
+          distanceMeters: Math.round(route.distance),
+          distanceKm: Math.round(route.distance / 100) / 10,
+          distanceMiles: Math.round(route.distance / 1609.34 * 10) / 10,
+          durationSeconds: Math.round(route.duration),
+          durationText: formatDuration(route.duration),
+          geometry: route.geometry,
+          steps,
+          stepCount: steps.length,
+          source: "osrm-multimodal",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `routing unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Live traffic + ETA ───────────────────────────────────────
+  // [M] Live traffic + ETA on routes. OSRM is free-flow only; we
+  //  derive a congestion estimate from time-of-day demand curves
+  //  (rush hours) and per-leg speed, then surface an adjusted ETA.
+
+  function congestionFactor(hourLocal, profile) {
+    // Walking/cycling are immune to vehicle traffic.
+    if (profile !== "driving") return { factor: 1.0, level: "none" };
+    // Bimodal rush-hour demand curve, peaks ~08:00 and ~17:30.
+    const morning = Math.exp(-((hourLocal - 8) ** 2) / 2.0);
+    const evening = Math.exp(-((hourLocal - 17.5) ** 2) / 2.5);
+    const demand = Math.max(morning, evening); // 0..1
+    const factor = Math.round((1 + demand * 0.85) * 100) / 100; // up to +85% travel time
+    const level = factor >= 1.55 ? "heavy" : factor >= 1.25 ? "moderate" : factor >= 1.08 ? "light" : "free-flow";
+    return { factor, level };
+  }
+
+  registerLensAction("atlas", "live-traffic-eta", async (_ctx, _a, params = {}) => {
+    const waypoints = Array.isArray(params.waypoints) ? params.waypoints : [];
+    if (waypoints.length < 2) return { ok: false, error: "at least 2 waypoints required" };
+    for (const w of waypoints) {
+      if (!Number.isFinite(Number(w.lat)) || !Number.isFinite(Number(w.lng))) return { ok: false, error: "each waypoint needs numeric lat/lng" };
+    }
+    const profile = ["driving", "walking", "cycling"].includes(params.mode) ? params.mode : "driving";
+    const coords = waypoints.map((w) => `${Number(w.lng)},${Number(w.lat)}`).join(";");
+    // Local hour at the route origin from its longitude (UTC + lon/15).
+    const utcHour = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
+    const localHour = ((utcHour + Number(waypoints[0].lng) / 15) % 24 + 24) % 24;
+    try {
+      const route = await osrmRoute(profile, coords, false);
+      const { factor, level } = congestionFactor(localHour, profile);
+      const freeFlowSec = Math.round(route.duration);
+      const trafficSec = Math.round(freeFlowSec * factor);
+      // Per-leg congestion breakdown.
+      const legs = (route.legs || []).map((leg, i) => ({
+        index: i,
+        distanceKm: Math.round((leg.distance || 0) / 100) / 10,
+        freeFlowText: formatDuration(leg.duration || 0),
+        trafficText: formatDuration((leg.duration || 0) * factor),
+      }));
+      const eta = new Date(Date.now() + trafficSec * 1000);
+      return {
+        ok: true,
+        result: {
+          mode: profile,
+          distanceKm: Math.round(route.distance / 100) / 10,
+          freeFlowSeconds: freeFlowSec,
+          freeFlowText: formatDuration(freeFlowSec),
+          trafficSeconds: trafficSec,
+          trafficText: formatDuration(trafficSec),
+          delaySeconds: trafficSec - freeFlowSec,
+          delayText: formatDuration(trafficSec - freeFlowSec),
+          congestionLevel: level,
+          congestionFactor: factor,
+          localHour: Math.round(localHour * 10) / 10,
+          etaIso: eta.toISOString(),
+          legs,
+          geometry: route.geometry,
+          source: "osrm + time-of-day demand model",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `traffic eta unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Transit directions ───────────────────────────────────────
+  // [M] Transit directions. Discovers public-transport stops from
+  //  OSM (Overpass) near origin/destination, computes the walk legs
+  //  to/from the nearest stop, and an in-vehicle estimate. GTFS-feed
+  //  free, no key — Overpass carries route_master + stop tags.
+
+  registerLensAction("atlas", "transit-directions", async (_ctx, _a, params = {}) => {
+    const start = params.start || {};
+    const end = params.end || {};
+    if (![start.lat, start.lng, end.lat, end.lng].every((v) => Number.isFinite(Number(v)))) {
+      return { ok: false, error: "start and end each need numeric lat/lng" };
+    }
+    const sLat = Number(start.lat), sLng = Number(start.lng), eLat = Number(end.lat), eLng = Number(end.lng);
+    const pad = 0.012; // ~1.3km search radius for stops
+    const stopQuery = (la, lo) => `[out:json][timeout:25];(node["public_transport"="stop_position"](${la - pad},${lo - pad},${la + pad},${lo + pad});node["highway"="bus_stop"](${la - pad},${lo - pad},${la + pad},${lo + pad});node["railway"="station"](${la - pad},${lo - pad},${la + pad},${lo + pad});node["railway"="tram_stop"](${la - pad},${lo - pad},${la + pad},${lo + pad}););out tags 60;`;
+    async function nearestStop(la, lo) {
+      const r = await fetch(`${OVERPASS_BASE}/interpreter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
+        body: `data=${encodeURIComponent(stopQuery(la, lo))}`,
+      });
+      if (!r.ok) throw new Error(`overpass ${r.status}`);
+      const data = await r.json();
+      const stops = (data.elements || [])
+        .map((el) => {
+          const lat = el.lat, lng = el.lon;
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+          const kind = el.tags?.railway === "station" ? "rail"
+            : el.tags?.railway === "tram_stop" ? "tram"
+            : el.tags?.highway === "bus_stop" ? "bus" : "transit";
+          return { name: el.tags?.name || `(unnamed ${kind} stop)`, lat, lng, kind, walkKm: Math.round(haversineKm(la, lo, lat, lng) * 100) / 100 };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.walkKm - b.walkKm);
+      return stops;
+    }
+    try {
+      const [originStops, destStops] = await Promise.all([nearestStop(sLat, sLng), nearestStop(eLat, eLng)]);
+      if (originStops.length === 0 || destStops.length === 0) {
+        return { ok: true, result: { feasible: false, reason: "No transit stops found near origin or destination.", originStops, destStops } };
+      }
+      const board = originStops[0], alight = destStops[0];
+      const WALK_KPH = 4.8, TRANSIT_KPH = 24; // typical urban transit average incl. dwell
+      const transitKm = Math.round(haversineKm(board.lat, board.lng, alight.lat, alight.lng) * 100) / 100;
+      const walkToSec = Math.round(board.walkKm / WALK_KPH * 3600);
+      const rideSec = Math.round(transitKm / TRANSIT_KPH * 3600) + 180; // +3min wait buffer
+      const walkFromSec = Math.round(alight.walkKm / WALK_KPH * 3600);
+      const totalSec = walkToSec + rideSec + walkFromSec;
+      return {
+        ok: true,
+        result: {
+          feasible: true,
+          legs: [
+            { type: "walk", from: "Origin", to: board.name, distanceKm: board.walkKm, durationText: formatDuration(walkToSec) },
+            { type: "transit", mode: board.kind, from: board.name, to: alight.name, distanceKm: transitKm, durationText: formatDuration(rideSec) },
+            { type: "walk", from: alight.name, to: "Destination", distanceKm: alight.walkKm, durationText: formatDuration(walkFromSec) },
+          ],
+          totalSeconds: totalSec,
+          totalDurationText: formatDuration(totalSec),
+          boardStop: board,
+          alightStop: alight,
+          originStops: originStops.slice(0, 6),
+          destStops: destStops.slice(0, 6),
+          source: "openstreetmap-overpass transit stops",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `transit unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Street-level / panoramic imagery (Mapillary open imagery) ─
+  // [M] Street-level imagery. Mapillary Graph API serves crowd-
+  //  sourced street imagery; the tiles/images endpoint is keyless
+  //  for the public coverage layer. We query images near a point.
+
+  registerLensAction("atlas", "street-imagery", async (_ctx, _a, params = {}) => {
+    const lat = Number(params.lat), lng = Number(params.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "numeric lat/lng required" };
+    const token = process.env.MAPILLARY_TOKEN || "";
+    const radiusDeg = 0.0025; // ~280m bbox
+    const bbox = `${lng - radiusDeg},${lat - radiusDeg},${lng + radiusDeg},${lat + radiusDeg}`;
+    if (!token) {
+      // No token configured — return the coverage-layer tile reference
+      // so the client can still render Mapillary's public tile overlay.
+      return {
+        ok: true,
+        result: {
+          lat, lng,
+          images: [],
+          coverageTileUrl: "https://tiles.mapillary.com/maps/vtp/mly1_public/2/{z}/{x}/{y}",
+          hasToken: false,
+          note: "Set MAPILLARY_TOKEN for individual image lookups; coverage tile layer is keyless.",
+          source: "mapillary",
+        },
+      };
+    }
+    try {
+      const url = `https://graph.mapillary.com/images?access_token=${encodeURIComponent(token)}&bbox=${bbox}&fields=id,thumb_1024_url,thumb_256_url,captured_at,compass_angle,geometry,is_pano&limit=25`;
+      const r = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!r.ok) throw new Error(`mapillary ${r.status}`);
+      const data = await r.json();
+      const images = (data.data || []).map((im) => {
+        const c = im.geometry?.coordinates || [];
+        return {
+          id: im.id,
+          thumbUrl: im.thumb_1024_url || im.thumb_256_url || null,
+          smallThumbUrl: im.thumb_256_url || null,
+          capturedAt: im.captured_at ? new Date(im.captured_at).toISOString() : null,
+          compassAngle: im.compass_angle ?? null,
+          isPanoramic: !!im.is_pano,
+          lat: c[1] ?? null,
+          lng: c[0] ?? null,
+          distanceM: c.length === 2 ? Math.round(haversineKm(lat, lng, c[1], c[0]) * 1000) : null,
+        };
+      }).filter((im) => im.thumbUrl).sort((a, b) => (a.distanceM ?? 1e9) - (b.distanceM ?? 1e9));
+      return { ok: true, result: { lat, lng, images, count: images.length, hasToken: true, source: "mapillary" } };
+    } catch (e) {
+      return { ok: false, error: `mapillary unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Place details pages (hours, photos, reviews, links) ──────
+  // [M] Place details. Pulls full OSM tags via Overpass for a node,
+  //  then enriches with Wikidata + Wikipedia summary when the OSM
+  //  feature carries wikidata/wikipedia tags. All free, no key.
+
+  registerLensAction("atlas", "place-details", async (_ctx, _a, params = {}) => {
+    const osmType = ["node", "way", "relation"].includes(params.osmType) ? params.osmType : null;
+    const osmId = Number(params.osmId);
+    const lat = Number(params.lat), lng = Number(params.lng);
+    if (!osmType || !Number.isFinite(osmId)) {
+      return { ok: false, error: "osmType (node|way|relation) + numeric osmId required" };
+    }
+    try {
+      const q = `[out:json][timeout:25];${osmType}(${osmId});out tags center 1;`;
+      const r = await fetch(`${OVERPASS_BASE}/interpreter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
+        body: `data=${encodeURIComponent(q)}`,
+      });
+      if (!r.ok) throw new Error(`overpass ${r.status}`);
+      const data = await r.json();
+      const el = (data.elements || [])[0];
+      if (!el) return { ok: false, error: "OSM feature not found" };
+      const tags = el.tags || {};
+      const featureLat = el.lat ?? el.center?.lat ?? (Number.isFinite(lat) ? lat : null);
+      const featureLng = el.lon ?? el.center?.lon ?? (Number.isFinite(lng) ? lng : null);
+      const details = {
+        osmType, osmId,
+        name: tags.name || null,
+        lat: featureLat, lng: featureLng,
+        category: tags.amenity || tags.shop || tags.tourism || tags.leisure || tags.office || null,
+        cuisine: tags.cuisine || null,
+        openingHours: tags.opening_hours || null,
+        phone: tags.phone || tags["contact:phone"] || null,
+        website: tags.website || tags["contact:website"] || null,
+        email: tags.email || tags["contact:email"] || null,
+        address: [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"], tags["addr:postcode"]].filter(Boolean).join(", ") || null,
+        wheelchair: tags.wheelchair || null,
+        operator: tags.operator || tags.brand || null,
+        tags,
+        wikipedia: null,
+        wikidata: tags.wikidata || null,
+        summary: null,
+        image: null,
+      };
+      // Wikipedia summary enrichment.
+      if (tags.wikipedia) {
+        try {
+          const wp = String(tags.wikipedia); // "en:Article Title"
+          const colon = wp.indexOf(":");
+          const lang = colon > 0 ? wp.slice(0, colon) : "en";
+          const title = colon > 0 ? wp.slice(colon + 1) : wp;
+          const wikiUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+          const wr = await fetch(wikiUrl, { headers: { Accept: "application/json", "User-Agent": osmUserAgent() } });
+          if (wr.ok) {
+            const wd = await wr.json();
+            details.summary = wd.extract || null;
+            details.wikipedia = wd.content_urls?.desktop?.page || `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(title)}`;
+            details.image = wd.thumbnail?.source || wd.originalimage?.source || null;
+          }
+        } catch (_e) { /* enrichment is best-effort */ }
+      }
+      return { ok: true, result: { details, source: "openstreetmap-overpass + wikipedia" } };
+    } catch (e) {
+      return { ok: false, error: `place-details unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Offline map area download ────────────────────────────────
+  // [S] Offline map area download. Records a user-chosen bbox + zoom
+  //  range, computes the OSM tile manifest the client must cache, and
+  //  stores it so the area list persists. The client fetches the
+  //  tiles into its own storage from the returned tile URLs.
+
+  function tilesForBbox(south, west, north, east, zoom) {
+    const lon2tile = (lon, z) => Math.floor((lon + 180) / 360 * Math.pow(2, z));
+    const lat2tile = (la, z) => {
+      const r = la * Math.PI / 180;
+      return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z));
+    };
+    const xMin = lon2tile(west, zoom), xMax = lon2tile(east, zoom);
+    const yMin = lat2tile(north, zoom), yMax = lat2tile(south, zoom);
+    return Math.max(0, (xMax - xMin + 1)) * Math.max(0, (yMax - yMin + 1));
+  }
+
+  registerLensAction("atlas", "offline-areas-list", (ctx, _a, _p = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.offlineAreas) s.offlineAreas = new Map();
+    return { ok: true, result: { areas: listAt(s.offlineAreas, aidAt(ctx)).slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")) } };
+  });
+
+  registerLensAction("atlas", "offline-areas-create", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.offlineAreas) s.offlineAreas = new Map();
+    const userId = aidAt(ctx);
+    const name = String(params.name || "").trim();
+    const south = Number(params.south), west = Number(params.west), north = Number(params.north), east = Number(params.east);
+    if (!name) return { ok: false, error: "name required" };
+    if (![south, west, north, east].every(Number.isFinite)) return { ok: false, error: "numeric south/west/north/east bbox required" };
+    if (south >= north || west >= east) return { ok: false, error: "bbox invalid (south < north, west < east)" };
+    const minZoom = Math.max(0, Math.min(18, Number(params.minZoom) || 10));
+    const maxZoom = Math.max(minZoom, Math.min(19, Number(params.maxZoom) || 15));
+    let tileCount = 0;
+    for (let z = minZoom; z <= maxZoom; z++) tileCount += tilesForBbox(south, west, north, east, z);
+    // ~18KB average per OSM raster tile.
+    const estimatedBytes = tileCount * 18 * 1024;
+    const seq = ensureSeqAt(s, userId);
+    if (!Number.isFinite(seq.area)) seq.area = 1;
+    const area = {
+      id: uidAt("area"),
+      number: `OA-${String(seq.area).padStart(4, "0")}`,
+      name,
+      bbox: { south, west, north, east },
+      minZoom, maxZoom,
+      tileCount,
+      estimatedBytes,
+      estimatedSizeMB: Math.round(estimatedBytes / 1048576 * 10) / 10,
+      tileUrlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      status: "pending",
+      createdAt: isoAt(),
+    };
+    seq.area++;
+    listAt(s.offlineAreas, userId).push(area);
+    saveAtlas();
+    return { ok: true, result: { area } };
+  });
+
+  registerLensAction("atlas", "offline-areas-update-status", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.offlineAreas) s.offlineAreas = new Map();
+    const area = listAt(s.offlineAreas, aidAt(ctx)).find((x) => x.id === String(params.id || ""));
+    if (!area) return { ok: false, error: "area not found" };
+    const status = ["pending", "downloading", "ready", "error"].includes(params.status) ? params.status : null;
+    if (!status) return { ok: false, error: "status must be pending|downloading|ready|error" };
+    area.status = status;
+    if (status === "ready") area.downloadedAt = isoAt();
+    if (Number.isFinite(Number(params.cachedTiles))) area.cachedTiles = Math.max(0, Number(params.cachedTiles));
+    saveAtlas();
+    return { ok: true, result: { area } };
+  });
+
+  registerLensAction("atlas", "offline-areas-delete", (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.offlineAreas) s.offlineAreas = new Map();
+    const arr = listAt(s.offlineAreas, aidAt(ctx));
+    const i = arr.findIndex((x) => x.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "area not found" };
+    arr.splice(i, 1);
+    saveAtlas();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Real-time navigation mode with re-routing ────────────────
+  // [M] Real-time navigation mode. Starts a navigation session for a
+  //  route, then advances along it as the client posts live GPS
+  //  positions. Detects off-route drift (>120m from the polyline)
+  //  and re-routes from the current position to the destination.
+
+  function nearestPointOnLine(lat, lng, line) {
+    // line: [[lng,lat], ...]. Returns { idx, distM } of the closest vertex.
+    let best = { idx: 0, distM: Infinity };
+    for (let i = 0; i < line.length; i++) {
+      const d = haversineKm(lat, lng, line[i][1], line[i][0]) * 1000;
+      if (d < best.distM) best = { idx: i, distM: d };
+    }
+    return best;
+  }
+
+  registerLensAction("atlas", "nav-start", async (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.navSessions) s.navSessions = new Map();
+    const userId = aidAt(ctx);
+    const waypoints = Array.isArray(params.waypoints) ? params.waypoints : [];
+    if (waypoints.length < 2) return { ok: false, error: "at least 2 waypoints (start + destination) required" };
+    for (const w of waypoints) {
+      if (!Number.isFinite(Number(w.lat)) || !Number.isFinite(Number(w.lng))) return { ok: false, error: "each waypoint needs numeric lat/lng" };
+    }
+    const profile = ["driving", "walking", "cycling"].includes(params.mode) ? params.mode : "driving";
+    const coords = waypoints.map((w) => `${Number(w.lng)},${Number(w.lat)}`).join(";");
+    try {
+      const route = await osrmRoute(profile, coords, true);
+      const steps = [];
+      for (const leg of route.legs || []) {
+        for (const st of leg.steps || []) {
+          const m = st.maneuver || {};
+          steps.push({
+            instruction: [m.modifier, m.type, st.name].filter(Boolean).join(" ").trim() || st.name || m.type || "continue",
+            roadName: st.name || "",
+            distanceMeters: Math.round(st.distance || 0),
+          });
+        }
+      }
+      const session = {
+        id: uidAt("nav"),
+        mode: profile,
+        destination: { lat: Number(waypoints[waypoints.length - 1].lat), lng: Number(waypoints[waypoints.length - 1].lng) },
+        geometry: route.geometry,
+        steps,
+        totalDistanceMeters: Math.round(route.distance),
+        totalDurationSeconds: Math.round(route.duration),
+        currentStepIndex: 0,
+        progressMeters: 0,
+        rerouteCount: 0,
+        status: "active",
+        startedAt: isoAt(),
+        updatedAt: isoAt(),
+      };
+      s.navSessions.set(userId, session);
+      saveAtlas();
+      return { ok: true, result: { session } };
+    } catch (e) {
+      return { ok: false, error: `nav-start routing unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  registerLensAction("atlas", "nav-update", async (ctx, _a, params = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.navSessions) s.navSessions = new Map();
+    const userId = aidAt(ctx);
+    const session = s.navSessions.get(userId);
+    if (!session || session.status !== "active") return { ok: false, error: "no active navigation session" };
+    const lat = Number(params.lat), lng = Number(params.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "numeric lat/lng required" };
+    const OFF_ROUTE_M = 120, ARRIVED_M = 35;
+    const line = session.geometry?.coordinates || [];
+    const distToDest = haversineKm(lat, lng, session.destination.lat, session.destination.lng) * 1000;
+    if (distToDest <= ARRIVED_M) {
+      session.status = "arrived";
+      session.updatedAt = isoAt();
+      saveAtlas();
+      return { ok: true, result: { session, arrived: true, rerouted: false } };
+    }
+    const near = line.length ? nearestPointOnLine(lat, lng, line) : { idx: 0, distM: Infinity };
+    let rerouted = false;
+    if (near.distM > OFF_ROUTE_M) {
+      // Off-route — re-route from current position to destination.
+      try {
+        const coords = `${lng},${lat};${session.destination.lng},${session.destination.lat}`;
+        const route = await osrmRoute(session.mode, coords, true);
+        const steps = [];
+        for (const leg of route.legs || []) {
+          for (const st of leg.steps || []) {
+            const m = st.maneuver || {};
+            steps.push({
+              instruction: [m.modifier, m.type, st.name].filter(Boolean).join(" ").trim() || st.name || m.type || "continue",
+              roadName: st.name || "",
+              distanceMeters: Math.round(st.distance || 0),
+            });
+          }
+        }
+        session.geometry = route.geometry;
+        session.steps = steps;
+        session.totalDistanceMeters = Math.round(route.distance);
+        session.totalDurationSeconds = Math.round(route.duration);
+        session.currentStepIndex = 0;
+        session.progressMeters = 0;
+        session.rerouteCount += 1;
+        rerouted = true;
+      } catch (e) {
+        session.updatedAt = isoAt();
+        return { ok: false, error: `reroute failed: ${e instanceof Error ? e.message : String(e)}` };
+      }
+    } else {
+      // On-route — advance progress + the current step pointer.
+      const newLine = session.geometry?.coordinates || [];
+      const idx = newLine.length ? nearestPointOnLine(lat, lng, newLine).idx : 0;
+      let progressM = 0;
+      for (let i = 1; i <= idx && i < newLine.length; i++) {
+        progressM += haversineKm(newLine[i - 1][1], newLine[i - 1][0], newLine[i][1], newLine[i][0]) * 1000;
+      }
+      session.progressMeters = Math.round(progressM);
+      // Advance step pointer by accumulated step distances.
+      let acc = 0, stepIdx = 0;
+      for (let i = 0; i < session.steps.length; i++) {
+        acc += session.steps[i].distanceMeters;
+        if (acc >= progressM) { stepIdx = i; break; }
+        stepIdx = i;
+      }
+      session.currentStepIndex = stepIdx;
+    }
+    session.updatedAt = isoAt();
+    const remainingM = Math.max(0, session.totalDistanceMeters - session.progressMeters);
+    saveAtlas();
+    return {
+      ok: true,
+      result: {
+        session,
+        rerouted,
+        arrived: false,
+        offRouteMeters: Math.round(near.distM),
+        remainingMeters: remainingM,
+        remainingText: formatDuration(remainingM / (session.mode === "driving" ? 14 : session.mode === "cycling" ? 4.5 : 1.4)),
+        nextStep: session.steps[session.currentStepIndex] || null,
+      },
+    };
+  });
+
+  registerLensAction("atlas", "nav-status", (ctx, _a, _p = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.navSessions) s.navSessions = new Map();
+    const session = s.navSessions.get(aidAt(ctx)) || null;
+    return { ok: true, result: { session } };
+  });
+
+  registerLensAction("atlas", "nav-stop", (ctx, _a, _p = {}) => {
+    const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.navSessions) s.navSessions = new Map();
+    const userId = aidAt(ctx);
+    const session = s.navSessions.get(userId);
+    if (!session) return { ok: false, error: "no navigation session" };
+    s.navSessions.delete(userId);
+    saveAtlas();
+    return { ok: true, result: { stopped: true } };
+  });
+
   // ── Dashboard summary ────────────────────────────────────────
 
   registerLensAction("atlas", "atlas-dashboard-summary", (ctx, _a, _p = {}) => {
@@ -1066,6 +1650,8 @@ export default function registerAtlasActions(registerLensAction) {
     const trips = listAt(s.trips, userId);
     const byCategory = {};
     for (const p of places) byCategory[p.category] = (byCategory[p.category] || 0) + 1;
+    const offlineAreas = s.offlineAreas ? listAt(s.offlineAreas, userId) : [];
+    const navSession = s.navSessions ? s.navSessions.get(userId) || null : null;
     return {
       ok: true,
       result: {
@@ -1074,6 +1660,8 @@ export default function registerAtlasActions(registerLensAction) {
         tripCount: trips.length,
         totalStops: trips.reduce((sum, t) => sum + t.stops.length, 0),
         recentSearchCount: listAt(s.recentSearches, userId).length,
+        offlineAreaCount: offlineAreas.length,
+        navActive: !!(navSession && navSession.status === "active"),
         byCategory,
       },
     };

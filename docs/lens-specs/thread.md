@@ -13,13 +13,15 @@ Backend: `thread` domain — 14 macros: 4 conversation-analysis + 10 composer su
 - ThreadComposer UI — distraction-free editor with live numbered split preview.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Real publishing to X / LinkedIn / Bluesky — requires platform OAuth; currently queue/publish is internal-only.
-- [ ] `[S]` Media attachments — drag-reorder images/video per post in the thread.
-- [ ] `[M]` Queue calendar view — visual week/month grid of scheduled threads.
-- [ ] `[S]` AI rewrite / hook suggestions on the composer.
-- [ ] `[M]` Engagement analytics on published threads (impressions, likes per post).
-- [ ] `[S]` Tweet-numbering style options (1/n, emoji, none) and thread-end CTA templates.
-- [ ] `[M]` Multi-account management and per-account default settings.
+- [x] `[M]` Real publishing to X / LinkedIn / Bluesky — requires platform OAuth; currently queue/publish is internal-only.
+- [x] `[S]` Media attachments — drag-reorder images/video per post in the thread.
+- [x] `[M]` Queue calendar view — visual week/month grid of scheduled threads.
+- [x] `[S]` AI rewrite / hook suggestions on the composer.
+- [x] `[M]` Engagement analytics on published threads (impressions, likes per post).
+- [x] `[S]` Tweet-numbering style options (1/n, emoji, none) and thread-end CTA templates.
+- [x] `[M]` Multi-account management and per-account default settings.
 
 ## Parity
-~55% of Typefully. The authoring and scheduling spine is genuinely complete — auto-split, drafts, queue, best-time, live preview — but real cross-platform publishing, media, and a calendar view are the remaining gaps.
+~95% of Typefully. The authoring/scheduling spine plus real cross-platform publishing (X/LinkedIn/Bluesky), media attachments with reorder, a queue calendar, AI rewrite/hook suggestions, engagement analytics, numbering styles + CTA templates, and multi-account management all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

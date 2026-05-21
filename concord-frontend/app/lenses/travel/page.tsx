@@ -33,6 +33,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { TripPlannerPanel } from '@/components/travel/TripPlannerPanel';
 import { TravelActionPanel } from '@/components/travel/TravelActionPanel';
+import { TripWorkspaceSection } from '@/components/travel/TripWorkspaceSection';
 import { PipingProvider } from '@/components/panel-polish';
 
 // ---------------------------------------------------------------------------
@@ -425,19 +426,8 @@ export default function TravelLensPage() {
         </div>
       )}
 
-      {/* Bookings Tab */}
-      {tab === 'bookings' && (
-        <div className="panel p-8 text-center">
-          <Hotel className="w-12 h-12 mx-auto mb-3 text-gray-600" />
-          <p className="text-gray-400 text-sm mb-1">Bookings</p>
-          <p className="text-xs text-gray-600">Track flights, hotels, car rentals, and activities for your trips.</p>
-          <div className="mt-4 grid grid-cols-3 gap-3 max-w-sm mx-auto">
-            <div className="panel p-3 text-center"><Plane className="w-5 h-5 mx-auto mb-1 text-neon-cyan" /><p className="text-[10px] text-gray-400">Flights</p></div>
-            <div className="panel p-3 text-center"><Hotel className="w-5 h-5 mx-auto mb-1 text-neon-purple" /><p className="text-[10px] text-gray-400">Hotels</p></div>
-            <div className="panel p-3 text-center"><Star className="w-5 h-5 mx-auto mb-1 text-yellow-400" /><p className="text-[10px] text-gray-400">Activities</p></div>
-          </div>
-        </div>
-      )}
+      {/* Bookings Tab — full TripIt / Google Travel workspace */}
+      {tab === 'bookings' && <TripWorkspaceSection />}
 
       {/* Map Tab */}
       {tab === 'map' && (

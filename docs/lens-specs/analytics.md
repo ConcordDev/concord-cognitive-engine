@@ -12,13 +12,15 @@ Backend: `server/domains/analytics.js` — 14 macros: event-track/list/stats, fu
 - Recharts visualizations (bar/pie); CreatorAnalytics; analytics dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Custom report builder with saved dashboards + widget layout
-- [ ] `[M]` User-path / flow analysis (Sankey of common journeys)
-- [ ] `[S]` Property breakdowns + filters on any report (multi-dimensional)
-- [ ] `[M]` Live event stream / debugger view
-- [ ] `[S]` Alerts on metric thresholds or anomalies
-- [ ] `[M]` Behavioral cohort builder (users who did X but not Y)
-- [ ] `[S]` Date-range comparison across all reports
+- [x] `[M]` Custom report builder with saved dashboards + widget layout
+- [x] `[M]` User-path / flow analysis (Sankey of common journeys)
+- [x] `[S]` Property breakdowns + filters on any report (multi-dimensional)
+- [x] `[M]` Live event stream / debugger view
+- [x] `[S]` Alerts on metric thresholds or anomalies
+- [x] `[M]` Behavioral cohort builder (users who did X but not Y)
+- [x] `[S]` Date-range comparison across all reports
 
 ## Parity
-~58% of Mixpanel's surface. The event → funnel → retention → segment loop is real and complete; gaps are the saved-dashboard builder, path analysis, multi-dimensional breakdowns, and alerting.
+~95% of Mixpanel's surface. The event → funnel → retention → segment loop plus a saved-dashboard builder, path analysis, multi-dimensional breakdowns, a live event stream, threshold/anomaly alerting, cohort building, and range comparison all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

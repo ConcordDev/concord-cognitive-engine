@@ -52,6 +52,7 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { PlatformGrowth } from '@/components/analytics/PlatformGrowth';
 import { EventAnalytics } from '@/components/analytics/EventAnalytics';
+import { AdvancedAnalytics } from '@/components/analytics/AdvancedAnalytics';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -924,6 +925,9 @@ export default function AnalyticsPage() {
       </section>
       <section className="mt-6 mx-4">
         <EventAnalytics />
+      </section>
+      <section className="mt-6 mx-4">
+        <AdvancedAnalytics />
       </section>
     </div>
 

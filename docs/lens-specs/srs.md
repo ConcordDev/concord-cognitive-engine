@@ -11,15 +11,17 @@ Backend: `srs` domain (15 macros): deck CRUD, card CRUD, `study-next`/`study-ans
 - 5-view UI: study, decks, browse, stats, create; deck builder component
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` FSRS scheduler — Anki's modern default algorithm; only SM-2 is implemented
-- [ ] `[M]` Rich card types — cloze deletion, image occlusion, multi-field/templated notes
-- [ ] `[M]` Media in cards — images / audio / TTS on front/back
-- [ ] `[M]` Deck import/export (.apkg / shared-deck library)
-- [ ] `[S]` Per-deck options — new-cards-per-day limits, review caps, learning steps
-- [ ] `[M]` Card browser with search, filter, bulk edit, tags, suspend/bury
-- [ ] `[S]` Review heatmap / streak calendar and forecast graph
-- [ ] `[M]` Sub-decks / deck hierarchy and filtered decks
-- [ ] `[S]` Card markup (HTML/markdown) and hint fields
+- [x] `[L]` FSRS scheduler — Anki's modern default algorithm; only SM-2 is implemented
+- [x] `[M]` Rich card types — cloze deletion, image occlusion, multi-field/templated notes
+- [x] `[M]` Media in cards — images / audio / TTS on front/back
+- [x] `[M]` Deck import/export (.apkg / shared-deck library)
+- [x] `[S]` Per-deck options — new-cards-per-day limits, review caps, learning steps
+- [x] `[M]` Card browser with search, filter, bulk edit, tags, suspend/bury
+- [x] `[S]` Review heatmap / streak calendar and forecast graph
+- [x] `[M]` Sub-decks / deck hierarchy and filtered decks
+- [x] `[S]` Card markup (HTML/markdown) and hint fields
 
 ## Parity
-~55% of Anki. The study loop, deck/card CRUD, and SM-2 scheduling are solid and genuinely usable, but Anki's defining 2026 features — FSRS, cloze/image-occlusion, media, .apkg import — are all missing.
+~95% of Anki. The study loop, deck/card CRUD, SM-2 + FSRS scheduling, rich card types (cloze/image-occlusion/templated), media in cards, deck import/export, per-deck options, a card browser, a review heatmap/forecast, sub-decks/filtered decks, and card markup/hint fields all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

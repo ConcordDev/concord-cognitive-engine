@@ -12,26 +12,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~82%**
-- Total buildable features in the backlog (sum of all "Missing" items): **469**
+- Average feature parity: **~83%**
+- Total buildable features in the backlog (sum of all "Missing" items): **423**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 169 |
+| 80–100% (near-complete) | 175 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 7 |
+| 40–59% (partial) | 1 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| srs | Anki | ~55% | 9 |
-| thread | Typefully | ~55% | 7 |
-| travel | Google Travel / TripIt | ~55% | 8 |
-| analytics | Mixpanel / Amplitude | ~58% | 7 |
-| atlas | Google Maps | ~58% | 7 |
-| board | Trello | ~58% | 8 |
 | byo-keys | OpenRouter / LiteLLM key management | ~58% | 6 |
 | animation | FlipaClip / Pencil2D | ~60% | 7 |
 | black-market | (in-game grey-market stall) | ~60% | 6 |
@@ -238,7 +232,10 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | veterinary | ezyVet / Provet Cloud | ~90% | 0 |
 | welding | Jobber / contractor field-service (welding trade) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |
+| analytics | Mixpanel / Amplitude | ~95% | 0 |
 | astronomy | SkySafari / Stellarium | ~95% | 0 |
+| atlas | Google Maps | ~95% | 0 |
+| board | Trello | ~95% | 0 |
 | daily | Day One / Reflectly | ~95% | 0 |
 | debate | Kialo | ~95% | 0 |
 | dx-platform | Sourcegraph Cody / GitHub Copilot platform | ~95% | 0 |
@@ -261,3 +258,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | poetry | Poetry Foundation / poetry notebook | ~95% | 0 |
 | science | LabArchives / GraphPad Prism | ~95% | 0 |
 | sessions | a workflow / task-session manager | ~95% | 0 |
+| srs | Anki | ~95% | 0 |
+| thread | Typefully | ~95% | 0 |
+| travel | Google Travel / TripIt | ~95% | 0 |

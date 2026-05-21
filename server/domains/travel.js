@@ -15,6 +15,8 @@
 // visa macro hits the real REST Countries reference instead of a
 // hand-curated table.
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 const EXCHANGE_API = "https://api.exchangerate.host";
 const REST_COUNTRIES_API = "https://restcountries.com/v3.1";
 
@@ -785,6 +787,491 @@ export default function registerTravelActions(registerLensAction) {
         totalBooked: Math.round(bookedCost * 100) / 100,
       },
     };
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Feature-parity backlog vs Google Travel / TripIt — buildable layer.
+  // All live data via free, keyless public APIs:
+  //   • Nominatim (OpenStreetMap)  — geocoding for itinerary map pins
+  //   • Open-Meteo                 — destination weather forecast
+  //   • OpenSky Network            — flight-status tracking
+  // No licensed GDS / hotel pricing — search macros return real public
+  // OSM/inspiration data, never synthesized prices.
+  // ════════════════════════════════════════════════════════════════════
+
+  // ── Itinerary map: geocode an itinerary item's location ─────────────
+  // Pins items on a real map by resolving their free-text location to
+  // WGS84 coordinates via Nominatim. Persists the resolved coords on the
+  // itinerary item so the frontend MapView can route between them.
+  registerLensAction("travel", "itinerary-geocode", async (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const arr = s.itinerary.get(String(params.tripId)) || [];
+    const item = arr.find((x) => x.id === params.id);
+    if (!item) return { ok: false, error: "itinerary item not found" };
+    const query = tvclean(params.query || item.location || item.title, 200);
+    if (!query) return { ok: false, error: "no location to geocode" };
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+      const r = await fetch(url, { headers: { "User-Agent": "ConcordTravelLens/1.0" } });
+      if (!r.ok) throw new Error(`nominatim ${r.status}`);
+      const arrR = await r.json();
+      const hit = Array.isArray(arrR) ? arrR[0] : null;
+      if (!hit) return { ok: false, error: `no coordinates found for "${query}"` };
+      item.lat = Math.round(parseFloat(hit.lat) * 1e6) / 1e6;
+      item.lng = Math.round(parseFloat(hit.lon) * 1e6) / 1e6;
+      item.resolvedAddress = tvclean(hit.display_name, 240);
+      item.geocodedAt = tvnow();
+      saveTravelState();
+      return { ok: true, result: { item } };
+    } catch (e) {
+      return { ok: false, error: `geocode failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // itinerary-map — collect all geocoded itinerary points for a trip so
+  // the frontend can pin + route them.
+  registerLensAction("travel", "itinerary-map", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const items = (s.itinerary.get(String(params.tripId)) || [])
+      .slice()
+      .sort((a, b) => String(a.day || "9999").localeCompare(String(b.day || "9999"))
+        || String(a.time || "99").localeCompare(String(b.time || "99")));
+    const points = items
+      .filter((it) => Number.isFinite(it.lat) && Number.isFinite(it.lng))
+      .map((it) => ({
+        id: it.id, title: it.title, lat: it.lat, lng: it.lng,
+        day: it.day, time: it.time, category: it.category,
+        address: it.resolvedAddress || it.location || null,
+      }));
+    // Total straight-line route distance (km) in itinerary order.
+    let routeKm = 0;
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1], b = points[i];
+      const R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180;
+      const h = Math.sin(dLat / 2) ** 2
+        + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+      routeKm += 2 * R * Math.asin(Math.sqrt(h));
+    }
+    return {
+      ok: true,
+      result: {
+        points, count: points.length,
+        ungeocoded: items.length - points.length,
+        routeKm: Math.round(routeKm * 10) / 10,
+      },
+    };
+  });
+
+  // ── Day-by-day agenda view ──────────────────────────────────────────
+  // Builds an ordered day-by-day timeline from itinerary items, one row
+  // per trip day with its scheduled items sorted by time.
+  registerLensAction("travel", "itinerary-agenda", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const trip = findTrip(s, tvaid(ctx), params.tripId);
+    if (!trip) return { ok: false, error: "trip not found" };
+    const items = (s.itinerary.get(String(params.tripId)) || []).slice();
+    // Enumerate every calendar day in the trip span.
+    const days = [];
+    if (trip.startDate && trip.endDate) {
+      const start = new Date(trip.startDate), end = new Date(trip.endDate);
+      for (let d = new Date(start); d <= end; d = new Date(d.getTime() + TV_DAY)) {
+        days.push(d.toISOString().slice(0, 10));
+      }
+    }
+    // Include any item day not inside the span.
+    for (const it of items) if (it.day && !days.includes(it.day)) days.push(it.day);
+    days.sort();
+    const agenda = days.map((day, idx) => {
+      const dayItems = items
+        .filter((it) => it.day === day)
+        .sort((a, b) => String(a.time || "99:99").localeCompare(String(b.time || "99:99")));
+      return {
+        day, dayNumber: idx + 1,
+        weekday: new Date(day + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }),
+        items: dayItems, itemCount: dayItems.length,
+      };
+    });
+    const unscheduled = items.filter((it) => !it.day);
+    return {
+      ok: true,
+      result: {
+        tripId: trip.id, tripName: trip.name,
+        agenda, dayCount: agenda.length,
+        unscheduled, totalItems: items.length,
+      },
+    };
+  });
+
+  // ── Destination weather forecast (Open-Meteo, free, no key) ──────────
+  registerLensAction("travel", "weather-forecast", async (_ctx, _a, params = {}) => {
+    const lat = Number(params.lat), lng = Number(params.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return { ok: false, error: "lat / lng required" };
+    }
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`
+        + `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code`
+        + `&forecast_days=16&timezone=auto`;
+      const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+      const d = data?.daily;
+      if (!d?.time) return { ok: false, error: "open-meteo returned no forecast" };
+      const WMO = {
+        0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+        45: "Fog", 48: "Rime fog", 51: "Light drizzle", 53: "Drizzle",
+        55: "Heavy drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain",
+        71: "Light snow", 73: "Snow", 75: "Heavy snow", 80: "Rain showers",
+        81: "Rain showers", 82: "Violent showers", 95: "Thunderstorm",
+        96: "Thunderstorm + hail", 99: "Severe thunderstorm",
+      };
+      const days = d.time.map((date, i) => ({
+        date,
+        tempMax: d.temperature_2m_max?.[i] ?? null,
+        tempMin: d.temperature_2m_min?.[i] ?? null,
+        precipChance: d.precipitation_probability_max?.[i] ?? null,
+        condition: WMO[d.weather_code?.[i]] || "Unknown",
+        weatherCode: d.weather_code?.[i] ?? null,
+      }));
+      return {
+        ok: true,
+        result: {
+          lat, lng, days, count: days.length,
+          tempUnit: data.daily_units?.temperature_2m_max || "°C",
+          source: "open-meteo",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `weather unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Live flight search (OpenSky public state vectors) ───────────────
+  // OpenSky exposes live aircraft state vectors free + keyless. This is
+  // inspiration / real-air-traffic data, NOT licensed GDS pricing — it
+  // surfaces flights currently airborne, optionally filtered by callsign
+  // prefix (airline ICAO code) so a traveller can see real movements.
+  registerLensAction("travel", "flight-search", async (_ctx, _a, params = {}) => {
+    const callsignPrefix = tvclean(params.airline, 8).toUpperCase();
+    try {
+      const data = await cachedFetchJson("https://opensky-network.org/api/states/all", {
+        ttlMs: 60 * 1000, timeoutMs: 12000,
+      });
+      const states = Array.isArray(data?.states) ? data.states : [];
+      let flights = states
+        .filter((st) => st[1] && st[1].trim())
+        .map((st) => ({
+          icao24: st[0],
+          callsign: String(st[1]).trim(),
+          originCountry: st[2],
+          longitude: st[5], latitude: st[6],
+          baroAltitudeM: st[7],
+          onGround: st[8] === true,
+          velocityMs: st[9],
+          headingDeg: st[10],
+        }));
+      if (callsignPrefix) {
+        flights = flights.filter((f) => f.callsign.startsWith(callsignPrefix));
+      }
+      flights = flights.filter((f) => !f.onGround).slice(0, 60);
+      return {
+        ok: true,
+        result: {
+          flights, count: flights.length,
+          filter: callsignPrefix || null,
+          note: "Live airborne traffic via OpenSky. Real flight prices require a licensed GDS API.",
+          source: "opensky-network",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `opensky unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Hotel / lodging search (OSM Overpass, free, no key) ─────────────
+  // Returns real lodging POIs around a destination from OpenStreetMap.
+  // Inspiration data only — no pricing (would need a licensed API).
+  registerLensAction("travel", "hotel-search", async (_ctx, _a, params = {}) => {
+    const lat = Number(params.lat), lng = Number(params.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return { ok: false, error: "lat / lng required" };
+    }
+    const radiusM = Math.max(500, Math.min(20000, Math.round(tvnum(params.radiusM, 5000))));
+    const ql = `[out:json][timeout:15];`
+      + `(node["tourism"~"hotel|hostel|guest_house|motel|apartment"](around:${radiusM},${lat},${lng}););`
+      + `out body 50;`;
+    try {
+      const r = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `data=${encodeURIComponent(ql)}`,
+      });
+      if (!r.ok) throw new Error(`overpass ${r.status}`);
+      const data = await r.json();
+      const lodging = (Array.isArray(data?.elements) ? data.elements : [])
+        .filter((el) => el.tags?.name)
+        .map((el) => ({
+          id: String(el.id),
+          name: el.tags.name,
+          kind: el.tags.tourism,
+          lat: el.lat, lng: el.lon,
+          stars: el.tags.stars || null,
+          website: el.tags.website || el.tags["contact:website"] || null,
+          phone: el.tags.phone || el.tags["contact:phone"] || null,
+        }))
+        .slice(0, 50);
+      return {
+        ok: true,
+        result: {
+          lodging, count: lodging.length, radiusM,
+          note: "Real OSM lodging POIs (inspiration). No live pricing — that needs a licensed API.",
+          source: "openstreetmap-overpass",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `overpass unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Email-forwarding booking import (TripIt's signature) ────────────
+  // Parses a pasted/forwarded confirmation email into a structured
+  // booking + itinerary item. Pure text-parsing on real user input —
+  // no synthesis; fields it cannot find stay null.
+  registerLensAction("travel", "booking-import", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const trip = findTrip(s, tvaid(ctx), params.tripId);
+    if (!trip) return { ok: false, error: "trip not found" };
+    const raw = tvclean(params.emailText, 8000);
+    if (!raw) return { ok: false, error: "emailText required" };
+    const text = raw;
+    const lower = text.toLowerCase();
+    // Detect booking type from common confirmation-email keywords.
+    let type = "activity";
+    if (/\b(flight|airline|boarding|departure gate|seat \d)/i.test(text)) type = "flight";
+    else if (/\b(hotel|room|check-?in|nights? stay|reservation at)/i.test(text)) type = "hotel";
+    else if (/\b(car rental|rental car|pick-?up location|hertz|avis|enterprise|sixt)/i.test(text)) type = "car";
+    else if (/\b(train|rail|amtrak|eurostar|coach \d)/i.test(text)) type = "rail";
+    else if (/\b(cruise|cabin|sailing|embarkation)/i.test(text)) type = "cruise";
+    // Confirmation code: 5-10 char alphanumeric near a confirmation keyword.
+    let confirmationCode = null;
+    const codeM = text.match(/(?:confirmation|booking|reservation|record locator|pnr)[^A-Z0-9]{0,18}([A-Z0-9]{5,10})/i);
+    if (codeM) confirmationCode = codeM[1].toUpperCase();
+    // Provider: first capitalised word(s) near "with" / known brands.
+    let provider = null;
+    const provM = text.match(/\b(?:with|on|via|airlines?|hotel)\s+([A-Z][A-Za-z&' ]{2,30})/);
+    if (provM) provider = provM[1].trim();
+    // Cost: first currency-prefixed number.
+    let cost = 0;
+    const costM = text.match(/(?:total|amount|price|fare|paid)[^\d$€£]{0,12}[$€£]?\s?([\d,]+(?:\.\d{2})?)/i)
+      || text.match(/[$€£]\s?([\d,]+(?:\.\d{2})?)/);
+    if (costM) cost = tvnum(costM[1].replace(/,/g, ""));
+    // Date: ISO or "Month DD, YYYY".
+    let date = null;
+    const isoM = text.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+    if (isoM) date = isoM[1];
+    else {
+      const longM = text.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s+(\d{4})\b/);
+      if (longM) {
+        const parsed = new Date(`${longM[1]} ${longM[2]}, ${longM[3]}`);
+        if (!Number.isNaN(parsed.getTime())) date = parsed.toISOString().slice(0, 10);
+      }
+    }
+    const booking = {
+      id: tvid("bkg"), tripId: trip.id, type,
+      provider, confirmationCode, cost: Math.max(0, cost),
+      date, note: "Imported from forwarded confirmation email",
+      importedFromEmail: true, createdAt: tvnow(),
+    };
+    tvlistB(s.bookings, trip.id).push(booking);
+    // Mirror as an itinerary item so it appears on the agenda.
+    const itin = {
+      id: tvid("itin"), tripId: trip.id,
+      title: `${type[0].toUpperCase()}${type.slice(1)}${provider ? ` — ${provider}` : ""}`,
+      day: date, time: null,
+      category: type === "hotel" ? "lodging" : type === "flight" || type === "rail" || type === "car" ? "transport" : "activity",
+      location: provider, note: confirmationCode ? `Confirmation: ${confirmationCode}` : null,
+      fromBooking: booking.id, createdAt: tvnow(),
+    };
+    tvlistB(s.itinerary, trip.id).push(itin);
+    saveTravelState();
+    return {
+      ok: true,
+      result: {
+        booking, itineraryItem: itin,
+        parsed: {
+          type, confirmationCode, provider, cost: booking.cost, date,
+          confidence: [type !== "activity", !!confirmationCode, !!date, cost > 0].filter(Boolean).length,
+        },
+        unparsedHint: !confirmationCode || !date
+          ? "Some fields could not be parsed — edit the booking to fill them in."
+          : null,
+      },
+    };
+  });
+
+  // ── Flight-status tracking for booked flights (OpenSky) ─────────────
+  // Tracks a real airborne aircraft by callsign and reports live state.
+  registerLensAction("travel", "flight-status", async (_ctx, _a, params = {}) => {
+    const callsign = tvclean(params.callsign, 12).toUpperCase().replace(/\s+/g, "");
+    if (!callsign) return { ok: false, error: "callsign required (e.g. UAL837)" };
+    try {
+      const data = await cachedFetchJson("https://opensky-network.org/api/states/all", {
+        ttlMs: 45 * 1000, timeoutMs: 12000,
+      });
+      const states = Array.isArray(data?.states) ? data.states : [];
+      const st = states.find((x) => x[1] && String(x[1]).trim().toUpperCase() === callsign);
+      if (!st) {
+        return {
+          ok: true,
+          result: {
+            callsign, found: false,
+            status: "not_airborne",
+            note: "No live state — flight may be on the ground, not yet departed, or arrived.",
+            source: "opensky-network",
+          },
+        };
+      }
+      const onGround = st[8] === true;
+      return {
+        ok: true,
+        result: {
+          callsign, found: true,
+          status: onGround ? "on_ground" : "airborne",
+          icao24: st[0],
+          originCountry: st[2],
+          latitude: st[6], longitude: st[5],
+          baroAltitudeM: st[7],
+          velocityMs: st[9],
+          headingDeg: st[10],
+          verticalRateMs: st[11],
+          lastContact: st[4],
+          source: "opensky-network",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `opensky unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Collaborative trip planning ─────────────────────────────────────
+  // Share a trip with travel companions. Collaborators are stored on the
+  // owning user's trip; trip-shared-list lets a collaborator find trips
+  // shared with them across all owners.
+  registerLensAction("travel", "trip-share", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const trip = findTrip(s, tvaid(ctx), params.tripId);
+    if (!trip) return { ok: false, error: "trip not found" };
+    const collaborator = tvclean(params.collaborator, 80);
+    if (!collaborator) return { ok: false, error: "collaborator (user id) required" };
+    if (collaborator === tvaid(ctx)) return { ok: false, error: "cannot share a trip with yourself" };
+    const role = ["editor", "viewer"].includes(String(params.role).toLowerCase())
+      ? String(params.role).toLowerCase() : "editor";
+    if (!Array.isArray(trip.collaborators)) trip.collaborators = [];
+    const existing = trip.collaborators.find((c) => c.userId === collaborator);
+    if (existing) {
+      existing.role = role;
+    } else {
+      trip.collaborators.push({ userId: collaborator, role, sharedAt: tvnow(), sharedBy: tvaid(ctx) });
+    }
+    saveTravelState();
+    return { ok: true, result: { tripId: trip.id, collaborators: trip.collaborators } };
+  });
+
+  registerLensAction("travel", "trip-unshare", (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const trip = findTrip(s, tvaid(ctx), params.tripId);
+    if (!trip) return { ok: false, error: "trip not found" };
+    const collaborator = tvclean(params.collaborator, 80);
+    if (!Array.isArray(trip.collaborators)) trip.collaborators = [];
+    const before = trip.collaborators.length;
+    trip.collaborators = trip.collaborators.filter((c) => c.userId !== collaborator);
+    if (trip.collaborators.length === before) return { ok: false, error: "collaborator not found on trip" };
+    saveTravelState();
+    return { ok: true, result: { tripId: trip.id, collaborators: trip.collaborators } };
+  });
+
+  // trip-shared-list — trips shared WITH the calling user by others.
+  registerLensAction("travel", "trip-shared-list", (ctx, _a, _params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const me = tvaid(ctx);
+    const shared = [];
+    for (const [ownerId, list] of s.trips.entries()) {
+      if (ownerId === me) continue;
+      for (const t of list) {
+        const grant = Array.isArray(t.collaborators)
+          ? t.collaborators.find((c) => c.userId === me) : null;
+        if (grant) {
+          shared.push({
+            id: t.id, name: t.name, destination: t.destination,
+            startDate: t.startDate, endDate: t.endDate,
+            ownerId, myRole: grant.role, sharedAt: grant.sharedAt,
+          });
+        }
+      }
+    }
+    shared.sort((a, b) => String(a.startDate || "9999").localeCompare(String(b.startDate || "9999")));
+    return { ok: true, result: { trips: shared, count: shared.length } };
+  });
+
+  // ── Per-category budget breakdown + currency view ───────────────────
+  // Deepens budget-summary: per-category planned vs booked, optionally
+  // converted to a display currency at the live ECB rate.
+  registerLensAction("travel", "budget-breakdown", async (ctx, _a, params = {}) => {
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
+    const budget = s.budgets.get(String(params.tripId)) || { categories: {} };
+    const bookings = s.bookings.get(String(params.tripId)) || [];
+    // Map booking types onto budget categories.
+    const TYPE_CAT = {
+      flight: "flights", hotel: "accommodation", car: "transport",
+      rail: "transport", activity: "activities", cruise: "activities",
+    };
+    const bookedByCat = {};
+    for (const b of bookings) {
+      const cat = TYPE_CAT[b.type] || "other";
+      bookedByCat[cat] = (bookedByCat[cat] || 0) + tvnum(b.cost);
+    }
+    const allCats = new Set([...Object.keys(budget.categories), ...Object.keys(bookedByCat)]);
+    const lines = [...allCats].map((cat) => {
+      const planned = tvnum(budget.categories[cat]);
+      const booked = Math.round((bookedByCat[cat] || 0) * 100) / 100;
+      return {
+        category: cat, planned, booked,
+        remaining: Math.round((planned - booked) * 100) / 100,
+        overBudget: planned > 0 && booked > planned,
+        utilization: planned > 0 ? Math.round((booked / planned) * 100) : null,
+      };
+    }).sort((a, b) => b.planned - a.planned);
+    const totalPlanned = lines.reduce((a, l) => a + l.planned, 0);
+    const totalBooked = Math.round(lines.reduce((a, l) => a + l.booked, 0) * 100) / 100;
+    const result = {
+      lines, totalPlanned: Math.round(totalPlanned * 100) / 100, totalBooked,
+      totalRemaining: Math.round((totalPlanned - totalBooked) * 100) / 100,
+      currency: "USD",
+    };
+    // Optional live currency conversion of the display totals.
+    const displayCurrency = String(params.displayCurrency || "").toUpperCase().trim();
+    if (/^[A-Z]{3}$/.test(displayCurrency) && displayCurrency !== "USD") {
+      try {
+        const conv = await cachedFetchJson(
+          `${EXCHANGE_API}/convert?from=USD&to=${displayCurrency}&amount=1`,
+          { ttlMs: 60 * 60 * 1000 },
+        );
+        const rate = conv?.info?.rate ?? conv?.result ?? null;
+        if (Number.isFinite(rate) && rate > 0) {
+          result.displayCurrency = displayCurrency;
+          result.fxRate = rate;
+          result.converted = {
+            totalPlanned: Math.round(result.totalPlanned * rate * 100) / 100,
+            totalBooked: Math.round(result.totalBooked * rate * 100) / 100,
+            totalRemaining: Math.round(result.totalRemaining * rate * 100) / 100,
+          };
+        }
+      } catch (_e) {
+        result.fxError = "live rate unavailable — totals shown in USD";
+      }
+    }
+    return { ok: true, result };
   });
 
   // feed — ingest real country travel profiles from the REST Countries

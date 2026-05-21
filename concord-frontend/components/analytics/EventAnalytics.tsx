@@ -11,7 +11,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BarChart3, Plus, Filter, Loader2, TrendingDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 
 interface Dash { totalEvents: number; uniqueUsers: number; eventsToday: number; eventTypes: number; savedFunnels: number }
 interface TopEvent { name: string; count: number }

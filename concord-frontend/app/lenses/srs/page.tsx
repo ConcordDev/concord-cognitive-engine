@@ -8,7 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SrsRepos } from '@/components/srs/SrsRepos';
-import { SrsDeckBuilder } from '@/components/srs/SrsDeckBuilder';
+import { SrsWorkbench } from '@/components/srs/SrsWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -1281,7 +1281,7 @@ export default function SRSLensPage() {
         )}
       </AnimatePresence>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SrsDeckBuilder />
+        <SrsWorkbench />
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <SrsRepos />

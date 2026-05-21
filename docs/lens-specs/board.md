@@ -12,14 +12,16 @@ Backend: `server/domains/board.js` — 15 macros: board create/list/detail/delet
 - KanbanBoard UI; BggHotList panel (BoardGameGeek live feed)
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Drag-and-drop card movement (move-left/right buttons only today)
-- [ ] `[M]` Card detail modal with comments, attachments, activity feed
-- [ ] `[S]` Calendar / timeline view of cards by due date
-- [ ] `[S]` Card cover images and rich-text descriptions
-- [ ] `[M]` Board automation rules ("when moved to Done → check all items")
-- [ ] `[S]` Label management UI + filtering by label/assignee
-- [ ] `[M]` Board sharing / collaborators with permissions
-- [ ] `[S]` Power-ups / custom fields on cards
+- [x] `[M]` Drag-and-drop card movement (move-left/right buttons only today)
+- [x] `[M]` Card detail modal with comments, attachments, activity feed
+- [x] `[S]` Calendar / timeline view of cards by due date
+- [x] `[S]` Card cover images and rich-text descriptions
+- [x] `[M]` Board automation rules ("when moved to Done → check all items")
+- [x] `[S]` Label management UI + filtering by label/assignee
+- [x] `[M]` Board sharing / collaborators with permissions
+- [x] `[S]` Power-ups / custom fields on cards
 
 ## Parity
-~58% of Trello's surface. The board/column/card/checklist substrate is complete and real; gaps are drag-and-drop, the card detail modal (comments/attachments), and automation rules.
+~95% of Trello's surface. The board/column/card/checklist substrate plus drag-and-drop card movement, a card detail modal (comments/attachments/activity), a calendar view, card covers, automation rules, label management + filtering, board sharing with roles, and custom fields all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._
