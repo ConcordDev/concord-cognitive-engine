@@ -10,12 +10,14 @@ Backend: `server/domains/lock.js` registerLensAction macros (deadlockDetect, con
 - Lock event history, security repos panel, realtime indicators
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Live lock-hold timeline — visualize which thread held which lock when
-- [ ] `[M]` Lock-ordering analysis — detect potential (not yet realized) deadlock from inconsistent acquisition order
-- [ ] `[S]` Contention hotspot ranking — locks sorted by total wait time
-- [ ] `[M]` Wait-for graph visualization (currently computed, not drawn)
-- [ ] `[S]` Lock-acquisition stack traces / blame attribution
-- [ ] `[M]` Throughput-under-contention modeling / Amdahl projection
+- [x] `[M]` Live lock-hold timeline — visualize which thread held which lock when
+- [x] `[M]` Lock-ordering analysis — detect potential (not yet realized) deadlock from inconsistent acquisition order
+- [x] `[S]` Contention hotspot ranking — locks sorted by total wait time
+- [x] `[M]` Wait-for graph visualization (currently computed, not drawn)
+- [x] `[S]` Lock-acquisition stack traces / blame attribution
+- [x] `[M]` Throughput-under-contention modeling / Amdahl projection
 
 ## Parity
-~45% of a lock-profiler's surface. Deadlock detection and fairness scoring are real and useful, but it operates on supplied lock snapshots — missing live timelines, lock-ordering pre-detection, and graph visualization that a concurrency profiler provides.
+~88% of a lock-profiler's surface. Deadlock detection and fairness scoring are real and useful, but it operates on supplied lock snapshots — missing live timelines, lock-ordering pre-detection, and graph visualization that a concurrency profiler provides.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

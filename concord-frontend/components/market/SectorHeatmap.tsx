@@ -41,7 +41,8 @@ export function SectorHeatmapPanel() {
     onSuccess: (env) => { if (env.ok && env.result) setSectors(env.result.sectors); else setSectors([]); },
   });
 
-  useEffect(() => { load.mutate(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [range]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fetch only on range change
+  useEffect(() => { load.mutate();   }, [range]);
 
   return (
     <div className="space-y-4">

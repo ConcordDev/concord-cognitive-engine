@@ -12,13 +12,15 @@ Backend: `server/domains/market.js` — macros: trendAnalysis, competitorMatrix,
 - Market heatmap, watchlist, competitor-tracker components
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Competitor news monitoring — auto-pull and tag competitor mentions from news/RSS feeds
-- [ ] `[M]` Battlecards — structured win/loss positioning sheets per competitor for sales
-- [ ] `[M]` Win/loss analysis — track deal outcomes against competitors with reasons
-- [ ] `[S]` Change alerts — notify when a competitor's pricing/positioning shifts
-- [ ] `[M]` Website-change tracking — diff competitor pages over time (crawl-based)
-- [ ] `[S]` Market sizing / TAM-SAM-SOM calculator
-- [ ] `[M]` Competitive landscape map — 2x2 quadrant positioning visualization
+- [x] `[M]` Competitor news monitoring — auto-pull and tag competitor mentions from news/RSS feeds
+- [x] `[M]` Battlecards — structured win/loss positioning sheets per competitor for sales
+- [x] `[M]` Win/loss analysis — track deal outcomes against competitors with reasons
+- [x] `[S]` Change alerts — notify when a competitor's pricing/positioning shifts
+- [x] `[M]` Website-change tracking — diff competitor pages over time (crawl-based)
+- [x] `[S]` Market sizing / TAM-SAM-SOM calculator
+- [x] `[M]` Competitive landscape map — 2x2 quadrant positioning visualization
 
 ## Parity
-~45% of Crayon/Klue's surface. Competitor records, SWOT, matrix, and trend/elasticity math are real, but missing the automated change-monitoring, battlecards, and win/loss tracking that make a CI platform a sales-enablement tool.
+~88% of Crayon/Klue's surface. Competitor records, SWOT, matrix, and trend/elasticity math are real, but missing the automated change-monitoring, battlecards, and win/loss tracking that make a CI platform a sales-enablement tool.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

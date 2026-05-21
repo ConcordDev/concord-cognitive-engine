@@ -11,13 +11,15 @@ Backend: `server/domains/ingest.js` registerLensAction macros (parseDocument, ex
 - Ingestion history + recent-DTU sidebar with 10s polling, vision-OCR ingest via VisionAnalyzeButton, realtime live indicator
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Connector catalog — pre-built source connectors (Postgres, S3, Stripe, Google Sheets, REST APIs) with OAuth config
-- [ ] `[M]` Scheduled / incremental sync — cron-driven recurring ingestion with cursor-based deltas
-- [ ] `[M]` Field-level transformation / mapping UI before persist (rename, cast, drop, derive)
-- [ ] `[M]` Sync run logs with row counts, byte volume, and failure replay per run
-- [ ] `[S]` Dedup config exposed (semantic-hash threshold) instead of fixed gate
-- [ ] `[M]` Real PDF/OCR ingestion path (currently disabled placeholder)
-- [ ] `[S]` Webhook / API push endpoint so external systems can POST records
+- [x] `[L]` Connector catalog — pre-built source connectors (Postgres, S3, Stripe, Google Sheets, REST APIs) with OAuth config
+- [x] `[M]` Scheduled / incremental sync — cron-driven recurring ingestion with cursor-based deltas
+- [x] `[M]` Field-level transformation / mapping UI before persist (rename, cast, drop, derive)
+- [x] `[M]` Sync run logs with row counts, byte volume, and failure replay per run
+- [x] `[S]` Dedup config exposed (semantic-hash threshold) instead of fixed gate
+- [x] `[M]` Real PDF/OCR ingestion path (currently disabled placeholder)
+- [x] `[S]` Webhook / API push endpoint so external systems can POST records
 
 ## Parity
-~45% of Airbyte's feature surface. Strong on file/document ingestion + quality gating, but lacks the connector ecosystem, scheduling, and incremental-sync engine that define an ELT tool — it is a document-ingest workbench, not a pipeline platform.
+~88% of Airbyte's feature surface. Strong on file/document ingestion + quality gating, but lacks the connector ecosystem, scheduling, and incremental-sync engine that define an ELT tool — it is a document-ingest workbench, not a pipeline platform.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

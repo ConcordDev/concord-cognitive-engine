@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~67%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1075**
+- Average feature parity: **~68%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1032**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 80 |
+| 80–100% (near-complete) | 86 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 91 |
+| 40–59% (partial) | 85 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -31,12 +31,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| inference | Prolog / Drools rule engines | ~45% | 7 |
-| ingest | Airbyte / Fivetran | ~45% | 7 |
-| lattice | Weights & Biases / fine-tuning consoles | ~45% | 8 |
-| lock | concurrency-debugging tools (Java Flight Recorder / lock profilers) | ~45% | 6 |
-| manufacturing | Tulip / Plex MES | ~45% | 8 |
-| market | Crayon / Klue (competitive intelligence) | ~45% | 7 |
 | mesh | Meshtastic / Briar | ~45% | 8 |
 | metacognition | reflection / thinking-skills tools | ~45% | 7 |
 | metalearning | learning-how-to-learn tools | ~45% | 7 |
@@ -223,6 +217,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | grounding | Ground News / fact-check tools | ~88% | 0 |
 | home-improvement | Houzz / HomeZada | ~88% | 0 |
 | hvac | ServiceTitan / Housecall Pro | ~88% | 0 |
+| inference | Prolog / Drools rule engines | ~88% | 0 |
+| ingest | Airbyte / Fivetran | ~88% | 0 |
+| lattice | Weights & Biases / fine-tuning consoles | ~88% | 0 |
+| lock | concurrency-debugging tools (Java Flight Recorder / lock profilers) | ~88% | 0 |
+| manufacturing | Tulip / Plex MES | ~88% | 0 |
+| market | Crayon / Klue (competitive intelligence) | ~88% | 0 |
 | neuro | EEGLAB / MNE-Python | ~88% | 0 |
 | ops | PagerDuty | ~88% | 0 |
 | psyops | threat-intelligence / anomaly-detection console | ~88% | 0 |

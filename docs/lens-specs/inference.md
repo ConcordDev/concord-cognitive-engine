@@ -11,13 +11,15 @@ Backend: `inference` domain — forwardChain, backwardChain, unify; generic arti
 - InferenceFrameworks component for organizing rule sets
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Rule editor with syntax-checked rule authoring + a knowledge-base manager
-- [ ] `[S]` Proof tree visualization for a backward-chained goal
-- [ ] `[S]` Negation-as-failure / stratified negation support
-- [ ] `[M]` Conflict resolution strategies for forward chaining (priority, recency, specificity)
-- [ ] `[S]` Explanation — "why" / "how" queries on a derived fact
-- [ ] `[S]` Built-in predicates (arithmetic, comparison, list ops)
-- [ ] `[M]` Interactive query console with step-through execution
+- [x] `[M]` Rule editor with syntax-checked rule authoring + a knowledge-base manager
+- [x] `[S]` Proof tree visualization for a backward-chained goal
+- [x] `[S]` Negation-as-failure / stratified negation support
+- [x] `[M]` Conflict resolution strategies for forward chaining (priority, recency, specificity)
+- [x] `[S]` Explanation — "why" / "how" queries on a derived fact
+- [x] `[S]` Built-in predicates (arithmetic, comparison, list ops)
+- [x] `[M]` Interactive query console with step-through execution
 
 ## Parity
-~45% of a logic-engine's feature surface. Forward/backward chaining + unification with a derivation log is a real inference core, but it lacks a rule editor/KB manager, proof-tree visualization, conflict-resolution strategies, and an interactive query console — what makes a rule engine usable.
+~88% of a logic-engine's feature surface. Forward/backward chaining + unification with a derivation log is a real inference core, but it lacks a rule editor/KB manager, proof-tree visualization, conflict-resolution strategies, and an interactive query console — what makes a rule engine usable.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

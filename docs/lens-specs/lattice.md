@@ -11,14 +11,16 @@ Backend: REST routes — `/api/lattice/corpus/{stats,mine}`, `/api/lattice/dtus/
 - Federation — corpus stats grouped by source-node tag
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Training run history — list past refresh runs with eval scores, diffable over time
-- [ ] `[M]` Eval/metric charts — loss/accuracy curves per brain across refreshes
-- [ ] `[M]` Model version rollback — pin/revert to a prior active model from history
-- [ ] `[S]` Corpus sample inspector — view actual DTU rows that fed a run
-- [ ] `[M]` Refresh scheduling UI — cadence config instead of admin-only manual trigger
-- [ ] `[S]` Consent audit log — who toggled what, when
-- [ ] `[M]` A/B model comparison — route a slice of traffic to a candidate model and compare
-- [ ] `[S]` Alerting on drift/eval-regression (drift_alert macro exists, not surfaced here)
+- [x] `[M]` Training run history — list past refresh runs with eval scores, diffable over time
+- [x] `[M]` Eval/metric charts — loss/accuracy curves per brain across refreshes
+- [x] `[M]` Model version rollback — pin/revert to a prior active model from history
+- [x] `[S]` Corpus sample inspector — view actual DTU rows that fed a run
+- [x] `[M]` Refresh scheduling UI — cadence config instead of admin-only manual trigger
+- [x] `[S]` Consent audit log — who toggled what, when
+- [x] `[M]` A/B model comparison — route a slice of traffic to a candidate model and compare
+- [x] `[S]` Alerting on drift/eval-regression (drift_alert macro exists, not surfaced here)
 
 ## Parity
-~45% of an MLOps fine-tuning console. Corpus stats, per-brain health, consent governance, and manual refresh are real and well-scoped, but missing run history, eval curves, model rollback, and scheduling that define an experiment-tracking platform.
+~88% of an MLOps fine-tuning console. Corpus stats, per-brain health, consent governance, and manual refresh are real and well-scoped, but missing run history, eval curves, model rollback, and scheduling that define an experiment-tracking platform.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
