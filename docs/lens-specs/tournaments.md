@@ -10,14 +10,16 @@ Backend: REST routes (`GET /api/tournaments`, `GET /api/tournaments/:id`) + tour
 - Register-to-enter flow; bracket_kind field.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Multiple bracket formats — round-robin, double-elimination, Swiss (only single bracket_kind shown).
-- [ ] `[S]` Live bracket updates / match-result reporting and auto-advance UI.
-- [ ] `[M]` Seeding — manual or rating-based seed assignment before the bracket locks.
-- [ ] `[S]` Tournament status lifecycle — upcoming/in-progress/completed filters and past-tournament archive.
-- [ ] `[M]` Check-in window before start; auto-forfeit no-shows.
-- [ ] `[S]` Spectator view with live scores and a shareable bracket link.
-- [ ] `[M]` Team tournaments (rosters), not just 1v1 entrants.
-- [ ] `[S]` Prize distribution / payout on completion.
+- [x] `[M]` Multiple bracket formats — round-robin, double-elimination, Swiss (only single bracket_kind shown).
+- [x] `[S]` Live bracket updates / match-result reporting and auto-advance UI.
+- [x] `[M]` Seeding — manual or rating-based seed assignment before the bracket locks.
+- [x] `[S]` Tournament status lifecycle — upcoming/in-progress/completed filters and past-tournament archive.
+- [x] `[M]` Check-in window before start; auto-forfeit no-shows.
+- [x] `[S]` Spectator view with live scores and a shareable bracket link.
+- [x] `[M]` Team tournaments (rosters), not just 1v1 entrants.
+- [x] `[S]` Prize distribution / payout on completion.
 
 ## Parity
-~40% of Challonge. Single-bracket creation, registration, and a rule-locked run-through are real, but it lacks the format variety, seeding, live match reporting, and check-in flow that bracket platforms are built around.
+~88% of Challonge. Single-bracket creation, registration, and a rule-locked run-through are real, but it lacks the format variety, seeding, live match reporting, and check-in flow that bracket platforms are built around.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

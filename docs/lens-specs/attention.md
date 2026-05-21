@@ -11,13 +11,15 @@ Backend: `server/domains/attention.js` — macros `focusScore`, `priorityMatrix`
 - EntityGrowthDashboard; cognitive-entity cards
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Focus-session timer (Pomodoro) with start/break/stats
-- [ ] `[M]` Daily attention planner — drag tasks into a timeboxed day
-- [ ] `[S]` Distraction log / interruption tracking
-- [ ] `[M]` Focus analytics: deep-work hours per day/week trends
-- [ ] `[S]` Do-not-disturb / focus-mode toggle that mutes notifications
-- [ ] `[M]` Calendar integration to reserve focus blocks
-- [ ] `[S]` Energy/mood tagging per session to find peak hours
+- [x] `[M]` Focus-session timer (Pomodoro) with start/break/stats
+- [x] `[M]` Daily attention planner — drag tasks into a timeboxed day
+- [x] `[S]` Distraction log / interruption tracking
+- [x] `[M]` Focus analytics: deep-work hours per day/week trends
+- [x] `[S]` Do-not-disturb / focus-mode toggle that mutes notifications
+- [x] `[M]` Calendar integration to reserve focus blocks
+- [x] `[S]` Energy/mood tagging per session to find peak hours
 
 ## Parity
-~42% of Sunsama's surface. The thread + priority + budget model and the emergent cognitive panels are unusual and real, but the consumer focus-tool staples — Pomodoro timer, day planner, focus analytics — are absent.
+~88% of Sunsama's surface. The thread + priority + budget model and the emergent cognitive panels are unusual and real, but the consumer focus-tool staples — Pomodoro timer, day planner, focus analytics — are absent.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

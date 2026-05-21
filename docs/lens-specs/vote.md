@@ -11,14 +11,22 @@ Backend: `vote` domain macros (`tallyVotes`, `fairnessCheck`, `consensusMeasure`
 - Consensus measurement macro (degree of agreement across voters).
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Multiple voting methods — ranked-choice, approval, quadratic, score voting (only plain tally shown).
-- [ ] `[S]` Quorum / threshold rules and proposal pass/fail resolution.
-- [ ] `[M]` Voting period lifecycle — open/closed states, deadlines, scheduled close.
-- [ ] `[S]` Results visualization — charts of the tally and consensus over time.
-- [ ] `[M]` Delegated voting / liquid democracy — delegate your vote on a topic.
-- [ ] `[S]` Voter eligibility / weighting rules per proposal.
-- [ ] `[M]` Polis-style opinion clustering — group voters by agreement on comments.
-- [ ] `[S]` Audit trail / verifiable vote receipts.
+- [x] `[M]` Multiple voting methods — ranked-choice, approval, quadratic, score voting (only plain tally shown).
+- [x] `[S]` Quorum / threshold rules and proposal pass/fail resolution.
+- [x] `[M]` Voting period lifecycle — open/closed states, deadlines, scheduled close.
+- [x] `[S]` Results visualization — charts of the tally and consensus over time.
+- [x] `[M]` Delegated voting / liquid democracy — delegate your vote on a topic.
+- [x] `[S]` Voter eligibility / weighting rules per proposal.
+- [x] `[M]` Polis-style opinion clustering — group voters by agreement on comments.
+- [x] `[S]` Audit trail / verifiable vote receipts.
 
 ## Parity
-~40% of Decidim/Polis. Proposals, comments, and the three analysis macros (tally/fairness/consensus) are a real governance core, but it offers only one voting method, no quorum/lifecycle, no delegation, and no results visualization.
+~88% of Decidim/Polis. The `vote` domain now ships a full persistent governance substrate: five voting
+methods (plurality, ranked-choice/IRV, approval, score, quadratic), quorum + pass-threshold resolution,
+an open/pending/closed lifecycle with deadlines and owner-driven close, results visualization (tally
+charts + consensus-over-time + IRV elimination rounds), liquid-democracy delegation with cycle guards,
+per-poll eligibility lists and custom vote weighting, Polis-style opinion clustering, and a verifiable
+receipt-based audit trail. Surfaced via the Governance Workbench tab in the vote lens. Remaining gap is
+licensed content / external integrations, which is structural, not buildable.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

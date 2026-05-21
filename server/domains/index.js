@@ -207,6 +207,8 @@ import expeditionJournal from './expedition-journal.js';
 import bounties from './bounties.js';
 import subWorlds from './sub-worlds.js';
 import sentinelLens from './sentinel.js';
+import tournamentsLens from './tournaments.js';
+import worldmodelLens from './worldmodel.js';
 import savedLens from './saved.js';
 import inheritance from './inheritance.js';
 import personas from './personas.js';
@@ -417,4 +419,6 @@ export default [
   tools,
   savedLens,
   sentinelLens,
+  tournamentsLens,
+  worldmodelLens,
 ];

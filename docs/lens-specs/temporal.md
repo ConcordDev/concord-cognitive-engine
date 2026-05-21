@@ -11,14 +11,22 @@ Backend: `temporal` domain macros (`timeSeriesDecompose`, `anomalyDetection`, `f
 - Status config covering active/completed/pending/running/archived/scheduled lifecycle.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Chart rendering — decomposition and forecast return arrays but the page does not plot them.
-- [ ] `[M]` Forecast confidence intervals and changepoint detection (Prophet's core).
-- [ ] `[S]` Multiple seasonality periods (daily/weekly/yearly) and holiday effects.
-- [ ] `[M]` Model comparison / accuracy backtesting (MAE/MAPE on held-out data).
-- [ ] `[S]` Data import — CSV upload of a time series.
-- [ ] `[M]` Cross-series correlation / lag analysis.
-- [ ] `[S]` Annotated event overlays on the time axis.
-- [ ] `[M]` Interactive zoom / brushing on the series.
+- [x] `[M]` Chart rendering — decomposition and forecast return arrays but the page does not plot them.
+- [x] `[M]` Forecast confidence intervals and changepoint detection (Prophet's core).
+- [x] `[S]` Multiple seasonality periods (daily/weekly/yearly) and holiday effects.
+- [x] `[M]` Model comparison / accuracy backtesting (MAE/MAPE on held-out data).
+- [x] `[S]` Data import — CSV upload of a time series.
+- [x] `[M]` Cross-series correlation / lag analysis.
+- [x] `[S]` Annotated event overlays on the time axis.
+- [x] `[M]` Interactive zoom / brushing on the series.
 
 ## Parity
-~40% of Prophet/Tableau. The three analysis macros are real time-series math, but with no charting, no confidence intervals, no changepoints, and no backtesting it stops well short of a forecasting tool.
+~88% of Prophet/Tableau. The `ForecastWorkbench` surface wires every `temporal`
+macro: CSV import (file + paste), trend/seasonal/residual decomposition charts,
+Holt-Winters forecast with 95% confidence bands, changepoint detection, multi-
+seasonality ACF analysis, holiday-effect modelling, model-comparison backtesting
+(MAE/MAPE/RMSE), cross-series lead/lag correlation, anomaly timeline overlays,
+and interactive zoom/brushing. Every value is server-computed from a real
+user-supplied series — no mock data.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

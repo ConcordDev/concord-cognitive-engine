@@ -8,6 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TemporalRepos } from '@/components/temporal/TemporalRepos';
+import { ForecastWorkbench } from '@/components/temporal/ForecastWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -842,6 +843,9 @@ export default function TemporalLensPage() {
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ForecastWorkbench />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TemporalRepos />
       </section>

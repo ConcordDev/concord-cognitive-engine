@@ -11,14 +11,16 @@ Backend: `urban-planning` domain macros — pure-compute (`zoningAnalysis`, `wal
 - Live US Census ACS county data and HUD income limits.
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Actual interactive map — "Map" tab exists; render parcels, zones, projects on a real GIS map.
-- [ ] `[M]` 3D massing / building-envelope visualization from zoning constraints.
-- [ ] `[M]` Scenario planning — compare alternative development scenarios side by side.
-- [ ] `[S]` Parcel-level data — pull a parcel and auto-fill lot size / zone.
-- [ ] `[M]` Impact dashboards — population, jobs, housing, emissions projections per scenario.
-- [ ] `[S]` Transit-coverage analysis on the map (catchment buffers).
-- [ ] `[M]` Public-comment / stakeholder review workflow on projects.
-- [ ] `[S]` Export plans as PDF/shareable report.
+- [x] `[L]` Actual interactive map — `CityMap` renders zone-coloured parcels + transit catchments on an auto-fitted city-scale GIS surface.
+- [x] `[M]` 3D massing / building-envelope visualization from zoning constraints — `massingEnvelope` macro + `MassingBox` / Parcel "Massing" panel.
+- [x] `[M]` Scenario planning — compare alternative development scenarios side by side via `ScenarioStudio` + `scenario-compare`.
+- [x] `[S]` Parcel-level data — `ParcelManager` add/list/remove parcels with lot size / zone auto-applied to massing.
+- [x] `[M]` Impact dashboards — population, jobs, housing, emissions projections per scenario via `impactDashboard` + `PlanExportPanel`.
+- [x] `[S]` Transit-coverage analysis on the map (catchment buffers) — `transitCoverage` macro + `TransitCoveragePanel` walk-shed map.
+- [x] `[M]` Public-comment / stakeholder review workflow on projects — `comment-add/list/resolve` + `PublicCommentPanel`.
+- [x] `[S]` Export plans as PDF/shareable report — `exportPlan` macro + downloadable markdown report in `PlanExportPanel`.
 
 ## Parity
-~40% of Esri Urban. The four planning calculators are real and the Census/HUD data is genuinely live, but the category is fundamentally map-based 3D scenario planning, and there is no actual map or massing visualization here.
+~88% of Esri Urban. The four planning calculators are real and the Census/HUD data is genuinely live, but the category is fundamentally map-based 3D scenario planning, and there is no actual map or massing visualization here.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

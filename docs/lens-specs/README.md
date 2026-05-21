@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~63%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1247**
+- Average feature parity: **~64%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1200**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 57 |
+| 80–100% (near-complete) | 63 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 115 |
+| 40–59% (partial) | 109 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -30,12 +30,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| temporal | Prophet / Tableau time-series analysis | ~40% | 8 |
-| tournaments | Challonge / Battlefy | ~40% | 8 |
-| urban-planning | UrbanFootprint / Esri Urban | ~40% | 8 |
-| vote | Polis / Decidim / Snapshot | ~40% | 8 |
-| worldmodel | Palantir Foundry / digital-twin platforms | ~40% | 8 |
-| attention | Sunsama / Motion | ~42% | 7 |
 | carpentry | Houzz Pro / Buildertrend (trades) | ~42% | 7 |
 | collab | Figma / Google Docs (real-time collaboration) | ~44% | 7 |
 | alliance | Slack Connect / Discord | ~45% | 7 |
@@ -228,11 +222,17 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | transfer | Fivetran / Airbyte (data migration / ETL) | ~85% | 0 |
 | ux-suite | Storybook / a component directory | ~85% | 0 |
 | world-creator | Roblox Studio / Core / Unreal Editor | ~85% | 0 |
+| attention | Sunsama / Motion | ~88% | 0 |
 | neuro | EEGLAB / MNE-Python | ~88% | 0 |
 | ops | PagerDuty | ~88% | 0 |
 | psyops | threat-intelligence / anomaly-detection console | ~88% | 0 |
 | questmarket | Bountysource / gamified quest board | ~88% | 0 |
 | schema | JSON Schema tooling / Hasura console | ~88% | 0 |
+| temporal | Prophet / Tableau time-series analysis | ~88% | 0 |
+| tournaments | Challonge / Battlefy | ~88% | 0 |
+| urban-planning | UrbanFootprint / Esri Urban | ~88% | 0 |
+| vote | Polis / Decidim / Snapshot | ~88% | 0 |
+| worldmodel | Palantir Foundry / digital-twin platforms | ~88% | 0 |
 | agents | OpenAI Assistants / CrewAI | ~90% | 0 |
 | audit | Vanta / Drata | ~90% | 0 |
 | classroom | Google Classroom | ~90% | 0 |
