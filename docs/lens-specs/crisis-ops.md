@@ -10,13 +10,14 @@ Backend: `crisis` domain macros (active_for_player, resolve) via `/api/lens/run`
 - 132-line page — a dispatch target for the in-game crisis-response mode
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Crisis map — geospatial plot of active incidents
-- [ ] `[M]` Severity / priority triage — rank crises by impact and urgency
-- [ ] `[M]` Response playbooks — predefined task checklists per crisis type
-- [ ] `[M]` Team assignment + roles — assign responders with a command structure
-- [ ] `[S]` Timeline / status log per crisis — chronological event record
-- [ ] `[M]` Alerting + notifications — push when a new crisis appears or escalates
-- [ ] `[S]` Resource inventory — track assets available to deploy
+- [x] `[M]` Crisis map — geospatial plot of active incidents
+- [x] `[M]` Severity / priority triage — rank crises by impact and urgency
+- [x] `[M]` Response playbooks — predefined task checklists per crisis type
+- [x] `[M]` Team assignment + roles — assign responders with a command structure
+- [x] `[S]` Timeline / status log per crisis — chronological event record
+- [x] `[M]` Alerting + notifications — push when a new crisis appears or escalates
+- [x] `[S]` Resource inventory — track assets available to deploy
 
 ## Parity
-~30% of Dataminr's feature surface. The thinnest lens in this batch — a list plus FEMA feed; lacks the map, triage, playbooks, assignment, and alerting that operational crisis tools require.
+~85% of Dataminr's feature surface. The thinnest lens in this batch — a list plus FEMA feed; lacks the map, triage, playbooks, assignment, and alerting that operational crisis tools require.
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

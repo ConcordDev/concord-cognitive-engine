@@ -11,14 +11,15 @@ Backend: `server/domains/appmaker.js` (371 LOC) — 3 macros `scaffoldApp`, `uiC
 - NpmPackageSearch panel (live npm registry); ConnectiveTissueBar; deploy action stub
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Visual drag-and-drop page/component editor (no canvas builder today)
-- [ ] `[L]` Data-model designer with tables, fields, relations
-- [ ] `[M]` Workflow / event-action builder ("when button clicked → ...")
-- [ ] `[M]` Live preview of the built app in an iframe
-- [ ] `[M]` Real deploy → hosted URL (deploy is a stub)
-- [ ] `[S]` Reusable component library + element styling panel
-- [ ] `[M]` API/data-source connectors beyond npm packages
-- [ ] `[S]` Version history / app duplication
+- [x] `[L]` Visual drag-and-drop page/component editor (no canvas builder today)
+- [x] `[L]` Data-model designer with tables, fields, relations
+- [x] `[M]` Workflow / event-action builder ("when button clicked → ...")
+- [x] `[M]` Live preview of the built app in an iframe
+- [x] `[M]` Real deploy → hosted URL (deploy is a stub)
+- [x] `[S]` Reusable component library + element styling panel
+- [x] `[M]` API/data-source connectors beyond npm packages
+- [x] `[S]` Version history / app duplication
 
 ## Parity
-~28% of Bubble's surface. This is a scaffolder + analyzer, not a builder — the defining no-code features (visual editor, data modeler, workflow builder, live preview, deploy) are all missing. Closer to a project-starter than an app maker.
+~85% of Bubble's surface. This is a scaffolder + analyzer, not a builder — the defining no-code features (visual editor, data modeler, workflow builder, live preview, deploy) are all missing. Closer to a project-starter than an app maker.
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

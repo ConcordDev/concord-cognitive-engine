@@ -22,6 +22,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UxRepos } from '@/components/ux-suite/UxRepos';
+import { ComponentWorkbench } from '@/components/ux-suite/ComponentWorkbench';
 import Link from 'next/link';
 import {
   Accessibility, Settings, Save, Music2, Trophy, TrendingUp, Sun,
@@ -107,6 +108,16 @@ export default function UxSuiteLensPage() {
         </header>
 
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
+          <div className="mb-5">
+            <ComponentWorkbench />
+          </div>
+
+          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            Real semantic homes
+          </h2>
+          <p className="mb-3 text-[11px] text-slate-400">
+            The workbench above previews each component in isolation. Below, every component links to where it runs against live backend state.
+          </p>
           <div className="mb-4 flex flex-wrap gap-2">
             {GROUPS.map((g) => (
               <span key={g.id} className={`rounded-full border border-${g.color}-500/30 bg-${g.color}-500/10 px-3 py-1 text-xs font-medium text-${g.color}-300`}>

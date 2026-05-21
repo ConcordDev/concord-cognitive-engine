@@ -200,6 +200,10 @@ import blackMarket from './black-market.js';
 import society from './society.js';
 import gallery from './gallery.js';
 import classroom from './classroom.js';
+import syncLens from './sync.js';
+import uxSuite from './ux-suite.js';
+import worldCreator from './world-creator.js';
+import bounties from './bounties.js';
 
 export default [
   healthcare,
@@ -393,4 +397,8 @@ export default [
   society,
   gallery,
   classroom,
+  syncLens,
+  uxSuite,
+  worldCreator,
+  bounties,
 ];

@@ -23,6 +23,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { NpmPackageSearch } from '@/components/app-maker/NpmPackageSearch';
+import { AppBuilderStudio } from '@/components/app-maker/AppBuilderStudio';
 
 interface AppEntry {
   id: string;
@@ -240,6 +241,15 @@ export default function AppMakerLens() {
             <p className="text-xs text-gray-400">Avg Maturity</p>
           </div>
         </div>
+      </div>
+
+      {/* ── No-Code Builder Studio (visual editor · data model · workflows · preview · deploy) ── */}
+      <div className="panel p-4">
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <Layout className="w-4 h-4 text-neon-cyan" />
+          No-Code Builder Studio
+        </h3>
+        <AppBuilderStudio />
       </div>
 
       {/* ── Backend Action Panels ── */}

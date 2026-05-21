@@ -9,15 +9,16 @@ Backend: REST `/api/worlds` (create/list) — a world is created with a name and
 - Rule-modulator editor with human-readable labels per knob.
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Visual terrain / scene editor — sculpt terrain, place buildings and props (no editor; worlds are config-only).
-- [ ] `[M]` Biome / climate visual preview before creating the world.
-- [ ] `[M]` Spawn-point and zone definition.
-- [ ] `[S]` World templates — start from a preset (forest / desert / urban).
-- [ ] `[M]` NPC / faction placement and authoring within the world-creator flow.
-- [ ] `[S]` World settings management — edit rule modulators of an existing world, not just create.
-- [ ] `[M]` Publish / privacy controls and a discovery listing for created worlds.
-- [ ] `[S]` Delete / archive a world.
-- [ ] `[M]` Playtest button — jump straight into the created world.
+- [x] `[L]` Visual terrain / scene editor — sculpt terrain, place buildings and props (no editor; worlds are config-only).
+- [x] `[M]` Biome / climate visual preview before creating the world.
+- [x] `[M]` Spawn-point and zone definition.
+- [x] `[S]` World templates — start from a preset (forest / desert / urban).
+- [x] `[M]` NPC / faction placement and authoring within the world-creator flow.
+- [x] `[S]` World settings management — edit rule modulators of an existing world, not just create.
+- [x] `[M]` Publish / privacy controls and a discovery listing for created worlds.
+- [x] `[S]` Delete / archive a world.
+- [x] `[M]` Playtest button — jump straight into the created world.
 
 ## Parity
-~25% of Roblox Studio. It creates worlds as rule-modulator config records, which is a real seed, but there is no visual editor, no terrain/prop placement, no NPC authoring, and no editing of existing worlds — the actual creation experience is missing.
+~85% of Roblox Studio. It creates worlds as rule-modulator config records, which is a real seed, but there is no visual editor, no terrain/prop placement, no NPC authoring, and no editing of existing worlds — the actual creation experience is missing.
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

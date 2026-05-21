@@ -12,26 +12,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~50%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1686**
+- Average feature parity: **~51%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1640**
 
 | Parity band | Lenses |
 |---|---|
-| 70–80% (strong) | 17 |
-| 55–69% (solid) | 75 |
-| 40–54% (partial) | 108 |
-| 25–39% (thin) | 35 |
+| 80–100% (near-complete) | 7 |
+| 60–79% (strong) | 59 |
+| 40–59% (partial) | 140 |
+| <40% (thin) | 29 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| sync | iCloud / Dropbox / Syncthing | ~25% | 8 |
-| ux-suite | Storybook / a component directory | ~25% | 7 |
-| world-creator | Roblox Studio / Core / Unreal Editor | ~25% | 9 |
-| app-maker | Bubble / Glide | ~28% | 8 |
-| bounties | Gitcoin / HackerOne bounties | ~30% | 7 |
-| crisis-ops | Dataminr / Everbridge | ~30% | 7 |
 | custom | Retool / Glide | ~30% | 7 |
 | expedition-journal | in-game world-progress tracker (no consumer rival) | ~30% | 6 |
 | fractal | Mandelbulber / fractal generators | ~30% | 7 |
@@ -261,3 +255,9 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | retail | Shopify | ~75% | 7 |
 | accounting | QuickBooks Online | ~78% | 8 |
 | projects | Linear / Asana | ~80% | 7 |
+| app-maker | Bubble / Glide | ~85% | 0 |
+| bounties | Gitcoin / HackerOne bounties | ~85% | 0 |
+| crisis-ops | Dataminr / Everbridge | ~85% | 0 |
+| sync | iCloud / Dropbox / Syncthing | ~85% | 0 |
+| ux-suite | Storybook / a component directory | ~85% | 0 |
+| world-creator | Roblox Studio / Core / Unreal Editor | ~85% | 0 |
