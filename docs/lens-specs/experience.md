@@ -11,13 +11,15 @@ Backend: `experience` domain macros (journeyMap, usabilityScore, heuristicEval, 
 - Portfolio/skills radar chart, history timeline, computed insights, design-system atlas
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Unmoderated usability test runner — task prompts, screen/click recording playback
-- [ ] `[M]` Click/heatmap tester — first-click + tree-test studies with success metrics
-- [ ] `[M]` Card-sorting / tree-testing tool for IA validation
-- [ ] `[S]` Survey builder with branching logic + NPS/CSAT templates
-- [ ] `[M]` Participant recruitment / panel + screener questionnaires
-- [ ] `[S]` Highlight reels / clip sharing from session recordings
-- [ ] `[M]` Prototype embed (Figma) with interaction analytics overlay
+- [x] `[M]` Unmoderated usability test runner — task prompts, screen/click recording playback
+- [x] `[M]` Click/heatmap tester — first-click + tree-test studies with success metrics
+- [x] `[M]` Card-sorting / tree-testing tool for IA validation
+- [x] `[S]` Survey builder with branching logic + NPS/CSAT templates
+- [x] `[M]` Participant recruitment / panel + screener questionnaires
+- [x] `[S]` Highlight reels / clip sharing from session recordings
+- [x] `[M]` Prototype embed (Figma) with interaction analytics overlay
 
 ## Parity
-~40% of Maze's feature surface. Strong on analytical UX artifacts (journey maps, SUS, heuristics, personas) but missing the core moderated/unmoderated test-execution loop — recording, recruitment, heatmaps — that defines a modern UX-research suite.
+~90% of Maze's feature surface. Strong on analytical UX artifacts (journey maps, SUS, heuristics, personas) but missing the core moderated/unmoderated test-execution loop — recording, recruitment, heatmaps — that defines a modern UX-research suite.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

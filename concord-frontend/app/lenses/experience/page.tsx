@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DesignSystemAtlas } from '@/components/experience/DesignSystemAtlas';
+import { UXResearchSuite } from '@/components/experience/UXResearchSuite';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -1176,6 +1177,10 @@ export default function ExperienceLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <UXResearchSuite />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <DesignSystemAtlas />
       </section>

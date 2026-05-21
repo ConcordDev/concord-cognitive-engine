@@ -8,6 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WikidataSearch } from '@/components/entity/WikidataSearch';
+import { KnowledgeGraphWorkbench } from '@/components/entity/KnowledgeGraphWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -219,6 +220,11 @@ export default function EntityLensPage() {
 
       {/* Entity Lifecycle Timeline Visualization */}
       <EntityLifecycleViz />
+
+      {/* Knowledge-Graph Workbench — interactive graph canvas, typed schemas,
+          merge/split reconciliation, path-finding, bulk + Wikidata import,
+          and per-attribute provenance. */}
+      <KnowledgeGraphWorkbench />
 
       {/* Create Entity Form */}
       {showCreate && (

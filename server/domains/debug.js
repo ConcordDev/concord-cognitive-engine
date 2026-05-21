@@ -1,8 +1,588 @@
 // server/domains/debug.js
 // Domain actions for debugging: log pattern analysis, error clustering,
 // stack trace parsing, and performance bottleneck detection.
+//
+// Plus a Sentry/Datadog-style observability suite backed by per-user
+// state Maps: an issue inbox (ingest + group runtime exceptions with
+// occurrences, breadcrumbs, assignment + resolution workflow), a
+// distributed trace viewer (span waterfall), alert rules (threshold
+// breach detection), time-series metric charts, and release tracking.
 
 export default function registerDebugActions(registerLensAction) {
+  // ─── Per-user observability state ───────────────────────────────
+  function getDebugState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.debugLens) STATE.debugLens = {};
+    const d = STATE.debugLens;
+    if (!(d.issues instanceof Map)) d.issues = new Map();        // userId -> Array<issue>
+    if (!(d.traces instanceof Map)) d.traces = new Map();        // userId -> Array<trace>
+    if (!(d.alertRules instanceof Map)) d.alertRules = new Map();// userId -> Array<rule>
+    if (!(d.metrics instanceof Map)) d.metrics = new Map();      // userId -> Array<sample>
+    if (!(d.releases instanceof Map)) d.releases = new Map();    // userId -> Array<release>
+    return d;
+  }
+  function saveDebug() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const dbgId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const dbgActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const dbgClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
+  const dbgNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const dbgList = (m, userId) => { if (!m.has(userId)) m.set(userId, []); return m.get(userId); };
+
+  // Normalize an exception to a stable fingerprint so repeat
+  // occurrences group into one issue.
+  function fingerprint(type, message, culprit) {
+    const norm = (s) => String(s || "")
+      .replace(/0x[0-9a-fA-F]+/g, "<ADDR>")
+      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "<UUID>")
+      .replace(/\b\d+\b/g, "<N>")
+      .replace(/['"][^'"]{0,80}['"]/g, "<STR>")
+      .trim()
+      .toLowerCase();
+    return `${norm(type)}|${norm(message).slice(0, 120)}|${norm(culprit).slice(0, 80)}`;
+  }
+
+  const ISSUE_STATES = ["open", "resolved", "ignored"];
+  const ALERT_OPS = [">", ">=", "<", "<=", "=="];
+
+  // ─── FEATURE: Live error stream / issue inbox ───────────────────
+  // Ingest a runtime exception; groups by fingerprint into an issue
+  // with occurrence count, breadcrumb trail, and release tag.
+  registerLensAction("debug", "issue-ingest", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const type = dbgClean(params.type, 80) || "Error";
+      const message = dbgClean(params.message, 600);
+      if (!message) return { ok: false, error: "message required" };
+      const culprit = dbgClean(params.culprit, 200) || null;
+      const level = ["error", "warning", "fatal", "info"].includes(params.level) ? params.level : "error";
+      const release = dbgClean(params.release, 60) || null;
+      const stack = dbgClean(params.stack, 4000) || null;
+      const breadcrumbs = Array.isArray(params.breadcrumbs)
+        ? params.breadcrumbs.slice(0, 30).map((b) => ({
+            at: dbgClean(b.at, 40) || new Date().toISOString(),
+            category: dbgClean(b.category, 40) || "log",
+            message: dbgClean(b.message, 300),
+            level: ["debug", "info", "warning", "error"].includes(b.level) ? b.level : "info",
+          }))
+        : [];
+      const fp = fingerprint(type, message, culprit);
+      const list = dbgList(s.issues, dbgActor(ctx));
+      const now = new Date().toISOString();
+      let issue = list.find((i) => i.fingerprint === fp);
+      if (issue) {
+        issue.count += 1;
+        issue.lastSeen = now;
+        if (release) issue.releases = [...new Set([...(issue.releases || []), release])].slice(-10);
+        // Latest occurrence's breadcrumb trail wins; keep last 30.
+        if (breadcrumbs.length) issue.breadcrumbs = breadcrumbs;
+        if (stack) issue.stack = stack;
+        issue.occurrenceTimes = [...(issue.occurrenceTimes || []), now].slice(-200);
+        // A new occurrence reopens a resolved issue (regression).
+        if (issue.status === "resolved") { issue.status = "open"; issue.regressed = true; }
+      } else {
+        issue = {
+          id: dbgId("issue"),
+          fingerprint: fp,
+          type, message, culprit, level, stack,
+          status: "open",
+          assignee: null,
+          regressed: false,
+          count: 1,
+          breadcrumbs,
+          releases: release ? [release] : [],
+          firstSeen: now,
+          lastSeen: now,
+          occurrenceTimes: [now],
+        };
+        list.push(issue);
+      }
+      saveDebug();
+      return { ok: true, result: { issue, isNew: issue.count === 1 } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // List/filter issues for the inbox view.
+  registerLensAction("debug", "issue-list", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      let list = [...dbgList(s.issues, dbgActor(ctx))];
+      if (ISSUE_STATES.includes(params.status)) list = list.filter((i) => i.status === params.status);
+      if (params.level) list = list.filter((i) => i.level === params.level);
+      if (params.release) list = list.filter((i) => (i.releases || []).includes(params.release));
+      const q = dbgClean(params.query, 120).toLowerCase();
+      if (q) list = list.filter((i) =>
+        i.message.toLowerCase().includes(q) ||
+        (i.type || "").toLowerCase().includes(q) ||
+        (i.culprit || "").toLowerCase().includes(q));
+      const sort = params.sort === "first" ? "firstSeen" : params.sort === "count" ? "count" : "lastSeen";
+      list.sort((a, b) => sort === "count"
+        ? b.count - a.count
+        : String(b[sort]).localeCompare(String(a[sort])));
+      const all = dbgList(s.issues, dbgActor(ctx));
+      return {
+        ok: true,
+        result: {
+          issues: list.map((i) => ({ ...i, occurrenceTimes: undefined, stack: undefined })),
+          count: list.length,
+          summary: {
+            open: all.filter((i) => i.status === "open").length,
+            resolved: all.filter((i) => i.status === "resolved").length,
+            ignored: all.filter((i) => i.status === "ignored").length,
+            totalOccurrences: all.reduce((n, i) => n + i.count, 0),
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Full detail for one issue (stack, breadcrumbs, occurrence timeline).
+  registerLensAction("debug", "issue-detail", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const issue = dbgList(s.issues, dbgActor(ctx)).find((i) => i.id === params.id);
+      if (!issue) return { ok: false, error: "issue not found" };
+      // Bucket occurrences into a sparkline (hourly, last 24h).
+      const times = (issue.occurrenceTimes || []).map((t) => new Date(t).getTime()).filter((n) => !isNaN(n));
+      const now = Date.now();
+      const sparkline = [];
+      for (let h = 23; h >= 0; h--) {
+        const start = now - (h + 1) * 3600000;
+        const end = now - h * 3600000;
+        sparkline.push({
+          hour: new Date(start).toISOString(),
+          count: times.filter((t) => t >= start && t < end).length,
+        });
+      }
+      return { ok: true, result: { issue, sparkline } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ─── FEATURE: Issue assignment + resolution workflow ────────────
+  registerLensAction("debug", "issue-update", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const issue = dbgList(s.issues, dbgActor(ctx)).find((i) => i.id === params.id);
+      if (!issue) return { ok: false, error: "issue not found" };
+      if (params.status != null) {
+        if (!ISSUE_STATES.includes(params.status)) return { ok: false, error: "invalid status" };
+        issue.status = params.status;
+        if (params.status === "resolved" || params.status === "ignored") issue.regressed = false;
+      }
+      if (params.assignee !== undefined) issue.assignee = dbgClean(params.assignee, 80) || null;
+      saveDebug();
+      return { ok: true, result: { issue } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "issue-delete", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const arr = dbgList(s.issues, dbgActor(ctx));
+      const i = arr.findIndex((x) => x.id === params.id);
+      if (i < 0) return { ok: false, error: "issue not found" };
+      arr.splice(i, 1);
+      saveDebug();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ─── FEATURE: Distributed trace viewer (span waterfall) ─────────
+  // Record a trace as a flat list of spans; computes a waterfall
+  // layout (offset + depth) for the viewer.
+  registerLensAction("debug", "trace-record", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const rawSpans = Array.isArray(params.spans) ? params.spans : [];
+      if (rawSpans.length === 0) return { ok: false, error: "spans required" };
+      const spans = rawSpans.slice(0, 500).map((sp, idx) => ({
+        spanId: dbgClean(sp.spanId, 60) || `span_${idx}`,
+        parentId: dbgClean(sp.parentId, 60) || null,
+        name: dbgClean(sp.name, 200) || "span",
+        service: dbgClean(sp.service, 80) || "unknown",
+        startMs: dbgNum(sp.startMs) ?? 0,
+        endMs: dbgNum(sp.endMs) ?? 0,
+        status: ["ok", "error"].includes(sp.status) ? sp.status : "ok",
+      }));
+      const t0 = Math.min(...spans.map((sp) => sp.startMs));
+      const t1 = Math.max(...spans.map((sp) => sp.endMs));
+      const total = Math.max(1, t1 - t0);
+      // Depth from parent chain.
+      const byId = new Map(spans.map((sp) => [sp.spanId, sp]));
+      const depthOf = (sp, guard = 0) => {
+        if (!sp.parentId || guard > 50) return 0;
+        const parent = byId.get(sp.parentId);
+        return parent ? 1 + depthOf(parent, guard + 1) : 0;
+      };
+      const layout = spans.map((sp) => {
+        const dur = Math.max(0, sp.endMs - sp.startMs);
+        return {
+          ...sp,
+          durationMs: Math.round(dur * 100) / 100,
+          offsetPct: Math.round(((sp.startMs - t0) / total) * 10000) / 100,
+          widthPct: Math.round((dur / total) * 10000) / 100,
+          depth: depthOf(sp),
+        };
+      }).sort((a, b) => a.startMs - b.startMs || a.depth - b.depth);
+      const trace = {
+        id: dbgId("trace"),
+        name: dbgClean(params.name, 200) || layout[0]?.name || "request",
+        spanCount: layout.length,
+        totalDurationMs: Math.round(total * 100) / 100,
+        errorCount: layout.filter((sp) => sp.status === "error").length,
+        rootService: layout[0]?.service || "unknown",
+        spans: layout,
+        recordedAt: new Date().toISOString(),
+      };
+      const list = dbgList(s.traces, dbgActor(ctx));
+      list.unshift(trace);
+      if (list.length > 100) list.length = 100;
+      saveDebug();
+      return { ok: true, result: { trace } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "trace-list", (ctx, _a, _params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const list = dbgList(s.traces, dbgActor(ctx));
+      return {
+        ok: true,
+        result: {
+          traces: list.map((t) => ({
+            id: t.id, name: t.name, spanCount: t.spanCount,
+            totalDurationMs: t.totalDurationMs, errorCount: t.errorCount,
+            rootService: t.rootService, recordedAt: t.recordedAt,
+          })),
+          count: list.length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "trace-detail", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const trace = dbgList(s.traces, dbgActor(ctx)).find((t) => t.id === params.id);
+      if (!trace) return { ok: false, error: "trace not found" };
+      // Per-service rollup for the waterfall summary.
+      const byService = {};
+      for (const sp of trace.spans) {
+        if (!byService[sp.service]) byService[sp.service] = { service: sp.service, spans: 0, totalMs: 0, errors: 0 };
+        byService[sp.service].spans += 1;
+        byService[sp.service].totalMs += sp.durationMs;
+        if (sp.status === "error") byService[sp.service].errors += 1;
+      }
+      return {
+        ok: true,
+        result: {
+          trace,
+          serviceBreakdown: Object.values(byService)
+            .map((v) => ({ ...v, totalMs: Math.round(v.totalMs * 100) / 100 }))
+            .sort((a, b) => b.totalMs - a.totalMs),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ─── FEATURE: Time-series metric charts ─────────────────────────
+  // Record a metric sample (CPU/memory/latency/etc).
+  registerLensAction("debug", "metric-record", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const metric = dbgClean(params.metric, 60);
+      const value = dbgNum(params.value);
+      if (!metric) return { ok: false, error: "metric name required" };
+      if (value == null) return { ok: false, error: "numeric value required" };
+      const sample = {
+        metric,
+        value,
+        unit: dbgClean(params.unit, 20) || "",
+        at: dbgClean(params.at, 40) || new Date().toISOString(),
+      };
+      const list = dbgList(s.metrics, dbgActor(ctx));
+      list.push(sample);
+      // Keep last 5000 samples per user.
+      if (list.length > 5000) list.splice(0, list.length - 5000);
+      saveDebug();
+      // Evaluate alert rules on the freshly recorded value.
+      const breaches = evaluateRules(s, dbgActor(ctx), metric, value);
+      return { ok: true, result: { sample, breaches } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Query a metric as a time-series, optionally bucketed.
+  registerLensAction("debug", "metric-series", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const all = dbgList(s.metrics, dbgActor(ctx));
+      const names = [...new Set(all.map((m) => m.metric))];
+      const metric = dbgClean(params.metric, 60);
+      if (!metric) return { ok: true, result: { series: [], points: [], metrics: names } };
+      let pts = all
+        .filter((m) => m.metric === metric)
+        .map((m) => ({ t: new Date(m.at).getTime(), value: m.value, unit: m.unit }))
+        .filter((m) => !isNaN(m.t))
+        .sort((a, b) => a.t - b.t);
+      const windowMin = dbgNum(params.windowMinutes);
+      if (windowMin) {
+        const cutoff = Date.now() - windowMin * 60000;
+        pts = pts.filter((p) => p.t >= cutoff);
+      }
+      // Optional bucketing to a fixed point count.
+      const buckets = Math.min(200, Math.max(0, dbgNum(params.buckets) || 0));
+      let points = pts.map((p) => ({ at: new Date(p.t).toISOString(), value: p.value }));
+      if (buckets > 0 && pts.length > buckets) {
+        const lo = pts[0].t, hi = pts[pts.length - 1].t;
+        const size = Math.max(1, (hi - lo) / buckets);
+        points = [];
+        for (let i = 0; i < buckets; i++) {
+          const bs = lo + i * size, be = bs + size;
+          const inB = pts.filter((p) => p.t >= bs && p.t < be);
+          if (inB.length) {
+            points.push({
+              at: new Date(bs).toISOString(),
+              value: Math.round((inB.reduce((n, p) => n + p.value, 0) / inB.length) * 100) / 100,
+              max: Math.max(...inB.map((p) => p.value)),
+              min: Math.min(...inB.map((p) => p.value)),
+            });
+          }
+        }
+      }
+      const vals = pts.map((p) => p.value);
+      const stats = vals.length
+        ? {
+            count: vals.length,
+            avg: Math.round((vals.reduce((n, v) => n + v, 0) / vals.length) * 100) / 100,
+            min: Math.min(...vals),
+            max: Math.max(...vals),
+            latest: vals[vals.length - 1],
+          }
+        : { count: 0, avg: 0, min: 0, max: 0, latest: 0 };
+      return { ok: true, result: { metric, points, stats, metrics: names } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ─── FEATURE: Alert rules ───────────────────────────────────────
+  function evaluateRules(s, userId, metric, value) {
+    const rules = dbgList(s.alertRules, userId).filter((r) => r.metric === metric && r.enabled);
+    const breaches = [];
+    for (const rule of rules) {
+      let breached = false;
+      switch (rule.op) {
+        case ">": breached = value > rule.threshold; break;
+        case ">=": breached = value >= rule.threshold; break;
+        case "<": breached = value < rule.threshold; break;
+        case "<=": breached = value <= rule.threshold; break;
+        case "==": breached = value === rule.threshold; break;
+        default: breached = false;
+      }
+      const now = new Date().toISOString();
+      if (breached) {
+        rule.triggerCount = (rule.triggerCount || 0) + 1;
+        rule.lastTriggeredAt = now;
+        rule.lastValue = value;
+        rule.state = "alerting";
+        breaches.push({
+          ruleId: rule.id, name: rule.name, metric, value,
+          op: rule.op, threshold: rule.threshold, severity: rule.severity, at: now,
+        });
+      } else if (rule.state === "alerting") {
+        rule.state = "ok";
+        rule.lastValue = value;
+      }
+    }
+    if (breaches.length) saveDebug();
+    return breaches;
+  }
+
+  registerLensAction("debug", "alert-create", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const name = dbgClean(params.name, 120);
+      const metric = dbgClean(params.metric, 60);
+      const threshold = dbgNum(params.threshold);
+      if (!name) return { ok: false, error: "rule name required" };
+      if (!metric) return { ok: false, error: "metric required" };
+      if (threshold == null) return { ok: false, error: "numeric threshold required" };
+      if (!ALERT_OPS.includes(params.op)) return { ok: false, error: "op must be one of " + ALERT_OPS.join(" ") };
+      const rule = {
+        id: dbgId("alert"),
+        name, metric, op: params.op, threshold,
+        severity: ["critical", "warning", "info"].includes(params.severity) ? params.severity : "warning",
+        enabled: params.enabled !== false,
+        state: "ok",
+        triggerCount: 0,
+        lastTriggeredAt: null,
+        lastValue: null,
+        createdAt: new Date().toISOString(),
+      };
+      dbgList(s.alertRules, dbgActor(ctx)).push(rule);
+      saveDebug();
+      return { ok: true, result: { rule } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "alert-list", (ctx, _a, _params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const rules = dbgList(s.alertRules, dbgActor(ctx));
+      return {
+        ok: true,
+        result: {
+          rules,
+          count: rules.length,
+          alerting: rules.filter((r) => r.state === "alerting").length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "alert-update", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const rule = dbgList(s.alertRules, dbgActor(ctx)).find((r) => r.id === params.id);
+      if (!rule) return { ok: false, error: "rule not found" };
+      if (params.name != null) rule.name = dbgClean(params.name, 120) || rule.name;
+      if (params.threshold != null) {
+        const t = dbgNum(params.threshold);
+        if (t != null) rule.threshold = t;
+      }
+      if (params.op != null && ALERT_OPS.includes(params.op)) rule.op = params.op;
+      if (params.severity != null && ["critical", "warning", "info"].includes(params.severity)) rule.severity = params.severity;
+      if (params.enabled != null) rule.enabled = !!params.enabled;
+      saveDebug();
+      return { ok: true, result: { rule } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "alert-delete", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const arr = dbgList(s.alertRules, dbgActor(ctx));
+      const i = arr.findIndex((r) => r.id === params.id);
+      if (i < 0) return { ok: false, error: "rule not found" };
+      arr.splice(i, 1);
+      saveDebug();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ─── FEATURE: Release tracking ──────────────────────────────────
+  // Register a deploy/version; ties errors to a release.
+  registerLensAction("debug", "release-create", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const version = dbgClean(params.version, 60);
+      if (!version) return { ok: false, error: "version required" };
+      const list = dbgList(s.releases, dbgActor(ctx));
+      if (list.some((r) => r.version === version)) return { ok: false, error: "release already tracked" };
+      const release = {
+        id: dbgId("rel"),
+        version,
+        environment: dbgClean(params.environment, 40) || "production",
+        notes: dbgClean(params.notes, 1000) || "",
+        deployedBy: dbgClean(params.deployedBy, 80) || dbgActor(ctx),
+        deployedAt: dbgClean(params.deployedAt, 40) || new Date().toISOString(),
+      };
+      list.push(release);
+      saveDebug();
+      return { ok: true, result: { release } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // List releases, each annotated with the issues tied to it.
+  registerLensAction("debug", "release-list", (ctx, _a, _params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      const releases = dbgList(s.releases, userId);
+      const issues = dbgList(s.issues, userId);
+      const annotated = [...releases]
+        .sort((a, b) => String(b.deployedAt).localeCompare(String(a.deployedAt)))
+        .map((rel) => {
+          const tied = issues.filter((i) => (i.releases || []).includes(rel.version));
+          return {
+            ...rel,
+            issueCount: tied.length,
+            occurrenceCount: tied.reduce((n, i) => n + i.count, 0),
+            newIssues: tied.filter((i) => (i.releases || [])[0] === rel.version).length,
+            regressions: tied.filter((i) => i.regressed).length,
+            openIssues: tied.filter((i) => i.status === "open").length,
+            crashFree: tied.length === 0,
+          };
+        });
+      return { ok: true, result: { releases: annotated, count: annotated.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("debug", "release-delete", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const arr = dbgList(s.releases, dbgActor(ctx));
+      const i = arr.findIndex((r) => r.id === params.id);
+      if (i < 0) return { ok: false, error: "release not found" };
+      arr.splice(i, 1);
+      saveDebug();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   /**
    * logAnalysis
    * Parse and analyze application logs for patterns, error rates, and anomalies.

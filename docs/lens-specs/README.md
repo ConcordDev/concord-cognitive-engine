@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~58%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1422**
+- Average feature parity: **~59%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1381**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 35 |
+| 80–100% (near-complete) | 41 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 139 |
+| 40–59% (partial) | 133 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -28,12 +28,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 |---|---|---:|---:|
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
-| debug | Sentry / Datadog | ~40% | 7 |
-| defense | Palantir Gotham (analog) | ~40% | 7 |
-| desert | field-survey / arid-environment tooling | ~40% | 6 |
-| entity | Palantir Foundry / knowledge-graph tools | ~40% | 7 |
-| event-timeline | activity-feed / audit-log viewers | ~40% | 7 |
-| experience | Maze / UserTesting | ~40% | 7 |
 | hypothesis | JASP / GraphPad Prism | ~40% | 7 |
 | integrations | Zapier | ~40% | 8 |
 | invariant | TLA+ / formal-verification tools | ~40% | 6 |
@@ -258,6 +252,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | agents | OpenAI Assistants / CrewAI | ~90% | 0 |
 | audit | Vanta / Drata | ~90% | 0 |
 | classroom | Google Classroom | ~90% | 0 |
+| debug | Sentry / Datadog | ~90% | 0 |
+| defense | Palantir Gotham (analog) | ~90% | 0 |
+| desert | field-survey / arid-environment tooling | ~90% | 0 |
+| entity | Palantir Foundry / knowledge-graph tools | ~90% | 0 |
+| event-timeline | activity-feed / audit-log viewers | ~90% | 0 |
+| experience | Maze / UserTesting | ~90% | 0 |
 | settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~90% | 0 |
 | tools | utility bundle (Perplexity + Babel REPL + DocuSign) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |

@@ -9,13 +9,17 @@ Backend: `event_timeline` domain macros via `/api/lens/run` — recent (paged fe
 - "On this day" historical event recall
 
 ## Missing — buildable feature backlog
-- [ ] `[S]` Channel/type filter — show only selected event channels
-- [ ] `[S]` Full-text search across events
-- [ ] `[S]` Date-range picker — view events for an arbitrary window
-- [ ] `[M]` Event detail drill-in — expand a row to see full payload and linked entities
-- [ ] `[S]` Live tail mode — stream new events in real time
-- [ ] `[S]` Per-channel trend sparkline (stats are point-counts; needs a time series)
-- [ ] `[S]` Export filtered events to CSV/JSON
+- [x] `[S]` Channel/type filter — show only selected event channels (category toggles + exact-channel chips driven by `event_timeline.channels`)
+- [x] `[S]` Full-text search across events (`event_timeline.search` — channel + payload + actor)
+- [x] `[S]` Date-range picker — view events for an arbitrary window (`event_timeline.range`)
+- [x] `[M]` Event detail drill-in — expand a row to see full payload and linked entities (`EventDetailPanel` via `event_timeline.detail` — payload, linked entity refs, ±30s nearby events)
+- [x] `[S]` Live tail mode — stream new events in real time (5s poll with pause/resume)
+- [x] `[S]` Per-channel trend sparkline (`ChannelTrends` + `Sparkline` via `event_timeline.timeseries`)
+- [x] `[S]` Export filtered events to CSV/JSON (`event_timeline.exportEvents` → blob download)
+
+Also shipped: per-user saved filter presets (`event_timeline.saveView` / `listViews` / `deleteView`).
 
 ## Parity
-~40% of an activity-feed viewer. The paged feed + 24h stats + on-this-day are a real read surface, but missing the channel filter, search, date-range, and detail drill-in that make an event log investigable.
+~90% of an activity-feed viewer. The paged feed + 24h stats + on-this-day are joined by channel filtering, full-text search, date-range queries, event detail drill-in, live-tail pause, trend sparklines, CSV/JSON export, and saved filter views — a fully investigable event log.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

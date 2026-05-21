@@ -45,6 +45,10 @@ import { ProvenanceDashboard } from '@/components/debug/ProvenanceDashboard';
 import { ComputePanel } from '@/components/platform/ComputePanel';
 import { NvdCveFeed } from '@/components/debug/NvdCveFeed';
 import { LensTemplateGenerator } from '@/components/lens/LensTemplateGenerator';
+import { IssueInbox } from '@/components/debug/IssueInbox';
+import { TraceViewer } from '@/components/debug/TraceViewer';
+import { MetricsAndAlerts } from '@/components/debug/MetricsAndAlerts';
+import { ReleaseTracker } from '@/components/debug/ReleaseTracker';
 
 type LogLevel = 'all' | 'info' | 'warn' | 'error' | 'debug';
 
@@ -60,6 +64,10 @@ export default function DebugLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('debug');
   const [activeTab, setActiveTab] = useState<
     | 'status'
+    | 'issues'
+    | 'traces'
+    | 'metrics'
+    | 'releases'
     | 'events'
     | 'test'
     | 'inspector'
@@ -75,6 +83,10 @@ export default function DebugLensPage() {
   useLensCommand(
     [
       { id: 'tab-status', keys: 's', description: 'Status', category: 'navigation', action: () => setActiveTab('status') },
+      { id: 'tab-issues', keys: 'g', description: 'Issues', category: 'navigation', action: () => setActiveTab('issues') },
+      { id: 'tab-traces', keys: 'r', description: 'Traces', category: 'navigation', action: () => setActiveTab('traces') },
+      { id: 'tab-metrics', keys: 'a', description: 'Metrics & Alerts', category: 'navigation', action: () => setActiveTab('metrics') },
+      { id: 'tab-releases', keys: 'd', description: 'Releases', category: 'navigation', action: () => setActiveTab('releases') },
       { id: 'tab-events', keys: 'e', description: 'Events', category: 'navigation', action: () => setActiveTab('events') },
       { id: 'tab-logs', keys: 'l', description: 'Logs', category: 'navigation', action: () => setActiveTab('logs') },
       { id: 'tab-inspector', keys: 'i', description: 'Inspector', category: 'navigation', action: () => setActiveTab('inspector') },
@@ -791,6 +803,10 @@ export default function DebugLensPage() {
         {(
           [
             'status',
+            'issues',
+            'traces',
+            'metrics',
+            'releases',
             'events',
             'logs',
             'inspector',
@@ -877,6 +893,30 @@ export default function DebugLensPage() {
               {JSON.stringify(jobs, null, 2)}
             </pre>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'issues' && (
+        <div className="panel p-4">
+          <IssueInbox />
+        </div>
+      )}
+
+      {activeTab === 'traces' && (
+        <div className="panel p-4">
+          <TraceViewer />
+        </div>
+      )}
+
+      {activeTab === 'metrics' && (
+        <div className="panel p-4">
+          <MetricsAndAlerts />
+        </div>
+      )}
+
+      {activeTab === 'releases' && (
+        <div className="panel p-4">
+          <ReleaseTracker />
         </div>
       )}
 

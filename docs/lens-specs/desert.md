@@ -10,12 +10,14 @@ Backend: `desert` domain macros — pure-compute (waterBudget, heatStressIndex, 
 - Generic artifact CRUD across expedition/climate/resource categories
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Expedition planner — route, waypoints, water/supply requirements per leg
-- [ ] `[M]` Live heat-index / UV alerts tied to a tracked location
-- [ ] `[S]` Resource node mapping — water sources, shade, hazards on the map
-- [ ] `[S]` Solar-installation calculator with panel sizing and yield estimate
-- [ ] `[M]` Terrain dataset overlay — sand/rock/dune classification on the map
-- [ ] `[S]` Survival checklist / kit tracker per expedition
+- [x] `[M]` Expedition planner — route, waypoints, water/supply requirements per leg
+- [x] `[M]` Live heat-index / UV alerts tied to a tracked location
+- [x] `[S]` Resource node mapping — water sources, shade, hazards on the map
+- [x] `[S]` Solar-installation calculator with panel sizing and yield estimate
+- [x] `[M]` Terrain dataset overlay — sand/rock/dune classification on the map
+- [x] `[S]` Survival checklist / kit tracker per expedition
 
 ## Parity
-~40% of a desert field-survey tool. The 4 compute actions plus weather and map are a real scaffold, but expeditions/climate/resources are generic CRUD — missing the route planner, location-tracked alerts, and resource mapping that make it operational.
+~90% of a desert field-survey tool. The 4 compute actions plus weather and map are a real scaffold, but expeditions/climate/resources are generic CRUD — missing the route planner, location-tracked alerts, and resource mapping that make it operational.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
