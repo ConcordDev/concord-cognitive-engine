@@ -209,6 +209,7 @@ import subWorlds from './sub-worlds.js';
 import inheritance from './inheritance.js';
 import personas from './personas.js';
 import psyops from './psyops.js';
+import tools from './tools.js';
 
 export default [
   healthcare,
@@ -411,4 +412,5 @@ export default [
   inheritance,
   personas,
   psyops,
+  tools,
 ];

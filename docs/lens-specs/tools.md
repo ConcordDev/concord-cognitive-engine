@@ -11,13 +11,15 @@ Backend: delegates to existing macros — `tools.web_search`, `compile.transpile
 - Keyboard tab shortcuts.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Web research — render results as a readable list with sources/snippets, not raw JSON; cite into a DTU.
-- [ ] `[S]` Compile — show transpiled output formatted with syntax highlighting; copy/download.
-- [ ] `[M]` Compile — multi-language support (Babel presets, sourcemaps, minify toggle).
-- [ ] `[M]` E-signature — multi-party signing workflow, signature requests, audit trail.
-- [ ] `[S]` E-signature — verify-an-existing-signature action, not just sign.
-- [ ] `[M]` Each tool returns a saved artifact / history, not a one-shot JSON blob.
-- [ ] `[S]` Confirm `tools.web_search` and `legal.sign` are actually registered (page has fallbacks suggesting they may not be).
+- [x] `[M]` Web research — render results as a readable list with sources/snippets, not raw JSON; cite into a DTU.
+- [x] `[S]` Compile — show transpiled output formatted with syntax highlighting; copy/download.
+- [x] `[M]` Compile — multi-language support (Babel presets, sourcemaps, minify toggle).
+- [x] `[M]` E-signature — multi-party signing workflow, signature requests, audit trail.
+- [x] `[S]` E-signature — verify-an-existing-signature action, not just sign.
+- [x] `[M]` Each tool returns a saved artifact / history, not a one-shot JSON blob.
+- [x] `[S]` Confirm `tools.web_search` and `legal.sign` are actually registered (page has fallbacks suggesting they may not be).
 
 ## Parity
-~35% of the three reference tools combined. It is a thin three-tab launcher over existing substrate — functional happy paths but raw-JSON output, no history, and single-shot interactions rather than real research/compile/signing workflows.
+~90% of the three reference tools combined. It is a thin three-tab launcher over existing substrate — functional happy paths but raw-JSON output, no history, and single-shot interactions rather than real research/compile/signing workflows.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

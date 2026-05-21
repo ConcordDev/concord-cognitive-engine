@@ -19,6 +19,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { CveSearch } from '@/components/audit/CveSearch';
 import { AuditActionPanel } from '@/components/audit/AuditActionPanel';
+import { ComplianceSuite } from '@/components/audit/ComplianceSuite';
 import { PipingProvider } from '@/components/panel-polish';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -186,40 +187,9 @@ export default function AuditLensPage() {
         ))}
       </div>
 
-      {/* Compliance Score Ring */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
-        className="flex items-center gap-6 p-4 rounded-xl bg-lattice-deep border border-lattice-border"
-      >
-        <div className="relative w-20 h-20 flex-shrink-0">
-          <svg viewBox="0 0 36 36" className="w-20 h-20 -rotate-90">
-            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2.5" />
-            <motion.path
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"
-              initial={{ strokeDasharray: '0, 100' }}
-              animate={{ strokeDasharray: '96.3, 100' }}
-              transition={{ duration: 1.5, ease: 'easeOut' }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-lg font-bold text-neon-green">96.3%</span>
-          </div>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-white flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-neon-green" /> Overall Compliance
-          </p>
-          <p className="text-xs text-gray-500 mt-1">Data integrity, access control, immutability & transparency monitored</p>
-          <div className="flex gap-2 mt-2">
-            {['Data Integrity 98%', 'Access 95%', 'Immutable 100%'].map(badge => (
-              <span key={badge} className="text-[10px] px-2 py-0.5 rounded-full bg-neon-green/10 text-neon-green border border-neon-green/20">{badge}</span>
-            ))}
-          </div>
-        </div>
-      </motion.div>
+      {/* Compliance automation core — control frameworks, evidence, monitoring,
+          findings, policies, vendors, exportable report (all macro-backed). */}
+      <ComplianceSuite />
 
       {/* Filters */}
       <div className="panel p-4">
@@ -361,72 +331,33 @@ export default function AuditLensPage() {
         </div>
       </div>
 
-      {/* Compliance & Recent Entries Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Audit Entries */}
-        <div className="panel p-4">
-          <h2 className="font-semibold mb-3 flex items-center gap-2">
-            <ClipboardList className="w-4 h-4 text-neon-purple" />
-            Recent Audit Entries
-          </h2>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {(filteredEntries.length > 0 ? filteredEntries.slice(0, 8) : []).map((entry, idx) => (
-              <div key={entry.id || idx} className="flex items-center gap-3 p-2 bg-lattice-deep rounded-lg text-xs">
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  entry.status === 'success' ? 'bg-neon-green' :
-                  entry.status === 'warning' ? 'bg-yellow-500' : 'bg-neon-pink'
-                }`} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-mono text-sm truncate">{entry.action}</p>
-                  <p className="text-gray-500 truncate">{entry.type} -- {new Date(entry.timestamp).toLocaleTimeString()}</p>
-                </div>
-                {entry.entityId && (
-                  <span className="text-[10px] font-mono text-neon-cyan bg-neon-cyan/10 px-1.5 py-0.5 rounded">
-                    {entry.entityId.slice(0, 8)}
-                  </span>
-                )}
+      {/* Recent Audit Entries (live system event stream) */}
+      <div className="panel p-4">
+        <h2 className="font-semibold mb-3 flex items-center gap-2">
+          <ClipboardList className="w-4 h-4 text-neon-purple" />
+          Recent Audit Entries
+        </h2>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {(filteredEntries.length > 0 ? filteredEntries.slice(0, 8) : []).map((entry, idx) => (
+            <div key={entry.id || idx} className="flex items-center gap-3 p-2 bg-lattice-deep rounded-lg text-xs">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                entry.status === 'success' ? 'bg-neon-green' :
+                entry.status === 'warning' ? 'bg-yellow-500' : 'bg-neon-pink'
+              }`} />
+              <div className="flex-1 min-w-0">
+                <p className="font-mono text-sm truncate">{entry.action}</p>
+                <p className="text-gray-500 truncate">{entry.type} -- {new Date(entry.timestamp).toLocaleTimeString()}</p>
               </div>
-            ))}
-            {filteredEntries.length === 0 && (
-              <p className="text-center py-8 text-gray-500 text-sm">No audit entries found</p>
-            )}
-          </div>
-        </div>
-
-        {/* Compliance Score Card */}
-        <div className="panel p-4">
-          <h2 className="font-semibold mb-3 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-neon-green" />
-            Compliance Scorecard
-          </h2>
-          <div className="space-y-4">
-            {[
-              { label: 'Data Integrity', score: 98, color: 'neon-green' },
-              { label: 'Access Control', score: 95, color: 'neon-cyan' },
-              { label: 'Immutability', score: 100, color: 'neon-purple' },
-              { label: 'Transparency', score: 92, color: 'neon-green' },
-            ].map((metric) => (
-              <div key={metric.label}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-400">{metric.label}</span>
-                  <span className={`text-xs font-mono text-${metric.color}`}>{metric.score}%</span>
-                </div>
-                <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full bg-${metric.color} transition-all duration-500`}
-                    style={{ width: `${metric.score}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-            <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
-              <span className="text-sm text-gray-400">Overall Compliance</span>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-neon-green" />
-                <span className="text-lg font-bold text-neon-green">96.3%</span>
-              </div>
+              {entry.entityId && (
+                <span className="text-[10px] font-mono text-neon-cyan bg-neon-cyan/10 px-1.5 py-0.5 rounded">
+                  {entry.entityId.slice(0, 8)}
+                </span>
+              )}
             </div>
-          </div>
+          ))}
+          {filteredEntries.length === 0 && (
+            <p className="text-center py-8 text-gray-500 text-sm">No audit entries found</p>
+          )}
         </div>
       </div>
 

@@ -10,13 +10,15 @@ Backend: `server/domains/classroom.js` — macros `create_cohort`, `enrol`, `sub
 - OpenLibrarySearch panel (free book search by work/subject/ISBN)
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Assignment creation with instructions, attachments, due dates, point values
-- [ ] `[M]` Gradebook — per-student scores, return graded work with feedback
-- [ ] `[S]` Class stream / announcements feed
-- [ ] `[M]` Teacher grading view with rubric-scored assessment
-- [ ] `[S]` Materials / resources tab per cohort
-- [ ] `[S]` Student-facing to-do list of upcoming/missing work
-- [ ] `[M]` Quiz / auto-graded assessment builder
+- [x] `[M]` Assignment creation with instructions, attachments, due dates, point values
+- [x] `[M]` Gradebook — per-student scores, return graded work with feedback
+- [x] `[S]` Class stream / announcements feed
+- [x] `[M]` Teacher grading view with rubric-scored assessment
+- [x] `[S]` Materials / resources tab per cohort
+- [x] `[S]` Student-facing to-do list of upcoming/missing work
+- [x] `[M]` Quiz / auto-graded assessment builder
 
 ## Parity
-~38% of Google Classroom's surface. The cohort + homework + peer-review loop is real and unusual, but the staples — structured assignments, a gradebook, the class stream, and quizzes — are missing.
+~90% of Google Classroom's surface. The cohort + homework + peer-review loop is joined by structured assignments (instructions/attachments/due dates/points), a per-student gradebook with class-average chart, the class stream, a topic-grouped materials tab, a bucketed student to-do list, and an auto-graded quiz builder — all wired through the `classroom` domain into the `ClassroomWorkspace` tabbed surface.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

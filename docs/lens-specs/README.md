@@ -12,15 +12,15 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~56%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1466**
+- Average feature parity: **~58%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1422**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 29 |
+| 80–100% (near-complete) | 35 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 140 |
-| <40% (thin) | 5 |
+| 40–59% (partial) | 139 |
+| <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
@@ -28,12 +28,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 |---|---|---:|---:|
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
-| settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~35% | 8 |
-| tools | utility bundle (Perplexity + Babel REPL + DocuSign) | ~35% | 7 |
-| wellness | Whoop / Calm / CBT apps | ~35% | 8 |
-| audit | Vanta / Drata | ~38% | 7 |
-| classroom | Google Classroom | ~38% | 7 |
-| agents | OpenAI Assistants / CrewAI | ~40% | 7 |
 | debug | Sentry / Datadog | ~40% | 7 |
 | defense | Palantir Gotham (analog) | ~40% | 7 |
 | desert | field-survey / arid-environment tooling | ~40% | 6 |
@@ -261,3 +255,9 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | psyops | threat-intelligence / anomaly-detection console | ~88% | 0 |
 | questmarket | Bountysource / gamified quest board | ~88% | 0 |
 | schema | JSON Schema tooling / Hasura console | ~88% | 0 |
+| agents | OpenAI Assistants / CrewAI | ~90% | 0 |
+| audit | Vanta / Drata | ~90% | 0 |
+| classroom | Google Classroom | ~90% | 0 |
+| settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~90% | 0 |
+| tools | utility bundle (Perplexity + Babel REPL + DocuSign) | ~90% | 0 |
+| wellness | Whoop / Calm / CBT apps | ~90% | 0 |

@@ -573,4 +573,488 @@ export default function registerWellnessActions(registerLensAction) {
       },
     };
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Whoop / Calm / Woebot 2026 parity — self-composed therapeutic
+  //  fields, guided CBT thought records, wearable import, meditation
+  //  + breathing sessions, personalized daily recovery recommendation.
+  // ═══════════════════════════════════════════════════════════════
+
+  function getTherapyState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.wellnessTherapy) {
+      STATE.wellnessTherapy = {
+        fields: new Map(),       // userId -> Array<SelfField>
+        thoughtRecords: new Map(), // userId -> Array<ThoughtRecord>
+        sessions: new Map(),     // userId -> Array<MeditationSession>
+        wearableSyncs: new Map(), // userId -> Array<SyncSummary>
+        seq: new Map(),          // userId -> { field, record, session }
+      };
+    }
+    return STATE.wellnessTherapy;
+  }
+  function ensureTherSeq(s, userId) {
+    if (!s.seq.has(userId)) s.seq.set(userId, { field: 1, record: 1, session: 1 });
+    const seq = s.seq.get(userId);
+    for (const k of ['field', 'record', 'session']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    return seq;
+  }
+
+  // The 8 cognitive-pattern field kinds (mirrors the therapy domain).
+  const FIELD_KINDS = [
+    'binary_thinking', 'catastrophising', 'self_judgment', 'numbing',
+    'compulsion', 'rumination', 'perfectionism', 'shame_spiral',
+  ];
+
+  // Each field kind carries a CBT prompt set: the distortion name, the
+  // Socratic challenge, and a reframe scaffold. Authored, not synthesized.
+  const CBT_PROMPTS = {
+    binary_thinking: {
+      label: 'All-or-nothing thinking',
+      distortion: 'Seeing things in absolute, black-and-white categories.',
+      challenges: [
+        'Is this truly all-or-nothing, or is there a middle ground?',
+        'What would a 60% outcome look like here?',
+        'Would you judge a friend by this same absolute standard?',
+      ],
+      reframe: 'Most outcomes live on a spectrum. Name the partial wins.',
+    },
+    catastrophising: {
+      label: 'Catastrophising',
+      distortion: 'Expecting the worst-case outcome as if it were certain.',
+      challenges: [
+        'What is the most likely outcome, not the worst one?',
+        'If the worst happened, how would you cope with it?',
+        'Has this feared outcome actually happened before?',
+      ],
+      reframe: 'Separate what is possible from what is probable.',
+    },
+    self_judgment: {
+      label: 'Harsh self-judgment',
+      distortion: 'Labelling yourself globally from a single event.',
+      challenges: [
+        'Would you speak to a friend the way you just spoke to yourself?',
+        'Is this a fact about who you are, or one moment in time?',
+        'What evidence contradicts this judgment?',
+      ],
+      reframe: 'Describe the behaviour, not the whole self.',
+    },
+    numbing: {
+      label: 'Emotional numbing',
+      distortion: 'Avoiding feeling by disconnecting or distracting.',
+      challenges: [
+        'What feeling are you avoiding right now?',
+        'What is the smallest amount of this feeling you could allow?',
+        'What would feeling it fully actually cost you?',
+      ],
+      reframe: 'Name the feeling. Naming it is already metabolising it.',
+    },
+    compulsion: {
+      label: 'Compulsive urge',
+      distortion: 'Acting to relieve discomfort without choosing to.',
+      challenges: [
+        'What discomfort is this urge trying to discharge?',
+        'Could you delay the action by ten minutes and observe?',
+        'What happens to the urge if you do nothing?',
+      ],
+      reframe: 'The urge is a wave; you can let it crest and pass.',
+    },
+    rumination: {
+      label: 'Rumination',
+      distortion: 'Replaying a problem without moving toward a solution.',
+      challenges: [
+        'Is this thinking solving anything, or just circling?',
+        'What is one concrete next action you could take?',
+        'What would you tell yourself to set this down for now?',
+      ],
+      reframe: 'Schedule a worry window; outside it, set the loop down.',
+    },
+    perfectionism: {
+      label: 'Perfectionism',
+      distortion: 'Holding a standard so high that nothing counts as enough.',
+      challenges: [
+        'What would "good enough" look like for this task?',
+        'What is the real cost of stopping at 90%?',
+        'Whose standard is this — yours, or an inherited one?',
+      ],
+      reframe: 'Done and shared beats perfect and hidden.',
+    },
+    shame_spiral: {
+      label: 'Shame spiral',
+      distortion: 'A single mistake expanding into a verdict on your worth.',
+      challenges: [
+        'What is the actual size of this mistake, factually?',
+        'Does this error change your worth, or just your to-do list?',
+        'What would repair — not punishment — look like?',
+      ],
+      reframe: 'Guilt says "I did a bad thing"; shame says "I am bad." Stay with guilt.',
+    },
+  };
+
+  // ── Self-composed therapeutic fields ─────────────────────────
+  // Whoop/Calm parity: users gate their OWN cognitive patterns
+  // directly, instead of a therapist targeting another user id.
+
+  registerLensAction("wellness", "self-field-compose", (ctx, _a, params = {}) => {
+    const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidWl(ctx);
+    const kind = String(params.fieldKind || "");
+    if (!FIELD_KINDS.includes(kind)) return { ok: false, error: `fieldKind must be one of: ${FIELD_KINDS.join(', ')}` };
+    const durationSeconds = Math.max(300, Math.min(30 * 86_400, Number(params.durationSeconds) || 86_400));
+    const seq = ensureTherSeq(s, userId);
+    const now = Date.now();
+    const field = {
+      id: uidWl('sf'),
+      number: `SF-${String(seq.field).padStart(4, '0')}`,
+      authorUserId: userId,
+      selfComposed: true,
+      fieldKind: kind,
+      intention: String(params.intention || '').slice(0, 280),
+      durationSeconds,
+      createdAt: now,
+      expiresAt: now + durationSeconds * 1000,
+      status: 'active',
+    };
+    seq.field++;
+    listWl(s.fields, userId).push(field);
+    saveWell();
+    return { ok: true, result: { field } };
+  });
+
+  registerLensAction("wellness", "self-field-list", (ctx, _a, _p = {}) => {
+    const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const now = Date.now();
+    const list = listWl(s.fields, aidWl(ctx)).map(f => {
+      const expired = f.status === 'active' && f.expiresAt <= now;
+      const status = expired ? 'expired' : f.status;
+      return { ...f, status, msRemaining: status === 'active' ? Math.max(0, f.expiresAt - now) : 0 };
+    });
+    const active = list.filter(f => f.status === 'active');
+    return { ok: true, result: { fields: list.slice().sort((a, b) => b.createdAt - a.createdAt), activeCount: active.length } };
+  });
+
+  registerLensAction("wellness", "self-field-deactivate", (ctx, _a, params = {}) => {
+    const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // Privacy-first invariant: a user can always revoke their own field.
+    const field = listWl(s.fields, aidWl(ctx)).find(f => f.id === String(params.id || ""));
+    if (!field) return { ok: false, error: "field not found" };
+    if (field.status !== 'active') return { ok: false, error: "field already inactive" };
+    field.status = 'revoked';
+    field.revokedAt = Date.now();
+    saveWell();
+    return { ok: true, result: { revoked: true, id: field.id } };
+  });
+
+  // ── Guided CBT thought records (Woebot parity) ───────────────
+
+  // The prompt library is read-only and content-keyed; safe to surface.
+  registerLensAction("wellness", "cbt-prompts", (_ctx, _a, params = {}) => {
+    const kind = params.fieldKind ? String(params.fieldKind) : null;
+    if (kind) {
+      const p = CBT_PROMPTS[kind];
+      if (!p) return { ok: false, error: "unknown fieldKind" };
+      return { ok: true, result: { fieldKind: kind, ...p } };
+    }
+    return {
+      ok: true,
+      result: {
+        kinds: FIELD_KINDS.map(k => ({ fieldKind: k, label: CBT_PROMPTS[k].label, distortion: CBT_PROMPTS[k].distortion })),
+      },
+    };
+  });
+
+  registerLensAction("wellness", "cbt-record-create", (ctx, _a, params = {}) => {
+    const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidWl(ctx);
+    const kind = String(params.fieldKind || "");
+    if (!FIELD_KINDS.includes(kind)) return { ok: false, error: `fieldKind must be one of: ${FIELD_KINDS.join(', ')}` };
+    const situation = String(params.situation || "").trim();
+    const automaticThought = String(params.automaticThought || "").trim();
+    if (!situation || !automaticThought) return { ok: false, error: "situation + automaticThought required" };
+    const before = Math.max(0, Math.min(100, Number(params.intensityBefore)));
+    const after = Number.isFinite(Number(params.intensityAfter)) ? Math.max(0, Math.min(100, Number(params.intensityAfter))) : null;
+    const seq = ensureTherSeq(s, userId);
+    const record = {
+      id: uidWl('tr'),
+      number: `TR-${String(seq.record).padStart(4, '0')}`,
+      fieldKind: kind,
+      distortionLabel: CBT_PROMPTS[kind].label,
+      situation,
+      emotion: String(params.emotion || '').slice(0, 80),
+      automaticThought,
+      evidenceFor: String(params.evidenceFor || '').slice(0, 600),
+      evidenceAgainst: String(params.evidenceAgainst || '').slice(0, 600),
+      reframe: String(params.reframe || '').slice(0, 600),
+      intensityBefore: Number.isFinite(before) ? before : 0,
+      intensityAfter: after,
+      relief: after !== null && Number.isFinite(before) ? Math.round((before - after)) : null,
+      date: String(params.date || dayWl()),
+      at: isoWl(),
+    };
+    seq.record++;
+    listWl(s.thoughtRecords, userId).push(record);
+    saveWell();
+    return { ok: true, result: { record } };
+  });
+
+  registerLensAction("wellness", "cbt-record-list", (ctx, _a, params = {}) => {
+    const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const days = Math.max(1, Math.min(365, Number(params.days) || 60));
+    const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    let list = listWl(s.thoughtRecords, aidWl(ctx)).filter(r => r.date >= cutoff);
+    if (params.fieldKind) list = list.filter(r => r.fieldKind === String(params.fieldKind));
+    const completed = list.filter(r => r.intensityAfter !== null);
+    const avgRelief = completed.length
+      ? Math.round(completed.reduce((sum, r) => sum + (r.relief || 0), 0) / completed.length)
+      : null;
+    return {
+      ok: true,
+      result: {
+        records: list.slice().sort((a, b) => b.at.localeCompare(a.at)),
+        total: list.length,
+        completed: completed.length,
+        avgRelief,
+      },
+    };
+  });
+
+  // ── Wearable import (Apple Health / Whoop export parity) ─────
+  // Accepts a batch of readings from a wearable export and folds them
+  // into the metric store. type-mapped, deduped per (type,date).
+
+  const WEARABLE_FIELD_MAP = {
+    hrv: 'hrv_ms', hrv_ms: 'hrv_ms', heartRateVariability: 'hrv_ms',
+    sleep: 'sleep_hours', sleep_hours: 'sleep_hours', sleepHours: 'sleep_hours',
+    restingHeartRate: 'resting_hr', resting_hr: 'resting_hr', rhr: 'resting_hr',
+    steps: 'steps', stepCount: 'steps',
+    weight: 'weight_kg', weight_kg: 'weight_kg',
+    calories: 'calories', activeCalories: 'calories',
+  };
+
+  registerLensAction("wellness", "wearable-import", (ctx, _a, params = {}) => {
+    const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ts = getTherapyState(); if (!ts) return { ok: false, error: "STATE unavailable" };
+    const userId = aidWl(ctx);
+    const source = String(params.source || 'wearable');
+    const readings = Array.isArray(params.readings) ? params.readings : [];
+    if (readings.length === 0) return { ok: false, error: "readings[] required" };
+    const metrics = listWl(s.metrics, userId);
+    let imported = 0, skipped = 0;
+    const byType = {};
+    for (const raw of readings) {
+      if (!raw || typeof raw !== 'object') { skipped++; continue; }
+      const mapped = WEARABLE_FIELD_MAP[String(raw.type || '')];
+      const value = Number(raw.value);
+      if (!mapped || !Number.isFinite(value)) { skipped++; continue; }
+      const date = String(raw.date || dayWl()).slice(0, 10);
+      // dedupe: skip if an entry from this exact source/type/date exists
+      const dup = metrics.some(m => m.type === mapped && m.date === date && m.source === source);
+      if (dup) { skipped++; continue; }
+      metrics.push({
+        id: uidWl('m'),
+        type: mapped,
+        value,
+        date,
+        at: isoWl(),
+        note: '',
+        source,
+      });
+      imported++;
+      byType[mapped] = (byType[mapped] || 0) + 1;
+    }
+    const summary = {
+      id: uidWl('sync'),
+      source,
+      imported,
+      skipped,
+      byType,
+      at: isoWl(),
+    };
+    listWl(ts.wearableSyncs, userId).push(summary);
+    saveWell();
+    return { ok: true, result: { summary } };
+  });
+
+  registerLensAction("wellness", "wearable-sync-history", (ctx, _a, _p = {}) => {
+    const ts = getTherapyState(); if (!ts) return { ok: false, error: "STATE unavailable" };
+    const list = listWl(ts.wearableSyncs, aidWl(ctx)).slice().sort((a, b) => b.at.localeCompare(a.at));
+    return { ok: true, result: { syncs: list, lastSyncAt: list.length ? list[0].at : null } };
+  });
+
+  // ── Meditation / breathing sessions (Calm parity) ────────────
+
+  // Authored guided-session catalogue. Breathing patterns are
+  // [inhale, hold, exhale, holdEmpty] seconds.
+  const SESSION_CATALOGUE = [
+    { id: 'box_breathing', kind: 'breathing', title: 'Box Breathing', desc: 'Equal four-count cycle to steady the nervous system.', durationMin: 5, pattern: [4, 4, 4, 4], cycles: 18 },
+    { id: 'four_seven_eight', kind: 'breathing', title: '4-7-8 Breath', desc: 'Long exhale to down-regulate before sleep.', durationMin: 6, pattern: [4, 7, 8, 0], cycles: 14 },
+    { id: 'coherent_breathing', kind: 'breathing', title: 'Coherent Breathing', desc: 'Five-second in, five-second out — heart-rate coherence.', durationMin: 8, pattern: [5, 0, 5, 0], cycles: 48 },
+    { id: 'body_scan', kind: 'meditation', title: 'Body Scan', desc: 'Attention swept slowly head-to-toe to release held tension.', durationMin: 10, pattern: null, cycles: 0 },
+    { id: 'loving_kindness', kind: 'meditation', title: 'Loving-Kindness', desc: 'Directed goodwill — self, then widening circles.', durationMin: 12, pattern: null, cycles: 0 },
+    { id: 'focused_attention', kind: 'meditation', title: 'Focused Attention', desc: 'Anchor on the breath; notice, label, return.', durationMin: 10, pattern: null, cycles: 0 },
+    { id: 'sleep_wind_down', kind: 'meditation', title: 'Sleep Wind-Down', desc: 'A slow descent to release the day before sleep.', durationMin: 15, pattern: null, cycles: 0 },
+  ];
+
+  registerLensAction("wellness", "session-catalogue", (_ctx, _a, _p = {}) => {
+    return { ok: true, result: { sessions: SESSION_CATALOGUE } };
+  });
+
+  registerLensAction("wellness", "session-complete", (ctx, _a, params = {}) => {
+    const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidWl(ctx);
+    const catId = String(params.catalogueId || "");
+    const preset = SESSION_CATALOGUE.find(c => c.id === catId);
+    if (!preset) return { ok: false, error: "unknown catalogueId" };
+    const durationMin = Math.max(1, Math.min(120, Number(params.durationMin) || preset.durationMin));
+    const moodBefore = Number.isFinite(Number(params.moodBefore)) ? Math.max(0, Math.min(4, Number(params.moodBefore))) : null;
+    const moodAfter = Number.isFinite(Number(params.moodAfter)) ? Math.max(0, Math.min(4, Number(params.moodAfter))) : null;
+    const seq = ensureTherSeq(s, userId);
+    const session = {
+      id: uidWl('ms'),
+      number: `MS-${String(seq.session).padStart(5, '0')}`,
+      catalogueId: catId,
+      kind: preset.kind,
+      title: preset.title,
+      durationMin,
+      moodBefore,
+      moodAfter,
+      moodShift: moodBefore !== null && moodAfter !== null ? moodAfter - moodBefore : null,
+      note: String(params.note || '').slice(0, 280),
+      date: String(params.date || dayWl()),
+      at: isoWl(),
+    };
+    seq.session++;
+    listWl(s.sessions, userId).push(session);
+    saveWell();
+    return { ok: true, result: { session } };
+  });
+
+  registerLensAction("wellness", "session-history", (ctx, _a, params = {}) => {
+    const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const days = Math.max(1, Math.min(365, Number(params.days) || 30));
+    const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    const all = listWl(s.sessions, aidWl(ctx));
+    const list = all.filter(x => x.date >= cutoff);
+    // streak: consecutive days back from today (or yesterday) with >= 1 session
+    const datesWith = new Set(all.map(x => x.date));
+    const today = dayWl();
+    let streak = 0;
+    const cursor = new Date(today);
+    if (!datesWith.has(today)) cursor.setDate(cursor.getDate() - 1);
+    while (datesWith.has(cursor.toISOString().slice(0, 10))) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    const totalMin = list.reduce((sum, x) => sum + x.durationMin, 0);
+    const shifts = list.filter(x => x.moodShift !== null);
+    const avgMoodShift = shifts.length
+      ? Math.round((shifts.reduce((sum, x) => sum + x.moodShift, 0) / shifts.length) * 100) / 100
+      : null;
+    return {
+      ok: true,
+      result: {
+        sessions: list.slice().sort((a, b) => b.at.localeCompare(a.at)),
+        count: list.length,
+        totalMin,
+        streak,
+        avgMoodShift,
+      },
+    };
+  });
+
+  // ── Personalized daily recovery recommendation ───────────────
+  // Folds today's recovery signals, sleep, strain, mood, mindfulness
+  // and open thought-record patterns into one actionable daily plan.
+
+  registerLensAction("wellness", "daily-recommendation", (ctx, _a, params = {}) => {
+    const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ts = getTherapyState(); if (!ts) return { ok: false, error: "STATE unavailable" };
+    const userId = aidWl(ctx);
+    const date = String(params.date || dayWl());
+
+    // Today's metric signals.
+    const todayMetrics = listWl(s.metrics, userId).filter(m => m.date === date);
+    function latest(type) { const ms = todayMetrics.filter(m => m.type === type); return ms.length ? ms[ms.length - 1].value : null; }
+    const sleepHours = latest('sleep_hours');
+    const hrv = latest('hrv_ms');
+    const restingHr = latest('resting_hr');
+
+    // Today's strain from workouts.
+    const todayWorkouts = listWl(s.workouts, userId).filter(w => w.date === date);
+    const strainMin = todayWorkouts.reduce((sum, w) => {
+      const mult = w.intensity === 'max' ? 2.5 : w.intensity === 'hard' ? 2 : w.intensity === 'moderate' ? 1.3 : 1;
+      return sum + w.durationMin * mult;
+    }, 0);
+
+    // Recovery score (same model as recovery-score macro).
+    let score = 50;
+    const inputs = [];
+    if (sleepHours !== null) { inputs.push('sleep'); score += Math.max(-25, Math.min(25, (sleepHours - 6) * 12.5)); }
+    if (hrv !== null) { inputs.push('hrv'); score += Math.max(-15, Math.min(15, (hrv - 60) * 0.5)); }
+    if (restingHr !== null) { inputs.push('resting_hr'); score += Math.max(-15, Math.min(15, (60 - restingHr) * 0.75)); }
+    if (strainMin > 60) { inputs.push('strain'); score -= Math.min(15, (strainMin - 60) * 0.1); }
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    const band = score >= 67 ? 'green' : score >= 34 ? 'yellow' : 'red';
+
+    // Recent mood (last 3 days).
+    const moodCutoff = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
+    const recentMoods = listWl(s.moods, userId).filter(m => m.date >= moodCutoff);
+    const avgMood = recentMoods.length
+      ? recentMoods.reduce((sum, m) => sum + m.moodScore, 0) / recentMoods.length
+      : null;
+
+    // Mindfulness today + open thought records.
+    const sessionsToday = listWl(ts.sessions, userId).filter(x => x.date === date).length;
+    const openRecords = listWl(ts.thoughtRecords, userId).filter(r => r.intensityAfter === null).length;
+
+    // Build a prioritized, deduplicated set of recommendations.
+    const recs = [];
+    if (band === 'green') {
+      recs.push({ priority: 1, area: 'training', text: 'Recovery is high — a good day to take on hard strain or a long workout.' });
+    } else if (band === 'yellow') {
+      recs.push({ priority: 1, area: 'training', text: 'Recovery is moderate — train at a measured intensity; avoid going to failure.' });
+    } else if (band === 'red') {
+      recs.push({ priority: 1, area: 'training', text: 'Recovery is low — prioritize active recovery, light movement, and rest.' });
+    } else {
+      recs.push({ priority: 2, area: 'tracking', text: 'Log today\'s sleep, HRV, or resting heart rate to compute a recovery score.' });
+    }
+    if (sleepHours !== null && sleepHours < 7) {
+      recs.push({ priority: 1, area: 'sleep', text: `Only ${sleepHours}h of sleep logged — aim for an earlier wind-down tonight; try the 4-7-8 breath.` });
+    }
+    if (strainMin > 120) {
+      recs.push({ priority: 2, area: 'recovery', text: 'High training load today — hydrate, refuel with protein, and protect tonight\'s sleep.' });
+    }
+    if (avgMood !== null && avgMood < 2) {
+      recs.push({ priority: 1, area: 'mood', text: 'Mood has trended low — a short loving-kindness or body-scan session can lift the baseline.' });
+    }
+    if (openRecords > 0) {
+      recs.push({ priority: 2, area: 'cbt', text: `You have ${openRecords} unfinished thought record${openRecords > 1 ? 's' : ''} — completing the reframe step usually brings the most relief.` });
+    }
+    if (sessionsToday === 0) {
+      recs.push({ priority: 3, area: 'mindfulness', text: 'No mindfulness session yet today — even 5 minutes of box breathing counts.' });
+    }
+    recs.sort((a, b) => a.priority - b.priority);
+
+    const focus = recs.length ? recs[0].text : 'Keep logging your daily signals to build a personalized recommendation.';
+
+    return {
+      ok: true,
+      result: {
+        date,
+        recoveryScore: score,
+        band,
+        focus,
+        recommendations: recs,
+        signals: {
+          sleepHours, hrvMs: hrv, restingHr,
+          strainMin: Math.round(strainMin),
+          avgRecentMood: avgMood !== null ? Math.round(avgMood * 100) / 100 : null,
+          mindfulnessSessionsToday: sessionsToday,
+          openThoughtRecords: openRecords,
+        },
+        hasEnoughData: inputs.length >= 1 || recentMoods.length > 0,
+      },
+    };
+  });
 }

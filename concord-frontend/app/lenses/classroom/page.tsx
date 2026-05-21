@@ -19,6 +19,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
 import { ClassroomActionPanel } from '@/components/classroom/ClassroomActionPanel';
+import { ClassroomWorkspace } from '@/components/classroom/ClassroomWorkspace';
 import { PipingProvider } from '@/components/panel-polish';
 
 interface Cohort {
@@ -51,6 +52,7 @@ export default function ClassroomPage() {
   const [enrolForm, setEnrolForm] = useState({ cohortId: '', studentUserId: '' });
   const [submitForm, setSubmitForm] = useState({ cohortId: '', dtuId: '' });
   const [status, setStatus] = useState<string | null>(null);
+  const [activeCohort, setActiveCohort] = useState<number | null>(null);
 
   const refresh = async () => {
     const r = await macro('classroom', 'list_cohorts');
@@ -161,9 +163,18 @@ export default function ClassroomPage() {
         {teaching.length === 0 ? <p className="text-zinc-500 italic mb-4">No cohorts you teach.</p> : (
           <ul className="space-y-1 mb-6">
             {teaching.map(c => (
-              <li key={c.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded p-2 text-xs flex justify-between">
-                <span className="text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
-                <span className="text-zinc-400">{c.enrolled ?? 0} students</span>
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => setActiveCohort(activeCohort === c.id ? null : c.id)}
+                  className={`w-full text-left rounded p-2 text-xs flex justify-between border transition-colors ${
+                    activeCohort === c.id
+                      ? 'bg-cyan-950/60 border-cyan-700/60'
+                      : 'bg-zinc-900/80 border-zinc-700/50 hover:border-zinc-600'}`}
+                >
+                  <span className="text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
+                  <span className="text-zinc-400">{c.enrolled ?? 0} students</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -173,14 +184,30 @@ export default function ClassroomPage() {
         {studying.length === 0 ? <p className="text-zinc-500 italic">No cohorts you're enrolled in.</p> : (
           <ul className="space-y-1">
             {studying.map(c => (
-              <li key={c.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded p-2 text-xs">
-                <span className="text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
-                <span className="text-zinc-500 ml-2">teacher {c.teacher_user_id?.slice(0, 8)}</span>
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => setActiveCohort(activeCohort === c.id ? null : c.id)}
+                  className={`w-full text-left rounded p-2 text-xs border transition-colors ${
+                    activeCohort === c.id
+                      ? 'bg-cyan-950/60 border-cyan-700/60'
+                      : 'bg-zinc-900/80 border-zinc-700/50 hover:border-zinc-600'}`}
+                >
+                  <span className="text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
+                  <span className="text-zinc-500 ml-2">teacher {c.teacher_user_id?.slice(0, 8)}</span>
+                </button>
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      {/* Google-Classroom-shaped workspace: stream, classwork, gradebook,
+          quizzes, materials, to-do — all wired to the classroom domain.
+          Select a cohort above to scope it; otherwise it shows all your work. */}
+      <section className="mx-6 mt-6">
+        <ClassroomWorkspace cohortId={activeCohort} />
+      </section>
 
       {/* Bespoke Open Library book search + detail with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

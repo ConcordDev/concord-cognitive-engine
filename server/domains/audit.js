@@ -605,4 +605,717 @@ export default function registerAuditActions(registerLensAction) {
     artifact.data.samplingPlan = result;
     return { ok: true, result };
   });
+
+  // ─────────────────────────────────────────────────────────────
+  // Compliance-automation core (parity sprint vs Vanta / Drata)
+  // Persistent per-user state in globalThis._concordSTATE.
+  // ─────────────────────────────────────────────────────────────
+
+  function getAuditState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.auditLens) STATE.auditLens = {};
+    const s = STATE.auditLens;
+    for (const k of [
+      "controls", "evidence", "findings", "policies",
+      "policyAcceptance", "vendors", "monitors",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveAuditState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function uid(prefix) {
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function actorId(ctx) {
+    return ctx?.actor?.userId || ctx?.userId || "anon";
+  }
+
+  // Built-in control frameworks: SOC 2 Trust Service Criteria + ISO 27001 Annex A (abridged but real catalog entries).
+  const FRAMEWORKS = {
+    "soc2": {
+      name: "SOC 2 (Trust Services Criteria)",
+      controls: [
+        { ref: "CC1.1", category: "Control Environment", title: "Commitment to integrity and ethical values" },
+        { ref: "CC2.1", category: "Communication & Information", title: "Internal communication of objectives and responsibilities" },
+        { ref: "CC3.2", category: "Risk Assessment", title: "Identification and analysis of risks to objectives" },
+        { ref: "CC5.2", category: "Control Activities", title: "Control activities deployed through policies and procedures" },
+        { ref: "CC6.1", category: "Logical Access", title: "Logical access security software and infrastructure" },
+        { ref: "CC6.2", category: "Logical Access", title: "User registration and de-registration" },
+        { ref: "CC6.3", category: "Logical Access", title: "Role-based access and least privilege" },
+        { ref: "CC7.2", category: "System Operations", title: "Monitoring of system components for anomalies" },
+        { ref: "CC7.3", category: "System Operations", title: "Evaluation of security events" },
+        { ref: "CC8.1", category: "Change Management", title: "Changes to infrastructure and software authorized" },
+        { ref: "A1.2", category: "Availability", title: "Environmental protections, backup and recovery" },
+        { ref: "C1.1", category: "Confidentiality", title: "Confidential information identified and protected" },
+      ],
+    },
+    "iso27001": {
+      name: "ISO/IEC 27001:2022 (Annex A)",
+      controls: [
+        { ref: "A.5.1", category: "Organizational", title: "Policies for information security" },
+        { ref: "A.5.15", category: "Organizational", title: "Access control" },
+        { ref: "A.5.23", category: "Organizational", title: "Information security for use of cloud services" },
+        { ref: "A.6.3", category: "People", title: "Information security awareness, education and training" },
+        { ref: "A.8.1", category: "Technological", title: "User endpoint devices" },
+        { ref: "A.8.5", category: "Technological", title: "Secure authentication" },
+        { ref: "A.8.8", category: "Technological", title: "Management of technical vulnerabilities" },
+        { ref: "A.8.15", category: "Technological", title: "Logging" },
+        { ref: "A.8.16", category: "Technological", title: "Monitoring activities" },
+        { ref: "A.8.24", category: "Technological", title: "Use of cryptography" },
+        { ref: "A.5.30", category: "Organizational", title: "ICT readiness for business continuity" },
+        { ref: "A.7.4", category: "Physical", title: "Physical security monitoring" },
+      ],
+    },
+  };
+
+  // ── Feature 1: Control framework mapping (SOC 2 / ISO 27001) ──
+
+  registerLensAction("audit", "frameworkCatalog", (_ctx, _artifact, _params = {}) => {
+    return {
+      ok: true,
+      result: {
+        frameworks: Object.entries(FRAMEWORKS).map(([id, f]) => ({
+          id, name: f.name, controlCount: f.controls.length,
+        })),
+      },
+    };
+  });
+
+  registerLensAction("audit", "frameworkAdopt", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const fwId = String(params.framework || "").trim();
+    const fw = FRAMEWORKS[fwId];
+    if (!fw) return { ok: false, error: `Unknown framework: ${fwId}` };
+    const userId = actorId(ctx);
+    if (!state.controls.has(userId)) state.controls.set(userId, []);
+    const list = state.controls.get(userId);
+    const existing = new Set(list.filter(c => c.framework === fwId).map(c => c.ref));
+    let added = 0;
+    for (const c of fw.controls) {
+      if (existing.has(c.ref)) continue;
+      list.push({
+        id: uid("ctl"),
+        framework: fwId,
+        ref: c.ref,
+        category: c.category,
+        title: c.title,
+        status: "not_assessed", // not_assessed | pass | fail | not_applicable
+        owner: null,
+        notes: "",
+        lastAssessedAt: null,
+        createdAt: new Date().toISOString(),
+      });
+      added++;
+    }
+    saveAuditState();
+    return { ok: true, result: { framework: fwId, name: fw.name, added, totalControls: list.filter(c => c.framework === fwId).length } };
+  });
+
+  registerLensAction("audit", "controlList", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    let list = state.controls.get(userId) || [];
+    if (params.framework) list = list.filter(c => c.framework === params.framework);
+    const evidence = state.evidence.get(userId) || [];
+    const findings = state.findings.get(userId) || [];
+    const enriched = list.map(c => ({
+      ...c,
+      evidenceCount: evidence.filter(e => e.controlId === c.id).length,
+      openFindings: findings.filter(f => f.controlId === c.id && f.status !== "closed").length,
+    }));
+    const byStatus = { pass: 0, fail: 0, not_assessed: 0, not_applicable: 0 };
+    for (const c of enriched) byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+    const assessable = byStatus.pass + byStatus.fail;
+    const complianceRate = assessable > 0 ? Math.round((byStatus.pass / assessable) * 1000) / 10 : 0;
+    return {
+      ok: true,
+      result: { controls: enriched, summary: { ...byStatus, total: enriched.length, complianceRate } },
+    };
+  });
+
+  registerLensAction("audit", "controlUpdate", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const list = state.controls.get(userId) || [];
+    const ctl = list.find(c => c.id === params.id);
+    if (!ctl) return { ok: false, error: "Control not found" };
+    const validStatus = ["not_assessed", "pass", "fail", "not_applicable"];
+    if (params.status !== undefined) {
+      if (!validStatus.includes(params.status)) return { ok: false, error: "Invalid status" };
+      ctl.status = params.status;
+      ctl.lastAssessedAt = new Date().toISOString();
+    }
+    if (params.owner !== undefined) ctl.owner = params.owner ? String(params.owner) : null;
+    if (params.notes !== undefined) ctl.notes = String(params.notes);
+    saveAuditState();
+    return { ok: true, result: { control: ctl } };
+  });
+
+  // ── Feature 2: Evidence collection + attachment per control ──
+
+  registerLensAction("audit", "evidenceAdd", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const controlId = String(params.controlId || "").trim();
+    const title = String(params.title || "").trim();
+    if (!controlId) return { ok: false, error: "controlId required" };
+    if (!title) return { ok: false, error: "title required" };
+    const controls = state.controls.get(userId) || [];
+    if (!controls.find(c => c.id === controlId)) return { ok: false, error: "Control not found" };
+    if (!state.evidence.has(userId)) state.evidence.set(userId, []);
+    const validKinds = ["document", "screenshot", "log", "config", "url", "attestation"];
+    const ev = {
+      id: uid("evd"),
+      controlId,
+      title,
+      kind: validKinds.includes(params.kind) ? params.kind : "document",
+      reference: String(params.reference || ""),
+      content: String(params.content || ""),
+      collectedBy: userId,
+      collectedAt: new Date().toISOString(),
+      expiresAt: params.expiresAt ? String(params.expiresAt) : null,
+    };
+    state.evidence.get(userId).push(ev);
+    saveAuditState();
+    return { ok: true, result: { evidence: ev } };
+  });
+
+  registerLensAction("audit", "evidenceList", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    let list = state.evidence.get(userId) || [];
+    if (params.controlId) list = list.filter(e => e.controlId === params.controlId);
+    const now = Date.now();
+    const enriched = list.map(e => ({
+      ...e,
+      expired: e.expiresAt ? new Date(e.expiresAt).getTime() < now : false,
+    }));
+    return {
+      ok: true,
+      result: {
+        evidence: enriched,
+        total: enriched.length,
+        expiredCount: enriched.filter(e => e.expired).length,
+      },
+    };
+  });
+
+  registerLensAction("audit", "evidenceDelete", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const list = state.evidence.get(userId) || [];
+    const idx = list.findIndex(e => e.id === params.id);
+    if (idx === -1) return { ok: false, error: "Evidence not found" };
+    list.splice(idx, 1);
+    saveAuditState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Feature 3: Continuous monitoring with automated control tests ──
+
+  // Registered automated test checks; each evaluates a deterministic predicate.
+  const MONITOR_CHECKS = {
+    "mfa_enforced": { title: "Multi-factor auth enforced", maps: ["CC6.1", "A.8.5"] },
+    "access_reviews": { title: "Quarterly access reviews completed", maps: ["CC6.2", "A.5.15"] },
+    "encryption_at_rest": { title: "Data encrypted at rest", maps: ["C1.1", "A.8.24"] },
+    "backup_verified": { title: "Backups verified within 7 days", maps: ["A1.2", "A.5.30"] },
+    "vuln_scan_recent": { title: "Vulnerability scan within 30 days", maps: ["CC7.2", "A.8.8"] },
+    "audit_logging": { title: "Audit logging enabled on critical systems", maps: ["CC7.3", "A.8.15"] },
+    "change_approval": { title: "Changes require documented approval", maps: ["CC8.1", "A.5.1"] },
+  };
+
+  registerLensAction("audit", "monitorList", (ctx, _artifact, _params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const configured = state.monitors.get(userId) || {};
+    const checks = Object.entries(MONITOR_CHECKS).map(([id, c]) => ({
+      id,
+      title: c.title,
+      mapsTo: c.maps,
+      ...(configured[id] || { enabled: false, lastRun: null, lastResult: null }),
+    }));
+    return { ok: true, result: { checks } };
+  });
+
+  registerLensAction("audit", "monitorConfigure", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const checkId = String(params.checkId || "");
+    if (!MONITOR_CHECKS[checkId]) return { ok: false, error: "Unknown check" };
+    const configured = state.monitors.get(userId) || {};
+    configured[checkId] = {
+      ...(configured[checkId] || { lastRun: null, lastResult: null }),
+      enabled: !!params.enabled,
+      // Operator-supplied facts the check evaluates against.
+      facts: params.facts && typeof params.facts === "object" ? params.facts : (configured[checkId]?.facts || {}),
+    };
+    state.monitors.set(userId, configured);
+    saveAuditState();
+    return { ok: true, result: { checkId, config: configured[checkId] } };
+  });
+
+  registerLensAction("audit", "monitorRun", (ctx, _artifact, _params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const configured = state.monitors.get(userId) || {};
+    const controls = state.controls.get(userId) || [];
+    const now = new Date().toISOString();
+    const results = [];
+    let autoUpdatedControls = 0;
+    for (const [id, meta] of Object.entries(MONITOR_CHECKS)) {
+      const cfg = configured[id];
+      if (!cfg || !cfg.enabled) continue;
+      const facts = cfg.facts || {};
+      // Deterministic predicate per check, evaluated against operator facts.
+      let passed = false;
+      let reason = "";
+      switch (id) {
+        case "mfa_enforced":
+          passed = facts.mfaUsers !== undefined && facts.totalUsers !== undefined &&
+            facts.totalUsers > 0 && facts.mfaUsers >= facts.totalUsers;
+          reason = `${facts.mfaUsers ?? 0}/${facts.totalUsers ?? 0} users enrolled in MFA`;
+          break;
+        case "access_reviews": {
+          const days = facts.lastReviewDaysAgo;
+          passed = days !== undefined && days <= 90;
+          reason = days !== undefined ? `Last review ${days} days ago` : "No review date recorded";
+          break;
+        }
+        case "encryption_at_rest":
+          passed = facts.encryptedVolumes !== undefined && facts.totalVolumes !== undefined &&
+            facts.totalVolumes > 0 && facts.encryptedVolumes >= facts.totalVolumes;
+          reason = `${facts.encryptedVolumes ?? 0}/${facts.totalVolumes ?? 0} volumes encrypted`;
+          break;
+        case "backup_verified": {
+          const d = facts.lastBackupDaysAgo;
+          passed = d !== undefined && d <= 7;
+          reason = d !== undefined ? `Last verified backup ${d} days ago` : "No backup date recorded";
+          break;
+        }
+        case "vuln_scan_recent": {
+          const d = facts.lastScanDaysAgo;
+          passed = d !== undefined && d <= 30;
+          reason = d !== undefined ? `Last scan ${d} days ago` : "No scan date recorded";
+          break;
+        }
+        case "audit_logging":
+          passed = facts.loggingEnabled === true;
+          reason = facts.loggingEnabled === true ? "Logging enabled" : "Logging not confirmed enabled";
+          break;
+        case "change_approval":
+          passed = facts.approvedChanges !== undefined && facts.totalChanges !== undefined &&
+            (facts.totalChanges === 0 || facts.approvedChanges >= facts.totalChanges);
+          reason = `${facts.approvedChanges ?? 0}/${facts.totalChanges ?? 0} changes approved`;
+          break;
+      }
+      cfg.lastRun = now;
+      cfg.lastResult = passed ? "pass" : "fail";
+      results.push({ checkId: id, title: meta.title, passed, reason, mapsTo: meta.maps });
+      // Auto-update mapped controls.
+      for (const ctl of controls) {
+        if (meta.maps.includes(ctl.ref)) {
+          ctl.status = passed ? "pass" : "fail";
+          ctl.lastAssessedAt = now;
+          ctl.notes = `Auto: ${meta.title} — ${reason}`;
+          autoUpdatedControls++;
+        }
+      }
+    }
+    state.monitors.set(userId, configured);
+    saveAuditState();
+    const passed = results.filter(r => r.passed).length;
+    return {
+      ok: true,
+      result: {
+        ranAt: now,
+        totalChecks: results.length,
+        passed,
+        failed: results.length - passed,
+        autoUpdatedControls,
+        results,
+      },
+    };
+  });
+
+  // ── Feature 4: Audit findings tracker with remediation owner + due date ──
+
+  registerLensAction("audit", "findingAdd", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    if (!state.findings.has(userId)) state.findings.set(userId, []);
+    const validSev = ["critical", "high", "medium", "low"];
+    const finding = {
+      id: uid("fnd"),
+      title,
+      description: String(params.description || ""),
+      severity: validSev.includes(params.severity) ? params.severity : "medium",
+      controlId: params.controlId ? String(params.controlId) : null,
+      owner: params.owner ? String(params.owner) : null,
+      dueDate: params.dueDate ? String(params.dueDate) : null,
+      status: "open", // open | in_progress | remediated | closed
+      remediationPlan: String(params.remediationPlan || ""),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    state.findings.get(userId).push(finding);
+    saveAuditState();
+    return { ok: true, result: { finding } };
+  });
+
+  registerLensAction("audit", "findingUpdate", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const list = state.findings.get(userId) || [];
+    const f = list.find(x => x.id === params.id);
+    if (!f) return { ok: false, error: "Finding not found" };
+    const validStatus = ["open", "in_progress", "remediated", "closed"];
+    if (params.status !== undefined) {
+      if (!validStatus.includes(params.status)) return { ok: false, error: "Invalid status" };
+      f.status = params.status;
+    }
+    if (params.owner !== undefined) f.owner = params.owner ? String(params.owner) : null;
+    if (params.dueDate !== undefined) f.dueDate = params.dueDate ? String(params.dueDate) : null;
+    if (params.remediationPlan !== undefined) f.remediationPlan = String(params.remediationPlan);
+    if (params.severity !== undefined && ["critical", "high", "medium", "low"].includes(params.severity)) {
+      f.severity = params.severity;
+    }
+    f.updatedAt = new Date().toISOString();
+    saveAuditState();
+    return { ok: true, result: { finding: f } };
+  });
+
+  registerLensAction("audit", "findingList", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    let list = state.findings.get(userId) || [];
+    if (params.status) list = list.filter(f => f.status === params.status);
+    if (params.severity) list = list.filter(f => f.severity === params.severity);
+    const now = Date.now();
+    const enriched = list.map(f => ({
+      ...f,
+      overdue: f.dueDate && f.status !== "closed" && f.status !== "remediated"
+        ? new Date(f.dueDate).getTime() < now : false,
+    }));
+    const bySeverity = { critical: 0, high: 0, medium: 0, low: 0 };
+    const byStatus = { open: 0, in_progress: 0, remediated: 0, closed: 0 };
+    for (const f of enriched) {
+      bySeverity[f.severity] = (bySeverity[f.severity] || 0) + 1;
+      byStatus[f.status] = (byStatus[f.status] || 0) + 1;
+    }
+    return {
+      ok: true,
+      result: {
+        findings: enriched.sort((a, b) => {
+          const order = { critical: 0, high: 1, medium: 2, low: 3 };
+          return order[a.severity] - order[b.severity];
+        }),
+        summary: {
+          total: enriched.length,
+          bySeverity,
+          byStatus,
+          overdue: enriched.filter(f => f.overdue).length,
+        },
+      },
+    };
+  });
+
+  // ── Feature 5: Policy library + acceptance tracking ──
+
+  registerLensAction("audit", "policyAdd", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    if (!state.policies.has(userId)) state.policies.set(userId, []);
+    const policy = {
+      id: uid("pol"),
+      title,
+      category: String(params.category || "general"),
+      version: String(params.version || "1.0"),
+      body: String(params.body || ""),
+      effectiveDate: params.effectiveDate ? String(params.effectiveDate) : new Date().toISOString().slice(0, 10),
+      reviewCycleDays: Number.isFinite(params.reviewCycleDays) ? params.reviewCycleDays : 365,
+      createdAt: new Date().toISOString(),
+    };
+    state.policies.get(userId).push(policy);
+    saveAuditState();
+    return { ok: true, result: { policy } };
+  });
+
+  registerLensAction("audit", "policyList", (ctx, _artifact, _params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const list = state.policies.get(userId) || [];
+    const acceptances = state.policyAcceptance.get(userId) || [];
+    const now = Date.now();
+    const enriched = list.map(p => {
+      const accs = acceptances.filter(a => a.policyId === p.id);
+      const reviewDue = new Date(p.effectiveDate).getTime() + p.reviewCycleDays * 86400000;
+      return {
+        ...p,
+        acceptanceCount: accs.length,
+        reviewOverdue: reviewDue < now,
+        nextReviewDate: new Date(reviewDue).toISOString().slice(0, 10),
+      };
+    });
+    return { ok: true, result: { policies: enriched, total: enriched.length } };
+  });
+
+  registerLensAction("audit", "policyAccept", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const policyId = String(params.policyId || "").trim();
+    const policies = state.policies.get(userId) || [];
+    const policy = policies.find(p => p.id === policyId);
+    if (!policy) return { ok: false, error: "Policy not found" };
+    const acceptedBy = String(params.acceptedBy || "").trim();
+    if (!acceptedBy) return { ok: false, error: "acceptedBy required" };
+    if (!state.policyAcceptance.has(userId)) state.policyAcceptance.set(userId, []);
+    const list = state.policyAcceptance.get(userId);
+    // One acceptance per (policy, version, person).
+    const existing = list.find(a => a.policyId === policyId && a.version === policy.version && a.acceptedBy === acceptedBy);
+    if (existing) return { ok: true, result: { acceptance: existing, duplicate: true } };
+    const acceptance = {
+      id: uid("acc"),
+      policyId,
+      policyTitle: policy.title,
+      version: policy.version,
+      acceptedBy,
+      acceptedAt: new Date().toISOString(),
+    };
+    list.push(acceptance);
+    saveAuditState();
+    return { ok: true, result: { acceptance } };
+  });
+
+  registerLensAction("audit", "policyAcceptanceList", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    let list = state.policyAcceptance.get(userId) || [];
+    if (params.policyId) list = list.filter(a => a.policyId === params.policyId);
+    return { ok: true, result: { acceptances: list, total: list.length } };
+  });
+
+  // ── Feature 6: Exportable audit report / auditor-shareable view ──
+
+  registerLensAction("audit", "exportReport", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const controls = state.controls.get(userId) || [];
+    const evidence = state.evidence.get(userId) || [];
+    const findings = state.findings.get(userId) || [];
+    const policies = state.policies.get(userId) || [];
+    const acceptances = state.policyAcceptance.get(userId) || [];
+    const vendors = state.vendors.get(userId) || [];
+
+    const byFramework = {};
+    for (const c of controls) {
+      if (!byFramework[c.framework]) byFramework[c.framework] = { pass: 0, fail: 0, not_assessed: 0, not_applicable: 0, total: 0 };
+      byFramework[c.framework][c.status] = (byFramework[c.framework][c.status] || 0) + 1;
+      byFramework[c.framework].total++;
+    }
+    for (const fw of Object.keys(byFramework)) {
+      const b = byFramework[fw];
+      const assessable = b.pass + b.fail;
+      b.complianceRate = assessable > 0 ? Math.round((b.pass / assessable) * 1000) / 10 : 0;
+      b.name = FRAMEWORKS[fw]?.name || fw;
+    }
+
+    const openFindings = findings.filter(f => f.status !== "closed" && f.status !== "remediated");
+    const report = {
+      generatedAt: new Date().toISOString(),
+      reportId: uid("rpt"),
+      title: params.title ? String(params.title) : "Compliance Audit Report",
+      organization: params.organization ? String(params.organization) : "Concord Tenant",
+      summary: {
+        frameworksAdopted: Object.keys(byFramework).length,
+        totalControls: controls.length,
+        controlsPassing: controls.filter(c => c.status === "pass").length,
+        evidenceItems: evidence.length,
+        openFindings: openFindings.length,
+        criticalFindings: openFindings.filter(f => f.severity === "critical").length,
+        policies: policies.length,
+        policyAcceptances: acceptances.length,
+        vendors: vendors.length,
+        highRiskVendors: vendors.filter(v => v.riskTier === "high").length,
+      },
+      frameworkBreakdown: byFramework,
+      controls: controls.map(c => ({
+        framework: c.framework, ref: c.ref, title: c.title,
+        status: c.status, owner: c.owner,
+        evidenceCount: evidence.filter(e => e.controlId === c.id).length,
+        lastAssessedAt: c.lastAssessedAt,
+      })),
+      findings: findings.map(f => ({
+        title: f.title, severity: f.severity, status: f.status,
+        owner: f.owner, dueDate: f.dueDate,
+      })),
+      policies: policies.map(p => ({
+        title: p.title, version: p.version, category: p.category,
+        acceptanceCount: acceptances.filter(a => a.policyId === p.id).length,
+      })),
+      vendors: vendors.map(v => ({
+        name: v.name, riskTier: v.riskTier, status: v.status,
+        dataAccess: v.dataAccess,
+      })),
+    };
+    // Markdown rendering for auditor-shareable view.
+    const md = [
+      `# ${report.title}`,
+      ``,
+      `**Organization:** ${report.organization}  `,
+      `**Generated:** ${report.generatedAt}  `,
+      `**Report ID:** ${report.reportId}`,
+      ``,
+      `## Executive Summary`,
+      ``,
+      `| Metric | Value |`,
+      `|---|---|`,
+      `| Frameworks adopted | ${report.summary.frameworksAdopted} |`,
+      `| Total controls | ${report.summary.totalControls} |`,
+      `| Controls passing | ${report.summary.controlsPassing} |`,
+      `| Evidence items | ${report.summary.evidenceItems} |`,
+      `| Open findings | ${report.summary.openFindings} |`,
+      `| Critical findings | ${report.summary.criticalFindings} |`,
+      `| Policies | ${report.summary.policies} |`,
+      `| Policy acceptances | ${report.summary.policyAcceptances} |`,
+      `| Vendors tracked | ${report.summary.vendors} |`,
+      ``,
+      `## Framework Compliance`,
+      ``,
+      ...Object.entries(byFramework).map(([, b]) =>
+        `- **${b.name}** — ${b.complianceRate}% (${b.pass} pass / ${b.fail} fail / ${b.not_assessed} not assessed)`),
+      ``,
+      `## Open Findings`,
+      ``,
+      openFindings.length === 0
+        ? `_No open findings._`
+        : openFindings.map(f => `- [${f.severity.toUpperCase()}] ${f.title} — owner: ${f.owner || "unassigned"}, due: ${f.dueDate || "n/a"}`).join("\n"),
+    ].join("\n");
+
+    return { ok: true, result: { report, markdown: md } };
+  });
+
+  // ── Feature 7: Vendor / third-party risk register ──
+
+  registerLensAction("audit", "vendorAdd", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (!state.vendors.has(userId)) state.vendors.set(userId, []);
+    const validAccess = ["none", "metadata", "pii", "sensitive", "critical"];
+    const dataAccess = validAccess.includes(params.dataAccess) ? params.dataAccess : "none";
+    // Inherent risk tier derived from data access + criticality.
+    const accessWeight = { none: 0, metadata: 1, pii: 2, sensitive: 3, critical: 4 };
+    const criticality = ["low", "medium", "high"].includes(params.criticality) ? params.criticality : "medium";
+    const critWeight = { low: 0, medium: 1, high: 2 };
+    const score = accessWeight[dataAccess] + critWeight[criticality];
+    const riskTier = score >= 5 ? "high" : score >= 3 ? "medium" : "low";
+    const vendor = {
+      id: uid("ven"),
+      name,
+      service: String(params.service || ""),
+      dataAccess,
+      criticality,
+      riskScore: score,
+      riskTier,
+      status: "active", // active | under_review | offboarded
+      contact: String(params.contact || ""),
+      certifications: Array.isArray(params.certifications) ? params.certifications.map(String) : [],
+      lastReviewDate: params.lastReviewDate ? String(params.lastReviewDate) : null,
+      notes: String(params.notes || ""),
+      createdAt: new Date().toISOString(),
+    };
+    state.vendors.get(userId).push(vendor);
+    saveAuditState();
+    return { ok: true, result: { vendor } };
+  });
+
+  registerLensAction("audit", "vendorUpdate", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    const list = state.vendors.get(userId) || [];
+    const v = list.find(x => x.id === params.id);
+    if (!v) return { ok: false, error: "Vendor not found" };
+    if (params.status !== undefined) {
+      if (!["active", "under_review", "offboarded"].includes(params.status)) {
+        return { ok: false, error: "Invalid status" };
+      }
+      v.status = params.status;
+    }
+    if (params.lastReviewDate !== undefined) v.lastReviewDate = params.lastReviewDate ? String(params.lastReviewDate) : null;
+    if (params.notes !== undefined) v.notes = String(params.notes);
+    if (params.certifications !== undefined && Array.isArray(params.certifications)) {
+      v.certifications = params.certifications.map(String);
+    }
+    // Recompute risk if access/criticality changed.
+    if (params.dataAccess !== undefined || params.criticality !== undefined) {
+      const validAccess = ["none", "metadata", "pii", "sensitive", "critical"];
+      if (params.dataAccess !== undefined && validAccess.includes(params.dataAccess)) v.dataAccess = params.dataAccess;
+      if (params.criticality !== undefined && ["low", "medium", "high"].includes(params.criticality)) v.criticality = params.criticality;
+      const accessWeight = { none: 0, metadata: 1, pii: 2, sensitive: 3, critical: 4 };
+      const critWeight = { low: 0, medium: 1, high: 2 };
+      v.riskScore = accessWeight[v.dataAccess] + critWeight[v.criticality];
+      v.riskTier = v.riskScore >= 5 ? "high" : v.riskScore >= 3 ? "medium" : "low";
+    }
+    saveAuditState();
+    return { ok: true, result: { vendor: v } };
+  });
+
+  registerLensAction("audit", "vendorList", (ctx, _artifact, params = {}) => {
+    const state = getAuditState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = actorId(ctx);
+    let list = state.vendors.get(userId) || [];
+    if (params.riskTier) list = list.filter(v => v.riskTier === params.riskTier);
+    if (params.status) list = list.filter(v => v.status === params.status);
+    const now = Date.now();
+    const enriched = list.map(v => ({
+      ...v,
+      reviewOverdue: v.lastReviewDate
+        ? new Date(v.lastReviewDate).getTime() + 365 * 86400000 < now
+        : true,
+    }));
+    const byTier = { high: 0, medium: 0, low: 0 };
+    for (const v of enriched) byTier[v.riskTier] = (byTier[v.riskTier] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        vendors: enriched.sort((a, b) => b.riskScore - a.riskScore),
+        summary: {
+          total: enriched.length,
+          byTier,
+          reviewOverdue: enriched.filter(v => v.reviewOverdue).length,
+        },
+      },
+    };
+  });
 }

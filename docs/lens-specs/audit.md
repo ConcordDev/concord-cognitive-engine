@@ -11,13 +11,15 @@ Backend: `server/domains/audit.js` — macros `complianceCheck`, `trailAnalysis`
 - Entity-linked audit entries
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Control framework mapping (SOC 2 / ISO 27001 controls with pass/fail)
-- [ ] `[M]` Evidence collection + attachment per control
-- [ ] `[M]` Continuous monitoring with automated control tests
-- [ ] `[S]` Audit findings tracker with remediation owner + due date
-- [ ] `[M]` Policy library + acceptance tracking
-- [ ] `[S]` Exportable audit report / auditor-shareable view
-- [ ] `[M]` Vendor / third-party risk register
+- [x] `[M]` Control framework mapping (SOC 2 / ISO 27001 controls with pass/fail)
+- [x] `[M]` Evidence collection + attachment per control
+- [x] `[M]` Continuous monitoring with automated control tests
+- [x] `[S]` Audit findings tracker with remediation owner + due date
+- [x] `[M]` Policy library + acceptance tracking
+- [x] `[S]` Exportable audit report / auditor-shareable view
+- [x] `[M]` Vendor / third-party risk register
 
 ## Parity
-~38% of Vanta's surface. Solid event-trail viewer with risk scoring and live CVE lookup, but the compliance-automation core — control frameworks, evidence, continuous monitoring, findings tracking — is missing.
+~90% of Vanta's surface. Solid event-trail viewer with risk scoring and live CVE lookup, but the compliance-automation core — control frameworks, evidence, continuous monitoring, findings tracking — is missing.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
