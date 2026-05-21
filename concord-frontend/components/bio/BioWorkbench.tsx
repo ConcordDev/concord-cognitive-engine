@@ -89,10 +89,9 @@ export function BioWorkbench({ open, onClose }: Props) {
   );
 }
 
-const SAMPLE_SEQ = 'ATGGCCGAATTCAAGCTTGGATCCGCGGCCGCTCGAGGAATTCAAGCTTATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGTAA';
 
 function AnalyzerTab() {
-  const [seq, setSeq] = useState(SAMPLE_SEQ);
+  const [seq, setSeq] = useState('');
   const [kind, setKind] = useState<'dna' | 'rna' | 'protein'>('dna');
   const [result, setResult] = useState<SequenceAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -159,7 +158,7 @@ function AnalyzerTab() {
 }
 
 function PrimerTab() {
-  const [seq, setSeq] = useState(SAMPLE_SEQ);
+  const [seq, setSeq] = useState('');
   const [length, setLength] = useState(20);
   const [primers, setPrimers] = useState<{
     forward: { sequence: string; tm: number; gcPercent: number; length: number };
@@ -190,6 +189,7 @@ function PrimerTab() {
       </div>
 
       <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4}
+        placeholder="Paste a DNA / RNA / protein sequence"
         className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none" />
 
       {primers && (
@@ -269,7 +269,7 @@ function AlignTab() {
 }
 
 function RestrictionTab() {
-  const [seq, setSeq] = useState(SAMPLE_SEQ);
+  const [seq, setSeq] = useState('');
   const [sites, setSites] = useState<{ enzyme: string; position: number; cutAt: number; site: string }[]>([]);
 
   const map = async () => {
@@ -290,6 +290,7 @@ function RestrictionTab() {
       </button>
 
       <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4}
+        placeholder="Paste a DNA / RNA / protein sequence"
         className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none" />
 
       {sites.length > 0 ? (
