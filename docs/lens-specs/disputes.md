@@ -10,13 +10,21 @@ Backend: `disputes` domain macros (assessDispute, timelineTrack, settlementCalc,
 - LawStackFeed (Law Stack Exchange Q&A); generic dispute artifact CRUD
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Evidence upload + attachment per dispute — files, screenshots, receipts
-- [ ] `[M]` Two-party messaging thread — claimant and respondent exchange within the case
-- [ ] `[M]` Mediator assignment + neutral-party workflow
-- [ ] `[S]` Settlement offer / counter-offer exchange with accept/reject
-- [ ] `[S]` SLA timers — auto-escalate if a stage stalls past a deadline
-- [ ] `[S]` Resolution outcome record + searchable case archive
-- [ ] `[M]` Escrow/hold integration — freeze funds while a dispute is open
+- [x] `[M]` Evidence upload + attachment per dispute — files, screenshots, receipts
+- [x] `[M]` Two-party messaging thread — claimant and respondent exchange within the case
+- [x] `[M]` Mediator assignment + neutral-party workflow
+- [x] `[S]` Settlement offer / counter-offer exchange with accept/reject
+- [x] `[S]` SLA timers — auto-escalate if a stage stalls past a deadline
+- [x] `[S]` Resolution outcome record + searchable case archive
+- [x] `[M]` Escrow/hold integration — freeze funds while a dispute is open
 
 ## Parity
-~45% of an ODR platform. Lifecycle states, type taxonomy, and AI assessment are real, but missing the evidence upload, two-party messaging, mediator workflow, and offer-exchange that define dispute resolution.
+~85% of an ODR platform. Full case-lifecycle workbench shipped: evidence
+attachment, two-party (+ mediator) messaging thread, mediator assignment,
+settlement offer/counter-offer exchange, SLA auto-escalation, resolution
+outcome records, searchable resolved-case archive with analytics, and
+escrow freeze/release. Lifecycle states, type taxonomy and AI assessment
+remain. Implemented by `disputes` domain case-lifecycle macros wired into
+`components/disputes/CaseWorkbench.tsx`.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

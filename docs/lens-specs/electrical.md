@@ -10,13 +10,15 @@ Backend: `electrical` domain macros (loadCalculation, voltageDropCalc, circuitTr
 - Generic job/estimate artifact CRUD with status workflow
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Panel schedule builder — circuit-by-circuit load assignment with breaker sizing
-- [ ] `[M]` Conduit fill + wire-size calculator with NEC table lookup
-- [ ] `[S]` Box fill calculator
-- [ ] `[M]` Estimate → invoice flow with labor + materials line items
-- [ ] `[S]` One-line diagram / circuit map drawing
-- [ ] `[S]` Inspection checklist templates per job type
-- [ ] `[S]` Material price list integration for estimates
+- [x] `[M]` Panel schedule builder — circuit-by-circuit load assignment with breaker sizing
+- [x] `[M]` Conduit fill + wire-size calculator with NEC table lookup
+- [x] `[S]` Box fill calculator
+- [x] `[M]` Estimate → invoice flow with labor + materials line items
+- [x] `[S]` One-line diagram / circuit map drawing
+- [x] `[S]` Inspection checklist templates per job type
+- [x] `[S]` Material price list integration for estimates
 
 ## Parity
-~45% of a ServiceTitan+NEC-calc composite. Has core NEC compute (load, voltage drop) and job/estimate tracking, but missing the panel schedule, conduit/box fill calculators, and estimate→invoice flow that define electrical-trade software.
+All 7 backlog items shipped full-stack. Backend macros (panel*, conduitFill, boxFill, wireSize, estimate*, invoice*, diagram*, checklist*, priceList*) were present in `server/domains/electrical.js`; this pass built the purpose-built frontend (6 new components under `components/electrical/`, mounted via a "Trade Tools" tab strip in the lens page) and a 22-test contract suite. ~85% of a ServiceTitan+NEC-calc composite — full NEC compute suite (load, voltage drop, conduit/box fill, wire sizing), persistent panel schedules with phase balance, estimate→invoice flow with price-list integration, one-line diagrams, and per-job-type inspection checklists.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

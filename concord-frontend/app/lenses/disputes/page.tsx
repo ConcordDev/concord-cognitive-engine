@@ -17,6 +17,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LawStackFeed } from '@/components/disputes/LawStackFeed';
+import { CaseWorkbench } from '@/components/disputes/CaseWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1009,6 +1010,11 @@ export default function DisputesPage() {
           ))
         )}
       </div>
+
+      {/* ── ODR Case Workbench — full case-lifecycle resolution ──── */}
+      <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <CaseWorkbench />
+      </section>
 
       {/* Create dispute modal */}
       <AnimatePresence>

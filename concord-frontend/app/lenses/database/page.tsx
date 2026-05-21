@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DbProjectExplorer } from '@/components/database/DbProjectExplorer';
 import { SchemaDesigner } from '@/components/database/SchemaDesigner';
+import { LiveDbClient } from '@/components/database/LiveDbClient';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -23,6 +24,7 @@ import {
   AlertCircle, Table2, Search, Clock, Columns, Eye, Trash2,
   Copy, ChevronLeft, ChevronRight, List, BarChart3, Link2, Key,
   FileJson, FileSpreadsheet, Terminal, History, Layers, Loader2, Zap,
+  Plug,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -90,9 +92,10 @@ interface PerfSnapshot {
 // Tab definitions
 // ---------------------------------------------------------------------------
 
-type TabId = 'query' | 'tables' | 'schema' | 'indexes' | 'monitor' | 'history';
+type TabId = 'live' | 'query' | 'tables' | 'schema' | 'indexes' | 'monitor' | 'history';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
+  { id: 'live', label: 'Live Client', icon: <Plug className="w-4 h-4" /> },
   { id: 'query', label: 'Query Editor', icon: <Terminal className="w-4 h-4" /> },
   { id: 'tables', label: 'Table Browser', icon: <Table2 className="w-4 h-4" /> },
   { id: 'schema', label: 'Schema Map', icon: <Layers className="w-4 h-4" /> },
@@ -235,10 +238,11 @@ export default function DatabaseLensPage() {
   }, [queryItems, runAction]);
 
   // --- Tab state ---
-  const [activeTab, setActiveTab] = useState<TabId>('query');
+  const [activeTab, setActiveTab] = useState<TabId>('live');
 
   useLensCommand(
     [
+      { id: 'tab-live', keys: 'l', description: 'Live Client', category: 'navigation', action: () => setActiveTab('live') },
       { id: 'tab-query', keys: 'q', description: 'Query Editor', category: 'navigation', action: () => setActiveTab('query') },
       { id: 'tab-tables', keys: 't', description: 'Table Browser', category: 'navigation', action: () => setActiveTab('tables') },
       { id: 'tab-schema', keys: 'm', description: 'Schema Map', category: 'navigation', action: () => setActiveTab('schema') },
@@ -514,6 +518,11 @@ export default function DatabaseLensPage() {
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.15 }}
         >
+          {/* ============================================================ */}
+          {/* LIVE CLIENT TAB — connection manager + live SQL engine       */}
+          {/* ============================================================ */}
+          {activeTab === 'live' && <LiveDbClient />}
+
           {/* ============================================================ */}
           {/* QUERY EDITOR TAB                                             */}
           {/* ============================================================ */}

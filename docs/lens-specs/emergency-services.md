@@ -10,13 +10,15 @@ Backend: `emergency-services` domain macros — pure-compute (triageAssess, disp
 - EmergencyServicesActionPanel; incident feed
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Live incident map with unit positions and incident pins
-- [ ] `[M]` Unit dispatch + status lifecycle (available→en-route→on-scene→clear)
-- [ ] `[M]` Priority/severity triage queue with auto-prioritization
-- [ ] `[S]` Incident timeline / event log per call
-- [ ] `[M]` Nearest-unit recommendation tied to incident location
-- [ ] `[S]` Resource readiness rollup feeding from unit roster
-- [ ] `[S]` Alerting when a new high-priority incident is created
+- [x] `[M]` Live incident map with unit positions and incident pins
+- [x] `[M]` Unit dispatch + status lifecycle (available→en-route→on-scene→clear)
+- [x] `[M]` Priority/severity triage queue with auto-prioritization
+- [x] `[S]` Incident timeline / event log per call
+- [x] `[M]` Nearest-unit recommendation tied to incident location
+- [x] `[S]` Resource readiness rollup feeding from unit roster
+- [x] `[S]` Alerting when a new high-priority incident is created
 
 ## Parity
-~45% of a CAD dispatch system. Incidents, units, dashboard, and the quake feed are real, plus useful dispatch/triage compute, but missing the live map, full unit-status lifecycle, and nearest-unit dispatch that make CAD operational.
+~85% of a CAD dispatch system. The full CAD operational layer is now wired end-to-end via the new `CADConsole` component (mounted under the `CAD Console` tab): live incident/unit map (`map-state`, `incident-create-geo`, `unit-position`), the unit dispatch lifecycle (`dispatch-unit`, `unit-status-advance` — available→dispatched→en_route→on_scene→clear), the auto-prioritized triage queue with dispatch scores (`triage-queue`), per-incident event timelines (`incident-timeline`), nearest-unit recommendation by haversine distance + ETA (`nearest-unit`), a readiness rollup derived live from the unit roster (`readiness-rollup`), and high-priority alerting on incident intake (`active-alerts`). Remaining gap is licensed CAD-grade map tiles and multi-agency interop — structural, not buildable.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

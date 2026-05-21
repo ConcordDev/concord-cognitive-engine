@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~65%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1158**
+- Average feature parity: **~66%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1115**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 68 |
+| 80–100% (near-complete) | 74 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 103 |
+| 40–59% (partial) | 97 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -31,12 +31,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| construction | Procore | ~45% | 8 |
-| database | DBeaver / TablePlus | ~45% | 7 |
-| disputes | marketplace dispute / ODR systems | ~45% | 7 |
-| diy | Instructables / Sortly | ~45% | 7 |
-| electrical | ServiceTitan (electrical) + NEC calc tools | ~45% | 7 |
-| emergency-services | CAD dispatch systems | ~45% | 7 |
 | ethics | Ethical OS / decision-ethics tooling | ~45% | 6 |
 | expert-mode | Perplexity | ~45% | 7 |
 | ghost-tracker | no direct rival (in-game mode) | ~45% | 6 |
@@ -198,8 +192,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | app-maker | Bubble / Glide | ~85% | 0 |
 | ar | Adobe Aero / Niantic Studio | ~85% | 0 |
 | bounties | Gitcoin / HackerOne bounties | ~85% | 0 |
+| construction | Procore | ~85% | 0 |
 | crisis-ops | Dataminr / Everbridge | ~85% | 0 |
 | custom | Retool / Glide | ~85% | 0 |
+| database | DBeaver / TablePlus | ~85% | 0 |
+| disputes | marketplace dispute / ODR systems | ~85% | 0 |
+| diy | Instructables / Sortly | ~85% | 0 |
+| electrical | ServiceTitan (electrical) + NEC calc tools | ~85% | 0 |
+| emergency-services | CAD dispatch systems | ~85% | 0 |
 | engineering | Fusion 360 / SimScale | ~85% | 0 |
 | expedition-journal | in-game world-progress tracker (no consumer rival) | ~85% | 0 |
 | fractal | Mandelbulber / fractal generators | ~85% | 0 |
