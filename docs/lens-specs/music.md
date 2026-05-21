@@ -70,6 +70,12 @@ That is a real, working streaming-app core.
 
 ---
 
+## Parity
+
+~55% of Spotify's feature surface — a real streaming core (audio engine,
+library, playlists, queue, search, radio, Wrapped, stats) with ~17 buildable
+features missing, none licensing-blocked.
+
 ## Verdict
 
 Scored on **features** (not catalog), the music lens is **not** "structurally
