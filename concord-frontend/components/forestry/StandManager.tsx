@@ -11,7 +11,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Trees, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { cn } from '@/lib/utils';
 
 interface Activity { id: string; kind: string; date: string; notes: string }
 interface Stand { id: string; name: string; species: string; acres: number; ageYears: number; treesPerAcre: number; estimatedTrees: number; activities: Activity[]; activityCount: number }

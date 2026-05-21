@@ -10,12 +10,14 @@ Backend: `goddess.recent` macro (inline `register()` in server.js) reading the `
 - GoddessGallery component for browsing dispatches
 
 ## Missing — buildable feature backlog
-- [ ] `[S]` Dispatch detail / permalink view
-- [ ] `[S]` Filter by tone or time range
-- [ ] `[S]` React / commune on a dispatch (tie into the commune mechanic)
-- [ ] `[M]` Dispatch history archive with search
-- [ ] `[S]` Subscribe / notify on a tone change (e.g. mourning dispatch)
-- [ ] `[S]` Correlate dispatch with the world event that triggered it
+- [x] `[S]` Dispatch detail / permalink view
+- [x] `[S]` Filter by tone or time range
+- [x] `[S]` React / commune on a dispatch (tie into the commune mechanic)
+- [x] `[M]` Dispatch history archive with search
+- [x] `[S]` Subscribe / notify on a tone change (e.g. mourning dispatch)
+- [x] `[S]` Correlate dispatch with the world event that triggered it
 
 ## Parity
-~55% of an ambient-feed surface for what it scopes. It does its narrow job well — a tone-colored, auto-refreshing oracle feed grounded in real ecosystem/refusal/drift state — but it is read-only with no detail view, filtering, history search, or interaction.
+~90% of an ambient-feed surface for what it scopes. The tone-colored auto-refreshing oracle feed grounded in real ecosystem/refusal/drift state plus a dispatch detail/permalink view, tone + time filtering, commune reactions, a searchable history archive, tone-change subscriptions, and world-event correlation all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

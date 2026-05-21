@@ -12,12 +12,14 @@ Backend: `forestry` domain — timber volume, fire risk, harvest plan, carbon se
 - Tabs: Dashboard / Stands / Harvest / Fire / Wildlife / Replanting / Inventory / Map; GBIF wildlife panel
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Growth & yield projection over a rotation (current volume is point-in-time)
-- [ ] `[M]` GIS stand mapping with polygon drawing + acreage calc on the map
-- [ ] `[S]` Inventory cruise plotting — sample plots, expansion factors, statistical summary
-- [ ] `[S]` Pest / disease tracking with treatment scheduling (Wildlife tab is thin)
-- [ ] `[M]` Replanting / silviculture scheduler with seedling orders + survival surveys
-- [ ] `[S]` Carbon-credit registry workflow (verification, vintage, retirement)
+- [x] `[M]` Growth & yield projection over a rotation (current volume is point-in-time)
+- [x] `[M]` GIS stand mapping with polygon drawing + acreage calc on the map
+- [x] `[S]` Inventory cruise plotting — sample plots, expansion factors, statistical summary
+- [x] `[S]` Pest / disease tracking with treatment scheduling (Wildlife tab is thin)
+- [x] `[M]` Replanting / silviculture scheduler with seedling orders + survival surveys
+- [x] `[S]` Carbon-credit registry workflow (verification, vintage, retirement)
 
 ## Parity
-~55% of professional forest-management software. The compute helpers (volume, fire risk, carbon, harvest) plus live wildfire feeds are solid, but it lacks growth modeling, real GIS stand mapping, and a structured cruise/inventory workflow.
+~95% of professional forest-management software. The compute helpers (volume, fire risk, carbon, harvest), live wildfire feeds, growth & yield modeling, GIS stand mapping, an inventory cruise workflow, pest/disease tracking, a silviculture scheduler, and a carbon-credit registry all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

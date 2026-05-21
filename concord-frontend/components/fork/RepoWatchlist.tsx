@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { GitFork, Plus, Trash2, Loader2, RefreshCw, Rss } from 'lucide-react';
+import { GitFork, Trash2, Loader2, RefreshCw, Rss } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Repo { id: string; fullName: string; note: string; reason: string; lastStars: number | null; lastPushedAt: string | null; openIssues?: number | null; forks?: number | null }

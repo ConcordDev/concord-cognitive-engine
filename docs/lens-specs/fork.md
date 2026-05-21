@@ -11,12 +11,14 @@ Backend: `fork` domain — divergenceAnalysis, mergeComplexity, forkHealth, live
 - Repo watchlist (add/remove/refresh) with a watch dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Commit-level ahead/behind comparison view (diff stats per fork)
-- [ ] `[S]` Pull-request status overlay on the fork network
-- [ ] `[M]` Network graph visualization (commits-over-time across forks, like GitHub's network graph)
-- [ ] `[S]` Contributor activity / stale-fork detection alerts
-- [ ] `[S]` Release / tag tracking on watched repos
-- [ ] `[M]` Cross-fork file-level diff browser
+- [x] `[M]` Commit-level ahead/behind comparison view (diff stats per fork)
+- [x] `[S]` Pull-request status overlay on the fork network
+- [x] `[M]` Network graph visualization (commits-over-time across forks, like GitHub's network graph)
+- [x] `[S]` Contributor activity / stale-fork detection alerts
+- [x] `[S]` Release / tag tracking on watched repos
+- [x] `[M]` Cross-fork file-level diff browser
 
 ## Parity
-~55% of GitHub's fork-network surface. Live GitHub data, divergence/health analysis, and a watchlist are solid, but it lacks the commit-graph visualization, PR overlay, and file-level diff browsing that make GitHub's fork tooling actionable.
+~95% of GitHub's fork-network surface. Live GitHub data, divergence/health analysis, a watchlist, commit-graph visualization, a PR overlay, stale-fork scanning, release tracking, and file-level diff browsing all ship front-to-back. The old hardcoded "Fork Explorer" demo panel was removed.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

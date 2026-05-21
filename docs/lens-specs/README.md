@@ -12,26 +12,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~79%**
-- Total buildable features in the backlog (sum of all "Missing" items): **602**
+- Average feature parity: **~80%**
+- Total buildable features in the backlog (sum of all "Missing" items): **564**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 151 |
+| 80–100% (near-complete) | 157 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 25 |
+| 40–59% (partial) | 19 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| export | Google Takeout / Notion Export | ~55% | 7 |
-| forestry | SilvAssist / forest-management software | ~55% | 6 |
-| fork | GitHub (fork network / insights) | ~55% | 6 |
-| gallery | Google Arts & Culture / Artsy | ~55% | 7 |
-| geology | USGS apps / Rockd | ~55% | 6 |
-| goddess | no direct rival (in-world ambient feed) | ~55% | 6 |
 | history | TimelineJS / Wikipedia | ~55% | 7 |
 | import | Flatfile / Airbyte (data import) | ~55% | 7 |
 | law | Ironclad (contract lifecycle) | ~55% | 7 |
@@ -216,6 +210,7 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | event-timeline | activity-feed / audit-log viewers | ~90% | 0 |
 | experience | Maze / UserTesting | ~90% | 0 |
 | global | Our World in Data / World Bank DataBank | ~90% | 0 |
+| goddess | no direct rival (in-world ambient feed) | ~90% | 0 |
 | hypothesis | JASP / GraphPad Prism | ~90% | 0 |
 | integrations | Zapier | ~90% | 0 |
 | invariant | TLA+ / formal-verification tools | ~90% | 0 |
@@ -261,3 +256,8 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | dx-platform | Sourcegraph Cody / GitHub Copilot platform | ~95% | 0 |
 | eco | iNaturalist / JouleBug | ~95% | 0 |
 | energy | Sense / Span Home | ~95% | 0 |
+| export | Google Takeout / Notion Export | ~95% | 0 |
+| forestry | SilvAssist / forest-management software | ~95% | 0 |
+| fork | GitHub (fork network / insights) | ~95% | 0 |
+| gallery | Google Arts & Culture / Artsy | ~95% | 0 |
+| geology | USGS apps / Rockd | ~95% | 0 |

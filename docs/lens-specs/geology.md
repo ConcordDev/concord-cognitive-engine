@@ -10,12 +10,14 @@ Backend: `geology` domain — rockClassify, seismicRisk, mineralId, stratigraphi
 - Field observation CRUD with geolocation; map view; Wikipedia geology search
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Geologic map overlay (bedrock/age layers on the map, like Rockd's Macrostrat)
-- [ ] `[S]` Photo capture for rock samples with EXIF geotag
-- [ ] `[M]` Strabo / structural measurements — strike/dip recording with a digital compass
-- [ ] `[S]` Nearby-rock-units lookup at current GPS location
-- [ ] `[S]` Checklist / collection — track minerals/rocks identified
-- [ ] `[M]` Field-trip / outcrop sequencing with notes per stop
+- [x] `[M]` Geologic map overlay (bedrock/age layers on the map, like Rockd's Macrostrat)
+- [x] `[S]` Photo capture for rock samples with EXIF geotag
+- [x] `[M]` Strabo / structural measurements — strike/dip recording with a digital compass
+- [x] `[S]` Nearby-rock-units lookup at current GPS location
+- [x] `[S]` Checklist / collection — track minerals/rocks identified
+- [x] `[M]` Field-trip / outcrop sequencing with notes per stop
 
 ## Parity
-~55% of Rockd's feature surface. Live USGS data, the field log, and classification helpers are solid, but it lacks the geologic-map overlay, structural measurement tools, and location-aware bedrock lookup that make Rockd a true field instrument.
+~95% of Rockd's feature surface. Live USGS data, the field log, classification helpers, a geologic-map overlay, geotagged photo capture, strike/dip structural measurements, location-aware bedrock lookup, a specimen collection, and field-trip outcrop sequencing all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

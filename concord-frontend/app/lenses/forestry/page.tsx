@@ -11,6 +11,12 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FireIncidents } from '@/components/forestry/FireIncidents';
 import { ForestryActionPanel } from '@/components/forestry/ForestryActionPanel';
 import { StandManager } from '@/components/forestry/StandManager';
+import { GrowthProjectionPanel } from '@/components/forestry/GrowthProjectionPanel';
+import { StandPolygonPanel } from '@/components/forestry/StandPolygonPanel';
+import { CruisePanel } from '@/components/forestry/CruisePanel';
+import { PestPanel } from '@/components/forestry/PestPanel';
+import { ReplantingPanel } from '@/components/forestry/ReplantingPanel';
+import { CarbonCreditPanel } from '@/components/forestry/CarbonCreditPanel';
 import { GbifPanel } from '@/components/environment/GbifPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -356,6 +362,24 @@ export default function ForestryLensPage() {
             </div>
           )}
         </div>
+
+        {(activeMode === 'Dashboard' || activeMode === 'Stands' || activeMode === 'Harvest') && (
+          <GrowthProjectionPanel />
+        )}
+
+        {(activeMode === 'Inventory' || activeMode === 'Stands') && (
+          <CruisePanel />
+        )}
+
+        {activeMode === 'Wildlife' && <PestPanel />}
+
+        {activeMode === 'Replanting' && <ReplantingPanel />}
+
+        {(activeMode === 'Dashboard' || activeMode === 'Harvest') && (
+          <CarbonCreditPanel />
+        )}
+
+        {activeMode === 'Map' && <StandPolygonPanel />}
 
         {activeMode === 'Map' && (
           <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">

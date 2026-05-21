@@ -221,6 +221,7 @@ import inheritance from './inheritance.js';
 import personas from './personas.js';
 import psyops from './psyops.js';
 import tools from './tools.js';
+import goddessLens from './goddess.js';
 
 export default [
   healthcare,
@@ -435,4 +436,5 @@ export default [
   selfLens,
   understandingLens,
   dxPlatform,
+  goddessLens,
 ];

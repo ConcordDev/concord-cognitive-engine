@@ -9,9 +9,10 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ExportFormatGallery } from '@/components/export/ExportFormatGallery';
+import { ExportToolkit } from '@/components/export/ExportToolkit';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -146,8 +147,22 @@ export default function ExportLensPage() {
           }
         }
 
+        const filename = `concord-export-${Date.now()}${ext}`;
         const blob = new Blob([content], { type: mimeType });
-        triggerDownload(blob, `concord-export-${Date.now()}${ext}`);
+        triggerDownload(blob, filename);
+        // Log the completed export so it appears in the history panel and
+        // can be re-downloaded. Real metadata + retained payload only.
+        try {
+          await lensRun('export', 'record-run', {
+            format: selectedFormat,
+            itemCount: (data.dtus as unknown[]).length,
+            byteLength: content.length,
+            dataSources: selectedData,
+            trigger: 'manual',
+            filename,
+            payload: content,
+          });
+        } catch { /* history logging is best-effort */ }
       }
     } finally {
       setExporting(false);
@@ -564,6 +579,12 @@ export default function ExportLensPage() {
             size="~3.0 MB" mime="application/vnd.concord.dtu" />
         </div>
       </div>
+
+      {/* Advanced export toolkit — scheduled runs, cloud delivery, PDF,
+          delta exports, history, encryption, field selection. */}
+      <section className="panel p-4">
+        <ExportToolkit />
+      </section>
 
       <ConnectiveTissueBar lensId="export_import" />
 

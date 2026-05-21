@@ -11,13 +11,15 @@ Backend: `gallery` domain — live Cleveland Museum of Art (cma-search, cma-artw
 - Gallery dashboard + feed
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Deep-zoom high-resolution viewer (Arts & Culture's gigapixel "Art Camera")
-- [ ] `[S]` Visual / color / style search across artworks
-- [ ] `[M]` Curated thematic exhibits / stories with narrative sequencing
-- [ ] `[S]` Artwork comparison side-by-side view
-- [ ] `[M]` AR "view in your room" / virtual gallery walkthrough
-- [ ] `[S]` Artist pages aggregating works across museums
-- [ ] `[S]` Personalized recommendations from saved/viewed history
+- [x] `[M]` Deep-zoom high-resolution viewer (Arts & Culture's gigapixel "Art Camera")
+- [x] `[S]` Visual / color / style search across artworks
+- [x] `[M]` Curated thematic exhibits / stories with narrative sequencing
+- [x] `[S]` Artwork comparison side-by-side view
+- [x] `[M]` AR "view in your room" / virtual gallery walkthrough
+- [x] `[S]` Artist pages aggregating works across museums
+- [x] `[S]` Personalized recommendations from saved/viewed history
 
 ## Parity
-~55% of Google Arts & Culture's feature surface. Live multi-museum browsing + saved collections + the novel DTU-sigil art is genuine, but it lacks deep-zoom, curated exhibits, visual search, and the immersive AR/virtual-gallery features that distinguish Arts & Culture.
+~95% of Google Arts & Culture's feature surface. Live multi-museum browsing, saved collections, DTU-sigil art, deep-zoom, curated exhibits, visual search, artwork compare, cross-museum artist pages, virtual-room previews, and personalized recommendations all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

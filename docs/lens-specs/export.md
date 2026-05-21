@@ -12,13 +12,15 @@ Backend: `export` domain macros (generatePackage, validateExport, scheduleExport
 - Diff export — added/removed/modified/unchanged between two snapshots
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Actual scheduled-export execution — schedule is "configured" but no heartbeat runs it
-- [ ] `[S]` Export to cloud destinations (S3, Google Drive, Dropbox) via OAuth
-- [ ] `[S]` PDF export (listed in format picker but no generator)
-- [ ] `[M]` Incremental / delta exports — only changed records since last run
-- [ ] `[S]` Export history log with re-download of past archives
-- [ ] `[S]` Encrypted / password-protected archive option
-- [ ] `[M]` Selective field-level export (column picker per data type)
+- [x] `[M]` Actual scheduled-export execution — schedule is "configured" but no heartbeat runs it
+- [x] `[S]` Export to cloud destinations (S3, Google Drive, Dropbox) via OAuth
+- [x] `[S]` PDF export (listed in format picker but no generator)
+- [x] `[M]` Incremental / delta exports — only changed records since last run
+- [x] `[S]` Export history log with re-download of past archives
+- [x] `[S]` Encrypted / password-protected archive option
+- [x] `[M]` Selective field-level export (column picker per data type)
 
 ## Parity
-~55% of a personal-export tool's surface. Solid format coverage and a unique `.dtu` container, but scheduled exports are not actually executed, there is no cloud delivery, and the PDF format is stubbed.
+~95% of a personal-export tool's surface. Format coverage, the `.dtu` container, executed scheduled exports, cloud delivery via OAuth, real PDF generation, incremental/delta exports, an export-history log with re-download, encrypted archives, and selective field-level export all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._
