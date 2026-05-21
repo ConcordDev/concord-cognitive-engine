@@ -9,9 +9,11 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { IntegrationsRepos } from '@/components/integrations/IntegrationsRepos';
+import { WorkflowsPanel } from '@/components/integrations/WorkflowsPanel';
+import { ConnectorCatalog } from '@/components/integrations/ConnectorCatalog';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import type { CreateWebhookRequest } from '@/lib/api/generated-types';
 import { useUIStore } from '@/store/ui';
@@ -30,11 +32,13 @@ export default function IntegrationsLensPage() {
   useLensNav('integrations');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('integrations');
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'webhooks' | 'automations' | 'services'>('webhooks');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'connectors' | 'webhooks' | 'automations' | 'services'>('workflows');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
     [
+      { id: 'tab-workflows', keys: 'z', description: 'Workflows', category: 'navigation', action: () => setActiveTab('workflows') },
+      { id: 'tab-connectors', keys: 'c', description: 'Connectors', category: 'navigation', action: () => setActiveTab('connectors') },
       { id: 'tab-automations', keys: 'a', description: 'Automations', category: 'navigation', action: () => setActiveTab('automations') },
       { id: 'tab-webhooks', keys: 'w', description: 'Webhooks', category: 'navigation', action: () => setActiveTab('webhooks') },
       { id: 'tab-services', keys: 's', description: 'Services', category: 'navigation', action: () => setActiveTab('services') },
@@ -92,8 +96,15 @@ export default function IntegrationsLensPage() {
   });
 
   const toggleWebhookMutation = useMutation({
-    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
-      enabled ? apiHelpers.webhooks.deactivate(id) : api.post(`/api/webhooks/${id}/activate`),
+    // /api/webhooks/:id/activate has no REST route — resolve via the
+    // integrations domain macros (webhookActivate / webhooks.deactivate).
+    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+      if (enabled) {
+        await apiHelpers.webhooks.deactivate(id);
+      } else {
+        await lensRun('integrations', 'webhookActivate', { webhookId: id, enabled: true });
+      }
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['webhooks'] }),
     onError: () => {
       useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
@@ -108,19 +119,26 @@ export default function IntegrationsLensPage() {
   });
 
   const testWebhookMutation = useMutation({
+    // /api/webhooks/:id/test has no REST route — resolve via the integrations
+    // domain webhookTest macro, which records a signed test-fire delivery.
     mutationFn: async (wh: { id: string; url: string; events: string[] }) => {
       const testPayload = {
         event: wh.events?.[0] || 'test.ping',
         timestamp: new Date().toISOString(),
         data: { message: 'Test payload from Concord', webhookId: wh.id },
       };
-      return api.post(`/api/webhooks/${wh.id}/test`, testPayload);
+      const r = await lensRun<{ delivered: boolean; signature: string; message: string }>(
+        'integrations', 'webhookTest', { webhookId: wh.id, url: wh.url, payload: testPayload },
+      );
+      if (r.data.ok === false) throw new Error(r.data.error || 'Test delivery failed');
+      return r.data.result;
     },
     onMutate: (wh) => {
-      setWebhookTestResults((prev) => ({ ...prev, [wh.id]: { status: 'loading', message: 'Sending test payload...' } }));
+      setWebhookTestResults((prev) => ({ ...prev, [wh.id]: { status: 'loading', message: 'Sending signed test payload...' } }));
     },
-    onSuccess: (_data, wh) => {
-      setWebhookTestResults((prev) => ({ ...prev, [wh.id]: { status: 'success', message: 'Test delivered successfully' } }));
+    onSuccess: (data, wh) => {
+      const sig = data?.signature ? ` (sig ${data.signature.slice(0, 14)}…)` : '';
+      setWebhookTestResults((prev) => ({ ...prev, [wh.id]: { status: 'success', message: `Test delivered successfully${sig}` } }));
       setTimeout(() => setWebhookTestResults((prev) => { const n = { ...prev }; delete n[wh.id]; return n; }), 5000);
     },
     onError: (err, wh) => {
@@ -130,10 +148,27 @@ export default function IntegrationsLensPage() {
     },
   });
 
+  // Delivery log: integrations.webhookDeliveries returns test-fire + retry
+  // records (signed, with backoff metadata) — richer than the REST deliveries.
   const { data: deliveryLog } = useQuery({
     queryKey: ['webhook-deliveries', showDeliveryLog],
-    queryFn: () => showDeliveryLog ? apiHelpers.webhooks.deliveries(showDeliveryLog).then(r => r.data) : null,
+    queryFn: async () => {
+      if (!showDeliveryLog) return null;
+      const r = await lensRun<{ deliveries: Record<string, unknown>[] }>(
+        'integrations', 'webhookDeliveries', { webhookId: showDeliveryLog, limit: 50 },
+      );
+      return r.data.result;
+    },
     enabled: !!showDeliveryLog,
+  });
+
+  const retryDeliveryMutation = useMutation({
+    mutationFn: ({ webhookId, deliveryId }: { webhookId: string; deliveryId: string }) =>
+      lensRun('integrations', 'webhookRetry', { webhookId, deliveryId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['webhook-deliveries'] }),
+    onError: () => {
+      useUIStore.getState().addToast({ type: 'error', message: 'Retry failed or attempts exhausted.' });
+    },
   });
 
   if (isLoading) {
@@ -208,8 +243,10 @@ export default function IntegrationsLensPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-lattice-border">
+      <div className="flex gap-2 border-b border-lattice-border flex-wrap">
         {[
+          { id: 'workflows', label: 'Workflows', icon: <Zap className="w-4 h-4" />, count: undefined },
+          { id: 'connectors', label: 'Connectors', icon: <Plug className="w-4 h-4" />, count: undefined },
           { id: 'webhooks', label: 'Webhooks', icon: <Webhook className="w-4 h-4" />, count: webhooks?.count },
           { id: 'automations', label: 'Automations', icon: <Zap className="w-4 h-4" />, count: automationItems?.length },
           { id: 'services', label: 'Services', icon: <Plug className="w-4 h-4" />, count: integrationItems?.length },
@@ -225,12 +262,18 @@ export default function IntegrationsLensPage() {
           >
             {tab.icon}
             {tab.label}
-            <span className="text-xs bg-lattice-surface px-1.5 py-0.5 rounded">{tab.count || 0}</span>
+            {tab.count !== undefined && (
+              <span className="text-xs bg-lattice-surface px-1.5 py-0.5 rounded">{tab.count || 0}</span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Content */}
+      {activeTab === 'workflows' && <WorkflowsPanel />}
+
+      {activeTab === 'connectors' && <ConnectorCatalog />}
+
       {activeTab === 'webhooks' && (
         <div className="space-y-3">
           {/* Webhook Ingest URL */}
@@ -306,16 +349,31 @@ export default function IntegrationsLensPage() {
                       <p className="text-xs text-gray-500">No deliveries recorded yet.</p>
                     ) : (
                       <div className="space-y-1 max-h-48 overflow-y-auto">
-                        {(Array.isArray(deliveryLog) ? deliveryLog : (deliveryLog as Record<string, unknown>)?.deliveries as Record<string, unknown>[] || []).slice(0, 20).map((d: Record<string, unknown>, i: number) => (
-                          <div key={i} className="flex items-center justify-between bg-lattice-surface rounded px-2 py-1.5 text-xs">
+                        {(Array.isArray(deliveryLog) ? deliveryLog : (deliveryLog as Record<string, unknown>)?.deliveries as Record<string, unknown>[] || []).slice(0, 20).map((d: Record<string, unknown>, i: number) => {
+                          const code = Number(d.statusCode || d.status);
+                          const failed = !(code >= 200 && code < 300);
+                          return (
+                          <div key={i} className="flex items-center justify-between bg-lattice-surface rounded px-2 py-1.5 text-xs gap-2">
                             <span className="text-gray-400 font-mono">{String(d.event || d.type || 'delivery')}</span>
-                            <span className={`${Number(d.statusCode || d.status) >= 200 && Number(d.statusCode || d.status) < 300 ? 'text-green-400' : 'text-red-400'}`}>
+                            <span className="text-gray-600">a{String(d.attempt || 1)}</span>
+                            <span className={failed ? 'text-red-400' : 'text-green-400'}>
                               {String(d.statusCode || d.status || '—')}
                             </span>
                             <span className="text-gray-500">{d.timestamp ? new Date(String(d.timestamp)).toLocaleString() : d.createdAt ? new Date(String(d.createdAt)).toLocaleString() : '—'}</span>
-                            <span className="text-gray-500">{d.duration ? `${d.duration}ms` : '—'}</span>
+                            <span className="text-gray-500">{d.durationMs ? `${d.durationMs}ms` : d.duration ? `${d.duration}ms` : '—'}</span>
+                            {failed && Boolean(d.id) && (
+                              <button
+                                onClick={() => retryDeliveryMutation.mutate({ webhookId: wh.id as string, deliveryId: d.id as string })}
+                                disabled={retryDeliveryMutation.isPending}
+                                className="text-neon-cyan hover:underline disabled:opacity-40"
+                                title="Retry delivery with backoff"
+                              >
+                                Retry
+                              </button>
+                            )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

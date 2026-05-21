@@ -11,13 +11,21 @@ Backend: `server/domains/lawenforcement.js` registerLensAction macros (caseAnaly
 - Search per record type, police activity feed, action panel
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` CAD (computer-aided dispatch) — live call queue, unit status board, dispatch routing
-- [ ] `[M]` Evidence chain-of-custody log with transfers, signatures, and barcode/locker tracking
-- [ ] `[M]` Officer scheduling / roster with shifts, beats, and overtime
-- [ ] `[M]` Crime mapping — geospatial incident heatmap with hotspot detection
-- [ ] `[S]` Warrant lifecycle — issuance, service attempts, return, expiry tracking
-- [ ] `[M]` Report writing with statute auto-population and supervisor approval workflow
-- [ ] `[S]` Field interview / arrest booking forms with mugshot/print capture
+- [x] `[L]` CAD (computer-aided dispatch) — live call queue, unit status board, dispatch routing
+- [x] `[M]` Evidence chain-of-custody log with transfers, signatures, and barcode/locker tracking
+- [x] `[M]` Officer scheduling / roster with shifts, beats, and overtime
+- [x] `[M]` Crime mapping — geospatial incident heatmap with hotspot detection
+- [x] `[S]` Warrant lifecycle — issuance, service attempts, return, expiry tracking
+- [x] `[M]` Report writing with statute auto-population and supervisor approval workflow
+- [x] `[S]` Field interview / arrest booking forms with mugshot/print capture
 
 ## Parity
-~40% of an RMS/CAD suite. Solid records CRUD and case-strength analytics, but missing live dispatch, geospatial crime mapping, and the chain-of-custody rigor that define a production police system.
+~90% of an RMS/CAD suite. All seven backlog items now ship full-stack: the `RmsCadConsole`
+(`components/law-enforcement/RmsCadConsole.tsx`) wires the complete `lawenforcement.js` macro
+surface — live CAD dispatch with nearest-unit routing, evidence chain-of-custody with barcode
++ integrity audit, officer roster with daily/weekly overtime detection, geospatial crime
+mapping with grid-bucket hotspot detection, the warrant lifecycle, statute-auto-populating
+report writing with supervisor approval, and field-interview/arrest booking. Remaining gap is
+licensed integrations (NCIC/CLETS, real GIS tile providers) — a structural, non-buildable gap.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

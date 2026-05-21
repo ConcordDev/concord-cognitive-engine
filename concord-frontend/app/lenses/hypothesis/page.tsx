@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivFeed } from '@/components/hypothesis/ArxivFeed';
+import { StatsWorkbench } from '@/components/hypothesis/StatsWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -657,6 +658,22 @@ export default function HypothesisLensPage() {
           return null;
         })()}
       </div>
+
+      {/* Statistical Workbench — full test battery, datasets, assumptions,
+          multiple-comparison correction, pre-registration, APA export */}
+      <section className="space-y-3">
+        <h2 className="font-semibold flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-neon-cyan" />
+          Statistical Workbench
+        </h2>
+        <p className="text-xs text-gray-400">
+          Run the full classical test battery on hand-entered values or imported CSV
+          datasets — t-tests, ANOVA, chi-square, correlation and regression — with
+          assumption diagnostics, multiple-comparison correction, pre-registration
+          tracking, and APA-formatted reports.
+        </p>
+        <StatsWorkbench />
+      </section>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">

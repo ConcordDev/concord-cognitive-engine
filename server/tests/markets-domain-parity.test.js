@@ -188,6 +188,187 @@ describe("markets — STATE unavailable path", () => {
   });
 });
 
+// ════════════════════════════════════════════════════════════════
+// Prediction-market layer (Polymarket / Kalshi parity)
+// ════════════════════════════════════════════════════════════════
+
+function freshMarket(ctx = ctxA, overrides = {}) {
+  return call("market-create", ctx, {
+    question: "Will Concordia hit 1M DTUs by year end?",
+    resolutionCriteria: "Resolves YES if the substrate DTU count exceeds 1,000,000.",
+    category: "concordia",
+    ...overrides,
+  });
+}
+
+describe("markets — market creation", () => {
+  it("creates a market with seeded liquidity + live odds", () => {
+    const r = freshMarket();
+    assert.equal(r.ok, true);
+    assert.ok(r.result.market.id);
+    assert.equal(r.result.market.status, "open");
+    assert.equal(r.result.market.yesPercent, 50);
+    assert.equal(r.result.market.category, "concordia");
+  });
+
+  it("rejects too-short question / criteria", () => {
+    assert.equal(freshMarket(ctxA, { question: "no" }).ok, false);
+    assert.equal(freshMarket(ctxA, { resolutionCriteria: "x" }).ok, false);
+  });
+
+  it("rejects a past close timestamp", () => {
+    const r = freshMarket(ctxA, { closesAt: Date.now() - 1000 });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("markets — list / search / categories", () => {
+  it("lists created markets with category facets", () => {
+    freshMarket();
+    freshMarket(ctxA, { category: "sports", question: "Will the raid succeed tonight?" });
+    const r = call("market-list", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.markets.length >= 2);
+    assert.ok(Array.isArray(r.result.categories));
+    assert.ok(r.result.facets.concordia >= 1);
+  });
+
+  it("filters by category and search text", () => {
+    freshMarket(ctxA, { category: "crypto", question: "Will BTC close above 100k?" });
+    const cat = call("market-list", ctxA, { category: "crypto" });
+    assert.ok(cat.result.markets.every((m) => m.category === "crypto"));
+    const search = call("market-list", ctxA, { search: "BTC" });
+    assert.ok(search.result.markets.length >= 1);
+  });
+});
+
+describe("markets — positions + live odds", () => {
+  it("opens a position and shifts the implied probability", () => {
+    const m = freshMarket().result.market;
+    const before = call("market-odds", ctxA, { marketId: m.id, stake: 100 });
+    assert.equal(before.ok, true);
+    const pos = call("position-open", ctxA, { marketId: m.id, side: "yes", stakeSparks: 100 });
+    assert.equal(pos.ok, true);
+    assert.equal(pos.result.position.side, "yes");
+    assert.ok(pos.result.market.yesProbability > before.result.yesProbability);
+  });
+
+  it("my-positions shows mark-to-market unrealized PnL", () => {
+    const m = freshMarket().result.market;
+    call("position-open", ctxA, { marketId: m.id, side: "yes", stakeSparks: 50 });
+    const r = call("my-positions", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.positions.length >= 1);
+    assert.ok(r.result.positions[0].currentValue != null);
+  });
+
+  it("rejects bet on a non-existent market", () => {
+    const r = call("position-open", ctxA, { marketId: "nope", side: "yes", stakeSparks: 10 });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("markets — price history", () => {
+  it("records a price point per trade", () => {
+    const m = freshMarket().result.market;
+    call("position-open", ctxA, { marketId: m.id, side: "yes", stakeSparks: 30 });
+    call("position-open", ctxB, { marketId: m.id, side: "no", stakeSparks: 20 });
+    const r = call("market-history", ctxA, { marketId: m.id });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.points.length >= 3);
+    assert.ok("yesPercent" in r.result.points[0]);
+  });
+});
+
+describe("markets — cash-out", () => {
+  it("cashes out an open position with an exit fee", () => {
+    const m = freshMarket().result.market;
+    const pos = call("position-open", ctxA, { marketId: m.id, side: "yes", stakeSparks: 100 }).result.position;
+    call("position-open", ctxB, { marketId: m.id, side: "no", stakeSparks: 100 });
+    const r = call("position-cashout", ctxA, { positionId: pos.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.position.status, "cashed_out");
+    assert.ok(r.result.exitFee > 0);
+  });
+
+  it("rejects cash-out of someone else's position", () => {
+    const m = freshMarket().result.market;
+    const pos = call("position-open", ctxA, { marketId: m.id, side: "yes", stakeSparks: 10 }).result.position;
+    const r = call("position-cashout", ctxB, { positionId: pos.id });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("markets — limit orders + order book", () => {
+  it("places a resting limit order and shows it in the book", () => {
+    const m = freshMarket().result.market;
+    const o = call("order-place", ctxA, { marketId: m.id, side: "yes", limitPrice: 0.3, stakeSparks: 40 });
+    assert.equal(o.ok, true);
+    const book = call("order-book", ctxA, { marketId: m.id });
+    assert.equal(book.ok, true);
+    assert.ok(book.result.myOrders.length >= 1);
+  });
+
+  it("fills a limit order immediately when price is through the limit", () => {
+    const m = freshMarket().result.market;
+    // market starts at 0.5 — a yes order at limit 0.9 fills at once
+    const o = call("order-place", ctxA, { marketId: m.id, side: "yes", limitPrice: 0.9, stakeSparks: 25 });
+    assert.equal(o.ok, true);
+    assert.equal(o.result.immediatelyFilled, true);
+  });
+
+  it("cancels a resting order", () => {
+    const m = freshMarket().result.market;
+    const o = call("order-place", ctxA, { marketId: m.id, side: "no", limitPrice: 0.2, stakeSparks: 10 });
+    const c = call("order-cancel", ctxA, { orderId: o.result.order.id });
+    assert.equal(c.ok, true);
+    assert.equal(c.result.order.status, "cancelled");
+  });
+});
+
+describe("markets — resolution + settlement", () => {
+  it("resolves a market, pays winners, and exposes evidence", () => {
+    const m = freshMarket().result.market;
+    call("position-open", ctxA, { marketId: m.id, side: "yes", stakeSparks: 100 });
+    call("position-open", ctxB, { marketId: m.id, side: "no", stakeSparks: 100 });
+    const r = call("market-resolve", ctxA, {
+      marketId: m.id, outcome: "yes", evidence: "Substrate DTU count crossed 1M on 2026-12-30.",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.market.status, "resolved");
+    assert.equal(r.result.settlement.winners, 1);
+    assert.equal(r.result.settlement.losers, 1);
+    const res = call("market-resolution", ctxA, { marketId: m.id });
+    assert.equal(res.result.resolved, true);
+    assert.match(res.result.resolution.evidence, /crossed 1M/);
+  });
+
+  it("rejects resolution by a non-creator", () => {
+    const m = freshMarket().result.market;
+    const r = call("market-resolve", ctxB, { marketId: m.id, outcome: "yes", evidence: "not my market really" });
+    assert.equal(r.ok, false);
+  });
+
+  it("rejects resolution without evidence", () => {
+    const m = freshMarket().result.market;
+    const r = call("market-resolve", ctxA, { marketId: m.id, outcome: "no", evidence: "x" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("markets — leaderboard", () => {
+  it("ranks forecasters by realized PnL after settlement", () => {
+    const m = freshMarket().result.market;
+    call("position-open", ctxA, { marketId: m.id, side: "yes", stakeSparks: 100 });
+    call("position-open", ctxB, { marketId: m.id, side: "no", stakeSparks: 100 });
+    call("market-resolve", ctxA, { marketId: m.id, outcome: "yes", evidence: "Resolved YES per criteria." });
+    const r = call("leaderboard", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.leaderboard.length >= 1);
+    assert.equal(r.result.leaderboard[0].rank, 1);
+  });
+});
+
 describe("markets.quote-history (Yahoo Finance chart endpoint)", () => {
   it("rejects empty symbol", async () => {
     assert.equal((await call("quote-history", ctxA, {})).ok, false);

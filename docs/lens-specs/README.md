@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~59%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1381**
+- Average feature parity: **~60%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1338**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 41 |
+| 80–100% (near-complete) | 47 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 133 |
+| 40–59% (partial) | 127 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -28,12 +28,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 |---|---|---:|---:|
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
-| hypothesis | JASP / GraphPad Prism | ~40% | 7 |
-| integrations | Zapier | ~40% | 8 |
-| invariant | TLA+ / formal-verification tools | ~40% | 6 |
-| law-enforcement | Axon Records / Mark43 (RMS/CAD) | ~40% | 7 |
-| legacy | SonarQube / CAST Imaging (legacy modernization) | ~40% | 7 |
-| markets | Polymarket / Kalshi (prediction markets) | ~40% | 8 |
 | masonry | Buildertrend / masonry estimating tools | ~40% | 8 |
 | math | Wolfram Alpha | ~40% | 8 |
 | mentorship | MentorcliQ / ADPList | ~40% | 8 |
@@ -258,6 +252,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | entity | Palantir Foundry / knowledge-graph tools | ~90% | 0 |
 | event-timeline | activity-feed / audit-log viewers | ~90% | 0 |
 | experience | Maze / UserTesting | ~90% | 0 |
+| hypothesis | JASP / GraphPad Prism | ~90% | 0 |
+| integrations | Zapier | ~90% | 0 |
+| invariant | TLA+ / formal-verification tools | ~90% | 0 |
+| law-enforcement | Axon Records / Mark43 (RMS/CAD) | ~90% | 0 |
+| legacy | SonarQube / CAST Imaging (legacy modernization) | ~90% | 0 |
+| markets | Polymarket / Kalshi (prediction markets) | ~90% | 0 |
 | settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~90% | 0 |
 | tools | utility bundle (Perplexity + Babel REPL + DocuSign) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |

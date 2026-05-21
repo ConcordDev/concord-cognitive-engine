@@ -9,11 +9,12 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { LegacyChatter } from '@/components/legacy/LegacyChatter';
+import { CodebaseScanner } from '@/components/legacy/CodebaseScanner';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Clock, Target, TrendingUp, Calendar, Milestone, Rocket, Loader2, Layers, ChevronDown, Database, Server, HardDrive, Cloud, RefreshCw, Archive, GitMerge, Play } from 'lucide-react';
+import { Clock, Target, TrendingUp, Calendar, Milestone, Rocket, Loader2, Layers, ChevronDown, Archive, Play, FolderSearch } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -136,30 +137,21 @@ export default function LegacyLensPage() {
       {/* AI Actions */}
       <UniversalActions domain="legacy" artifactId={milestoneItems[0]?.id} compact />
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="lens-card">
-          <Archive className="w-5 h-5 text-neon-purple mb-2" />
-          <p className="text-2xl font-bold">{milestoneItems.length}</p>
-          <p className="text-sm text-gray-400">Legacy Items</p>
-        </div>
-        <div className="lens-card">
-          <GitMerge className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold">58%</p>
-          <p className="text-sm text-gray-400">Migration Status</p>
-        </div>
-        <div className="lens-card">
-          <RefreshCw className="w-5 h-5 text-neon-green mb-2" />
-          <p className="text-2xl font-bold">{milestones.filter(m => m.confidence > 0.7).length}/{milestones.length || 1}</p>
-          <p className="text-sm text-gray-400">Compatibility Score</p>
-        </div>
-        <div className="lens-card">
-          <TrendingUp className="w-5 h-5 text-yellow-400 mb-2" />
-          <p className="text-2xl font-bold">{milestones.length > 0 ? (milestones.reduce((s, m) => s + m.confidence, 0) / milestones.length * 100).toFixed(0) : 0}%</p>
-          <p className="text-sm text-gray-400">Avg Confidence</p>
-        </div>
+      {/* Code Modernization Workbench — real scan-driven analysis */}
+      <div className="panel p-4">
+        <h2 className="font-semibold mb-1 flex items-center gap-2">
+          <FolderSearch className="w-4 h-4 text-neon-cyan" />
+          Legacy Code Modernization
+        </h2>
+        <p className="text-sm text-gray-400 mb-4">
+          Scan a real codebase to derive technical debt, dependency cycles, churn hotspots, a sequenced
+          migration roadmap, rewrite-vs-refactor ROI, and cloud-readiness — every figure below is computed
+          from the source you ingest.
+        </p>
+        <CodebaseScanner />
       </div>
 
+      {/* Founder-vision stats — derived from milestone artifacts */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="lens-card">
           <Clock className="w-5 h-5 text-neon-purple mb-2" />
@@ -178,8 +170,8 @@ export default function LegacyLensPage() {
         </div>
         <div className="lens-card">
           <TrendingUp className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold">{((bioAge / 400) * 100).toFixed(0)}%</p>
-          <p className="text-sm text-gray-400">Progress</p>
+          <p className="text-2xl font-bold">{milestones.length > 0 ? (milestones.reduce((s, m) => s + m.confidence, 0) / milestones.length * 100).toFixed(0) : 0}%</p>
+          <p className="text-sm text-gray-400">Avg Confidence</p>
         </div>
       </div>
 
@@ -295,128 +287,6 @@ export default function LegacyLensPage() {
           compact
         />
       )}
-      </div>
-
-      {/* Migration Status */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 text-neon-cyan" />
-          Migration Status
-        </h2>
-        <p className="text-sm text-gray-400 mb-4">
-          Track the migration progress of legacy systems into the Lattice cognitive architecture.
-        </p>
-
-        <div className="space-y-4">
-          {/* Oracle Database */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-neon-green/10 rounded-lg">
-                  <Database className="w-4 h-4 text-neon-green" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">Oracle Database</p>
-                  <p className="text-xs text-gray-500">Relational data store migration</p>
-                </div>
-              </div>
-              <span className="text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green">92%</span>
-            </div>
-            <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-neon-green/80 to-neon-green rounded-full transition-all duration-500" style={{ width: '92%' }} />
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-[10px] text-gray-600">Tables: 847/920</span>
-              <span className="text-[10px] text-gray-600">ETA: 3 days</span>
-            </div>
-          </div>
-
-          {/* COBOL Mainframe */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-neon-purple/10 rounded-lg">
-                  <Server className="w-4 h-4 text-neon-purple" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">COBOL Mainframe</p>
-                  <p className="text-xs text-gray-500">Transaction processing system</p>
-                </div>
-              </div>
-              <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">67%</span>
-            </div>
-            <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-neon-purple/80 to-neon-purple rounded-full transition-all duration-500" style={{ width: '67%' }} />
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-[10px] text-gray-600">Programs: 1,240/1,850</span>
-              <span className="text-[10px] text-gray-600">ETA: 2 weeks</span>
-            </div>
-          </div>
-
-          {/* File System Archives */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-neon-cyan/10 rounded-lg">
-                  <HardDrive className="w-4 h-4 text-neon-cyan" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">File System Archives</p>
-                  <p className="text-xs text-gray-500">Unstructured document store</p>
-                </div>
-              </div>
-              <span className="text-xs px-2 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan">45%</span>
-            </div>
-            <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-neon-cyan/80 to-neon-cyan rounded-full transition-all duration-500" style={{ width: '45%' }} />
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-[10px] text-gray-600">Files: 234K/520K</span>
-              <span className="text-[10px] text-gray-600">ETA: 1 month</span>
-            </div>
-          </div>
-
-          {/* SOAP/REST APIs */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-yellow-500/10 rounded-lg">
-                  <Cloud className="w-4 h-4 text-yellow-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">SOAP/REST APIs</p>
-                  <p className="text-xs text-gray-500">Service endpoint migration</p>
-                </div>
-              </div>
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-500">28%</span>
-            </div>
-            <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-yellow-500/80 to-yellow-500 rounded-full transition-all duration-500" style={{ width: '28%' }} />
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-[10px] text-gray-600">Endpoints: 56/200</span>
-              <span className="text-[10px] text-gray-600">ETA: 6 weeks</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Overall Summary */}
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-400">Overall Migration Progress</span>
-            <span className="text-sm font-mono text-neon-cyan">58%</span>
-          </div>
-          <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-neon-purple via-neon-cyan to-neon-green rounded-full transition-all duration-500"
-              style={{ width: '58%' }}
-            />
-          </div>
-          <p className="text-xs text-gray-600 mt-2">
-            2,377 of 3,490 total components migrated across all legacy systems
-          </p>
-        </div>
       </div>
 
       {/* Backend Action Panel */}
