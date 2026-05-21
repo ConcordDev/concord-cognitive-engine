@@ -11,13 +11,15 @@ Backend: `hr` domain — employee CRUD + offboard, departments + org chart + hea
 - HR document store; compensation benchmarking; turnover analysis; live BLS labor-stats explorer
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Payroll run + pay-stub generation
-- [ ] `[M]` Benefits enrollment workflow (open enrollment, plan selection)
-- [ ] `[S]` Employee self-service portal (update info, view paystubs, request time off)
-- [ ] `[S]` Time/attendance clock-in tracking
-- [ ] `[M]` Learning management — assign + track training courses (tab exists, thin)
-- [ ] `[S]` Compliance document acknowledgement workflow
-- [ ] `[S]` Org-wide analytics dashboards (diversity, tenure, comp distribution)
+- [x] `[M]` Payroll run + pay-stub generation
+- [x] `[M]` Benefits enrollment workflow (open enrollment, plan selection)
+- [x] `[S]` Employee self-service portal (update info, view paystubs, request time off)
+- [x] `[S]` Time/attendance clock-in tracking
+- [x] `[M]` Learning management — assign + track training courses (tab exists, thin)
+- [x] `[S]` Compliance document acknowledgement workflow
+- [x] `[S]` Org-wide analytics dashboards (diversity, tenure, comp distribution)
 
 ## Parity
-~65% of BambooHR's feature surface. The HCM core (employees, org chart, time off, reviews, recruiting) is solid and broad, but it lacks payroll, benefits enrollment, an employee self-service portal, and a real LMS — features that distinguish Workday-class suites.
+~95% of BambooHR's feature surface. The HCM core (employees, org chart, time off, reviews, recruiting) plus payroll runs with pay-stub generation, benefits enrollment, a time/attendance clock, a learning management system, a compliance acknowledgement workflow, org-wide analytics, and an employee self-service portal all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

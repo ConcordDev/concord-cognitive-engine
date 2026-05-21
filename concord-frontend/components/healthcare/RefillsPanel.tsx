@@ -21,6 +21,7 @@ export function RefillsPanel() {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ patientId: '', medication: '', dose: '', pharmacy: '', notes: '' });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only filter should retrigger
   useEffect(() => { refresh(); }, [filter]);
 
   async function refresh() {

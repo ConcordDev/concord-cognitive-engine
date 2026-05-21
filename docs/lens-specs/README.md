@@ -12,13 +12,13 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~89%**
-- Total buildable features in the backlog (sum of all "Missing" items): **91**
+- Average feature parity: **~90%**
+- Total buildable features in the backlog (sum of all "Missing" items): **49**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 223 |
-| 60–79% (strong) | 12 |
+| 80–100% (near-complete) | 229 |
+| 60–79% (strong) | 6 |
 | 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
@@ -26,16 +26,10 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| government | civic portals (Accela / USA.gov) | ~65% | 7 |
-| hr | Workday / Bamboo HR | ~65% | 7 |
-| insurance | Applied Epic / EZLynx (agency management) | ~65% | 7 |
 | pets | 11pets / Pawprint | ~65% | 7 |
 | realestate | Zillow | ~65% | 7 |
 | whiteboard | Miro / FigJam | ~65% | 7 |
 | world | a 3D open-world game (Roblox / Genshin Impact) | ~65% | 8 |
-| game-design | GameMaker / Tiled + GDD tools | ~70% | 7 |
-| graph | Obsidian (graph view) / Kumu | ~70% | 7 |
-| healthcare | Epic MyChart / Epic EHR | ~70% | 7 |
 | root | a programmer's calculator | ~70% | 6 |
 | retail | Shopify | ~75% | 7 |
 | projects | Linear / Asana | ~80% | 7 |
@@ -230,9 +224,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | gallery | Google Arts & Culture / Artsy | ~95% | 0 |
 | geology | USGS apps / Rockd | ~95% | 0 |
 | goals | Notion / Weekdone OKR | ~95% | 0 |
+| government | civic portals (Accela / USA.gov) | ~95% | 0 |
+| graph | Obsidian (graph view) / Kumu | ~95% | 0 |
+| healthcare | Epic MyChart / Epic EHR | ~95% | 0 |
 | history | TimelineJS / Wikipedia | ~95% | 0 |
 | household | Cozi / Sweepy | ~95% | 0 |
+| hr | Workday / Bamboo HR | ~95% | 0 |
 | import | Flatfile / Airbyte (data import) | ~95% | 0 |
+| insurance | Applied Epic / EZLynx (agency management) | ~95% | 0 |
 | law | Ironclad (contract lifecycle) | ~95% | 0 |
 | legal | Clio (legal practice management) | ~95% | 0 |
 | linguistics | Vocabulary.com / Datamuse | ~95% | 0 |
@@ -261,3 +260,4 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | travel | Google Travel / TripIt | ~95% | 0 |
 | voice | Otter.ai | ~95% | 0 |
 | wallet | PayPal / Venmo | ~95% | 0 |
+| game-design | GameMaker / Tiled + GDD tools | ~100% | 0 |

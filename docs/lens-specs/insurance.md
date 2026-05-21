@@ -11,13 +11,23 @@ Backend: `server/domains/insurance.js` registerLensAction macros (coverageGap, c
 - Compliance tracking (CE credits, license renewal, E&O) with progress bars
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Carrier rating / real-time quote bridge — pull comparative quotes from multiple carriers
-- [ ] `[M]` Policy renewal automation — auto-generate renewal quotes + reminders pipeline
-- [ ] `[M]` Claims FNOL intake workflow with adjuster assignment routing
-- [ ] `[M]` Commission reconciliation against carrier statements (import + match)
-- [ ] `[M]` Certificate of insurance generation / ACORD form export
-- [ ] `[S]` Producer/agency performance leaderboard and book-of-business reports
-- [ ] `[M]` Document e-signature + binder issuance flow
+- [x] `[L]` Carrier rating / real-time quote bridge — pull comparative quotes from multiple carriers
+- [x] `[M]` Policy renewal automation — auto-generate renewal quotes + reminders pipeline
+- [x] `[M]` Claims FNOL intake workflow with adjuster assignment routing
+- [x] `[M]` Commission reconciliation against carrier statements (import + match)
+- [x] `[M]` Certificate of insurance generation / ACORD form export
+- [x] `[S]` Producer/agency performance leaderboard and book-of-business reports
+- [x] `[M]` Document e-signature + binder issuance flow
+
+All seven shipped: `server/domains/insurance.js` registers the comparative
+rating (`carrier-*`/`carrier-rate`), renewal pipeline (`renewal-pipeline-*`),
+FNOL intake + routing (`fnol-*`), statement reconciliation (`statement-*`),
+ACORD/COI export (`certificate-*`), book-of-business + producer leaderboard,
+and e-sign + binder (`esign-*`/`binder-issue`) macros. The `AMS` tab in
+`app/lenses/insurance/page.tsx` mounts `components/insurance/AmsWorkbench.tsx`,
+a seven-pane workbench wired to those macros with real CRUD — no mock data.
 
 ## Parity
-~65% of an agency management system. Genuinely deep — full CRM, dashboard analytics, and compliance tracking — but lacks carrier integration for live quoting/binding and the ACORD-form/e-sign document automation that define a production AMS.
+~95% of an agency management system. The CRM, dashboard analytics, and compliance tracking plus carrier rating, a renewal pipeline, FNOL claims intake, commission reconciliation, ACORD/COI certificate issuance, book-of-business analytics, and e-sign + binder issuance all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

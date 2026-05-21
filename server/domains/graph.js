@@ -755,4 +755,498 @@ export default function registerGraphActions(registerLensAction) {
       },
     };
   });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Feature-parity backlog (vs Obsidian graph view / Kumu)
+  // ─────────────────────────────────────────────────────────────────
+
+  // Build an undirected adjacency map over a stored map's nodes/edges.
+  function buildAdjacency(m) {
+    const adj = new Map();
+    for (const n of m.nodes) adj.set(n.id, new Set());
+    for (const e of m.edges) {
+      if (adj.has(e.from)) adj.get(e.from).add(e.to);
+      if (adj.has(e.to)) adj.get(e.to).add(e.from);
+    }
+    return adj;
+  }
+
+  /**
+   * local-graph
+   * Return the neighborhood of a single node up to an adjustable depth
+   * (Obsidian's "Local graph" pane). params: { mapId, nodeId, depth }
+   */
+  registerLensAction("graph", "local-graph", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const root = m.nodes.find((n) => n.id === params.nodeId);
+    if (!root) return { ok: false, error: "node not found" };
+    const depth = Math.max(1, Math.min(6, parseInt(params.depth, 10) || 1));
+    const adj = buildAdjacency(m);
+
+    // BFS outward to `depth`, tracking the shortest hop count for each node.
+    const hops = new Map([[root.id, 0]]);
+    let frontier = [root.id];
+    for (let d = 0; d < depth; d++) {
+      const next = [];
+      for (const id of frontier) {
+        for (const nb of adj.get(id) || []) {
+          if (!hops.has(nb)) { hops.set(nb, d + 1); next.push(nb); }
+        }
+      }
+      frontier = next;
+    }
+
+    const idSet = new Set(hops.keys());
+    const nodes = m.nodes
+      .filter((n) => idSet.has(n.id))
+      .map((n) => ({ ...n, hops: hops.get(n.id) }));
+    const edges = m.edges.filter((e) => idSet.has(e.from) && idSet.has(e.to));
+
+    return {
+      ok: true,
+      result: {
+        rootId: root.id,
+        depth,
+        nodeCount: nodes.length,
+        edgeCount: edges.length,
+        nodes,
+        edges,
+      },
+    };
+  });
+
+  /**
+   * filter-save — persist a named saved filter / query (Obsidian filter groups).
+   * A filter is a set of predicates evaluated against map nodes:
+   *   { labelContains, tag, central (bool), minDegree, hopWithinOf }
+   * params: { name, query }
+   */
+  function gphFilters(s, userId) {
+    if (!(s.filters instanceof Map)) s.filters = new Map();
+    if (!s.filters.has(userId)) s.filters.set(userId, []);
+    return s.filters.get(userId);
+  }
+
+  registerLensAction("graph", "filter-save", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = gphClean(params.name, 80);
+    if (!name) return { ok: false, error: "filter name required" };
+    const q = params.query && typeof params.query === "object" ? params.query : {};
+    const query = {
+      labelContains: gphClean(q.labelContains, 120) || "",
+      tag: gphClean(q.tag, 60) || "",
+      central: q.central === true || q.central === "true" || null,
+      minDegree: Number.isFinite(+q.minDegree) ? Math.max(0, parseInt(q.minDegree, 10)) : null,
+    };
+    const arr = gphFilters(s, gphActor(ctx));
+    const existing = arr.find((f) => f.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      existing.query = query;
+      existing.updatedAt = new Date().toISOString();
+      saveGraph();
+      return { ok: true, result: { filter: existing, updated: true } };
+    }
+    const filter = { id: gphId("ft"), name, query, createdAt: new Date().toISOString() };
+    arr.push(filter);
+    saveGraph();
+    return { ok: true, result: { filter, updated: false } };
+  });
+
+  registerLensAction("graph", "filter-list", (ctx, _a, _params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const filters = gphFilters(s, gphActor(ctx));
+    return { ok: true, result: { filters, count: filters.length } };
+  });
+
+  registerLensAction("graph", "filter-delete", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = gphFilters(s, gphActor(ctx));
+    const i = arr.findIndex((f) => f.id === params.id);
+    if (i < 0) return { ok: false, error: "filter not found" };
+    arr.splice(i, 1);
+    saveGraph();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  /**
+   * filter-apply — run a saved (or inline) filter against a map and return
+   * the matching node ids. params: { mapId, filterId } OR { mapId, query }
+   */
+  registerLensAction("graph", "filter-apply", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+
+    let query = params.query && typeof params.query === "object" ? params.query : null;
+    if (!query && params.filterId) {
+      const f = gphFilters(s, gphActor(ctx)).find((x) => x.id === params.filterId);
+      if (!f) return { ok: false, error: "filter not found" };
+      query = f.query;
+    }
+    if (!query) return { ok: false, error: "provide a filterId or an inline query" };
+
+    const degree = {};
+    for (const n of m.nodes) degree[n.id] = 0;
+    for (const e of m.edges) { degree[e.from] = (degree[e.from] || 0) + 1; degree[e.to] = (degree[e.to] || 0) + 1; }
+
+    const lc = (query.labelContains || "").toLowerCase();
+    const tag = (query.tag || "").toLowerCase();
+    const matched = m.nodes.filter((n) => {
+      if (lc && !String(n.label || "").toLowerCase().includes(lc)) return false;
+      if (tag && !(Array.isArray(n.tags) ? n.tags : []).some((t) => String(t).toLowerCase().includes(tag))) return false;
+      if (query.central === true && !n.central) return false;
+      if (query.minDegree != null && (degree[n.id] || 0) < query.minDegree) return false;
+      return true;
+    });
+
+    return {
+      ok: true,
+      result: {
+        mapId: m.id,
+        matchedIds: matched.map((n) => n.id),
+        matchCount: matched.length,
+        totalNodes: m.nodes.length,
+        query,
+      },
+    };
+  });
+
+  /**
+   * group-rules-set — define color-grouping rules for a map.
+   * A rule colors any node whose label/tag matches its predicate.
+   * params: { mapId, rules: [{ name, color, labelContains?, tag? }] }
+   */
+  registerLensAction("graph", "group-rules-set", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    if (!Array.isArray(params.rules)) return { ok: false, error: "rules array required" };
+    const HEX = /^#[0-9a-fA-F]{3,8}$/;
+    const rules = [];
+    for (const r of params.rules.slice(0, 24)) {
+      const name = gphClean(r?.name, 60);
+      const color = gphClean(r?.color, 12);
+      if (!name || !HEX.test(color)) continue;
+      rules.push({
+        id: gphId("gr"),
+        name,
+        color,
+        labelContains: gphClean(r?.labelContains, 120) || "",
+        tag: gphClean(r?.tag, 60) || "",
+      });
+    }
+    m.groupRules = rules;
+    saveGraph();
+    return { ok: true, result: { mapId: m.id, rules, count: rules.length } };
+  });
+
+  /**
+   * group-rules-get — return a map's color rules and the node→color
+   * assignment they produce (first matching rule wins).
+   */
+  registerLensAction("graph", "group-rules-get", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.id);
+    if (!m) return { ok: false, error: "map not found" };
+    const rules = Array.isArray(m.groupRules) ? m.groupRules : [];
+    const assignments = {};
+    for (const n of m.nodes) {
+      const label = String(n.label || "").toLowerCase();
+      const tags = (Array.isArray(n.tags) ? n.tags : []).map((t) => String(t).toLowerCase());
+      for (const r of rules) {
+        const lcOk = !r.labelContains || label.includes(r.labelContains.toLowerCase());
+        const tagOk = !r.tag || tags.some((t) => t.includes(r.tag.toLowerCase()));
+        if ((r.labelContains || r.tag) && lcOk && tagOk) { assignments[n.id] = r.color; break; }
+      }
+    }
+    return { ok: true, result: { mapId: m.id, rules, assignments, groupedCount: Object.keys(assignments).length } };
+  });
+
+  /**
+   * timeline — animate graph growth over time. Returns the subset of
+   * nodes/edges that existed at-or-before a given timeline index, derived
+   * from real createdAt timestamps. params: { mapId, index? }
+   */
+  registerLensAction("graph", "timeline", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.id || params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+
+    // The central node carries the map's createdAt; nodes without a
+    // timestamp inherit the map birth so the timeline always anchors.
+    const birth = m.createdAt || new Date(0).toISOString();
+    const stamps = [...new Set([
+      birth,
+      ...m.nodes.map((n) => n.createdAt || birth),
+      ...m.edges.map((e) => e.createdAt || birth),
+    ])].sort();
+
+    const total = stamps.length;
+    const idx = params.index == null
+      ? total - 1
+      : Math.max(0, Math.min(total - 1, parseInt(params.index, 10) || 0));
+    const cutoff = stamps[idx];
+
+    const nodes = m.nodes.filter((n) => (n.createdAt || birth) <= cutoff);
+    const visibleIds = new Set(nodes.map((n) => n.id));
+    const edges = m.edges.filter(
+      (e) => (e.createdAt || birth) <= cutoff && visibleIds.has(e.from) && visibleIds.has(e.to),
+    );
+
+    return {
+      ok: true,
+      result: {
+        mapId: m.id,
+        frameCount: total,
+        index: idx,
+        cutoff,
+        frames: stamps,
+        nodeCount: nodes.length,
+        edgeCount: edges.length,
+        nodes,
+        edges,
+      },
+    };
+  });
+
+  /**
+   * layout — compute node positions for a map using a chosen algorithm
+   * beyond force: hierarchical | radial | circular.
+   * params: { mapId, algorithm, width?, height? }
+   */
+  registerLensAction("graph", "layout", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId || params.id);
+    if (!m) return { ok: false, error: "map not found" };
+    const algorithm = String(params.algorithm || "radial").toLowerCase();
+    if (!["hierarchical", "radial", "circular"].includes(algorithm)) {
+      return { ok: false, error: "algorithm must be hierarchical, radial or circular" };
+    }
+    const width = Math.max(200, Math.min(4000, parseInt(params.width, 10) || 900));
+    const height = Math.max(200, Math.min(4000, parseInt(params.height, 10) || 600));
+    const cx = width / 2;
+    const cy = height / 2;
+    const adj = buildAdjacency(m);
+    const positions = {};
+
+    if (algorithm === "circular") {
+      const n = m.nodes.length || 1;
+      const radius = Math.min(width, height) * 0.4;
+      m.nodes.forEach((nd, i) => {
+        const a = (2 * Math.PI * i) / n;
+        positions[nd.id] = { x: cx + Math.cos(a) * radius, y: cy + Math.sin(a) * radius };
+      });
+    } else {
+      // BFS-level layering rooted at the central node (or first node).
+      const root = m.nodes.find((nd) => nd.central) || m.nodes[0];
+      const level = new Map();
+      if (root) {
+        level.set(root.id, 0);
+        let frontier = [root.id];
+        while (frontier.length) {
+          const next = [];
+          for (const id of frontier) {
+            for (const nb of adj.get(id) || []) {
+              if (!level.has(nb)) { level.set(nb, level.get(id) + 1); next.push(nb); }
+            }
+          }
+          frontier = next;
+        }
+      }
+      // Unreached nodes form a trailing ring/row.
+      let maxLevel = 0;
+      for (const v of level.values()) if (v > maxLevel) maxLevel = v;
+      const orphanLevel = maxLevel + 1;
+      for (const nd of m.nodes) if (!level.has(nd.id)) level.set(nd.id, orphanLevel);
+
+      const byLevel = new Map();
+      for (const [id, lv] of level) {
+        if (!byLevel.has(lv)) byLevel.set(lv, []);
+        byLevel.get(lv).push(id);
+      }
+      const depthCount = Math.max(1, byLevel.size);
+
+      for (const [lv, ids] of byLevel) {
+        ids.forEach((id, i) => {
+          if (algorithm === "radial") {
+            if (lv === 0) { positions[id] = { x: cx, y: cy }; return; }
+            const ring = (Math.min(width, height) * 0.42 * lv) / Math.max(1, orphanLevel + 1);
+            const a = (2 * Math.PI * i) / ids.length;
+            positions[id] = { x: cx + Math.cos(a) * ring, y: cy + Math.sin(a) * ring };
+          } else {
+            // hierarchical: rows top→bottom, evenly spaced within a row
+            const rowY = ((lv + 0.5) / (depthCount + 0.0)) * height;
+            const colX = ((i + 1) / (ids.length + 1)) * width;
+            positions[id] = { x: colX, y: rowY };
+          }
+        });
+      }
+    }
+
+    // Persist positions on the map so layout survives a reload.
+    m.layout = { algorithm, width, height, positions, computedAt: new Date().toISOString() };
+    saveGraph();
+    return {
+      ok: true,
+      result: { mapId: m.id, algorithm, width, height, positions, nodeCount: m.nodes.length },
+    };
+  });
+
+  /**
+   * sync-to-dtu — bidirectional sync: push a node's edited label/notes
+   * back to its underlying DTU so graph edits update the substrate.
+   * params: { mapId, nodeId } — node must carry a dtuId reference.
+   */
+  registerLensAction("graph", "sync-to-dtu", (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return { ok: false, error: "STATE unavailable" };
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const node = m.nodes.find((n) => n.id === params.nodeId);
+    if (!node) return { ok: false, error: "node not found" };
+    if (!node.dtuId) return { ok: false, error: "node has no linked DTU to sync" };
+    if (!(STATE.dtus instanceof Map)) return { ok: false, error: "DTU store unavailable" };
+    const dtu = STATE.dtus.get(node.dtuId);
+    if (!dtu) return { ok: false, error: "linked DTU not found" };
+
+    // Apply the graph-side edits to the DTU's human-readable layers.
+    dtu.title = node.label;
+    if (node.notes) {
+      dtu.content = node.notes;
+      if (dtu.human && typeof dtu.human === "object") dtu.human.summary = node.notes;
+    }
+    dtu.updatedAt = new Date().toISOString();
+    node.syncedAt = dtu.updatedAt;
+    saveGraph();
+    return {
+      ok: true,
+      result: { mapId: m.id, nodeId: node.id, dtuId: node.dtuId, syncedAt: dtu.updatedAt },
+    };
+  });
+
+  /**
+   * link-node-dtu — attach a DTU reference to a graph node so it can be
+   * bidirectionally synced. params: { mapId, nodeId, dtuId }
+   */
+  registerLensAction("graph", "link-node-dtu", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId);
+    if (!m) return { ok: false, error: "map not found" };
+    const node = m.nodes.find((n) => n.id === params.nodeId);
+    if (!node) return { ok: false, error: "node not found" };
+    const dtuId = gphClean(params.dtuId, 80);
+    if (!dtuId) return { ok: false, error: "dtuId required" };
+    node.dtuId = dtuId;
+    saveGraph();
+    return { ok: true, result: { nodeId: node.id, dtuId } };
+  });
+
+  /**
+   * export-view — export a map (optionally a filtered subset) as JSON or
+   * SVG with the current view state (zoom/pan/layout) baked in.
+   * params: { mapId, format ('svg'|'json'), zoom?, panX?, panY?, nodeIds? }
+   */
+  registerLensAction("graph", "export-view", (ctx, _a, params = {}) => {
+    const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const m = findMap(s, ctx, params.mapId || params.id);
+    if (!m) return { ok: false, error: "map not found" };
+    const format = String(params.format || "json").toLowerCase();
+    if (!["json", "svg"].includes(format)) return { ok: false, error: "format must be json or svg" };
+
+    const zoom = Number.isFinite(+params.zoom) ? Math.max(0.1, Math.min(8, +params.zoom)) : 1;
+    const panX = Number.isFinite(+params.panX) ? +params.panX : 0;
+    const panY = Number.isFinite(+params.panY) ? +params.panY : 0;
+
+    const idFilter = Array.isArray(params.nodeIds) && params.nodeIds.length
+      ? new Set(params.nodeIds.map(String))
+      : null;
+    const nodes = idFilter ? m.nodes.filter((n) => idFilter.has(n.id)) : m.nodes;
+    const visible = new Set(nodes.map((n) => n.id));
+    const edges = m.edges.filter((e) => visible.has(e.from) && visible.has(e.to));
+
+    // Resolve positions: persisted layout > stored node x/y > circular fallback.
+    const layoutPos = m.layout?.positions || {};
+    const pos = {};
+    nodes.forEach((n, i) => {
+      if (layoutPos[n.id]) pos[n.id] = layoutPos[n.id];
+      else if (Number.isFinite(n.x) && Number.isFinite(n.y)) pos[n.id] = { x: n.x, y: n.y };
+      else {
+        const a = (2 * Math.PI * i) / Math.max(1, nodes.length);
+        pos[n.id] = { x: 450 + Math.cos(a) * 300, y: 300 + Math.sin(a) * 300 };
+      }
+    });
+
+    const viewState = { zoom, panX, panY, layout: m.layout?.algorithm || "force" };
+
+    if (format === "json") {
+      return {
+        ok: true,
+        result: {
+          format: "json",
+          mapId: m.id,
+          viewState,
+          export: {
+            title: m.title,
+            viewState,
+            nodes: nodes.map((n) => ({ id: n.id, label: n.label, central: !!n.central, ...pos[n.id] })),
+            edges: edges.map((e) => ({ from: e.from, to: e.to, label: e.label || "" })),
+          },
+        },
+      };
+    }
+
+    // SVG — bake the view transform into a <g transform="...">.
+    const W = 900;
+    const H = 600;
+    const esc = (v) => String(v == null ? "" : v)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const ruleColor = (() => {
+      const rules = Array.isArray(m.groupRules) ? m.groupRules : [];
+      return (n) => {
+        const label = String(n.label || "").toLowerCase();
+        const tags = (Array.isArray(n.tags) ? n.tags : []).map((t) => String(t).toLowerCase());
+        for (const r of rules) {
+          const lcOk = !r.labelContains || label.includes(r.labelContains.toLowerCase());
+          const tagOk = !r.tag || tags.some((t) => t.includes(r.tag.toLowerCase()));
+          if ((r.labelContains || r.tag) && lcOk && tagOk) return r.color;
+        }
+        return n.central ? "#a855f7" : "#00d4ff";
+      };
+    })();
+
+    const edgeSvg = edges.map((e) => {
+      const a = pos[e.from];
+      const b = pos[e.to];
+      if (!a || !b) return "";
+      return `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#475569" stroke-width="1.5"/>`;
+    }).join("");
+    const nodeSvg = nodes.map((n) => {
+      const p = pos[n.id];
+      if (!p) return "";
+      const r = n.central ? 14 : 9;
+      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${ruleColor(n)}"/>`
+        + `<text x="${p.x.toFixed(1)}" y="${(p.y + r + 12).toFixed(1)}" font-size="11" fill="#cbd5e1" text-anchor="middle">${esc(String(n.label).slice(0, 28))}</text>`;
+    }).join("");
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
+      + `<rect width="${W}" height="${H}" fill="#0a0e14"/>`
+      + `<g transform="translate(${panX.toFixed(1)},${panY.toFixed(1)}) scale(${zoom})">`
+      + edgeSvg + nodeSvg
+      + `</g></svg>`;
+
+    return {
+      ok: true,
+      result: {
+        format: "svg",
+        mapId: m.id,
+        viewState,
+        nodeCount: nodes.length,
+        edgeCount: edges.length,
+        svg,
+      },
+    };
+  });
 }

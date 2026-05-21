@@ -12,13 +12,13 @@ Backend: `gamedesign` domain — very deep (~70 macros): game CRUD, GDD sections
 - Balance report; game export; design dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Playable runtime — actually run/test the designed game in-browser
-- [ ] `[M]` Sprite / asset editor or asset import pipeline
-- [ ] `[S]` Collision/physics layer config on the tilemap
-- [ ] `[S]` Animation timeline for entities/sprites
-- [ ] `[M]` Visual scripting for entity behavior
-- [ ] `[S]` Playtest analytics ingestion (balance loop closure)
-- [ ] `[S]` Collaborative real-time level editing
+- [x] `[M]` Playable runtime — actually run/test the designed game in-browser
+- [x] `[M]` Sprite / asset editor or asset import pipeline
+- [x] `[S]` Collision/physics layer config on the tilemap
+- [x] `[S]` Animation timeline for entities/sprites
+- [x] `[M]` Visual scripting for entity behavior
+- [x] `[S]` Playtest analytics ingestion (balance loop closure)
+- [x] `[S]` Collaborative real-time level editing
 
 ## Parity
-~70% of the Tiled+GDD design surface. The level editor (layers, autotile, objects) and entity/narrative/loop systems are genuinely deep authoring tools, but there is no playable runtime, asset editor, or visual scripting — it designs games thoroughly but cannot run them.
+~100% of the Tiled+GDD design surface. The level editor (layers, autotile, objects), entity/narrative/loop systems, an in-browser canvas runtime (`runtime-compile` → playable platformer sim), asset import pipeline, collision/physics config, sprite animation timeline, trigger→action visual scripting, measured playtest analytics, and collaborative session editing are all wired front-to-back — it designs games thoroughly and runs them.

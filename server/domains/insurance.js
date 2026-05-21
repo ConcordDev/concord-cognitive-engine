@@ -1102,6 +1102,627 @@ export default function registerInsuranceActions(registerLensAction) {
     };
   });
 
+  // ════════════════════════════════════════════════════════════════════
+  // Feature-parity backlog — Applied Epic / EZLynx agency-management
+  // gaps. All STATE-backed per ctx.userId; no synthetic data — every
+  // value is real user input or computed from real input/platform state.
+  // ════════════════════════════════════════════════════════════════════
+
+  function getAmsState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.insAms) STATE.insAms = {};
+    const s = STATE.insAms;
+    for (const k of [
+      "carriers", "renewalPipeline", "fnol", "statements",
+      "certificates", "envelopes",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+
+  // ── #1 Carrier rating / quote bridge ────────────────────────────────
+  // The user maintains their OWN carrier roster + appointment terms.
+  // Comparative rating against a carrier roster is a real computation;
+  // it requires NO external API because the inputs are the user's own
+  // appointed carriers and the prospect risk profile they enter.
+  registerLensAction("insurance", "carrier-add", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = insClean(params.name, 120);
+    if (!name) return { ok: false, error: "carrier name required" };
+    const carrier = {
+      id: insId("car"), name,
+      amBestRating: insClean(params.amBestRating, 8) || null,
+      naicNumber: insClean(params.naicNumber, 20) || null,
+      appointed: params.appointed !== false,
+      lines: Array.isArray(params.lines)
+        ? params.lines.map((l) => insClean(l, 30).toLowerCase()).filter(Boolean).slice(0, 12)
+        : [],
+      baseCommissionPct: Math.max(0, Math.min(100, insNum(params.baseCommissionPct))),
+      // user-provided relative rate index for their book (1.0 = market avg)
+      rateIndex: params.rateIndex != null ? Math.max(0.1, insNum(params.rateIndex, 1)) : 1,
+      claimsServiceScore: Math.max(0, Math.min(10, insNum(params.claimsServiceScore))),
+      createdAt: insNow(),
+    };
+    insListB(s.carriers, insAid(ctx)).push(carrier);
+    saveInsState();
+    return { ok: true, result: { carrier } };
+  });
+
+  registerLensAction("insurance", "carrier-list", (ctx, _a, _params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { carriers: s.carriers.get(insAid(ctx)) || [] } };
+  });
+
+  registerLensAction("insurance", "carrier-delete", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.carriers.get(insAid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "carrier not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Comparative rate run: scores each appointed carrier that writes the
+  // requested line against the prospect's own base premium estimate.
+  registerLensAction("insurance", "carrier-rate", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const line = insClean(params.line, 30).toLowerCase();
+    if (!line) return { ok: false, error: "line required (auto, home, life…)" };
+    const basePremium = Math.max(0, insNum(params.basePremium));
+    if (basePremium <= 0) return { ok: false, error: "basePremium must be > 0 — your underwriting estimate" };
+    const riskFactor = Math.max(0.5, Math.min(3, insNum(params.riskFactor, 1)));
+    const carriers = (s.carriers.get(insAid(ctx)) || [])
+      .filter((c) => c.appointed && (c.lines.length === 0 || c.lines.includes(line)));
+    if (!carriers.length) {
+      return {
+        ok: false,
+        error: "No appointed carrier writes this line. Add carriers with carrier-add first.",
+      };
+    }
+    const rows = carriers.map((c) => {
+      const annualPremium = Math.round(basePremium * (c.rateIndex || 1) * riskFactor * 100) / 100;
+      const commission = Math.round(annualPremium * ((c.baseCommissionPct || 0) / 100) * 100) / 100;
+      // composite fit: price weight 0.6, service 0.25, rating present 0.15
+      const priceScore = 100 - Math.min(100, ((c.rateIndex || 1) - 0.6) * 120);
+      const serviceScore = (c.claimsServiceScore || 0) * 10;
+      const ratingScore = c.amBestRating ? 100 : 50;
+      const fitScore = Math.round(
+        Math.max(0, priceScore) * 0.6 + serviceScore * 0.25 + ratingScore * 0.15,
+      );
+      return {
+        carrierId: c.id, carrier: c.name, amBestRating: c.amBestRating,
+        annualPremium, commission,
+        commissionPct: c.baseCommissionPct || 0,
+        claimsServiceScore: c.claimsServiceScore || 0,
+        fitScore,
+      };
+    }).sort((a, b) => a.annualPremium - b.annualPremium);
+    const cheapest = rows[0]?.annualPremium || 0;
+    const dearest = rows[rows.length - 1]?.annualPremium || 0;
+    const bestFit = [...rows].sort((a, b) => b.fitScore - a.fitScore)[0] || null;
+    return {
+      ok: true,
+      result: {
+        line, basePremium, riskFactor,
+        quotes: rows,
+        cheapest, spread: Math.round((dearest - cheapest) * 100) / 100,
+        bestPrice: rows[0] || null,
+        bestFit,
+        carrierCount: rows.length,
+      },
+    };
+  });
+
+  // ── #2 Policy renewal automation ────────────────────────────────────
+  // Builds a renewal pipeline from the user's real policies, generating
+  // a renewal-quote shell + reminder schedule per upcoming expiry.
+  registerLensAction("insurance", "renewal-pipeline-build", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ins = getInsState(); if (!ins) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const horizonDays = Math.max(1, Math.min(365, insNum(params.horizonDays, 90)));
+    const horizon = Date.now() + horizonDays * INS_DAY;
+    const policies = (ins.policies.get(userId) || []).filter((p) => p.status === "active");
+    const pipeline = [];
+    for (const p of policies) {
+      if (!p.renewalDate) continue;
+      const t = new Date(p.renewalDate + "T00:00:00Z").getTime();
+      if (isNaN(t) || t > horizon) continue;
+      const daysUntil = Math.floor((t - Date.now()) / INS_DAY);
+      // proposed renewal premium: carry the current premium; rate change
+      // is applied only when the user supplies one (no fabricated uplift).
+      const ratePct = insNum(params.defaultRateChangePct, 0);
+      const proposedPremium = Math.round(p.annualPremium * (1 + ratePct / 100) * 100) / 100;
+      pipeline.push({
+        id: insId("rnw"),
+        policyId: p.id, carrier: p.carrier, kind: p.kind,
+        policyNumber: p.policyNumber,
+        currentPremium: p.annualPremium,
+        proposedPremium,
+        rateChangePct: ratePct,
+        renewalDate: p.renewalDate,
+        daysUntil,
+        stage: daysUntil < 0 ? "lapsed" : "to_quote",
+        remarketing: false,
+        reminders: [
+          { at: insDay(new Date(t - 45 * INS_DAY).toISOString()), label: "Begin renewal review" },
+          { at: insDay(new Date(t - 21 * INS_DAY).toISOString()), label: "Send renewal proposal" },
+          { at: insDay(new Date(t - 7 * INS_DAY).toISOString()), label: "Confirm renewal / bind" },
+        ],
+        createdAt: insNow(),
+      });
+    }
+    s.renewalPipeline.set(userId, pipeline);
+    saveInsState();
+    return {
+      ok: true,
+      result: {
+        pipeline: pipeline.sort((a, b) => a.daysUntil - b.daysUntil),
+        count: pipeline.length,
+        premiumAtRisk: Math.round(pipeline.reduce((a, r) => a + r.currentPremium, 0) * 100) / 100,
+        lapsed: pipeline.filter((r) => r.stage === "lapsed").length,
+      },
+    };
+  });
+
+  registerLensAction("insurance", "renewal-pipeline-list", (ctx, _a, _params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pipeline = (s.renewalPipeline.get(insAid(ctx)) || [])
+      .slice().sort((a, b) => a.daysUntil - b.daysUntil);
+    const byStage = {};
+    for (const r of pipeline) byStage[r.stage] = (byStage[r.stage] || 0) + 1;
+    return { ok: true, result: { pipeline, count: pipeline.length, byStage } };
+  });
+
+  registerLensAction("insurance", "renewal-advance", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.renewalPipeline.get(insAid(ctx)) || [];
+    const item = arr.find((r) => r.id === params.id);
+    if (!item) return { ok: false, error: "renewal item not found" };
+    const stages = ["to_quote", "quoted", "proposed", "bound", "lapsed"];
+    if (params.stage != null && stages.includes(params.stage)) {
+      item.stage = params.stage;
+    } else {
+      const i = stages.indexOf(item.stage);
+      item.stage = stages[Math.min(i + 1, 3)];
+    }
+    if (params.proposedPremium != null) {
+      item.proposedPremium = Math.max(0, insNum(params.proposedPremium));
+      item.rateChangePct = item.currentPremium > 0
+        ? Math.round(((item.proposedPremium - item.currentPremium) / item.currentPremium) * 1000) / 10
+        : 0;
+    }
+    if (params.remarketing != null) item.remarketing = params.remarketing === true;
+    saveInsState();
+    return { ok: true, result: { renewal: item } };
+  });
+
+  // ── #3 Claims FNOL intake + adjuster routing ────────────────────────
+  registerLensAction("insurance", "fnol-intake", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ins = getInsState(); if (!ins) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const description = insClean(params.description, 600);
+    if (!description) return { ok: false, error: "loss description required" };
+    const lossType = insClean(params.lossType, 40).toLowerCase() || "other";
+    const policy = params.policyId ? findPolicy(ins, userId, params.policyId) : null;
+    const estLoss = Math.max(0, insNum(params.estimatedLoss));
+    // Severity tier drives routing: catastrophic / large / standard / fast-track.
+    const injuries = params.injuries === true;
+    let severity = "standard";
+    if (injuries || estLoss >= 100000) severity = "catastrophic";
+    else if (estLoss >= 25000) severity = "large_loss";
+    else if (estLoss > 0 && estLoss < 2500) severity = "fast_track";
+    const queue = { catastrophic: "major_loss_unit", large_loss: "complex_claims",
+      fast_track: "express_claims", standard: "general_claims" }[severity];
+    // Adjuster assignment routes to a user-defined adjuster list if given.
+    const pool = Array.isArray(params.adjusters)
+      ? params.adjusters.map((x) => insClean(x, 80)).filter(Boolean) : [];
+    const fnolList = ins.claims.get(userId) || [];
+    const assigned = pool.length ? pool[fnolList.length % pool.length] : null;
+    const fnol = {
+      id: insId("fnol"),
+      policyId: policy ? policy.id : (params.policyId ? String(params.policyId) : null),
+      carrier: policy ? policy.carrier : insClean(params.carrier, 120) || null,
+      description, lossType,
+      lossDate: insDay(params.lossDate) || insDay(insNow()),
+      reportedAt: insNow(),
+      location: insClean(params.location, 200) || null,
+      injuries,
+      estimatedLoss: estLoss,
+      severity, routedTo: queue,
+      assignedAdjuster: assigned,
+      reservesSet: 0,
+      sla: { contactByHours: severity === "catastrophic" ? 4 : severity === "fast_track" ? 48 : 24 },
+      status: "open",
+      timeline: [{ at: insNow(), event: "FNOL received", actor: "intake" }],
+    };
+    if (assigned) fnol.timeline.push({ at: insNow(), event: `Routed to ${assigned} (${queue})`, actor: "router" });
+    insListB(s.fnol, userId).push(fnol);
+    saveInsState();
+    return { ok: true, result: { fnol } };
+  });
+
+  registerLensAction("insurance", "fnol-list", (ctx, _a, _params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const fnol = (s.fnol.get(insAid(ctx)) || []).slice().reverse();
+    const byQueue = {};
+    for (const f of fnol) byQueue[f.routedTo] = (byQueue[f.routedTo] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        fnol, count: fnol.length, byQueue,
+        open: fnol.filter((f) => f.status === "open").length,
+        totalReserves: Math.round(fnol.reduce((a, f) => a + insNum(f.reservesSet), 0) * 100) / 100,
+      },
+    };
+  });
+
+  registerLensAction("insurance", "fnol-update", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const fnol = (s.fnol.get(insAid(ctx)) || []).find((f) => f.id === params.id);
+    if (!fnol) return { ok: false, error: "FNOL not found" };
+    if (params.assignedAdjuster != null) {
+      fnol.assignedAdjuster = insClean(params.assignedAdjuster, 80) || null;
+      fnol.timeline.push({ at: insNow(), event: `Adjuster set: ${fnol.assignedAdjuster}`, actor: "router" });
+    }
+    if (params.reservesSet != null) {
+      fnol.reservesSet = Math.max(0, insNum(params.reservesSet));
+      fnol.timeline.push({ at: insNow(), event: `Reserves set to ${fnol.reservesSet}`, actor: "adjuster" });
+    }
+    if (params.status != null && ["open", "investigating", "estimating", "settled", "closed", "denied"].includes(params.status)) {
+      fnol.status = params.status;
+      fnol.timeline.push({ at: insNow(), event: `Status → ${params.status}`, actor: "adjuster" });
+    }
+    saveInsState();
+    return { ok: true, result: { fnol } };
+  });
+
+  // ── #4 Commission reconciliation against carrier statements ─────────
+  registerLensAction("insurance", "statement-import", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const carrier = insClean(params.carrier, 120);
+    if (!carrier) return { ok: false, error: "carrier required" };
+    const lines = Array.isArray(params.lines) ? params.lines : [];
+    if (!lines.length) return { ok: false, error: "statement lines required" };
+    const norm = lines.map((l) => ({
+      policyNumber: insClean(l.policyNumber, 60),
+      premium: Math.max(0, insNum(l.premium)),
+      commission: Math.max(0, insNum(l.commission)),
+    })).filter((l) => l.policyNumber);
+    const statement = {
+      id: insId("stmt"), carrier,
+      period: insClean(params.period, 30) || insDay(insNow()).slice(0, 7),
+      lines: norm,
+      statedTotal: Math.round(norm.reduce((a, l) => a + l.commission, 0) * 100) / 100,
+      importedAt: insNow(),
+      reconciled: false,
+    };
+    insListB(s.statements, insAid(ctx)).push(statement);
+    saveInsState();
+    return { ok: true, result: { statement } };
+  });
+
+  registerLensAction("insurance", "statement-list", (ctx, _a, _params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return {
+      ok: true,
+      result: { statements: (s.statements.get(insAid(ctx)) || []).slice().reverse() },
+    };
+  });
+
+  // Reconcile a statement against the user's expected commission, computed
+  // from their real policies (annualPremium × policy-level commission rate
+  // supplied per policy or via params.expectedRatePct).
+  registerLensAction("insurance", "statement-reconcile", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ins = getInsState(); if (!ins) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const statement = (s.statements.get(userId) || []).find((st) => st.id === params.statementId);
+    if (!statement) return { ok: false, error: "statement not found" };
+    const ratePct = Math.max(0, Math.min(100, insNum(params.expectedRatePct, 0)));
+    const policies = ins.policies.get(userId) || [];
+    const polByNumber = new Map(policies.map((p) => [p.policyNumber, p]));
+    const matchedRows = [], unmatchedRows = [], discrepancyRows = [];
+    let statedTotal = 0, expectedTotal = 0;
+    for (const line of statement.lines) {
+      const pol = polByNumber.get(line.policyNumber);
+      if (!pol) {
+        unmatchedRows.push({ ...line, reason: "no_policy_on_file" });
+        continue;
+      }
+      // statedTotal/expectedTotal compare only matched lines — an unmatched
+      // line has no expected counterpart so it would skew the net variance.
+      statedTotal += line.commission;
+      const expected = Math.round(
+        (pol.annualPremium || line.premium) * (ratePct / 100) * 100,
+      ) / 100;
+      expectedTotal += expected;
+      const variance = Math.round((line.commission - expected) * 100) / 100;
+      const row = {
+        policyNumber: line.policyNumber, carrier: statement.carrier,
+        statedCommission: line.commission, expectedCommission: expected, variance,
+      };
+      matchedRows.push(row);
+      if (Math.abs(variance) >= 0.01) discrepancyRows.push(row);
+    }
+    const summary = {
+      ratePct,
+      matched: matchedRows.length,
+      unmatched: unmatchedRows.length,
+      discrepancies: discrepancyRows.length,
+      statedTotal: Math.round(statedTotal * 100) / 100,
+      expectedTotal: Math.round(expectedTotal * 100) / 100,
+      netVariance: Math.round((statedTotal - expectedTotal) * 100) / 100,
+    };
+    statement.reconciled = true;
+    statement.reconciledAt = insNow();
+    statement.reconciliation = summary;
+    saveInsState();
+    return {
+      ok: true,
+      result: {
+        statementId: statement.id,
+        ...summary,
+        matchedRows, unmatchedRows, discrepancyRows,
+      },
+    };
+  });
+
+  // ── #5 Certificate of insurance / ACORD form export ─────────────────
+  registerLensAction("insurance", "certificate-issue", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ins = getInsState(); if (!ins) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const policy = findPolicy(ins, userId, params.policyId);
+    if (!policy) return { ok: false, error: "policy not found" };
+    const holder = insClean(params.certificateHolder, 200);
+    if (!holder) return { ok: false, error: "certificateHolder required" };
+    const form = ["ACORD_25", "ACORD_27", "ACORD_28"].includes(params.formType)
+      ? params.formType : "ACORD_25";
+    const cert = {
+      id: insId("coi"),
+      formType: form,
+      policyId: policy.id, policyNumber: policy.policyNumber,
+      carrier: policy.carrier, lineOfBusiness: policy.kind,
+      insured: insClean(params.insuredName, 200) || null,
+      certificateHolder: holder,
+      description: insClean(params.description, 400) || null,
+      coverages: {
+        effectiveDate: policy.effectiveDate,
+        expiryDate: policy.renewalDate,
+        eachOccurrence: policy.liabilityLimit ?? null,
+        deductible: policy.deductible ?? null,
+      },
+      additionalInsured: params.additionalInsured === true,
+      issuedAt: insNow(),
+      revoked: false,
+    };
+    insListB(s.certificates, userId).push(cert);
+    saveInsState();
+    return { ok: true, result: { certificate: cert } };
+  });
+
+  registerLensAction("insurance", "certificate-list", (ctx, _a, _params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return {
+      ok: true,
+      result: { certificates: (s.certificates.get(insAid(ctx)) || []).slice().reverse() },
+    };
+  });
+
+  // Render an ACORD-shaped plain-text form from a real certificate record.
+  registerLensAction("insurance", "certificate-export", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cert = (s.certificates.get(insAid(ctx)) || []).find((c) => c.id === params.id);
+    if (!cert) return { ok: false, error: "certificate not found" };
+    const L = [];
+    L.push(`${cert.formType.replace("_", " ")} — CERTIFICATE OF LIABILITY INSURANCE`);
+    L.push(`Issued: ${cert.issuedAt}`);
+    L.push("");
+    L.push(`INSURED: ${cert.insured || "(not specified)"}`);
+    L.push(`CARRIER: ${cert.carrier}`);
+    L.push(`POLICY NUMBER: ${cert.policyNumber}`);
+    L.push(`LINE OF BUSINESS: ${cert.lineOfBusiness}`);
+    L.push(`POLICY EFFECTIVE: ${cert.coverages.effectiveDate}  EXPIRES: ${cert.coverages.expiryDate}`);
+    if (cert.coverages.eachOccurrence != null) L.push(`EACH OCCURRENCE LIMIT: ${cert.coverages.eachOccurrence}`);
+    if (cert.coverages.deductible != null) L.push(`DEDUCTIBLE: ${cert.coverages.deductible}`);
+    L.push("");
+    L.push(`CERTIFICATE HOLDER: ${cert.certificateHolder}`);
+    if (cert.additionalInsured) L.push("CERTIFICATE HOLDER IS NAMED AS ADDITIONAL INSURED.");
+    if (cert.description) L.push(`DESCRIPTION OF OPERATIONS: ${cert.description}`);
+    L.push("");
+    L.push("Should the above-described policy be cancelled before the expiration date,");
+    L.push("notice will be delivered in accordance with the policy provisions.");
+    return {
+      ok: true,
+      result: {
+        certificateId: cert.id, formType: cert.formType,
+        text: L.join("\n"),
+        filename: `${cert.formType}_${cert.policyNumber}.txt`,
+      },
+    };
+  });
+
+  registerLensAction("insurance", "certificate-revoke", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cert = (s.certificates.get(insAid(ctx)) || []).find((c) => c.id === params.id);
+    if (!cert) return { ok: false, error: "certificate not found" };
+    cert.revoked = true;
+    cert.revokedAt = insNow();
+    saveInsState();
+    return { ok: true, result: { certificateId: cert.id, revoked: true } };
+  });
+
+  // ── #6 Producer / book-of-business performance leaderboard ──────────
+  registerLensAction("insurance", "book-of-business", (ctx, _a, _params = {}) => {
+    const ins = getInsState(); if (!ins) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const policies = ins.policies.get(userId) || [];
+    const claims = ins.claims.get(userId) || [];
+    const active = policies.filter((p) => p.status === "active");
+    const writtenPremium = Math.round(active.reduce((a, p) => a + insNum(p.annualPremium), 0) * 100) / 100;
+    const byKind = {};
+    for (const p of active) {
+      if (!byKind[p.kind]) byKind[p.kind] = { count: 0, premium: 0 };
+      byKind[p.kind].count++;
+      byKind[p.kind].premium += insNum(p.annualPremium);
+    }
+    const lines = Object.entries(byKind).map(([kind, v]) => ({
+      kind, policies: v.count,
+      premium: Math.round(v.premium * 100) / 100,
+      sharePct: writtenPremium > 0 ? Math.round((v.premium / writtenPremium) * 1000) / 10 : 0,
+    })).sort((a, b) => b.premium - a.premium);
+    const paidClaims = claims.filter((c) => ["paid", "closed"].includes(c.status));
+    const incurred = paidClaims.reduce((a, c) => a + insNum(c.payoutAmount || c.claimAmount), 0);
+    return {
+      ok: true,
+      result: {
+        totalPolicies: policies.length,
+        activePolicies: active.length,
+        writtenPremium,
+        avgPremium: active.length ? Math.round((writtenPremium / active.length) * 100) / 100 : 0,
+        lossRatio: writtenPremium > 0 ? Math.round((incurred / writtenPremium) * 1000) / 10 : 0,
+        retentionRate: policies.length
+          ? Math.round((active.length / policies.length) * 1000) / 10 : 0,
+        lineMix: lines,
+        topLine: lines[0] || null,
+        openClaims: claims.filter((c) => !["paid", "closed", "denied"].includes(c.status)).length,
+      },
+    };
+  });
+
+  // Producer leaderboard: ranks the user's own carriers by premium placed
+  // and commission earned — a real book metric, no fabricated peers.
+  registerLensAction("insurance", "producer-leaderboard", (ctx, _a, params = {}) => {
+    const ins = getInsState(); if (!ins) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const dim = ["carrier", "kind"].includes(params.dimension) ? params.dimension : "carrier";
+    const policies = (ins.policies.get(userId) || []).filter((p) => p.status === "active");
+    const ratePct = Math.max(0, Math.min(100, insNum(params.commissionRatePct, 0)));
+    const groups = {};
+    for (const p of policies) {
+      const key = dim === "carrier" ? p.carrier : p.kind;
+      if (!groups[key]) groups[key] = { name: key, policies: 0, premium: 0 };
+      groups[key].policies++;
+      groups[key].premium += insNum(p.annualPremium);
+    }
+    const rows = Object.values(groups).map((g) => ({
+      name: g.name, policies: g.policies,
+      premium: Math.round(g.premium * 100) / 100,
+      estCommission: Math.round(g.premium * (ratePct / 100) * 100) / 100,
+    })).sort((a, b) => b.premium - a.premium)
+      .map((r, i) => ({ rank: i + 1, ...r }));
+    return {
+      ok: true,
+      result: {
+        dimension: dim, leaderboard: rows,
+        totalPremium: Math.round(rows.reduce((a, r) => a + r.premium, 0) * 100) / 100,
+        totalEstCommission: Math.round(rows.reduce((a, r) => a + r.estCommission, 0) * 100) / 100,
+      },
+    };
+  });
+
+  // ── #7 Document e-signature + binder issuance ───────────────────────
+  registerLensAction("insurance", "esign-create", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ins = getInsState(); if (!ins) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const title = insClean(params.title, 160);
+    if (!title) return { ok: false, error: "document title required" };
+    const signers = (Array.isArray(params.signers) ? params.signers : [])
+      .map((sg) => ({
+        name: insClean(sg.name, 120),
+        email: insClean(sg.email, 160) || null,
+        role: insClean(sg.role, 40).toLowerCase() || "signer",
+        signed: false, signedAt: null,
+      }))
+      .filter((sg) => sg.name);
+    if (!signers.length) return { ok: false, error: "at least one signer required" };
+    const policy = params.policyId ? findPolicy(ins, userId, params.policyId) : null;
+    const envelope = {
+      id: insId("env"),
+      title,
+      docType: insClean(params.docType, 40).toLowerCase() || "application",
+      policyId: policy ? policy.id : null,
+      signers,
+      status: "sent",
+      binderIssued: false,
+      createdAt: insNow(),
+      audit: [{ at: insNow(), event: "Envelope sent for signature" }],
+    };
+    insListB(s.envelopes, userId).push(envelope);
+    saveInsState();
+    return { ok: true, result: { envelope } };
+  });
+
+  registerLensAction("insurance", "esign-list", (ctx, _a, _params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return {
+      ok: true,
+      result: { envelopes: (s.envelopes.get(insAid(ctx)) || []).slice().reverse() },
+    };
+  });
+
+  registerLensAction("insurance", "esign-sign", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const env = (s.envelopes.get(insAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!env) return { ok: false, error: "envelope not found" };
+    if (env.status === "voided") return { ok: false, error: "envelope is voided" };
+    const signerName = insClean(params.signerName, 120);
+    const signer = env.signers.find((sg) => sg.name === signerName);
+    if (!signer) return { ok: false, error: "signer not found on envelope" };
+    if (signer.signed) return { ok: false, error: "signer has already signed" };
+    signer.signed = true;
+    signer.signedAt = insNow();
+    env.audit.push({ at: insNow(), event: `${signer.name} signed` });
+    if (env.signers.every((sg) => sg.signed)) {
+      env.status = "completed";
+      env.completedAt = insNow();
+      env.audit.push({ at: insNow(), event: "All parties signed — envelope completed" });
+    }
+    saveInsState();
+    return {
+      ok: true,
+      result: {
+        envelopeId: env.id, status: env.status,
+        signedCount: env.signers.filter((sg) => sg.signed).length,
+        totalSigners: env.signers.length,
+      },
+    };
+  });
+
+  // Binder: a temporary proof of coverage. Issuable only once an
+  // application envelope is fully signed.
+  registerLensAction("insurance", "binder-issue", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const env = (s.envelopes.get(insAid(ctx)) || []).find((e) => e.id === params.envelopeId);
+    if (!env) return { ok: false, error: "envelope not found" };
+    if (env.status !== "completed") {
+      return { ok: false, error: "all signers must sign before a binder can issue" };
+    }
+    if (env.binderIssued) return { ok: false, error: "binder already issued" };
+    const termDays = Math.max(1, Math.min(90, insNum(params.termDays, 30)));
+    const binder = {
+      id: insId("bnd"),
+      envelopeId: env.id,
+      carrier: insClean(params.carrier, 120) || null,
+      coverageSummary: insClean(params.coverageSummary, 400) || env.title,
+      effectiveDate: insDay(params.effectiveDate) || insDay(insNow()),
+      expiryDate: insDay(new Date(Date.now() + termDays * INS_DAY).toISOString()),
+      termDays,
+      issuedAt: insNow(),
+    };
+    env.binderIssued = true;
+    env.binder = binder;
+    env.audit.push({ at: insNow(), event: `Binder issued — ${termDays}-day term` });
+    saveInsState();
+    return { ok: true, result: { binder } };
+  });
+
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("insurance", "insurance-dashboard", (ctx, _a, _params = {}) => {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };

@@ -6,24 +6,42 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Users, UserRound, CalendarOff, Target, Briefcase, Loader2 } from 'lucide-react';
+import {
+  Users, UserRound, CalendarOff, Target, Briefcase, Loader2,
+  DollarSign, ShieldCheck, Clock, GraduationCap, FileCheck, BarChart3, UserCog,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { HrPeoplePanel } from './HrPeoplePanel';
 import { HrTimeOffPanel } from './HrTimeOffPanel';
 import { HrPerformancePanel } from './HrPerformancePanel';
 import { HrRecruitingPanel } from './HrRecruitingPanel';
+import { HrPayrollPanel } from './HrPayrollPanel';
+import { HrBenefitsPanel } from './HrBenefitsPanel';
+import { HrClockPanel } from './HrClockPanel';
+import { HrLearningPanel } from './HrLearningPanel';
+import { HrCompliancePanel } from './HrCompliancePanel';
+import { HrAnalyticsPanel } from './HrAnalyticsPanel';
+import { HrSelfServicePanel } from './HrSelfServicePanel';
 
 interface Dash {
   headcount: number; departments: number; pendingTimeoff: number;
   openOnboarding: number; openJobs: number; applicants: number; openGoals: number;
 }
-type TabId = 'people' | 'timeoff' | 'performance' | 'recruiting';
+type TabId = 'people' | 'timeoff' | 'performance' | 'recruiting'
+  | 'payroll' | 'benefits' | 'clock' | 'training' | 'compliance' | 'analytics' | 'self';
 const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
   { id: 'people', label: 'People', icon: UserRound },
   { id: 'timeoff', label: 'Time Off', icon: CalendarOff },
+  { id: 'payroll', label: 'Payroll', icon: DollarSign },
+  { id: 'benefits', label: 'Benefits', icon: ShieldCheck },
+  { id: 'clock', label: 'Time Clock', icon: Clock },
   { id: 'performance', label: 'Performance', icon: Target },
+  { id: 'training', label: 'Training', icon: GraduationCap },
+  { id: 'compliance', label: 'Compliance', icon: FileCheck },
   { id: 'recruiting', label: 'Recruiting', icon: Briefcase },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'self', label: 'Self-Service', icon: UserCog },
 ];
 
 export function HrWorkdaySection() {
@@ -77,8 +95,15 @@ export function HrWorkdaySection() {
       <div className="p-4">
         {tab === 'people' && <HrPeoplePanel onChange={refreshDash} />}
         {tab === 'timeoff' && <HrTimeOffPanel onChange={refreshDash} />}
+        {tab === 'payroll' && <HrPayrollPanel />}
+        {tab === 'benefits' && <HrBenefitsPanel />}
+        {tab === 'clock' && <HrClockPanel />}
         {tab === 'performance' && <HrPerformancePanel />}
+        {tab === 'training' && <HrLearningPanel />}
+        {tab === 'compliance' && <HrCompliancePanel />}
         {tab === 'recruiting' && <HrRecruitingPanel onChange={refreshDash} />}
+        {tab === 'analytics' && <HrAnalyticsPanel />}
+        {tab === 'self' && <HrSelfServicePanel />}
       </div>
     </div>
   );

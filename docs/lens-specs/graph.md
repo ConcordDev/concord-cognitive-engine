@@ -11,13 +11,15 @@ Backend: `graph` domain — nodeAnalysis, pathFind, clusterDetect, graphMetrics,
 - DTU lattice integration; search, filter, play/pause force simulation, export
 
 ## Missing — buildable feature backlog
-- [ ] `[S]` Local graph view — neighborhood of a single node at adjustable depth
-- [ ] `[M]` Saved graph filters / query language (Obsidian's filter groups)
-- [ ] `[S]` Node grouping by color rules + custom group definitions
-- [ ] `[M]` Timeline scrubber — animate graph growth over time
-- [ ] `[S]` Bidirectional sync — edits in graph update the underlying DTUs
-- [ ] `[M]` Auto-layout algorithms (hierarchical, radial, circular) beyond force
-- [ ] `[S]` Export as image/SVG with current view state
+- [x] `[S]` Local graph view — neighborhood of a single node at adjustable depth
+- [x] `[M]` Saved graph filters / query language (Obsidian's filter groups)
+- [x] `[S]` Node grouping by color rules + custom group definitions
+- [x] `[M]` Timeline scrubber — animate graph growth over time
+- [x] `[S]` Bidirectional sync — edits in graph update the underlying DTUs
+- [x] `[M]` Auto-layout algorithms (hierarchical, radial, circular) beyond force
+- [x] `[S]` Export as image/SVG with current view state
 
 ## Parity
-~70% of Obsidian's graph-view feature surface. Multiple visualization modes (2D/3D/mind-map/fractal), real graph analytics, and lattice integration make this strong, but it lacks local-graph focus, saved filter groups, a timeline scrubber, and alternative layouts.
+~95% of Obsidian's graph-view feature surface. Multiple visualization modes (2D/3D/mind-map/fractal), graph analytics, lattice integration plus a local-graph view, saved filters/query language, node color-group rules, a timeline scrubber, bidirectional DTU sync, auto-layout algorithms, and export-as-image/SVG all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -15,6 +15,12 @@ import { InboxPanel } from './InboxPanel';
 import { RefillsPanel } from './RefillsPanel';
 import { SmartPhrasesPanel } from './SmartPhrasesPanel';
 import { CodeLookup } from './CodeLookup';
+import { TelehealthPanel } from './TelehealthPanel';
+import { ResultsReleasePanel } from './ResultsReleasePanel';
+import { DeviceDataPanel } from './DeviceDataPanel';
+import { InsurancePanel } from './InsurancePanel';
+import { RecordSharingPanel } from './RecordSharingPanel';
+import { CdsOrderCheckPanel } from './CdsOrderCheckPanel';
 
 interface Patient { id: string; firstName: string; lastName: string; mrn: string }
 
@@ -65,9 +71,15 @@ export function EpicSection() {
       {nav === 'patients'     && <PatientsPanel onSelect={selectPatient} />}
       {nav === 'chart'        && (patientId ? <PatientChartPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'orders'       && (patientId ? <OrdersPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
+      {nav === 'cds'          && (patientId ? <CdsOrderCheckPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'care'         && (patientId ? <CareManagementPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'encounters'   && (patientId ? <EncountersPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'schedule'     && <ScheduleHint />}
+      {nav === 'telehealth'   && (patientId ? <TelehealthPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
+      {nav === 'results'      && (patientId ? <ResultsReleasePanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
+      {nav === 'devices'      && (patientId ? <DeviceDataPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
+      {nav === 'insurance'    && (patientId ? <InsurancePanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
+      {nav === 'sharing'      && (patientId ? <RecordSharingPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'inbox'        && <InboxPanel />}
       {nav === 'refills'      && <RefillsPanel />}
       {nav === 'scribe'       && <AIScribePanel patient={patient} encounter={null} />}

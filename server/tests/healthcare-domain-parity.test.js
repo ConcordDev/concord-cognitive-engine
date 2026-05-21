@@ -572,3 +572,231 @@ describe("healthcare visit-summary", () => {
     assert.ok(r.result.text.includes("AFTER-VISIT SUMMARY"));
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  Feature-parity backlog — results release, telehealth, device
+//  ingestion, insurance/claims, CDS alerts, FHIR export, proxy.
+// ═════════════════════════════════════════════════════════════════
+
+describe("healthcare — patient portal results release (labs-release / labs-portal-view)", () => {
+  it("releases a lab with provider commentary; portal view shows only released labs", () => {
+    const p = newPatient();
+    const lab1 = call("labs-record", ctxA, { patientId: p.id, test: "glucose", value: 95 }).result.lab;
+    call("labs-record", ctxA, { patientId: p.id, test: "potassium", value: 7.2 }); // abnormal, not released
+    // Before release the portal view is empty
+    let portal = call("labs-portal-view", ctxA, { patientId: p.id });
+    assert.equal(portal.result.labs.length, 0);
+    const rel = call("labs-release", ctxA, { id: lab1.id, commentary: "Your glucose is normal.", releasedBy: "Dr. Lee" });
+    assert.equal(rel.ok, true);
+    assert.equal(rel.result.lab.released, true);
+    assert.equal(rel.result.lab.providerCommentary, "Your glucose is normal.");
+    portal = call("labs-portal-view", ctxA, { patientId: p.id });
+    assert.equal(portal.result.labs.length, 1);
+    assert.equal(portal.result.labs[0].id, lab1.id);
+  });
+
+  it("flags abnormal results in the portal view", () => {
+    const p = newPatient();
+    const abn = call("labs-record", ctxA, { patientId: p.id, test: "potassium", value: 7.5 }).result.lab;
+    call("labs-release", ctxA, { id: abn.id });
+    const portal = call("labs-portal-view", ctxA, { patientId: p.id });
+    assert.equal(portal.result.abnormalCount, 1);
+    assert.equal(portal.result.hasCritical, true);
+  });
+
+  it("labs-release rejects an unknown lab id", () => {
+    assert.equal(call("labs-release", ctxA, { id: "nope" }).ok, false);
+  });
+});
+
+describe("healthcare — telehealth video visits", () => {
+  it("creates, lists and advances a telehealth visit lifecycle", async () => {
+    const p = newPatient();
+    const created = await call("telehealth-create", ctxA, { patientId: p.id, provider: "Dr. Ng" });
+    assert.equal(created.ok, true);
+    assert.equal(created.result.visit.status, "scheduled");
+    assert.ok(created.result.visit.joinToken);
+    const list = call("telehealth-list", ctxA, { patientId: p.id });
+    assert.equal(list.result.visits.length, 1);
+    const started = call("telehealth-update-status", ctxA, { id: created.result.visit.id, status: "in_progress" });
+    assert.equal(started.result.visit.status, "in_progress");
+    assert.ok(started.result.visit.startedAt);
+    const done = call("telehealth-update-status", ctxA, { id: created.result.visit.id, status: "completed" });
+    assert.ok(done.result.visit.endedAt);
+  });
+
+  it("telehealth-create rejects an unknown patient", async () => {
+    const r = await call("telehealth-create", ctxA, { patientId: "ghost" });
+    assert.equal(r.ok, false);
+  });
+
+  it("telehealth-update-status rejects an invalid status", async () => {
+    const p = newPatient();
+    const v = (await call("telehealth-create", ctxA, { patientId: p.id })).result.visit;
+    assert.equal(call("telehealth-update-status", ctxA, { id: v.id, status: "bogus" }).ok, false);
+  });
+});
+
+describe("healthcare — wearable / device data ingestion", () => {
+  it("ingests readings, flags out-of-range, and summarises trend per metric", () => {
+    const p = newPatient();
+    call("device-ingest", ctxA, { patientId: p.id, metric: "glucose", value: 90, recordedAt: "2026-05-01T08:00:00Z" });
+    const high = call("device-ingest", ctxA, { patientId: p.id, metric: "glucose", value: 210, recordedAt: "2026-05-02T08:00:00Z" });
+    assert.equal(high.result.reading.flag, "high");
+    const readings = call("device-readings", ctxA, { patientId: p.id });
+    assert.equal(readings.result.readings.length, 2);
+    const glucoseSummary = readings.result.summary.find(s => s.metric === "glucose");
+    assert.equal(glucoseSummary.count, 2);
+    assert.equal(glucoseSummary.trend, "up");
+  });
+
+  it("device-ingest rejects a non-numeric value", () => {
+    const p = newPatient();
+    assert.equal(call("device-ingest", ctxA, { patientId: p.id, metric: "glucose", value: "abc" }).ok, false);
+  });
+
+  it("device-readings filters by metric", () => {
+    const p = newPatient();
+    call("device-ingest", ctxA, { patientId: p.id, metric: "heart_rate", value: 72 });
+    call("device-ingest", ctxA, { patientId: p.id, metric: "spo2", value: 98 });
+    const hr = call("device-readings", ctxA, { patientId: p.id, metric: "heart_rate" });
+    assert.equal(hr.result.readings.length, 1);
+    assert.equal(hr.result.readings[0].metric, "heart_rate");
+  });
+});
+
+describe("healthcare — insurance coverage + claims workflow", () => {
+  it("adds a policy and verifies eligibility", () => {
+    const p = newPatient();
+    const pol = call("coverage-add", ctxA, { patientId: p.id, payer: "Aetna", memberId: "W12345", planType: "PPO", deductibleUsd: 1000 });
+    assert.equal(pol.ok, true);
+    assert.equal(pol.result.policy.eligibilityStatus, "unverified");
+    const v = call("coverage-verify", ctxA, { id: pol.result.policy.id });
+    assert.equal(v.result.eligibilityStatus, "active");
+    assert.equal(v.result.remainingDeductible, 1000);
+    assert.equal(call("coverage-list", ctxA, { patientId: p.id }).result.policies.length, 1);
+  });
+
+  it("coverage-add rejects missing payer or memberId", () => {
+    const p = newPatient();
+    assert.equal(call("coverage-add", ctxA, { patientId: p.id, payer: "X" }).ok, false);
+  });
+
+  it("creates a claim, submits it and adjudicates a partial payment", () => {
+    const p = newPatient();
+    const claim = call("claim-create", ctxA, {
+      patientId: p.id,
+      lines: [{ cpt: "99213", description: "Office visit", units: 1, chargeUsd: 200 }],
+      diagnosisCodes: ["I10"],
+    });
+    assert.equal(claim.ok, true);
+    assert.equal(claim.result.claim.totalChargeUsd, 200);
+    assert.equal(claim.result.claim.status, "draft");
+    const submitted = call("claim-submit", ctxA, { id: claim.result.claim.id });
+    assert.equal(submitted.result.claim.status, "submitted");
+    const adj = call("claim-adjudicate", ctxA, { id: claim.result.claim.id, allowedUsd: 150, paidUsd: 120 });
+    assert.equal(adj.result.claim.status, "partial");
+    assert.equal(adj.result.claim.patientResponsibilityUsd, 30);
+  });
+
+  it("claim-create rejects a claim with no CPT line items", () => {
+    const p = newPatient();
+    assert.equal(call("claim-create", ctxA, { patientId: p.id, lines: [] }).ok, false);
+  });
+
+  it("claim-adjudicate rejects paid exceeding allowed", () => {
+    const p = newPatient();
+    const c = call("claim-create", ctxA, { patientId: p.id, lines: [{ cpt: "99213", chargeUsd: 100 }] }).result.claim;
+    call("claim-submit", ctxA, { id: c.id });
+    assert.equal(call("claim-adjudicate", ctxA, { id: c.id, allowedUsd: 50, paidUsd: 80 }).ok, false);
+  });
+});
+
+describe("healthcare — clinical decision support at order entry (cds-order-check)", () => {
+  it("fires a Beers-criteria advisory for a benzodiazepine in an elderly patient", () => {
+    const p = newPatient(ctxA, { dob: "1945-01-01" });
+    const r = call("cds-order-check", ctxA, { patientId: p.id, orderKind: "medication", orderName: "Lorazepam 1mg" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.alerts.some(a => a.code === "BEERS"));
+  });
+
+  it("fires a renal-risk advisory for contrast imaging with an elevated creatinine", () => {
+    const p = newPatient();
+    call("labs-record", ctxA, { patientId: p.id, test: "creatinine", value: 2.4 });
+    const r = call("cds-order-check", ctxA, { patientId: p.id, orderKind: "imaging", orderName: "CT abdomen with contrast" });
+    assert.ok(r.result.alerts.some(a => a.code === "RENAL_RISK"));
+    assert.equal(r.result.hasMajor, true);
+  });
+
+  it("returns clean when an order has no advisories", () => {
+    const p = newPatient(ctxA, { dob: "1990-01-01" });
+    const r = call("cds-order-check", ctxA, { patientId: p.id, orderKind: "lab", orderName: "CBC with diff" });
+    assert.equal(r.result.clean, true);
+  });
+
+  it("cds-order-check rejects an unknown patient or missing order name", () => {
+    assert.equal(call("cds-order-check", ctxA, { patientId: "ghost", orderName: "x" }).ok, false);
+    const p = newPatient();
+    assert.equal(call("cds-order-check", ctxA, { patientId: p.id, orderName: "" }).ok, false);
+  });
+});
+
+describe("healthcare — FHIR R4 export", () => {
+  it("exports a FHIR collection Bundle with Patient + clinical resources", () => {
+    const p = newPatient(ctxA, { firstName: "Fhir", lastName: "Pt", dob: "1980-02-02", sex: "F" });
+    call("problems-add", ctxA, { patientId: p.id, name: "Hypertension", icd10: "I10" });
+    call("allergies-add", ctxA, { patientId: p.id, allergen: "Penicillin", severity: "severe" });
+    call("immunizations-add", ctxA, { patientId: p.id, vaccine: "Influenza" });
+    const r = call("fhir-export", ctxA, { patientId: p.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.fhirVersion, "4.0.1");
+    assert.equal(r.result.bundle.resourceType, "Bundle");
+    const kinds = r.result.bundle.entry.map(e => e.resource.resourceType);
+    assert.ok(kinds.includes("Patient"));
+    assert.ok(kinds.includes("Condition"));
+    assert.ok(kinds.includes("AllergyIntolerance"));
+    assert.ok(kinds.includes("Immunization"));
+  });
+
+  it("scopes the export to immunizations only when requested", () => {
+    const p = newPatient();
+    call("problems-add", ctxA, { patientId: p.id, name: "HTN" });
+    call("immunizations-add", ctxA, { patientId: p.id, vaccine: "Influenza" });
+    const r = call("fhir-export", ctxA, { patientId: p.id, scope: "immunizations" });
+    const kinds = new Set(r.result.bundle.entry.map(e => e.resource.resourceType));
+    assert.deepEqual([...kinds].sort(), ["Immunization", "Patient"]);
+    assert.equal(r.result.scope, "immunizations");
+  });
+
+  it("fhir-export rejects an unknown patient", () => {
+    assert.equal(call("fhir-export", ctxA, { patientId: "ghost" }).ok, false);
+  });
+});
+
+describe("healthcare — family / proxy access", () => {
+  it("grants, lists and revokes proxy access", () => {
+    const p = newPatient();
+    const g = call("proxy-grant", ctxA, { patientId: p.id, proxyName: "Jane Caregiver", relationship: "caregiver", accessLevel: "view" });
+    assert.equal(g.ok, true);
+    assert.equal(g.result.grant.status, "active");
+    const list = call("proxy-list", ctxA, { patientId: p.id });
+    assert.equal(list.result.grants.length, 1);
+    assert.equal(list.result.activeCount, 1);
+    const rev = call("proxy-revoke", ctxA, { id: g.result.grant.id });
+    assert.equal(rev.result.grant.status, "revoked");
+    assert.ok(rev.result.grant.revokedAt);
+  });
+
+  it("proxy-grant rejects an unknown patient or missing proxy name", () => {
+    assert.equal(call("proxy-grant", ctxA, { patientId: "ghost", proxyName: "X" }).ok, false);
+    const p = newPatient();
+    assert.equal(call("proxy-grant", ctxA, { patientId: p.id, proxyName: "" }).ok, false);
+  });
+
+  it("proxy-revoke rejects re-revoking an already-revoked grant", () => {
+    const p = newPatient();
+    const g = call("proxy-grant", ctxA, { patientId: p.id, proxyName: "Y" }).result.grant;
+    call("proxy-revoke", ctxA, { id: g.id });
+    assert.equal(call("proxy-revoke", ctxA, { id: g.id }).ok, false);
+  });
+});

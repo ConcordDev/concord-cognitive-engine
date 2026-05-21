@@ -16,6 +16,7 @@ import PolicyVault from '@/components/insurance/PolicyVault';
 import ClaimTracker from '@/components/insurance/ClaimTracker';
 import QuoteCompare from '@/components/insurance/QuoteCompare';
 import CoverageAnalyzer from '@/components/insurance/CoverageAnalyzer';
+import AmsWorkbench from '@/components/insurance/AmsWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -75,7 +76,7 @@ import LiveFeed from '@/components/lens/LiveFeed';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Dashboard' | 'Policies' | 'Claims' | 'Calculator' | 'Clients' | 'Commissions' | 'Compliance' | 'Compare' | 'Documents' | 'Vault' | 'ClaimTracker' | 'QuoteCompare' | 'GapAnalysis';
+type ModeTab = 'Dashboard' | 'Policies' | 'Claims' | 'Calculator' | 'Clients' | 'Commissions' | 'Compliance' | 'Compare' | 'Documents' | 'Vault' | 'ClaimTracker' | 'QuoteCompare' | 'GapAnalysis' | 'AMS';
 type ArtifactType = 'Policy' | 'Claim' | 'Quote' | 'InsuredClient' | 'Commission' | 'ComplianceItem' | 'Document';
 
 type PolicyType = 'auto' | 'home' | 'life' | 'commercial' | 'health' | 'umbrella';
@@ -202,6 +203,7 @@ const MODE_TABS: { id: ModeTab; icon: typeof Shield; artifactType?: ArtifactType
   { id: 'ClaimTracker', icon: FileText, artifactType: 'Claim' },
   { id: 'QuoteCompare', icon: DollarSign, artifactType: 'Quote' },
   { id: 'GapAnalysis', icon: AlertTriangle, artifactType: 'Policy' },
+  { id: 'AMS', icon: Building2 },
 ];
 
 const POLICY_TYPES: PolicyType[] = ['auto', 'home', 'life', 'commercial', 'health', 'umbrella'];
@@ -993,7 +995,7 @@ export default function InsuranceLensPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {mode !== 'Dashboard' && (
+          {mode !== 'Dashboard' && !['Vault', 'ClaimTracker', 'QuoteCompare', 'GapAnalysis', 'AMS'].includes(mode) && (
             <button onClick={openNew} className={ds.btnPrimary}>
               <Plus className="w-4 h-4" /> New {currentType}
             </button>
@@ -1118,7 +1120,7 @@ export default function InsuranceLensPage() {
       </nav>
 
       {/* Search / Filter */}
-      {mode !== 'Dashboard' && (
+      {mode !== 'Dashboard' && mode !== 'AMS' && (
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -1135,7 +1137,7 @@ export default function InsuranceLensPage() {
       )}
 
       {/* Domain Actions */}
-      {mode !== 'Dashboard' && (
+      {mode !== 'Dashboard' && mode !== 'AMS' && (
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => handleAction('renewalAlert')} className={ds.btnSecondary}>
             <RefreshCw className="w-4 h-4" /> Renewal Alert
@@ -1158,9 +1160,10 @@ export default function InsuranceLensPage() {
       {mode === 'ClaimTracker' && <div className="p-4"><ClaimTracker /></div>}
       {mode === 'QuoteCompare' && <div className="p-4"><QuoteCompare /></div>}
       {mode === 'GapAnalysis' && <div className="p-4"><CoverageAnalyzer /></div>}
+      {mode === 'AMS' && <div className="p-4"><AmsWorkbench /></div>}
 
       {/* Content */}
-      {!['Vault','ClaimTracker','QuoteCompare','GapAnalysis'].includes(mode) && mode === 'Dashboard' ? renderDashboard() : !['Vault','ClaimTracker','QuoteCompare','GapAnalysis','Dashboard'].includes(mode) && (
+      {!['Vault','ClaimTracker','QuoteCompare','GapAnalysis','AMS'].includes(mode) && mode === 'Dashboard' ? renderDashboard() : !['Vault','ClaimTracker','QuoteCompare','GapAnalysis','AMS','Dashboard'].includes(mode) && (
         <>
           {isLoading ? (
             <div className="flex items-center justify-center py-20">

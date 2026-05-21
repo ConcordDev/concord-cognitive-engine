@@ -80,7 +80,7 @@ const CONDITION_COLOUR: Record<GovAsset['condition'], string> = {
 
 export function CityGovShell({
   totalServiceRequests, openRequests, closed30d, avgResolutionDays,
-  permitCount, scheduledInspections, departmentCount, assetCount, brokenAssets,
+  permitCount, scheduledInspections, assetCount, brokenAssets,
   requests, permits, assets, className,
 }: CityGovShellProps) {
   return (

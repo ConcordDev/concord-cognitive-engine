@@ -10,13 +10,15 @@ Backend: `healthcare` domain — very deep (~60 macros): symptom triage, medicat
 - Drug-interaction checking, copay charging, visit summaries, dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Patient portal results release with provider commentary + abnormal flagging
-- [ ] `[M]` Telehealth video visit integration
-- [ ] `[S]` Wearable / device data ingestion (HR, glucose, BP from home)
-- [ ] `[M]` Insurance eligibility + claims/billing workflow
-- [ ] `[S]` Clinical decision support alerts at order entry (beyond drug interactions)
-- [ ] `[M]` Immunization / health-record sharing (FHIR export to other systems)
-- [ ] `[S]` Family / proxy access to another patient's chart
+- [x] `[M]` Patient portal results release with provider commentary + abnormal flagging
+- [x] `[M]` Telehealth video visit integration
+- [x] `[S]` Wearable / device data ingestion (HR, glucose, BP from home)
+- [x] `[M]` Insurance eligibility + claims/billing workflow
+- [x] `[S]` Clinical decision support alerts at order entry (beyond drug interactions)
+- [x] `[M]` Immunization / health-record sharing (FHIR export to other systems)
+- [x] `[S]` Family / proxy access to another patient's chart
 
 ## Parity
-~70% of the combined MyChart+EHR surface. The clinical depth (SOAP, e-sign, orders, care gaps, AI scribe) and patient tools (triage, meds, appointments, messaging) are genuinely substantial; main gaps are telehealth video, insurance/billing, and device-data ingestion.
+~95% of the combined MyChart+EHR surface. Clinical depth (SOAP, e-sign, orders, care gaps, AI scribe) and patient tools (triage, meds, appointments, messaging) plus patient-portal results release, telehealth video visits, wearable/device ingestion, insurance eligibility + claims, clinical decision support, FHIR R4 sharing, and family/proxy access all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

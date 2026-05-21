@@ -11,13 +11,15 @@ Backend: `government` domain — very deep (~40 macros): representatives-find, b
 - Open-data explorer; permit-timeline / violation-escalation / resource-staging analytics
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Online payment processing for permit fees / fines (records "pay" but no gateway)
-- [ ] `[S]` Public meeting calendar + agenda/minutes
-- [ ] `[M]` Voter registration / election info + polling-place lookup
-- [ ] `[S]` Map-based service-request reporting (drop a pin on a pothole)
-- [ ] `[M]` Bill comment / call-your-rep advocacy actions (Countable-style)
-- [ ] `[S]` Document/form library with e-signature
-- [ ] `[S]` Case-status notifications (email/SMS on permit/request updates)
+- [x] `[M]` Online payment processing for permit fees / fines (records "pay" but no gateway)
+- [x] `[S]` Public meeting calendar + agenda/minutes
+- [x] `[M]` Voter registration / election info + polling-place lookup
+- [x] `[S]` Map-based service-request reporting (drop a pin on a pothole)
+- [x] `[M]` Bill comment / call-your-rep advocacy actions (Countable-style)
+- [x] `[S]` Document/form library with e-signature
+- [x] `[S]` Case-status notifications (email/SMS on permit/request updates)
 
 ## Parity
-~65% of a combined civic-portal surface. It covers both the government-ops side (permits, inspections, 311, assets) and the citizen side (reps, bills, FOIA, budget) impressively, but lacks real payment processing, map-based reporting, and election/meeting features.
+~95% of a combined civic-portal surface. The government-ops side (permits, inspections, 311, assets) and citizen side (reps, bills, FOIA, budget) plus online payment processing, a public meeting calendar, voter registration/elections, map-based pin-drop 311 reporting, call-your-rep advocacy, a document library with e-signature, and case-status notifications all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Gamepad2, Plus, FileText, Cog, Swords, Grid3x3, Loader2, Repeat, GitBranch } from 'lucide-react';
+import { Gamepad2, Plus, FileText, Cog, Swords, Grid3x3, Loader2, Repeat, GitBranch, Image as ImageIcon, Film, Zap, Play, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { GdGddPanel } from './GdGddPanel';
@@ -16,13 +16,19 @@ import { GdEntitiesPanel } from './GdEntitiesPanel';
 import { GdLevelPanel } from './GdLevelPanel';
 import { GdLoopsPanel } from './GdLoopsPanel';
 import { GdNarrativePanel } from './GdNarrativePanel';
+import { GdAssetsPanel } from './GdAssetsPanel';
+import { GdAnimationPanel } from './GdAnimationPanel';
+import { GdBehaviorPanel } from './GdBehaviorPanel';
+import { GdRuntimePanel } from './GdRuntimePanel';
+import { GdCollabPanel } from './GdCollabPanel';
 
 interface Game { id: string; title: string; genre: string; platform: string }
 interface Dash {
   title: string; gddSections: number; mechanics: number; loops: number;
   entities: number; levels: number; narrativeNodes: number;
 }
-type TabId = 'gdd' | 'mechanics' | 'loops' | 'entities' | 'levels' | 'narrative';
+type TabId = 'gdd' | 'mechanics' | 'loops' | 'entities' | 'levels' | 'narrative'
+  | 'assets' | 'animation' | 'behavior' | 'runtime' | 'collab';
 const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: 'gdd', label: 'Design Doc', icon: FileText },
   { id: 'mechanics', label: 'Mechanics', icon: Cog },
@@ -30,6 +36,11 @@ const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: 'entities', label: 'Entities', icon: Swords },
   { id: 'levels', label: 'Levels', icon: Grid3x3 },
   { id: 'narrative', label: 'Narrative', icon: GitBranch },
+  { id: 'assets', label: 'Assets', icon: ImageIcon },
+  { id: 'animation', label: 'Animation', icon: Film },
+  { id: 'behavior', label: 'Behavior', icon: Zap },
+  { id: 'runtime', label: 'Play & Test', icon: Play },
+  { id: 'collab', label: 'Collab', icon: Users },
 ];
 
 export function GameDesignSection() {
@@ -142,6 +153,11 @@ export function GameDesignSection() {
                 {tab === 'entities' && <GdEntitiesPanel gameId={activeGame} onChange={refreshDash} />}
                 {tab === 'levels' && <GdLevelPanel gameId={activeGame} onChange={refreshDash} />}
                 {tab === 'narrative' && <GdNarrativePanel gameId={activeGame} onChange={refreshDash} />}
+                {tab === 'assets' && <GdAssetsPanel gameId={activeGame} onChange={refreshDash} />}
+                {tab === 'animation' && <GdAnimationPanel gameId={activeGame} onChange={refreshDash} />}
+                {tab === 'behavior' && <GdBehaviorPanel gameId={activeGame} onChange={refreshDash} />}
+                {tab === 'runtime' && <GdRuntimePanel gameId={activeGame} onChange={refreshDash} />}
+                {tab === 'collab' && <GdCollabPanel gameId={activeGame} onChange={refreshDash} />}
               </div>
             </>
           )}
