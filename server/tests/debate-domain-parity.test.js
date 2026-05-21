@@ -108,3 +108,182 @@ describe("debate — analysis macros still intact", () => {
     assert.equal(r.ok, true);
   });
 });
+
+/* ── Kialo parity backlog ───────────────────────────────────────── */
+
+describe("debate — per-claim impact propagation", () => {
+  it("claim-impact rates a claim and reports the ancestor chain", () => {
+    const d = newDebate();
+    const root = call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "Saves commute time" }).result.claim;
+    const child = call("claim-add", ctxA, { debateId: d.id, parentId: root.id, stance: "pro", text: "Two hours daily reclaimed" }).result.claim;
+    const r = call("claim-impact", ctxA, { debateId: d.id, claimId: child.id, impact: 5 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.impact, 5);
+    assert.ok(r.result.propagatesTo.some((p) => p.id === root.id));
+  });
+
+  it("higher impact on a pro sub-claim raises the parent effective strength", () => {
+    const d = newDebate();
+    const root = call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "Productivity rises" }).result.claim;
+    const child = call("claim-add", ctxA, { debateId: d.id, parentId: root.id, stance: "pro", text: "Fewer office distractions" }).result.claim;
+    call("claim-impact", ctxA, { debateId: d.id, claimId: child.id, impact: 1 });
+    const lowEff = call("debate-detail", ctxA, { id: d.id }).result.debate.claims.find((c) => c.id === root.id).effective;
+    call("claim-impact", ctxA, { debateId: d.id, claimId: child.id, impact: 5 });
+    const highEff = call("debate-detail", ctxA, { id: d.id }).result.debate.claims.find((c) => c.id === root.id).effective;
+    assert.ok(highEff > lowEff);
+  });
+
+  it("claim-impact clamps to 1-5", () => {
+    const d = newDebate();
+    const c = call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "An argument" }).result.claim;
+    assert.equal(call("claim-impact", ctxA, { debateId: d.id, claimId: c.id, impact: 99 }).result.impact, 5);
+    assert.equal(call("claim-impact", ctxA, { debateId: d.id, claimId: c.id, impact: -3 }).result.impact, 1);
+  });
+
+  it("claim-impact rejects an unknown claim", () => {
+    const d = newDebate();
+    assert.equal(call("claim-impact", ctxA, { debateId: d.id, claimId: "nope", impact: 3 }).ok, false);
+  });
+});
+
+describe("debate — claim sourcing", () => {
+  it("source-add attaches a citation with a valid url", () => {
+    const d = newDebate();
+    const c = call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "Backed by data" }).result.claim;
+    const r = call("source-add", ctxA, { debateId: d.id, claimId: c.id, title: "2025 Remote Work Study", url: "https://example.org/study", kind: "study" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.sourceCount, 1);
+    assert.equal(r.result.source.kind, "study");
+  });
+
+  it("source-add rejects a malformed url", () => {
+    const d = newDebate();
+    const c = call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "A claim" }).result.claim;
+    const r = call("source-add", ctxA, { debateId: d.id, claimId: c.id, title: "Bad link", url: "ftp://x" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /http/);
+  });
+
+  it("source-add allows a note-only source (empty url)", () => {
+    const d = newDebate();
+    const c = call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "A claim" }).result.claim;
+    assert.equal(call("source-add", ctxA, { debateId: d.id, claimId: c.id, title: "Field interviews", note: "Observed firsthand" }).ok, true);
+  });
+
+  it("source-delete removes a source", () => {
+    const d = newDebate();
+    const c = call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "A claim" }).result.claim;
+    const src = call("source-add", ctxA, { debateId: d.id, claimId: c.id, title: "Source one", url: "https://example.org" }).result.source;
+    assert.equal(call("source-delete", ctxA, { debateId: d.id, claimId: c.id, sourceId: src.id }).ok, true);
+    const detail = call("debate-detail", ctxA, { id: d.id }).result.debate.claims.find((x) => x.id === c.id);
+    assert.equal(detail.sources.length, 0);
+  });
+});
+
+describe("debate — multi-thesis positions", () => {
+  it("position-add registers a named position", () => {
+    const d = newDebate();
+    const r = call("position-add", ctxA, { debateId: d.id, label: "Rail-first", summary: "Invest in heavy rail" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.positions.length, 1);
+  });
+
+  it("position-add rejects a duplicate label", () => {
+    const d = newDebate();
+    call("position-add", ctxA, { debateId: d.id, label: "Rail-first" });
+    const r = call("position-add", ctxA, { debateId: d.id, label: "rail-first" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /already exists/);
+  });
+
+  it("position-scores ranks positions by attached claim strength", () => {
+    const d = newDebate();
+    const p1 = call("position-add", ctxA, { debateId: d.id, label: "Rail-first" }).result.position;
+    const p2 = call("position-add", ctxA, { debateId: d.id, label: "Bus-first" }).result.position;
+    call("claim-add", ctxA, { debateId: d.id, positionId: p1.id, stance: "pro", text: "Rail moves more people" });
+    call("claim-add", ctxA, { debateId: d.id, positionId: p1.id, stance: "pro", text: "Lower emissions per trip" });
+    call("claim-add", ctxA, { debateId: d.id, positionId: p2.id, stance: "pro", text: "Buses are cheaper" });
+    const r = call("position-scores", ctxA, { debateId: d.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 2);
+    assert.equal(r.result.leader, "Rail-first");
+  });
+
+  it("position-delete detaches claims that referenced it", () => {
+    const d = newDebate();
+    const p1 = call("position-add", ctxA, { debateId: d.id, label: "Rail-first" }).result.position;
+    const c = call("claim-add", ctxA, { debateId: d.id, positionId: p1.id, stance: "pro", text: "A claim" }).result.claim;
+    call("position-delete", ctxA, { debateId: d.id, positionId: p1.id });
+    const detail = call("debate-detail", ctxA, { id: d.id }).result.debate.claims.find((x) => x.id === c.id);
+    assert.equal(detail.positionId, null);
+  });
+
+  it("claim-add rejects an unknown position", () => {
+    const d = newDebate();
+    assert.equal(call("claim-add", ctxA, { debateId: d.id, positionId: "nope", stance: "pro", text: "A claim" }).ok, false);
+  });
+});
+
+describe("debate — sharing / public read-only links", () => {
+  it("debate-share mints a token; shared-view returns a read-only tree", () => {
+    const d = newDebate();
+    call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "A supporting claim" });
+    const share = call("debate-share", ctxA, { debateId: d.id });
+    assert.equal(share.ok, true);
+    assert.equal(share.result.shared, true);
+    const view = call("shared-view", ctxB, { shareToken: share.result.shareToken });
+    assert.equal(view.ok, true);
+    assert.equal(view.result.readOnly, true);
+    assert.equal(view.result.debate.claims.length, 1);
+  });
+
+  it("debate-share revoke invalidates the token", () => {
+    const d = newDebate();
+    const share = call("debate-share", ctxA, { debateId: d.id });
+    call("debate-share", ctxA, { debateId: d.id, revoke: true });
+    assert.equal(call("shared-view", ctxB, { shareToken: share.result.shareToken }).ok, false);
+  });
+
+  it("shared-view rejects an unknown token", () => {
+    assert.equal(call("shared-view", ctxB, { shareToken: "shr_bogus" }).ok, false);
+  });
+});
+
+describe("debate — recursive tree shape for the argument map UI", () => {
+  it("debate-detail returns claims with parentId, effective strength and stance for collapse/expand rendering", () => {
+    const d = newDebate();
+    const root = call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "Root claim" }).result.claim;
+    call("claim-add", ctxA, { debateId: d.id, parentId: root.id, stance: "con", text: "Nested counter" });
+    const claims = call("debate-detail", ctxA, { id: d.id }).result.debate.claims;
+    const rootRow = claims.find((c) => c.id === root.id);
+    assert.equal(rootRow.parentId, null);
+    assert.equal(typeof rootRow.effective, "number");
+    assert.ok(claims.some((c) => c.parentId === root.id && c.stance === "con"));
+  });
+
+  it("recursive nesting works to arbitrary depth", () => {
+    const d = newDebate();
+    let parent = call("claim-add", ctxA, { debateId: d.id, stance: "pro", text: "Depth-0 claim" }).result.claim;
+    for (let i = 1; i <= 4; i++) {
+      parent = call("claim-add", ctxA, {
+        debateId: d.id, parentId: parent.id,
+        stance: i % 2 ? "con" : "pro", text: `Depth-${i} claim`,
+      }).result.claim;
+    }
+    assert.equal(call("debate-detail", ctxA, { id: d.id }).result.debate.claims.length, 5);
+  });
+});
+
+describe("debate — dashboard reflects new substrate", () => {
+  it("dashboard counts positions, sources and shared debates", () => {
+    const d = newDebate();
+    const p = call("position-add", ctxA, { debateId: d.id, label: "Position One" }).result.position;
+    const c = call("claim-add", ctxA, { debateId: d.id, positionId: p.id, stance: "pro", text: "A claim" }).result.claim;
+    call("source-add", ctxA, { debateId: d.id, claimId: c.id, title: "A source", url: "https://example.org" });
+    call("debate-share", ctxA, { debateId: d.id });
+    const r = call("debate-dashboard", ctxA, {});
+    assert.equal(r.result.totalPositions, 1);
+    assert.equal(r.result.totalSources, 1);
+    assert.equal(r.result.sharedDebates, 1);
+  });
+});

@@ -6,28 +6,36 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Zap, Activity, Plug, Sun, Receipt, Loader2 } from 'lucide-react';
+import { Zap, Activity, Plug, Sun, Receipt, Loader2, Radio, PieChart, Clock, BellRing } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { EnergyUsagePanel } from './EnergyUsagePanel';
 import { EnergyDevicesPanel } from './EnergyDevicesPanel';
 import { EnergySolarPanel } from './EnergySolarPanel';
 import { EnergyBillingPanel } from './EnergyBillingPanel';
+import { EnergyLivePanel } from './EnergyLivePanel';
+import { EnergyDisaggregationPanel } from './EnergyDisaggregationPanel';
+import { EnergyTouPanel } from './EnergyTouPanel';
+import { EnergyInsightsPanel } from './EnergyInsightsPanel';
 
 interface Dash {
   devices: number; monthKwh: number; monthCost: number; solarKwh: number;
   solarOffsetPct: number; ratePerKwh: number; goals: number;
 }
-type TabId = 'usage' | 'devices' | 'solar' | 'billing';
+type TabId = 'live' | 'usage' | 'devices' | 'perdevice' | 'solar' | 'tou' | 'billing' | 'insights';
 const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
+  { id: 'live', label: 'Live', icon: Radio },
   { id: 'usage', label: 'Usage', icon: Activity },
   { id: 'devices', label: 'Devices', icon: Plug },
+  { id: 'perdevice', label: 'Per-device', icon: PieChart },
   { id: 'solar', label: 'Solar', icon: Sun },
+  { id: 'tou', label: 'Time-of-use', icon: Clock },
   { id: 'billing', label: 'Billing', icon: Receipt },
+  { id: 'insights', label: 'Insights', icon: BellRing },
 ];
 
 export function EnergyMonitorSection() {
-  const [tab, setTab] = useState<TabId>('usage');
+  const [tab, setTab] = useState<TabId>('live');
   const [dash, setDash] = useState<Dash | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -75,10 +83,14 @@ export function EnergyMonitorSection() {
       </nav>
 
       <div className="p-4">
+        {tab === 'live' && <EnergyLivePanel onChange={refreshDash} />}
         {tab === 'usage' && <EnergyUsagePanel onChange={refreshDash} />}
         {tab === 'devices' && <EnergyDevicesPanel onChange={refreshDash} />}
+        {tab === 'perdevice' && <EnergyDisaggregationPanel onChange={refreshDash} />}
         {tab === 'solar' && <EnergySolarPanel onChange={refreshDash} />}
+        {tab === 'tou' && <EnergyTouPanel onChange={refreshDash} />}
         {tab === 'billing' && <EnergyBillingPanel onChange={refreshDash} />}
+        {tab === 'insights' && <EnergyInsightsPanel onChange={refreshDash} />}
       </div>
     </div>
   );

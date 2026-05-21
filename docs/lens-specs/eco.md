@@ -11,12 +11,14 @@ Backend: `eco` domain macros — pure-compute (carbonFootprint, biodiversityInde
 - ClimateActions component
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Species observation feed — community sightings map like iNaturalist
-- [ ] `[S]` Personal carbon-footprint history / trend chart
-- [ ] `[M]` Sustainability challenges/streaks — JouleBug-style gamified habits
-- [ ] `[S]` Geotagged biodiversity entries plotted on a map
-- [ ] `[S]` Species ID confidence + suggested-alternatives list
-- [ ] `[S]` Local environmental alerts (air quality, pollen, UV) by saved location
+- [x] `[M]` Species observation feed — community sightings map like iNaturalist
+- [x] `[S]` Personal carbon-footprint history / trend chart
+- [x] `[M]` Sustainability challenges/streaks — JouleBug-style gamified habits
+- [x] `[S]` Geotagged biodiversity entries plotted on a map
+- [x] `[S]` Species ID confidence + suggested-alternatives list
+- [x] `[S]` Local environmental alerts (air quality, pollen, UV) by saved location
 
 ## Parity
-~55% of an iNaturalist+JouleBug composite. Strong live weather/AQI, species ID, and climate-action logging; missing the observation feed/map, footprint trends, and gamified challenges.
+~95% of an iNaturalist+JouleBug composite. Live weather/AQI, species ID with confidence + alternatives, climate-action logging, a community observation feed/map, carbon-footprint trends, gamified sustainability challenges with streaks, and local environmental alerts all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

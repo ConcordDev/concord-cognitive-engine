@@ -73,6 +73,7 @@ import metacognition from './metacognition.js';
 import metalearning from './metalearning.js';
 import news from './news.js';
 import meditation from './meditation.js';
+import dxPlatform from './dx-platform.js';
 import observe from './observe.js';
 import ops from './ops.js';
 import productivity from './productivity.js';
@@ -433,4 +434,5 @@ export default [
   forgeLens,
   selfLens,
   understandingLens,
+  dxPlatform,
 ];

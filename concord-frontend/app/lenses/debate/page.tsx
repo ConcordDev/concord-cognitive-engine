@@ -11,7 +11,8 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CmvFeed } from '@/components/debate/CmvFeed';
-import { DebateTree } from '@/components/debate/DebateTree';
+import { KialoArgumentMap } from '@/components/debate/KialoArgumentMap';
+import { SharedDebateView } from '@/components/debate/SharedDebateView';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -400,6 +401,21 @@ function VerdictDisplay({ proArguments, conArguments, proVotes, conVotes }:
 export default function DebateLensPage() {
   useLensNav('debate');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('debate');
+  // Public read-only share link — ?share=<token> opens a debate without owner scoping.
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const t = new URLSearchParams(window.location.search).get('share');
+    if (t) setShareToken(t);
+  }, []);
+  const exitShare = useCallback(() => {
+    setShareToken(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('share');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
   const [search, setSearch] = useState('');
   const [selectedDebate, setSelectedDebate] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -1025,7 +1041,11 @@ export default function DebateLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="debate" /></div>}
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DebateTree />
+        {shareToken ? (
+          <SharedDebateView shareToken={shareToken} onExit={exitShare} />
+        ) : (
+          <KialoArgumentMap />
+        )}
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CmvFeed />

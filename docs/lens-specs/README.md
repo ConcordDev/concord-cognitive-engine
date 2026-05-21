@@ -12,26 +12,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~78%**
-- Total buildable features in the backlog (sum of all "Missing" items): **643**
+- Average feature parity: **~79%**
+- Total buildable features in the backlog (sum of all "Missing" items): **602**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 145 |
+| 80–100% (near-complete) | 151 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 31 |
+| 40–59% (partial) | 25 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| astronomy | SkySafari / Stellarium | ~55% | 7 |
-| daily | Day One / Reflectly | ~55% | 7 |
-| debate | Kialo | ~55% | 7 |
-| dx-platform | Sourcegraph Cody / GitHub Copilot platform | ~55% | 7 |
-| eco | iNaturalist / JouleBug | ~55% | 6 |
-| energy | Sense / Span Home | ~55% | 7 |
 | export | Google Takeout / Notion Export | ~55% | 7 |
 | forestry | SilvAssist / forest-management software | ~55% | 6 |
 | fork | GitHub (fork network / insights) | ~55% | 6 |
@@ -261,3 +255,9 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | veterinary | ezyVet / Provet Cloud | ~90% | 0 |
 | welding | Jobber / contractor field-service (welding trade) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |
+| astronomy | SkySafari / Stellarium | ~95% | 0 |
+| daily | Day One / Reflectly | ~95% | 0 |
+| debate | Kialo | ~95% | 0 |
+| dx-platform | Sourcegraph Cody / GitHub Copilot platform | ~95% | 0 |
+| eco | iNaturalist / JouleBug | ~95% | 0 |
+| energy | Sense / Span Home | ~95% | 0 |

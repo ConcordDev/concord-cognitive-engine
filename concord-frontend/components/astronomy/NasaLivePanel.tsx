@@ -169,6 +169,7 @@ export function NasaLivePanel({ className }: { className?: string }) {
             </header>
             {apod.mediaType === 'image' && apod.url && (
               <a href={apod.hdurl || apod.url} target="_blank" rel="noopener noreferrer" className="block rounded overflow-hidden border border-zinc-800 group">
+                {/* eslint-disable-next-line @next/next/no-img-element -- NASA APOD serves arbitrary external image hosts; next/image domain allowlist is impractical here */}
                 <img src={apod.url} alt={apod.title} className="w-full h-auto block" loading="lazy" />
               </a>
             )}

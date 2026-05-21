@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Receipt, Target, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Receipt, Target, Trash2, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -15,11 +15,25 @@ interface Bill {
   ratePerKwh: number; estimatedBill: number; solarSavings: number;
 }
 interface Goal { id: string; label: string; targetKwh: number; period: string; usedKwh: number; pct: number; overBudget: boolean }
+interface Projection {
+  hasData: boolean;
+  isCurrentMonth?: boolean;
+  loggedKwh?: number;
+  distinctDays?: number;
+  daysInMonth?: number;
+  dailyAvgKwh?: number;
+  projectedKwh?: number;
+  projectedNetKwh?: number;
+  billSoFar?: number;
+  projectedBill?: number;
+  confidence?: string;
+}
 
 export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
   const [rate, setRate] = useState<{ ratePerKwh: number; utility: string | null } | null>(null);
   const [isDefaultRate, setIsDefaultRate] = useState(true);
   const [bill, setBill] = useState<Bill | null>(null);
+  const [projection, setProjection] = useState<Projection | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,14 +42,16 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [r, b, g] = await Promise.all([
+    const [r, b, p, g] = await Promise.all([
       lensRun('energy', 'rate-get', {}),
       lensRun('energy', 'bill-estimate', {}),
+      lensRun('energy', 'cost-projection', {}),
       lensRun('energy', 'goal-list', {}),
     ]);
     setRate(r.data?.result?.rate || null);
     setIsDefaultRate(!!r.data?.result?.isDefault);
     setBill((b.data?.result as Bill | null) || null);
+    setProjection((p.data?.result as Projection | null) || null);
     setGoals(g.data?.result?.goals || []);
     setLoading(false);
     onChange();
@@ -103,6 +119,38 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
           </div>
         </section>
       )}
+
+      {/* Cost projection */}
+      <section>
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+          <TrendingUp className="w-3.5 h-3.5 text-lime-400" /> Month-end projection
+        </h3>
+        {!projection || !projection.hasData ? (
+          <p className="text-[11px] text-zinc-500 italic">
+            Log readings this month to project the full bill.
+          </p>
+        ) : (
+          <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl font-bold text-lime-400">${projection.projectedBill}</p>
+              <span className="text-[10px] text-zinc-500 uppercase">projected bill</span>
+            </div>
+            <p className="text-[11px] text-zinc-500 mt-0.5">
+              ${projection.billSoFar} so far · {projection.loggedKwh} kWh over {projection.distinctDays} day(s)
+              · ~{projection.dailyAvgKwh} kWh/day
+            </p>
+            <p className="text-[11px] text-zinc-500">
+              Projected {projection.projectedKwh} kWh ({projection.projectedNetKwh} net) over {projection.daysInMonth} days.
+            </p>
+            <span className={cn('inline-block mt-1.5 text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wide',
+              projection.confidence === 'high' ? 'bg-emerald-950/60 text-emerald-300'
+                : projection.confidence === 'medium' ? 'bg-amber-950/60 text-amber-300'
+                  : 'bg-zinc-800 text-zinc-400')}>
+              {projection.confidence} confidence
+            </span>
+          </div>
+        )}
+      </section>
 
       {/* Goals */}
       <section>

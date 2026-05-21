@@ -281,10 +281,16 @@ export default function registerEnergyActions(registerLensAction) {
       if (!d) return { ok: false, error: "device not found" };
       deviceId = d.id; deviceName = d.name;
     }
+    let hour = null;
+    if (params.hour != null) {
+      const h = Math.round(enNum(params.hour));
+      if (h >= 0 && h <= 23) hour = h;
+    }
     const reading = {
       id: enId("rd"), deviceId, deviceName,
       kwh: Math.round(kwh * 1000) / 1000,
       date: enDay(params.date) || enDay(enNow()),
+      hour,
       cost: Math.round(kwh * userRate(s, userId) * 100) / 100,
       createdAt: enNow(),
     };
@@ -531,6 +537,447 @@ export default function registerEnergyActions(registerLensAction) {
         solarOffsetPct: consumedKwh > 0 ? Math.round((solarKwh / consumedKwh) * 100) : 0,
         ratePerKwh: rate,
         goals: (s.goals.get(userId) || []).length,
+      },
+    };
+  });
+
+  // ─── Sense/Span 2026 parity backlog ─────────────────────────────────
+  // Real-time wattage stream, per-device disaggregation, cost projection,
+  // time-of-use modeling, solar self-consumption/export, usage alerts,
+  // and month-over-month historical comparison. Every value is computed
+  // from user-entered devices/readings/solar/rate — no synthetic curves.
+
+  function ensureLiveState(s) {
+    for (const k of ["livePower", "touPlans"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+  }
+
+  // ── Real-time consumption stream ────────────────────────────────────
+  // A "live sample" is a user-submitted instantaneous wattage reading
+  // (from a smart meter / clamp / plug). The macro keeps a rolling
+  // window per user so the UI can render a Sense-style live graph.
+  registerLensAction("energy", "live-sample", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureLiveState(s);
+    const watts = enNum(params.watts);
+    if (!(watts >= 0)) return { ok: false, error: "watts must be >= 0" };
+    const userId = enAid(ctx);
+    let deviceId = null, deviceName = "Whole home";
+    if (params.deviceId) {
+      const d = findDevice(s, userId, params.deviceId);
+      if (!d) return { ok: false, error: "device not found" };
+      deviceId = d.id; deviceName = d.name;
+    }
+    const sample = {
+      id: enId("lp"),
+      watts: Math.round(watts),
+      deviceId, deviceName,
+      at: enNow(),
+      ts: Date.now(),
+    };
+    const arr = enListB(s.livePower, userId);
+    arr.push(sample);
+    // Keep a rolling window: last 240 samples, max 6h old.
+    const minTs = Date.now() - 6 * 3600 * 1000;
+    let trimmed = arr.filter((x) => x.ts >= minTs);
+    if (trimmed.length > 240) trimmed = trimmed.slice(trimmed.length - 240);
+    s.livePower.set(userId, trimmed);
+    saveEnergyState();
+    return { ok: true, result: { sample } };
+  });
+
+  registerLensAction("energy", "live-stream", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureLiveState(s);
+    const userId = enAid(ctx);
+    const minutes = Math.max(1, Math.min(360, Math.round(enNum(params.minutes, 60))));
+    const cutoff = Date.now() - minutes * 60000;
+    const samples = (s.livePower.get(userId) || [])
+      .filter((x) => x.ts >= cutoff)
+      .sort((a, b) => a.ts - b.ts);
+    const wattValues = samples.map((x) => x.watts);
+    const current = wattValues.length ? wattValues[wattValues.length - 1] : 0;
+    const peak = wattValues.length ? Math.max(...wattValues) : 0;
+    const avg = wattValues.length ? Math.round(wattValues.reduce((a, v) => a + v, 0) / wattValues.length) : 0;
+    return {
+      ok: true,
+      result: {
+        samples: samples.map((x) => ({ id: x.id, watts: x.watts, at: x.at, deviceName: x.deviceName })),
+        current, peak, avgWatts: avg,
+        count: samples.length,
+        minutes,
+      },
+    };
+  });
+
+  // ── Per-device disaggregation ───────────────────────────────────────
+  // Attributes a window's whole-home consumption across tracked devices.
+  // Uses real per-device readings; the remainder of whole-home readings
+  // is split by each device's nameplate wattage weight (real input),
+  // mirroring Sense's "always-on / unknown" attribution.
+  registerLensAction("energy", "disaggregate", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
+    const cutoff = Date.now() - days * EN_DAY;
+    const readings = (s.readings.get(userId) || []).filter((r) => new Date(r.date).getTime() >= cutoff);
+    const devices = s.devices.get(userId) || [];
+    if (devices.length === 0) {
+      return { ok: true, result: { devices: [], totalKwh: 0, attributedKwh: 0, unattributedKwh: 0, days } };
+    }
+    const directByDevice = new Map();
+    let wholeHomeKwh = 0, total = 0;
+    for (const r of readings) {
+      total += r.kwh;
+      if (r.deviceId) {
+        directByDevice.set(r.deviceId, Math.round(((directByDevice.get(r.deviceId) || 0) + r.kwh) * 1000) / 1000);
+      } else {
+        wholeHomeKwh += r.kwh;
+      }
+    }
+    // Split whole-home consumption by nameplate-wattage weight.
+    const totalWattage = devices.reduce((a, d) => a + (d.wattage || 0), 0);
+    const rows = devices.map((d) => {
+      const direct = directByDevice.get(d.id) || 0;
+      const weight = totalWattage > 0 ? (d.wattage || 0) / totalWattage : (1 / devices.length);
+      const estimated = Math.round(wholeHomeKwh * weight * 1000) / 1000;
+      const attributed = Math.round((direct + estimated) * 1000) / 1000;
+      return {
+        deviceId: d.id, name: d.name, category: d.category,
+        directKwh: direct,
+        estimatedKwh: estimated,
+        attributedKwh: attributed,
+        pct: total > 0 ? Math.round((attributed / total) * 1000) / 10 : 0,
+        method: direct > 0 ? (estimated > 0 ? "metered+estimated" : "metered") : "estimated",
+      };
+    }).sort((a, b) => b.attributedKwh - a.attributedKwh);
+    const attributed = Math.round(rows.reduce((a, r) => a + r.attributedKwh, 0) * 1000) / 1000;
+    return {
+      ok: true,
+      result: {
+        devices: rows,
+        totalKwh: Math.round(total * 1000) / 1000,
+        attributedKwh: attributed,
+        unattributedKwh: Math.round(Math.max(0, total - attributed) * 1000) / 1000,
+        wholeHomeKwh: Math.round(wholeHomeKwh * 1000) / 1000,
+        days,
+      },
+    };
+  });
+
+  // ── Cost projection ─────────────────────────────────────────────────
+  // Projects the full-month bill from readings logged so far this month,
+  // extrapolating the run-rate across the remaining days.
+  registerLensAction("energy", "cost-projection", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const now = new Date();
+    const month = enClean(params.month, 7) || enDay(enNow()).slice(0, 7);
+    const isCurrentMonth = month === enDay(enNow()).slice(0, 7);
+    const readings = (s.readings.get(userId) || []).filter((r) => String(r.date).startsWith(month));
+    const solar = (s.solar.get(userId) || []).filter((e) => String(e.date).startsWith(month));
+    if (readings.length === 0) {
+      return { ok: true, result: { month, hasData: false, message: "Log readings this month to project the bill." } };
+    }
+    const consumed = readings.reduce((a, r) => a + r.kwh, 0);
+    const solarKwh = solar.reduce((a, e) => a + e.kwh, 0);
+    const rate = userRate(s, userId);
+    // Days the readings span (distinct dates with data).
+    const distinctDays = new Set(readings.map((r) => r.date)).size;
+    const [y, m] = month.split("-").map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
+    const dailyRate = distinctDays > 0 ? consumed / distinctDays : 0;
+    const dailySolar = distinctDays > 0 ? solarKwh / distinctDays : 0;
+    const projectedConsumed = Math.round(dailyRate * daysInMonth * 100) / 100;
+    const projectedSolar = Math.round(dailySolar * daysInMonth * 100) / 100;
+    const projectedNet = Math.max(0, projectedConsumed - projectedSolar);
+    return {
+      ok: true,
+      result: {
+        month, hasData: true, isCurrentMonth,
+        loggedKwh: Math.round(consumed * 100) / 100,
+        loggedSolarKwh: Math.round(solarKwh * 100) / 100,
+        distinctDays, daysInMonth, daysElapsed,
+        dailyAvgKwh: Math.round(dailyRate * 100) / 100,
+        projectedKwh: projectedConsumed,
+        projectedSolarKwh: projectedSolar,
+        projectedNetKwh: Math.round(projectedNet * 100) / 100,
+        ratePerKwh: rate,
+        billSoFar: Math.round(Math.max(0, consumed - solarKwh) * rate * 100) / 100,
+        projectedBill: Math.round(projectedNet * rate * 100) / 100,
+        confidence: distinctDays >= 7 ? "high" : distinctDays >= 3 ? "medium" : "low",
+      },
+    };
+  });
+
+  // ── Time-of-use rate modeling ───────────────────────────────────────
+  // Stores a user-defined TOU plan (peak / off-peak / shoulder rates +
+  // peak hour windows) and computes a peak/off-peak cost breakdown from
+  // readings that carry an `hour` field.
+  registerLensAction("energy", "tou-set", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureLiveState(s);
+    const peakRate = enNum(params.peakRate);
+    const offPeakRate = enNum(params.offPeakRate);
+    if (!(peakRate > 0) || !(offPeakRate > 0)) {
+      return { ok: false, error: "peakRate and offPeakRate must be > 0" };
+    }
+    const shoulderRate = enNum(params.shoulderRate, 0);
+    let peakStart = Math.round(enNum(params.peakStartHour, 16));
+    let peakEnd = Math.round(enNum(params.peakEndHour, 21));
+    peakStart = Math.max(0, Math.min(23, peakStart));
+    peakEnd = Math.max(0, Math.min(24, peakEnd));
+    if (peakEnd <= peakStart) return { ok: false, error: "peakEndHour must be after peakStartHour" };
+    const plan = {
+      peakRate: Math.round(peakRate * 10000) / 10000,
+      offPeakRate: Math.round(offPeakRate * 10000) / 10000,
+      shoulderRate: shoulderRate > 0 ? Math.round(shoulderRate * 10000) / 10000 : null,
+      peakStartHour: peakStart,
+      peakEndHour: peakEnd,
+      shoulderStartHour: params.shoulderStartHour != null
+        ? Math.max(0, Math.min(23, Math.round(enNum(params.shoulderStartHour)))) : null,
+      shoulderEndHour: params.shoulderEndHour != null
+        ? Math.max(0, Math.min(24, Math.round(enNum(params.shoulderEndHour)))) : null,
+      utility: enClean(params.utility, 80) || null,
+      updatedAt: enNow(),
+    };
+    s.touPlans.set(enAid(ctx), plan);
+    saveEnergyState();
+    return { ok: true, result: { plan } };
+  });
+
+  registerLensAction("energy", "tou-get", (ctx, _a, _params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureLiveState(s);
+    const plan = s.touPlans.get(enAid(ctx)) || null;
+    return { ok: true, result: { plan, configured: !!plan } };
+  });
+
+  registerLensAction("energy", "tou-breakdown", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureLiveState(s);
+    const userId = enAid(ctx);
+    const plan = s.touPlans.get(userId);
+    if (!plan) return { ok: false, error: "no time-of-use plan set — call tou-set first" };
+    const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
+    const cutoff = Date.now() - days * EN_DAY;
+    const readings = (s.readings.get(userId) || []).filter((r) => new Date(r.date).getTime() >= cutoff);
+    const inShoulder = (h) =>
+      plan.shoulderRate != null && plan.shoulderStartHour != null && plan.shoulderEndHour != null &&
+      h >= plan.shoulderStartHour && h < plan.shoulderEndHour;
+    const inPeak = (h) => h >= plan.peakStartHour && h < plan.peakEndHour;
+    let peakKwh = 0, offPeakKwh = 0, shoulderKwh = 0, untimedKwh = 0;
+    for (const r of readings) {
+      const h = r.hour;
+      if (h == null || !Number.isFinite(h)) { untimedKwh += r.kwh; continue; }
+      if (inPeak(h)) peakKwh += r.kwh;
+      else if (inShoulder(h)) shoulderKwh += r.kwh;
+      else offPeakKwh += r.kwh;
+    }
+    const round = (v) => Math.round(v * 1000) / 1000;
+    const cost = (kwh, rate) => Math.round(kwh * rate * 100) / 100;
+    const peakCost = cost(peakKwh, plan.peakRate);
+    const offPeakCost = cost(offPeakKwh, plan.offPeakRate);
+    const shoulderCost = plan.shoulderRate != null ? cost(shoulderKwh, plan.shoulderRate) : 0;
+    const untimedCost = cost(untimedKwh, plan.offPeakRate);
+    const flatRate = userRate(s, userId);
+    const totalKwh = peakKwh + offPeakKwh + shoulderKwh + untimedKwh;
+    const flatCost = Math.round(totalKwh * flatRate * 100) / 100;
+    const touCost = peakCost + offPeakCost + shoulderCost + untimedCost;
+    return {
+      ok: true,
+      result: {
+        days,
+        peak: { kwh: round(peakKwh), cost: peakCost, rate: plan.peakRate },
+        offPeak: { kwh: round(offPeakKwh), cost: offPeakCost, rate: plan.offPeakRate },
+        shoulder: plan.shoulderRate != null
+          ? { kwh: round(shoulderKwh), cost: shoulderCost, rate: plan.shoulderRate } : null,
+        untimedKwh: round(untimedKwh),
+        totalKwh: round(totalKwh),
+        touCost: Math.round(touCost * 100) / 100,
+        flatRateCost: flatCost,
+        savingsVsFlat: Math.round((flatCost - touCost) * 100) / 100,
+        peakSharePct: totalKwh > 0 ? Math.round((peakKwh / totalKwh) * 1000) / 10 : 0,
+      },
+    };
+  });
+
+  // ── Solar self-consumption vs export ────────────────────────────────
+  // Splits solar production into the share consumed on-site versus
+  // exported to the grid, and values the resulting savings vs export
+  // credit. Per-day matched against that day's consumption.
+  registerLensAction("energy", "solar-self-consumption", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
+    const cutoff = Date.now() - days * EN_DAY;
+    const solar = (s.solar.get(userId) || []).filter((e) => new Date(e.date).getTime() >= cutoff);
+    const readings = (s.readings.get(userId) || []).filter((r) => new Date(r.date).getTime() >= cutoff);
+    if (solar.length === 0) {
+      return { ok: true, result: { hasData: false, days, message: "Log solar production to track self-consumption." } };
+    }
+    const rate = userRate(s, userId);
+    // Export credit defaults to the retail rate unless caller overrides
+    // with a real net-metering / export tariff value.
+    const exportRate = params.exportRate != null && enNum(params.exportRate) >= 0
+      ? Math.round(enNum(params.exportRate) * 10000) / 10000 : rate;
+    const consumedByDay = {};
+    for (const r of readings) consumedByDay[r.date] = (consumedByDay[r.date] || 0) + r.kwh;
+    const series = [];
+    let totalProduced = 0, totalSelf = 0, totalExport = 0;
+    for (const e of solar) {
+      const dayConsumption = consumedByDay[e.date] || 0;
+      const self = Math.min(e.kwh, dayConsumption);
+      const exported = Math.max(0, e.kwh - self);
+      totalProduced += e.kwh; totalSelf += self; totalExport += exported;
+      series.push({
+        date: e.date,
+        producedKwh: Math.round(e.kwh * 1000) / 1000,
+        selfConsumedKwh: Math.round(self * 1000) / 1000,
+        exportedKwh: Math.round(exported * 1000) / 1000,
+      });
+    }
+    series.sort((a, b) => a.date.localeCompare(b.date));
+    const selfSavings = Math.round(totalSelf * rate * 100) / 100;
+    const exportCredit = Math.round(totalExport * exportRate * 100) / 100;
+    return {
+      ok: true,
+      result: {
+        hasData: true, days,
+        producedKwh: Math.round(totalProduced * 1000) / 1000,
+        selfConsumedKwh: Math.round(totalSelf * 1000) / 1000,
+        exportedKwh: Math.round(totalExport * 1000) / 1000,
+        selfConsumptionPct: totalProduced > 0 ? Math.round((totalSelf / totalProduced) * 1000) / 10 : 0,
+        ratePerKwh: rate,
+        exportRate,
+        selfConsumptionSavings: selfSavings,
+        exportCredit,
+        totalSolarValue: Math.round((selfSavings + exportCredit) * 100) / 100,
+        series,
+      },
+    };
+  });
+
+  // ── Usage alerts ────────────────────────────────────────────────────
+  // Detects anomalies entirely from real logged data: a usage spike vs
+  // the recent baseline, an always-on device with no recent reading,
+  // and goals over budget. No synthetic triggers.
+  registerLensAction("energy", "usage-alerts", (ctx, _a, _params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const alerts = [];
+    const readings = (s.readings.get(userId) || []).slice();
+    const byDay = {};
+    for (const r of readings) byDay[r.date] = (byDay[r.date] || 0) + r.kwh;
+    const dayKeys = Object.keys(byDay).sort();
+    // Spike detection: latest day vs the trailing 7-day average.
+    if (dayKeys.length >= 4) {
+      const latestDay = dayKeys[dayKeys.length - 1];
+      const latest = byDay[latestDay];
+      const prior = dayKeys.slice(Math.max(0, dayKeys.length - 8), dayKeys.length - 1).map((d) => byDay[d]);
+      const baseline = prior.reduce((a, v) => a + v, 0) / prior.length;
+      if (baseline > 0 && latest > baseline * 1.5) {
+        alerts.push({
+          kind: "usage_spike", severity: latest > baseline * 2 ? "high" : "medium",
+          message: `${latestDay} used ${Math.round(latest * 10) / 10} kWh — ${Math.round((latest / baseline - 1) * 100)}% above your recent ${Math.round(baseline * 10) / 10} kWh/day average.`,
+          date: latestDay,
+        });
+      }
+    }
+    // Always-on devices with no reading in the last 7 days.
+    const cutoff7 = Date.now() - 7 * EN_DAY;
+    const recentDeviceIds = new Set(
+      readings.filter((r) => r.deviceId && new Date(r.date).getTime() >= cutoff7).map((r) => r.deviceId),
+    );
+    for (const d of s.devices.get(userId) || []) {
+      if (d.alwaysOn && !recentDeviceIds.has(d.id)) {
+        alerts.push({
+          kind: "device_idle", severity: "low",
+          message: `${d.name} is marked always-on but has no reading in the last 7 days. Verify it isn't left running or log a reading.`,
+          deviceId: d.id,
+        });
+      }
+    }
+    // Goals over budget.
+    const now = new Date();
+    for (const g of s.goals.get(userId) || []) {
+      let start;
+      if (g.period === "week") {
+        const dd = new Date(now); const dow = (dd.getDay() + 6) % 7;
+        dd.setDate(dd.getDate() - dow); dd.setHours(0, 0, 0, 0); start = dd.getTime();
+      } else {
+        const dd = new Date(now); dd.setDate(1); dd.setHours(0, 0, 0, 0); start = dd.getTime();
+      }
+      const used = readings.filter((r) => new Date(r.date).getTime() >= start).reduce((a, r) => a + r.kwh, 0);
+      if (used > g.targetKwh) {
+        alerts.push({
+          kind: "goal_exceeded", severity: "high",
+          message: `Goal "${g.label}" is over budget: ${Math.round(used * 10) / 10} of ${g.targetKwh} kWh this ${g.period}.`,
+          goalId: g.id,
+        });
+      }
+    }
+    const severityRank = { high: 0, medium: 1, low: 2 };
+    alerts.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
+    return {
+      ok: true,
+      result: {
+        alerts,
+        count: alerts.length,
+        highCount: alerts.filter((a) => a.severity === "high").length,
+      },
+    };
+  });
+
+  // ── Historical comparison (this month vs last) ──────────────────────
+  registerLensAction("energy", "month-comparison", (ctx, _a, params = {}) => {
+    const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = enAid(ctx);
+    const baseMonth = enClean(params.month, 7) || enDay(enNow()).slice(0, 7);
+    const [by, bm] = baseMonth.split("-").map(Number);
+    if (!by || !bm) return { ok: false, error: "month must be YYYY-MM" };
+    const prevDate = new Date(by, bm - 2, 1);
+    const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+    const rate = userRate(s, userId);
+    const monthStats = (month) => {
+      const readings = (s.readings.get(userId) || []).filter((r) => String(r.date).startsWith(month));
+      const solar = (s.solar.get(userId) || []).filter((e) => String(e.date).startsWith(month));
+      const consumed = readings.reduce((a, r) => a + r.kwh, 0);
+      const solarKwh = solar.reduce((a, e) => a + e.kwh, 0);
+      const byDay = {};
+      for (const r of readings) byDay[r.date] = (byDay[r.date] || 0) + r.kwh;
+      const days = Object.keys(byDay).length;
+      return {
+        month,
+        consumedKwh: Math.round(consumed * 100) / 100,
+        solarKwh: Math.round(solarKwh * 100) / 100,
+        netKwh: Math.round(Math.max(0, consumed - solarKwh) * 100) / 100,
+        cost: Math.round(Math.max(0, consumed - solarKwh) * rate * 100) / 100,
+        readingDays: days,
+        dailyAvgKwh: days > 0 ? Math.round((consumed / days) * 100) / 100 : 0,
+        dailySeries: Object.entries(byDay).map(([date, kwh]) => ({ date, kwh: Math.round(kwh * 1000) / 1000 }))
+          .sort((a, b) => a.date.localeCompare(b.date)),
+      };
+    };
+    const current = monthStats(baseMonth);
+    const previous = monthStats(prevMonth);
+    const delta = (cur, prev) => {
+      const abs = Math.round((cur - prev) * 100) / 100;
+      const pct = prev > 0 ? Math.round(((cur - prev) / prev) * 1000) / 10 : null;
+      return { abs, pct, direction: abs > 0 ? "up" : abs < 0 ? "down" : "flat" };
+    };
+    return {
+      ok: true,
+      result: {
+        current, previous,
+        change: {
+          consumed: delta(current.consumedKwh, previous.consumedKwh),
+          cost: delta(current.cost, previous.cost),
+          solar: delta(current.solarKwh, previous.solarKwh),
+        },
+        hasData: current.readingDays > 0 || previous.readingDays > 0,
       },
     };
   });

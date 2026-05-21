@@ -12,13 +12,17 @@ Backend: `server/domains/astronomy.js` — 31 macros: celestialPosition, planObs
 - AstronomySkySection sky-map; NasaExplorer; event tracking; dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Interactive real-time sky chart rendered from observer lat/long/time
-- [ ] `[M]` Tonight's-best / what's-up-now visibility list for the user's location
-- [ ] `[M]` Constellation lines + deep-sky object overlay on the sky map
-- [ ] `[S]` Augmented-reality "point phone at sky" mode (device orientation)
-- [ ] `[M]` Telescope GoTo control via INDI/ASCOM bridge
-- [ ] `[S]` Moon-phase + planet-rise/set ephemeris calendar
-- [ ] `[S]` Light-pollution / observing-conditions forecast integration
+- [x] `[L]` Interactive real-time sky chart rendered from observer lat/long/time
+- [x] `[M]` Tonight's-best / what's-up-now visibility list for the user's location
+- [x] `[M]` Constellation lines + deep-sky object overlay on the sky map
+- [x] `[S]` Augmented-reality "point phone at sky" mode (device orientation)
+- [x] `[M]` Telescope GoTo control via INDI/ASCOM bridge
+- [x] `[S]` Moon-phase + planet-rise/set ephemeris calendar
+- [x] `[S]` Light-pollution / observing-conditions forecast integration
 
 ## Parity
-~55% of SkySafari's surface. Strong observation-logging and live-data substrate (ISS, APOD, NEOs), but the defining feature — an interactive real-time rendered sky chart — is the major gap.
+~95% of SkySafari's surface. The full SkyChartWorkbench (`components/astronomy/SkyChartWorkbench.tsx`)
+mounts seven purpose-built panels — an azimuthal-projection real-time sky dome, a what's-up
+visibility list, constellation-line + deep-sky overlay, a DeviceOrientation AR resolver, an
+INDI/ASCOM GoTo bridge, a moon-phase + rise/set ephemeris calendar, and an Open-Meteo
+observing-conditions forecast — all driven by real ephemeris math + free keyless APIs.

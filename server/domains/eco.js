@@ -494,7 +494,19 @@ export default function registerEcoActions(registerLensAction) {
         actionLog: new Map(),     // userId → entry[]
       };
     }
+    // Lazily extend the substrate with parity-sprint Maps so older
+    // persisted STATE blobs are forward-compatible.
+    if (!STATE.ecoLens.footprintLog) STATE.ecoLens.footprintLog = new Map(); // userId → footprint[]
+    if (!STATE.ecoLens.challenges) STATE.ecoLens.challenges = new Map();     // userId → enrollment[]
+    if (!STATE.ecoLens.savedLocations) STATE.ecoLens.savedLocations = new Map(); // userId → location[]
     return STATE.ecoLens;
+  }
+
+  function ecoUserId(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function persistEco() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
   }
 
   /**
@@ -788,6 +800,485 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
     }
     return { ok: true, result: { id, deleted: true } };
   });
+
+  // ─── Feature-parity backlog: observation feed, footprint trend, ───────────
+  // ─── challenges/streaks, geotagged map, ID alternatives, eco alerts ───────
+
+  /**
+   * observation-feed — community sightings near a point, iNaturalist-style.
+   * Pulls real verifiable records from the GBIF occurrence API (free, keyless).
+   * params: { lat, lng, radiusKm?, limit?, taxonName? }
+   * Returns observations with coordinates suitable for a MapView.
+   */
+  registerLensAction("eco", "observation-feed", async (_ctx, _artifact, params = {}) => {
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
+    const radiusKm = Math.min(200, Math.max(1, Number(params.radiusKm) || 25));
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 50));
+    const taxonName = String(params.taxonName || "").trim();
+    // Convert radius to a lat/lng bounding box (1° lat ≈ 111 km).
+    const dLat = radiusKm / 111;
+    const dLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180) || 1);
+    const minLat = Math.max(-90, lat - dLat), maxLat = Math.min(90, lat + dLat);
+    const minLng = Math.max(-180, lng - dLng), maxLng = Math.min(180, lng + dLng);
+    try {
+      let taxonKey = null;
+      let resolvedName = taxonName || null;
+      if (taxonName) {
+        const match = await safeFetchJson(
+          `https://api.gbif.org/v1/species/match?name=${encodeURIComponent(taxonName)}`,
+        );
+        taxonKey = match.usageKey || match.acceptedUsageKey || null;
+        resolvedName = match.scientificName || taxonName;
+      }
+      const geom = `POLYGON((${minLng}+${minLat},${maxLng}+${minLat},${maxLng}+${maxLat},${minLng}+${maxLat},${minLng}+${minLat}))`;
+      let url = `https://api.gbif.org/v1/occurrence/search?geometry=${geom}&hasCoordinate=true&limit=${limit}`;
+      if (taxonKey) url += `&taxonKey=${taxonKey}`;
+      const data = await safeFetchJson(url);
+      const observations = (data.results || [])
+        .filter(o => isFinite(o.decimalLatitude) && isFinite(o.decimalLongitude))
+        .map(o => ({
+          key: String(o.key),
+          commonName: o.vernacularName || o.genus || o.scientificName || "Unknown organism",
+          scientificName: o.scientificName || o.acceptedScientificName || "",
+          kingdom: o.kingdom || null,
+          lat: o.decimalLatitude,
+          lng: o.decimalLongitude,
+          country: o.country || null,
+          observedAt: o.eventDate || null,
+          basisOfRecord: o.basisOfRecord || null,
+          datasetName: o.datasetName || null,
+        }));
+      return {
+        ok: true,
+        result: {
+          observations,
+          total: data.count || observations.length,
+          center: { lat, lng },
+          radiusKm,
+          taxonFilter: resolvedName,
+          source: "GBIF (Global Biodiversity Information Facility)",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `GBIF unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * footprint-record — store one carbon-footprint snapshot for trend tracking.
+   * params: { totalKgCO2e, netKgCO2e?, categoryBreakdown?, label? }
+   */
+  registerLensAction("eco", "footprint-record", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const total = Number(params.totalKgCO2e);
+    if (!isFinite(total) || total < 0) return { ok: false, error: "totalKgCO2e (>=0) required" };
+    const userId = ecoUserId(ctx);
+    if (!state.footprintLog.has(userId)) state.footprintLog.set(userId, []);
+    const net = isFinite(Number(params.netKgCO2e)) ? Number(params.netKgCO2e) : total;
+    const entry = {
+      id: `fp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      totalKgCO2e: Math.round(total * 100) / 100,
+      netKgCO2e: Math.round(net * 100) / 100,
+      categoryBreakdown: Array.isArray(params.categoryBreakdown)
+        ? params.categoryBreakdown.slice(0, 20).map(c => ({
+            category: String(c.category || "other"),
+            emissionsKgCO2e: Number(c.emissionsKgCO2e) || 0,
+          }))
+        : [],
+      label: params.label ? String(params.label).slice(0, 120) : "",
+      at: new Date().toISOString(),
+    };
+    state.footprintLog.get(userId).push(entry);
+    persistEco();
+    return { ok: true, result: { entry } };
+  });
+
+  /**
+   * footprint-history — chronological footprint snapshots + trend analysis.
+   * params: { sinceDays? }
+   */
+  registerLensAction("eco", "footprint-history", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ecoUserId(ctx);
+    const sinceDays = Math.max(1, Math.min(1095, Number(params.sinceDays) || 365));
+    const cutoff = Date.now() - sinceDays * 86400000;
+    const all = (state.footprintLog.get(userId) || [])
+      .filter(e => new Date(e.at).getTime() >= cutoff)
+      .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+    let trend = "none", changePct = 0, deltaKg = 0;
+    if (all.length >= 2) {
+      const first = all[0].netKgCO2e;
+      const last = all[all.length - 1].netKgCO2e;
+      deltaKg = Math.round((last - first) * 100) / 100;
+      changePct = first > 0 ? Math.round(((last - first) / first) * 10000) / 100 : 0;
+      trend = deltaKg < -0.5 ? "improving" : deltaKg > 0.5 ? "worsening" : "stable";
+    }
+    const avg = all.length
+      ? Math.round((all.reduce((s, e) => s + e.netKgCO2e, 0) / all.length) * 100) / 100
+      : 0;
+    const best = all.length ? all.reduce((m, e) => (e.netKgCO2e < m.netKgCO2e ? e : m)) : null;
+    return {
+      ok: true,
+      result: {
+        entries: all,
+        count: all.length,
+        trend,
+        changePct,
+        deltaKg,
+        averageNetKgCO2e: avg,
+        bestEntry: best,
+        sinceDays,
+      },
+    };
+  });
+
+  /**
+   * footprint-delete — remove one footprint snapshot.
+   */
+  registerLensAction("eco", "footprint-delete", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ecoUserId(ctx);
+    const id = String(params.id || "");
+    const list = state.footprintLog.get(userId) || [];
+    const idx = list.findIndex(e => e.id === id);
+    if (idx < 0) return { ok: false, error: "snapshot not found" };
+    list.splice(idx, 1);
+    persistEco();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  /**
+   * challenges-catalog — JouleBug-style gamified sustainability habits.
+   * Each is a recurring habit with a cadence, points, and an estimated
+   * kgCO2e impact. Curated from the same Drawdown/EPA references as the
+   * climate-action library — no fabricated values.
+   */
+  registerLensAction("eco", "challenges-catalog", (_ctx, _artifact, _params = {}) => {
+    return { ok: true, result: { challenges: ECO_CHALLENGES_LIBRARY, count: ECO_CHALLENGES_LIBRARY.length } };
+  });
+
+  /**
+   * challenges-join — enroll the user in a sustainability challenge.
+   * params: { slug }
+   */
+  registerLensAction("eco", "challenges-join", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const slug = String(params.slug || "");
+    const challenge = ECO_CHALLENGES_LIBRARY.find(c => c.slug === slug);
+    if (!challenge) return { ok: false, error: "unknown challenge slug" };
+    const userId = ecoUserId(ctx);
+    if (!state.challenges.has(userId)) state.challenges.set(userId, []);
+    const list = state.challenges.get(userId);
+    if (list.some(e => e.slug === slug)) return { ok: false, error: "already enrolled" };
+    const enrollment = {
+      slug,
+      joinedAt: new Date().toISOString(),
+      checkIns: [],          // ISO date strings
+      currentStreak: 0,
+      longestStreak: 0,
+      totalCheckIns: 0,
+      totalPoints: 0,
+      totalKgSaved: 0,
+    };
+    list.push(enrollment);
+    persistEco();
+    return { ok: true, result: { enrollment, challenge } };
+  });
+
+  /**
+   * challenges-checkin — record a completion for a joined challenge, updating
+   * the streak. One check-in per UTC day is counted.
+   * params: { slug }
+   */
+  registerLensAction("eco", "challenges-checkin", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const slug = String(params.slug || "");
+    const challenge = ECO_CHALLENGES_LIBRARY.find(c => c.slug === slug);
+    if (!challenge) return { ok: false, error: "unknown challenge slug" };
+    const userId = ecoUserId(ctx);
+    const list = state.challenges.get(userId) || [];
+    const enrollment = list.find(e => e.slug === slug);
+    if (!enrollment) return { ok: false, error: "not enrolled in this challenge" };
+    const today = new Date().toISOString().slice(0, 10);
+    if (enrollment.checkIns.includes(today)) {
+      return { ok: false, error: "already checked in today" };
+    }
+    enrollment.checkIns.push(today);
+    enrollment.checkIns.sort();
+    // Recompute streaks from the sorted unique date list.
+    let cur = 0, longest = 0, prev = null;
+    for (const d of enrollment.checkIns) {
+      if (prev) {
+        const gap = (new Date(d).getTime() - new Date(prev).getTime()) / 86400000;
+        cur = gap === 1 ? cur + 1 : 1;
+      } else {
+        cur = 1;
+      }
+      longest = Math.max(longest, cur);
+      prev = d;
+    }
+    // currentStreak only counts if the latest check-in is today or yesterday.
+    const lastDate = enrollment.checkIns[enrollment.checkIns.length - 1];
+    const daysSinceLast = (new Date(today).getTime() - new Date(lastDate).getTime()) / 86400000;
+    enrollment.currentStreak = daysSinceLast <= 1 ? cur : 0;
+    enrollment.longestStreak = longest;
+    enrollment.totalCheckIns = enrollment.checkIns.length;
+    enrollment.totalPoints = enrollment.totalCheckIns * challenge.points;
+    enrollment.totalKgSaved =
+      Math.round(enrollment.totalCheckIns * challenge.kgCo2eSavedPerCheckIn * 100) / 100;
+    persistEco();
+    return { ok: true, result: { enrollment, challenge, checkedInOn: today } };
+  });
+
+  /**
+   * challenges-mine — list the user's enrollments with progress + aggregate
+   * gamification stats (total points, streaks).
+   */
+  registerLensAction("eco", "challenges-mine", (ctx, _artifact, _params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ecoUserId(ctx);
+    const list = state.challenges.get(userId) || [];
+    const enrollments = list.map(e => {
+      const challenge = ECO_CHALLENGES_LIBRARY.find(c => c.slug === e.slug) || null;
+      return { ...e, challenge };
+    });
+    const totalPoints = enrollments.reduce((s, e) => s + (e.totalPoints || 0), 0);
+    const totalKgSaved = Math.round(enrollments.reduce((s, e) => s + (e.totalKgSaved || 0), 0) * 100) / 100;
+    const bestStreak = enrollments.reduce((m, e) => Math.max(m, e.longestStreak || 0), 0);
+    return {
+      ok: true,
+      result: { enrollments, totalPoints, totalKgSaved, bestStreak, activeCount: enrollments.length },
+    };
+  });
+
+  /**
+   * challenges-leave — drop an enrollment.
+   */
+  registerLensAction("eco", "challenges-leave", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ecoUserId(ctx);
+    const slug = String(params.slug || "");
+    const list = state.challenges.get(userId) || [];
+    const idx = list.findIndex(e => e.slug === slug);
+    if (idx < 0) return { ok: false, error: "not enrolled" };
+    list.splice(idx, 1);
+    persistEco();
+    return { ok: true, result: { slug, left: true } };
+  });
+
+  /**
+   * species-suggest — confidence-ranked species candidates with suggested
+   * alternatives. Resolves a typed-or-identified name against the GBIF
+   * taxonomy backbone (free, keyless) and returns the matched taxon plus
+   * fuzzy-search alternatives, each with a real GBIF confidence score.
+   * params: { name }
+   */
+  registerLensAction("eco", "species-suggest", async (_ctx, _artifact, params = {}) => {
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (name.length > 200) return { ok: false, error: "name too long" };
+    try {
+      const match = await safeFetchJson(
+        `https://api.gbif.org/v1/species/match?name=${encodeURIComponent(name)}&verbose=true`,
+      );
+      const primary = match.usageKey
+        ? {
+            commonName: match.canonicalName || name,
+            scientificName: match.scientificName || match.canonicalName || name,
+            rank: (match.rank || "").toLowerCase() || "unknown",
+            kingdom: match.kingdom || null,
+            family: match.family || null,
+            confidence: clamp01((Number(match.confidence) || 0) / 100),
+            matchType: match.matchType || "NONE",
+            taxonKey: match.usageKey,
+          }
+        : null;
+      // verbose=true returns near-miss alternatives the backbone considered.
+      const alternatives = Array.isArray(match.alternatives)
+        ? match.alternatives.slice(0, 8).map(a => ({
+            commonName: a.canonicalName || a.scientificName || "Unknown",
+            scientificName: a.scientificName || a.canonicalName || "",
+            rank: (a.rank || "").toLowerCase() || "unknown",
+            kingdom: a.kingdom || null,
+            family: a.family || null,
+            confidence: clamp01((Number(a.confidence) || 0) / 100),
+            matchType: a.matchType || "FUZZY",
+            taxonKey: a.usageKey || null,
+          }))
+        : [];
+      // If the backbone gave no alternatives, fall back to a fuzzy
+      // name search so the user still sees real candidate species.
+      let extra = [];
+      if (alternatives.length === 0) {
+        const search = await safeFetchJson(
+          `https://api.gbif.org/v1/species/search?q=${encodeURIComponent(name)}&rank=SPECIES&limit=6`,
+        );
+        extra = (search.results || [])
+          .filter(r => r.key !== match.usageKey)
+          .slice(0, 6)
+          .map(r => ({
+            commonName: r.canonicalName || r.scientificName || "Unknown",
+            scientificName: r.scientificName || r.canonicalName || "",
+            rank: (r.rank || "").toLowerCase() || "species",
+            kingdom: r.kingdom || null,
+            family: r.family || null,
+            confidence: 0,
+            matchType: "SEARCH",
+            taxonKey: r.key || null,
+          }));
+      }
+      return {
+        ok: true,
+        result: {
+          query: name,
+          primary,
+          alternatives: alternatives.length ? alternatives : extra,
+          source: "GBIF taxonomic backbone",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `GBIF unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * locations-save / locations-list / locations-delete — saved places for
+   * which the user wants recurring environmental alerts.
+   */
+  registerLensAction("eco", "locations-save", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
+    const label = String(params.label || "").trim();
+    if (!label) return { ok: false, error: "label required" };
+    const userId = ecoUserId(ctx);
+    if (!state.savedLocations.has(userId)) state.savedLocations.set(userId, []);
+    const list = state.savedLocations.get(userId);
+    if (list.length >= 25) return { ok: false, error: "saved-location limit reached (25)" };
+    const entry = {
+      id: `loc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      label: label.slice(0, 80),
+      lat, lng,
+      savedAt: new Date().toISOString(),
+    };
+    list.push(entry);
+    persistEco();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("eco", "locations-list", (ctx, _artifact, _params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ecoUserId(ctx);
+    const locations = [...(state.savedLocations.get(userId) || [])];
+    return { ok: true, result: { locations, count: locations.length } };
+  });
+
+  registerLensAction("eco", "locations-delete", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ecoUserId(ctx);
+    const id = String(params.id || "");
+    const list = state.savedLocations.get(userId) || [];
+    const idx = list.findIndex(l => l.id === id);
+    if (idx < 0) return { ok: false, error: "location not found" };
+    list.splice(idx, 1);
+    persistEco();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  /**
+   * environmental-alerts — composite air-quality / pollen / UV alert for a
+   * point, derived from real live data. AQI + pollen + UV come from the
+   * Open-Meteo Air-Quality + Forecast APIs (free, keyless). Each reading is
+   * graded against published health thresholds; only readings that cross a
+   * caution threshold become alerts.
+   * params: { lat, lng, label? }
+   */
+  registerLensAction("eco", "environmental-alerts", async (_ctx, _artifact, params = {}) => {
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
+    const label = params.label ? String(params.label).slice(0, 80) : null;
+    try {
+      const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=us_aqi,pm2_5,pm10,ozone&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&forecast_days=1`;
+      const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=uv_index_max&forecast_days=1&timezone=auto`;
+      const [aq, wx] = await Promise.all([safeFetchJson(aqUrl), safeFetchJson(wxUrl)]);
+      const cur = aq.current || {};
+      const aqi = Number(cur.us_aqi) || 0;
+      const uv = Number(wx.daily?.uv_index_max?.[0]) || 0;
+      // Peak pollen across all tracked species in the next 24h (grains/m³).
+      const pollenSeries = aq.hourly || {};
+      const pollenFields = ["alder_pollen", "birch_pollen", "grass_pollen", "mugwort_pollen", "olive_pollen", "ragweed_pollen"];
+      let peakPollen = 0, peakPollenType = null;
+      for (const f of pollenFields) {
+        const arr = pollenSeries[f] || [];
+        for (const v of arr) {
+          const n = Number(v) || 0;
+          if (n > peakPollen) { peakPollen = n; peakPollenType = f.replace("_pollen", ""); }
+        }
+      }
+      const alerts = [];
+      // AQI thresholds (US EPA AQI scale).
+      if (aqi > 100) {
+        const cat = categoriseAqi(aqi);
+        alerts.push({
+          kind: "air_quality", severity: aqi > 200 ? "high" : aqi > 150 ? "moderate" : "low",
+          value: aqi, unit: "US AQI", category: cat.key, message: cat.recommendation,
+        });
+      }
+      // UV thresholds (WHO UV index).
+      if (uv >= 6) {
+        alerts.push({
+          kind: "uv", severity: uv >= 11 ? "high" : uv >= 8 ? "moderate" : "low",
+          value: Math.round(uv * 10) / 10, unit: "UV index",
+          category: uv >= 11 ? "extreme" : uv >= 8 ? "very-high" : "high",
+          message: uv >= 8
+            ? "Very high UV. Avoid sun 10am-4pm; SPF 30+, hat, and shade essential."
+            : "High UV. Apply sunscreen and seek shade during midday hours.",
+        });
+      }
+      // Pollen thresholds (grains/m³ — common allergy-forecast bands).
+      if (peakPollen >= 20) {
+        alerts.push({
+          kind: "pollen", severity: peakPollen >= 90 ? "high" : peakPollen >= 50 ? "moderate" : "low",
+          value: Math.round(peakPollen), unit: "grains/m³",
+          category: peakPollen >= 90 ? "very-high" : peakPollen >= 50 ? "high" : "moderate",
+          pollenType: peakPollenType,
+          message: `Elevated ${peakPollenType || "pollen"} levels. Allergy sufferers should limit outdoor time and keep windows closed.`,
+        });
+      }
+      return {
+        ok: true,
+        result: {
+          location: { lat, lng, label },
+          readings: {
+            aqi, pm25: Number(cur.pm2_5) || 0, pm10: Number(cur.pm10) || 0,
+            ozone: Number(cur.ozone) || 0, uvIndexMax: Math.round(uv * 10) / 10,
+            peakPollen: Math.round(peakPollen), peakPollenType,
+          },
+          alerts,
+          alertCount: alerts.length,
+          allClear: alerts.length === 0,
+          source: "Open-Meteo Air Quality + Forecast",
+          checkedAt: new Date().toISOString(),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `Open-Meteo unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────
@@ -856,5 +1347,21 @@ const CLIMATE_ACTIONS_LIBRARY = [
   { slug: "contact-representative", title: "Contact representative on climate bill", category: "advocacy", effort: 1, kgCo2eSavedPerYear: 0, description: "Symbolic per-action carbon impact ~0; structural impact much larger via policy.", citation: "Citizens' Climate Lobby" },
   { slug: "switch-bank-fossil", title: "Move bank to a fossil-free option", category: "advocacy", effort: 3, kgCo2eSavedPerYear: 2000, description: "Average US bank account funds ~2 tCO₂e of fossil lending per $1k held; switching diverts that.", citation: "Bank.Green / Rainforest Action Network" },
   { slug: "join-clean-energy-coop", title: "Join a community solar co-op", category: "advocacy", effort: 3, kgCo2eSavedPerYear: 1200, description: "Community solar shares offset grid electricity at scale; ~1.2 tCO₂e/share/year.", citation: "DOE Community Solar program" },
+];
+
+// JouleBug-style gamified recurring habits. Each check-in is one completion;
+// kgCo2eSavedPerCheckIn is derived from the same lifecycle research as the
+// climate-action library — never a fabricated figure.
+const ECO_CHALLENGES_LIBRARY = [
+  { slug: "meatless-monday", title: "Meatless Monday", category: "food", cadence: "weekly", points: 25, kgCo2eSavedPerCheckIn: 2.3, description: "Swap one meat-based day for plant-based meals. Beef is ~27 kgCO₂e/kg; a plant day saves ~2.3 kg.", citation: "Poore & Nemecek (Science 2018)" },
+  { slug: "bring-your-cup", title: "Bring your own cup", category: "waste", cadence: "daily", points: 10, kgCo2eSavedPerCheckIn: 0.06, description: "Skip a single-use cup. Each disposable cup carries ~0.06 kgCO₂e embodied + waste emissions.", citation: "Carbon Trust packaging LCA" },
+  { slug: "car-free-day", title: "Car-free day", category: "transport", cadence: "weekly", points: 30, kgCo2eSavedPerCheckIn: 3.4, description: "Walk, cycle, or take transit instead of driving. Avoids ~3.4 kg for a typical 20 km day.", citation: "EPA passenger-car emission factor" },
+  { slug: "cold-wash", title: "Cold-water wash", category: "home", cadence: "weekly", points: 15, kgCo2eSavedPerCheckIn: 0.9, description: "Run laundry on cold. Water heating dominates a wash cycle — ~0.9 kg saved per load switched.", citation: "Cold Water Saves / AHAM" },
+  { slug: "zero-food-waste", title: "Zero food waste day", category: "food", cadence: "daily", points: 15, kgCo2eSavedPerCheckIn: 0.5, description: "Finish or compost everything. The avg person wastes ~0.5 kgCO₂e of food per day.", citation: "FAO food-loss report" },
+  { slug: "unplug-vampires", title: "Unplug standby devices", category: "home", cadence: "weekly", points: 10, kgCo2eSavedPerCheckIn: 0.4, description: "Cut phantom load from chargers and electronics. Standby is ~5-10% of home electricity.", citation: "DOE Energy Saver" },
+  { slug: "refill-not-landfill", title: "Refill, don't landfill", category: "waste", cadence: "weekly", points: 12, kgCo2eSavedPerCheckIn: 0.3, description: "Choose refillable containers over single-use packaging on one shopping trip.", citation: "EPA WARM model" },
+  { slug: "transit-commute", title: "Public-transit commute", category: "transport", cadence: "daily", points: 20, kgCo2eSavedPerCheckIn: 1.7, description: "Take the bus or train instead of driving to work. ~1.7 kg saved per round-trip.", citation: "EPA fast-facts" },
+  { slug: "line-dry-laundry", title: "Line-dry laundry", category: "home", cadence: "weekly", points: 12, kgCo2eSavedPerCheckIn: 1.4, description: "Skip the tumble dryer. A dryer cycle is ~1.4 kgCO₂e on an average grid.", citation: "DOE appliance energy data" },
+  { slug: "local-produce-shop", title: "Shop local & seasonal", category: "food", cadence: "weekly", points: 15, kgCo2eSavedPerCheckIn: 0.8, description: "Buy seasonal produce from local growers, cutting transport and cold-storage emissions.", citation: "Drawdown #3 (regional food)" },
 ];
 

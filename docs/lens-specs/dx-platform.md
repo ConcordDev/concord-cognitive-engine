@@ -11,13 +11,15 @@ Backend: REST routes `/api/dx/exchange`, `/api/dx/sessions` (RFC 8252 loopback O
 - API-key issue/revoke; web editor sub-page (Monaco in browser); shadow-DTU cross-file context
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` In-browser chat-with-codebase — ask questions about repo context (web editor is edit-only)
-- [ ] `[M]` PR/diff review integration — run detectors against a pull request
-- [ ] `[M]` Team dashboard — aggregate findings + severity trends across a team's codebases
-- [ ] `[M]` Codebase-wide search surfaced in the web editor
-- [ ] `[S]` Detector configuration UI — enable/disable individual detectors per codebase
-- [ ] `[S]` Usage analytics — which detectors fire most, fix-acceptance rate over time
-- [ ] `[M]` CI integration — detector pass as a GitHub Action / pre-merge gate
+- [x] `[L]` In-browser chat-with-codebase — ask questions about repo context (web editor is edit-only)
+- [x] `[M]` PR/diff review integration — run detectors against a pull request
+- [x] `[M]` Team dashboard — aggregate findings + severity trends across a team's codebases
+- [x] `[M]` Codebase-wide search surfaced in the web editor
+- [x] `[S]` Detector configuration UI — enable/disable individual detectors per codebase
+- [x] `[S]` Usage analytics — which detectors fire most, fix-acceptance rate over time
+- [x] `[M]` CI integration — detector pass as a GitHub Action / pre-merge gate
 
 ## Parity
-~55% of a Cody/Copilot-platform composite. The IDE-extension + OAuth + detector + repair-cortex + metered-billing loop is genuinely complete and differentiated, but missing chat-with-codebase, PR review, team dashboard, and CI integration.
+~95% of a Cody/Copilot-platform composite. The IDE-extension + OAuth + detector + repair-cortex + metered-billing loop plus chat-with-codebase, PR diff review, codebase search, team dashboard, detector config, usage analytics, and CI config generation all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

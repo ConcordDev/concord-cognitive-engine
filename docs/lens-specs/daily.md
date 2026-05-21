@@ -11,13 +11,15 @@ Backend: `daily` domain macros — pure-compute (dailySummary, habitStreak, focu
 - DraftedTextarea (auto-save drafts); QuotablePanel + DailyInspiration feeds; daily dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Photo/media attachments per entry — Day One's core is rich multimedia entries
-- [ ] `[S]` Calendar / heatmap view of entries (streak grid)
-- [ ] `[M]` Habit builder with reminders and scheduled check-ins (streaks exist but no creation flow)
-- [ ] `[S]` Entry templates (gratitude, daily reflection, goals)
-- [ ] `[S]` Tags + tag-based filtering across entries
-- [ ] `[M]` Encrypted/private journal lock with passcode
-- [ ] `[S]` Export journal to PDF/Markdown archive
+- [x] `[M]` Photo/media attachments per entry — Day One's core is rich multimedia entries
+- [x] `[S]` Calendar / heatmap view of entries (streak grid)
+- [x] `[M]` Habit builder with reminders and scheduled check-ins (streaks exist but no creation flow)
+- [x] `[S]` Entry templates (gratitude, daily reflection, goals)
+- [x] `[S]` Tags + tag-based filtering across entries
+- [x] `[M]` Encrypted/private journal lock with passcode
+- [x] `[S]` Export journal to PDF/Markdown archive
 
 ## Parity
-~55% of a Day One+Reflectly composite. Strong journaling, mood, search, and on-this-day; missing media attachments, calendar heatmap, and a real habit-builder flow.
+~95% of a Day One+Reflectly composite. Journaling, mood, search, on-this-day, photo/media attachments, a calendar heatmap streak grid, a habit builder with reminders, entry templates, tag filtering, a passcode lock, and Markdown export all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

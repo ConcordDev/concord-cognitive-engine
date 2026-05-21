@@ -10,6 +10,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AstronomySkySection } from '@/components/astronomy/AstronomySkySection';
+import { SkyChartWorkbench } from '@/components/astronomy/SkyChartWorkbench';
 import { NasaExplorer } from '@/components/astronomy/NasaExplorer';
 import { NasaLivePanel } from '@/components/astronomy/NasaLivePanel';
 import { SpaceflightNewsPanel } from '@/components/space/SpaceflightNewsPanel';
@@ -227,7 +228,8 @@ export default function AstronomyLensPage() {
       <FirstRunTour lensId="astronomy" />
       <ManifestActionBar />
       <DepthBadge lensId="astronomy" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
+      <div className="px-4 mt-3 space-y-4">
+        <SkyChartWorkbench />
         <AstronomySkySection />
       </div>
     <div data-lens-theme="astronomy" className="p-6 space-y-6">

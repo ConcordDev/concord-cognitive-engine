@@ -12,13 +12,13 @@ Backend: `debate` domain macros — pure-compute (evaluateArgument, steelmanPosi
 - DebateActionPanel; debate dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Recursive claim tree — claims supporting/attacking other claims to arbitrary depth (Kialo's core)
-- [ ] `[M]` Per-claim impact rating that propagates up the argument tree
-- [ ] `[S]` Argument-tree visual map with collapse/expand and pro/con coloring
-- [ ] `[M]` Multi-thesis debates — multiple positions, not just binary pro/con
-- [ ] `[S]` Claim sourcing — attach evidence/citations to each claim
-- [ ] `[S]` Perspective filter — view the tree from one side's lens
-- [ ] `[S]` Debate sharing / public read-only links
+- [x] `[M]` Recursive claim tree — claims supporting/attacking other claims to arbitrary depth (Kialo's core)
+- [x] `[M]` Per-claim impact rating that propagates up the argument tree
+- [x] `[S]` Argument-tree visual map with collapse/expand and pro/con coloring
+- [x] `[M]` Multi-thesis debates — multiple positions, not just binary pro/con
+- [x] `[S]` Claim sourcing — attach evidence/citations to each claim
+- [x] `[S]` Perspective filter — view the tree from one side's lens
+- [x] `[S]` Debate sharing / public read-only links
 
 ## Parity
-~55% of Kialo's feature surface. Pro/con arguments, voting, phases, and AI craft tools are real, but Kialo's defining feature — the recursive impact-weighted claim tree — is only present as flat claim primitives.
+~95% of Kialo's feature surface. The recursive impact-weighted claim tree is fully built — `claim-add` with `parentId` nests claims to arbitrary depth, `claim-impact` (1-5) propagates effective strength up the tree via `effectiveStrength`, multi-thesis `position-*` macros score competing positions, `source-*` attaches citations, and `debate-share`/`shared-view` mint public read-only links. The frontend `KialoArgumentMap` component surfaces all of this with collapse/expand, pro/con coloring and a per-side perspective filter; `SharedDebateView` renders the read-only `?share=` link. Remaining gap is content volume, not features.
