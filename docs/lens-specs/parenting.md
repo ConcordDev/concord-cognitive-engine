@@ -12,13 +12,15 @@ Backend: `server/domains/parenting.js` — ~32 macros: children CRUD, feed/sleep
 - Live CPSC child-product recall feed ingested as DTUs; parenting dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Sleep schedule predictor — predict next nap/bedtime windows from logged patterns (Huckleberry's "SweetSpot" core)
-- [ ] `[S]` Visual growth percentile charts — plot weight/height/head against WHO curves
-- [ ] `[M]` Multi-caregiver sync — shared baby log across parents/nanny in real time
-- [ ] `[S]` Quick-entry widgets + timers — one-tap start/stop nursing and sleep timers
-- [ ] `[M]` Personalized expert content — age-targeted articles and developmental tips
-- [ ] `[S]` Trends + insights — weekly summary of feeds/sleep/diapers with anomalies flagged
-- [ ] `[S]` Pediatric appointment + vaccine reminders with calendar export
+- [x] `[M]` Sleep schedule predictor — predict next nap/bedtime windows from logged patterns (Huckleberry's "SweetSpot" core)
+- [x] `[S]` Visual growth percentile charts — plot weight/height/head against WHO curves
+- [x] `[M]` Multi-caregiver sync — shared baby log across parents/nanny in real time
+- [x] `[S]` Quick-entry widgets + timers — one-tap start/stop nursing and sleep timers
+- [x] `[M]` Personalized expert content — age-targeted articles and developmental tips
+- [x] `[S]` Trends + insights — weekly summary of feeds/sleep/diapers with anomalies flagged
+- [x] `[S]` Pediatric appointment + vaccine reminders with calendar export
 
 ## Parity
-~60% of Huckleberry's feature surface. The logging substrate is genuinely complete (feed/sleep/diaper/pump/growth/milestones), but it lacks the predictive sleep-schedule engine, visual percentile charts, and multi-caregiver real-time sync that define the leader.
+~95% of Huckleberry's feature surface. The logging substrate (feed/sleep/diaper/pump/growth/milestones) plus a predictive sleep-schedule engine, WHO percentile charts, one-tap nursing/sleep timers, multi-caregiver sync, weekly trend insights, expert content, and appointment reminders with iCal export all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

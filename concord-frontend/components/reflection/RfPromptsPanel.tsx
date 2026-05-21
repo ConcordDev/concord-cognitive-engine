@@ -43,7 +43,7 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
     if (r.data?.result?.prompt) setToday(r.data.result.prompt as Prompt);
   };
 
-  const useTemplate = async (id: string) => {
+  const applyTemplate = async (id: string) => {
     const r = await lensRun('reflection', 'entry-from-template', { templateId: id });
     if (r.data?.ok === false) { setNote(r.data?.error || 'Failed'); return; }
     setNote('Draft entry created from template — find it in Entries.');
@@ -116,7 +116,7 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
                 <p className="text-xs text-zinc-200">{t.name}</p>
                 <p className="text-[10px] text-zinc-500 capitalize">{t.category}</p>
               </div>
-              <button type="button" onClick={() => useTemplate(t.id)}
+              <button type="button" onClick={() => applyTemplate(t.id)}
                 className="text-[11px] px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
                 Use
               </button>

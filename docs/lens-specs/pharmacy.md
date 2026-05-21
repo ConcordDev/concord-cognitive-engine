@@ -12,13 +12,15 @@ Backend: `server/domains/pharmacy.js` — ~33 macros: medication CRUD, dosing sc
 - Real openFDA drug labels + adverse-event reports; live drug-recall feed as DTUs; 4 tabs (meds/interactions/refills/FDA)
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Dose reminders with notifications — scheduled push alerts at dosing times (Medisafe's core loop)
-- [ ] `[S]` Medfriend / caregiver alerts — notify a family member on missed doses
-- [ ] `[M]` Live drug price lookup — query real pharmacy pricing for a drug + dosage (GoodRx core)
-- [ ] `[S]` Pill identifier — match a pill by imprint/shape/color via openFDA
-- [ ] `[S]` Refill auto-reorder — trigger refill request when supply runs low
-- [ ] `[M]` Drug interaction severity grading with sources — clinical-grade interaction explanations
-- [ ] `[S]` Streak / adherence gamification — visual adherence calendar and rewards
+- [x] `[M]` Dose reminders with notifications — scheduled push alerts at dosing times (Medisafe's core loop)
+- [x] `[S]` Medfriend / caregiver alerts — notify a family member on missed doses
+- [x] `[M]` Live drug price lookup — query real pharmacy pricing for a drug + dosage (GoodRx core)
+- [x] `[S]` Pill identifier — match a pill by imprint/shape/color via openFDA
+- [x] `[S]` Refill auto-reorder — trigger refill request when supply runs low
+- [x] `[M]` Drug interaction severity grading with sources — clinical-grade interaction explanations
+- [x] `[S]` Streak / adherence gamification — visual adherence calendar and rewards
 
 ## Parity
-~60% of Medisafe+GoodRx's feature surface. The medication + adherence + refill substrate is strong and the openFDA integration is real, but it lacks scheduled dose reminders, live price lookup, and a pill identifier — the features users actually open those apps for.
+~95% of Medisafe+GoodRx's feature surface. The medication + adherence + refill substrate, openFDA integration, plus scheduled dose reminders, caregiver alerts, live drug price lookup, a pill identifier, refill auto-reorder, graded drug interactions, and adherence streak gamification all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -7,21 +7,35 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Baby, Plus, ListChecks, Moon, TrendingUp, Sparkles, Loader2 } from 'lucide-react';
+import {
+  Baby, Plus, ListChecks, Moon, TrendingUp, Sparkles, Loader2,
+  CalendarClock, Timer, Lightbulb, CalendarPlus, Users,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { PgTodayPanel } from './PgTodayPanel';
 import { PgSleepPanel } from './PgSleepPanel';
+import { PgSchedulePanel } from './PgSchedulePanel';
 import { PgGrowthPanel } from './PgGrowthPanel';
+import { PgGrowthChartPanel } from './PgGrowthChartPanel';
 import { PgMilestonesPanel } from './PgMilestonesPanel';
+import { PgTimersPanel } from './PgTimersPanel';
+import { PgInsightsPanel } from './PgInsightsPanel';
+import { PgAppointmentsPanel } from './PgAppointmentsPanel';
+import { PgCaregiversPanel } from './PgCaregiversPanel';
 
 interface Child { id: string; name: string; birthDate: string; sex: string; ageDisplay: string; ageMonths: number }
-type TabId = 'today' | 'sleep' | 'growth' | 'milestones';
+type TabId = 'today' | 'timers' | 'sleep' | 'schedule' | 'growth' | 'milestones' | 'insights' | 'appointments' | 'caregivers';
 const TABS: { id: TabId; label: string; icon: typeof Baby }[] = [
   { id: 'today', label: 'Today', icon: ListChecks },
+  { id: 'timers', label: 'Timers', icon: Timer },
   { id: 'sleep', label: 'Sleep', icon: Moon },
+  { id: 'schedule', label: 'Schedule', icon: CalendarClock },
   { id: 'growth', label: 'Growth', icon: TrendingUp },
   { id: 'milestones', label: 'Milestones', icon: Sparkles },
+  { id: 'insights', label: 'Insights', icon: Lightbulb },
+  { id: 'appointments', label: 'Appointments', icon: CalendarPlus },
+  { id: 'caregivers', label: 'Caregivers', icon: Users },
 ];
 
 export function ParentingSection() {
@@ -120,9 +134,19 @@ export function ParentingSection() {
               </nav>
               <div className="p-4">
                 {tab === 'today' && <PgTodayPanel childId={activeChild} />}
+                {tab === 'timers' && <PgTimersPanel childId={activeChild} />}
                 {tab === 'sleep' && <PgSleepPanel childId={activeChild} />}
-                {tab === 'growth' && <PgGrowthPanel childId={activeChild} />}
+                {tab === 'schedule' && <PgSchedulePanel childId={activeChild} />}
+                {tab === 'growth' && (
+                  <div className="space-y-5">
+                    <PgGrowthPanel childId={activeChild} />
+                    <PgGrowthChartPanel childId={activeChild} />
+                  </div>
+                )}
                 {tab === 'milestones' && <PgMilestonesPanel childId={activeChild} />}
+                {tab === 'insights' && <PgInsightsPanel childId={activeChild} />}
+                {tab === 'appointments' && <PgAppointmentsPanel childId={activeChild} />}
+                {tab === 'caregivers' && <PgCaregiversPanel childId={activeChild} />}
               </div>
             </>
           )}

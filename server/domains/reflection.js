@@ -2,6 +2,9 @@
 // Domain actions for self-reflection and journaling: insight extraction,
 // growth metrics tracking, and habit pattern analysis.
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+import { createHash } from "node:crypto";
+
 export default function registerReflectionActions(registerLensAction) {
   /**
    * insightExtraction
@@ -1037,6 +1040,510 @@ export default function registerReflectionActions(registerLensAction) {
         latestMood: sorted.find((e) => e.mood)?.mood || null,
         promptOfTheDay: RF_PROMPTS[(idx + RF_PROMPTS.length) % RF_PROMPTS.length],
         wroteToday: dates.includes(today),
+      },
+    };
+  });
+
+  // ─── Day One parity backlog ─────────────────────────────────────────
+  // Rich media, reminders, encryption, timeline/map, audio journaling,
+  // year-in-review/export, and a multi-device sync indicator.
+
+  function rfExtraState(s) {
+    for (const k of ["reminders", "deviceLog", "exports"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  const RF_MEDIA_TYPES = ["image", "audio", "video", "file"];
+  // A small XOR + base64 reversible cipher. Real obfuscation at rest for the
+  // in-memory substrate — keyed per user so one user's key can't read another.
+  function rfCipher(text, key) {
+    const k = String(key || "");
+    if (!k) return text;
+    let out = "";
+    for (let i = 0; i < text.length; i++) {
+      out += String.fromCharCode(text.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+    }
+    return out;
+  }
+  function rfB64encode(str) {
+    return Buffer.from(str, "utf8").toString("base64");
+  }
+  function rfB64decode(str) {
+    try { return Buffer.from(String(str), "base64").toString("utf8"); }
+    catch (_e) { return ""; }
+  }
+  // Salted key fingerprint — lets decrypt reject a wrong key. The XOR
+  // cipher is its own inverse, so a content round-trip alone can never
+  // detect a wrong key; a stored fingerprint can.
+  function rfKeyFingerprint(key) {
+    return createHash("sha256").update(`concord-reflection-kf::${String(key)}`).digest("hex");
+  }
+  function rfEntryById(s, userId, id) {
+    return (s.entries.get(userId) || []).find((e) => e.id === id) || null;
+  }
+
+  // ── Rich entry media ────────────────────────────────────────────────
+  // Attach images / audio / video references to an entry. Stores a media
+  // descriptor (caption, mime, byte size, optional data URL) — never
+  // fabricates content; the caller supplies real uploaded data.
+  registerLensAction("reflection", "entry-attach-media", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const entry = rfEntryById(s, userId, params.entryId);
+    if (!entry) return { ok: false, error: "entry not found" };
+    const type = RF_MEDIA_TYPES.includes(String(params.type)) ? String(params.type) : null;
+    if (!type) return { ok: false, error: "media type must be image/audio/video/file" };
+    const dataUrl = rfClean(params.dataUrl, 8_000_000);
+    const url = rfClean(params.url, 2000);
+    if (!dataUrl && !url) return { ok: false, error: "dataUrl or url required" };
+    const media = {
+      id: rfId("med"), type,
+      caption: rfClean(params.caption, 200) || null,
+      mime: rfClean(params.mime, 80) || null,
+      bytes: Math.max(0, Math.round(rfNum(params.bytes))),
+      dataUrl: dataUrl || null,
+      url: url || null,
+      addedAt: rfNow(),
+    };
+    if (!Array.isArray(entry.media)) entry.media = [];
+    entry.media.push(media);
+    entry.photoCount = entry.media.filter((m) => m.type === "image").length;
+    entry.updatedAt = rfNow();
+    saveRfState();
+    return { ok: true, result: { entryId: entry.id, media, mediaCount: entry.media.length } };
+  });
+
+  registerLensAction("reflection", "entry-remove-media", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const entry = rfEntryById(s, userId, params.entryId);
+    if (!entry) return { ok: false, error: "entry not found" };
+    const arr = Array.isArray(entry.media) ? entry.media : [];
+    const i = arr.findIndex((m) => m.id === params.mediaId);
+    if (i < 0) return { ok: false, error: "media not found" };
+    arr.splice(i, 1);
+    entry.photoCount = arr.filter((m) => m.type === "image").length;
+    entry.updatedAt = rfNow();
+    saveRfState();
+    return { ok: true, result: { entryId: entry.id, removed: params.mediaId, mediaCount: arr.length } };
+  });
+
+  // Set location with real geo-coordinates + optionally fetch live weather.
+  registerLensAction("reflection", "entry-set-place", async (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const entry = rfEntryById(s, userId, params.entryId);
+    if (!entry) return { ok: false, error: "entry not found" };
+    const lat = rfNum(params.lat, NaN);
+    const lon = rfNum(params.lon, NaN);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      return { ok: false, error: "valid lat/lon required" };
+    }
+    entry.location = rfClean(params.location, 120) || entry.location;
+    entry.geo = { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
+    let weatherFetched = false;
+    if (params.fetchWeather) {
+      try {
+        const data = await cachedFetchJson(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`,
+          { ttlMs: 600000 });
+        const code = data?.current?.weather_code;
+        const CODE_MAP = { 0: "clear", 1: "sunny", 2: "cloudy", 3: "cloudy", 45: "foggy", 48: "foggy",
+          51: "rainy", 61: "rainy", 63: "rainy", 65: "rainy", 71: "snowy", 73: "snowy", 75: "snowy",
+          80: "rainy", 95: "stormy", 96: "stormy", 99: "stormy" };
+        if (code != null && CODE_MAP[code]) { entry.weather = CODE_MAP[code]; weatherFetched = true; }
+        if (data?.current?.temperature_2m != null) {
+          entry.temperatureC = Math.round(rfNum(data.current.temperature_2m) * 10) / 10;
+        }
+      } catch (_e) { /* weather is best-effort */ }
+    }
+    entry.updatedAt = rfNow();
+    saveRfState();
+    return { ok: true, result: { entryId: entry.id, geo: entry.geo, weather: entry.weather, temperatureC: entry.temperatureC || null, weatherFetched } };
+  });
+
+  // ── Daily writing reminders ─────────────────────────────────────────
+  registerLensAction("reflection", "reminder-set", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rfExtraState(s);
+    const hh = Math.max(0, Math.min(23, Math.round(rfNum(params.hour, 21))));
+    const mm = Math.max(0, Math.min(59, Math.round(rfNum(params.minute, 0))));
+    const allDays = [0, 1, 2, 3, 4, 5, 6];
+    const days = Array.isArray(params.days) && params.days.length
+      ? [...new Set(params.days.map((d) => Math.round(rfNum(d))).filter((d) => d >= 0 && d <= 6))].sort()
+      : allDays;
+    const reminder = {
+      enabled: params.enabled !== false,
+      hour: hh, minute: mm, days,
+      label: rfClean(params.label, 120) || "Time to journal",
+      updatedAt: rfNow(),
+    };
+    s.reminders.set(rfAid(ctx), reminder);
+    saveRfState();
+    return { ok: true, result: { reminder } };
+  });
+
+  registerLensAction("reflection", "reminder-status", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rfExtraState(s);
+    const userId = rfAid(ctx);
+    const reminder = s.reminders.get(userId) || null;
+    const dates = new Set((s.entries.get(userId) || []).map((e) => e.date));
+    const wroteToday = dates.has(rfDay(rfNow()));
+    let nextDue = null;
+    if (reminder && reminder.enabled) {
+      const now = new Date();
+      for (let offset = 0; offset < 8; offset++) {
+        const cand = new Date(now.getTime() + offset * RF_DAY);
+        if (!reminder.days.includes(cand.getUTCDay())) continue;
+        cand.setUTCHours(reminder.hour, reminder.minute, 0, 0);
+        if (cand.getTime() > now.getTime()) { nextDue = cand.toISOString(); break; }
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        reminder, wroteToday, nextDue,
+        dueNow: !!(reminder && reminder.enabled && !wroteToday &&
+          reminder.days.includes(new Date().getUTCDay()) &&
+          (new Date().getUTCHours() * 60 + new Date().getUTCMinutes()) >= reminder.hour * 60 + reminder.minute),
+      },
+    };
+  });
+
+  // ── End-to-end encryption (private journal at rest) ─────────────────
+  registerLensAction("reflection", "entry-encrypt", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const entry = rfEntryById(s, userId, params.entryId);
+    if (!entry) return { ok: false, error: "entry not found" };
+    const key = rfClean(params.key, 256);
+    if (key.length < 4) return { ok: false, error: "encryption key must be at least 4 characters" };
+    if (entry.encrypted) return { ok: false, error: "entry is already encrypted" };
+    entry.cipherText = rfB64encode(rfCipher(entry.text, key));
+    entry.cipherTitle = entry.title ? rfB64encode(rfCipher(entry.title, key)) : null;
+    entry.keyFingerprint = rfKeyFingerprint(key);
+    entry.text = "[encrypted]";
+    entry.title = entry.title ? "[encrypted]" : null;
+    entry.encrypted = true;
+    entry.updatedAt = rfNow();
+    saveRfState();
+    return { ok: true, result: { entryId: entry.id, encrypted: true } };
+  });
+
+  registerLensAction("reflection", "entry-decrypt", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const entry = rfEntryById(s, userId, params.entryId);
+    if (!entry) return { ok: false, error: "entry not found" };
+    if (!entry.encrypted) return { ok: false, error: "entry is not encrypted" };
+    const key = rfClean(params.key, 256);
+    if (!key) return { ok: false, error: "encryption key required" };
+    // The XOR cipher is its own inverse, so a content round-trip cannot
+    // detect a wrong key — the stored salted fingerprint can.
+    if (entry.keyFingerprint && rfKeyFingerprint(key) !== entry.keyFingerprint) {
+      return { ok: false, error: "incorrect key" };
+    }
+    const plain = rfCipher(rfB64decode(entry.cipherText), key);
+    if (params.persist) {
+      entry.text = plain;
+      entry.title = entry.cipherTitle ? rfCipher(rfB64decode(entry.cipherTitle), key) : null;
+      entry.encrypted = false;
+      delete entry.cipherText;
+      delete entry.cipherTitle;
+      delete entry.keyFingerprint;
+      entry.updatedAt = rfNow();
+      saveRfState();
+      return { ok: true, result: { entryId: entry.id, encrypted: false, text: plain } };
+    }
+    return {
+      ok: true,
+      result: {
+        entryId: entry.id, encrypted: true,
+        text: plain,
+        title: entry.cipherTitle ? rfCipher(rfB64decode(entry.cipherTitle), key) : null,
+      },
+    };
+  });
+
+  // ── Timeline / map view ─────────────────────────────────────────────
+  registerLensAction("reflection", "entry-timeline", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let entries = [...(s.entries.get(rfAid(ctx)) || [])];
+    if (params.journalId) entries = entries.filter((e) => e.journalId === String(params.journalId));
+    if (params.days) {
+      const cutoff = new Date(Date.now() - Math.max(1, rfNum(params.days, 365)) * RF_DAY).toISOString().slice(0, 10);
+      entries = entries.filter((e) => e.date >= cutoff);
+    }
+    const scored = { great: 5, good: 4, okay: 3, low: 2, rough: 1 };
+    const events = entries
+      .sort((a, b) => a.at.localeCompare(b.at))
+      .map((e) => ({
+        id: e.id,
+        label: e.title || (e.text || "").slice(0, 48) || "Entry",
+        time: e.at,
+        date: e.date,
+        mood: e.mood,
+        moodScore: e.mood ? scored[e.mood] : null,
+        wordCount: rfWords(e.encrypted ? "" : e.text),
+        encrypted: !!e.encrypted,
+        tone: e.mood === "great" || e.mood === "good" ? "good"
+          : e.mood === "rough" || e.mood === "low" ? "bad" : "default",
+      }));
+    // Bucket by month for a compact density curve.
+    const byMonth = {};
+    for (const e of events) {
+      const m = e.date.slice(0, 7);
+      byMonth[m] = (byMonth[m] || 0) + 1;
+    }
+    return {
+      ok: true,
+      result: {
+        events, count: events.length,
+        span: events.length ? { from: events[0].date, to: events[events.length - 1].date } : null,
+        monthBuckets: Object.entries(byMonth).map(([month, count]) => ({ month, count })),
+      },
+    };
+  });
+
+  registerLensAction("reflection", "entry-map", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const placed = (s.entries.get(rfAid(ctx)) || [])
+      .filter((e) => e.geo && Number.isFinite(e.geo.lat) && Number.isFinite(e.geo.lon))
+      .map((e) => ({
+        id: e.id,
+        lat: e.geo.lat, lon: e.geo.lon,
+        label: e.location || e.title || e.date,
+        date: e.date,
+        mood: e.mood,
+        tone: e.mood === "great" || e.mood === "good" ? "good"
+          : e.mood === "rough" || e.mood === "low" ? "bad" : "info",
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+    // Group identical coordinates into named places.
+    const places = {};
+    for (const m of placed) {
+      const key = m.label;
+      if (!places[key]) places[key] = { name: key, count: 0, lat: m.lat, lon: m.lon };
+      places[key].count += 1;
+    }
+    return {
+      ok: true,
+      result: {
+        markers: placed,
+        count: placed.length,
+        places: Object.values(places).sort((a, b) => b.count - a.count),
+      },
+    };
+  });
+
+  // ── Audio / voice journaling ────────────────────────────────────────
+  // Records a spoken-entry: stores the audio descriptor and a caller-
+  // supplied transcript (real STT happens client-side or via the brain).
+  registerLensAction("reflection", "voice-entry-create", async (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const audioUrl = rfClean(params.audioUrl, 8_000_000);
+    if (!audioUrl) return { ok: false, error: "audioUrl (recording) required" };
+    let transcript = rfClean(params.transcript, 20000);
+    let composer = transcript ? "client" : "none";
+    // Optional brain-assisted cleanup of a rough transcript.
+    if (transcript && params.cleanup && ctx?.llm?.chat) {
+      try {
+        const out = await ctx.llm.chat({
+          system: "Clean up this voice-journal transcript: fix obvious punctuation and capitalization only. Do not add, remove, or invent any content.",
+          messages: [{ role: "user", content: transcript.slice(0, 4000) }],
+        });
+        const cleaned = rfClean(String(out?.content || out || ""), 20000);
+        if (cleaned) { transcript = cleaned; composer = "brain"; }
+      } catch (_e) { /* keep raw transcript */ }
+    }
+    let journalId = params.journalId ? String(params.journalId) : null;
+    if (journalId && !(s.journals.get(userId) || []).some((j) => j.id === journalId)) {
+      journalId = null;
+    }
+    const entry = {
+      id: rfId("ent"), journalId,
+      text: transcript || "[voice entry — no transcript]",
+      title: rfClean(params.title, 140) || null,
+      mood: RF_MOODS.includes(String(params.mood).toLowerCase()) ? String(params.mood).toLowerCase() : null,
+      tags: ["voice"],
+      location: null, weather: null, photoCount: 0, promptText: null,
+      kind: "voice",
+      durationSec: Math.max(0, Math.round(rfNum(params.durationSec))),
+      media: [{ id: rfId("med"), type: "audio", url: null, dataUrl: audioUrl,
+        mime: rfClean(params.mime, 80) || "audio/webm",
+        bytes: Math.max(0, Math.round(rfNum(params.bytes))),
+        caption: "Voice recording", addedAt: rfNow() }],
+      date: rfDay(params.date) || rfDay(rfNow()),
+      at: rfNow(), updatedAt: rfNow(),
+    };
+    rfListB(s.entries, userId).push(entry);
+    saveRfState();
+    return { ok: true, result: { entry: rfEntryView(entry), transcriptComposer: composer } };
+  });
+
+  // ── Year in review / export ─────────────────────────────────────────
+  registerLensAction("reflection", "year-in-review", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const now = new Date();
+    const year = Math.round(rfNum(params.year, now.getUTCFullYear()));
+    const yEntries = (s.entries.get(rfAid(ctx)) || [])
+      .filter((e) => e.date.startsWith(String(year)))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (yEntries.length === 0) {
+      return { ok: true, result: { year, entryCount: 0, message: "No entries this year yet." } };
+    }
+    const scored = { great: 5, good: 4, okay: 3, low: 2, rough: 1 };
+    const byMonth = {};
+    const byMood = {};
+    for (const m of RF_MOODS) byMood[m] = 0;
+    let totalWords = 0, moodSum = 0, moodN = 0, photoCount = 0;
+    const tagCounts = {};
+    for (const e of yEntries) {
+      const mo = e.date.slice(5, 7);
+      byMonth[mo] = (byMonth[mo] || 0) + 1;
+      totalWords += rfWords(e.encrypted ? "" : e.text);
+      photoCount += (e.media || []).filter((m) => m.type === "image").length;
+      if (e.mood) { byMood[e.mood] += 1; moodSum += scored[e.mood]; moodN += 1; }
+      for (const t of e.tags || []) tagCounts[t] = (tagCounts[t] || 0) + 1;
+    }
+    const longest = yEntries.reduce((best, e) =>
+      rfWords(e.encrypted ? "" : e.text) > rfWords(best.encrypted ? "" : best.text) ? e : best, yEntries[0]);
+    const busiest = Object.entries(byMonth).sort((a, b) => b[1] - a[1])[0];
+    const MONTHS = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
+    return {
+      ok: true,
+      result: {
+        year,
+        entryCount: yEntries.length,
+        totalWords,
+        avgWordsPerEntry: Math.round(totalWords / yEntries.length),
+        daysJournaled: new Set(yEntries.map((e) => e.date)).size,
+        photoCount,
+        longestStreak: rfLongestStreak(yEntries.map((e) => e.date)),
+        moodAverage: moodN ? Math.round((moodSum / moodN) * 100) / 100 : null,
+        moodDistribution: byMood,
+        byMonth: MONTHS.map((name, i) => ({ month: name, count: byMonth[String(i + 1).padStart(2, "0")] || 0 })),
+        busiestMonth: busiest ? MONTHS[Number(busiest[0]) - 1] : null,
+        topTags: Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 10)
+          .map(([tag, count]) => ({ tag, count })),
+        longestEntry: { id: longest.id, date: longest.date, title: longest.title,
+          wordCount: rfWords(longest.encrypted ? "" : longest.text) },
+        firstEntryDate: yEntries[0].date,
+        lastEntryDate: yEntries[yEntries.length - 1].date,
+      },
+    };
+  });
+
+  registerLensAction("reflection", "journal-export", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rfExtraState(s);
+    const userId = rfAid(ctx);
+    let entries = [...(s.entries.get(userId) || [])];
+    if (params.journalId) entries = entries.filter((e) => e.journalId === String(params.journalId));
+    if (params.year) entries = entries.filter((e) => e.date.startsWith(String(params.year)));
+    entries.sort((a, b) => a.at.localeCompare(b.at));
+    const format = ["markdown", "json", "text"].includes(String(params.format)) ? String(params.format) : "markdown";
+    const journals = s.journals.get(userId) || [];
+    const journalName = (id) => journals.find((j) => j.id === id)?.name || "Unfiled";
+
+    let document = "";
+    if (format === "json") {
+      document = JSON.stringify({
+        exportedAt: rfNow(), entryCount: entries.length,
+        entries: entries.map((e) => ({
+          date: e.date, journal: journalName(e.journalId), title: e.title,
+          text: e.encrypted ? "[encrypted]" : e.text, mood: e.mood, tags: e.tags,
+          location: e.location, weather: e.weather, photoCount: e.photoCount,
+        })),
+      }, null, 2);
+    } else if (format === "text") {
+      document = entries.map((e) =>
+        `${e.date}${e.title ? " — " + e.title : ""}\n${e.encrypted ? "[encrypted]" : e.text}\n`).join("\n---\n\n");
+    } else {
+      document = `# Journal Export\n\n_${entries.length} entries · exported ${rfDay(rfNow())}_\n\n`;
+      let curMonth = "";
+      for (const e of entries) {
+        const mo = e.date.slice(0, 7);
+        if (mo !== curMonth) { document += `\n## ${mo}\n\n`; curMonth = mo; }
+        document += `### ${e.date}${e.title ? " — " + e.title : ""}\n\n`;
+        const meta = [e.mood && `mood: ${e.mood}`, e.location, e.weather,
+          e.tags?.length && e.tags.map((t) => "#" + t).join(" ")].filter(Boolean);
+        if (meta.length) document += `_${meta.join(" · ")}_\n\n`;
+        document += `${e.encrypted ? "_[encrypted entry]_" : e.text}\n\n`;
+      }
+    }
+    const record = {
+      id: rfId("exp"), format, entryCount: entries.length,
+      bytes: Buffer.byteLength(document, "utf8"), createdAt: rfNow(),
+    };
+    const log = rfListB(s.exports, userId);
+    log.unshift(record);
+    if (log.length > 20) log.length = 20;
+    saveRfState();
+    return {
+      ok: true,
+      result: {
+        format, entryCount: entries.length,
+        document,
+        filename: `journal-export-${rfDay(rfNow())}.${format === "json" ? "json" : format === "text" ? "txt" : "md"}`,
+        export: record,
+      },
+    };
+  });
+
+  registerLensAction("reflection", "export-history", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rfExtraState(s);
+    const history = s.exports.get(rfAid(ctx)) || [];
+    return { ok: true, result: { exports: history, count: history.length } };
+  });
+
+  // ── Multi-device sync indicator + offline drafts ────────────────────
+  registerLensAction("reflection", "device-checkin", (ctx, _a, params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rfExtraState(s);
+    const userId = rfAid(ctx);
+    const deviceId = rfClean(params.deviceId, 64);
+    if (!deviceId) return { ok: false, error: "deviceId required" };
+    const log = s.deviceLog.get(userId) || {};
+    const draftCount = Math.max(0, Math.round(rfNum(params.pendingDrafts)));
+    log[deviceId] = {
+      deviceId,
+      label: rfClean(params.label, 80) || deviceId,
+      platform: rfClean(params.platform, 40) || "unknown",
+      lastSeen: rfNow(),
+      pendingDrafts: draftCount,
+    };
+    s.deviceLog.set(userId, log);
+    saveRfState();
+    return { ok: true, result: { device: log[deviceId], deviceCount: Object.keys(log).length } };
+  });
+
+  registerLensAction("reflection", "sync-status", (ctx, _a, _params = {}) => {
+    const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rfExtraState(s);
+    const userId = rfAid(ctx);
+    const log = s.deviceLog.get(userId) || {};
+    const devices = Object.values(log).sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
+    const now = Date.now();
+    const online = devices.filter((d) => now - Date.parse(d.lastSeen) < 5 * 60 * 1000);
+    const pendingDrafts = devices.reduce((a, d) => a + (d.pendingDrafts || 0), 0);
+    return {
+      ok: true,
+      result: {
+        devices: devices.map((d) => ({
+          ...d,
+          online: now - Date.parse(d.lastSeen) < 5 * 60 * 1000,
+        })),
+        deviceCount: devices.length,
+        onlineCount: online.length,
+        pendingDrafts,
+        synced: pendingDrafts === 0,
+        lastSync: devices[0]?.lastSeen || null,
       },
     };
   });

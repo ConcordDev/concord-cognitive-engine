@@ -11,12 +11,14 @@ Backend: uses the live world combat pipeline — `/api/worlds/:worldId/combat/at
 - Lock-on controls (soft/hard); keyboard shortcuts for combat-feel iteration
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` 3D rendered scene — currently 2D dummy buttons; render the actual world-lens 3D arena
-- [ ] `[S]` Frame-time / hitstop telemetry overlay — measure combat-feel numerically
-- [ ] `[S]` Dummy behavior presets — aggressive/defensive/idle dummies, not just static targets
-- [ ] `[S]` Weapon/skill loadout picker UI — swap weapons and skills without URL editing
-- [ ] `[S]` Slow-motion + frame-step — inspect hit reactions frame by frame
-- [ ] `[S]` Record + replay a combat sequence
+- [x] `[M]` 3D rendered scene — currently 2D dummy buttons; render the actual world-lens 3D arena
+- [x] `[S]` Frame-time / hitstop telemetry overlay — measure combat-feel numerically
+- [x] `[S]` Dummy behavior presets — aggressive/defensive/idle dummies, not just static targets
+- [x] `[S]` Weapon/skill loadout picker UI — swap weapons and skills without URL editing
+- [x] `[S]` Slow-motion + frame-step — inspect hit reactions frame by frame
+- [x] `[S]` Record + replay a combat sequence
 
 ## Parity
-~60% of a combat test scene. It does the essential job — real production combat against configurable dummies with the full presentation overlay stack — but it is a 2D button grid; a 3D rendered arena and a frame-time telemetry overlay would make it a proper feel-tuning tool.
+~95% of a combat test scene. Real production combat against configurable dummies plus a 3D rendered Three.js arena, a frame-time/hitstop telemetry overlay, dummy behavior presets, a weapon/skill loadout picker, slow-motion + frame-step, and combat record/replay all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

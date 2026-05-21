@@ -221,3 +221,160 @@ describe("reflection.goal & dashboard", () => {
     assert.ok(r.result.promptOfTheDay.text);
   });
 });
+
+// ─── Day One parity backlog ───────────────────────────────────────────
+
+describe("reflection.entry media", () => {
+  it("attaches and removes rich media on an entry", () => {
+    const c = call("entry-create", ctxA, { text: "a day at the beach" });
+    const id = c.result.entry.id;
+    const m = call("entry-attach-media", ctxA, {
+      entryId: id, type: "image", dataUrl: "data:image/png;base64,AAAA", caption: "sunset", bytes: 4,
+    });
+    assert.ok(m.result.media.id);
+    assert.equal(m.result.mediaCount, 1);
+    assert.equal(call("entry-detail", ctxA, { id }).result.entry.photoCount, 1);
+    const rm = call("entry-remove-media", ctxA, { entryId: id, mediaId: m.result.media.id });
+    assert.equal(rm.result.mediaCount, 0);
+  });
+
+  it("rejects media with no payload and bad type", () => {
+    const c = call("entry-create", ctxA, { text: "x" });
+    assert.equal(call("entry-attach-media", ctxA, { entryId: c.result.entry.id, type: "image" }).ok, false);
+    assert.equal(call("entry-attach-media", ctxA, { entryId: c.result.entry.id, type: "nope", url: "u" }).ok, false);
+  });
+
+  it("sets geo place on an entry", async () => {
+    const c = call("entry-create", ctxA, { text: "trip" });
+    const r = await call("entry-set-place", ctxA, { entryId: c.result.entry.id, lat: 40.7, lon: -74.0, location: "NYC" });
+    assert.equal(r.result.geo.lat, 40.7);
+    assert.equal(r.result.geo.lon, -74);
+  });
+
+  it("rejects invalid coordinates", async () => {
+    const c = call("entry-create", ctxA, { text: "trip" });
+    const r = await call("entry-set-place", ctxA, { entryId: c.result.entry.id, lat: 999, lon: 0 });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("reflection.reminder-*", () => {
+  it("sets a reminder and reports next due time", () => {
+    const set = call("reminder-set", ctxA, { hour: 20, minute: 30 });
+    assert.equal(set.result.reminder.hour, 20);
+    const st = call("reminder-status", ctxA, {});
+    assert.equal(st.result.reminder.minute, 30);
+    assert.equal(typeof st.result.wroteToday, "boolean");
+  });
+
+  it("defaults to all seven days when none given", () => {
+    const set = call("reminder-set", ctxA, {});
+    assert.equal(set.result.reminder.days.length, 7);
+  });
+});
+
+describe("reflection encryption", () => {
+  it("encrypts and decrypts an entry round-trip", () => {
+    const c = call("entry-create", ctxA, { text: "a private secret", title: "hidden" });
+    const id = c.result.entry.id;
+    const enc = call("entry-encrypt", ctxA, { entryId: id, key: "passphrase" });
+    assert.equal(enc.result.encrypted, true);
+    assert.equal(call("entry-detail", ctxA, { id }).result.entry.text, "[encrypted]");
+    const dec = call("entry-decrypt", ctxA, { entryId: id, key: "passphrase" });
+    assert.equal(dec.result.text, "a private secret");
+    assert.equal(dec.result.title, "hidden");
+  });
+
+  it("rejects a wrong decryption key", () => {
+    const c = call("entry-create", ctxA, { text: "secret data here" });
+    call("entry-encrypt", ctxA, { entryId: c.result.entry.id, key: "rightkey" });
+    assert.equal(call("entry-decrypt", ctxA, { entryId: c.result.entry.id, key: "wrongkey" }).ok, false);
+  });
+
+  it("rejects a too-short key", () => {
+    const c = call("entry-create", ctxA, { text: "x y z" });
+    assert.equal(call("entry-encrypt", ctxA, { entryId: c.result.entry.id, key: "ab" }).ok, false);
+  });
+});
+
+describe("reflection.entry-timeline / entry-map", () => {
+  it("builds a chronological timeline with mood tone", () => {
+    call("entry-create", ctxA, { text: "good day", mood: "great", date: dayOffset(-1) });
+    call("entry-create", ctxA, { text: "hard day", mood: "rough", date: today() });
+    const r = call("entry-timeline", ctxA, {});
+    assert.equal(r.result.count, 2);
+    assert.equal(r.result.events[0].tone, "good");
+    assert.equal(r.result.events[1].tone, "bad");
+  });
+
+  it("returns only geotagged entries on the map", async () => {
+    const c1 = call("entry-create", ctxA, { text: "placed" });
+    await call("entry-set-place", ctxA, { entryId: c1.result.entry.id, lat: 51.5, lon: -0.12, location: "London" });
+    call("entry-create", ctxA, { text: "no place" });
+    const r = call("entry-map", ctxA, {});
+    assert.equal(r.result.count, 1);
+    assert.equal(r.result.markers[0].label, "London");
+    assert.equal(r.result.places[0].count, 1);
+  });
+});
+
+describe("reflection.voice-entry-create", () => {
+  it("creates a voice entry with a transcript", async () => {
+    const r = await call("voice-entry-create", ctxA, {
+      audioUrl: "data:audio/webm;base64,AAAA", transcript: "I spoke this aloud", durationSec: 42,
+    });
+    assert.equal(r.result.entry.kind, "voice");
+    assert.equal(r.result.entry.media.length, 1);
+    assert.equal(r.result.entry.media[0].type, "audio");
+    assert.ok(r.result.entry.tags.includes("voice"));
+  });
+
+  it("rejects a voice entry with no recording", async () => {
+    assert.equal((await call("voice-entry-create", ctxA, { transcript: "no audio" })).ok, false);
+  });
+});
+
+describe("reflection.year-in-review / export", () => {
+  it("aggregates a year of entries", () => {
+    const y = new Date().getUTCFullYear();
+    call("entry-create", ctxA, { text: "one two three four", mood: "good", date: `${y}-01-05` });
+    call("entry-create", ctxA, { text: "five six", mood: "great", date: `${y}-02-08` });
+    const r = call("year-in-review", ctxA, { year: y });
+    assert.equal(r.result.entryCount, 2);
+    assert.equal(r.result.totalWords, 6);
+    assert.ok(r.result.moodAverage > 0);
+  });
+
+  it("exports entries as a markdown document", () => {
+    call("entry-create", ctxA, { text: "exported content", title: "Day", date: today() });
+    const r = call("journal-export", ctxA, { format: "markdown" });
+    assert.equal(r.result.format, "markdown");
+    assert.ok(r.result.document.includes("exported content"));
+    assert.ok(r.result.filename.endsWith(".md"));
+    const hist = call("export-history", ctxA, {});
+    assert.equal(hist.result.count, 1);
+  });
+
+  it("exports as JSON", () => {
+    call("entry-create", ctxA, { text: "json me", date: today() });
+    const r = call("journal-export", ctxA, { format: "json" });
+    const parsed = JSON.parse(r.result.document);
+    assert.equal(parsed.entryCount, 1);
+  });
+});
+
+describe("reflection.sync-status", () => {
+  it("tracks device check-ins and pending drafts", () => {
+    call("device-checkin", ctxA, { deviceId: "phone-1", label: "iPhone", pendingDrafts: 2 });
+    call("device-checkin", ctxA, { deviceId: "laptop-1", label: "MacBook", pendingDrafts: 0 });
+    const r = call("sync-status", ctxA, {});
+    assert.equal(r.result.deviceCount, 2);
+    assert.equal(r.result.pendingDrafts, 2);
+    assert.equal(r.result.synced, false);
+    assert.equal(r.result.onlineCount, 2);
+  });
+
+  it("rejects a check-in with no deviceId", () => {
+    assert.equal(call("device-checkin", ctxA, {}).ok, false);
+  });
+});

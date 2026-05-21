@@ -189,3 +189,156 @@ describe("parenting.medicine / activity / timeline / dashboard", () => {
     assert.equal(r.result.hasChild, false);
   });
 });
+
+describe("parenting.sleep-schedule (predictor)", () => {
+  it("predicts the rest of today's nap/bedtime windows", () => {
+    const id = newChild(ctxA, 8);
+    const start = new Date(Date.now() - 60 * 60000).toISOString();
+    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 30, startAt: start });
+    const r = call("sleep-schedule", ctxA, { childId: id });
+    assert.equal(r.ok, true);
+    assert.ok(Array.isArray(r.result.schedule));
+    assert.ok(r.result.schedule.some((sl) => sl.kind === "bedtime"));
+    assert.ok(r.result.learnedNapMin > 0);
+    assert.ok(r.result.wakeWindow.typical > 0);
+  });
+
+  it("rejects an unknown child", () => {
+    assert.equal(call("sleep-schedule", ctxA, { childId: "nope" }).ok, false);
+  });
+});
+
+describe("parenting.growth-chart (WHO bands)", () => {
+  it("returns percentile band curves plus this child's measurements", () => {
+    const id = newChild(ctxA, 12, "boy");
+    call("growth-log", ctxA, { childId: id, weightKg: 9.6 });
+    const r = call("growth-chart", ctxA, { childId: id, metric: "weight" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.metric, "weight");
+    assert.ok(r.result.curve.length > 0);
+    assert.ok(r.result.curve[0].p3 < r.result.curve[0].p50);
+    assert.ok(r.result.curve[0].p50 < r.result.curve[0].p97);
+    assert.equal(r.result.measurements.length, 1);
+  });
+
+  it("defaults to weight for an unknown metric", () => {
+    const id = newChild(ctxA, 12);
+    assert.equal(call("growth-chart", ctxA, { childId: id, metric: "zzz" }).result.metric, "weight");
+  });
+});
+
+describe("parenting.caregiver-* (multi-caregiver sync)", () => {
+  it("mints a share code, redeems it, lists and removes the caregiver", () => {
+    const id = newChild(ctxA, 6);
+    const inv = call("caregiver-invite", ctxA, { childId: id, role: "nanny" });
+    assert.equal(inv.ok, true);
+    assert.equal(inv.result.code.length, 6);
+    const redeem = call("caregiver-redeem", ctxB, { code: inv.result.code });
+    assert.equal(redeem.ok, true);
+    assert.equal(redeem.result.ownerId, "user_a");
+    const list = call("caregiver-list", ctxA, { childId: id });
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.caregivers[0].role, "nanny");
+    const rm = call("caregiver-remove", ctxA, { caregiverId: "user_b" });
+    assert.equal(rm.ok, true);
+    assert.equal(call("caregiver-list", ctxA, { childId: id }).result.count, 0);
+  });
+
+  it("rejects an invalid code and self-redemption", () => {
+    const id = newChild(ctxA, 6);
+    assert.equal(call("caregiver-redeem", ctxB, { code: "BADCOD" }).ok, false);
+    const inv = call("caregiver-invite", ctxA, { childId: id });
+    assert.equal(call("caregiver-redeem", ctxA, { code: inv.result.code }).ok, false);
+  });
+});
+
+describe("parenting.timer-* (quick-entry timers)", () => {
+  it("starts, lists and stops a nursing timer committing a feed", () => {
+    const id = newChild(ctxA, 4);
+    const t = call("timer-start", ctxA, { childId: id, kind: "nursing", side: "left" });
+    assert.equal(t.ok, true);
+    const list = call("timer-list", ctxA, { childId: id });
+    assert.equal(list.result.count, 1);
+    assert.ok(list.result.timers[0].elapsedSec >= 0);
+    const stop = call("timer-stop", ctxA, { id: t.result.timer.id });
+    assert.equal(stop.ok, true);
+    assert.equal(stop.result.committed, "nursing");
+    assert.equal(call("feed-history", ctxA, { childId: id }).result.count, 1);
+    assert.equal(call("timer-list", ctxA, { childId: id }).result.count, 0);
+  });
+
+  it("cancels a timer without committing a log", () => {
+    const id = newChild(ctxA, 4);
+    const t = call("timer-start", ctxA, { childId: id, kind: "sleep", sleepType: "nap" });
+    assert.equal(call("timer-cancel", ctxA, { id: t.result.timer.id }).ok, true);
+    assert.equal(call("sleep-history", ctxA, { childId: id }).result.count, 0);
+  });
+
+  it("rejects a duplicate running timer of the same kind", () => {
+    const id = newChild(ctxA, 4);
+    call("timer-start", ctxA, { childId: id, kind: "nursing" });
+    assert.equal(call("timer-start", ctxA, { childId: id, kind: "nursing" }).ok, false);
+  });
+});
+
+describe("parenting.expert-content (age-targeted)", () => {
+  it("returns age-targeted developmental articles", () => {
+    const id = newChild(ctxA, 5);
+    const r = call("expert-content", ctxA, { childId: id });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.articles.length > 0);
+    assert.ok(r.result.topic);
+    assert.ok(r.result.ageRange.includes("months"));
+  });
+
+  it("rejects an unknown child", () => {
+    assert.equal(call("expert-content", ctxA, { childId: "nope" }).ok, false);
+  });
+});
+
+describe("parenting.trends-insights", () => {
+  it("summarizes weekly feeds/sleep/diapers", () => {
+    const id = newChild(ctxA, 6);
+    call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 120 });
+    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 90 });
+    call("diaper-log", ctxA, { childId: id, kind: "wet" });
+    const r = call("trends-insights", ctxA, { childId: id, days: 7 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.days, 7);
+    assert.equal(r.result.daily.length, 7);
+    assert.ok(r.result.daysWithData >= 1);
+    assert.ok(Array.isArray(r.result.anomalies));
+  });
+
+  it("rejects an unknown child", () => {
+    assert.equal(call("trends-insights", ctxA, { childId: "nope" }).ok, false);
+  });
+});
+
+describe("parenting.appointment-* (reminders + iCal)", () => {
+  it("adds, lists, completes, exports iCal and deletes appointments", () => {
+    const id = newChild(ctxA, 12);
+    const future = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const add = call("appointment-add", ctxA, {
+      childId: id, title: "12-month checkup", kind: "checkup", date: future, time: "09:30",
+    });
+    assert.equal(add.ok, true);
+    const list = call("appointment-list", ctxA, { childId: id });
+    assert.equal(list.result.count, 1);
+    assert.ok(list.result.nextUp);
+    const ical = call("appointment-ical", ctxA, { childId: id });
+    assert.equal(ical.ok, true);
+    assert.ok(ical.result.ical.includes("BEGIN:VCALENDAR"));
+    assert.ok(ical.result.ical.includes("BEGIN:VALARM"));
+    const upd = call("appointment-update", ctxA, { id: add.result.appointment.id, done: true });
+    assert.equal(upd.result.appointment.done, true);
+    assert.equal(call("appointment-delete", ctxA, { id: add.result.appointment.id }).ok, true);
+    assert.equal(call("appointment-list", ctxA, { childId: id }).result.count, 0);
+  });
+
+  it("rejects a bad date and errors when nothing to export", () => {
+    const id = newChild(ctxA, 12);
+    assert.equal(call("appointment-add", ctxA, { childId: id, title: "X", date: "nope" }).ok, false);
+    assert.equal(call("appointment-ical", ctxA, { childId: id }).ok, false);
+  });
+});

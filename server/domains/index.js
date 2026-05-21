@@ -223,6 +223,7 @@ import psyops from './psyops.js';
 import tools from './tools.js';
 import goddessLens from './goddess.js';
 import cognitionLens from './cognition.js';
+import sandboxLens from './sandbox.js';
 
 export default [
   healthcare,
@@ -439,4 +440,5 @@ export default [
   dxPlatform,
   goddessLens,
   cognitionLens,
+  sandboxLens,
 ];

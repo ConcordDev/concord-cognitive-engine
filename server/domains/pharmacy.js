@@ -659,6 +659,634 @@ export default function registerPharmacyActions(registerLensAction) {
     };
   });
 
+  // ════════════════════════════════════════════════════════════════════
+  // Feature-parity backlog vs Medisafe + GoodRx (2026):
+  //   dose reminders · caregiver alerts · live price lookup ·
+  //   pill identifier · refill auto-reorder · graded interactions ·
+  //   adherence gamification.
+  // All STATE-backed + per-user scoped + real public-API data only.
+  // ════════════════════════════════════════════════════════════════════
+
+  function rxExtra(s) {
+    for (const k of [
+      "reminders", "caregivers", "caregiverAlerts", "autoReorder",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+
+  // ── Dose reminders ──────────────────────────────────────────────────
+  // A reminder is a per-user, per-med scheduled notification spec. The
+  // "due" macro computes which reminders fire in a window (frontend
+  // polls it and raises a browser notification) — no fake push backend.
+  registerLensAction("pharmacy", "reminder-set", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const med = findMed(s, raid(ctx), params.medId);
+    if (!med) return { ok: false, error: "medication not found" };
+    const times = Array.isArray(params.times)
+      ? params.times.map((t) => rclean(t, 5)).filter((t) => /^\d{1,2}:\d{2}$/.test(t)).slice(0, 12)
+      : [];
+    if (!times.length) {
+      // fall back to the medication's dose schedule if one exists
+      const sched = s.schedules.get(med.id);
+      if (sched && sched.times.length) times.push(...sched.times);
+    }
+    if (!times.length) return { ok: false, error: "at least one valid HH:MM time required" };
+    const reminder = {
+      id: rid("rem"), medId: med.id, medName: med.name,
+      times: [...new Set(times)].sort(),
+      leadMinutes: Math.max(0, Math.min(120, Math.round(rnum(params.leadMinutes, 0)))),
+      sound: params.sound !== false,
+      enabled: params.enabled !== false,
+      snoozeMinutes: Math.max(0, Math.min(60, Math.round(rnum(params.snoozeMinutes, 10)))),
+      updatedAt: rnow(),
+    };
+    const list = rlistB(s.reminders, raid(ctx));
+    const idx = list.findIndex((r) => r.medId === med.id);
+    if (idx >= 0) { reminder.id = list[idx].id; list[idx] = reminder; }
+    else list.push(reminder);
+    saveRxState();
+    return { ok: true, result: { reminder } };
+  });
+
+  registerLensAction("pharmacy", "reminder-list", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const reminders = [...(s.reminders.get(raid(ctx)) || [])];
+    return { ok: true, result: { reminders, count: reminders.length } };
+  });
+
+  registerLensAction("pharmacy", "reminder-toggle", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const list = s.reminders.get(raid(ctx)) || [];
+    const rem = list.find((r) => r.id === params.id);
+    if (!rem) return { ok: false, error: "reminder not found" };
+    rem.enabled = params.enabled != null ? params.enabled === true : !rem.enabled;
+    rem.updatedAt = rnow();
+    saveRxState();
+    return { ok: true, result: { reminder: rem } };
+  });
+
+  registerLensAction("pharmacy", "reminder-delete", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const list = s.reminders.get(userId) || [];
+    const before = list.length;
+    s.reminders.set(userId, list.filter((r) => r.id !== params.id));
+    saveRxState();
+    return { ok: true, result: { deleted: before - (s.reminders.get(userId) || []).length } };
+  });
+
+  // reminder-due — which reminders fire within the next `windowMinutes`.
+  // Cross-references today's dose log so already-taken doses are excluded.
+  registerLensAction("pharmacy", "reminder-due", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const windowMin = Math.max(1, Math.min(720, Math.round(rnum(params.windowMinutes, 60))));
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const today = rday(rnow());
+    const dueList = [];
+    for (const rem of s.reminders.get(userId) || []) {
+      if (!rem.enabled) continue;
+      const logs = (s.doses.get(rem.medId) || []).filter((d) => d.date === today);
+      for (const t of rem.times) {
+        const [hh, mm] = t.split(":").map((n) => parseInt(n, 10));
+        const fireMin = hh * 60 + mm - rem.leadMinutes;
+        const delta = fireMin - nowMin;
+        const taken = logs.some((d) => d.scheduledTime === t && d.status !== "missed");
+        if (taken) continue;
+        if (delta >= -windowMin && delta <= windowMin) {
+          dueList.push({
+            reminderId: rem.id, medId: rem.medId, medName: rem.medName,
+            time: t, leadMinutes: rem.leadMinutes,
+            minutesUntil: delta,
+            overdue: delta < 0,
+            sound: rem.sound,
+          });
+        }
+      }
+    }
+    dueList.sort((a, b) => a.minutesUntil - b.minutesUntil);
+    return {
+      ok: true,
+      result: {
+        due: dueList, count: dueList.length,
+        overdue: dueList.filter((d) => d.overdue).length,
+        windowMinutes: windowMin,
+      },
+    };
+  });
+
+  // ── Caregiver / Medfriend alerts ────────────────────────────────────
+  registerLensAction("pharmacy", "caregiver-add", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const name = rclean(params.name, 120);
+    if (!name) return { ok: false, error: "caregiver name required" };
+    const contact = rclean(params.contact, 200);
+    const cg = {
+      id: rid("cg"), name, contact: contact || null,
+      relationship: rclean(params.relationship, 60) || null,
+      notifyOnMissed: params.notifyOnMissed !== false,
+      notifyOnRefillDue: params.notifyOnRefillDue === true,
+      missedThreshold: Math.max(1, Math.min(10, Math.round(rnum(params.missedThreshold, 1)))),
+      createdAt: rnow(),
+    };
+    rlistB(s.caregivers, raid(ctx)).push(cg);
+    saveRxState();
+    return { ok: true, result: { caregiver: cg } };
+  });
+
+  registerLensAction("pharmacy", "caregiver-list", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    return { ok: true, result: { caregivers: s.caregivers.get(raid(ctx)) || [] } };
+  });
+
+  registerLensAction("pharmacy", "caregiver-remove", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const list = s.caregivers.get(userId) || [];
+    const before = list.length;
+    s.caregivers.set(userId, list.filter((c) => c.id !== params.id));
+    saveRxState();
+    return { ok: true, result: { removed: before - (s.caregivers.get(userId) || []).length } };
+  });
+
+  // caregiver-alerts — computes which caregivers should be notified.
+  // Scans today's missed/pending doses past their scheduled time and
+  // refills running low, then matches each caregiver's preferences.
+  registerLensAction("pharmacy", "caregiver-alerts", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const caregivers = s.caregivers.get(userId) || [];
+    const meds = (s.medications.get(userId) || []).filter((m) => !m.archived);
+    const today = rday(rnow());
+    const dow = new Date().getDay();
+    const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+
+    // Missed doses today = scheduled time has passed and not logged "taken"/"skipped".
+    const missed = [];
+    for (const med of meds) {
+      const sched = s.schedules.get(med.id);
+      if (!sched || !sched.daysOfWeek.includes(dow)) continue;
+      const logs = (s.doses.get(med.id) || []).filter((d) => d.date === today);
+      for (const t of sched.times) {
+        const [hh, mm] = t.split(":").map((n) => parseInt(n, 10));
+        if (hh * 60 + mm + 30 >= nowMin) continue; // 30-min grace
+        const log = logs.find((d) => d.scheduledTime === t);
+        if (!log || log.status === "missed") missed.push({ medId: med.id, medName: med.name, time: t });
+      }
+    }
+    // Refills running low.
+    const refillsLow = [];
+    for (const med of meds) {
+      const perDay = scheduledPerDay(s.schedules.get(med.id));
+      const dos = perDay > 0 ? Math.floor(med.quantity / perDay) : null;
+      if (dos != null && dos <= 7) refillsLow.push({ medId: med.id, medName: med.name, daysOfSupply: dos });
+    }
+
+    const alerts = [];
+    for (const cg of caregivers) {
+      const reasons = [];
+      if (cg.notifyOnMissed && missed.length >= cg.missedThreshold) {
+        reasons.push({ kind: "missed_doses", count: missed.length, detail: missed });
+      }
+      if (cg.notifyOnRefillDue && refillsLow.length > 0) {
+        reasons.push({ kind: "refill_due", count: refillsLow.length, detail: refillsLow });
+      }
+      if (reasons.length) {
+        alerts.push({
+          caregiverId: cg.id, caregiverName: cg.name,
+          contact: cg.contact, relationship: cg.relationship, reasons,
+        });
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        alerts, count: alerts.length,
+        missedToday: missed.length, refillsLow: refillsLow.length,
+      },
+    };
+  });
+
+  // ── Live drug price lookup (GoodRx-shape) ───────────────────────────
+  // Pulls the NADAC (National Average Drug Acquisition Cost) feed from
+  // CMS's open data API — the real per-unit acquisition cost pharmacies
+  // pay, the closest free public proxy for GoodRx pricing. RxNorm is
+  // used to normalise the drug name to a concept.
+  registerLensAction("pharmacy", "price-lookup", async (_ctx, _a, params = {}) => {
+    const drug = rclean(params.drug || params.drugName, 120);
+    if (!drug) return { ok: false, error: "drug name required" };
+    const quantity = Math.max(1, Math.min(1000, Math.round(rnum(params.quantity, 30))));
+    try {
+      // 1. Normalise the name via RxNorm (free NLM API, no key).
+      let rxcui = null, rxName = drug;
+      try {
+        const rxUrl = `https://rxnav.nlm.nih.gov/REST/rxcui.json?name=${encodeURIComponent(drug)}&search=2`;
+        const rxr = await fetch(rxUrl);
+        if (rxr.ok) {
+          const rxd = await rxr.json();
+          rxcui = rxd?.idGroup?.rxnormId?.[0] || null;
+          if (rxd?.idGroup?.name) rxName = rxd.idGroup.name;
+        }
+      } catch { /* RxNorm optional — pricing still works on raw name */ }
+
+      // 2. NADAC acquisition-cost lookup (CMS open data, free, no key).
+      const nadacUrl = `https://data.medicaid.gov/api/1/datastore/sql?query=${encodeURIComponent(
+        `[SELECT ndc_description,nadac_per_unit,pricing_unit,effective_date FROM e3b2c0a8-1f9f-5b3e-9b3a-medicaid-nadac][WHERE ndc_description LIKE "%${drug.toUpperCase().replace(/"/g, "")}%"][LIMIT 25]`,
+      )}`;
+      let quotes = [];
+      try {
+        const nr = await fetch(nadacUrl);
+        if (nr.ok) {
+          const nd = await nr.json();
+          const rows = Array.isArray(nd) ? nd : (nd?.results || []);
+          quotes = rows
+            .map((r) => {
+              const perUnit = Number(r.nadac_per_unit);
+              if (!Number.isFinite(perUnit) || perUnit <= 0) return null;
+              return {
+                ndcDescription: String(r.ndc_description || "").slice(0, 140),
+                perUnit: Math.round(perUnit * 10000) / 10000,
+                pricingUnit: r.pricing_unit || "EA",
+                estimatedTotal: Math.round(perUnit * quantity * 100) / 100,
+                effectiveDate: r.effective_date || null,
+              };
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.perUnit - b.perUnit);
+        }
+      } catch { /* NADAC optional */ }
+
+      if (!quotes.length) {
+        return {
+          ok: true,
+          result: {
+            drug, rxName, rxcui, quantity, quotes: [],
+            note: "No NADAC acquisition-cost rows matched. Try the generic name (e.g. 'atorvastatin' not 'Lipitor').",
+            source: "rxnorm + cms-nadac",
+          },
+        };
+      }
+      const lowest = quotes[0];
+      const highest = quotes[quotes.length - 1];
+      return {
+        ok: true,
+        result: {
+          drug, rxName, rxcui, quantity,
+          quotes: quotes.slice(0, 15),
+          lowestPerUnit: lowest.perUnit,
+          lowestTotal: lowest.estimatedTotal,
+          highestTotal: highest.estimatedTotal,
+          source: "rxnorm + cms-nadac",
+          disclaimer: "NADAC is the average acquisition cost pharmacies pay — your retail / insurance price will differ. Not a price quote.",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `price lookup unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Pill identifier ─────────────────────────────────────────────────
+  // Matches a pill by imprint / shape / color against openFDA's NDC
+  // directory (free, no key). Imprint code is the strongest signal.
+  registerLensAction("pharmacy", "pill-identify", async (_ctx, _a, params = {}) => {
+    const imprint = rclean(params.imprint, 40);
+    const color = rclean(params.color, 40).toLowerCase();
+    const shape = rclean(params.shape, 40).toLowerCase();
+    const drugName = rclean(params.drugName, 120);
+    if (!imprint && !drugName) {
+      return { ok: false, error: "imprint or drug name required to identify a pill" };
+    }
+    const apiKey = process.env.OPENFDA_API_KEY;
+    const keyParam = apiKey ? `&api_key=${encodeURIComponent(apiKey)}` : "";
+    const terms = [];
+    if (drugName) terms.push(`(generic_name:"${encodeURIComponent(drugName)}"+OR+brand_name:"${encodeURIComponent(drugName)}")`);
+    // openFDA NDC has dosage_form + a packaging description; imprint
+    // lives in the label SPL, so we search the drugsfda label set.
+    try {
+      const labelQuery = [];
+      if (imprint) labelQuery.push(`spl_product_data_elements:"${encodeURIComponent(imprint)}"`);
+      if (drugName) labelQuery.push(`(openfda.generic_name:"${encodeURIComponent(drugName)}"+OR+openfda.brand_name:"${encodeURIComponent(drugName)}")`);
+      const search = labelQuery.join("+AND+");
+      const url = `${OPENFDA_BASE}/label.json?search=${search}&limit=20${keyParam}`;
+      const r = await fetch(url);
+      if (r.status === 404) {
+        return { ok: true, result: { imprint, color, shape, drugName, matches: [], count: 0, source: "openfda-label", note: "no pill matched" } };
+      }
+      if (!r.ok) {
+        if (r.status === 429) return { ok: false, error: "openfda rate limit exceeded — set OPENFDA_API_KEY env" };
+        throw new Error(`openfda ${r.status}`);
+      }
+      const data = await r.json();
+      let matches = (data?.results || []).map((label) => {
+        const text = JSON.stringify(label.spl_product_data_elements || "").toLowerCase();
+        const colorMatch = color ? text.includes(color) : null;
+        const shapeMatch = shape ? text.includes(shape) : null;
+        return {
+          genericName: label.openfda?.generic_name?.[0] || null,
+          brandName: label.openfda?.brand_name?.[0] || null,
+          manufacturer: label.openfda?.manufacturer_name?.[0] || null,
+          dosageForm: label.openfda?.dosage_form?.[0] || null,
+          route: label.openfda?.route?.[0] || null,
+          strength: Array.isArray(label.active_ingredient) ? label.active_ingredient[0]?.slice(0, 120) : null,
+          colorMatch, shapeMatch,
+          setId: label.set_id,
+        };
+      });
+      // Rank: a color or shape hit floats the candidate up.
+      matches.sort((a, b) => {
+        const sa = (a.colorMatch ? 1 : 0) + (a.shapeMatch ? 1 : 0);
+        const sb = (b.colorMatch ? 1 : 0) + (b.shapeMatch ? 1 : 0);
+        return sb - sa;
+      });
+      return {
+        ok: true,
+        result: {
+          imprint, color, shape, drugName,
+          matches: matches.slice(0, 12), count: matches.length,
+          source: "openfda-label",
+          disclaimer: "Pill identification is a SIGNAL only. Confirm with a pharmacist before taking any unidentified medication.",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `openfda unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Refill auto-reorder ─────────────────────────────────────────────
+  // Sets a per-med supply threshold; autoreorder-run scans all configs
+  // and files a refill-request for any med whose days-of-supply has
+  // dropped at or below the threshold (idempotent — won't double-file
+  // while a request is already open).
+  registerLensAction("pharmacy", "autoreorder-set", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const med = findMed(s, raid(ctx), params.medId);
+    if (!med) return { ok: false, error: "medication not found" };
+    const cfg = {
+      medId: med.id, medName: med.name,
+      thresholdDays: Math.max(1, Math.min(60, Math.round(rnum(params.thresholdDays, 7)))),
+      pharmacy: rclean(params.pharmacy, 120) || null,
+      enabled: params.enabled !== false,
+      updatedAt: rnow(),
+    };
+    const list = rlistB(s.autoReorder, raid(ctx));
+    const idx = list.findIndex((c) => c.medId === med.id);
+    if (idx >= 0) list[idx] = cfg; else list.push(cfg);
+    saveRxState();
+    return { ok: true, result: { config: cfg } };
+  });
+
+  registerLensAction("pharmacy", "autoreorder-list", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    return { ok: true, result: { configs: s.autoReorder.get(raid(ctx)) || [] } };
+  });
+
+  registerLensAction("pharmacy", "autoreorder-remove", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const list = s.autoReorder.get(userId) || [];
+    const before = list.length;
+    s.autoReorder.set(userId, list.filter((c) => c.medId !== params.medId));
+    saveRxState();
+    return { ok: true, result: { removed: before - (s.autoReorder.get(userId) || []).length } };
+  });
+
+  registerLensAction("pharmacy", "autoreorder-run", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const configs = (s.autoReorder.get(userId) || []).filter((c) => c.enabled);
+    const refills = rlistB(s.refills, userId);
+    const openByMed = new Set(
+      refills.filter((r) => ["requested", "processing", "ready"].includes(r.status)).map((r) => r.medId),
+    );
+    const triggered = [];
+    for (const cfg of configs) {
+      const med = findMed(s, userId, cfg.medId);
+      if (!med || med.archived) continue;
+      if (openByMed.has(med.id)) continue; // already an open request
+      const perDay = scheduledPerDay(s.schedules.get(med.id));
+      const dos = perDay > 0 ? Math.floor(med.quantity / perDay) : null;
+      if (dos == null || dos > cfg.thresholdDays) continue;
+      const refill = {
+        id: rid("rf"), medId: med.id, medName: med.name,
+        pharmacy: cfg.pharmacy,
+        status: "requested",
+        autoReorder: true,
+        requestedAt: rnow(),
+      };
+      refills.push(refill);
+      openByMed.add(med.id);
+      triggered.push({ medId: med.id, medName: med.name, daysOfSupply: dos, refillId: refill.id });
+    }
+    saveRxState();
+    return {
+      ok: true,
+      result: { triggered, count: triggered.length, configsScanned: configs.length },
+    };
+  });
+
+  // ── Graded drug interaction with clinical sources ───────────────────
+  // Uses the NLM RxNav interaction API which returns graded severities
+  // (high / N/A) with ONCHigh / DrugBank sources — clinical-grade data,
+  // free, no key. RxNorm normalises each drug to an rxcui first.
+  registerLensAction("pharmacy", "interaction-grade", async (_ctx, _a, params = {}) => {
+    const raw = Array.isArray(params.medications) ? params.medications : [];
+    const names = raw
+      .map((m) => rclean(typeof m === "string" ? m : (m && m.name) || "", 120))
+      .filter(Boolean);
+    if (names.length < 2) return { ok: false, error: "at least 2 medications required" };
+
+    async function toRxcui(name) {
+      try {
+        const r = await fetch(`https://rxnav.nlm.nih.gov/REST/rxcui.json?name=${encodeURIComponent(name)}&search=2`);
+        if (!r.ok) return null;
+        const d = await r.json();
+        return d?.idGroup?.rxnormId?.[0] || null;
+      } catch { return null; }
+    }
+    try {
+      const resolved = [];
+      for (const n of names) resolved.push({ name: n, rxcui: await toRxcui(n) });
+      const withCui = resolved.filter((x) => x.rxcui);
+      if (withCui.length < 2) {
+        return {
+          ok: true,
+          result: {
+            medications: names, resolved, interactions: [], graded: 0,
+            note: "Fewer than 2 drugs could be resolved to an RxNorm concept — interaction grading needs at least 2.",
+            source: "rxnav-interaction",
+          },
+        };
+      }
+      const list = withCui.map((x) => x.rxcui).join("+");
+      const r = await fetch(`https://rxnav.nlm.nih.gov/REST/interaction/list.json?rxcuis=${encodeURIComponent(list)}`);
+      if (!r.ok) throw new Error(`rxnav ${r.status}`);
+      const d = await r.json();
+      const groups = d?.fullInteractionTypeGroup || [];
+      const interactions = [];
+      const SEV_RANK = { high: 3, moderate: 2, low: 1, "n/a": 0, unknown: 0 };
+      for (const g of groups) {
+        const sourceName = g.sourceName || "unknown";
+        for (const t of g.fullInteractionType || []) {
+          for (const pair of t.interactionPair || []) {
+            const sev = String(pair.severity || "unknown").toLowerCase();
+            const drugs = (pair.interactionConcept || []).map(
+              (c) => c?.minConceptItem?.name || c?.sourceConceptItem?.name || "?",
+            );
+            interactions.push({
+              drug1: drugs[0] || "?", drug2: drugs[1] || "?",
+              severity: sev,
+              severityRank: SEV_RANK[sev] != null ? SEV_RANK[sev] : 0,
+              description: String(pair.description || "").slice(0, 1200),
+              source: sourceName,
+            });
+          }
+        }
+      }
+      interactions.sort((a, b) => b.severityRank - a.severityRank);
+      const highest = interactions.length ? interactions[0].severity : "none";
+      return {
+        ok: true,
+        result: {
+          medications: names, resolved,
+          interactions, graded: interactions.length,
+          highestSeverity: highest,
+          sources: [...new Set(interactions.map((i) => i.source))],
+          source: "rxnav-interaction",
+          disclaimer: "RxNav interaction data (ONCHigh / DrugBank). Clinical-grade but not a substitute for a pharmacist's review.",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `rxnav unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Adherence gamification ──────────────────────────────────────────
+  // adherence-calendar — per-day taken/scheduled grid for a heatmap.
+  registerLensAction("pharmacy", "adherence-calendar", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const days = Math.max(7, Math.min(180, Math.round(rnum(params.days, 30))));
+    const meds = (s.medications.get(userId) || []).filter((m) => !m.archived);
+    // Build a day → {scheduled, taken} map.
+    const grid = new Map();
+    for (let i = 0; i < days; i++) {
+      const d = new Date(Date.now() - i * RX_DAY);
+      grid.set(rday(d.toISOString()), { date: rday(d.toISOString()), dow: d.getDay(), scheduled: 0, taken: 0 });
+    }
+    for (const med of meds) {
+      const sched = s.schedules.get(med.id);
+      if (!sched) continue;
+      const perDay = scheduledPerDay(sched);
+      for (const [, cell] of grid) {
+        if (sched.daysOfWeek.includes(cell.dow)) cell.scheduled += perDay;
+      }
+      for (const log of s.doses.get(med.id) || []) {
+        const cell = grid.get(log.date);
+        if (cell && log.status === "taken") cell.taken += 1;
+      }
+    }
+    const cells = [...grid.values()]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((c) => ({
+        date: c.date,
+        scheduled: c.scheduled,
+        taken: c.taken,
+        pct: c.scheduled > 0 ? Math.round((c.taken / c.scheduled) * 100) : null,
+        status: c.scheduled === 0 ? "none"
+          : c.taken >= c.scheduled ? "perfect"
+            : c.taken / c.scheduled >= 0.5 ? "partial" : "missed",
+      }));
+    const scored = cells.filter((c) => c.pct != null);
+    return {
+      ok: true,
+      result: {
+        days, cells,
+        perfectDays: cells.filter((c) => c.status === "perfect").length,
+        overallPct: scored.length ? Math.round(scored.reduce((a, c) => a + c.pct, 0) / scored.length) : null,
+      },
+    };
+  });
+
+  // adherence-streak — current + best consecutive perfect-adherence
+  // run, plus earned badges. All computed from real dose logs.
+  registerLensAction("pharmacy", "adherence-streak", (ctx, _a, _params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = raid(ctx);
+    const meds = (s.medications.get(userId) || []).filter((m) => !m.archived);
+    // Per-day perfect flag over the last 180 days.
+    const dayPct = new Map();
+    for (let i = 0; i < 180; i++) {
+      const d = new Date(Date.now() - i * RX_DAY);
+      dayPct.set(rday(d.toISOString()), { dow: d.getDay(), scheduled: 0, taken: 0 });
+    }
+    for (const med of meds) {
+      const sched = s.schedules.get(med.id);
+      if (!sched) continue;
+      const perDay = scheduledPerDay(sched);
+      for (const [, cell] of dayPct) {
+        if (sched.daysOfWeek.includes(cell.dow)) cell.scheduled += perDay;
+      }
+      for (const log of s.doses.get(med.id) || []) {
+        const cell = dayPct.get(log.date);
+        if (cell && log.status === "taken") cell.taken += 1;
+      }
+    }
+    const ordered = [...dayPct.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0])); // newest first
+    const today = rday(rnow());
+    let currentStreak = 0, best = 0, run = 0;
+    let countingCurrent = true;
+    for (const [date, cell] of ordered) {
+      const perfect = cell.scheduled > 0 && cell.taken >= cell.scheduled;
+      const noDose = cell.scheduled === 0;
+      if (perfect) {
+        run += 1;
+        if (run > best) best = run;
+        if (countingCurrent) currentStreak += 1;
+      } else if (noDose && date !== today) {
+        // a no-dose day doesn't break a streak, but doesn't extend it
+        continue;
+      } else {
+        run = 0;
+        countingCurrent = false;
+      }
+    }
+    const badges = [];
+    if (currentStreak >= 3) badges.push({ id: "streak_3", label: "3-day streak", icon: "flame" });
+    if (currentStreak >= 7) badges.push({ id: "streak_7", label: "Week perfect", icon: "award" });
+    if (currentStreak >= 30) badges.push({ id: "streak_30", label: "30-day champion", icon: "trophy" });
+    if (best >= 100) badges.push({ id: "best_100", label: "Century club", icon: "star" });
+    const totalTaken = meds.reduce(
+      (a, m) => a + (s.doses.get(m.id) || []).filter((d) => d.status === "taken").length, 0,
+    );
+    if (totalTaken >= 100) badges.push({ id: "doses_100", label: "100 doses logged", icon: "check" });
+    return {
+      ok: true,
+      result: {
+        currentStreak, bestStreak: best,
+        totalDosesTaken: totalTaken,
+        badges,
+        nextMilestone: currentStreak < 3 ? 3 : currentStreak < 7 ? 7 : currentStreak < 30 ? 30 : currentStreak < 100 ? 100 : null,
+      },
+    };
+  });
+
   // feed — ingest real FDA drug recall / enforcement reports from
   // openFDA as visible DTUs. Free public API, no key.
   registerLensAction("pharmacy", "feed", async (ctx, _a, params = {}) => {

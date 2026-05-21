@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Library, BookMarked, FolderOpen, BookOpen, Quote, Loader2 } from 'lucide-react';
+import { Library, BookMarked, FolderOpen, Quote, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ResearchLibraryPanel } from './ResearchLibraryPanel';

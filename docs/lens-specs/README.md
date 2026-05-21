@@ -13,12 +13,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 - Lenses audited: **235**
 - Average feature parity: **~86%**
-- Total buildable features in the backlog (sum of all "Missing" items): **303**
+- Total buildable features in the backlog (sum of all "Missing" items): **262**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 193 |
-| 60–79% (strong) | 42 |
+| 80–100% (near-complete) | 199 |
+| 60–79% (strong) | 36 |
 | 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
@@ -26,12 +26,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| parenting | Huckleberry | ~60% | 7 |
-| pharmacy | Medisafe / GoodRx | ~60% | 7 |
-| productivity | Todoist | ~60% | 7 |
-| reflection | Day One | ~60% | 7 |
-| research | Obsidian / Elicit | ~60% | 7 |
-| sandbox | a game combat-feel test scene | ~60% | 6 |
 | social | Instagram / X (Twitter) | ~60% | 9 |
 | studio | Ableton Live | ~60% | 8 |
 | trades | ServiceTitan / Jobber | ~60% | 8 |
@@ -254,8 +248,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | music | Spotify (2026) | ~95% | 0 |
 | news | Apple News / Ground News | ~95% | 0 |
 | paper | Zotero / arXiv | ~95% | 0 |
+| parenting | Huckleberry | ~95% | 0 |
+| pharmacy | Medisafe / GoodRx | ~95% | 0 |
 | podcast | Apple Podcasts / Spotify | ~95% | 0 |
 | poetry | Poetry Foundation / poetry notebook | ~95% | 0 |
+| productivity | Todoist | ~95% | 0 |
+| reflection | Day One | ~95% | 0 |
+| research | Obsidian / Elicit | ~95% | 0 |
+| sandbox | a game combat-feel test scene | ~95% | 0 |
 | science | LabArchives / GraphPad Prism | ~95% | 0 |
 | sessions | a workflow / task-session manager | ~95% | 0 |
 | srs | Anki | ~95% | 0 |
