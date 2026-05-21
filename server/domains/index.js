@@ -203,6 +203,7 @@ import classroom from './classroom.js';
 import syncLens from './sync.js';
 import uxSuite from './ux-suite.js';
 import worldCreator from './world-creator.js';
+import expeditionJournal from './expedition-journal.js';
 import bounties from './bounties.js';
 
 export default [
@@ -401,4 +402,5 @@ export default [
   uxSuite,
   worldCreator,
   bounties,
+  expeditionJournal,
 ];

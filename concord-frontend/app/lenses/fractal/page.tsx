@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { FractalRepos } from '@/components/fractal/FractalRepos';
+import { FractalRenderer } from '@/components/fractal/FractalRenderer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -106,123 +107,6 @@ export default function FractalLensPage() {
   const [formChildren, setFormChildren] = useState('');
   const [formFormat, setFormFormat] = useState('PNG');
   const [formResolution, setFormResolution] = useState('1920x1080');
-
-  // --- Fractal canvas rendering state ---
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [fractalCenter, setFractalCenter] = useState<[number, number]>([-0.5, 0]);
-  const [fractalZoom, setFractalZoom] = useState(200);
-  const [isRendering, setIsRendering] = useState(false);
-  const renderIdRef = useRef(0);
-
-  const fractalIterations = useMemo(() => {
-    const v = parseInt(formIterations);
-    return v > 0 ? Math.min(v, 1000) : 100;
-  }, [formIterations]);
-
-  // Mandelbrot rendering effect — renders in chunked rows to avoid blocking UI
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Size canvas to its CSS container
-    const rect = canvas.getBoundingClientRect();
-    const width = Math.floor(rect.width * (window.devicePixelRatio || 1));
-    const height = Math.floor(rect.height * (window.devicePixelRatio || 1));
-    if (width === 0 || height === 0) return;
-    canvas.width = width;
-    canvas.height = height;
-
-    const maxIter = fractalIterations;
-    const cx = fractalCenter[0];
-    const cy = fractalCenter[1];
-    const zoom = fractalZoom;
-
-    const imgData = ctx.createImageData(width, height);
-    const data = imgData.data;
-
-    const currentRenderId = ++renderIdRef.current;
-    setIsRendering(true);
-
-    // Chunked row rendering via requestAnimationFrame
-    let row = 0;
-    const ROWS_PER_CHUNK = 16;
-
-    const renderChunk = () => {
-      if (currentRenderId !== renderIdRef.current) return; // superseded
-      const endRow = Math.min(row + ROWS_PER_CHUNK, height);
-
-      for (let py = row; py < endRow; py++) {
-        for (let px = 0; px < width; px++) {
-          const x0 = (px - width / 2) / zoom + cx;
-          const y0 = (py - height / 2) / zoom + cy;
-          let x = 0, y = 0, iter = 0;
-          while (x * x + y * y <= 4 && iter < maxIter) {
-            const xTemp = x * x - y * y + x0;
-            y = 2 * x * y + y0;
-            x = xTemp;
-            iter++;
-          }
-
-          const idx = (py * width + px) * 4;
-          if (iter === maxIter) {
-            data[idx] = 0; data[idx + 1] = 0; data[idx + 2] = 0; data[idx + 3] = 255;
-          } else {
-            // Smooth coloring
-            const t = iter / maxIter;
-            data[idx]     = Math.floor(9 * (1 - t) * t * t * t * 255);     // R
-            data[idx + 1] = Math.floor(15 * (1 - t) * (1 - t) * t * t * 255); // G
-            data[idx + 2] = Math.floor(8.5 * (1 - t) * (1 - t) * (1 - t) * t * 255); // B
-            data[idx + 3] = 255;
-          }
-        }
-      }
-
-      // Put partial results
-      ctx.putImageData(imgData, 0, 0);
-      row = endRow;
-
-      if (row < height) {
-        requestAnimationFrame(renderChunk);
-      } else {
-        setIsRendering(false);
-      }
-    };
-
-    requestAnimationFrame(renderChunk);
-
-    return () => {
-      // Bump the latest render id to invalidate any in-flight chunked render.
-      // Reading the latest ref value here is intentional, not a stale-closure bug.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      renderIdRef.current++;
-    };
-  }, [fractalCenter, fractalZoom, fractalIterations]);
-
-  // Zoom on click: left-click zooms in (2x), right-click zooms out (0.5x)
-  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const px = (e.clientX - rect.left) * dpr;
-    const py = (e.clientY - rect.top) * dpr;
-    const newCx = (px - canvas.width / 2) / fractalZoom + fractalCenter[0];
-    const newCy = (py - canvas.height / 2) / fractalZoom + fractalCenter[1];
-    setFractalCenter([newCx, newCy]);
-    setFractalZoom(z => z * 2);
-  }, [fractalZoom, fractalCenter]);
-
-  const handleCanvasRightClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    setFractalZoom(z => Math.max(z / 2, 25));
-  }, []);
-
-  const handleResetView = useCallback(() => {
-    setFractalCenter([-0.5, 0]);
-    setFractalZoom(200);
-  }, []);
 
   const activeArtifactType = MODE_TABS.find(t => t.id === activeTab)?.artifactType || 'Pattern';
   const { items, isLoading, isError, error, refetch, create, update, remove } = useLensData<FractalArtifact>('fractal', activeArtifactType, { seed: [] });
@@ -433,32 +317,8 @@ export default function FractalLensPage() {
         </div>
       ); })()}
 
-      {/* --- Fractal Canvas Renderer --- */}
-      <div className={cn(ds.panel, 'relative overflow-hidden')}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-neon-purple" />
-            <h2 className={ds.heading3}>Fractal Renderer</h2>
-            {isRendering && <span className="text-xs text-neon-cyan animate-pulse ml-2">Rendering...</span>}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span>Iterations: {fractalIterations}</span>
-            <span>&middot;</span>
-            <span>Zoom: {fractalZoom.toFixed(0)}x</span>
-            <span>&middot;</span>
-            <span>Center: ({fractalCenter[0].toFixed(4)}, {fractalCenter[1].toFixed(4)})</span>
-            <button onClick={handleResetView} className={cn(ds.btnGhost, 'text-xs ml-2')}>Reset View</button>
-          </div>
-        </div>
-        <p className="text-xs text-gray-500 mb-2">Left-click to zoom in &middot; Right-click to zoom out &middot; Adjust Iterations in the editor form to change detail level</p>
-        <canvas
-          ref={canvasRef}
-          onClick={handleCanvasClick}
-          onContextMenu={handleCanvasRightClick}
-          className="w-full rounded-lg cursor-crosshair bg-black"
-          style={{ height: '420px' }}
-        />
-      </div>
+      {/* --- Interactive Fractal Renderer (Mandelbrot/Julia/Burning-Ship/Tricorn/Multibrot) --- */}
+      <FractalRenderer />
 
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
       {showDashboard ? renderDashboard() : renderLibrary()}

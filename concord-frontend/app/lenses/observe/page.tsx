@@ -23,6 +23,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ObservabilityRepos } from '@/components/observe/ObservabilityRepos';
 import { ObserveActionPanel } from '@/components/observe/ObserveActionPanel';
+import { ObservePlatform } from '@/components/observe/ObservePlatform';
 import { PipingProvider } from '@/components/panel-polish';
 
 interface Report {
@@ -121,6 +122,12 @@ export default function ObservePage() {
             <ObserveActionPanel />
           </section>
         </PipingProvider>
+
+        {/* Full telemetry platform — live metrics, dashboards, log search,
+            distributed tracing, alert monitors, synthetics, on-call paging. */}
+        <section className="mt-6">
+          <ObservePlatform />
+        </section>
       </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

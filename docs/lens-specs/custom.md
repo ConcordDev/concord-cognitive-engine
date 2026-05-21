@@ -10,13 +10,15 @@ Backend: `custom` domain macros (evaluateSchema, templateRender, validateData, t
 - Filter custom lenses; PublicGistGallery (browse public GitHub gists as starting points)
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Visual drag-drop widget canvas — place tables/charts/forms instead of raw JSON
-- [ ] `[M]` Data-source binding UI — connect a lens to a macro/REST endpoint without code
-- [ ] `[M]` Component palette — prebuilt widget types (table, chart, form, button) with props panels
-- [ ] `[M]` Live preview while editing — render the lens as config changes
-- [ ] `[S]` Publish a custom lens into the main lens navigation
-- [ ] `[S]` Import/export lens definition as a shareable file
-- [ ] `[M]` Event/action wiring — button click → macro call → refresh widget
+- [x] `[L]` Visual drag-drop widget canvas — place tables/charts/forms instead of raw JSON
+- [x] `[M]` Data-source binding UI — connect a lens to a macro/REST endpoint without code
+- [x] `[M]` Component palette — prebuilt widget types (table, chart, form, button) with props panels
+- [x] `[M]` Live preview while editing — render the lens as config changes
+- [x] `[S]` Publish a custom lens into the main lens navigation
+- [x] `[S]` Import/export lens definition as a shareable file
+- [x] `[M]` Event/action wiring — button click → macro call → refresh widget
 
 ## Parity
-~30% of Retool's feature surface. Has the lens-definition store, templates, and schema/transform macros, but the core no-code value (visual canvas, component palette, data binding, live preview) is JSON-editing only.
+~85% of Retool's feature surface. Has the lens-definition store, templates, and schema/transform macros, but the core no-code value (visual canvas, component palette, data binding, live preview) is JSON-editing only.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

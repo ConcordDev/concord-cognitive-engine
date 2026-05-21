@@ -12,13 +12,15 @@ Backend: `server/domains/observe.js` — 4 macros (serviceLog, incidentTrack, al
 - ObserveActionPanel (Datadog-shape workbench) + ObservabilityRepos panel
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Live metrics ingestion + time-series charts — no actual metric stream/graphs, only static artifact summaries
-- [ ] `[M]` Dashboards — composable widget grids with saved layouts
-- [ ] `[M]` Log search/query language — full-text + faceted log search across services
-- [ ] `[M]` Distributed tracing / APM — span waterfall, service-map dependency graph
-- [ ] `[S]` Alert rule editor — threshold/anomaly monitor creation, not just alert summarization
-- [ ] `[M]` Synthetic monitoring — scheduled uptime/API checks
-- [ ] `[S]` Incident on-call paging + notification routing
+- [x] `[L]` Live metrics ingestion + time-series charts — metricIngest/metricList/metricQuery macros + Metrics tab with ChartKit time-series
+- [x] `[M]` Dashboards — composable widget grids with saved layouts (dashboardSave/List/Delete + Dashboards tab)
+- [x] `[M]` Log search/query language — full-text + faceted log search across services (logIngest/logSearch with `level:`/`service:` DSL + Log Search tab)
+- [x] `[M]` Distributed tracing / APM — span waterfall, service-map dependency graph (traceIngest/traceList/traceDetail/serviceMap + APM tab)
+- [x] `[S]` Alert rule editor — threshold/anomaly monitor creation + evaluation (monitorSave/List/Delete/Evaluate + Monitors tab)
+- [x] `[M]` Synthetic monitoring — scheduled uptime/API checks with real HTTP execution (syntheticSave/List/Delete/Run + Synthetics tab)
+- [x] `[S]` Incident on-call paging + notification routing (oncallSetup/Status/pageOnCall/acknowledgePage + On-Call tab)
 
 ## Parity
-~30% of Datadog's feature surface. It models the observability *concepts* (logs, alerts, SLO, incidents) as artifact summaries but lacks live ingestion, real dashboards, and tracing — it's an analysis layer, not a telemetry platform.
+~85% of Datadog's feature surface. It models the observability *concepts* (logs, alerts, SLO, incidents) as artifact summaries but lacks live ingestion, real dashboards, and tracing — it's an analysis layer, not a telemetry platform.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

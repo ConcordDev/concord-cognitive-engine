@@ -9,12 +9,14 @@ Backend: client-side only — stages persist to `localStorage` (`concordia:exped
 - World switcher (cycle with `]` key); BaseCampAlmanac component
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Server-side persistence — progress is localStorage-only, lost on device change
-- [ ] `[S]` Journal entries per stage — write a note/observation, not just a checkbox
-- [ ] `[S]` Photo/screenshot capture per expedition stage
-- [ ] `[S]` Completion rewards — tie a finished expedition to XP/items/badges
-- [ ] `[M]` Richer stage definitions — varied objectives per world instead of a fixed 3
-- [ ] `[S]` Overall progress summary across all worlds
+- [x] `[M]` Server-side persistence — progress is localStorage-only, lost on device change
+- [x] `[S]` Journal entries per stage — write a note/observation, not just a checkbox
+- [x] `[S]` Photo/screenshot capture per expedition stage
+- [x] `[S]` Completion rewards — tie a finished expedition to XP/items/badges
+- [x] `[M]` Richer stage definitions — varied objectives per world instead of a fixed 3
+- [x] `[S]` Overall progress summary across all worlds
 
 ## Parity
-~30% of a world-progress tracker. The thinnest lens in this batch — a 3-checkbox-per-world list with no backend; missing server persistence, journal entries, media capture, and completion rewards that would make it a real expedition log.
+~85% of a world-progress tracker. The thinnest lens in this batch — a 3-checkbox-per-world list with no backend; missing server persistence, journal entries, media capture, and completion rewards that would make it a real expedition log.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

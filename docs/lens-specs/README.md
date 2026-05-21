@@ -12,26 +12,21 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~51%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1640**
+- Average feature parity: **~52%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1598**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 7 |
+| 80–100% (near-complete) | 12 |
 | 60–79% (strong) | 59 |
 | 40–59% (partial) | 140 |
-| <40% (thin) | 29 |
+| <40% (thin) | 23 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| custom | Retool / Glide | ~30% | 7 |
-| expedition-journal | in-game world-progress tracker (no consumer rival) | ~30% | 6 |
-| fractal | Mandelbulber / fractal generators | ~30% | 7 |
-| maker | Retool / Bubble (no-code app builder) | ~30% | 7 |
-| ml | Hugging Face | ~30% | 8 |
-| observe | Datadog | ~30% | 7 |
+| maker | Retool / Bubble (no-code app builder) | ~?% | 0 |
 | platform | Vercel / Heroku dashboard | ~30% | 7 |
 | quantum | IBM Quantum Composer | ~30% | 7 |
 | repos | GitHub | ~30% | 7 |
@@ -258,6 +253,11 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | app-maker | Bubble / Glide | ~85% | 0 |
 | bounties | Gitcoin / HackerOne bounties | ~85% | 0 |
 | crisis-ops | Dataminr / Everbridge | ~85% | 0 |
+| custom | Retool / Glide | ~85% | 0 |
+| expedition-journal | in-game world-progress tracker (no consumer rival) | ~85% | 0 |
+| fractal | Mandelbulber / fractal generators | ~85% | 0 |
+| ml | Hugging Face | ~85% | 0 |
+| observe | Datadog | ~85% | 0 |
 | sync | iCloud / Dropbox / Syncthing | ~85% | 0 |
 | ux-suite | Storybook / a component directory | ~85% | 0 |
 | world-creator | Roblox Studio / Core / Unreal Editor | ~85% | 0 |

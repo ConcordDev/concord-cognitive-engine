@@ -1192,4 +1192,420 @@ export default function registerAppmakerActions(registerLensAction) {
       }
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
+
+  // ─── Data binding — connect canvas elements to data sources ───────────
+  // A binding pairs a page element to either a project table or a saved
+  // connector, with an optional query/filter. Bindings live on the page
+  // element's `binding` prop so previewRender can surface them.
+
+  /**
+   * data.bindElement — attach a data source to a canvas element.
+   * params = { projectId, pageId, elementId, source:{kind:'table'|'connector', refId, query?} }
+   */
+  registerLensAction("app-maker", "dataBindElement", (ctx, artifact, params) => {
+    try {
+      const s = getAppState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const proj = findProject(s, amActor(ctx), params?.projectId);
+      if (!proj) return { ok: false, error: "project_not_found" };
+      const page = proj.pages.find((p) => p.id === params?.pageId);
+      if (!page) return { ok: false, error: "page_not_found" };
+      const el = (page.elements || []).find((e) => e.id === params?.elementId);
+      if (!el) return { ok: false, error: "element_not_found" };
+      const src = params?.source || {};
+      const kind = src.kind === "connector" ? "connector" : "table";
+      let label = "";
+      if (kind === "table") {
+        const tbl = proj.dataModel.tables.find((t) => t.id === src.refId);
+        if (!tbl) return { ok: false, error: "table_not_found" };
+        label = tbl.name;
+      } else {
+        const conn = proj.connectors.find((c) => c.id === src.refId);
+        if (!conn) return { ok: false, error: "connector_not_found" };
+        label = conn.name;
+      }
+      el.binding = {
+        kind,
+        refId: src.refId,
+        label,
+        query: amClean(src.query || "", 400),
+        boundAt: amNow(),
+      };
+      proj.updatedAt = amNow();
+      saveAppState();
+      return { ok: true, result: { element: el, binding: el.binding } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * data.unbindElement — remove a data binding from an element.
+   */
+  registerLensAction("app-maker", "dataUnbindElement", (ctx, artifact, params) => {
+    try {
+      const s = getAppState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const proj = findProject(s, amActor(ctx), params?.projectId);
+      if (!proj) return { ok: false, error: "project_not_found" };
+      const page = proj.pages.find((p) => p.id === params?.pageId);
+      if (!page) return { ok: false, error: "page_not_found" };
+      const el = (page.elements || []).find((e) => e.id === params?.elementId);
+      if (!el) return { ok: false, error: "element_not_found" };
+      delete el.binding;
+      proj.updatedAt = amNow();
+      saveAppState();
+      return { ok: true, result: { element: el } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * data.bindings — list every element binding across a project.
+   */
+  registerLensAction("app-maker", "dataBindings", (ctx, artifact, params) => {
+    try {
+      const s = getAppState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const proj = findProject(s, amActor(ctx), params?.projectId);
+      if (!proj) return { ok: false, error: "project_not_found" };
+      const bindings = [];
+      for (const page of proj.pages) {
+        for (const el of page.elements || []) {
+          if (el.binding) {
+            bindings.push({
+              pageId: page.id, pageName: page.name,
+              elementId: el.id, elementType: el.type,
+              ...el.binding,
+            });
+          }
+        }
+      }
+      return { ok: true, result: { bindings, count: bindings.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─── Quest authoring — branching node graph ───────────────────────────
+  // A quest graph is a per-user, per-project resource: nodes (steps,
+  // choices, rewards, endings) connected by edges with optional condition
+  // labels. Distinct from the runtime `quest` engine — this is the author.
+
+  function getQuestGraphs() {
+    const s = getAppState();
+    if (!(s.questGraphs instanceof Map)) s.questGraphs = new Map(); // userId -> Array<graph>
+    return s.questGraphs;
+  }
+  const QUEST_NODE_KINDS = ["start", "step", "choice", "reward", "ending"];
+
+  function findGraph(userId, graphId) {
+    return (getQuestGraphs().get(userId) || []).find((g) => g.id === graphId) || null;
+  }
+
+  /**
+   * quest.graphCreate — start a new branching quest graph.
+   */
+  registerLensAction("app-maker", "questGraphCreate", (ctx, artifact, params) => {
+    try {
+      const userId = amActor(ctx);
+      const graphs = getQuestGraphs();
+      const startId = amId("qn");
+      const graph = {
+        id: amId("qg"),
+        title: amClean(params?.title || "Untitled Quest", 100) || "Untitled Quest",
+        createdAt: amNow(),
+        updatedAt: amNow(),
+        nodes: [{ id: startId, kind: "start", title: "Start", body: "", x: 80, y: 160 }],
+        edges: [],
+      };
+      amList(graphs, userId).unshift(graph);
+      saveAppState();
+      return { ok: true, result: { graph } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * quest.graphList — list quest graphs for the user.
+   */
+  registerLensAction("app-maker", "questGraphList", (ctx) => {
+    try {
+      const userId = amActor(ctx);
+      const graphs = (getQuestGraphs().get(userId) || []).map((g) => ({
+        id: g.id, title: g.title, createdAt: g.createdAt, updatedAt: g.updatedAt,
+        nodeCount: g.nodes.length, edgeCount: g.edges.length,
+      }));
+      return { ok: true, result: { graphs, count: graphs.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * quest.graphGet — fetch one full quest graph.
+   */
+  registerLensAction("app-maker", "questGraphGet", (ctx, artifact, params) => {
+    try {
+      const g = findGraph(amActor(ctx), params?.graphId);
+      if (!g) return { ok: false, error: "graph_not_found" };
+      return { ok: true, result: { graph: g } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * quest.graphDelete
+   */
+  registerLensAction("app-maker", "questGraphDelete", (ctx, artifact, params) => {
+    try {
+      const userId = amActor(ctx);
+      const arr = getQuestGraphs().get(userId) || [];
+      const idx = arr.findIndex((g) => g.id === params?.graphId);
+      if (idx < 0) return { ok: false, error: "graph_not_found" };
+      arr.splice(idx, 1);
+      saveAppState();
+      return { ok: true, result: { deleted: params.graphId } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * quest.nodeSave — add or update a node in the graph.
+   * params.node = { id?, kind, title, body?, x, y, reward? }
+   */
+  registerLensAction("app-maker", "questNodeSave", (ctx, artifact, params) => {
+    try {
+      const g = findGraph(amActor(ctx), params?.graphId);
+      if (!g) return { ok: false, error: "graph_not_found" };
+      const n = params?.node || {};
+      const record = {
+        id: n.id && g.nodes.some((x) => x.id === n.id) ? n.id : amId("qn"),
+        kind: QUEST_NODE_KINDS.includes(n.kind) ? n.kind : "step",
+        title: amClean(n.title || "Node", 100) || "Node",
+        body: amClean(n.body || "", 600),
+        x: Number.isFinite(+n.x) ? +n.x : 200,
+        y: Number.isFinite(+n.y) ? +n.y : 200,
+        reward: amClean(n.reward || "", 120),
+      };
+      const idx = g.nodes.findIndex((x) => x.id === record.id);
+      if (idx >= 0) g.nodes[idx] = record;
+      else g.nodes.push(record);
+      g.updatedAt = amNow();
+      saveAppState();
+      return { ok: true, result: { node: record, nodes: g.nodes } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * quest.nodeDelete — remove a node and its incident edges.
+   */
+  registerLensAction("app-maker", "questNodeDelete", (ctx, artifact, params) => {
+    try {
+      const g = findGraph(amActor(ctx), params?.graphId);
+      if (!g) return { ok: false, error: "graph_not_found" };
+      const node = g.nodes.find((x) => x.id === params?.nodeId);
+      if (!node) return { ok: false, error: "node_not_found" };
+      if (node.kind === "start") return { ok: false, error: "cannot_delete_start_node" };
+      g.nodes = g.nodes.filter((x) => x.id !== params.nodeId);
+      g.edges = g.edges.filter((e) => e.from !== params.nodeId && e.to !== params.nodeId);
+      g.updatedAt = amNow();
+      saveAppState();
+      return { ok: true, result: { nodes: g.nodes, edges: g.edges } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * quest.edgeAdd — connect two nodes with an optional condition label.
+   */
+  registerLensAction("app-maker", "questEdgeAdd", (ctx, artifact, params) => {
+    try {
+      const g = findGraph(amActor(ctx), params?.graphId);
+      if (!g) return { ok: false, error: "graph_not_found" };
+      const from = g.nodes.find((x) => x.id === params?.from);
+      const to = g.nodes.find((x) => x.id === params?.to);
+      if (!from || !to) return { ok: false, error: "node_not_found" };
+      if (from.id === to.id) return { ok: false, error: "cannot_connect_to_self" };
+      if (g.edges.some((e) => e.from === from.id && e.to === to.id)) {
+        return { ok: false, error: "edge_exists" };
+      }
+      const edge = {
+        id: amId("qe"),
+        from: from.id, to: to.id,
+        label: amClean(params?.label || "", 80),
+      };
+      g.edges.push(edge);
+      g.updatedAt = amNow();
+      saveAppState();
+      return { ok: true, result: { edge, edges: g.edges } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * quest.edgeDelete
+   */
+  registerLensAction("app-maker", "questEdgeDelete", (ctx, artifact, params) => {
+    try {
+      const g = findGraph(amActor(ctx), params?.graphId);
+      if (!g) return { ok: false, error: "graph_not_found" };
+      const idx = g.edges.findIndex((e) => e.id === params?.edgeId);
+      if (idx < 0) return { ok: false, error: "edge_not_found" };
+      g.edges.splice(idx, 1);
+      g.updatedAt = amNow();
+      saveAppState();
+      return { ok: true, result: { edges: g.edges } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * quest.graphValidate — structural lint of a branching quest graph:
+   * unreachable nodes, dead-end choices, missing endings, orphan nodes.
+   */
+  registerLensAction("app-maker", "questGraphValidate", (ctx, artifact, params) => {
+    try {
+      const g = findGraph(amActor(ctx), params?.graphId);
+      if (!g) return { ok: false, error: "graph_not_found" };
+      const issues = [];
+      const start = g.nodes.find((n) => n.kind === "start");
+      if (!start) issues.push({ severity: "error", type: "no_start_node" });
+      const adj = {};
+      for (const n of g.nodes) adj[n.id] = [];
+      for (const e of g.edges) (adj[e.from] || []).push(e.to);
+      // Reachability BFS from start.
+      const reachable = new Set();
+      if (start) {
+        const queue = [start.id];
+        reachable.add(start.id);
+        while (queue.length) {
+          const cur = queue.shift();
+          for (const nx of adj[cur] || []) {
+            if (!reachable.has(nx)) { reachable.add(nx); queue.push(nx); }
+          }
+        }
+      }
+      for (const n of g.nodes) {
+        if (start && !reachable.has(n.id)) {
+          issues.push({ severity: "warning", type: "unreachable_node", nodeId: n.id, title: n.title });
+        }
+        const outs = (adj[n.id] || []).length;
+        if (n.kind !== "ending" && outs === 0) {
+          issues.push({ severity: "warning", type: "dead_end", nodeId: n.id, title: n.title });
+        }
+        if (n.kind === "choice" && outs < 2) {
+          issues.push({ severity: "info", type: "choice_needs_branches", nodeId: n.id, title: n.title });
+        }
+      }
+      if (!g.nodes.some((n) => n.kind === "ending")) {
+        issues.push({ severity: "warning", type: "no_ending" });
+      }
+      return {
+        ok: true,
+        result: {
+          valid: issues.filter((i) => i.severity === "error").length === 0,
+          issues,
+          summary: {
+            nodes: g.nodes.length,
+            edges: g.edges.length,
+            reachable: reachable.size,
+            endings: g.nodes.filter((n) => n.kind === "ending").length,
+            errorCount: issues.filter((i) => i.severity === "error").length,
+            warningCount: issues.filter((i) => i.severity === "warning").length,
+          },
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─── Component / template marketplace — cross-user reusable blocks ─────
+  // A published component is a shared, immutable copy of a project's
+  // library component, installable into any other user's project.
+
+  function getMarketplace() {
+    const s = getAppState();
+    if (!Array.isArray(s.componentMarket)) s.componentMarket = [];
+    return s.componentMarket;
+  }
+
+  /**
+   * market.publish — publish a project library component to the marketplace.
+   */
+  registerLensAction("app-maker", "marketPublish", (ctx, artifact, params) => {
+    try {
+      const s = getAppState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = amActor(ctx);
+      const proj = findProject(s, userId, params?.projectId);
+      if (!proj) return { ok: false, error: "project_not_found" };
+      const comp = proj.componentLibrary.find((c) => c.id === params?.componentId);
+      if (!comp) return { ok: false, error: "component_not_found" };
+      const listing = {
+        id: amId("mkt"),
+        name: amClean(params?.name || comp.name, 60),
+        description: amClean(params?.description || "", 240),
+        category: amClean(params?.category || "general", 40),
+        baseType: comp.baseType,
+        props: JSON.parse(JSON.stringify(comp.props || {})),
+        style: JSON.parse(JSON.stringify(comp.style || {})),
+        publisherId: userId,
+        installs: 0,
+        publishedAt: amNow(),
+      };
+      getMarketplace().unshift(listing);
+      saveAppState();
+      return { ok: true, result: { listing } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * market.browse — list marketplace components, optional category filter.
+   */
+  registerLensAction("app-maker", "marketBrowse", (ctx, artifact, params) => {
+    try {
+      const market = getMarketplace();
+      const cat = params?.category ? amClean(params.category, 40) : null;
+      const q = params?.q ? amClean(params.q, 60).toLowerCase() : null;
+      let listings = market.slice();
+      if (cat && cat !== "all") listings = listings.filter((l) => l.category === cat);
+      if (q) listings = listings.filter((l) => l.name.toLowerCase().includes(q) || (l.description || "").toLowerCase().includes(q));
+      listings = listings
+        .sort((a, b) => (b.installs - a.installs) || b.publishedAt.localeCompare(a.publishedAt))
+        .slice(0, 100);
+      const categories = [...new Set(market.map((l) => l.category))];
+      return { ok: true, result: { listings, count: listings.length, categories } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * market.install — copy a marketplace component into a project's library.
+   */
+  registerLensAction("app-maker", "marketInstall", (ctx, artifact, params) => {
+    try {
+      const s = getAppState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const proj = findProject(s, amActor(ctx), params?.projectId);
+      if (!proj) return { ok: false, error: "project_not_found" };
+      const listing = getMarketplace().find((l) => l.id === params?.listingId);
+      if (!listing) return { ok: false, error: "listing_not_found" };
+      const record = {
+        id: amId("cmp"),
+        name: listing.name,
+        baseType: listing.baseType,
+        props: JSON.parse(JSON.stringify(listing.props || {})),
+        style: JSON.parse(JSON.stringify(listing.style || {})),
+        fromMarketplace: listing.id,
+        updatedAt: amNow(),
+      };
+      proj.componentLibrary.push(record);
+      proj.updatedAt = amNow();
+      listing.installs = (listing.installs || 0) + 1;
+      saveAppState();
+      return { ok: true, result: { component: record, library: proj.componentLibrary } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * market.unpublish — remove a listing the caller published.
+   */
+  registerLensAction("app-maker", "marketUnpublish", (ctx, artifact, params) => {
+    try {
+      const userId = amActor(ctx);
+      const market = getMarketplace();
+      const idx = market.findIndex((l) => l.id === params?.listingId);
+      if (idx < 0) return { ok: false, error: "listing_not_found" };
+      if (market[idx].publisherId !== userId) return { ok: false, error: "not_publisher" };
+      market.splice(idx, 1);
+      saveAppState();
+      return { ok: true, result: { unpublished: params.listingId } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
 }

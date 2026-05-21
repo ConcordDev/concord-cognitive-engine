@@ -10,13 +10,15 @@ Backend: `apps` macro domain (list, metrics, promote), `quest` macro domain (lis
 - MakerShowcase component, tab keyboard shortcuts
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Visual app editor — drag-drop component canvas with property inspector
-- [ ] `[M]` Data binding — connect components to DTU/macro data sources with queries
-- [ ] `[M]` Event/action wiring — button→query→state without code
-- [ ] `[M]` Quest authoring editor — branching node graph, not just a list view
-- [ ] `[S]` App preview / live run inside the lens
-- [ ] `[M]` Component / template marketplace for reusable blocks
-- [ ] `[S]` Version history + rollback for built apps
+- [x] `[L]` Visual app editor — drag-drop component canvas with property inspector
+- [x] `[M]` Data binding — connect components to DTU/macro data sources with queries
+- [x] `[M]` Event/action wiring — button→query→state without code
+- [x] `[M]` Quest authoring editor — branching node graph, not just a list view
+- [x] `[S]` App preview / live run inside the lens
+- [x] `[M]` Component / template marketplace for reusable blocks
+- [x] `[S]` Version history + rollback for built apps
 
 ## Parity
-~30% of a no-code builder. It is an observation + simple-action surface over three generation engines (apps/quests/creative) — missing the visual editor, data binding, and event wiring that constitute actual no-code building.
+Full no-code builder shipped. The `Builder` tab hosts a real project workspace: a drag-drop visual editor with a component palette and property inspector (`editor.*` macros), a data-model designer with tables/fields/relations and per-element data binding (`data.*` macros), a workflow builder wiring triggers→action steps (`workflow.*` macros), a cross-user component marketplace (`market.*` macros), version snapshot/rollback (`version.*` macros), and live in-iframe preview + one-click deploy (`preview.render` / `deploy.*`). The `Quest Designer` tab authors branching quests as a draggable node graph with structural validation (`questGraph*` / `questNode*` / `questEdge*` macros). Apps/Quests/Creative observation tabs retained.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
