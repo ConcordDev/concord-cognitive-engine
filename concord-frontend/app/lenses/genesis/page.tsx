@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -10,10 +10,15 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OriginExplorer } from '@/components/genesis/OriginExplorer';
+import { RosterExplorer } from '@/components/genesis/RosterExplorer';
+import { IdentityTimeline } from '@/components/genesis/IdentityTimeline';
+import { LineageView } from '@/components/genesis/LineageView';
+import { RelationshipGraph } from '@/components/genesis/RelationshipGraph';
+import { GenesisMetrics } from '@/components/genesis/GenesisMetrics';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cpu, Zap, MessageSquare, Eye, Star, Clock, Trophy } from 'lucide-react';
+import { Cpu, Zap, MessageSquare, Eye, Star, X, Filter } from 'lucide-react';
 import Link from 'next/link';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useSocket } from '@/hooks/useSocket';
@@ -34,7 +39,7 @@ interface EmergentIdentity {
 interface FeedEvent {
   id: string;
   type: string;
-  emergent: EmergentIdentity | null;
+  emergent: { emergent_id?: string; given_name: string | null } | null;
   data: Record<string, unknown>;
   timestamp: number;
 }
@@ -156,39 +161,9 @@ function ActivityItem({ event }: { event: FeedEvent }) {
   );
 }
 
-// ── Emergent Card ─────────────────────────────────────────────────────────────
-
-function EmergentCard({ emergent }: { emergent: EmergentIdentity }) {
-  const name = emergent.given_name || emergent.emergent_id;
-  return (
-    <Link href={`/emergents/${encodeURIComponent(name)}`}>
-      <motion.div
-        whileHover={{ scale: 1.02 }}
-        className="p-3 rounded-lg bg-white/5 border border-white/10 hover:border-neon-cyan/40 cursor-pointer transition-colors"
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <Cpu className="w-4 h-4 text-neon-cyan flex-shrink-0" />
-          <span className="font-semibold text-white truncate">{name}</span>
-          {emergent.active && (
-            <span className="ml-auto w-2 h-2 rounded-full bg-green-400 flex-shrink-0" title="Active" />
-          )}
-        </div>
-        {emergent.naming_origin && (
-          <p className="text-xs text-gray-500">named via {emergent.naming_origin}</p>
-        )}
-        {emergent.current_focus && (
-          <p className="text-xs text-gray-400 mt-1 truncate">↳ {emergent.current_focus}</p>
-        )}
-        <p className="text-xs text-gray-600 mt-1">
-          <Clock className="inline w-3 h-3 mr-1" />
-          {formatRelativeTime(emergent.last_active_at)}
-        </p>
-      </motion.div>
-    </Link>
-  );
-}
-
 // ── Genesis Lens Page ─────────────────────────────────────────────────────────
+
+type DetailTab = 'timeline' | 'lineage';
 
 export default function GenesisLens() {
   useLensCommand([
@@ -203,45 +178,61 @@ export default function GenesisLens() {
 
   const [emergents, setEmergents] = useState<EmergentIdentity[]>([]);
   const [feed, setFeed] = useState<FeedEvent[]>([]);
-  const [legends, setLegends] = useState<{ id: string; title: string; skill_level: number; username: string | null; world_id: string }[]>([]);
+  const [typeBreakdown, setTypeBreakdown] = useState<Record<string, number>>({});
+  const [feedFilter, setFeedFilter] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<DetailTab>('timeline');
 
   const { on, off, isConnected } = useSocket({ autoConnect: true });
 
-  // Initial data load
+  // Initial data load — roster + event-type-filtered feed.
   useEffect(() => {
     Promise.all([
-      fetch('/api/emergents').then(r => r.json()).catch(() => ({ emergents: [] })),
-      fetch('/api/emergents/feed/recent?limit=50').then(r => r.json()).catch(() => ({ events: [] })),
-      fetch('/api/worlds/skills/legendary').then(r => r.json()).catch(() => ({ legends: [] })),
-    ]).then(([emergentsData, feedData, legendData]) => {
+      fetch('/api/emergents').then((r) => r.json()).catch(() => ({ emergents: [] })),
+      fetch('/api/emergents/feed/filtered?limit=120').then((r) => r.json()).catch(() => ({ events: [], typeBreakdown: {} })),
+    ]).then(([emergentsData, feedData]) => {
       setEmergents(emergentsData.emergents || []);
       setFeed(feedData.events || []);
-      setLegends(legendData.legends || []);
+      setTypeBreakdown(feedData.typeBreakdown || {});
       setLoading(false);
     });
   }, []);
 
-  // Live feed via WebSocket
+  // Live feed via WebSocket.
   useEffect(() => {
     const handleActivity = (...args: unknown[]) => {
       const data = args[0] as FeedEvent;
-      setFeed(prev => [data, ...prev].slice(0, 100));
+      setFeed((prev) => [data, ...prev].slice(0, 200));
     };
-
     on('emergent:activity', handleActivity);
     setIsLive(isConnected);
     return () => off('emergent:activity', handleActivity);
   }, [on, off, isConnected]);
 
-  const activeCount = emergents.filter(e => e.active).length;
+  const toggleFeedType = (t: string) => {
+    setFeedFilter((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  };
+
+  const visibleFeed = useMemo(
+    () => (feedFilter.length === 0 ? feed : feed.filter((e) => feedFilter.includes(e.type))),
+    [feed, feedFilter],
+  );
+
+  const activeCount = emergents.filter((e) => e.active).length;
   const artifactsToday = feed.filter(
-    e => e.type === 'artifact_created' && e.timestamp > Date.now() - 86_400_000
+    (e) => e.type === 'artifact_created' && e.timestamp > Date.now() - 86_400_000,
   ).length;
   const communicationsToday = feed.filter(
-    e => e.type === 'communication' && e.timestamp > Date.now() - 86_400_000
+    (e) => e.type === 'communication' && e.timestamp > Date.now() - 86_400_000,
   ).length;
+
+  const feedTypes = useMemo(() => {
+    const set = new Set<string>(Object.keys(typeBreakdown));
+    feed.forEach((e) => set.add(e.type));
+    return [...set].sort();
+  }, [typeBreakdown, feed]);
 
   return (
     <LensShell lensId="genesis" asMain={false}>
@@ -249,117 +240,163 @@ export default function GenesisLens() {
       <ManifestActionBar />
       <DepthBadge lensId="genesis" size="sm" className="ml-2" />
       <LensVerticalHero lensId="genesis" className="mx-6 mt-4" />
-    <div className="min-h-screen bg-gray-950 text-white p-6">
-      {/* Header */}
-      <header className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Zap className="w-8 h-8 text-neon-cyan" />
-          <h1 className="text-3xl font-bold tracking-tight">Genesis</h1>
-          {isLive && (
-            <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-              ● LIVE
-            </span>
-          )}
-        </div>
-        <p className="text-gray-400 text-sm">Real-time emergent activity across the substrate</p>
-      </header>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Named emergents', value: emergents.length, icon: Cpu },
-          { label: 'Active', value: activeCount, icon: Zap },
-          { label: 'Artifacts today', value: artifactsToday, icon: Star },
-          { label: 'Communications today', value: communicationsToday, icon: MessageSquare },
-        ].map(({ label, value, icon: Icon }) => (
-          <div key={label} className="p-4 rounded-xl bg-white/5 border border-white/10">
-            <div className="flex items-center gap-2 mb-1">
-              <Icon className="w-4 h-4 text-neon-cyan" />
-              <span className="text-xs text-gray-400">{label}</span>
-            </div>
-            <p className="text-2xl font-bold text-white">{loading ? '—' : value}</p>
+      <div className="min-h-screen bg-gray-950 text-white p-6">
+        {/* Header */}
+        <header className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Zap className="w-8 h-8 text-neon-cyan" />
+            <h1 className="text-3xl font-bold tracking-tight">Genesis</h1>
+            {isLive && (
+              <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                ● LIVE
+              </span>
+            )}
           </div>
-        ))}
-      </div>
+          <p className="text-gray-400 text-sm">Emergent-AI observatory — identities, lineage, and live activity across the substrate</p>
+        </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Activity Feed */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center gap-2 mb-4">
-            <Eye className="w-4 h-4 text-neon-cyan" />
-            <h2 className="text-lg font-semibold">Live Activity</h2>
-          </div>
-          {loading ? (
-            <p className="text-gray-500 text-sm">Loading feed…</p>
-          ) : feed.length === 0 ? (
-            <p className="text-gray-500 text-sm">No activity yet. Emergents are waking up.</p>
-          ) : (
-            <div className="space-y-0">
-              <AnimatePresence initial={false}>
-                {feed.map(event => (
-                  <ActivityItem key={event.id} event={event} />
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-
-        {/* Emergent Grid */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <MessageSquare className="w-4 h-4 text-neon-purple" />
-            <h2 className="text-lg font-semibold">Emergents</h2>
-          </div>
-          {loading ? (
-            <p className="text-gray-500 text-sm">Loading…</p>
-          ) : emergents.length === 0 ? (
-            <p className="text-gray-500 text-sm">No named emergents yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {emergents.map(e => (
-                <EmergentCard key={e.emergent_id} emergent={e} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Hall of Legends */}
-      {legends.length > 0 && (
-        <div className="mt-10">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="w-4 h-4 text-yellow-400" />
-            <h2 className="text-lg font-semibold">Hall of Legends</h2>
-            <span className="text-xs text-gray-600 ml-1">Legendary & Mythic skill masters</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {legends.slice(0, 8).map((leg, i) => (
-              <div key={leg.id} className="p-3 rounded-lg bg-gradient-to-br from-yellow-900/20 to-amber-900/10 border border-yellow-500/20 hover:border-yellow-500/40 transition">
-                <div className="flex items-start justify-between gap-1 mb-1">
-                  <span className="text-yellow-400 text-xs font-mono">#{i + 1}</span>
-                  <span className="text-yellow-300/60 text-xs font-mono">Lv {leg.skill_level?.toFixed(0)}</span>
-                </div>
-                <p className="text-white text-sm font-semibold truncate">{leg.title}</p>
-                <p className="text-gray-500 text-xs mt-0.5 truncate">{leg.username || 'anonymous'} · {leg.world_id}</p>
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Named emergents', value: emergents.length, icon: Cpu },
+            { label: 'Active', value: activeCount, icon: Zap },
+            { label: 'Artifacts today', value: artifactsToday, icon: Star },
+            { label: 'Communications today', value: communicationsToday, icon: MessageSquare },
+          ].map(({ label, value, icon: Icon }) => (
+            <div key={label} className="p-4 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex items-center gap-2 mb-1">
+                <Icon className="w-4 h-4 text-neon-cyan" />
+                <span className="text-xs text-gray-400">{label}</span>
               </div>
-            ))}
+              <p className="text-2xl font-bold text-white">{loading ? '—' : value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Activity Feed with event-type filtering */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center gap-2 mb-3">
+              <Eye className="w-4 h-4 text-neon-cyan" />
+              <h2 className="text-lg font-semibold">Live Activity</h2>
+              <Filter className="w-3.5 h-3.5 text-gray-500 ml-1" />
+            </div>
+
+            {/* Event-type filter chips */}
+            {feedTypes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {feedFilter.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setFeedFilter([])}
+                    className="flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-300 hover:text-white"
+                  >
+                    <X className="w-3 h-3" /> all
+                  </button>
+                )}
+                {feedTypes.map((t) => {
+                  const on_ = feedFilter.includes(t);
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => toggleFeedType(t)}
+                      className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                        on_
+                          ? 'border-neon-cyan bg-neon-cyan/20 text-neon-cyan'
+                          : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700'
+                      }`}
+                    >
+                      {(EVENT_ICONS[t] || '·')} {t.replace(/_/g, ' ')}
+                      {typeBreakdown[t] != null && <span className="ml-1 text-zinc-600">{typeBreakdown[t]}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {loading ? (
+              <p className="text-gray-500 text-sm">Loading feed…</p>
+            ) : visibleFeed.length === 0 ? (
+              <p className="text-gray-500 text-sm">
+                {feedFilter.length > 0 ? 'No events match the selected types.' : 'No activity yet. Emergents are waking up.'}
+              </p>
+            ) : (
+              <div className="space-y-0">
+                <AnimatePresence initial={false}>
+                  {visibleFeed.map((event) => (
+                    <ActivityItem key={event.id} event={event} />
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+
+          {/* Roster explorer with search/filter */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <MessageSquare className="w-4 h-4 text-neon-purple" />
+              <h2 className="text-lg font-semibold">Roster</h2>
+            </div>
+            <RosterExplorer selectedId={selectedId} onSelect={setSelectedId} />
           </div>
         </div>
-      )}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <OriginExplorer />
-      </section>
-    </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
-      <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
-      <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
-      {/* @decorative-ok: sr-only a11y sentinel — never receives user interaction (tabIndex=-1, aria-hidden) */}
-      <button type="button" className="sr-only" aria-hidden="true" tabIndex={-1} onClick={() => {}}>noop a11y sentinel</button>
-          <RecentMineCard domain="genesis" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="genesis" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="genesis" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        {/* Selected-emergent detail — timeline + lineage */}
+        {selectedId && (
+          <section className="mt-8 rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-4">
+            <div className="mb-4 flex items-center gap-2 border-b border-zinc-800 pb-2">
+              <div className="flex gap-1">
+                {(['timeline', 'lineage'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setDetailTab(tab)}
+                    className={`rounded px-3 py-1 text-xs font-semibold capitalize transition-colors ${
+                      detailTab === tab
+                        ? 'bg-cyan-500/20 text-cyan-200'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="ml-auto flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"
+              >
+                <X className="h-3.5 w-3.5" /> close
+              </button>
+            </div>
+            {detailTab === 'timeline' ? (
+              <IdentityTimeline emergentId={selectedId} />
+            ) : (
+              <LineageView emergentId={selectedId} onSelect={setSelectedId} />
+            )}
+          </section>
+        )}
+
+        {/* Relationship graph */}
+        <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <RelationshipGraph onSelect={setSelectedId} />
+        </section>
+
+        {/* Observatory metrics */}
+        <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <GenesisMetrics onSelect={setSelectedId} />
+        </section>
+
+        {/* Origin & cosmogony reference */}
+        <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <OriginExplorer />
+        </section>
+      </div>
+
+      <RecentMineCard domain="genesis" limit={10} hideWhenEmpty className="mt-4" />
+      <AutoActionStrip domain="genesis" hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="genesis" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

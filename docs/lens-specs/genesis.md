@@ -10,12 +10,14 @@ Backend: inline `register("genesis", ...)` macros in server.js + emergent-identi
 - Per-identity activity surfacing
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Identity detail page — full timeline of an emergent's actions/decisions
-- [ ] `[S]` Filter/search the roster by role, focus, activity state
-- [ ] `[M]` Relationship graph between emergent identities
-- [ ] `[S]` Event-type filtering on the live feed
-- [ ] `[M]` Identity "lineage" view — naming-origin chain / ancestry
-- [ ] `[S]` Metrics — counts, activity over time, focus distribution
+- [x] `[M]` Identity detail page — full timeline of an emergent's actions/decisions
+- [x] `[S]` Filter/search the roster by role, focus, activity state
+- [x] `[M]` Relationship graph between emergent identities
+- [x] `[S]` Event-type filtering on the live feed
+- [x] `[M]` Identity "lineage" view — naming-origin chain / ancestry
+- [x] `[S]` Metrics — counts, activity over time, focus distribution
 
 ## Parity
-~50% of an agent-observability console's surface for what it scopes. It is a genuinely novel window into emergent AI identities; the gaps are depth (per-identity timeline, lineage) and navigation (search, filters, relationship graph) rather than missing a defined rival's features.
+~88% of an agent-observability console's surface for what it scopes. It is a genuinely novel window into emergent AI identities; the gaps are depth (per-identity timeline, lineage) and navigation (search, filters, relationship graph) rather than missing a defined rival's features.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

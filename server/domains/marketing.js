@@ -486,6 +486,766 @@ export default function registerMarketingActions(registerLensAction) {
     };
   });
 
+  // ════════════════════════════════════════════════════════════════════
+  //  HubSpot-parity backlog: email builder + send engine, automation
+  //  workflows, landing/form builder, social scheduler, lead-scoring
+  //  model editor, SEO audit, CRM contact sync, campaign calendar.
+  // ════════════════════════════════════════════════════════════════════
+
+  // Extend the marketing STATE bucket with the new collections. getMktState
+  // above only seeds the original six maps; add the rest lazily here.
+  function getMktState2() {
+    const s = getMktState();
+    if (!s) return null;
+    for (const k of [
+      "emails", "emailSends", "workflows", "workflowRuns", "pages",
+      "formSubmissions", "socialPosts", "scoringModels", "seoAudits", "contacts",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+
+  // ── Email builder + send engine ─────────────────────────────────────
+  // An email is a block-based document. Sending simulates per-recipient
+  // delivery with deterministic open/click outcomes so analytics are real.
+  const EMAIL_BLOCK_TYPES = ["heading", "text", "image", "button", "divider", "spacer"];
+
+  registerLensAction("marketing", "email-create", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = mkClean(params.name, 120);
+    if (!name) return { ok: false, error: "email name required" };
+    const blocks = Array.isArray(params.blocks)
+      ? params.blocks
+          .filter((b) => b && EMAIL_BLOCK_TYPES.includes(String(b.type)))
+          .map((b) => ({ type: String(b.type), content: mkClean(b.content, 2000) }))
+      : [];
+    const email = {
+      id: mkId("eml"), name,
+      subject: mkClean(params.subject, 200) || name,
+      preheader: mkClean(params.preheader, 200) || null,
+      fromName: mkClean(params.fromName, 80) || "Marketing",
+      blocks,
+      status: "draft",
+      createdAt: mkNow(), updatedAt: mkNow(),
+    };
+    mkListB(s.emails, mkAid(ctx)).push(email);
+    saveMktState();
+    return { ok: true, result: { email } };
+  });
+
+  registerLensAction("marketing", "email-update", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const e = (s.emails.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!e) return { ok: false, error: "email not found" };
+    if (params.name != null) { const n = mkClean(params.name, 120); if (n) e.name = n; }
+    if (params.subject != null) e.subject = mkClean(params.subject, 200) || e.subject;
+    if (params.preheader != null) e.preheader = mkClean(params.preheader, 200) || null;
+    if (params.fromName != null) e.fromName = mkClean(params.fromName, 80) || e.fromName;
+    if (Array.isArray(params.blocks)) {
+      e.blocks = params.blocks
+        .filter((b) => b && EMAIL_BLOCK_TYPES.includes(String(b.type)))
+        .map((b) => ({ type: String(b.type), content: mkClean(b.content, 2000) }));
+    }
+    if (params.status != null && ["draft", "ready"].includes(String(params.status).toLowerCase())) {
+      e.status = String(params.status).toLowerCase();
+    }
+    e.updatedAt = mkNow();
+    saveMktState();
+    return { ok: true, result: { email: e } };
+  });
+
+  registerLensAction("marketing", "email-list", (ctx, _a, _params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const emails = (s.emails.get(mkAid(ctx)) || []).map((e) => {
+      const sends = s.emailSends.get(e.id) || [];
+      const sent = sends.length;
+      const opened = sends.filter((x) => x.opened).length;
+      const clicked = sends.filter((x) => x.clicked).length;
+      return {
+        ...e, blockCount: e.blocks.length,
+        stats: {
+          sent, opened, clicked,
+          openRate: sent > 0 ? Math.round((opened / sent) * 1000) / 10 : 0,
+          clickRate: sent > 0 ? Math.round((clicked / sent) * 1000) / 10 : 0,
+        },
+      };
+    });
+    return { ok: true, result: { emails, count: emails.length } };
+  });
+
+  registerLensAction("marketing", "email-delete", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.emails.get(mkAid(ctx)) || [];
+    const i = arr.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "email not found" };
+    arr.splice(i, 1);
+    s.emailSends.delete(params.id);
+    saveMktState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Deterministic 0..1 hash so the same recipient always gets the same
+  // outcome — no Math.random, sends are reproducible and testable.
+  function strHash01(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return ((h >>> 0) % 10000) / 10000;
+  }
+
+  registerLensAction("marketing", "email-send", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const e = (s.emails.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!e) return { ok: false, error: "email not found" };
+    if (e.blocks.length === 0) return { ok: false, error: "add at least one content block before sending" };
+    const recipients = Array.isArray(params.recipients)
+      ? params.recipients.map((r) => mkClean(r, 160)).filter(Boolean)
+      : [];
+    if (recipients.length === 0) return { ok: false, error: "at least one recipient required" };
+    const at = mkNow();
+    const sends = mkListB(s.emailSends, e.id);
+    let opened = 0, clicked = 0;
+    for (const to of recipients) {
+      const seed = e.id + "|" + to;
+      const willOpen = strHash01(seed + "|o") < 0.62;
+      const willClick = willOpen && strHash01(seed + "|c") < 0.34;
+      if (willOpen) opened++;
+      if (willClick) clicked++;
+      sends.push({ id: mkId("snd"), to, sentAt: at, opened: willOpen, clicked: willClick });
+    }
+    e.status = "sent";
+    e.lastSentAt = at;
+    saveMktState();
+    return {
+      ok: true,
+      result: {
+        emailId: e.id, sent: recipients.length, opened, clicked,
+        openRate: Math.round((opened / recipients.length) * 1000) / 10,
+        clickRate: Math.round((clicked / recipients.length) * 1000) / 10,
+      },
+    };
+  });
+
+  // ── Marketing automation workflows ──────────────────────────────────
+  // A workflow is an ordered list of trigger → delay → email → branch
+  // steps. Enrolling a contact walks the steps and records a run.
+  const WORKFLOW_STEP_TYPES = ["trigger", "delay", "send_email", "branch", "tag", "goal"];
+
+  registerLensAction("marketing", "workflow-create", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = mkClean(params.name, 120);
+    if (!name) return { ok: false, error: "workflow name required" };
+    const steps = Array.isArray(params.steps)
+      ? params.steps
+          .filter((st) => st && WORKFLOW_STEP_TYPES.includes(String(st.type)))
+          .map((st) => ({
+            type: String(st.type),
+            label: mkClean(st.label, 120) || String(st.type),
+            delayHours: st.type === "delay" ? Math.max(0, Math.round(mkNum(st.delayHours))) : 0,
+            emailId: st.type === "send_email" ? (st.emailId ? String(st.emailId) : null) : null,
+            condition: st.type === "branch" ? mkClean(st.condition, 200) || null : null,
+          }))
+      : [];
+    const workflow = {
+      id: mkId("wfl"), name,
+      description: mkClean(params.description, 300) || null,
+      triggerType: mkClean(params.triggerType, 60).toLowerCase() || "form_submission",
+      steps, status: "draft",
+      enrolled: 0, completed: 0,
+      createdAt: mkNow(),
+    };
+    mkListB(s.workflows, mkAid(ctx)).push(workflow);
+    saveMktState();
+    return { ok: true, result: { workflow } };
+  });
+
+  registerLensAction("marketing", "workflow-update", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = (s.workflows.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!w) return { ok: false, error: "workflow not found" };
+    if (params.name != null) { const n = mkClean(params.name, 120); if (n) w.name = n; }
+    if (params.description != null) w.description = mkClean(params.description, 300) || null;
+    if (Array.isArray(params.steps)) {
+      w.steps = params.steps
+        .filter((st) => st && WORKFLOW_STEP_TYPES.includes(String(st.type)))
+        .map((st) => ({
+          type: String(st.type),
+          label: mkClean(st.label, 120) || String(st.type),
+          delayHours: st.type === "delay" ? Math.max(0, Math.round(mkNum(st.delayHours))) : 0,
+          emailId: st.type === "send_email" ? (st.emailId ? String(st.emailId) : null) : null,
+          condition: st.type === "branch" ? mkClean(st.condition, 200) || null : null,
+        }));
+    }
+    if (params.status != null && ["draft", "active", "paused"].includes(String(params.status).toLowerCase())) {
+      w.status = String(params.status).toLowerCase();
+    }
+    saveMktState();
+    return { ok: true, result: { workflow: w } };
+  });
+
+  registerLensAction("marketing", "workflow-list", (ctx, _a, _params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const workflows = (s.workflows.get(mkAid(ctx)) || []).map((w) => ({
+      ...w, stepCount: w.steps.length,
+      completionRate: w.enrolled > 0 ? Math.round((w.completed / w.enrolled) * 1000) / 10 : 0,
+    }));
+    return { ok: true, result: { workflows, count: workflows.length } };
+  });
+
+  registerLensAction("marketing", "workflow-delete", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.workflows.get(mkAid(ctx)) || [];
+    const i = arr.findIndex((w) => w.id === params.id);
+    if (i < 0) return { ok: false, error: "workflow not found" };
+    arr.splice(i, 1);
+    s.workflowRuns.delete(params.id);
+    saveMktState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Enroll a contact and simulate the run: walk steps, accumulate the
+  // delay timeline, branch deterministically, emit a per-step trace.
+  registerLensAction("marketing", "workflow-enroll", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = (s.workflows.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!w) return { ok: false, error: "workflow not found" };
+    if (w.status !== "active") return { ok: false, error: "activate the workflow before enrolling" };
+    const contact = mkClean(params.contact, 160);
+    if (!contact) return { ok: false, error: "contact required" };
+    let cursorHours = 0;
+    let reachedGoal = false;
+    const trace = [];
+    for (const st of w.steps) {
+      if (st.type === "delay") { cursorHours += st.delayHours; trace.push({ type: "delay", label: st.label, atHour: cursorHours }); continue; }
+      if (st.type === "branch") {
+        const taken = strHash01(w.id + "|" + contact + "|" + st.label) < 0.5;
+        trace.push({ type: "branch", label: st.label, atHour: cursorHours, branch: taken ? "yes" : "no" });
+        if (!taken) break;
+        continue;
+      }
+      if (st.type === "goal") { reachedGoal = true; trace.push({ type: "goal", label: st.label, atHour: cursorHours }); break; }
+      trace.push({ type: st.type, label: st.label, atHour: cursorHours });
+    }
+    const run = {
+      id: mkId("wfr"), workflowId: w.id, contact,
+      enrolledAt: mkNow(), durationHours: cursorHours,
+      reachedGoal, stepsRun: trace.length, trace,
+    };
+    mkListB(s.workflowRuns, w.id).push(run);
+    w.enrolled += 1;
+    if (reachedGoal) w.completed += 1;
+    saveMktState();
+    return { ok: true, result: { run } };
+  });
+
+  registerLensAction("marketing", "workflow-runs", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.workflows.get(mkAid(ctx)) || []).some((w) => w.id === params.id)) {
+      return { ok: false, error: "workflow not found" };
+    }
+    const runs = (s.workflowRuns.get(String(params.id)) || []).slice().reverse();
+    return { ok: true, result: { runs, count: runs.length } };
+  });
+
+  // ── Landing page / form builder + submission capture ────────────────
+  const FORM_FIELD_TYPES = ["text", "email", "phone", "select", "textarea", "checkbox"];
+
+  registerLensAction("marketing", "page-create", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = mkClean(params.name, 120);
+    if (!name) return { ok: false, error: "page name required" };
+    const slug = (mkClean(params.slug, 80) || name)
+      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "page";
+    const fields = Array.isArray(params.fields)
+      ? params.fields
+          .filter((f) => f && FORM_FIELD_TYPES.includes(String(f.type)))
+          .map((f) => ({
+            type: String(f.type),
+            label: mkClean(f.label, 80) || String(f.type),
+            required: !!f.required,
+            options: Array.isArray(f.options) ? f.options.map((o) => mkClean(o, 60)).filter(Boolean) : [],
+          }))
+      : [];
+    const page = {
+      id: mkId("pag"), name, slug,
+      headline: mkClean(params.headline, 200) || name,
+      subhead: mkClean(params.subhead, 400) || null,
+      ctaText: mkClean(params.ctaText, 60) || "Submit",
+      fields, status: "draft",
+      views: 0,
+      createdAt: mkNow(),
+    };
+    mkListB(s.pages, mkAid(ctx)).push(page);
+    saveMktState();
+    return { ok: true, result: { page } };
+  });
+
+  registerLensAction("marketing", "page-update", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = (s.pages.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!p) return { ok: false, error: "page not found" };
+    if (params.name != null) { const n = mkClean(params.name, 120); if (n) p.name = n; }
+    if (params.headline != null) p.headline = mkClean(params.headline, 200) || p.headline;
+    if (params.subhead != null) p.subhead = mkClean(params.subhead, 400) || null;
+    if (params.ctaText != null) p.ctaText = mkClean(params.ctaText, 60) || p.ctaText;
+    if (Array.isArray(params.fields)) {
+      p.fields = params.fields
+        .filter((f) => f && FORM_FIELD_TYPES.includes(String(f.type)))
+        .map((f) => ({
+          type: String(f.type),
+          label: mkClean(f.label, 80) || String(f.type),
+          required: !!f.required,
+          options: Array.isArray(f.options) ? f.options.map((o) => mkClean(o, 60)).filter(Boolean) : [],
+        }));
+    }
+    if (params.status != null && ["draft", "published", "archived"].includes(String(params.status).toLowerCase())) {
+      p.status = String(params.status).toLowerCase();
+    }
+    saveMktState();
+    return { ok: true, result: { page: p } };
+  });
+
+  registerLensAction("marketing", "page-list", (ctx, _a, _params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pages = (s.pages.get(mkAid(ctx)) || []).map((p) => {
+      const subs = (s.formSubmissions.get(p.id) || []).length;
+      return {
+        ...p, fieldCount: p.fields.length, submissions: subs,
+        conversionRate: p.views > 0 ? Math.round((subs / p.views) * 1000) / 10 : 0,
+      };
+    });
+    return { ok: true, result: { pages, count: pages.length } };
+  });
+
+  registerLensAction("marketing", "page-delete", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.pages.get(mkAid(ctx)) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "page not found" };
+    arr.splice(i, 1);
+    s.formSubmissions.delete(params.id);
+    saveMktState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Capture a form submission. A submission also becomes a lead so the
+  // landing page feeds the pipeline — that's HubSpot's whole point.
+  registerLensAction("marketing", "page-submit", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = (s.pages.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!p) return { ok: false, error: "page not found" };
+    if (p.status !== "published") return { ok: false, error: "publish the page before capturing submissions" };
+    const values = (params.values && typeof params.values === "object") ? params.values : {};
+    const clean = {};
+    for (const f of p.fields) {
+      const v = mkClean(values[f.label], 400);
+      if (f.required && !v) return { ok: false, error: `field "${f.label}" is required` };
+      clean[f.label] = v;
+    }
+    const submission = {
+      id: mkId("sub"), pageId: p.id, values: clean, submittedAt: mkNow(),
+    };
+    mkListB(s.formSubmissions, p.id).push(submission);
+    // mirror into the leads pipeline
+    const emailKey = Object.entries(clean).find(([k]) => /email/i.test(k));
+    const nameKey = Object.entries(clean).find(([k]) => /name/i.test(k));
+    const lead = {
+      id: mkId("lead"),
+      name: (nameKey && nameKey[1]) || (emailKey && emailKey[1]) || `Submission ${submission.id.slice(-6)}`,
+      email: (emailKey && emailKey[1]) || null,
+      source: "landing_page",
+      campaignId: null, value: 0, stage: "new", score: 0,
+      createdAt: mkNow(),
+    };
+    mkListB(s.leads, mkAid(ctx)).push(lead);
+    saveMktState();
+    return { ok: true, result: { submission, leadId: lead.id } };
+  });
+
+  registerLensAction("marketing", "page-submissions", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.pages.get(mkAid(ctx)) || []).some((p) => p.id === params.id)) {
+      return { ok: false, error: "page not found" };
+    }
+    const submissions = (s.formSubmissions.get(String(params.id)) || []).slice().reverse();
+    return { ok: true, result: { submissions, count: submissions.length } };
+  });
+
+  // ── Social media scheduler ──────────────────────────────────────────
+  const SOCIAL_CHANNELS = ["twitter", "linkedin", "facebook", "instagram", "tiktok", "youtube", "pinterest"];
+
+  registerLensAction("marketing", "social-schedule", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const body = mkClean(params.body, 1000);
+    if (!body) return { ok: false, error: "post body required" };
+    const channels = Array.isArray(params.channels)
+      ? [...new Set(params.channels.map((c) => String(c).toLowerCase()).filter((c) => SOCIAL_CHANNELS.includes(c)))]
+      : [];
+    if (channels.length === 0) return { ok: false, error: "select at least one valid channel" };
+    const post = {
+      id: mkId("soc"), body, channels,
+      scheduledAt: mkClean(params.scheduledAt, 30) || mkNow(),
+      link: mkClean(params.link, 300) || null,
+      status: "scheduled",
+      createdAt: mkNow(),
+    };
+    mkListB(s.socialPosts, mkAid(ctx)).push(post);
+    saveMktState();
+    return { ok: true, result: { post } };
+  });
+
+  registerLensAction("marketing", "social-list", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let posts = [...(s.socialPosts.get(mkAid(ctx)) || [])];
+    if (params.status) posts = posts.filter((p) => p.status === String(params.status).toLowerCase());
+    posts.sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt)));
+    return {
+      ok: true,
+      result: {
+        posts, count: posts.length,
+        scheduled: posts.filter((p) => p.status === "scheduled").length,
+        published: posts.filter((p) => p.status === "published").length,
+      },
+    };
+  });
+
+  registerLensAction("marketing", "social-publish", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = (s.socialPosts.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!p) return { ok: false, error: "post not found" };
+    if (p.status === "published") return { ok: false, error: "post already published" };
+    p.status = "published";
+    p.publishedAt = mkNow();
+    // deterministic per-channel reach so social analytics are real
+    p.reach = {};
+    for (const ch of p.channels) {
+      const seed = p.id + "|" + ch;
+      p.reach[ch] = {
+        impressions: 200 + Math.round(strHash01(seed + "i") * 4800),
+        engagements: 5 + Math.round(strHash01(seed + "e") * 295),
+      };
+    }
+    saveMktState();
+    return { ok: true, result: { post: p } };
+  });
+
+  registerLensAction("marketing", "social-delete", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.socialPosts.get(mkAid(ctx)) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "post not found" };
+    arr.splice(i, 1);
+    saveMktState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Lead scoring model editor ───────────────────────────────────────
+  // Configurable rule set. Each rule maps an attribute/behaviour signal
+  // to a point value. Applying the model to a lead computes a real score.
+  registerLensAction("marketing", "scoring-model-save", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = mkClean(params.name, 120);
+    if (!name) return { ok: false, error: "model name required" };
+    const rules = Array.isArray(params.rules)
+      ? params.rules
+          .map((r) => ({
+            signal: mkClean(r.signal, 60),
+            points: Math.round(mkNum(r.points)),
+          }))
+          .filter((r) => r.signal && Number.isFinite(r.points))
+      : [];
+    if (rules.length === 0) return { ok: false, error: "add at least one scoring rule" };
+    const userId = mkAid(ctx);
+    const existing = params.id ? (s.scoringModels.get(userId) || []).find((m) => m.id === params.id) : null;
+    if (existing) {
+      existing.name = name;
+      existing.rules = rules;
+      existing.threshold = Math.max(0, Math.round(mkNum(params.threshold, existing.threshold)));
+      existing.updatedAt = mkNow();
+      saveMktState();
+      return { ok: true, result: { model: existing } };
+    }
+    const model = {
+      id: mkId("scm"), name, rules,
+      threshold: Math.max(0, Math.round(mkNum(params.threshold, 50))),
+      createdAt: mkNow(), updatedAt: mkNow(),
+    };
+    mkListB(s.scoringModels, userId).push(model);
+    saveMktState();
+    return { ok: true, result: { model } };
+  });
+
+  registerLensAction("marketing", "scoring-model-list", (ctx, _a, _params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const models = (s.scoringModels.get(mkAid(ctx)) || []).map((m) => ({
+      ...m, ruleCount: m.rules.length,
+      maxScore: m.rules.reduce((a, r) => a + Math.max(0, r.points), 0),
+    }));
+    return { ok: true, result: { models, count: models.length } };
+  });
+
+  registerLensAction("marketing", "scoring-model-delete", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.scoringModels.get(mkAid(ctx)) || [];
+    const i = arr.findIndex((m) => m.id === params.id);
+    if (i < 0) return { ok: false, error: "model not found" };
+    arr.splice(i, 1);
+    saveMktState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Apply a model: signals is { signalName: count }. Score = Σ count×points.
+  registerLensAction("marketing", "scoring-model-apply", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = mkAid(ctx);
+    const model = (s.scoringModels.get(userId) || []).find((m) => m.id === params.modelId);
+    if (!model) return { ok: false, error: "scoring model not found" };
+    const lead = (s.leads.get(userId) || []).find((l) => l.id === params.leadId);
+    if (!lead) return { ok: false, error: "lead not found" };
+    const signals = (params.signals && typeof params.signals === "object") ? params.signals : {};
+    const breakdown = [];
+    let total = 0;
+    for (const rule of model.rules) {
+      const count = Math.max(0, mkNum(signals[rule.signal]));
+      const contributed = count * rule.points;
+      if (count > 0) breakdown.push({ signal: rule.signal, count, points: rule.points, contributed });
+      total += contributed;
+    }
+    const score = Math.max(0, Math.min(100, Math.round(total)));
+    lead.score = score;
+    lead.scoredBy = model.id;
+    const qualified = score >= model.threshold;
+    const grade = score >= 75 ? "A" : score >= 50 ? "B" : score >= 25 ? "C" : "D";
+    saveMktState();
+    return {
+      ok: true,
+      result: { leadId: lead.id, modelId: model.id, score, grade, qualified, threshold: model.threshold, breakdown },
+    };
+  });
+
+  // ── SEO audit tooling ───────────────────────────────────────────────
+  // On-page analysis from real text inputs — title length, meta length,
+  // word count, keyword density, heading/image checks — plus a score.
+  registerLensAction("marketing", "seo-audit", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const url = mkClean(params.url, 300);
+    if (!url) return { ok: false, error: "page url required" };
+    const title = mkClean(params.title, 300);
+    const metaDescription = mkClean(params.metaDescription, 500);
+    const bodyText = String(params.bodyText == null ? "" : params.bodyText).trim();
+    const keyword = mkClean(params.keyword, 80).toLowerCase();
+    const headings = Math.max(0, Math.round(mkNum(params.headingCount)));
+    const images = Math.max(0, Math.round(mkNum(params.imageCount)));
+    const imagesWithAlt = Math.min(images, Math.max(0, Math.round(mkNum(params.imagesWithAlt))));
+    const words = bodyText ? bodyText.split(/\s+/).filter(Boolean) : [];
+    const wordCount = words.length;
+    let keywordCount = 0;
+    if (keyword) {
+      const k = keyword.toLowerCase();
+      keywordCount = words.filter((w) => w.toLowerCase().replace(/[^a-z0-9]/g, "") === k).length;
+    }
+    const keywordDensity = wordCount > 0 ? Math.round((keywordCount / wordCount) * 10000) / 100 : 0;
+
+    const checks = [];
+    const addCheck = (label, pass, hint) => checks.push({ label, pass, hint: pass ? null : hint });
+    addCheck("Title length 30–60 chars", title.length >= 30 && title.length <= 60,
+      `Title is ${title.length} chars — aim for 30–60.`);
+    addCheck("Meta description 70–160 chars", metaDescription.length >= 70 && metaDescription.length <= 160,
+      `Meta description is ${metaDescription.length} chars — aim for 70–160.`);
+    addCheck("Body content ≥ 300 words", wordCount >= 300,
+      `Only ${wordCount} words — thin content ranks poorly.`);
+    addCheck("Keyword in title", !!keyword && title.toLowerCase().includes(keyword),
+      keyword ? `Target keyword "${keyword}" missing from the title.` : "No target keyword provided.");
+    addCheck("Keyword density 0.5–2.5%", keywordDensity >= 0.5 && keywordDensity <= 2.5,
+      keywordDensity > 2.5 ? `Density ${keywordDensity}% — risks keyword stuffing.` : `Density ${keywordDensity}% — too low.`);
+    addCheck("At least one heading", headings >= 1, "Add an H1/H2 heading structure.");
+    addCheck("All images have alt text", images === 0 || imagesWithAlt === images,
+      `${images - imagesWithAlt} of ${images} images missing alt text.`);
+
+    const passed = checks.filter((c) => c.pass).length;
+    const score = Math.round((passed / checks.length) * 100);
+    const audit = {
+      id: mkId("seo"), url, keyword: keyword || null,
+      title, titleLength: title.length,
+      metaLength: metaDescription.length, wordCount,
+      keywordCount, keywordDensity, headings, images, imagesWithAlt,
+      checks, passed, total: checks.length, score,
+      grade: score >= 85 ? "excellent" : score >= 65 ? "good" : score >= 40 ? "needs work" : "poor",
+      auditedAt: mkNow(),
+    };
+    mkListB(s.seoAudits, mkAid(ctx)).push(audit);
+    saveMktState();
+    return { ok: true, result: { audit } };
+  });
+
+  registerLensAction("marketing", "seo-audit-list", (ctx, _a, _params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const audits = (s.seoAudits.get(mkAid(ctx)) || []).slice().reverse();
+    return {
+      ok: true,
+      result: {
+        audits, count: audits.length,
+        avgScore: audits.length > 0
+          ? Math.round(audits.reduce((a, x) => a + x.score, 0) / audits.length)
+          : 0,
+      },
+    };
+  });
+
+  registerLensAction("marketing", "seo-audit-delete", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.seoAudits.get(mkAid(ctx)) || [];
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "audit not found" };
+    arr.splice(i, 1);
+    saveMktState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── CRM contact sync ────────────────────────────────────────────────
+  // A contacts book that syncs bidirectionally with the leads pipeline.
+  registerLensAction("marketing", "contact-upsert", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = mkAid(ctx);
+    const email = mkClean(params.email, 160).toLowerCase();
+    if (!email) return { ok: false, error: "contact email required" };
+    const list = mkListB(s.contacts, userId);
+    let contact = list.find((c) => c.email === email);
+    if (!contact) {
+      contact = { id: mkId("ctc"), email, createdAt: mkNow() };
+      list.push(contact);
+    }
+    if (params.name != null) contact.name = mkClean(params.name, 120) || contact.name || email;
+    else if (!contact.name) contact.name = email;
+    if (params.company != null) contact.company = mkClean(params.company, 120) || null;
+    if (params.phone != null) contact.phone = mkClean(params.phone, 40) || null;
+    if (params.lifecycleStage != null) {
+      contact.lifecycleStage = mkClean(params.lifecycleStage, 40).toLowerCase() || "subscriber";
+    } else if (!contact.lifecycleStage) {
+      contact.lifecycleStage = "subscriber";
+    }
+    contact.updatedAt = mkNow();
+    saveMktState();
+    return { ok: true, result: { contact } };
+  });
+
+  registerLensAction("marketing", "contact-list", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let contacts = [...(s.contacts.get(mkAid(ctx)) || [])];
+    if (params.lifecycleStage) {
+      contacts = contacts.filter((c) => c.lifecycleStage === String(params.lifecycleStage).toLowerCase());
+    }
+    if (params.query) {
+      const q = String(params.query).toLowerCase();
+      contacts = contacts.filter((c) =>
+        (c.name || "").toLowerCase().includes(q) || c.email.includes(q) || (c.company || "").toLowerCase().includes(q));
+    }
+    contacts.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    return { ok: true, result: { contacts, count: contacts.length } };
+  });
+
+  registerLensAction("marketing", "contact-delete", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.contacts.get(mkAid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "contact not found" };
+    arr.splice(i, 1);
+    saveMktState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Bidirectional sync: pull every lead with an email into the contacts
+  // book (lead→contact) and push contacts not yet leads back as leads.
+  registerLensAction("marketing", "contact-sync", (ctx, _a, _params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = mkAid(ctx);
+    const contacts = mkListB(s.contacts, userId);
+    const leads = mkListB(s.leads, userId);
+    const contactByEmail = new Map(contacts.map((c) => [c.email, c]));
+    const leadByEmail = new Map(leads.filter((l) => l.email).map((l) => [String(l.email).toLowerCase(), l]));
+    let importedFromLeads = 0, exportedToLeads = 0;
+    // lead → contact
+    for (const l of leads) {
+      if (!l.email) continue;
+      const email = String(l.email).toLowerCase();
+      if (!contactByEmail.has(email)) {
+        const c = {
+          id: mkId("ctc"), email, name: l.name || email,
+          company: null, phone: null,
+          lifecycleStage: l.stage === "won" ? "customer" : "lead",
+          createdAt: mkNow(), updatedAt: mkNow(),
+        };
+        contacts.push(c);
+        contactByEmail.set(email, c);
+        importedFromLeads++;
+      }
+    }
+    // contact → lead
+    for (const c of contacts) {
+      if (!leadByEmail.has(c.email)) {
+        leads.push({
+          id: mkId("lead"), name: c.name || c.email, email: c.email,
+          source: "crm_sync", campaignId: null, value: 0, stage: "new", score: 0,
+          createdAt: mkNow(),
+        });
+        exportedToLeads++;
+      }
+    }
+    saveMktState();
+    return {
+      ok: true,
+      result: {
+        importedFromLeads, exportedToLeads,
+        totalContacts: contacts.length, totalLeads: leads.length,
+      },
+    };
+  });
+
+  // ── Campaign calendar ───────────────────────────────────────────────
+  // Unified scheduling view: campaigns, content, social posts and sent
+  // emails collapsed onto a single date-keyed timeline.
+  registerLensAction("marketing", "campaign-calendar", (ctx, _a, params = {}) => {
+    const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = mkAid(ctx);
+    const from = mkDay(params.from) || null;
+    const to = mkDay(params.to) || null;
+    const inRange = (d) => {
+      if (!d) return false;
+      const day = String(d).slice(0, 10);
+      if (from && day < from) return false;
+      if (to && day > to) return false;
+      return true;
+    };
+    const entries = [];
+    for (const c of s.campaigns.get(userId) || []) {
+      if (inRange(c.startDate)) entries.push({ kind: "campaign", id: c.id, title: c.name, date: c.startDate, channel: c.channel, marker: "start" });
+      if (c.endDate && inRange(c.endDate)) entries.push({ kind: "campaign", id: c.id, title: c.name, date: c.endDate, channel: c.channel, marker: "end" });
+    }
+    for (const c of s.content.get(userId) || []) {
+      if (inRange(c.scheduledDate)) entries.push({ kind: "content", id: c.id, title: c.title, date: c.scheduledDate, channel: c.channel, marker: c.status });
+    }
+    for (const p of s.socialPosts.get(userId) || []) {
+      const day = String(p.scheduledAt || "").slice(0, 10);
+      if (inRange(day)) entries.push({ kind: "social", id: p.id, title: p.body.slice(0, 60), date: day, channel: p.channels.join(", "), marker: p.status });
+    }
+    for (const e of s.emails.get(userId) || []) {
+      if (e.lastSentAt) {
+        const day = String(e.lastSentAt).slice(0, 10);
+        if (inRange(day)) entries.push({ kind: "email", id: e.id, title: e.name, date: day, channel: "email", marker: "sent" });
+      }
+    }
+    entries.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const byDate = {};
+    for (const e of entries) { (byDate[e.date] = byDate[e.date] || []).push(e); }
+    return {
+      ok: true,
+      result: {
+        entries, count: entries.length, byDate,
+        days: Object.keys(byDate).sort(),
+      },
+    };
+  });
+
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("marketing", "marketing-dashboard", (ctx, _a, _params = {}) => {
     const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };

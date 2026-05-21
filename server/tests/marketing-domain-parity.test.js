@@ -157,3 +157,211 @@ describe("marketing.marketing-dashboard", () => {
     assert.equal(d.result.wonDeals, 1);
   });
 });
+
+/* ════════════════════════════════════════════════════════════════════
+ *  HubSpot-parity backlog macros — email builder + send, automation
+ *  workflows, landing pages + forms, social scheduler, lead-scoring
+ *  model editor, SEO audit, CRM contact sync, campaign calendar.
+ * ════════════════════════════════════════════════════════════════════ */
+
+describe("marketing.email builder + send engine", () => {
+  it("creates, lists, sends and tracks deterministic open/click stats", () => {
+    const e = call("email-create", ctxA, {
+      name: "Welcome", subject: "Hi there",
+      blocks: [{ type: "heading", content: "Welcome!" }, { type: "text", content: "Body" }],
+    }).result.email;
+    assert.ok(e.id);
+    assert.equal(e.blocks.length, 2);
+    const list = call("email-list", ctxA, {});
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.emails[0].blockCount, 2);
+    const send = call("email-send", ctxA, { id: e.id, recipients: ["a@x.com", "b@x.com", "c@x.com"] });
+    assert.equal(send.ok, true);
+    assert.equal(send.result.sent, 3);
+    assert.ok(send.result.opened >= 0 && send.result.opened <= 3);
+    // deterministic: same recipients → same outcome
+    assert.equal(call("email-list", ctxA, {}).result.emails[0].stats.sent, 3);
+    assert.equal(call("email-delete", ctxA, { id: e.id }).ok, true);
+  });
+
+  it("rejects sends with no blocks or no recipients", () => {
+    const empty = call("email-create", ctxA, { name: "Empty" }).result.email;
+    assert.equal(call("email-send", ctxA, { id: empty.id, recipients: ["x@x.com"] }).ok, false);
+    const ok = call("email-create", ctxA, { name: "OK", blocks: [{ type: "text", content: "hi" }] }).result.email;
+    assert.equal(call("email-send", ctxA, { id: ok.id, recipients: [] }).ok, false);
+  });
+
+  it("create requires a name", () => {
+    assert.equal(call("email-create", ctxA, {}).ok, false);
+  });
+});
+
+describe("marketing.automation workflows", () => {
+  it("creates, activates, enrolls and traces a run", () => {
+    const w = call("workflow-create", ctxA, {
+      name: "Nurture", steps: [
+        { type: "trigger", label: "Form submit" },
+        { type: "delay", label: "Wait", delayHours: 24 },
+        { type: "send_email", label: "Day 1 email" },
+        { type: "goal", label: "Booked demo" },
+      ],
+    }).result.workflow;
+    assert.equal(w.stepCount, undefined);
+    assert.equal(w.steps.length, 4);
+    // enrolling before activation is rejected
+    assert.equal(call("workflow-enroll", ctxA, { id: w.id, contact: "c@x.com" }).ok, false);
+    call("workflow-update", ctxA, { id: w.id, status: "active" });
+    const run = call("workflow-enroll", ctxA, { id: w.id, contact: "c@x.com" });
+    assert.equal(run.ok, true);
+    assert.ok(run.result.run.durationHours >= 24);
+    assert.ok(run.result.run.trace.length >= 1);
+    const runs = call("workflow-runs", ctxA, { id: w.id });
+    assert.equal(runs.result.count, 1);
+    const list = call("workflow-list", ctxA, {});
+    assert.equal(list.result.workflows[0].enrolled, 1);
+    assert.equal(call("workflow-delete", ctxA, { id: w.id }).ok, true);
+  });
+
+  it("create requires a name", () => {
+    assert.equal(call("workflow-create", ctxA, {}).ok, false);
+  });
+});
+
+describe("marketing.landing pages + forms", () => {
+  it("builds a page, publishes, captures a submission that becomes a lead", () => {
+    const p = call("page-create", ctxA, {
+      name: "Demo signup", headline: "Get a demo",
+      fields: [
+        { type: "email", label: "Email", required: true },
+        { type: "text", label: "Name", required: false },
+      ],
+    }).result.page;
+    assert.ok(p.slug);
+    // submitting before publish is rejected
+    assert.equal(call("page-submit", ctxA, { id: p.id, values: { Email: "x@x.com" } }).ok, false);
+    call("page-update", ctxA, { id: p.id, status: "published" });
+    // required field enforced
+    assert.equal(call("page-submit", ctxA, { id: p.id, values: { Name: "Bob" } }).ok, false);
+    const sub = call("page-submit", ctxA, { id: p.id, values: { Email: "bob@x.com", Name: "Bob" } });
+    assert.equal(sub.ok, true);
+    assert.ok(sub.result.leadId);
+    const subs = call("page-submissions", ctxA, { id: p.id });
+    assert.equal(subs.result.count, 1);
+    assert.equal(call("page-list", ctxA, {}).result.pages[0].submissions, 1);
+    assert.equal(call("page-delete", ctxA, { id: p.id }).ok, true);
+  });
+
+  it("create requires a name", () => {
+    assert.equal(call("page-create", ctxA, {}).ok, false);
+  });
+});
+
+describe("marketing.social scheduler", () => {
+  it("schedules, lists, publishes with deterministic reach", () => {
+    const post = call("social-schedule", ctxA, {
+      body: "New launch!", channels: ["twitter", "linkedin"],
+    }).result.post;
+    assert.equal(post.channels.length, 2);
+    assert.equal(post.status, "scheduled");
+    const list = call("social-list", ctxA, {});
+    assert.equal(list.result.scheduled, 1);
+    const pub = call("social-publish", ctxA, { id: post.id });
+    assert.equal(pub.ok, true);
+    assert.equal(pub.result.post.status, "published");
+    assert.ok(pub.result.post.reach.twitter.impressions > 0);
+    assert.equal(call("social-publish", ctxA, { id: post.id }).ok, false); // already published
+    assert.equal(call("social-delete", ctxA, { id: post.id }).ok, true);
+  });
+
+  it("rejects an empty body or invalid channels", () => {
+    assert.equal(call("social-schedule", ctxA, { body: "", channels: ["twitter"] }).ok, false);
+    assert.equal(call("social-schedule", ctxA, { body: "hi", channels: ["myspace"] }).ok, false);
+  });
+});
+
+describe("marketing.lead scoring model editor", () => {
+  it("saves a rule-based model and applies it to a lead", () => {
+    const model = call("scoring-model-save", ctxA, {
+      name: "Fit score", threshold: 30,
+      rules: [{ signal: "pricing_visit", points: 20 }, { signal: "demo_request", points: 40 }],
+    }).result.model;
+    assert.equal(model.rules.length, 2);
+    assert.equal(call("scoring-model-list", ctxA, {}).result.models[0].maxScore, 60);
+    const lead = call("lead-add", ctxA, { name: "Acme" }).result.lead;
+    const applied = call("scoring-model-apply", ctxA, {
+      modelId: model.id, leadId: lead.id,
+      signals: { pricing_visit: 2, demo_request: 1 },
+    });
+    assert.equal(applied.ok, true);
+    assert.equal(applied.result.score, 2 * 20 + 1 * 40); // 80
+    assert.equal(applied.result.qualified, true);
+    assert.equal(applied.result.breakdown.length, 2);
+    assert.equal(call("scoring-model-delete", ctxA, { id: model.id }).ok, true);
+  });
+
+  it("rejects a model with no rules", () => {
+    assert.equal(call("scoring-model-save", ctxA, { name: "Empty", rules: [] }).ok, false);
+  });
+});
+
+describe("marketing.SEO audit", () => {
+  it("scores on-page checks from real text inputs", () => {
+    const longBody = Array.from({ length: 320 }, () => "concord").join(" ");
+    const audit = call("seo-audit", ctxA, {
+      url: "https://x.com/page", keyword: "concord",
+      title: "A great page about concord marketing tools for you",
+      metaDescription: "This is a meta description that is hopefully long enough to pass the seventy character minimum check here.",
+      bodyText: longBody, headingCount: 3, imageCount: 2, imagesWithAlt: 2,
+    }).result.audit;
+    assert.ok(audit.id);
+    assert.equal(audit.wordCount, 320);
+    assert.ok(audit.checks.length >= 5);
+    assert.ok(audit.score >= 0 && audit.score <= 100);
+    const list = call("seo-audit-list", ctxA, {});
+    assert.equal(list.result.count, 1);
+    assert.equal(call("seo-audit-delete", ctxA, { id: audit.id }).ok, true);
+  });
+
+  it("requires a url", () => {
+    assert.equal(call("seo-audit", ctxA, {}).ok, false);
+  });
+});
+
+describe("marketing.CRM contact sync", () => {
+  it("upserts, lists, searches and bidirectionally syncs with leads", () => {
+    const c = call("contact-upsert", ctxA, {
+      email: "Dana@X.com", name: "Dana", company: "Acme",
+    }).result.contact;
+    assert.equal(c.email, "dana@x.com"); // normalised
+    // upsert again merges
+    call("contact-upsert", ctxA, { email: "dana@x.com", phone: "555-1" });
+    assert.equal(call("contact-list", ctxA, {}).result.count, 1);
+    assert.equal(call("contact-list", ctxA, { query: "acme" }).result.count, 1);
+    // a lead with email syncs into contacts and vice versa
+    call("lead-add", ctxA, { name: "Erin", email: "erin@x.com" });
+    const sync = call("contact-sync", ctxA, {});
+    assert.equal(sync.ok, true);
+    assert.equal(sync.result.importedFromLeads, 1); // erin
+    assert.ok(sync.result.exportedToLeads >= 1);    // dana
+    assert.equal(call("contact-delete", ctxA, { id: c.id }).ok, true);
+  });
+
+  it("requires an email", () => {
+    assert.equal(call("contact-upsert", ctxA, {}).ok, false);
+  });
+});
+
+describe("marketing.campaign calendar", () => {
+  it("collapses campaigns, content and social posts onto a timeline", () => {
+    call("campaign-create", ctxA, { name: "Spring push", startDate: "2026-06-01" });
+    call("content-add", ctxA, { title: "Launch post", scheduledDate: "2026-06-02" });
+    call("social-schedule", ctxA, { body: "Teaser", channels: ["twitter"], scheduledAt: "2026-06-03T10:00:00Z" });
+    const cal = call("campaign-calendar", ctxA, {});
+    assert.equal(cal.ok, true);
+    assert.ok(cal.result.count >= 3);
+    assert.ok(cal.result.days.length >= 3);
+    // range filtering
+    const ranged = call("campaign-calendar", ctxA, { from: "2026-06-02", to: "2026-06-02" });
+    assert.equal(ranged.result.count, 1);
+  });
+});

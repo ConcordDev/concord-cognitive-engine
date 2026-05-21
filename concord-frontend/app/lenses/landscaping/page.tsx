@@ -39,6 +39,8 @@ import {
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { PlantFinder } from '@/components/landscaping/PlantFinder';
 import { ProLandscape } from '@/components/landscaping/ProLandscape';
+import { GardenStudio } from '@/components/landscaping/GardenStudio';
+import { GardenBeds } from '@/components/landscaping/GardenBeds';
 
 type ModeTab =
   | 'jobs'
@@ -720,6 +722,14 @@ export default function LandscapingLensPage() {
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <GardenStudio />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <GardenBeds />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PlantFinder />
       </section>

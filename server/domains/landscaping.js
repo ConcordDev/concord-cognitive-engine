@@ -6,6 +6,8 @@
 // growth rate, hardiness zones). Free with API key from
 // trefle.io/users/sign_up.
 
+import { callVision, callVisionUrl } from "../lib/vision-inference.js";
+
 const TREFLE_BASE = "https://trefle.io/api/v1";
 
 export default function registerLandscapingActions(registerLensAction) {
@@ -283,5 +285,440 @@ export default function registerLandscapingActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `gbif unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // ─── Feature 1 — Visual yard designer (2D plot layouts) ─────────────
+  // A layout is a plot canvas (width × height in feet) holding placed
+  // elements (beds / plants / hardscape) with x,y coordinates.
+  function lsLayouts(s, userId) {
+    if (!(s.layouts instanceof Map)) s.layouts = new Map();
+    if (!s.layouts.has(userId)) s.layouts.set(userId, []);
+    return s.layouts.get(userId);
+  }
+  const ELEMENT_KINDS = ["bed", "plant", "tree", "shrub", "path", "patio", "water", "lawn", "fence"];
+
+  registerLensAction("landscaping", "layout-create", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = lsClean(params.name, 120);
+    if (!name) return { ok: false, error: "layout name required" };
+    const layout = {
+      id: lsId("yard"), name,
+      plotWidthFt: Math.max(4, Math.min(2000, Math.round(lsNum(params.plotWidthFt)) || 40)),
+      plotHeightFt: Math.max(4, Math.min(2000, Math.round(lsNum(params.plotHeightFt)) || 30)),
+      elements: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    lsLayouts(s, lsActor(ctx)).push(layout);
+    saveLand();
+    return { ok: true, result: { layout } };
+  });
+
+  registerLensAction("landscaping", "layout-list", (ctx, _a, _params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const layouts = lsLayouts(s, lsActor(ctx)).map((l) => ({
+      ...l, elementCount: l.elements.length,
+    }));
+    return { ok: true, result: { layouts, count: layouts.length } };
+  });
+
+  registerLensAction("landscaping", "layout-delete", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lsLayouts(s, lsActor(ctx));
+    const i = arr.findIndex((l) => l.id === params.id);
+    if (i < 0) return { ok: false, error: "layout not found" };
+    arr.splice(i, 1);
+    saveLand();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // layout-save-elements — replace the full element set for a layout
+  // (used by the drag-drop canvas which submits the whole arrangement).
+  registerLensAction("landscaping", "layout-save-elements", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const layout = lsLayouts(s, lsActor(ctx)).find((l) => l.id === params.layoutId);
+    if (!layout) return { ok: false, error: "layout not found" };
+    const raw = Array.isArray(params.elements) ? params.elements : [];
+    layout.elements = raw.slice(0, 500).map((e) => ({
+      id: lsClean(e.id, 60) || lsId("el"),
+      kind: ELEMENT_KINDS.includes(e.kind) ? e.kind : "plant",
+      label: lsClean(e.label, 80) || "element",
+      x: Math.max(0, Math.min(layout.plotWidthFt, lsNum(e.x))),
+      y: Math.max(0, Math.min(layout.plotHeightFt, lsNum(e.y))),
+      widthFt: Math.max(0.5, Math.min(layout.plotWidthFt, lsNum(e.widthFt) || 2)),
+      heightFt: Math.max(0.5, Math.min(layout.plotHeightFt, lsNum(e.heightFt) || 2)),
+      color: lsClean(e.color, 16) || "#22c55e",
+    }));
+    layout.updatedAt = new Date().toISOString();
+    saveLand();
+    return { ok: true, result: { layout, elementCount: layout.elements.length } };
+  });
+
+  // ─── Feature 2 — AR / photo-overlay preview ─────────────────────────
+  // Stores a yard photo (data URL) with positioned plant overlays so a
+  // user can preview plant choices on their own yard.
+  function lsPhotos(s, userId) {
+    if (!(s.photoOverlays instanceof Map)) s.photoOverlays = new Map();
+    if (!s.photoOverlays.has(userId)) s.photoOverlays.set(userId, []);
+    return s.photoOverlays.get(userId);
+  }
+
+  registerLensAction("landscaping", "overlay-create", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photoUrl = lsClean(params.photoUrl, 4_000_000);
+    if (!photoUrl) return { ok: false, error: "photoUrl required (data URL or http)" };
+    const overlay = {
+      id: lsId("overlay"),
+      name: lsClean(params.name, 120) || "Yard preview",
+      photoUrl,
+      placements: [],
+      createdAt: new Date().toISOString(),
+    };
+    lsPhotos(s, lsActor(ctx)).push(overlay);
+    saveLand();
+    // do not echo the heavy photoUrl back
+    return { ok: true, result: { overlay: { ...overlay, photoUrl: undefined, hasPhoto: true } } };
+  });
+
+  registerLensAction("landscaping", "overlay-list", (ctx, _a, _params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const overlays = lsPhotos(s, lsActor(ctx)).map((o) => ({
+      id: o.id, name: o.name, photoUrl: o.photoUrl,
+      placements: o.placements, createdAt: o.createdAt,
+      placementCount: o.placements.length,
+    }));
+    return { ok: true, result: { overlays, count: overlays.length } };
+  });
+
+  registerLensAction("landscaping", "overlay-place", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const overlay = lsPhotos(s, lsActor(ctx)).find((o) => o.id === params.overlayId);
+    if (!overlay) return { ok: false, error: "overlay not found" };
+    const raw = Array.isArray(params.placements) ? params.placements : [];
+    overlay.placements = raw.slice(0, 100).map((p) => ({
+      id: lsClean(p.id, 60) || lsId("pl"),
+      plant: lsClean(p.plant, 120) || "plant",
+      imageUrl: lsClean(p.imageUrl, 600) || "",
+      xPct: Math.max(0, Math.min(100, lsNum(p.xPct))),
+      yPct: Math.max(0, Math.min(100, lsNum(p.yPct))),
+      scalePct: Math.max(5, Math.min(300, lsNum(p.scalePct) || 100)),
+    }));
+    saveLand();
+    return { ok: true, result: { overlay: { id: overlay.id, placements: overlay.placements } } };
+  });
+
+  registerLensAction("landscaping", "overlay-delete", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lsPhotos(s, lsActor(ctx));
+    const i = arr.findIndex((o) => o.id === params.id);
+    if (i < 0) return { ok: false, error: "overlay not found" };
+    arr.splice(i, 1);
+    saveLand();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ─── Feature 3 — Plant identification from photo (vision brain) ─────
+  registerLensAction("landscaping", "identify-plant", async (_ctx, _a, params = {}) => {
+    const imageB64 = params.imageB64;
+    const imageUrl = lsClean(params.imageUrl, 2000);
+    if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };
+    const prompt = "You are a botanist. Identify the plant species in this image. " +
+      "Reply with: the most likely common name, the scientific name if known, " +
+      "the plant type (tree/shrub/perennial/annual/grass), and any visible health " +
+      "issues (disease, pest damage, nutrient deficiency, none). Be concise.";
+    try {
+      const r = imageUrl ? await callVisionUrl(imageUrl, prompt) : await callVision(imageB64, prompt);
+      if (!r || r.ok === false) {
+        return { ok: false, error: (r && r.error) || "vision unavailable" };
+      }
+      const text = r.result?.description || r.result?.text || r.text || r.description || "";
+      return { ok: true, result: { identification: text, source: "vision-brain" } };
+    } catch (e) {
+      return { ok: false, error: `vision failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ─── Feature 4 — Plant-care reminders from care-log cadence ─────────
+  // Cadence in days per care kind; derives next-due date from the most
+  // recent matching care-log entry across all beds.
+  const CARE_CADENCE = {
+    water: 3, fertilize: 30, prune: 90, weed: 14, mulch: 120, pest_treat: 21, harvest: 7,
+  };
+
+  registerLensAction("landscaping", "care-reminders", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const beds = lsBeds(s, lsActor(ctx));
+    const horizonDays = Math.max(1, Math.min(120, Math.round(lsNum(params.horizonDays)) || 14));
+    const today = new Date();
+    const todayMs = today.getTime();
+    const reminders = [];
+    for (const bed of beds) {
+      // last entry per kind
+      const last = {};
+      for (const e of bed.careLog) {
+        const t = Date.parse(e.date);
+        if (!Number.isFinite(t)) continue;
+        if (!last[e.kind] || t > last[e.kind]) last[e.kind] = t;
+      }
+      for (const [kind, cadence] of Object.entries(CARE_CADENCE)) {
+        const lastMs = last[kind];
+        if (lastMs == null) continue; // only remind for tasks the user already does
+        const dueMs = lastMs + cadence * 86_400_000;
+        const daysUntil = Math.round((dueMs - todayMs) / 86_400_000);
+        if (daysUntil <= horizonDays) {
+          reminders.push({
+            bedId: bed.id, bedName: bed.name, kind, cadenceDays: cadence,
+            lastDone: new Date(lastMs).toISOString().slice(0, 10),
+            dueDate: new Date(dueMs).toISOString().slice(0, 10),
+            daysUntil, overdue: daysUntil < 0,
+          });
+        }
+      }
+    }
+    reminders.sort((a, b) => a.daysUntil - b.daysUntil);
+    return {
+      ok: true,
+      result: {
+        reminders, count: reminders.length,
+        overdueCount: reminders.filter((r) => r.overdue).length,
+        horizonDays,
+      },
+    };
+  });
+
+  // ─── Feature 5 — Climate / hardiness-zone plant matching ────────────
+  // Open-Meteo (free, no key) for local climate; derives an approximate
+  // USDA-style hardiness zone from coldest expected temperature and
+  // returns zone-suitable plant recommendations.
+  function zoneFromMinTempC(minC) {
+    // USDA zones: each zone spans 5°F (~2.8°C); zone 1 min ≈ -51°C.
+    const minF = minC * 9 / 5 + 32;
+    const z = Math.floor((minF + 60) / 10) + 1;
+    return Math.max(1, Math.min(13, z));
+  }
+  const ZONE_PLANTS = [
+    { name: "Lavender", zones: [5, 9], type: "perennial" },
+    { name: "Hosta", zones: [3, 9], type: "perennial" },
+    { name: "Black-Eyed Susan", zones: [3, 9], type: "perennial" },
+    { name: "Japanese Maple", zones: [5, 8], type: "tree" },
+    { name: "Boxwood", zones: [5, 9], type: "shrub" },
+    { name: "Daylily", zones: [3, 10], type: "perennial" },
+    { name: "Coneflower", zones: [3, 9], type: "perennial" },
+    { name: "Hydrangea", zones: [5, 9], type: "shrub" },
+    { name: "Crape Myrtle", zones: [7, 10], type: "tree" },
+    { name: "Bougainvillea", zones: [9, 11], type: "vine" },
+    { name: "Blue Spruce", zones: [2, 7], type: "tree" },
+    { name: "Hardy Geranium", zones: [4, 8], type: "perennial" },
+    { name: "Citrus Tree", zones: [9, 11], type: "tree" },
+    { name: "Sedum", zones: [3, 10], type: "succulent" },
+  ];
+
+  registerLensAction("landscaping", "climate-match", async (_ctx, _a, params = {}) => {
+    const lat = Number(params.lat);
+    const lon = Number(params.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      return { ok: false, error: "valid lat/lon required" };
+    }
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&daily=temperature_2m_min,temperature_2m_max&forecast_days=16&timezone=auto`;
+      const r = await fetch(url);
+      if (!r.ok) return { ok: false, error: `open-meteo ${r.status}` };
+      const data = await r.json();
+      const mins = data?.daily?.temperature_2m_min || [];
+      const maxs = data?.daily?.temperature_2m_max || [];
+      if (!mins.length) return { ok: false, error: "no climate data for location" };
+      const coldest = Math.min(...mins);
+      const hottest = Math.max(...maxs);
+      const avgMin = mins.reduce((a, b) => a + b, 0) / mins.length;
+      const zone = zoneFromMinTempC(coldest);
+      const recommendations = ZONE_PLANTS
+        .filter((p) => zone >= p.zones[0] && zone <= p.zones[1])
+        .map((p) => ({ name: p.name, type: p.type, zoneRange: `${p.zones[0]}-${p.zones[1]}` }));
+      return {
+        ok: true,
+        result: {
+          lat, lon, hardinessZone: zone,
+          coldestForecastC: Math.round(coldest * 10) / 10,
+          hottestForecastC: Math.round(hottest * 10) / 10,
+          avgMinC: Math.round(avgMin * 10) / 10,
+          recommendations, recommendationCount: recommendations.length,
+          source: "open-meteo",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `open-meteo unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ─── Feature 6 — Cost estimate → proposal ───────────────────────────
+  // Builds a structured contractor proposal from line items: computes
+  // labor + materials, applies overhead + margin, returns a renderable
+  // proposal document object (markdown body + totals).
+  registerLensAction("landscaping", "proposal-build", (_ctx, _a, params = {}) => {
+    const client = lsClean(params.client, 200) || "Client";
+    const project = lsClean(params.project, 200) || "Landscaping project";
+    const rawItems = Array.isArray(params.lineItems) ? params.lineItems : [];
+    if (!rawItems.length) return { ok: false, error: "lineItems required" };
+    const overheadPct = Math.max(0, Math.min(100, lsNum(params.overheadPct) || 15));
+    const marginPct = Math.max(0, Math.min(100, lsNum(params.marginPct) || 20));
+    const taxPct = Math.max(0, Math.min(30, lsNum(params.taxPct)));
+    const lineItems = rawItems.slice(0, 200).map((it) => {
+      const qty = Math.max(0, lsNum(it.quantity) || 1);
+      const unitCost = Math.max(0, lsNum(it.unitCost));
+      return {
+        description: lsClean(it.description, 200) || "Line item",
+        category: lsClean(it.category, 40) || "labor",
+        unit: lsClean(it.unit, 20) || "ea",
+        quantity: qty,
+        unitCost,
+        lineTotal: Math.round(qty * unitCost * 100) / 100,
+      };
+    });
+    const subtotal = lineItems.reduce((s, i) => s + i.lineTotal, 0);
+    const overhead = Math.round(subtotal * overheadPct) / 100;
+    const margin = Math.round((subtotal + overhead) * marginPct) / 100;
+    const preTax = subtotal + overhead + margin;
+    const tax = Math.round(preTax * taxPct) / 100;
+    const total = Math.round((preTax + tax) * 100) / 100;
+    const md = [
+      `# Landscaping Proposal`,
+      ``,
+      `**Prepared for:** ${client}`,
+      `**Project:** ${project}`,
+      `**Date:** ${new Date().toISOString().slice(0, 10)}`,
+      ``,
+      `## Scope & Line Items`,
+      ``,
+      `| Description | Category | Qty | Unit | Unit Cost | Total |`,
+      `|---|---|---:|---|---:|---:|`,
+      ...lineItems.map((i) =>
+        `| ${i.description} | ${i.category} | ${i.quantity} | ${i.unit} | $${i.unitCost.toFixed(2)} | $${i.lineTotal.toFixed(2)} |`),
+      ``,
+      `## Cost Summary`,
+      ``,
+      `| Item | Amount |`,
+      `|---|---:|`,
+      `| Subtotal | $${subtotal.toFixed(2)} |`,
+      `| Overhead (${overheadPct}%) | $${overhead.toFixed(2)} |`,
+      `| Margin (${marginPct}%) | $${margin.toFixed(2)} |`,
+      `| Tax (${taxPct}%) | $${tax.toFixed(2)} |`,
+      `| **Total** | **$${total.toFixed(2)}** |`,
+      ``,
+      `_This proposal is valid for 30 days from the date above._`,
+    ].join("\n");
+    return {
+      ok: true,
+      result: {
+        client, project, lineItems,
+        subtotal: Math.round(subtotal * 100) / 100,
+        overhead, margin, tax, total,
+        overheadPct, marginPct, taxPct,
+        proposalMarkdown: md,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  });
+
+  // ─── Feature 7 — Maintenance calendar (per-bed seasonal tasks) ──────
+  // Generates a 12-month task schedule for a bed, biased by sun
+  // exposure and the bed's plantings.
+  const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const MONTH_TASKS = {
+    0: ["Plan layout", "Sharpen tools", "Order seeds"],
+    1: ["Prune dormant trees", "Start seeds indoors"],
+    2: ["Apply pre-emergent", "Clean beds", "Edge beds"],
+    3: ["Plant cool-season crops", "Mulch beds", "First fertilize"],
+    4: ["Plant annuals", "Install irrigation", "Weed"],
+    5: ["Deep water weekly", "Deadhead flowers", "Watch for pests"],
+    6: ["Mow high", "Mid-season fertilize", "Stake tall plants"],
+    7: ["Prune after bloom", "Harvest", "Monitor drought stress"],
+    8: ["Plant fall color", "Divide perennials", "Aerate lawn"],
+    9: ["Overseed", "Plant bulbs", "Rake leaves"],
+    10: ["Final fertilize", "Wrap tender plants", "Drain irrigation"],
+    11: ["Protect from frost", "Compost cleanup", "Tool maintenance"],
+  };
+
+  registerLensAction("landscaping", "maintenance-calendar", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const beds = lsBeds(s, lsActor(ctx));
+    const bedId = lsClean(params.bedId, 80);
+    const bed = bedId ? beds.find((b) => b.id === bedId) : null;
+    if (bedId && !bed) return { ok: false, error: "bed not found" };
+    const buildMonths = (b) => MONTH_NAMES.map((m, idx) => {
+      const tasks = [...(MONTH_TASKS[idx] || [])];
+      if (b) {
+        if (b.sunExposure === "full" && [5, 6, 7].includes(idx)) tasks.push("Extra water — full sun");
+        if (b.sunExposure === "shade" && [3, 4].includes(idx)) tasks.push("Check shade-plant spacing");
+        if (b.plantings.length && [3, 9].includes(idx)) tasks.push(`Inspect ${b.plantings.length} planting(s)`);
+      }
+      return { monthIndex: idx, month: m, tasks };
+    });
+    if (bed) {
+      return { ok: true, result: { bedId: bed.id, bedName: bed.name, months: buildMonths(bed) } };
+    }
+    // whole-yard: one calendar per bed plus a generic schedule
+    return {
+      ok: true,
+      result: {
+        generic: buildMonths(null),
+        perBed: beds.map((b) => ({ bedId: b.id, bedName: b.name, months: buildMonths(b) })),
+        bedCount: beds.length,
+      },
+    };
+  });
+
+  // ─── Feature 8 — Plant health diary (photo timeline per planting) ───
+  function lsDiary(s, userId) {
+    if (!(s.healthDiary instanceof Map)) s.healthDiary = new Map();
+    if (!s.healthDiary.has(userId)) s.healthDiary.set(userId, []);
+    return s.healthDiary.get(userId);
+  }
+  const HEALTH_RATINGS = ["thriving", "healthy", "stressed", "declining", "lost"];
+
+  registerLensAction("landscaping", "diary-add", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const plant = lsClean(params.plant, 120);
+    if (!plant) return { ok: false, error: "plant name required" };
+    const entry = {
+      id: lsId("diary"),
+      plant,
+      bedId: lsClean(params.bedId, 80) || "",
+      date: lsClean(params.date, 30) || new Date().toISOString().slice(0, 10),
+      health: HEALTH_RATINGS.includes(params.health) ? params.health : "healthy",
+      heightCm: Math.max(0, lsNum(params.heightCm)) || null,
+      photoUrl: lsClean(params.photoUrl, 4_000_000) || "",
+      notes: lsClean(params.notes, 1000) || "",
+      createdAt: new Date().toISOString(),
+    };
+    lsDiary(s, lsActor(ctx)).push(entry);
+    saveLand();
+    return { ok: true, result: { entry: { ...entry, photoUrl: undefined, hasPhoto: !!entry.photoUrl } } };
+  });
+
+  registerLensAction("landscaping", "diary-timeline", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let entries = lsDiary(s, lsActor(ctx));
+    const plant = lsClean(params.plant, 120);
+    if (plant) entries = entries.filter((e) => e.plant === plant);
+    entries = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+    const plants = [...new Set(lsDiary(s, lsActor(ctx)).map((e) => e.plant))];
+    return {
+      ok: true,
+      result: {
+        entries, count: entries.length,
+        plants, filteredBy: plant || null,
+      },
+    };
+  });
+
+  registerLensAction("landscaping", "diary-delete", (ctx, _a, params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lsDiary(s, lsActor(ctx));
+    const i = arr.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "diary entry not found" };
+    arr.splice(i, 1);
+    saveLand();
+    return { ok: true, result: { deleted: params.id } };
   });
 }

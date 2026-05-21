@@ -1,6 +1,67 @@
 // server/domains/global.js
 // Domain actions for global/cross-domain aggregation: cross-domain search,
-// aggregate dashboards, and correlation matrix computation.
+// aggregate dashboards, and correlation matrix computation, plus live
+// World Bank data-exploration macros (choropleth, time series, comparison,
+// scatter explorer, indicator catalog search, country profiles, and
+// shareable saved views).
+
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
+// ---- World Bank API helpers -------------------------------------------------
+
+const WB_BASE = "https://api.worldbank.org/v2";
+const WB_TTL_MS = 30 * 60 * 1000; // 30 min — development data moves slowly
+
+const INDICATOR_CODE_RE = /^[A-Z0-9.]{1,40}$/i;
+const COUNTRY_CODE_RE = /^[A-Za-z]{2,3}$/;
+
+// Country centroids (ISO3) for the choropleth / map layer. Only countries
+// the World Bank reports plus a few aggregates would be huge — this covers
+// the most-queried set; missing centroids simply skip the map marker.
+const COUNTRY_CENTROIDS = {
+  USA: [39.8, -98.6], CHN: [35.9, 104.2], IND: [22.4, 78.7], BRA: [-14.2, -51.9],
+  RUS: [61.5, 105.3], JPN: [36.2, 138.3], DEU: [51.2, 10.4], GBR: [54.0, -2.0],
+  FRA: [46.6, 2.2], CAN: [56.1, -106.3], AUS: [-25.3, 133.8], ITA: [41.9, 12.6],
+  ESP: [40.5, -3.7], MEX: [23.6, -102.6], KOR: [35.9, 127.8], IDN: [-0.8, 113.9],
+  NGA: [9.1, 8.7], ZAF: [-30.6, 22.9], EGY: [26.8, 30.8], TUR: [38.9, 35.2],
+  ARG: [-38.4, -63.6], SAU: [23.9, 45.1], POL: [51.9, 19.1], SWE: [60.1, 18.6],
+  NOR: [60.5, 8.5], CHE: [46.8, 8.2], NLD: [52.1, 5.3], BEL: [50.5, 4.5],
+  KEN: [-0.0, 37.9], ETH: [9.1, 40.5], PAK: [30.4, 69.3], BGD: [23.7, 90.4],
+  VNM: [14.1, 108.3], THA: [15.9, 100.9], PHL: [12.9, 121.8], COL: [4.6, -74.3],
+  CHL: [-35.7, -71.5], PER: [-9.2, -75.0], NZL: [-40.9, 174.9], ISR: [31.0, 34.9],
+  ARE: [23.4, 53.8], SGP: [1.4, 103.8], MYS: [4.2, 101.9], IRN: [32.4, 53.7],
+  UKR: [48.4, 31.2], AUT: [47.5, 14.6], DNK: [56.3, 9.5], FIN: [61.9, 25.7],
+  IRL: [53.4, -8.2], PRT: [39.4, -8.2], GRC: [39.1, 21.8], CZE: [49.8, 15.5],
+  HUN: [47.2, 19.5], ROU: [45.9, 24.9], MAR: [31.8, -7.1], DZA: [28.0, 1.7],
+  GHA: [7.9, -1.0], TZA: [-6.4, 34.9], UGA: [1.4, 32.3], COD: [-4.0, 21.8],
+  AGO: [-11.2, 17.9], LKA: [7.9, 80.8], MMR: [21.9, 95.9], NPL: [28.4, 84.1],
+  KAZ: [48.0, 66.9], UZB: [41.4, 64.6], IRQ: [33.2, 43.7], QAT: [25.4, 51.2],
+  KWT: [29.3, 47.5], OMN: [21.5, 55.9], JOR: [30.6, 36.2], LBN: [33.9, 35.9],
+};
+
+function wbRound(v) { return Math.round(v * 1000) / 1000; }
+
+// Parse the World Bank [meta, series] response into a flat point list.
+function parseWbSeries(data, fallbackCountry, fallbackIndicator) {
+  const series = Array.isArray(data) && data.length >= 2 ? data[1] || [] : [];
+  return series
+    .map((p) => ({
+      year: parseInt(p.date, 10),
+      value: typeof p.value === "number" ? p.value : null,
+      countryCode: p.countryiso3code || p.country?.id || fallbackCountry,
+      country: p.country?.value || fallbackCountry,
+      indicator: p.indicator?.value || fallbackIndicator,
+    }))
+    .filter((p) => Number.isFinite(p.year))
+    .sort((a, b) => a.year - b.year);
+}
+
+// Persistent per-user saved views (shareable chart links).
+function savedViewStore() {
+  const state = (globalThis._concordSTATE = globalThis._concordSTATE || {});
+  if (!(state.globalSavedViews instanceof Map)) state.globalSavedViews = new Map();
+  return state.globalSavedViews;
+}
 
 export default function registerGlobalActions(registerLensAction) {
   /**
@@ -484,5 +545,452 @@ export default function registerGlobalActions(registerLensAction) {
         significanceThreshold: sigThreshold,
       },
     };
+  });
+
+  // ===========================================================================
+  // LIVE WORLD BANK DATA-EXPLORATION MACROS
+  // ===========================================================================
+
+  /**
+   * indicatorTimeseries
+   * Time-series for one indicator + one country (year-slider chart).
+   * params.country (ISO2/ISO3), params.indicator (WB code), params.yearsBack.
+   */
+  registerLensAction("global", "indicatorTimeseries", async (_ctx, _artifact, params) => {
+    try {
+      const country = String(params.country || "").trim().toUpperCase();
+      const indicator = String(params.indicator || "").trim();
+      if (!COUNTRY_CODE_RE.test(country)) return { ok: false, error: "Valid ISO country code required." };
+      if (!INDICATOR_CODE_RE.test(indicator)) return { ok: false, error: "Valid World Bank indicator code required." };
+      const yearsBack = Math.min(Math.max(Number(params.yearsBack) || 25, 2), 60);
+      const now = new Date().getUTCFullYear();
+      const url = `${WB_BASE}/country/${encodeURIComponent(country)}/indicator/${encodeURIComponent(indicator)}?format=json&date=${now - yearsBack}:${now}&per_page=${yearsBack + 2}`;
+      const data = await cachedFetchJson(url, { ttlMs: WB_TTL_MS });
+      const points = parseWbSeries(data, country, indicator);
+      const valued = points.filter((p) => p.value != null);
+      if (valued.length === 0) return { ok: false, error: "No data for that country + indicator." };
+      const first = valued[0];
+      const last = valued[valued.length - 1];
+      const pctChange = first.value !== 0 ? wbRound(((last.value - first.value) / Math.abs(first.value)) * 100) : null;
+      return {
+        ok: true,
+        result: {
+          country,
+          countryName: valued[0].country,
+          indicator,
+          indicatorName: valued[0].indicator,
+          points,
+          minYear: points[0]?.year ?? null,
+          maxYear: points[points.length - 1]?.year ?? null,
+          latest: { year: last.year, value: last.value },
+          earliest: { year: first.year, value: first.value },
+          pctChange,
+          source: "World Bank Open Data",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `World Bank unreachable: ${String(e?.message || e)}` };
+    }
+  });
+
+  /**
+   * choropleth
+   * One indicator across many countries for the latest available year —
+   * returns per-country values + map markers + a 0..1 normalized intensity.
+   * params.indicator (WB code), params.year (optional, defaults latest),
+   * params.countries (optional ISO3 array override).
+   */
+  registerLensAction("global", "choropleth", async (_ctx, _artifact, params) => {
+    try {
+      const indicator = String(params.indicator || "").trim();
+      if (!INDICATOR_CODE_RE.test(indicator)) return { ok: false, error: "Valid World Bank indicator code required." };
+      const requested = Array.isArray(params.countries) && params.countries.length > 0
+        ? params.countries.map((c) => String(c).trim().toUpperCase()).filter((c) => COUNTRY_CODE_RE.test(c))
+        : Object.keys(COUNTRY_CENTROIDS);
+      const codes = requested.slice(0, 80).join(";");
+      const now = new Date().getUTCFullYear();
+      const targetYear = Number(params.year) || null;
+      const dateRange = targetYear ? `${targetYear}:${targetYear}` : `${now - 6}:${now}`;
+      const url = `${WB_BASE}/country/${encodeURIComponent(codes)}/indicator/${encodeURIComponent(indicator)}?format=json&date=${dateRange}&per_page=2000`;
+      const data = await cachedFetchJson(url, { ttlMs: WB_TTL_MS });
+      const points = parseWbSeries(data, "", indicator);
+      // Pick the most recent valued point per country.
+      const byCountry = new Map();
+      for (const p of points) {
+        if (p.value == null) continue;
+        const code = (p.countryCode || "").toUpperCase();
+        const existing = byCountry.get(code);
+        if (!existing || p.year > existing.year) byCountry.set(code, p);
+      }
+      const rows = [...byCountry.values()];
+      if (rows.length === 0) return { ok: false, error: "No data for that indicator." };
+      const values = rows.map((r) => r.value);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const span = max - min || 1;
+      const countries = rows
+        .map((r) => {
+          const intensity = (r.value - min) / span;
+          const centroid = COUNTRY_CENTROIDS[r.countryCode];
+          return {
+            code: r.countryCode,
+            name: r.country,
+            year: r.year,
+            value: r.value,
+            intensity: wbRound(intensity),
+            lat: centroid ? centroid[0] : null,
+            lon: centroid ? centroid[1] : null,
+          };
+        })
+        .sort((a, b) => b.value - a.value);
+      return {
+        ok: true,
+        result: {
+          indicator,
+          indicatorName: rows[0].indicator,
+          countryCount: countries.length,
+          min: wbRound(min),
+          max: wbRound(max),
+          countries,
+          source: "World Bank Open Data",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `World Bank unreachable: ${String(e?.message || e)}` };
+    }
+  });
+
+  /**
+   * compareCountries
+   * Side-by-side time-series of one indicator for up to 6 countries.
+   * params.countries (ISO array), params.indicator, params.yearsBack.
+   */
+  registerLensAction("global", "compareCountries", async (_ctx, _artifact, params) => {
+    try {
+      const indicator = String(params.indicator || "").trim();
+      if (!INDICATOR_CODE_RE.test(indicator)) return { ok: false, error: "Valid World Bank indicator code required." };
+      const countries = (Array.isArray(params.countries) ? params.countries : [])
+        .map((c) => String(c).trim().toUpperCase())
+        .filter((c) => COUNTRY_CODE_RE.test(c))
+        .slice(0, 6);
+      if (countries.length < 2) return { ok: false, error: "Provide at least 2 country codes." };
+      const yearsBack = Math.min(Math.max(Number(params.yearsBack) || 20, 2), 60);
+      const now = new Date().getUTCFullYear();
+      const codes = countries.join(";");
+      const url = `${WB_BASE}/country/${encodeURIComponent(codes)}/indicator/${encodeURIComponent(indicator)}?format=json&date=${now - yearsBack}:${now}&per_page=2000`;
+      const data = await cachedFetchJson(url, { ttlMs: WB_TTL_MS });
+      const points = parseWbSeries(data, "", indicator);
+      if (points.length === 0) return { ok: false, error: "No data for those countries + indicator." };
+      // Build a wide table: one row per year, one column per country code.
+      const yearMap = new Map();
+      const seriesMeta = new Map();
+      for (const p of points) {
+        const code = (p.countryCode || "").toUpperCase();
+        if (!countries.includes(code)) continue;
+        if (!seriesMeta.has(code)) seriesMeta.set(code, p.country);
+        if (!yearMap.has(p.year)) yearMap.set(p.year, { year: p.year });
+        yearMap.get(p.year)[code] = p.value;
+      }
+      const table = [...yearMap.values()].sort((a, b) => a.year - b.year);
+      const series = countries
+        .filter((c) => seriesMeta.has(c))
+        .map((c) => {
+          const vals = table.map((r) => r[c]).filter((v) => v != null);
+          return {
+            code: c,
+            name: seriesMeta.get(c),
+            latest: vals.length ? vals[vals.length - 1] : null,
+            earliest: vals.length ? vals[0] : null,
+          };
+        });
+      return {
+        ok: true,
+        result: {
+          indicator,
+          indicatorName: points[0].indicator,
+          countries: series,
+          table,
+          minYear: table[0]?.year ?? null,
+          maxYear: table[table.length - 1]?.year ?? null,
+          source: "World Bank Open Data",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `World Bank unreachable: ${String(e?.message || e)}` };
+    }
+  });
+
+  /**
+   * scatterExplorer
+   * Two indicators across many countries — bubble/scatter (X vs Y),
+   * optionally with a size indicator, animated by year.
+   * params.indicatorX, params.indicatorY, params.indicatorSize (optional),
+   * params.countries (optional ISO3 override), params.yearsBack.
+   */
+  registerLensAction("global", "scatterExplorer", async (_ctx, _artifact, params) => {
+    try {
+      const indicatorX = String(params.indicatorX || "").trim();
+      const indicatorY = String(params.indicatorY || "").trim();
+      if (!INDICATOR_CODE_RE.test(indicatorX) || !INDICATOR_CODE_RE.test(indicatorY)) {
+        return { ok: false, error: "Two valid World Bank indicator codes required." };
+      }
+      const indicatorSize = params.indicatorSize ? String(params.indicatorSize).trim() : null;
+      if (indicatorSize && !INDICATOR_CODE_RE.test(indicatorSize)) {
+        return { ok: false, error: "Invalid size indicator code." };
+      }
+      const requested = Array.isArray(params.countries) && params.countries.length > 0
+        ? params.countries.map((c) => String(c).trim().toUpperCase()).filter((c) => COUNTRY_CODE_RE.test(c))
+        : Object.keys(COUNTRY_CENTROIDS);
+      const codes = requested.slice(0, 60).join(";");
+      const yearsBack = Math.min(Math.max(Number(params.yearsBack) || 15, 2), 40);
+      const now = new Date().getUTCFullYear();
+      const wanted = [indicatorX, indicatorY, ...(indicatorSize ? [indicatorSize] : [])];
+      const fetched = await Promise.all(
+        wanted.map((ind) =>
+          cachedFetchJson(
+            `${WB_BASE}/country/${encodeURIComponent(codes)}/indicator/${encodeURIComponent(ind)}?format=json&date=${now - yearsBack}:${now}&per_page=4000`,
+            { ttlMs: WB_TTL_MS },
+          ).then((d) => parseWbSeries(d, "", ind)),
+        ),
+      );
+      const [ptsX, ptsY, ptsSize] = [fetched[0], fetched[1], indicatorSize ? fetched[2] : []];
+      const idx = (pts) => {
+        const m = new Map();
+        for (const p of pts) {
+          if (p.value == null) continue;
+          m.set(`${(p.countryCode || "").toUpperCase()}|${p.year}`, p);
+        }
+        return m;
+      };
+      const xi = idx(ptsX);
+      const yi = idx(ptsY);
+      const si = idx(ptsSize);
+      const frames = new Map();
+      const namesByCode = new Map();
+      for (const [key, px] of xi) {
+        const py = yi.get(key);
+        if (!py) continue;
+        const [code, yearStr] = key.split("|");
+        const year = Number(yearStr);
+        namesByCode.set(code, px.country);
+        if (!frames.has(year)) frames.set(year, []);
+        const ps = si.get(key);
+        frames.get(year).push({
+          code,
+          name: px.country,
+          x: px.value,
+          y: py.value,
+          size: ps ? ps.value : null,
+        });
+      }
+      const years = [...frames.keys()].sort((a, b) => a - b);
+      if (years.length === 0) return { ok: false, error: "No overlapping data for those indicators." };
+      return {
+        ok: true,
+        result: {
+          indicatorX,
+          indicatorY,
+          indicatorSize,
+          indicatorXName: ptsX[0]?.indicator || indicatorX,
+          indicatorYName: ptsY[0]?.indicator || indicatorY,
+          indicatorSizeName: indicatorSize ? ptsSize[0]?.indicator || indicatorSize : null,
+          years,
+          frames: years.map((y) => ({ year: y, points: frames.get(y) })),
+          source: "World Bank Open Data",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `World Bank unreachable: ${String(e?.message || e)}` };
+    }
+  });
+
+  /**
+   * searchIndicators
+   * Search the full World Bank indicator catalog by keyword.
+   * params.query (substring), params.limit.
+   */
+  registerLensAction("global", "searchIndicators", async (_ctx, _artifact, params) => {
+    try {
+      const query = String(params.query || "").trim().toLowerCase();
+      if (query.length < 2) return { ok: false, error: "Search query must be at least 2 characters." };
+      const limit = Math.min(Math.max(Number(params.limit) || 25, 1), 60);
+      // World Bank has no server-side text search; pull a page of the catalog
+      // and filter client-side. The catalog is large so pull a generous slab.
+      const url = `${WB_BASE}/indicator?format=json&per_page=20000`;
+      const data = await cachedFetchJson(url, { ttlMs: 6 * 60 * 60 * 1000 });
+      const all = Array.isArray(data) && data.length >= 2 ? data[1] || [] : [];
+      const matches = [];
+      for (const ind of all) {
+        const id = (ind.id || "").toLowerCase();
+        const name = (ind.name || "").toLowerCase();
+        if (id.includes(query) || name.includes(query)) {
+          matches.push({
+            code: ind.id,
+            name: ind.name,
+            sourceNote: ind.sourceNote ? String(ind.sourceNote).slice(0, 280) : "",
+            sourceOrg: ind.sourceOrganization || "",
+            topics: (ind.topics || []).map((t) => t.value).filter(Boolean),
+          });
+          if (matches.length >= limit * 3) break;
+        }
+      }
+      // Rank: name-startswith > name-includes > id-includes.
+      matches.sort((a, b) => {
+        const an = a.name.toLowerCase();
+        const bn = b.name.toLowerCase();
+        const rank = (n, code) => (n.startsWith(query) ? 0 : n.includes(query) ? 1 : code.toLowerCase().includes(query) ? 2 : 3);
+        return rank(an, a.code) - rank(bn, b.code);
+      });
+      return {
+        ok: true,
+        result: {
+          query,
+          totalMatches: matches.length,
+          indicators: matches.slice(0, limit),
+          source: "World Bank Open Data",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `World Bank unreachable: ${String(e?.message || e)}` };
+    }
+  });
+
+  /**
+   * countryProfile
+   * Aggregate a bundle of headline indicators for a single country —
+   * the latest value + recent trend for each.
+   * params.country (ISO2/ISO3), params.indicators (optional WB code array).
+   */
+  registerLensAction("global", "countryProfile", async (_ctx, _artifact, params) => {
+    try {
+      const country = String(params.country || "").trim().toUpperCase();
+      if (!COUNTRY_CODE_RE.test(country)) return { ok: false, error: "Valid ISO country code required." };
+      const DEFAULT_PROFILE = [
+        "NY.GDP.MKTP.CD", "NY.GDP.PCAP.CD", "SP.POP.TOTL", "SP.DYN.LE00.IN",
+        "SE.ADT.LITR.ZS", "IT.NET.USER.ZS", "SL.UEM.TOTL.ZS", "FP.CPI.TOTL.ZG",
+        "SP.URB.TOTL.IN.ZS", "EN.ATM.CO2E.PC",
+      ];
+      const codes = (Array.isArray(params.indicators) && params.indicators.length > 0
+        ? params.indicators.map((c) => String(c).trim())
+        : DEFAULT_PROFILE
+      ).filter((c) => INDICATOR_CODE_RE.test(c)).slice(0, 16);
+      if (codes.length === 0) return { ok: false, error: "No valid indicators." };
+      const now = new Date().getUTCFullYear();
+      const fetched = await Promise.all(
+        codes.map((ind) =>
+          cachedFetchJson(
+            `${WB_BASE}/country/${encodeURIComponent(country)}/indicator/${encodeURIComponent(ind)}?format=json&date=${now - 12}:${now}&per_page=15`,
+            { ttlMs: WB_TTL_MS },
+          )
+            .then((d) => ({ code: ind, points: parseWbSeries(d, country, ind) }))
+            .catch(() => ({ code: ind, points: [] })),
+        ),
+      );
+      let countryName = country;
+      const indicators = fetched.map(({ code, points }) => {
+        const valued = points.filter((p) => p.value != null);
+        if (valued.length && valued[0].country) countryName = valued[0].country;
+        const last = valued[valued.length - 1] || null;
+        const prev = valued.length >= 2 ? valued[valued.length - 2] : null;
+        const trend = last && prev && prev.value !== 0
+          ? wbRound(((last.value - prev.value) / Math.abs(prev.value)) * 100)
+          : null;
+        return {
+          code,
+          name: valued[0]?.indicator || code,
+          latestValue: last ? last.value : null,
+          latestYear: last ? last.year : null,
+          trendPct: trend,
+          spark: valued.map((p) => ({ year: p.year, value: p.value })),
+        };
+      });
+      const withData = indicators.filter((i) => i.latestValue != null);
+      if (withData.length === 0) return { ok: false, error: "No data for that country." };
+      return {
+        ok: true,
+        result: {
+          country,
+          countryName,
+          indicatorCount: withData.length,
+          indicators,
+          source: "World Bank Open Data",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `World Bank unreachable: ${String(e?.message || e)}` };
+    }
+  });
+
+  /**
+   * saveView
+   * Persist a shareable chart view (mode + params) keyed by userId.
+   * params.view = { mode, label, config }.
+   */
+  registerLensAction("global", "saveView", (ctx, _artifact, params) => {
+    try {
+      const userId = ctx?.actor?.userId || ctx?.userId;
+      if (!userId) return { ok: false, error: "Authentication required." };
+      const view = params.view || {};
+      const mode = String(view.mode || "").trim();
+      if (!mode) return { ok: false, error: "View mode is required." };
+      const store = savedViewStore();
+      const list = store.get(userId) || [];
+      const id = `gv_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+      const record = {
+        id,
+        mode,
+        label: String(view.label || mode).slice(0, 120),
+        config: view.config && typeof view.config === "object" ? view.config : {},
+        createdAt: new Date().toISOString(),
+      };
+      list.unshift(record);
+      store.set(userId, list.slice(0, 100));
+      return { ok: true, result: { saved: record, shareLink: `/lenses/global?view=${id}`, total: list.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  /**
+   * listViews
+   * Return the caller's saved views; optionally resolve one by id.
+   * params.id (optional).
+   */
+  registerLensAction("global", "listViews", (ctx, _artifact, params) => {
+    try {
+      const userId = ctx?.actor?.userId || ctx?.userId;
+      if (!userId) return { ok: false, error: "Authentication required." };
+      const list = savedViewStore().get(userId) || [];
+      if (params.id) {
+        const found = list.find((v) => v.id === params.id);
+        if (!found) return { ok: false, error: "Saved view not found." };
+        return { ok: true, result: { view: found } };
+      }
+      return { ok: true, result: { views: list, total: list.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  /**
+   * deleteView
+   * Remove a saved view by id.
+   * params.id (required).
+   */
+  registerLensAction("global", "deleteView", (ctx, _artifact, params) => {
+    try {
+      const userId = ctx?.actor?.userId || ctx?.userId;
+      if (!userId) return { ok: false, error: "Authentication required." };
+      const id = String(params.id || "").trim();
+      if (!id) return { ok: false, error: "View id is required." };
+      const store = savedViewStore();
+      const list = store.get(userId) || [];
+      const next = list.filter((v) => v.id !== id);
+      if (next.length === list.length) return { ok: false, error: "Saved view not found." };
+      store.set(userId, next);
+      return { ok: true, result: { deleted: id, total: next.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
   });
 }

@@ -11,13 +11,21 @@ Backend: `global` domain — crossDomainSearch, aggregateDashboard, correlationM
 - Correlation matrix between indicators; paginated country list
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Interactive choropleth world map colored by any indicator
-- [ ] `[M]` Time-series charts per indicator with year slider
-- [ ] `[S]` Country comparison view — side-by-side multiple countries
-- [ ] `[M]` Scatter / bubble explorer (one indicator vs another, animated over time)
-- [ ] `[S]` Indicator search across the full World Bank catalog
-- [ ] `[S]` Data download / embed / shareable chart links
-- [ ] `[S]` Country profile pages aggregating all indicators
+- [x] `[M]` Interactive choropleth world map colored by any indicator
+- [x] `[M]` Time-series charts per indicator with year slider
+- [x] `[S]` Country comparison view — side-by-side multiple countries
+- [x] `[M]` Scatter / bubble explorer (one indicator vs another, animated over time)
+- [x] `[S]` Indicator search across the full World Bank catalog
+- [x] `[S]` Data download / embed / shareable chart links
+- [x] `[S]` Country profile pages aggregating all indicators
 
 ## Parity
-~50% of Our World in Data's feature surface. Live World Bank data, cross-domain search, and a correlation matrix are real, but it lacks the interactive choropleth map, time-series charts, and the scatter/comparison explorers that are the heart of a data-exploration site.
+Full data-exploration surface shipped. The `global` domain exposes live World Bank
+macros — `choropleth`, `indicatorTimeseries`, `compareCountries`, `scatterExplorer`,
+`searchIndicators`, `countryProfile` — plus per-user `saveView`/`listViews`/`deleteView`
+for shareable chart links. The lens `Data Explorer` tab (`components/global/DataExplorer.tsx`
+with `IndicatorPicker` + `CountryPicker`) drives all six tools with a choropleth map,
+year-slider time series, multi-country comparison, animated scatter explorer, full-catalog
+indicator search, and country-profile pages.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

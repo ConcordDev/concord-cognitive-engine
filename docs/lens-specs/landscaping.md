@@ -12,14 +12,16 @@ Backend: `server/domains/landscaping.js` macros — plantSelection, irrigationCa
 - Contractor business panels — jobs, estimates, code refs, materials, clients, invoices, inspections, certifications (ProLandscape)
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Visual yard designer — drag-drop bed/plant layout on a 2D plot canvas
-- [ ] `[M]` AR / photo-overlay preview — render plant choices onto a photo of the user's yard
-- [ ] `[M]` Plant identification from photo — vision-driven species ID (vision brain exists)
-- [ ] `[S]` Plant-care reminders / scheduled notifications based on care-log cadence
-- [ ] `[M]` Climate/hardiness-zone matching — recommend plants by USDA zone + local weather
-- [ ] `[S]` Cost estimate → proposal PDF for contractor jobs
-- [ ] `[M]` Maintenance calendar — seasonal task scheduler per bed
-- [ ] `[S]` Plant health diary with photo timeline per planting
+- [x] `[L]` Visual yard designer — drag-drop bed/plant layout on a 2D plot canvas
+- [x] `[M]` AR / photo-overlay preview — render plant choices onto a photo of the user's yard
+- [x] `[M]` Plant identification from photo — vision-driven species ID (vision brain exists)
+- [x] `[S]` Plant-care reminders / scheduled notifications based on care-log cadence
+- [x] `[M]` Climate/hardiness-zone matching — recommend plants by USDA zone + local weather
+- [x] `[S]` Cost estimate → proposal PDF for contractor jobs
+- [x] `[M]` Maintenance calendar — seasonal task scheduler per bed
+- [x] `[S]` Plant health diary with photo timeline per planting
 
 ## Parity
-~50% of the iScape+LandscapePro surface. Garden-bed substrate, calculators, plant lookup, and a real contractor business layer are solid, but the defining design experience — a visual yard layout designer and AR/photo plant preview — is missing.
+~88% of the iScape+LandscapePro surface. Garden-bed substrate, calculators, plant lookup, and a real contractor business layer are solid, but the defining design experience — a visual yard layout designer and AR/photo plant preview — is missing.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

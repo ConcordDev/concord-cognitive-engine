@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~74%**
-- Total buildable features in the backlog (sum of all "Missing" items): **772**
+- Average feature parity: **~75%**
+- Total buildable features in the backlog (sum of all "Missing" items): **729**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 120 |
+| 80–100% (near-complete) | 125 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 49 |
+| 40–59% (partial) | 43 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -29,16 +29,11 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | bridge | (cross-world federation console) | ~?% | 0 |
 | chem | ChemDraw / PubChem | ~?% | 0 |
 | collab | Figma / Google Docs (real-time collaboration) | ~?% | 0 |
+| global | Our World in Data / World Bank DataBank | ~?% | 0 |
 | organ | ChartHop | ~?% | 0 |
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| genesis | no direct rival (emergent-AI observatory) | ~50% | 6 |
-| global | Our World in Data / World Bank DataBank | ~50% | 7 |
-| kingdoms | Crusader Kings III | ~50% | 7 |
-| landscaping | iScape / LandscapePro | ~50% | 8 |
-| marketing | HubSpot Marketing Hub | ~50% | 8 |
-| materials | Granta MI / Materials Project | ~50% | 7 |
 | meditation | Calm / Headspace | ~50% | 7 |
 | ocean | Windy / MarineTraffic | ~50% | 7 |
 | philosophy | Are.na / IEP | ~50% | 7 |
@@ -195,16 +190,21 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | forge | v0.dev / Bolt.new | ~88% | 0 |
 | foundry | Roblox Studio / GameMaker | ~88% | 0 |
 | game | Habitica / gamification platforms | ~88% | 0 |
+| genesis | no direct rival (emergent-AI observatory) | ~88% | 0 |
 | ghost-tracker | no direct rival (in-game mode) | ~88% | 0 |
 | grounding | Ground News / fact-check tools | ~88% | 0 |
 | home-improvement | Houzz / HomeZada | ~88% | 0 |
 | hvac | ServiceTitan / Housecall Pro | ~88% | 0 |
 | inference | Prolog / Drools rule engines | ~88% | 0 |
 | ingest | Airbyte / Fivetran | ~88% | 0 |
+| kingdoms | Crusader Kings III | ~88% | 0 |
+| landscaping | iScape / LandscapePro | ~88% | 0 |
 | lattice | Weights & Biases / fine-tuning consoles | ~88% | 0 |
 | lock | concurrency-debugging tools (Java Flight Recorder / lock profilers) | ~88% | 0 |
 | manufacturing | Tulip / Plex MES | ~88% | 0 |
 | market | Crayon / Klue (competitive intelligence) | ~88% | 0 |
+| marketing | HubSpot Marketing Hub | ~88% | 0 |
+| materials | Granta MI / Materials Project | ~88% | 0 |
 | mesh | Meshtastic / Briar | ~88% | 0 |
 | metacognition | reflection / thinking-skills tools | ~88% | 0 |
 | metalearning | learning-how-to-learn tools | ~88% | 0 |

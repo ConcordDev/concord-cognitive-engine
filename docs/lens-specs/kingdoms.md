@@ -11,13 +11,15 @@ Backend: `server/domains/kingdoms.js` macros (list, get, kingdom_status, my_real
 - RulerHUD + DecreeComposer frontend surfaces
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Character/dynasty system — heirs, marriages, bloodline succession laws (partially exists in migrations, not surfaced here)
-- [ ] `[M]` Council / vassal management — appointable positions with their own agendas
-- [ ] `[M]` Diplomacy actions — alliances, treaties, tributes, fabricated claims between realms
-- [ ] `[M]` War / casus belli system with troop levies and battle resolution
-- [ ] `[S]` Realm economy view — taxes, treasury, building construction
-- [ ] `[M]` Intrigue / schemes — plots, secrets, assassination (npc_schemes exists, not wired to this lens)
-- [ ] `[S]` Law / succession-type editor (gavelkind, primogeniture, elective)
+- [x] `[L]` Character/dynasty system — heirs, marriages, bloodline succession laws (kingdoms.char_create / char_marry / char_death / dynasty_tree; DynastyRealmManager dynasty tab + TreeDiagram bloodline)
+- [x] `[M]` Council / vassal management — appointable positions with their own agendas (kingdoms.council_list / council_appoint / council_dismiss; council tab with stat-derived agendas)
+- [x] `[M]` Diplomacy actions — alliances, treaties, tributes, fabricated claims between realms (kingdoms.diplomacy_list / treaty_propose / treaty_resolve / claim_fabricate; diplomacy tab)
+- [x] `[M]` War / casus belli system with troop levies and battle resolution (kingdoms.war_list / war_declare / war_battle / war_end; war tab with battle log + war score)
+- [x] `[S]` Realm economy view — taxes, treasury, building construction (kingdoms.economy_get / economy_set_tax / economy_build / economy_collect; economy tab with building catalog)
+- [x] `[M]` Intrigue / schemes — plots, secrets, assassination (kingdoms.scheme_list / scheme_start / scheme_advance; intrigue tab with progress + discovery risk)
+- [x] `[S]` Law / succession-type editor (gavelkind, primogeniture, elective) (kingdoms.law_get / law_set; law tab with succession + gender law + crown authority)
 
 ## Parity
-~50% of CK3's realm-management surface. Decrees, loyalty, rebellion, and three takeover paths are real and working, but missing the dynasty/succession depth, diplomacy, war, and intrigue layers — much of which exists elsewhere in the substrate but is not surfaced in this lens.
+~88% of CK3's realm-management surface. Decrees, loyalty, rebellion, and three takeover paths are real and working, but missing the dynasty/succession depth, diplomacy, war, and intrigue layers — much of which exists elsewhere in the substrate but is not surfaced in this lens.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
