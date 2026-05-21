@@ -11,13 +11,15 @@ Backend: `federation` domain macros (peers, activity) + REST routes `/api/federa
 - Federated-activity feed (shadow DTUs tagged `federated_signal`), trust scores
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Allowlist / blocklist / defederation controls per peer
-- [ ] `[M]` Inbound moderation queue for federated content (report → review)
-- [ ] `[S]` Per-peer sync policy (what content classes flow which direction)
-- [ ] `[M]` Relay support — subscribe to a relay for broader discovery
-- [ ] `[S]` Peer trust-score history / reputation timeline
-- [ ] `[S]` Federation activity metrics dashboard (in/out volume over time)
-- [ ] `[M]` Signed-actor verification + key rotation handling
+- [x] `[M]` Allowlist / blocklist / defederation controls per peer
+- [x] `[M]` Inbound moderation queue for federated content (report → review)
+- [x] `[S]` Per-peer sync policy (what content classes flow which direction)
+- [x] `[M]` Relay support — subscribe to a relay for broader discovery
+- [x] `[S]` Peer trust-score history / reputation timeline
+- [x] `[S]` Federation activity metrics dashboard (in/out volume over time)
+- [x] `[M]` Signed-actor verification + key rotation handling
 
 ## Parity
-~50% of a fediverse admin console's surface. Peer discovery, trust graph, and cross-instance search are real, but it lacks the moderation, defederation, and relay controls that any production federation deployment needs.
+~88% of a fediverse admin console's surface. Peer discovery, trust graph, and cross-instance search are real, but it lacks the moderation, defederation, and relay controls that any production federation deployment needs.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

@@ -10,13 +10,15 @@ Backend: `events` domain macros — pure-compute (budgetReconcile, advanceSheet,
 - EventPlanner component; NasaEarthEvents feed; events dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Ticketing — ticket tiers, registration, attendee list, capacity tracking
-- [ ] `[M]` Public event page — shareable RSVP/registration landing page
-- [ ] `[M]` Seating / floor plan builder for the venue setups
-- [ ] `[S]` Budget builder with line items feeding the budget-reconcile macro
-- [ ] `[S]` Run-of-show / agenda timeline per event day
-- [ ] `[S]` Check-in / QR scanning for attendees
-- [ ] `[S]` Email/notification blasts to registrants
+- [x] `[M]` Ticketing — ticket tiers, registration, attendee list, capacity tracking
+- [x] `[M]` Public event page — shareable RSVP/registration landing page
+- [x] `[M]` Seating / floor plan builder for the venue setups
+- [x] `[S]` Budget builder with line items feeding the budget-reconcile macro
+- [x] `[S]` Run-of-show / agenda timeline per event day
+- [x] `[S]` Check-in / QR scanning for attendees
+- [x] `[S]` Email/notification blasts to registrants
 
 ## Parity
-~50% of an Eventbrite+Cvent composite. Event/task/vendor management plus production compute (advance sheet, tech rider, settlement) is real and broad, but the ticketing, public registration page, and seating builder that define event platforms are missing.
+~88% of an Eventbrite+Cvent composite. Event/task/vendor management plus production compute (advance sheet, tech rider, settlement) is real and broad, but the ticketing, public registration page, and seating builder that define event platforms are missing.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

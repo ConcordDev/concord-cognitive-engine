@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaEarthEvents } from '@/components/events/NasaEarthEvents';
 import { EventPlanner } from '@/components/events/EventPlanner';
+import { EventOps } from '@/components/events/EventOps';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   LayoutDashboard as MTabDash, CalendarDays as MTabCal, MapPin as MTabPin,
@@ -2886,6 +2887,9 @@ export default function EventsLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-elevated/30 p-4">
+        <EventOps />
+      </section>
       <section className="mt-6">
         <EventPlanner />
       </section>

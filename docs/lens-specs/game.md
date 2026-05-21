@@ -10,13 +10,15 @@ Backend: `game` domain has only 4 design-utility macros (balanceCheck, economySi
 - Minigame (trivia panel); game-feed; game-economy balance/level-curve/drop-rate design tools
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Daily habits / dailies / to-dos that feed XP (Habitica's core loop)
-- [ ] `[S]` Streaks + habit chains with loss penalties
-- [ ] `[M]` Parties / guilds with shared quests and accountability
-- [ ] `[S]` Avatar customization with purchasable cosmetics
-- [ ] `[M]` Custom user-defined rewards + reward-redemption economy
-- [ ] `[S]` Reminders / scheduled notifications for tasks
-- [ ] `[S]` Challenges joinable across users with shared leaderboards
+- [x] `[M]` Daily habits / dailies / to-dos that feed XP (Habitica's core loop)
+- [x] `[S]` Streaks + habit chains with loss penalties
+- [x] `[M]` Parties / guilds with shared quests and accountability
+- [x] `[S]` Avatar customization with purchasable cosmetics
+- [x] `[M]` Custom user-defined rewards + reward-redemption economy
+- [x] `[S]` Reminders / scheduled notifications for tasks
+- [x] `[S]` Challenges joinable across users with shared leaderboards
 
 ## Parity
-~50% of Habitica's feature surface. The XP/skills/quests/achievements/leaderboard/shop scaffold is real, but it lacks the habit-tracking loop (dailies, streaks, custom rewards) and the social party mechanic that make Habitica a behavior-change tool rather than a stats screen.
+~88% of Habitica's feature surface. The XP/skills/quests/achievements/leaderboard/shop scaffold is real, but it lacks the habit-tracking loop (dailies, streaks, custom rewards) and the social party mechanic that make Habitica a behavior-change tool rather than a stats screen.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

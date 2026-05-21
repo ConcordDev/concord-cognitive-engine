@@ -24,6 +24,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
 import { FoundryActionPanel } from '@/components/foundry/FoundryActionPanel';
+import { BuilderStudio } from '@/components/foundry/BuilderStudio';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Boxes, Loader2 } from 'lucide-react';
@@ -71,6 +72,13 @@ export default function FoundryLensPage() {
         </section>
         <section className="mx-auto mt-6 max-w-screen-2xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <WorldBuilderRepos />
+        </section>
+
+        {/* Roblox-Studio-parity builder: visual scripting, playtest hot-reload,
+            asset library, multiplayer config, games marketplace, analytics,
+            and collaborative multi-builder editing. */}
+        <section className="mx-auto mt-6 max-w-screen-2xl">
+          <BuilderStudio />
         </section>
 
         {/* Unity + Roblox Studio-shape foundry workbench: list / create / validate / preview / publish + actions */}

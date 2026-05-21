@@ -17,6 +17,13 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FediverseFeed } from '@/components/federation/FediverseFeed';
+import { PeerPolicyPanel } from '@/components/federation/PeerPolicyPanel';
+import { ModerationQueuePanel } from '@/components/federation/ModerationQueuePanel';
+import { SyncPolicyPanel } from '@/components/federation/SyncPolicyPanel';
+import { RelayPanel } from '@/components/federation/RelayPanel';
+import { TrustHistoryPanel } from '@/components/federation/TrustHistoryPanel';
+import { MetricsDashboardPanel } from '@/components/federation/MetricsDashboardPanel';
+import { ActorKeysPanel } from '@/components/federation/ActorKeysPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import {
@@ -27,6 +34,7 @@ import dynamic from 'next/dynamic';
 import {
   Network, Search, Users, RefreshCw, Loader2, ShieldCheck,
   Globe, Trash2, AlertCircle, Zap, Activity, Plus, X,
+  ShieldX, Inbox, Radio, BarChart3, KeyRound,
 } from 'lucide-react';
 
 const TrustGraphView = dynamic(
@@ -69,17 +77,24 @@ interface FederationStatus {
   };
 }
 
-type Tab = 'network' | 'search' | 'peers' | 'sync';
+type Tab =
+  | 'network' | 'search' | 'peers' | 'sync'
+  | 'moderation' | 'policy' | 'relays' | 'metrics' | 'keys';
 
 export default function FederationPage() {
   const [tab, setTab] = useState<Tab>('network');
 
   useLensCommand(
     [
-      { id: 'tab-network', keys: 'n', description: 'Network', category: 'navigation', action: () => setTab('network') },
-      { id: 'tab-search',  keys: 's', description: 'Search',  category: 'navigation', action: () => setTab('search') },
-      { id: 'tab-peers',   keys: 'p', description: 'Peers',   category: 'navigation', action: () => setTab('peers') },
-      { id: 'tab-sync',    keys: 'y', description: 'Sync',    category: 'navigation', action: () => setTab('sync') },
+      { id: 'tab-network',    keys: 'n', description: 'Network',    category: 'navigation', action: () => setTab('network') },
+      { id: 'tab-search',     keys: 's', description: 'Search',     category: 'navigation', action: () => setTab('search') },
+      { id: 'tab-peers',      keys: 'p', description: 'Peers',      category: 'navigation', action: () => setTab('peers') },
+      { id: 'tab-sync',       keys: 'y', description: 'Sync',       category: 'navigation', action: () => setTab('sync') },
+      { id: 'tab-moderation', keys: 'm', description: 'Moderation', category: 'navigation', action: () => setTab('moderation') },
+      { id: 'tab-policy',     keys: 'b', description: 'Defederation', category: 'navigation', action: () => setTab('policy') },
+      { id: 'tab-relays',     keys: 'r', description: 'Relays',     category: 'navigation', action: () => setTab('relays') },
+      { id: 'tab-metrics',    keys: 'd', description: 'Metrics',    category: 'navigation', action: () => setTab('metrics') },
+      { id: 'tab-keys',       keys: 'k', description: 'Actor keys', category: 'navigation', action: () => setTab('keys') },
     ],
     { lensId: 'federation' }
   );
@@ -147,16 +162,36 @@ export default function FederationPage() {
 
         {/* Tabs */}
         <nav className="flex gap-2 mt-5 mb-5 border-b border-white/10 pb-3 overflow-x-auto">
-          <TabButton current={tab} value="network" label="Network" onClick={() => setTab('network')} icon={<Globe   className="w-3.5 h-3.5" />} />
-          <TabButton current={tab} value="search"  label="Search"  onClick={() => setTab('search')}  icon={<Search  className="w-3.5 h-3.5" />} />
-          <TabButton current={tab} value="peers"   label="Peers"   onClick={() => setTab('peers')}   icon={<Users   className="w-3.5 h-3.5" />} />
-          <TabButton current={tab} value="sync"    label="Sync"    onClick={() => setTab('sync')}    icon={<Zap     className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="network"    label="Network"      onClick={() => setTab('network')}    icon={<Globe         className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="search"     label="Search"       onClick={() => setTab('search')}     icon={<Search        className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="peers"      label="Peers"        onClick={() => setTab('peers')}      icon={<Users         className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="policy"     label="Defederation" onClick={() => setTab('policy')}     icon={<ShieldX       className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="moderation" label="Moderation"   onClick={() => setTab('moderation')} icon={<Inbox         className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="sync"       label="Sync"         onClick={() => setTab('sync')}       icon={<Zap           className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="relays"     label="Relays"       onClick={() => setTab('relays')}     icon={<Radio         className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="metrics"    label="Metrics"      onClick={() => setTab('metrics')}    icon={<BarChart3     className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="keys"       label="Actor keys"   onClick={() => setTab('keys')}       icon={<KeyRound      className="w-3.5 h-3.5" />} />
         </nav>
 
-        {tab === 'network' && <NetworkTab />}
-        {tab === 'search'  && <SearchTab />}
-        {tab === 'peers'   && <PeersTab peers={peers} onChanged={refresh} />}
-        {tab === 'sync'    && <SyncTab onSynced={refresh} />}
+        {tab === 'network'    && <NetworkTab />}
+        {tab === 'search'     && <SearchTab />}
+        {tab === 'peers'      && <PeersTab peers={peers} onChanged={refresh} />}
+        {tab === 'sync'       && <SyncTab onSynced={refresh} />}
+        {tab === 'policy'     && <PeerPolicyPanel />}
+        {tab === 'moderation' && <ModerationQueuePanel />}
+        {tab === 'relays'     && (
+          <div className="space-y-4">
+            <RelayPanel />
+            <SyncPolicyPanel />
+          </div>
+        )}
+        {tab === 'metrics'    && (
+          <div className="space-y-4">
+            <MetricsDashboardPanel />
+            <TrustHistoryPanel />
+          </div>
+        )}
+        {tab === 'keys'       && <ActorKeysPanel />}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <FediverseFeed />
         </section>

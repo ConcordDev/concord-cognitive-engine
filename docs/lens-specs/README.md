@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~73%**
-- Total buildable features in the backlog (sum of all "Missing" items): **814**
+- Average feature parity: **~74%**
+- Total buildable features in the backlog (sum of all "Missing" items): **772**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 114 |
+| 80–100% (near-complete) | 120 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 55 |
+| 40–59% (partial) | 49 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -33,12 +33,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| dtus | knowledge-base browser (internal) | ~50% | 7 |
-| events | Eventbrite / Cvent | ~50% | 7 |
-| federation | Mastodon / ActivityPub admin | ~50% | 7 |
-| forge | v0.dev / Bolt.new | ~50% | 7 |
-| foundry | Roblox Studio / GameMaker | ~50% | 7 |
-| game | Habitica / gamification platforms | ~50% | 7 |
 | genesis | no direct rival (emergent-AI observatory) | ~50% | 6 |
 | global | Our World in Data / World Bank DataBank | ~50% | 7 |
 | kingdoms | Crusader Kings III | ~50% | 7 |
@@ -193,8 +187,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | deities | in-game pantheon system (no consumer rival) | ~88% | 0 |
 | docs | Notion / Confluence | ~88% | 0 |
 | dreams | in-game dream-record system (no consumer rival) | ~88% | 0 |
+| dtus | knowledge-base browser (internal) | ~88% | 0 |
 | ethics | Ethical OS / decision-ethics tooling | ~88% | 0 |
+| events | Eventbrite / Cvent | ~88% | 0 |
 | expert-mode | Perplexity | ~88% | 0 |
+| federation | Mastodon / ActivityPub admin | ~88% | 0 |
+| forge | v0.dev / Bolt.new | ~88% | 0 |
+| foundry | Roblox Studio / GameMaker | ~88% | 0 |
+| game | Habitica / gamification platforms | ~88% | 0 |
 | ghost-tracker | no direct rival (in-game mode) | ~88% | 0 |
 | grounding | Ground News / fact-check tools | ~88% | 0 |
 | home-improvement | Houzz / HomeZada | ~88% | 0 |

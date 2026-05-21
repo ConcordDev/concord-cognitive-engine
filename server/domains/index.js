@@ -211,6 +211,7 @@ import sentinelLens from './sentinel.js';
 import tournamentsLens from './tournaments.js';
 import meshLens from './mesh.js';
 import cognitiveReplay from './cognitive-replay.js';
+import forgeLens from './forge.js';
 import worldmodelLens from './worldmodel.js';
 import savedLens from './saved.js';
 import inheritance from './inheritance.js';
@@ -427,4 +428,5 @@ export default [
   worldmodelLens,
   meshLens,
   cognitiveReplay,
+  forgeLens,
 ];
