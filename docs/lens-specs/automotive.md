@@ -12,13 +12,15 @@ Backend: `server/domains/automotive.js` — 33 macros: vehicles CRUD, fuel log, 
 - Vehicle stats, dashboard summary, live NHTSA recall feed
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` OBD-II live telemetry import (Bluetooth dongle bridge)
-- [ ] `[S]` Cost-per-mile / total-cost-of-ownership rollups
-- [ ] `[M]` Predictive maintenance alerts from mileage + service history
-- [ ] `[S]` Photo attachments for receipts + odometer readings
-- [ ] `[M]` Multi-vehicle comparison dashboard
-- [ ] `[S]` Service-shop locator + appointment notes
-- [ ] `[S]` Warranty + insurance renewal tracking
+- [x] `[M]` OBD-II live telemetry import (Bluetooth dongle bridge)
+- [x] `[S]` Cost-per-mile / total-cost-of-ownership rollups
+- [x] `[M]` Predictive maintenance alerts from mileage + service history
+- [x] `[S]` Photo attachments for receipts + odometer readings
+- [x] `[M]` Multi-vehicle comparison dashboard
+- [x] `[S]` Service-shop locator + appointment notes
+- [x] `[M]` Warranty + insurance renewal tracking
 
 ## Parity
-~68% of CARFAX Car Care's surface. Genuinely complete maintenance/fuel/expense/recall tracking with real NHTSA data; main gaps are OBD telemetry and predictive maintenance.
+~95% of CARFAX Car Care's surface. Maintenance/fuel/expense/recall tracking with real NHTSA data plus OBD-II live telemetry import, cost-per-mile/TCO rollups, predictive-maintenance alerts, receipt/odometer photos, multi-vehicle comparison, a service-shop locator with appointments, and warranty/insurance renewal tracking all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

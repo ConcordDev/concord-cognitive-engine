@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Receipt, Loader2, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -27,9 +27,7 @@ export function BillsPanel() {
   const [filter, setFilter] = useState<'all' | 'open' | 'paid'>('open');
   const [draft, setDraft] = useState({ vendorId: '', total: '', expenseAccountId: '', memo: '', issuedAt: '', dueAt: '' });
 
-  useEffect(() => { refresh(); }, [filter]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const [b, v, a, ag] = await Promise.all([
@@ -47,7 +45,9 @@ export function BillsPanel() {
       });
     } catch (e) { console.error('[Bills] refresh failed', e); }
     finally { setLoading(false); }
-  }
+  }, [filter]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function create() {
     if (!draft.vendorId || !draft.total) return;

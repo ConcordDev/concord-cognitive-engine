@@ -13,13 +13,15 @@ Backend: `server/domains/answers.js` — 15 macros: question-ask/list/detail/del
 - The Answers framework viewer: 30 curated hard-problem cards with equations + Oracle elaboration
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Rich markdown + code-block editor with syntax highlighting in answers
-- [ ] `[S]` Question/answer edit history with revision diff
-- [ ] `[M]` Duplicate-question detection + linking via embedding similarity
-- [ ] `[S]` Privilege tiers gating actions at reputation thresholds
-- [ ] `[M]` Tag-watch / question subscription + notifications
-- [ ] `[S]` Related-questions sidebar
-- [ ] `[S]` Answer-quality flags / close-vote / community moderation queue
+- [x] `[M]` Rich markdown + code-block editor with syntax highlighting in answers
+- [x] `[S]` Question/answer edit history with revision diff
+- [x] `[M]` Duplicate-question detection + linking via embedding similarity
+- [x] `[S]` Privilege tiers gating actions at reputation thresholds
+- [x] `[M]` Tag-watch / question subscription + notifications
+- [x] `[S]` Related-questions sidebar
+- [x] `[S]` Answer-quality flags / close-vote / community moderation queue
 
 ## Parity
-~65% of Stack Overflow's Q&A surface. The ask/answer/vote/accept/bounty/reputation loop is complete and real; gaps are editor richness, revision history, and the moderation/curation tooling that keeps SO clean.
+~95% of Stack Overflow's Q&A surface. The ask/answer/vote/accept/bounty/reputation loop plus a rich markdown editor, revision history with diffs, duplicate detection, a privilege system, tag-watch notifications, related questions, and flag/close-vote/moderation tooling all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

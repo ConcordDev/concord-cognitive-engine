@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Loader2, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
@@ -20,16 +20,16 @@ export function CashFlowStatement() {
   const [start, setStart] = useState(today().slice(0, 4) + '-01-01');
   const [end, setEnd] = useState(today());
 
-  useEffect(() => { refresh(); }, [start, end]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const r = await lensRun({ domain: 'accounting', action: 'cashflow-compute', input: { start, end } });
       setCF((r.data?.result as CashFlow) || null);
     } catch (e) { console.error('[CashFlow] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [start, end]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   return (
     <div className="bg-[#0d1117] border border-emerald-500/15 rounded-lg overflow-hidden">

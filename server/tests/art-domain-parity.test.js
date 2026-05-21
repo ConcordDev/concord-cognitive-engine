@@ -291,3 +291,284 @@ describe("art — custom brush presets", () => {
     assert.ok(r.result.brushes.some((b) => b.name === "My Inker" && b.custom));
   });
 });
+
+// ─── Procreate / Krita parity backlog ───────────────────────────────
+
+describe("art — raster filters", () => {
+  it("applies a gaussian blur filter to a layer", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    const r = call("layer-apply-filter", ctxA, { artworkId: art.id, layerId: lid, kind: "gaussian-blur", amount: 12 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.filter.kind, "gaussian-blur");
+    assert.equal(r.result.filter.amount, 12);
+    assert.equal(r.result.filterCount, 1);
+  });
+
+  it("applies a liquify filter with a push vector", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    const r = call("layer-apply-filter", ctxA, { artworkId: art.id, layerId: lid, kind: "liquify", cx: 100, cy: 100, dx: 30, dy: -10, radius: 60 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.filter.dx, 30);
+    assert.equal(r.result.filter.radius, 60);
+  });
+
+  it("rejects an unknown filter kind and clears filters", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    assert.equal(call("layer-apply-filter", ctxA, { artworkId: art.id, layerId: lid, kind: "warp" }).ok, false);
+    call("layer-apply-filter", ctxA, { artworkId: art.id, layerId: lid, kind: "sharpen", amount: 2 });
+    const cleared = call("layer-clear-filters", ctxA, { artworkId: art.id, layerId: lid });
+    assert.equal(cleared.result.cleared, 1);
+  });
+});
+
+describe("art — pressure dynamics", () => {
+  it("sets and reads a dynamics profile", () => {
+    const art = newArtwork();
+    const set = call("dynamics-set", ctxA, { artworkId: art.id, pressureSize: true, pressureOpacity: true, sizeFloor: 0.1, smoothing: 0.5 });
+    assert.equal(set.result.dynamics.pressureSize, true);
+    const got = call("dynamics-get", ctxA, { artworkId: art.id });
+    assert.equal(got.result.dynamics.sizeFloor, 0.1);
+    assert.equal(got.result.dynamics.smoothing, 0.5);
+  });
+
+  it("commits a pressure stroke keeping per-point pressure triplets", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    const r = call("stroke-commit-pressure", ctxA, {
+      artworkId: art.id, layerId: lid,
+      stroke: { tool: "ink", color: "#223344", size: 10, points: [[10, 10, 0.2], [20, 20, 0.8], [30, 30, 1]] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.pointsKept, 3);
+    const saved = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes[0];
+    assert.equal(saved.pressure, true);
+    assert.equal(saved.points[0][2], 0.2);
+  });
+
+  it("rejects a pressure stroke with no points", () => {
+    const art = newArtwork();
+    const r = call("stroke-commit-pressure", ctxA, { artworkId: art.id, layerId: art.layers[0].id, stroke: { points: [] } });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("art — free-angle layer rotation", () => {
+  it("rotates a layer by an arbitrary angle about a pivot", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { tool: "ink", color: "#111111", size: 4, opacity: 1, points: [[400, 300]] } });
+    const r = call("layer-rotate", ctxA, { artworkId: art.id, layerId: lid, degrees: 90, pivotX: 400, pivotY: 300 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.degrees, 90);
+    // a point at the pivot stays at the pivot
+    const pt = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes[0].points[0];
+    assert.equal(pt[0], 400);
+    assert.equal(pt[1], 300);
+  });
+
+  it("carries cumulative rotation on a rect element", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { kind: "rect", color: "#00ff00", x: 50, y: 50, w: 100, h: 60 } });
+    call("layer-rotate", ctxA, { artworkId: art.id, layerId: lid, degrees: 45 });
+    const el = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes[0];
+    assert.equal(el.rotation, 45);
+  });
+});
+
+describe("art — selection refinement", () => {
+  it("lasso-selects elements inside a polygon", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    const inId = call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { tool: "ink", color: "#111", size: 4, opacity: 1, points: [[100, 100]] } }).result.strokeId;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { tool: "ink", color: "#111", size: 4, opacity: 1, points: [[700, 500]] } });
+    const r = call("selection-lasso", ctxA, { artworkId: art.id, layerId: lid, polygon: [[50, 50], [200, 50], [200, 200], [50, 200]] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.matched, 1);
+    assert.deepEqual(r.result.selection.ids, [inId]);
+  });
+
+  it("magic-wand selects elements by color tolerance", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { tool: "ink", color: "#ff0000", size: 4, opacity: 1, points: [[10, 10]] } });
+    call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { tool: "ink", color: "#0000ff", size: 4, opacity: 1, points: [[20, 20]] } });
+    const r = call("selection-magic-wand", ctxA, { artworkId: art.id, layerId: lid, targetColor: "#fe0202", tolerance: 10 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.matched, 1);
+  });
+
+  it("feathers and clears the active selection", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("selection-lasso", ctxA, { artworkId: art.id, layerId: lid, polygon: [[0, 0], [100, 0], [100, 100]] });
+    const f = call("selection-feather", ctxA, { artworkId: art.id, feather: 12 });
+    assert.equal(f.result.selection.feather, 12);
+    const c = call("selection-clear", ctxA, { artworkId: art.id });
+    assert.equal(c.result.cleared, true);
+  });
+
+  it("rejects a lasso with fewer than 3 points", () => {
+    const art = newArtwork();
+    const r = call("selection-lasso", ctxA, { artworkId: art.id, layerId: art.layers[0].id, polygon: [[0, 0], [10, 10]] });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("art — symmetry & perspective guides", () => {
+  it("sets a vertical symmetry guide and reads it back", () => {
+    const art = newArtwork();
+    const set = call("guides-set", ctxA, { artworkId: art.id, kind: "vertical" });
+    assert.equal(set.result.guides.kind, "vertical");
+    const got = call("guides-get", ctxA, { artworkId: art.id });
+    assert.equal(got.result.guides.kind, "vertical");
+    assert.ok(got.result.kinds.includes("radial"));
+  });
+
+  it("sets a 2-point perspective guide with vanishing points", () => {
+    const art = newArtwork();
+    const r = call("guides-set", ctxA, { artworkId: art.id, kind: "perspective-2pt", vp1x: 100, vp1y: 300, vp2x: 700, vp2y: 300 });
+    assert.equal(r.result.guides.vp1.x, 100);
+    assert.equal(r.result.guides.vp2.x, 700);
+  });
+
+  it("mirrors a stroke across a vertical symmetry guide", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("guides-set", ctxA, { artworkId: art.id, kind: "vertical", cx: 400 });
+    const sid = call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { tool: "ink", color: "#111", size: 4, opacity: 1, points: [[100, 100], [150, 200]] } }).result.strokeId;
+    const r = call("symmetry-mirror-stroke", ctxA, { artworkId: art.id, layerId: lid, strokeId: sid });
+    assert.equal(r.result.mirrored, 1);
+    const layer = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0];
+    assert.equal(layer.strokes.length, 2);
+    // mirror of x=100 about cx=400 is x=700
+    assert.equal(layer.strokes[1].points[0][0], 700);
+  });
+
+  it("radial guide mirrors into multiple sectors", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("guides-set", ctxA, { artworkId: art.id, kind: "radial", sectors: 6 });
+    const sid = call("stroke-commit", ctxA, { artworkId: art.id, layerId: lid, stroke: { tool: "ink", color: "#111", size: 4, opacity: 1, points: [[500, 400]] } }).result.strokeId;
+    const r = call("symmetry-mirror-stroke", ctxA, { artworkId: art.id, layerId: lid, strokeId: sid });
+    assert.equal(r.result.mirrored, 5);
+  });
+});
+
+describe("art — timelapse recording", () => {
+  it("records, scrubs and stops a timelapse", () => {
+    const art = newArtwork();
+    const start = call("timelapse-start", ctxA, { artworkId: art.id });
+    assert.equal(start.result.recording, true);
+    call("timelapse-frame", ctxA, { artworkId: art.id, snapshot: "data:image/png;base64,AAAA" });
+    call("timelapse-frame", ctxA, { artworkId: art.id, snapshot: "data:image/png;base64,BBBB" });
+    const got = call("timelapse-get", ctxA, { artworkId: art.id });
+    assert.equal(got.result.frameCount, 2);
+    const stop = call("timelapse-stop", ctxA, { artworkId: art.id });
+    assert.equal(stop.result.recording, false);
+    assert.equal(stop.result.frameCount, 2);
+  });
+
+  it("rejects a frame when not recording and clears frames", () => {
+    const art = newArtwork();
+    assert.equal(call("timelapse-frame", ctxA, { artworkId: art.id, snapshot: "data:image/png;base64,AAAA" }).ok, false);
+    call("timelapse-start", ctxA, { artworkId: art.id });
+    call("timelapse-frame", ctxA, { artworkId: art.id, snapshot: "data:image/png;base64,AAAA" });
+    const cleared = call("timelapse-clear", ctxA, { artworkId: art.id });
+    assert.equal(cleared.result.cleared, 1);
+  });
+});
+
+describe("art — gradient & pattern fills", () => {
+  it("commits a linear gradient with sorted color stops", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    const r = call("gradient-commit", ctxA, {
+      artworkId: art.id, layerId: lid, gradientKind: "linear",
+      stops: [{ color: "#ffffff", offset: 1 }, { color: "#000000", offset: 0 }],
+      x1: 0, y1: 0, x2: 800, y2: 0,
+    });
+    assert.equal(r.ok, true);
+    const el = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes[0];
+    assert.equal(el.kind, "gradient");
+    assert.equal(el.stops[0].offset, 0);
+    assert.equal(el.stops[0].color, "#000000");
+  });
+
+  it("rejects a gradient with fewer than 2 valid stops", () => {
+    const art = newArtwork();
+    const r = call("gradient-commit", ctxA, { artworkId: art.id, layerId: art.layers[0].id, stops: [{ color: "#fff", offset: 0 }] });
+    assert.equal(r.ok, false);
+  });
+
+  it("commits a pattern fill element", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    const r = call("pattern-fill-commit", ctxA, {
+      artworkId: art.id, layerId: lid, patternKind: "checker",
+      foreground: "#222222", background: "#eeeeee", scale: 24,
+    });
+    assert.equal(r.ok, true);
+    const el = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes[0];
+    assert.equal(el.kind, "pattern");
+    assert.equal(el.patternKind, "checker");
+    assert.equal(el.scale, 24);
+  });
+
+  it("pattern-kinds lists all available fill/filter/guide kinds", () => {
+    const r = call("pattern-kinds", ctxA, {});
+    assert.ok(r.result.patternKinds.includes("dots"));
+    assert.ok(r.result.gradientKinds.includes("radial"));
+    assert.ok(r.result.filterKinds.includes("liquify"));
+    assert.ok(r.result.guideKinds.includes("perspective-2pt"));
+  });
+
+  it("commits a radial gradient and a bounded pattern fill", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    const g = call("gradient-commit", ctxA, {
+      artworkId: art.id, layerId: lid, gradientKind: "radial",
+      stops: [{ color: "#ff0000", offset: 0 }, { color: "#0000ff", offset: 1 }],
+    });
+    assert.equal(g.ok, true);
+    const p = call("pattern-fill-commit", ctxA, {
+      artworkId: art.id, layerId: lid, patternKind: "crosshatch",
+      foreground: "#101010", scale: 8, x: 10, y: 10, w: 100, h: 80,
+    });
+    assert.equal(p.ok, true);
+    const el = call("artwork-get", ctxA, { id: art.id }).result.artwork.layers[0].strokes[1];
+    assert.equal(el.kind, "pattern");
+    assert.equal(el.w, 100);
+  });
+});
+
+describe("art — pro tools cross-cutting invariants", () => {
+  it("rejects pro-tool macros against an unknown artwork", () => {
+    assert.equal(call("layer-apply-filter", ctxA, { artworkId: "nope", layerId: "x", kind: "sharpen" }).ok, false);
+    assert.equal(call("layer-rotate", ctxA, { artworkId: "nope", layerId: "x", degrees: 30 }).ok, false);
+    assert.equal(call("guides-set", ctxA, { artworkId: "nope", kind: "vertical" }).ok, false);
+    assert.equal(call("timelapse-start", ctxA, { artworkId: "nope" }).ok, false);
+  });
+
+  it("blocks pro edits on a locked layer", () => {
+    const art = newArtwork();
+    const lid = art.layers[0].id;
+    call("layer-update", ctxA, { artworkId: art.id, layerId: lid, locked: true });
+    assert.equal(call("layer-apply-filter", ctxA, { artworkId: art.id, layerId: lid, kind: "sharpen" }).ok, false);
+    assert.equal(call("layer-rotate", ctxA, { artworkId: art.id, layerId: lid, degrees: 30 }).ok, false);
+    assert.equal(call("gradient-commit", ctxA, {
+      artworkId: art.id, layerId: lid,
+      stops: [{ color: "#000000", offset: 0 }, { color: "#ffffff", offset: 1 }],
+    }).ok, false);
+  });
+
+  it("isolates pro state per user", () => {
+    const artA = newArtwork(ctxA);
+    call("guides-set", ctxA, { artworkId: artA.id, kind: "radial", sectors: 6 });
+    // user B cannot see or mutate user A's artwork
+    assert.equal(call("guides-get", ctxB, { artworkId: artA.id }).ok, false);
+  });
+});

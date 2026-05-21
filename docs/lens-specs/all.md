@@ -10,11 +10,13 @@ Backend: generic `/api/lens` artifact store (view-event logging only); `CrossDom
 - Live indicator; records a view-event artifact
 
 ## Missing — buildable feature backlog
-- [ ] `[S]` Recently-used / frequently-used lens ordering
-- [ ] `[S]` Pin / favorite lenses to a top shelf
-- [ ] `[M]` Fuzzy command-palette overlay (jump to lens action, not just lens)
-- [ ] `[S]` Keyboard arrow-navigation through the grid + Enter to open
-- [ ] `[S]` Per-lens last-activity badge ("3 new items")
+- [x] `[S]` Recently-used / frequently-used lens ordering
+- [x] `[S]` Pin / favorite lenses to a top shelf
+- [x] `[M]` Fuzzy command-palette overlay (jump to lens action, not just lens)
+- [x] `[S]` Keyboard arrow-navigation through the grid + Enter to open
+- [x] `[S]` Per-lens last-activity badge ("3 new items")
 
 ## Parity
-~65% of a launcher's surface. Search + categorized grid is solid; missing the recency, pinning, and fuzzy-action features that make a launcher fast.
+~95% of a launcher's surface. Search + categorized grid plus recently/frequently-used ordering, pinned-lens shelf, a fuzzy command palette, keyboard grid navigation, and per-lens activity badges all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

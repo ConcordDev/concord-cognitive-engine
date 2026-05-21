@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
-import { api, lensRun } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 const SAMPLES = [
   'Show me overdue invoices',

@@ -383,3 +383,156 @@ describe("automotive — 2026 parity macros", () => {
     assert.equal(r.result.spend12moUsd, 500);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  CARFAX Car Care 2026 backlog — OBD telemetry, TCO rollups,
+//  predictive maintenance, photo attachments, multi-vehicle
+//  comparison, shop locator + appointments, warranty/insurance.
+// ═════════════════════════════════════════════════════════════════
+
+const ctxX = { actor: { userId: "auto_x" }, userId: "auto_x" };
+
+describe("automotive — backlog parity macros", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("obd-import stores only valid PID readings + obd-list snapshots latest", () => {
+    const v = call("vehicles-create", ctxX, { name: "EV", odometer: 1000 }).result.vehicle;
+    const imp = call("obd-import", ctxX, {
+      vehicleId: v.id,
+      dongle: "ELM327",
+      readings: [
+        { metric: "rpm", value: 820, unit: "rpm" },
+        { metric: "coolantTemp", value: 88, unit: "C" },
+        { metric: "bad", value: "NaN" },       // dropped
+      ],
+    });
+    assert.equal(imp.ok, true);
+    assert.equal(imp.result.imported, 2);
+    const list = call("obd-list", ctxX, { vehicleId: v.id });
+    assert.equal(list.result.count, 2);
+    assert.equal(list.result.latest.rpm.value, 820);
+    assert.equal(list.result.latest.coolantTemp.value, 88);
+  });
+
+  it("obd-import rejects unknown vehicle + empty readings", () => {
+    assert.equal(call("obd-import", ctxX, { vehicleId: "nope", readings: [{ metric: "rpm", value: 1 }] }).ok, false);
+    const v = call("vehicles-create", ctxX, { name: "Car" }).result.vehicle;
+    assert.equal(call("obd-import", ctxX, { vehicleId: v.id, readings: [] }).ok, false);
+  });
+
+  it("cost-of-ownership rolls expenses + depreciation into cost per mile", () => {
+    const v = call("vehicles-create", ctxX, { name: "Daily", odometer: 0 }).result.vehicle;
+    call("fuel-log", ctxX, { vehicleId: v.id, volume: 10, totalCost: 40, odometer: 0 });
+    call("fuel-log", ctxX, { vehicleId: v.id, volume: 10, totalCost: 40, odometer: 1000 });
+    call("service-log", ctxX, { vehicleId: v.id, serviceType: "Oil change", cost: 60, odometer: 1000 });
+    const r = call("cost-of-ownership", ctxX, { vehicleId: v.id, purchasePrice: 20000, salvageValue: 12000 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.milesTracked, 1000);
+    assert.equal(r.result.depreciation, 8000);
+    // operating: 40 + 40 + 60 = 140; TCO = 140 + 8000 = 8140
+    assert.equal(r.result.operatingCost, 140);
+    assert.equal(r.result.totalCostOfOwnership, 8140);
+    assert.equal(r.result.costPerMile, 8.14);
+  });
+
+  it("predictive-maintenance forecasts a due date from mileage rate", () => {
+    const v = call("vehicles-create", ctxX, { name: "Commuter", odometer: 8000 }).result.vehicle;
+    const d0 = new Date(Date.now() - 100 * 86_400_000).toISOString().slice(0, 10);
+    const d1 = new Date(Date.now() - 0 * 86_400_000).toISOString().slice(0, 10);
+    call("fuel-log", ctxX, { vehicleId: v.id, volume: 10, totalCost: 40, odometer: 6000, date: d0 });
+    call("fuel-log", ctxX, { vehicleId: v.id, volume: 10, totalCost: 40, odometer: 8000, date: d1 });
+    call("schedule-create", ctxX, { vehicleId: v.id, serviceType: "Oil change", intervalMiles: 5000, lastDoneOdometer: 5000 });
+    const r = call("predictive-maintenance", ctxX, { vehicleId: v.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.alerts.length, 1);
+    const alert = r.result.alerts[0];
+    assert.equal(alert.serviceType, "Oil change");
+    // due at 10000, 2000 mi remaining; rate 2000mi/100d = 20mi/day
+    assert.equal(alert.milesRemaining, 2000);
+    assert.equal(alert.milesPerDay, 20);
+    assert.ok(alert.daysUntilDue !== null);
+    assert.ok(alert.predictedDate !== null);
+  });
+
+  it("attachments-add stores a photo ref + bumps odometer", () => {
+    const v = call("vehicles-create", ctxX, { name: "Car", odometer: 1000 }).result.vehicle;
+    const r = call("attachments-add", ctxX, {
+      vehicleId: v.id, kind: "odometer", dataUri: "data:image/png;base64,AAAA",
+      caption: "dash photo", odometerReading: 1500,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.attachment.kind, "odometer");
+    assert.equal(call("attachments-list", ctxX, { vehicleId: v.id }).result.count, 1);
+    assert.equal(call("vehicles-list", ctxX).result.vehicles[0].odometer, 1500);
+  });
+
+  it("attachments-add rejects missing url + unknown vehicle", () => {
+    const v = call("vehicles-create", ctxX, { name: "Car" }).result.vehicle;
+    assert.equal(call("attachments-add", ctxX, { vehicleId: v.id }).ok, false);
+    assert.equal(call("attachments-add", ctxX, { vehicleId: "nope", url: "x" }).ok, false);
+  });
+
+  it("compare-vehicles ranks fleet by MPG + cost per mile", () => {
+    const a = call("vehicles-create", ctxX, { name: "Sipper", odometer: 0 }).result.vehicle;
+    const b = call("vehicles-create", ctxX, { name: "Guzzler", odometer: 0 }).result.vehicle;
+    call("fuel-log", ctxX, { vehicleId: a.id, volume: 10, totalCost: 30, odometer: 0 });
+    call("fuel-log", ctxX, { vehicleId: a.id, volume: 10, totalCost: 30, odometer: 400 }); // 40 mpg
+    call("fuel-log", ctxX, { vehicleId: b.id, volume: 10, totalCost: 40, odometer: 0 });
+    call("fuel-log", ctxX, { vehicleId: b.id, volume: 10, totalCost: 40, odometer: 150 }); // 15 mpg
+    const r = call("compare-vehicles", ctxX, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.vehicleCount, 2);
+    assert.equal(r.result.highlights.bestMpg, "Sipper");
+  });
+
+  it("shops-create + appointments-create link a shop to a booking", () => {
+    const v = call("vehicles-create", ctxX, { name: "Car" }).result.vehicle;
+    const shop = call("shops-create", ctxX, { name: "Main St Auto", laborRate: 110, rating: 4 });
+    assert.equal(shop.ok, true);
+    assert.equal(call("shops-list", ctxX).result.shops.length, 1);
+    const appt = call("appointments-create", ctxX, {
+      vehicleId: v.id, shopId: shop.result.shop.id, date: "2099-01-01",
+      serviceType: "Brake job", estimatedCost: 400,
+    });
+    assert.equal(appt.ok, true);
+    const list = call("appointments-list", ctxX, { vehicleId: v.id });
+    assert.equal(list.result.appointments[0].shopName, "Main St Auto");
+    assert.equal(list.result.upcomingCount, 1);
+  });
+
+  it("appointments-create rejects missing date + unknown shop", () => {
+    const v = call("vehicles-create", ctxX, { name: "Car" }).result.vehicle;
+    assert.equal(call("appointments-create", ctxX, { vehicleId: v.id }).ok, false);
+    assert.equal(call("appointments-create", ctxX, { vehicleId: v.id, date: "2099-01-01", shopId: "nope" }).ok, false);
+  });
+
+  it("renewals-create flags expired + due-soon by date and mileage", () => {
+    const v = call("vehicles-create", ctxX, { name: "Car", odometer: 59000 }).result.vehicle;
+    const past = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
+    const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    call("renewals-create", ctxX, { vehicleId: v.id, kind: "registration", renewalDate: past });
+    call("renewals-create", ctxX, { vehicleId: v.id, kind: "insurance", renewalDate: soon, reminderDays: 30 });
+    call("renewals-create", ctxX, { vehicleId: v.id, kind: "warranty", renewalDate: "2099-01-01", coverageLimitMiles: 60000 });
+    const r = call("renewals-list", ctxX, { vehicleId: v.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.expiredCount, 1);
+    assert.equal(r.result.dueSoonCount, 2); // insurance by date + warranty by 1000-mi window
+    const warranty = r.result.renewals.find(x => x.kind === "warranty");
+    assert.equal(warranty.milesRemaining, 1000);
+  });
+
+  it("renewals-upcoming surfaces only renewals inside the window", () => {
+    const v = call("vehicles-create", ctxX, { name: "Car" }).result.vehicle;
+    const far = new Date(Date.now() + 300 * 86_400_000).toISOString().slice(0, 10);
+    const near = new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10);
+    call("renewals-create", ctxX, { vehicleId: v.id, kind: "lease", renewalDate: far, reminderDays: 5 });
+    call("renewals-create", ctxX, { vehicleId: v.id, kind: "insurance", renewalDate: near, reminderDays: 5 });
+    const r = call("renewals-upcoming", ctxX, { withinDays: 60 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 1);
+    assert.equal(r.result.renewals[0].kind, "insurance");
+  });
+});

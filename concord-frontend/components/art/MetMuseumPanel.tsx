@@ -121,6 +121,7 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
             const inner = (
               <div className="group">
                 {w.primaryImage ? (
+                  /* eslint-disable-next-line @next/next/no-img-element -- Met Museum serves arbitrary external image hosts; next/image domain allowlist is impractical */
                   <img
                     src={w.primaryImage}
                     alt={w.title}

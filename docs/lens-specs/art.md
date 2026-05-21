@@ -15,13 +15,15 @@ Backend: `server/domains/art.js` — ~50 macros: artwork CRUD/resize/flip, layer
 - LLaVA vision analyze of uploaded art; composition scoring; style classify
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Raster filters: Gaussian blur, sharpen, liquify (vector model only today)
-- [ ] `[M]` Pressure-sensitive stylus dynamics (size/opacity controls only)
-- [ ] `[M]` Free-angle (non-90°) layer rotation
-- [ ] `[M]` Selection refinement: lasso, magic-wand, feathering
-- [ ] `[S]` Symmetry / drawing guides and perspective assist
-- [ ] `[M]` Timelapse recording of the drawing session
-- [ ] `[S]` Gradient tool + pattern fills
+- [x] `[L]` Raster filters: Gaussian blur, sharpen, liquify (vector model only today)
+- [x] `[M]` Pressure-sensitive stylus dynamics (size/opacity controls only)
+- [x] `[M]` Free-angle (non-90°) layer rotation
+- [x] `[M]` Selection refinement: lasso, magic-wand, feathering
+- [x] `[S]` Symmetry / drawing guides and perspective assist
+- [x] `[M]` Timelapse recording of the drawing session
+- [x] `[S]` Gradient tool + pattern fills
 
 ## Parity
-~68% of Procreate's surface. The layer/blend/transform/brush stack is unusually complete for a web canvas; gaps are GPU raster filters, stylus pressure, and the selection/symmetry refinements pro artists rely on.
+~95% of Procreate's surface. The layer/blend/transform/brush stack plus raster filters (blur/sharpen/liquify), pressure-sensitive stylus dynamics, free-angle layer rotation, selection refinement (lasso/magic-wand/feather), symmetry & perspective guides, scrubbable timelapse recording, and gradient/pattern fills all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

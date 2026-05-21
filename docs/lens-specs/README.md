@@ -12,13 +12,13 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~87%**
-- Total buildable features in the backlog (sum of all "Missing" items): **215**
+- Average feature parity: **~88%**
+- Total buildable features in the backlog (sum of all "Missing" items): **174**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 205 |
-| 60–79% (strong) | 30 |
+| 80–100% (near-complete) | 211 |
+| 60–79% (strong) | 24 |
 | 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
@@ -26,8 +26,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| all | App Launcher / Command Palette | ~65% | 5 |
-| answers | Stack Overflow | ~65% | 7 |
 | fashion | Whering / Stylebook | ~65% | 7 |
 | fitness | Strava / Garmin Connect | ~65% | 7 |
 | government | civic portals (Accela / USA.gov) | ~65% | 7 |
@@ -37,10 +35,7 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | realestate | Zillow | ~65% | 7 |
 | whiteboard | Miro / FigJam | ~65% | 7 |
 | world | a 3D open-world game (Roblox / Genshin Impact) | ~65% | 8 |
-| art | Procreate / Krita | ~68% | 7 |
-| automotive | CARFAX Car Care / Drivvo | ~68% | 7 |
 | chat | ChatGPT | ~68% | 7 |
-| agriculture | Climate FieldView | ~70% | 7 |
 | crypto | Coinbase | ~70% | 7 |
 | education | Khan Academy / Coursera | ~70% | 6 |
 | feed | X (Twitter) / Threads | ~70% | 7 |
@@ -55,7 +50,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | cooking | Paprika / Samsung Food | ~75% | 7 |
 | food | Paprika / Yelp / MyFitnessPal | ~75% | 7 |
 | retail | Shopify | ~75% | 7 |
-| accounting | QuickBooks Online | ~78% | 8 |
 | projects | Linear / Asana | ~80% | 7 |
 | anon | Signal | ~85% | 0 |
 | app-maker | Bubble / Glide | ~85% | 0 |
@@ -202,10 +196,16 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | veterinary | ezyVet / Provet Cloud | ~90% | 0 |
 | welding | Jobber / contractor field-service (welding trade) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |
+| accounting | QuickBooks Online | ~95% | 0 |
+| agriculture | Climate FieldView | ~95% | 0 |
+| all | App Launcher / Command Palette | ~95% | 0 |
 | analytics | Mixpanel / Amplitude | ~95% | 0 |
 | animation | FlipaClip / Pencil2D | ~95% | 0 |
+| answers | Stack Overflow | ~95% | 0 |
+| art | Procreate / Krita | ~95% | 0 |
 | astronomy | SkySafari / Stellarium | ~95% | 0 |
 | atlas | Google Maps | ~95% | 0 |
+| automotive | CARFAX Car Care / Drivvo | ~95% | 0 |
 | aviation | ForeFlight | ~95% | 0 |
 | black-market | (in-game grey-market stall) | ~95% | 0 |
 | board | Trello | ~95% | 0 |

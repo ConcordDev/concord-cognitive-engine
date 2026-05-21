@@ -17,6 +17,9 @@ export default function registerAnswersActions(registerLensAction) {
     if (!(s.questions instanceof Map)) s.questions = new Map();   // userId -> Array<question>
     if (!(s.reputation instanceof Map)) s.reputation = new Map(); // userId -> number
     if (!(s.voteLog instanceof Map)) s.voteLog = new Map();       // userId -> Set("type:id")
+    if (!(s.notifications instanceof Map)) s.notifications = new Map(); // userId -> Array<notification>
+    if (!(s.watchedTags instanceof Map)) s.watchedTags = new Map();    // userId -> Set(tag)
+    if (!(s.subscriptions instanceof Map)) s.subscriptions = new Map(); // userId -> Set(questionId)
     return s;
   }
   function save() {
@@ -39,6 +42,81 @@ export default function registerAnswersActions(registerLensAction) {
     return [...new Set(arr.map((t) => clean(t, 35).toLowerCase().replace(/[^a-z0-9.+#-]/g, "")).filter(Boolean))].slice(0, 5);
   }
 
+  // ── Privilege tiers (Stack Overflow-style reputation gates) ──────────
+  const PRIVILEGES = [
+    { id: "ask", label: "Ask & answer", threshold: 0 },
+    { id: "comment", label: "Comment anywhere", threshold: 15 },
+    { id: "flag", label: "Flag posts", threshold: 25 },
+    { id: "vote_up", label: "Vote up", threshold: 50 },
+    { id: "vote_down", label: "Vote down", threshold: 125 },
+    { id: "edit", label: "Edit any post", threshold: 300 },
+    { id: "close_vote", label: "Cast close votes", threshold: 500 },
+    { id: "bounty", label: "Start bounties", threshold: 75 },
+    { id: "moderate", label: "Access moderation queue", threshold: 1000 },
+  ];
+  function hasPrivilege(s, userId, privId) {
+    const p = PRIVILEGES.find((x) => x.id === privId);
+    if (!p) return true;
+    return rep(s, userId) >= p.threshold;
+  }
+
+  // ── Lightweight bag-of-words similarity (no external embeddings) ────
+  const STOPWORDS = new Set("the a an and or but is are was how do does did i you we to of in on for with my it this that not".split(" "));
+  function tokenize(text) {
+    return String(text || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/)
+      .filter((w) => w.length > 2 && !STOPWORDS.has(w));
+  }
+  function termVector(tokens) {
+    const v = new Map();
+    for (const t of tokens) v.set(t, (v.get(t) || 0) + 1);
+    return v;
+  }
+  function cosineSim(a, b) {
+    let dot = 0, na = 0, nb = 0;
+    for (const [, w] of a) na += w * w;
+    for (const [, w] of b) nb += w * w;
+    for (const [t, w] of a) { const wb = b.get(t); if (wb) dot += w * wb; }
+    if (na === 0 || nb === 0) return 0;
+    return dot / (Math.sqrt(na) * Math.sqrt(nb));
+  }
+  function questionVector(q) {
+    return termVector([...tokenize(q.title), ...tokenize(q.title), ...tokenize(q.body), ...q.tags]);
+  }
+
+  function pushNotification(s, userId, n) {
+    if (!s.notifications.has(userId)) s.notifications.set(userId, []);
+    const arr = s.notifications.get(userId);
+    arr.unshift({ id: aId("n"), read: false, createdAt: aNow(), ...n });
+    if (arr.length > 100) arr.length = 100;
+  }
+  // ── Word-level revision diff ────────────────────────────────────────
+  function diffWords(oldText, newText) {
+    const o = String(oldText || "").split(/(\s+)/);
+    const n = String(newText || "").split(/(\s+)/);
+    const m = o.length, k = n.length;
+    const lcs = Array.from({ length: m + 1 }, () => new Int32Array(k + 1));
+    for (let i = m - 1; i >= 0; i--)
+      for (let j = k - 1; j >= 0; j--)
+        lcs[i][j] = o[i] === n[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    const ops = [];
+    let i = 0, j = 0;
+    while (i < m && j < k) {
+      if (o[i] === n[j]) { ops.push({ t: "eq", v: o[i] }); i++; j++; }
+      else if (lcs[i + 1][j] >= lcs[i][j + 1]) { ops.push({ t: "del", v: o[i] }); i++; }
+      else { ops.push({ t: "add", v: n[j] }); j++; }
+    }
+    while (i < m) ops.push({ t: "del", v: o[i++] });
+    while (j < k) ops.push({ t: "add", v: n[j++] });
+    return ops;
+  }
+  function recordRevision(target, field, oldValue, editorId) {
+    if (!Array.isArray(target.revisions)) target.revisions = [];
+    target.revisions.push({
+      id: aId("rev"), field, previous: oldValue, editorId, editedAt: aNow(),
+    });
+    if (target.revisions.length > 50) target.revisions.shift();
+  }
+
   // ── Questions ──────────────────────────────────────────────────────
   registerLensAction("answers", "question-ask", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -50,6 +128,7 @@ export default function registerAnswersActions(registerLensAction) {
       id: aId("q"),
       title,
       body,
+      bodyFormat: params.bodyFormat === "markdown" ? "markdown" : "plain",
       tags: parseTags(params.tags),
       authorId: actor(ctx),
       answers: [],
@@ -59,10 +138,23 @@ export default function registerAnswersActions(registerLensAction) {
       acceptedAnswerId: null,
       bounty: 0,
       closed: false,
+      closeReason: null,
+      closeVotes: [],
+      flags: [],
+      duplicateOf: null,
+      revisions: [],
       createdAt: aNow(),
       updatedAt: aNow(),
     };
     list(s, actor(ctx)).push(q);
+    // Notify watchers of any of this question's tags.
+    const me = actor(ctx);
+    for (const [uid, set] of s.watchedTags) {
+      if (uid === me) continue;
+      if (q.tags.some((t) => set.has(t))) {
+        pushNotification(s, uid, { kind: "tag-watch", questionId: q.id, title: q.title, message: `New question in a tag you watch: "${q.title}"` });
+      }
+    }
     save();
     return { ok: true, result: { question: q } };
   });
@@ -127,14 +219,28 @@ export default function registerAnswersActions(registerLensAction) {
     const ans = {
       id: aId("a"),
       body,
+      bodyFormat: params.bodyFormat === "markdown" ? "markdown" : "plain",
       authorId: actor(ctx),
       votes: 0,
       accepted: false,
       comments: [],
+      flags: [],
+      revisions: [],
       createdAt: aNow(),
     };
     q.answers.push(ans);
     q.updatedAt = aNow();
+    // Notify the question author + subscribers (other than the answerer).
+    const me = actor(ctx);
+    if (q.authorId !== me) {
+      pushNotification(s, q.authorId, { kind: "answer", questionId: q.id, title: q.title, message: `New answer to your question: "${q.title}"` });
+    }
+    for (const [uid, set] of s.subscriptions) {
+      if (uid === me || uid === q.authorId) continue;
+      if (set.has(q.id)) {
+        pushNotification(s, uid, { kind: "subscription", questionId: q.id, title: q.title, message: `New answer on a question you follow: "${q.title}"` });
+      }
+    }
     save();
     return { ok: true, result: { answer: ans, answerCount: q.answers.length } };
   });
@@ -356,5 +462,369 @@ export default function registerAnswersActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `stack exchange unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // ── Edit history + revision diff ────────────────────────────────────
+  registerLensAction("answers", "question-edit", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const q = list(s, userId).find((x) => x.id === params.id);
+    if (!q) return { ok: false, error: "question not found" };
+    if (q.authorId !== userId && !hasPrivilege(s, userId, "edit")) {
+      return { ok: false, error: "need 300 reputation to edit another author's post" };
+    }
+    let changed = false;
+    if (params.title != null) {
+      const title = clean(params.title, 200);
+      if (title.length < 8) return { ok: false, error: "title must be at least 8 characters" };
+      if (title !== q.title) { recordRevision(q, "title", q.title, userId); q.title = title; changed = true; }
+    }
+    if (params.body != null) {
+      const body = clean(params.body, 8000);
+      if (body.length < 15) return { ok: false, error: "body must be at least 15 characters" };
+      if (body !== q.body) { recordRevision(q, "body", q.body, userId); q.body = body; changed = true; }
+    }
+    if (params.tags != null) {
+      const tags = parseTags(params.tags);
+      if (JSON.stringify(tags) !== JSON.stringify(q.tags)) {
+        recordRevision(q, "tags", q.tags.join(", "), userId); q.tags = tags; changed = true;
+      }
+    }
+    if (params.bodyFormat === "markdown" || params.bodyFormat === "plain") q.bodyFormat = params.bodyFormat;
+    if (!changed) return { ok: false, error: "no changes to apply" };
+    q.updatedAt = aNow();
+    save();
+    return { ok: true, result: { question: q, revisionCount: q.revisions.length } };
+  });
+
+  registerLensAction("answers", "answer-edit", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const q = list(s, userId).find((x) => x.id === params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    const ans = q.answers.find((x) => x.id === params.answerId);
+    if (!ans) return { ok: false, error: "answer not found" };
+    if (ans.authorId !== userId && !hasPrivilege(s, userId, "edit")) {
+      return { ok: false, error: "need 300 reputation to edit another author's post" };
+    }
+    const body = clean(params.body, 8000);
+    if (body.length < 15) return { ok: false, error: "answer must be at least 15 characters" };
+    if (body === ans.body) return { ok: false, error: "no changes to apply" };
+    recordRevision(ans, "body", ans.body, userId);
+    ans.body = body;
+    if (params.bodyFormat === "markdown" || params.bodyFormat === "plain") ans.bodyFormat = params.bodyFormat;
+    q.updatedAt = aNow();
+    save();
+    return { ok: true, result: { answer: ans, revisionCount: ans.revisions.length } };
+  });
+
+  registerLensAction("answers", "revisions", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const q = list(s, actor(ctx)).find((x) => x.id === params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    let target = q;
+    let currentBody = q.body;
+    if (params.answerId) {
+      target = q.answers.find((x) => x.id === params.answerId);
+      if (!target) return { ok: false, error: "answer not found" };
+      currentBody = target.body;
+    }
+    const revs = [...(target.revisions || [])];
+    // Build a diff for each body revision against the value that superseded it.
+    let nextBody = currentBody;
+    const enriched = [];
+    for (let i = revs.length - 1; i >= 0; i--) {
+      const r = revs[i];
+      const entry = { ...r };
+      if (r.field === "body") {
+        entry.diff = diffWords(r.previous, nextBody);
+        nextBody = r.previous;
+      }
+      enriched.unshift(entry);
+    }
+    return { ok: true, result: { revisions: enriched, count: enriched.length, currentBody } };
+  });
+
+  // ── Duplicate-question detection + linking ──────────────────────────
+  registerLensAction("answers", "find-duplicates", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const qs = list(s, actor(ctx));
+    let probeVec, excludeId = null;
+    if (params.questionId) {
+      const q = qs.find((x) => x.id === params.questionId);
+      if (!q) return { ok: false, error: "question not found" };
+      probeVec = questionVector(q);
+      excludeId = q.id;
+    } else {
+      const title = clean(params.title, 200);
+      const body = clean(params.body, 8000);
+      if (title.length < 4) return { ok: false, error: "title or questionId required" };
+      probeVec = termVector([...tokenize(title), ...tokenize(title), ...tokenize(body)]);
+    }
+    const threshold = Math.max(0.1, Math.min(0.95, num(params.threshold, 0.3)));
+    const matches = qs
+      .filter((q) => q.id !== excludeId)
+      .map((q) => ({ q, similarity: cosineSim(probeVec, questionVector(q)) }))
+      .filter((m) => m.similarity >= threshold)
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 8)
+      .map((m) => ({
+        id: m.q.id, title: m.q.title, tags: m.q.tags, votes: m.q.votes,
+        answerCount: m.q.answers.length, hasAccepted: !!m.q.acceptedAnswerId,
+        similarity: Math.round(m.similarity * 1000) / 1000,
+      }));
+    return { ok: true, result: { matches, count: matches.length, threshold } };
+  });
+
+  registerLensAction("answers", "link-duplicate", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const qs = list(s, actor(ctx));
+    const q = qs.find((x) => x.id === params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    if (params.duplicateOf === null || params.duplicateOf === "") {
+      q.duplicateOf = null;
+      q.updatedAt = aNow();
+      save();
+      return { ok: true, result: { questionId: q.id, duplicateOf: null } };
+    }
+    const target = qs.find((x) => x.id === params.duplicateOf);
+    if (!target) return { ok: false, error: "target question not found" };
+    if (target.id === q.id) return { ok: false, error: "a question cannot duplicate itself" };
+    q.duplicateOf = { id: target.id, title: target.title };
+    q.updatedAt = aNow();
+    save();
+    return { ok: true, result: { questionId: q.id, duplicateOf: q.duplicateOf } };
+  });
+
+  // ── Privilege tiers ─────────────────────────────────────────────────
+  registerLensAction("answers", "privileges", (ctx, _a, _params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const reputation = rep(s, userId);
+    const tiers = PRIVILEGES.map((p) => ({
+      ...p, unlocked: reputation >= p.threshold,
+      remaining: Math.max(0, p.threshold - reputation),
+    })).sort((a, b) => a.threshold - b.threshold);
+    const next = tiers.find((t) => !t.unlocked) || null;
+    return { ok: true, result: { reputation, tiers, nextUnlock: next, unlockedCount: tiers.filter((t) => t.unlocked).length } };
+  });
+
+  // ── Tag-watch / question subscription / notifications ───────────────
+  registerLensAction("answers", "tag-watch", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    if (!s.watchedTags.has(userId)) s.watchedTags.set(userId, new Set());
+    const set = s.watchedTags.get(userId);
+    if (params.tag != null) {
+      const tag = clean(params.tag, 35).toLowerCase().replace(/[^a-z0-9.+#-]/g, "");
+      if (!tag) return { ok: false, error: "tag required" };
+      if (set.has(tag)) set.delete(tag); else set.add(tag);
+    }
+    save();
+    return { ok: true, result: { watchedTags: [...set].sort() } };
+  });
+
+  registerLensAction("answers", "question-subscribe", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const q = list(s, userId).find((x) => x.id === params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    if (!s.subscriptions.has(userId)) s.subscriptions.set(userId, new Set());
+    const set = s.subscriptions.get(userId);
+    let subscribed;
+    if (set.has(q.id)) { set.delete(q.id); subscribed = false; }
+    else { set.add(q.id); subscribed = true; }
+    save();
+    return { ok: true, result: { questionId: q.id, subscribed } };
+  });
+
+  registerLensAction("answers", "notifications", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const all = s.notifications.get(userId) || [];
+    const items = params.unreadOnly ? all.filter((n) => !n.read) : all;
+    return { ok: true, result: { notifications: items, count: items.length, unread: all.filter((n) => !n.read).length } };
+  });
+
+  registerLensAction("answers", "notifications-mark", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const all = s.notifications.get(userId) || [];
+    if (params.id) {
+      const n = all.find((x) => x.id === params.id);
+      if (n) n.read = true;
+    } else if (params.clear) {
+      s.notifications.set(userId, []);
+    } else {
+      for (const n of all) n.read = true;
+    }
+    save();
+    const remaining = s.notifications.get(userId) || [];
+    return { ok: true, result: { unread: remaining.filter((n) => !n.read).length, count: remaining.length } };
+  });
+
+  // ── Related questions sidebar ───────────────────────────────────────
+  registerLensAction("answers", "related", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const qs = list(s, actor(ctx));
+    const q = qs.find((x) => x.id === params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    const probeVec = questionVector(q);
+    const tagSet = new Set(q.tags);
+    const related = qs
+      .filter((x) => x.id !== q.id)
+      .map((x) => {
+        const sharedTags = x.tags.filter((t) => tagSet.has(t)).length;
+        const sim = cosineSim(probeVec, questionVector(x));
+        return { x, score: sim + sharedTags * 0.15, sharedTags };
+      })
+      .filter((r) => r.score > 0.05)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map((r) => ({
+        id: r.x.id, title: r.x.title, votes: r.x.votes, answerCount: r.x.answers.length,
+        hasAccepted: !!r.x.acceptedAnswerId, sharedTags: r.sharedTags,
+        relevance: Math.round(r.score * 1000) / 1000,
+      }));
+    return { ok: true, result: { related, count: related.length } };
+  });
+
+  // ── Flags / close-votes / moderation queue ──────────────────────────
+  const FLAG_REASONS = ["spam", "rude or abusive", "low quality", "not an answer", "needs improvement"];
+  const CLOSE_REASONS = ["duplicate", "needs detail or clarity", "opinion-based", "off-topic", "too broad"];
+  const CLOSE_VOTE_THRESHOLD = 3;
+
+  registerLensAction("answers", "flag", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    if (!hasPrivilege(s, userId, "flag")) return { ok: false, error: "need 25 reputation to flag posts" };
+    const q = list(s, userId).find((x) => x.id === params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    const reason = FLAG_REASONS.includes(params.reason) ? params.reason : FLAG_REASONS[0];
+    let target = q, targetType = "question";
+    if (params.answerId) {
+      target = q.answers.find((x) => x.id === params.answerId);
+      if (!target) return { ok: false, error: "answer not found" };
+      targetType = "answer";
+    }
+    if (!Array.isArray(target.flags)) target.flags = [];
+    if (target.flags.some((f) => f.flaggedBy === userId && f.status === "pending")) {
+      return { ok: false, error: "you already have a pending flag on this post" };
+    }
+    const flag = {
+      id: aId("flag"), reason, note: clean(params.note, 280), flaggedBy: userId,
+      targetType, status: "pending", createdAt: aNow(),
+    };
+    target.flags.push(flag);
+    q.updatedAt = aNow();
+    save();
+    return { ok: true, result: { flag, flagReasons: FLAG_REASONS } };
+  });
+
+  registerLensAction("answers", "close-vote", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    if (!hasPrivilege(s, userId, "close_vote")) return { ok: false, error: "need 500 reputation to cast close votes" };
+    const q = list(s, userId).find((x) => x.id === params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    if (q.closed) return { ok: false, error: "question is already closed" };
+    const reason = CLOSE_REASONS.includes(params.reason) ? params.reason : CLOSE_REASONS[0];
+    if (!Array.isArray(q.closeVotes)) q.closeVotes = [];
+    const existing = q.closeVotes.findIndex((v) => v.voterId === userId);
+    if (existing >= 0) {
+      q.closeVotes.splice(existing, 1); // toggle off
+    } else {
+      q.closeVotes.push({ voterId: userId, reason, votedAt: aNow() });
+    }
+    let closed = false;
+    if (q.closeVotes.length >= CLOSE_VOTE_THRESHOLD) {
+      q.closed = true;
+      q.closeReason = q.closeVotes[0].reason;
+      closed = true;
+    }
+    q.updatedAt = aNow();
+    save();
+    return {
+      ok: true,
+      result: {
+        questionId: q.id, closeVotes: q.closeVotes.length, threshold: CLOSE_VOTE_THRESHOLD,
+        closed, closeReason: q.closeReason, closeReasons: CLOSE_REASONS,
+      },
+    };
+  });
+
+  registerLensAction("answers", "reopen", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const q = list(s, userId).find((x) => x.id === params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    if (q.authorId !== userId && !hasPrivilege(s, userId, "close_vote")) {
+      return { ok: false, error: "need 500 reputation to reopen another author's question" };
+    }
+    q.closed = false;
+    q.closeReason = null;
+    q.closeVotes = [];
+    q.updatedAt = aNow();
+    save();
+    return { ok: true, result: { questionId: q.id, closed: false } };
+  });
+
+  registerLensAction("answers", "mod-queue", (ctx, _a, _params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    if (!hasPrivilege(s, userId, "moderate")) return { ok: false, error: "need 1000 reputation to access the moderation queue" };
+    const items = [];
+    for (const q of list(s, userId)) {
+      for (const f of (q.flags || [])) {
+        if (f.status === "pending") {
+          items.push({ ...f, questionId: q.id, questionTitle: q.title, answerId: null, excerpt: q.body.slice(0, 140) });
+        }
+      }
+      for (const a of q.answers) {
+        for (const f of (a.flags || [])) {
+          if (f.status === "pending") {
+            items.push({ ...f, questionId: q.id, questionTitle: q.title, answerId: a.id, excerpt: a.body.slice(0, 140) });
+          }
+        }
+      }
+      if (q.closeVotes && q.closeVotes.length > 0 && !q.closed) {
+        items.push({
+          id: `cv_${q.id}`, kind: "close-vote-pending", questionId: q.id, questionTitle: q.title,
+          answerId: null, status: "pending", reason: q.closeVotes[0].reason,
+          closeVotes: q.closeVotes.length, threshold: CLOSE_VOTE_THRESHOLD, createdAt: q.updatedAt,
+        });
+      }
+    }
+    items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    return { ok: true, result: { queue: items, count: items.length } };
+  });
+
+  registerLensAction("answers", "mod-resolve", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    if (!hasPrivilege(s, userId, "moderate")) return { ok: false, error: "need 1000 reputation to resolve flags" };
+    const q = list(s, userId).find((x) => x.id === params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    let target = q;
+    if (params.answerId) {
+      target = q.answers.find((x) => x.id === params.answerId);
+      if (!target) return { ok: false, error: "answer not found" };
+    }
+    const flag = (target.flags || []).find((f) => f.id === params.flagId);
+    if (!flag) return { ok: false, error: "flag not found" };
+    const decision = params.decision === "declined" ? "declined" : "actioned";
+    flag.status = decision;
+    flag.resolvedBy = userId;
+    flag.resolvedAt = aNow();
+    if (decision === "actioned" && flag.flaggedBy && flag.flaggedBy !== userId) {
+      addRep(s, flag.flaggedBy, 2); // helpful-flag reward
+      pushNotification(s, flag.flaggedBy, {
+        kind: "flag-resolved", questionId: q.id, title: q.title,
+        message: `Your flag on "${q.title}" was actioned (+2 rep)`,
+      });
+    }
+    q.updatedAt = aNow();
+    save();
+    return { ok: true, result: { flagId: flag.id, status: flag.status, decision } };
   });
 }

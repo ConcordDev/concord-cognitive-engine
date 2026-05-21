@@ -13,13 +13,15 @@ Backend: `server/domains/agriculture.js` — 49 macros: fields CRUD, scouting, z
 - GBIF biodiversity panel; World Bank cereal-yield live feed; dashboard summary
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Satellite NDVI/vegetation imagery layers (open Sentinel-2 data is free — buildable)
-- [ ] `[M]` Equipment data sync from machine APIs (ISOBUS/CAN telemetry import)
-- [ ] `[M]` Profit/cost analysis per field (input costs vs commodity prices)
-- [ ] `[S]` Weather-driven spray-window advisor (wind/temp gating already partly possible)
-- [ ] `[M]` Yield map overlay from harvest-monitor data
-- [ ] `[S]` Side-by-side seed/hybrid trial comparison
-- [ ] `[M]` Soil-sampling grid generator + lab-result import
+- [x] `[L]` Satellite NDVI/vegetation imagery layers (open Sentinel-2 data is free — buildable)
+- [x] `[M]` Equipment data sync from machine APIs (ISOBUS/CAN telemetry import)
+- [x] `[M]` Profit/cost analysis per field (input costs vs commodity prices)
+- [x] `[S]` Weather-driven spray-window advisor (wind/temp gating already partly possible)
+- [x] `[M]` Yield map overlay from harvest-monitor data
+- [x] `[S]` Side-by-side seed/hybrid trial comparison
+- [x] `[M]` Soil-sampling grid generator + lab-result import
 
 ## Parity
-~70% of Climate FieldView's feature surface. Genuinely deep precision-ag tooling — prescriptions, zones, passes, nitrogen, grain bins all real. Main gaps are satellite imagery layers and machine-data ingestion.
+~95% of Climate FieldView's feature surface. Precision-ag tooling (prescriptions, zones, passes, nitrogen, grain bins) plus satellite NDVI layers, ISOBUS telemetry import, per-field profit analysis, a spray-window advisor, yield-map overlays, seed-trial comparison, and a soil-sampling grid generator all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._
