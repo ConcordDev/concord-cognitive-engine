@@ -1,27 +1,25 @@
-# sports — Feature Completeness Spec
+# sports — Feature Gap vs ESPN
 
-Rival app(s): ESPN, theScore, The Athletic (2026)
-Sources:
-- https://www.thesportsdb.com/api.php — TheSportsDB (free, public test key)
+Category leader (2026): ESPN. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `sports` domain (8 macros). Pure-compute analytics (performance stats, training plan, injury risk, team analysis) + live TheSportsDB team/league/fixture lookup + ESPN public scoreboard.
 
-## Features
+## Has (verified in code)
+- Live team lookup via TheSportsDB (badge, stadium, league, founded)
+- ESPN public scoreboard integration for live scores
+- Performance-stat analyzer (trend, consistency, recent form)
+- Training-plan generator (sport/level/days), injury-risk model, roster/team analysis
+- Deep 1000-line UI
 
-### Sports-fan substrate
-- [x] Teams, team news, tracked games, standings
-- [x] Predictions + accuracy, watchlist, tracked athletes + athlete stats
-- [x] Sports dashboard — live games, watchlist, prediction accuracy
-- (31 macros)
+## Missing — buildable feature backlog
+- [ ] `[M]` Live game detail / play-by-play view — scoreboard exists but no per-game drill-down
+- [ ] `[M]` League standings tables and schedules
+- [ ] `[M]` Follow teams / personalized "My Teams" feed with score notifications
+- [ ] `[M]` Player profiles, rosters, and season stat lines from TheSportsDB
+- [ ] `[S]` News / headlines feed (free RSS or ESPN news API)
+- [ ] `[M]` Fantasy / pick'em / bracket features
+- [ ] `[S]` Sport / league filter and search across the scoreboard
+- [ ] `[M]` Game reminders + calendar of upcoming fixtures
+- [ ] `[L]` Live win-probability / advanced analytics overlays
 
-### Live data & feed
-- [x] Live fixtures feed — TheSportsDB recent league fixtures ingested as DTUs (macro: sports.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Live in-play scores | a paid real-time score licence | recent-fixture feed + manual game tracking |
-| Broadcast video | a media-rights licence | the `voice` / `film-studios` lenses carry media |
-
-## Verification log
-- 2026-05-20: Backend — `node --check` clean. `feed` macro added (TheSportsDB fixtures → DTUs).
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` sports feed green; `tests/sports-domain-parity.test.js` + `tests/sports-fan-domain-parity.test.js` intact.
-- 2026-05-20: Frontend — `LensFeedButton domain="sports"` mounted in the lens page.
+## Parity
+~45% of ESPN. Live scores and team lookup are wired and the personal-coaching analytics are a genuine extra, but the spectator core — standings, schedules, following teams, player pages, play-by-play — is largely absent.

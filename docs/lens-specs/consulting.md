@@ -1,33 +1,23 @@
-# consulting — Feature Completeness Spec
+# consulting — Feature Gap vs Bonsai / Harvest
 
-Rival app(s): Harvest, Toggl, Bonsai, Productive (2026)
-Sources:
-- consulting-engagement / billable-time record-keeping
+Category leader (2026): Bonsai (consultant practice management); Harvest for time/billing. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: domain macros (`consulting.engagementScope/utilizationRate/proposalScore/clientHealth`) + generic `/api/lens` artifact store; ConsultingFirmReference + EngagementTracker components.
 
-## Features
+## Has (verified in code)
+- 7 modes: Engagements, Proposals, Deliverables, Clients, Timesheets, Frameworks, Pipeline
+- Engagement CRUD with type (Strategy/Ops/Tech/M&A/etc), fee, hourly rate, scope, dates
+- Dashboard: total revenue, billed hours, active engagements, pipeline count
+- AI actions: engagement scope, utilization rate, proposal score, client health
+- Framework library + engagement tracker component
 
-### Engagement management
-- [x] Track engagements — client, rate, hour budget, status (macro: consulting.engagement-create)
-- [x] List engagements with logged hours / billed / utilization (macro: consulting.engagement-list)
-- [x] Update engagement rate / budget / status (macro: consulting.engagement-update)
-- [x] Delete an engagement (macro: consulting.engagement-delete)
-- [x] Log billable time with notes (macro: consulting.time-log)
-- [x] Utilization dashboard — engagements, active, logged hours, billed total (macro: consulting.consulting-dashboard)
+## Missing — buildable feature backlog
+- [ ] `[M]` Live time tracking — start/stop timer logging billable hours against an engagement
+- [ ] `[M]` Invoice generation + tracking — turn billed hours into invoices with paid/overdue states
+- [ ] `[M]` Proposal builder — structured proposal document with scope, pricing tiers, e-acceptance
+- [ ] `[S]` Pipeline kanban — drag deals across stages with weighted forecast value
+- [ ] `[M]` Expense tracking + reimbursables — per-engagement expense log
+- [ ] `[S]` Utilization dashboard — billable vs non-billable ratio per consultant over time
+- [ ] `[M]` Client portal / shared deliverable links — clients view deliverables and approve
 
-### Calculators
-- [x] Client-health scoring — NPS / payment rate / response time (macro: consulting.clientHealth)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Invoicing / payment | a PSP + invoice renderer | billed totals are computed from logged time × rate; the `accounting` lens carries ledgers |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/consulting.js` clean.
-  Engagement substrate (6 macros) appended to the client-health domain.
-- 2026-05-20: Tests — `tests/consulting-engagement-domain-parity.test.js`
-  5/5 green (engagement CRUD + per-user scope / time log + billed +
-  utilization math / dashboard aggregation / positive-hours guard).
-- 2026-05-20: Frontend — new `EngagementTracker` (engagement list with time
-  logging + utilization + dashboard) mounted in the consulting lens page.
-  `npx tsc --noEmit` exit 0.
+## Parity
+~40% of Bonsai's feature surface. Covers engagement and client modeling well, but missing the time-timer, invoicing, and proposal-builder workflow that a practice-management tool centers on.

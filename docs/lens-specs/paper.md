@@ -1,48 +1,23 @@
-# paper — Feature Completeness Spec
+# paper — Feature Gap vs Zotero / arXiv
 
-Rival app(s): Zotero, Semantic Scholar, Mendeley (2026)
-Sources:
-- https://www.zotero.org/ (reference library — papers, collections, reading status, notes, tags)
-- https://www.semanticscholar.org/ (paper discovery + library)
-- live: arXiv, Open Library, CrossRef DOI
+Category leader (2026): Zotero (reference manager) + arXiv (preprint search). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/paper.js` — 13 macros: real arXiv search, LLM paper summarize, citation analysis, readability scoring, extractive abstract summarizer, revision diff, per-user paper library + collections (Zotero-shape) with status/rating/tags/notes, library dashboard, Crossref new-works DTU feed.
 
-`research` is the broader Roam-style knowledge-graph lens; `paper`
-is the focused academic-paper reading library.
+## Has (verified in code)
+- Real arXiv full-text search; Crossref latest-works feed; OpenLibrary panel; citation search component.
+- Paper library with to_read/reading/read status, 1–5 rating, tags, notes, named collections, dashboard counts.
+- LLM structured summarize (problem/approach/results/limitations/why-it-matters/keyTerms).
+- Citation analysis (self-cite rate, recency index, type/year breakdown), readability (Flesch-Kincaid/Fog), extractive abstract summary, revision diff.
 
-## Features
+## Missing — buildable feature backlog
+- [ ] `[M]` PDF attachment + reader — store PDFs and read/annotate in-app.
+- [ ] `[M]` Citation export — BibTeX/RIS/CSL export and copy-as-citation in named styles (APA/MLA/Chicago).
+- [ ] `[M]` One-click capture from DOI/URL — save a paper with auto-fetched metadata.
+- [ ] `[S]` Semantic Scholar enrichment — citation counts, influential citations, references graph.
+- [ ] `[M]` PDF annotation + highlights synced to notes.
+- [ ] `[S]` Duplicate detection + library dedupe.
+- [ ] `[M]` Shared/group libraries — collaborative collections.
+- [ ] `[S]` Reading-progress + cited-by alerts for saved papers.
 
-### Paper library
-- [x] Save a paper — title, authors, year, venue, abstract, DOI, URL; dedupe by refId (macro: paper.paper-save)
-- [x] List + filter by status / collection / tag / query (macro: paper.paper-list)
-- [x] Paper detail (macro: paper.paper-detail)
-- [x] Update — reading status (to-read / reading / read), 1-5 rating, notes, tags (macro: paper.paper-update)
-- [x] Delete a paper (macro: paper.paper-delete)
-
-### Collections
-- [x] Create collections, list with paper counts (macro: paper.collection-create / collection-list)
-- [x] Assign / unassign papers to collections (macro: paper.collection-assign)
-- [x] Library dashboard — by reading status, collections, papers with notes (macro: paper.library-dashboard)
-
-### Discovery & analysis (retained)
-- [x] Paper search + summarize (macro: paper.search / summarize)
-- [x] Citation analysis (macro: paper.citationAnalyze)
-- [x] Readability scoring (macro: paper.readabilityScore)
-- [x] Abstract summarization (macro: paper.abstractSummarize)
-- [x] Revision diff (macro: paper.revisionDiff)
-- [x] Live arXiv / Open Library / CrossRef search (frontend panels)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| PDF storage + annotation | a blob store + PDF renderer | per-paper notes field + tags; the lens stores metadata, abstract and reading state |
-| Auto-import from a browser connector (Zotero Connector) | a browser extension | save papers from the in-lens arXiv search, or paper-save directly |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/paper.js` clean. 14 macros
-  (6 discovery/analysis + 8 library substrate).
-- 2026-05-20: Tests — `tests/paper-library-domain-parity.test.js` 7/7 green
-  (paper CRUD + per-user scope + dedupe + status filter / collections create-
-  assign-unassign + paper count / library dashboard buckets).
-- 2026-05-20: Frontend — new `PaperLibrary` (paper list with status select +
-  star rating + expandable notes, collections) mounted in the paper lens
-  page. `npx tsc --noEmit` exit 0.
+## Parity
+~55% of Zotero+arXiv's feature surface. Genuinely strong: real search, a proper library model, and LLM summarization. Gaps are the librarian essentials — PDF storage/reader, citation-style export, and one-click web capture.

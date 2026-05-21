@@ -1,25 +1,25 @@
-# fashion — Feature Completeness Spec
+# fashion — Feature Gap vs Whering / Acloset
 
-Rival app(s): Whering, Stylebook, Acloset (2026)
-Sources:
-- https://metmuseum.github.io/ — The Metropolitan Museum of Art Open Access API (free, no key)
+Category leader (2026): Whering (digital wardrobe + outfit planning). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `fashion` domain (462 LOC) — vision tag, styleProfile, outfitSuggest, trendAnalysis, costPerWear, item-add + STATE-backed items/outfits/wearLog/packing/lookbooks Maps.
 
-## Features
+## Has (verified in code)
+- Wardrobe — add garments (name, category, color, brand, season, size, cost, photo), archive
+- LLaVA vision tagging of a garment photo (`fashion.vision`)
+- Outfit builder + suggestions (season-aware, picks tops/bottoms/outerwear)
+- Wishlist tab; style-profile analysis (dominant colors/categories)
+- Cost-per-wear analytics with value rating (best/worst value)
+- Trend analysis by category; wear log, packing lists, lookbooks in state
+- FashionClosetSection + FashionFeed components
 
-### Wardrobe substrate
-- [x] Closet items, outfits, wear log, lookbooks, packing lists
-- [x] Closet value, never-worn + worn-this-month dashboard
-- (28 macros)
+## Missing — buildable feature backlog
+- [ ] `[M]` Auto background-removal on uploaded garment photos (Whering's signature flow)
+- [ ] `[M]` Calendar — log/plan what you wore each day, pull from wear log
+- [ ] `[M]` Drag-and-drop outfit canvas / collage maker
+- [ ] `[S]` Weather-aware outfit suggestion (pull forecast lens data)
+- [ ] `[S]` Capsule-wardrobe / "30 wears" sustainability challenges
+- [ ] `[M]` Social outfit sharing + community style feed with reactions (FashionFeed exists but inert)
+- [ ] `[S]` Wishlist price-watch / resale-marketplace links
 
-### Live data & feed
-- [x] Live museum costume feed — Met Museum costume/textile pieces ingested as DTUs (macro: fashion.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Retailer shop-the-look links | retailer affiliate APIs | the `marketplace` lens carries listings |
-
-## Verification log
-- 2026-05-20: Backend — `node --check` clean. `feed` macro added (Met Museum → DTUs).
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` fashion feed green (search + object fetch); `tests/fashion-domain-parity.test.js` intact.
-- 2026-05-20: Frontend — `LensFeedButton domain="fashion"` mounted in the lens page.
+## Parity
+~55% of Whering. Wardrobe cataloguing, vision tagging, and cost-per-wear analytics are genuinely solid; missing the background-removal upload flow, the wear calendar, and the drag-drop outfit canvas that define the leader's daily-use loop.

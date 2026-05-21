@@ -1,26 +1,24 @@
-# cooking — Feature Completeness Spec
+# cooking — Feature Gap vs Paprika / NYT Cooking
 
-Rival app(s): Paprika, Mealime, NYT Cooking (2026)
-Sources:
-- https://www.themealdb.com/api/ — TheMealDB recipe database (free, public test key)
+Category leader (2026): Paprika 3 (recipe manager) + NYT Cooking. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: domain macros (`cooking.scaleRecipe/nutritionEstimate/mealPlan/substitution/feed`); 690-line domain; USDA FoodData Central panel; generic `/api/lens` recipe store.
 
-## Features
+## Has (verified in code)
+- Recipe box CRUD (name, cuisine, difficulty, prep/cook time, servings) with difficulty filter
+- Recipe scaling with serving multipliers (per-recipe scaled ingredient amounts)
+- Nutrition estimate action + bespoke USDA FDC nutrition explorer (3-tier card, save-as-DTU)
+- Cook-mode timer (minutes/seconds, running state) and checkable ingredient list
+- AI actions: scale recipe, nutrition estimate, meal plan, ingredient substitution
+- Realtime data panel + DTU export + lens feed
 
-### Recipe & meal-planning substrate
-- [x] Recipes, collections, recipe import + scaling
-- [x] Meal plan (per-day/slot), shopping list, pantry tracking
-- [x] Cooking dashboard — planned meals, shopping progress, pantry count
-- (31 macros)
+## Missing — buildable feature backlog
+- [ ] `[M]` Recipe import from URL — paste any recipe site link, parse into structured recipe
+- [ ] `[M]` Grocery list generator — aggregate ingredients across a meal plan into a shopping list
+- [ ] `[M]` Step-by-step cook mode — full-screen sequential instruction view with per-step timers
+- [ ] `[S]` Pantry / inventory tracking — what you have, what a recipe needs
+- [ ] `[M]` Weekly meal planner calendar — drag recipes onto days, auto-build grocery list
+- [ ] `[S]` Recipe categories, tags, and ratings — organize and rank your collection
+- [ ] `[S]` Photo per recipe + per step — visual recipe cards
 
-### Live data & feed
-- [x] Live recipe feed — TheMealDB recipes (ingredients + instructions) ingested as DTUs (macro: cooking.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Barcode pantry scanning | a device camera + barcode DB | manual pantry entry |
-
-## Verification log
-- 2026-05-20: Backend — `node --check` clean. `feed` macro added (TheMealDB recipes → DTUs).
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` cooking feed green; `tests/cooking-domain-parity.test.js` intact.
-- 2026-05-20: Frontend — `LensFeedButton domain="cooking"` mounted in the lens page.
+## Parity
+~50% of Paprika's feature surface. Strong scaling, nutrition, and timer; missing the URL-import, grocery-list, and meal-planner trio that makes Paprika a daily-driver.

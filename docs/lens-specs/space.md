@@ -1,36 +1,24 @@
-# space — Feature Completeness Spec
+# space — Feature Gap vs NASA Eyes / Stellarium / Flightradar-for-launches
 
-Rival app(s): Launch Library / The Space Devs, Heavens-Above (2026)
-Sources:
-- https://thespacedevs.com/llapi (upcoming launches — live)
-- https://www.heavens-above.com/ (launch + pass tracking)
+Category leader (2026): NASA's Eyes / Heavens-Above / Go4Liftoff. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `space` domain (12 macros). Pure-compute orbital mechanics + live SpaceX API + Launch Library 2 (TheSpaceDevs) + per-user launch watchlist + DTU feed ingest.
 
-## Features
+## Has (verified in code)
+- Orbit calculator (period, velocity, LEO/MEO/GEO classification, escape velocity)
+- Delta-V budget analyzer, launch-window estimator, reentry corridor analysis
+- Live upcoming launches: SpaceX r-spacex API + universal Launch Library 2 (all providers)
+- Personal launch watchlist (track/untrack/mark-watched, days-until sorting)
+- Launch feed ingest as visible DTUs
 
-### Live data
-- [x] Upcoming launches — SpaceX + worldwide via Launch Library (macro: space.spacex-upcoming / launch-library-upcoming)
+## Missing — buildable feature backlog
+- [ ] `[L]` Live ISS / satellite tracking — real-time position over a world map (TLE from Celestrak, free)
+- [ ] `[M]` Visible-pass predictions for the user's location (Heavens-Above's core feature)
+- [ ] `[M]` 3D orbit visualization — render computed orbits in a globe view
+- [ ] `[M]` Launch countdown timers + webcast embeds + push reminders
+- [ ] `[S]` Rocket / vehicle detail pages (resolve rocketId from SpaceX API)
+- [ ] `[M]` Sky map / planetarium view (planet positions, constellations)
+- [ ] `[S]` Launch filtering by provider / orbit / location
+- [ ] `[M]` APOD + NASA imagery feed (free NASA API)
 
-### Launch watchlist (Heavens-Above shape)
-- [x] Track a launch — name, provider, NET date, pad, note (macro: space.launch-track)
-- [x] Watchlist with days-until countdown + status (upcoming / today / launched / TBD), upcoming-first sort (macro: space.launch-watchlist)
-- [x] Mark a launch watched (macro: space.launch-mark-watched)
-- [x] Untrack a launch (macro: space.launch-untrack)
-
-### Mission calculators
-- [x] Orbit calculator (macro: space.orbitCalc)
-- [x] Delta-v budget (macro: space.deltaVBudget)
-- [x] Launch window (macro: space.launchWindow)
-- [x] Reentry analysis (macro: space.reentryAnalysis)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Real satellite pass predictions | live TLE orbital elements + an SGP4 propagator | launch watchlist with days-until countdown; orbitCalc covers orbital mechanics |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/space.js` clean. 10 macros.
-- 2026-05-20: Tests — `tests/space-geology-domain-parity.test.js` (space half)
-  green — track + per-user scope, duplicate/nameless reject, days-until sort,
-  mark-watched, untrack.
-- 2026-05-20: Frontend — new `LaunchWatchlist` (track launches, T-minus
-  countdown, watched toggle) mounted in the space lens page. `tsc` exit 0.
+## Parity
+~50% of the category. The launch-tracking spine (two live APIs, watchlist, feed) and orbital-mechanics calculators are real, but there is no live satellite tracking, no visible-pass prediction, and no 3D/sky visualization.
