@@ -169,6 +169,7 @@ import sports from './sports.js';
 import supplychain from './supplychain.js';
 import telecommunications from './telecommunications.js';
 import travel from './travel.js';
+import deities from './deities.js';
 import urbanplanning from './urbanplanning.js';
 import veterinary from './veterinary.js';
 import artistry from './artistry.js';
@@ -378,6 +379,7 @@ export default [
   supplychain,
   telecommunications,
   travel,
+  deities,
   urbanplanning,
   veterinary,
   artistry,

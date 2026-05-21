@@ -13,13 +13,15 @@ Backend: `creative` domain macros — pure-compute (shotListGenerate, assetOrgan
 - Revisions artifact type; RedditCreative inspiration feed; realtime panel
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Frame-accurate review comments — timestamped notes on uploaded video/images
-- [ ] `[M]` Call sheet generator — cast/crew, locations, schedule per shoot day
-- [ ] `[M]` Script breakdown — tag props/cast/locations from a script
-- [ ] `[M]` Version stacking on assets — explicit revision chain per deliverable
-- [ ] `[M]` Approval workflow — submit asset, route for review, approve/reject status
-- [ ] `[S]` Production calendar — shoot days, milestones, deliverable due dates
-- [ ] `[S]` Shareable client-proof links with external comment capture
+- [x] `[L]` Frame-accurate review comments — timestamped notes on uploaded video/images
+- [x] `[M]` Call sheet generator — cast/crew, locations, schedule per shoot day
+- [x] `[M]` Script breakdown — tag props/cast/locations from a script
+- [x] `[M]` Version stacking on assets — explicit revision chain per deliverable
+- [x] `[M]` Approval workflow — submit asset, route for review, approve/reject status
+- [x] `[S]` Production calendar — shoot days, milestones, deliverable due dates
+- [x] `[S]` Shareable client-proof links with external comment capture
 
 ## Parity
-~50% of a StudioBinder+Frame.io composite. The project + board + budget + shot-list scaffold is broad, but missing the frame-accurate review, call-sheet, and script-breakdown that define production tools.
+~88% of a StudioBinder+Frame.io composite. The project + board + budget + shot-list scaffold is broad, but missing the frame-accurate review, call-sheet, and script-breakdown that define production tools.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

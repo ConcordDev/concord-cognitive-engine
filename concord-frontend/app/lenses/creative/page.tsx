@@ -8,6 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CreativeBoardsSection } from '@/components/creative/CreativeBoardsSection';
+import { ProductionSuite } from '@/components/creative/ProductionSuite';
 import { RedditCreative } from '@/components/creative/RedditCreative';
 import { CreativeActionPanel } from '@/components/creative/CreativeActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -1728,6 +1729,10 @@ export default function CreativeLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ProductionSuite />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <RedditCreative />
       </section>

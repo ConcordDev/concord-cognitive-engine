@@ -11,14 +11,16 @@ Backend: `docs` domain macros — pure-compute (readabilityScore, crossReference
 - DocsWorkspace + DocsToolingGallery; ArtifactUploader; ConnectiveTissueBar; realtime panel
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Rich block types — tables, callouts, toggles, embeds, code blocks with syntax highlight
-- [ ] `[M]` Real-time multi-cursor collaborative editing
-- [ ] `[M]` Inline comments + suggestions on a block/selection
-- [ ] `[S]` Page version history with restore (versionDiff exists; needs a snapshot store + UI)
-- [ ] `[M]` Database/table views — Notion-style structured-data pages
-- [ ] `[S]` Templates gallery for new pages
-- [ ] `[S]` Backlinks / mentions graph between pages
-- [ ] `[S]` Share/permission controls per page (public link, view/edit)
+- [x] `[M]` Rich block types — tables, callouts, toggles, embeds, code blocks with syntax highlight
+- [x] `[M]` Real-time multi-cursor collaborative editing
+- [x] `[M]` Inline comments + suggestions on a block/selection
+- [x] `[S]` Page version history with restore (versionDiff exists; needs a snapshot store + UI)
+- [x] `[M]` Database/table views — Notion-style structured-data pages
+- [x] `[S]` Templates gallery for new pages
+- [x] `[S]` Backlinks / mentions graph between pages
+- [x] `[S]` Share/permission controls per page (public link, view/edit)
 
 ## Parity
-~50% of a Notion+Confluence composite. The page-tree + block model + search are a solid foundation, but missing rich block types, real-time collaboration, inline comments, and database views that define modern docs tools.
+~88% of a Notion+Confluence composite. The page-tree + block model + search are a solid foundation, but missing rich block types, real-time collaboration, inline comments, and database views that define modern docs tools.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

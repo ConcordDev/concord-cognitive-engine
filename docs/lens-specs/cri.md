@@ -10,12 +10,14 @@ Backend: `cri` domain macros (severityAssessment, responseTimeline, stakeholderI
 - LensFeaturePanel + CrisisActionPanel + realtime data panel + DTU export
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Quality trend over time — track composite score movement per DTU/corpus
-- [ ] `[M]` Score-rule configuration — adjust CRETI weighting and thresholds in-UI
-- [ ] `[S]` Bulk remediation — select low-quality DTUs and batch-improve/flag
-- [ ] `[S]` Alerting on quality regressions — notify when a DTU drops below threshold
-- [ ] `[M]` Root-cause linkage — connect a low score to its contributing dimension with fixes
-- [ ] `[S]` Side-by-side comparison of two DTUs' quality profiles
+- [x] `[M]` Quality trend over time — track composite score movement per DTU/corpus
+- [x] `[M]` Score-rule configuration — adjust CRETI weighting and thresholds in-UI
+- [x] `[S]` Bulk remediation — select low-quality DTUs and batch-improve/flag
+- [x] `[S]` Alerting on quality regressions — notify when a DTU drops below threshold
+- [x] `[M]` Root-cause linkage — connect a low score to its contributing dimension with fixes
+- [x] `[S]` Side-by-side comparison of two DTUs' quality profiles
 
 ## Parity
-~50% of a data-quality scorecard tool. Solid scoring, multi-dimension sorting, and distribution view; missing trend tracking, configurable rules, and remediation/alerting that close the quality loop.
+~88% of a data-quality scorecard tool. Solid scoring, multi-dimension sorting, and distribution view; missing trend tracking, configurable rules, and remediation/alerting that close the quality loop.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

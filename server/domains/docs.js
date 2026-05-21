@@ -516,7 +516,38 @@ export default function registerDocsActions(registerLensAction) {
   const BLOCK_TYPES = [
     "paragraph", "heading1", "heading2", "heading3",
     "bulleted_list", "numbered_list", "todo", "code", "quote", "callout", "divider",
+    // Rich block types (Notion parity)
+    "toggle", "table", "embed",
   ];
+  // Block types whose `data` field carries structured payload beyond `text`.
+  const CODE_LANGUAGES = [
+    "plain", "javascript", "typescript", "python", "rust", "go",
+    "json", "sql", "bash", "html", "css", "markdown", "yaml",
+  ];
+  const CALLOUT_TONES = ["info", "warning", "success", "danger", "note"];
+
+  // Normalise a block's structured `data` payload per type. Returns a
+  // plain object; only the keys relevant to the block type are kept.
+  function dcBlockData(type, raw = {}) {
+    const data = {};
+    if (type === "code") {
+      data.language = CODE_LANGUAGES.includes(raw.language) ? raw.language : "plain";
+    } else if (type === "callout") {
+      data.tone = CALLOUT_TONES.includes(raw.tone) ? raw.tone : "info";
+      data.emoji = dcClean(raw.emoji, 8) || "💡";
+    } else if (type === "toggle") {
+      data.open = raw.open === true;
+    } else if (type === "embed") {
+      data.url = dcClean(raw.url, 600);
+      data.kind = ["link", "video", "image"].includes(raw.kind) ? raw.kind : "link";
+    } else if (type === "table") {
+      // rows: Array<Array<string>>; first row treated as header.
+      const rows = Array.isArray(raw.rows) ? raw.rows : [["", ""], ["", ""]];
+      data.rows = rows.slice(0, 50).map((r) =>
+        (Array.isArray(r) ? r : []).slice(0, 12).map((c) => dcClean(c, 400)));
+    }
+    return data;
+  }
 
   registerLensAction("docs", "page-create", (ctx, _a, params = {}) => {
     const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -606,6 +637,7 @@ export default function registerDocsActions(registerLensAction) {
       type,
       text: type === "divider" ? "" : dcClean(params.text, 8000),
       checked: type === "todo" ? params.checked === true : false,
+      data: dcBlockData(type, params.data || {}),
       createdAt: dcNow(),
     };
     const afterIdx = params.afterId ? page.blocks.findIndex((b) => b.id === params.afterId) : -1;
@@ -623,8 +655,12 @@ export default function registerDocsActions(registerLensAction) {
     const block = page.blocks.find((b) => b.id === params.blockId);
     if (!block) return { ok: false, error: "block not found" };
     if (params.text != null) block.text = dcClean(params.text, 8000);
-    if (params.type != null && BLOCK_TYPES.includes(params.type)) block.type = params.type;
+    if (params.type != null && BLOCK_TYPES.includes(params.type)) {
+      block.type = params.type;
+      block.data = dcBlockData(block.type, params.data || block.data || {});
+    }
     if (params.checked != null) block.checked = params.checked === true;
+    if (params.data != null) block.data = dcBlockData(block.type, params.data);
     page.updatedAt = dcNow();
     saveDocs();
     return { ok: true, result: { block } };
@@ -694,5 +730,659 @@ export default function registerDocsActions(registerLensAction) {
         doneTodos: todos.filter((t) => t.checked).length,
       },
     };
+  });
+
+  // ─── Page version history + restore ──────────────────────────────────
+  // Snapshots are stored per page in a Map: pageId -> Array<snapshot>.
+  function dcSnapshots(s) {
+    if (!(s.snapshots instanceof Map)) s.snapshots = new Map();
+    return s.snapshots;
+  }
+  function dcSnapshotList(s, pageId) {
+    const m = dcSnapshots(s);
+    if (!m.has(pageId)) m.set(pageId, []);
+    return m.get(pageId);
+  }
+  function dcPageWordCount(page) {
+    return page.blocks.reduce(
+      (w, b) => w + String(b.text || "").split(/\s+/).filter(Boolean).length, 0);
+  }
+
+  registerLensAction("docs", "version-snapshot", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const list = dcSnapshotList(s, page.id);
+    const snapshot = {
+      id: dcId("snap"),
+      pageId: page.id,
+      label: dcClean(params.label, 120) || `Snapshot ${list.length + 1}`,
+      title: page.title,
+      icon: page.icon,
+      blocks: JSON.parse(JSON.stringify(page.blocks)),
+      wordCount: dcPageWordCount(page),
+      blockCount: page.blocks.length,
+      createdAt: dcNow(),
+    };
+    list.unshift(snapshot);
+    // Cap at 50 snapshots per page.
+    if (list.length > 50) list.length = 50;
+    saveDocs();
+    return { ok: true, result: { snapshotId: snapshot.id, count: list.length } };
+  });
+
+  registerLensAction("docs", "version-list", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const list = dcSnapshotList(s, page.id).map((sn) => ({
+      id: sn.id, label: sn.label, title: sn.title, icon: sn.icon,
+      wordCount: sn.wordCount, blockCount: sn.blockCount, createdAt: sn.createdAt,
+    }));
+    return { ok: true, result: { snapshots: list, count: list.length } };
+  });
+
+  registerLensAction("docs", "version-restore", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const snap = dcSnapshotList(s, page.id).find((sn) => sn.id === params.snapshotId);
+    if (!snap) return { ok: false, error: "snapshot not found" };
+    // Auto-snapshot current state before overwriting (so restore is reversible).
+    const list = dcSnapshotList(s, page.id);
+    list.unshift({
+      id: dcId("snap"), pageId: page.id, label: "Before restore",
+      title: page.title, icon: page.icon,
+      blocks: JSON.parse(JSON.stringify(page.blocks)),
+      wordCount: dcPageWordCount(page), blockCount: page.blocks.length,
+      createdAt: dcNow(),
+    });
+    if (list.length > 50) list.length = 50;
+    page.title = snap.title;
+    page.icon = snap.icon;
+    page.blocks = JSON.parse(JSON.stringify(snap.blocks));
+    page.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { page } };
+  });
+
+  // ─── Inline comments + suggestions on a block ────────────────────────
+  function dcComments(s) {
+    if (!(s.comments instanceof Map)) s.comments = new Map();
+    return s.comments;
+  }
+  function dcCommentList(s, pageId) {
+    const m = dcComments(s);
+    if (!m.has(pageId)) m.set(pageId, []);
+    return m.get(pageId);
+  }
+
+  registerLensAction("docs", "comment-add", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = dcActor(ctx);
+    const page = dcPages(s, userId).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const text = dcClean(params.text, 2000);
+    if (!text) return { ok: false, error: "comment text required" };
+    const kind = params.kind === "suggestion" ? "suggestion" : "comment";
+    const comment = {
+      id: dcId("cm"),
+      pageId: page.id,
+      blockId: params.blockId && page.blocks.some((b) => b.id === params.blockId)
+        ? params.blockId : null,
+      author: userId,
+      kind,
+      text,
+      // For suggestions: the proposed replacement text for the block.
+      suggestedText: kind === "suggestion" ? dcClean(params.suggestedText, 8000) : "",
+      resolved: false,
+      createdAt: dcNow(),
+    };
+    dcCommentList(s, page.id).push(comment);
+    saveDocs();
+    return { ok: true, result: { comment } };
+  });
+
+  registerLensAction("docs", "comment-list", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    let list = dcCommentList(s, page.id);
+    if (params.blockId) list = list.filter((c) => c.blockId === params.blockId);
+    if (params.openOnly === true) list = list.filter((c) => !c.resolved);
+    return {
+      ok: true,
+      result: {
+        comments: list,
+        count: list.length,
+        openCount: dcCommentList(s, page.id).filter((c) => !c.resolved).length,
+      },
+    };
+  });
+
+  registerLensAction("docs", "comment-resolve", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const comment = dcCommentList(s, page.id).find((c) => c.id === params.commentId);
+    if (!comment) return { ok: false, error: "comment not found" };
+    comment.resolved = params.resolved === false ? false : true;
+    saveDocs();
+    return { ok: true, result: { comment } };
+  });
+
+  registerLensAction("docs", "comment-delete", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const list = dcCommentList(s, page.id);
+    const i = list.findIndex((c) => c.id === params.commentId);
+    if (i < 0) return { ok: false, error: "comment not found" };
+    list.splice(i, 1);
+    saveDocs();
+    return { ok: true, result: { deleted: params.commentId } };
+  });
+
+  registerLensAction("docs", "suggestion-accept", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const comment = dcCommentList(s, page.id).find((c) => c.id === params.commentId);
+    if (!comment) return { ok: false, error: "comment not found" };
+    if (comment.kind !== "suggestion") return { ok: false, error: "not a suggestion" };
+    const block = page.blocks.find((b) => b.id === comment.blockId);
+    if (!block) return { ok: false, error: "target block no longer exists" };
+    block.text = comment.suggestedText;
+    comment.resolved = true;
+    page.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { block, comment } };
+  });
+
+  // ─── Real-time multi-cursor collaborative editing (presence) ─────────
+  // Presence is ephemeral; stored on the per-user docs state keyed by page.
+  function dcPresence(s) {
+    if (!(s.presence instanceof Map)) s.presence = new Map();
+    return s.presence;
+  }
+  const PRESENCE_TTL_MS = 30000;
+  const PRESENCE_COLORS = ["#22d3ee", "#a78bfa", "#34d399", "#fbbf24", "#f87171", "#60a5fa"];
+
+  registerLensAction("docs", "presence-ping", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = dcActor(ctx);
+    if (!params.pageId) return { ok: false, error: "pageId required" };
+    const m = dcPresence(s);
+    if (!m.has(params.pageId)) m.set(params.pageId, []);
+    const list = m.get(params.pageId);
+    const sessionId = dcClean(params.sessionId, 60) || userId;
+    let entry = list.find((e) => e.sessionId === sessionId);
+    if (!entry) {
+      entry = {
+        sessionId,
+        userId,
+        name: dcClean(params.name, 60) || userId,
+        color: PRESENCE_COLORS[list.length % PRESENCE_COLORS.length],
+      };
+      list.push(entry);
+    }
+    entry.blockId = params.blockId ? dcClean(params.blockId, 60) : null;
+    entry.cursorOffset = Number.isFinite(params.cursorOffset)
+      ? Math.max(0, Math.floor(params.cursorOffset)) : 0;
+    entry.lastSeen = Date.now();
+    return { ok: true, result: { sessionId, color: entry.color } };
+  });
+
+  registerLensAction("docs", "presence-list", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!params.pageId) return { ok: false, error: "pageId required" };
+    const m = dcPresence(s);
+    const now = Date.now();
+    const fresh = (m.get(params.pageId) || []).filter((e) => now - e.lastSeen < PRESENCE_TTL_MS);
+    m.set(params.pageId, fresh);
+    const selfSession = dcClean(params.sessionId, 60);
+    return {
+      ok: true,
+      result: {
+        cursors: fresh
+          .filter((e) => e.sessionId !== selfSession)
+          .map((e) => ({
+            sessionId: e.sessionId, name: e.name, color: e.color,
+            blockId: e.blockId, cursorOffset: e.cursorOffset,
+          })),
+        activeCount: fresh.length,
+      },
+    };
+  });
+
+  registerLensAction("docs", "presence-leave", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!params.pageId) return { ok: false, error: "pageId required" };
+    const m = dcPresence(s);
+    const list = m.get(params.pageId) || [];
+    m.set(params.pageId, list.filter((e) => e.sessionId !== params.sessionId));
+    return { ok: true, result: { left: params.sessionId || null } };
+  });
+
+  // ─── Database / table views (Notion-style structured pages) ──────────
+  function dcDatabases(s, userId) {
+    if (!(s.databases instanceof Map)) s.databases = new Map();
+    if (!s.databases.has(userId)) s.databases.set(userId, []);
+    return s.databases.get(userId);
+  }
+  const DB_COLUMN_TYPES = ["text", "number", "select", "checkbox", "date"];
+
+  registerLensAction("docs", "db-create", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = dcDatabases(s, dcActor(ctx));
+    const cols = Array.isArray(params.columns) && params.columns.length
+      ? params.columns
+      : [{ name: "Name", type: "text" }, { name: "Status", type: "select" }];
+    const db = {
+      id: dcId("db"),
+      name: dcClean(params.name, 160) || "Untitled database",
+      columns: cols.slice(0, 20).map((c) => ({
+        id: dcId("col"),
+        name: dcClean(c.name, 80) || "Column",
+        type: DB_COLUMN_TYPES.includes(c.type) ? c.type : "text",
+        options: Array.isArray(c.options)
+          ? c.options.slice(0, 30).map((o) => dcClean(o, 60)).filter(Boolean) : [],
+      })),
+      rows: [],
+      createdAt: dcNow(),
+      updatedAt: dcNow(),
+    };
+    list.push(db);
+    saveDocs();
+    return { ok: true, result: { database: db } };
+  });
+
+  registerLensAction("docs", "db-list", (ctx, _a, _params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = dcDatabases(s, dcActor(ctx)).map((d) => ({
+      id: d.id, name: d.name, columnCount: d.columns.length,
+      rowCount: d.rows.length, updatedAt: d.updatedAt,
+    }));
+    return { ok: true, result: { databases: list, count: list.length } };
+  });
+
+  registerLensAction("docs", "db-detail", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const db = dcDatabases(s, dcActor(ctx)).find((d) => d.id === params.id);
+    if (!db) return { ok: false, error: "database not found" };
+    return { ok: true, result: { database: db } };
+  });
+
+  registerLensAction("docs", "db-delete", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = dcActor(ctx);
+    const list = dcDatabases(s, userId);
+    const i = list.findIndex((d) => d.id === params.id);
+    if (i < 0) return { ok: false, error: "database not found" };
+    list.splice(i, 1);
+    saveDocs();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("docs", "db-column-add", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const db = dcDatabases(s, dcActor(ctx)).find((d) => d.id === params.id);
+    if (!db) return { ok: false, error: "database not found" };
+    if (db.columns.length >= 20) return { ok: false, error: "column limit reached" };
+    const col = {
+      id: dcId("col"),
+      name: dcClean(params.name, 80) || "Column",
+      type: DB_COLUMN_TYPES.includes(params.type) ? params.type : "text",
+      options: Array.isArray(params.options)
+        ? params.options.slice(0, 30).map((o) => dcClean(o, 60)).filter(Boolean) : [],
+    };
+    db.columns.push(col);
+    db.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { column: col } };
+  });
+
+  registerLensAction("docs", "db-row-add", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const db = dcDatabases(s, dcActor(ctx)).find((d) => d.id === params.id);
+    if (!db) return { ok: false, error: "database not found" };
+    if (db.rows.length >= 1000) return { ok: false, error: "row limit reached" };
+    const cells = {};
+    const incoming = params.cells && typeof params.cells === "object" ? params.cells : {};
+    for (const col of db.columns) {
+      const v = incoming[col.id];
+      if (col.type === "number") cells[col.id] = Number.isFinite(Number(v)) ? Number(v) : 0;
+      else if (col.type === "checkbox") cells[col.id] = v === true;
+      else cells[col.id] = dcClean(v, 1000);
+    }
+    const row = { id: dcId("row"), cells, createdAt: dcNow() };
+    db.rows.push(row);
+    db.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { row } };
+  });
+
+  registerLensAction("docs", "db-row-update", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const db = dcDatabases(s, dcActor(ctx)).find((d) => d.id === params.id);
+    if (!db) return { ok: false, error: "database not found" };
+    const row = db.rows.find((r) => r.id === params.rowId);
+    if (!row) return { ok: false, error: "row not found" };
+    const incoming = params.cells && typeof params.cells === "object" ? params.cells : {};
+    for (const col of db.columns) {
+      if (!(col.id in incoming)) continue;
+      const v = incoming[col.id];
+      if (col.type === "number") row.cells[col.id] = Number.isFinite(Number(v)) ? Number(v) : 0;
+      else if (col.type === "checkbox") row.cells[col.id] = v === true;
+      else row.cells[col.id] = dcClean(v, 1000);
+    }
+    db.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { row } };
+  });
+
+  registerLensAction("docs", "db-row-delete", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const db = dcDatabases(s, dcActor(ctx)).find((d) => d.id === params.id);
+    if (!db) return { ok: false, error: "database not found" };
+    const i = db.rows.findIndex((r) => r.id === params.rowId);
+    if (i < 0) return { ok: false, error: "row not found" };
+    db.rows.splice(i, 1);
+    db.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { deleted: params.rowId } };
+  });
+
+  // ─── Templates gallery ───────────────────────────────────────────────
+  // Built-in templates: deterministic block structures, no demo data —
+  // these are scaffolds with empty/placeholder content the user fills in.
+  const PAGE_TEMPLATES = [
+    {
+      id: "blank", name: "Blank page", icon: "📄",
+      description: "An empty page.", blocks: [],
+    },
+    {
+      id: "meeting-notes", name: "Meeting notes", icon: "📝",
+      description: "Agenda, attendees, action items.",
+      blocks: [
+        { type: "heading2", text: "Attendees" },
+        { type: "bulleted_list", text: "" },
+        { type: "heading2", text: "Agenda" },
+        { type: "numbered_list", text: "" },
+        { type: "heading2", text: "Decisions" },
+        { type: "callout", text: "", data: { tone: "info", emoji: "✅" } },
+        { type: "heading2", text: "Action items" },
+        { type: "todo", text: "" },
+      ],
+    },
+    {
+      id: "project-plan", name: "Project plan", icon: "🎯",
+      description: "Goal, milestones, risks.",
+      blocks: [
+        { type: "heading1", text: "Project plan" },
+        { type: "heading2", text: "Goal" },
+        { type: "paragraph", text: "" },
+        { type: "heading2", text: "Milestones" },
+        { type: "table", text: "", data: { rows: [["Milestone", "Owner", "Due"], ["", "", ""]] } },
+        { type: "heading2", text: "Risks" },
+        { type: "callout", text: "", data: { tone: "warning", emoji: "⚠️" } },
+      ],
+    },
+    {
+      id: "engineering-spec", name: "Engineering spec", icon: "⚙️",
+      description: "Context, design, alternatives.",
+      blocks: [
+        { type: "heading1", text: "Spec" },
+        { type: "heading2", text: "Context" },
+        { type: "paragraph", text: "" },
+        { type: "heading2", text: "Proposed design" },
+        { type: "paragraph", text: "" },
+        { type: "code", text: "", data: { language: "javascript" } },
+        { type: "heading2", text: "Alternatives considered" },
+        { type: "toggle", text: "Alternative A", data: { open: false } },
+        { type: "heading2", text: "Open questions" },
+        { type: "todo", text: "" },
+      ],
+    },
+    {
+      id: "knowledge-base", name: "Knowledge base article", icon: "📚",
+      description: "Summary, steps, references.",
+      blocks: [
+        { type: "heading1", text: "Article title" },
+        { type: "quote", text: "" },
+        { type: "heading2", text: "Steps" },
+        { type: "numbered_list", text: "" },
+        { type: "heading2", text: "References" },
+        { type: "embed", text: "", data: { kind: "link", url: "" } },
+      ],
+    },
+  ];
+
+  registerLensAction("docs", "template-list", (_ctx, _a, _params = {}) => {
+    return {
+      ok: true,
+      result: {
+        templates: PAGE_TEMPLATES.map((t) => ({
+          id: t.id, name: t.name, icon: t.icon,
+          description: t.description, blockCount: t.blocks.length,
+        })),
+        count: PAGE_TEMPLATES.length,
+      },
+    };
+  });
+
+  registerLensAction("docs", "template-apply", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const tpl = PAGE_TEMPLATES.find((t) => t.id === params.templateId);
+    if (!tpl) return { ok: false, error: "template not found" };
+    const userId = dcActor(ctx);
+    const pages = dcPages(s, userId);
+    const parentId = params.parentId && pages.some((p) => p.id === params.parentId)
+      ? params.parentId : null;
+    const page = {
+      id: dcId("pg"),
+      title: dcClean(params.title, 200) || tpl.name,
+      icon: tpl.icon,
+      parentId,
+      blocks: tpl.blocks.map((b) => ({
+        id: dcId("bl"),
+        type: BLOCK_TYPES.includes(b.type) ? b.type : "paragraph",
+        text: b.type === "divider" ? "" : dcClean(b.text, 8000),
+        checked: false,
+        data: dcBlockData(b.type, b.data || {}),
+        createdAt: dcNow(),
+      })),
+      createdAt: dcNow(),
+      updatedAt: dcNow(),
+    };
+    pages.push(page);
+    saveDocs();
+    return { ok: true, result: { page } };
+  });
+
+  // ─── Backlinks / mentions graph ──────────────────────────────────────
+  // A page "mentions" another when a block's text contains [[Title]] or
+  // [[pageId]]. backlinks resolves those mentions into a graph.
+  function dcMentionTargets(text, pages) {
+    const out = [];
+    const re = /\[\[([^\]]{1,200})\]\]/g;
+    let mm;
+    while ((mm = re.exec(text)) !== null) {
+      const token = mm[1].trim();
+      if (!token) continue;
+      const byId = pages.find((p) => p.id === token);
+      const byTitle = pages.find(
+        (p) => p.title.toLowerCase() === token.toLowerCase());
+      if (byId) out.push(byId.id);
+      else if (byTitle) out.push(byTitle.id);
+    }
+    return out;
+  }
+
+  registerLensAction("docs", "backlinks", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pages = dcPages(s, dcActor(ctx));
+    const target = pages.find((p) => p.id === params.pageId);
+    if (!target) return { ok: false, error: "page not found" };
+    const incoming = [];
+    for (const p of pages) {
+      if (p.id === target.id) continue;
+      const mentionedBlocks = [];
+      for (const b of p.blocks) {
+        const targets = dcMentionTargets(b.text || "", pages);
+        if (targets.includes(target.id)) {
+          mentionedBlocks.push({ blockId: b.id, snippet: b.text.slice(0, 160) });
+        }
+      }
+      if (mentionedBlocks.length) {
+        incoming.push({
+          id: p.id, title: p.title, icon: p.icon, mentions: mentionedBlocks,
+        });
+      }
+    }
+    const outgoing = [];
+    const seen = new Set();
+    for (const b of target.blocks) {
+      for (const tid of dcMentionTargets(b.text || "", pages)) {
+        if (seen.has(tid) || tid === target.id) continue;
+        seen.add(tid);
+        const tp = pages.find((p) => p.id === tid);
+        if (tp) outgoing.push({ id: tp.id, title: tp.title, icon: tp.icon });
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        page: { id: target.id, title: target.title, icon: target.icon },
+        backlinks: incoming,
+        outgoingLinks: outgoing,
+        backlinkCount: incoming.length,
+        outgoingCount: outgoing.length,
+      },
+    };
+  });
+
+  registerLensAction("docs", "mentions-graph", (ctx, _a, _params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pages = dcPages(s, dcActor(ctx));
+    const nodes = pages.map((p) => ({ id: p.id, title: p.title, icon: p.icon }));
+    const edges = [];
+    for (const p of pages) {
+      const seen = new Set();
+      for (const b of p.blocks) {
+        for (const tid of dcMentionTargets(b.text || "", pages)) {
+          if (tid === p.id || seen.has(tid)) continue;
+          seen.add(tid);
+          edges.push({ from: p.id, to: tid });
+        }
+      }
+    }
+    const inDegree = {};
+    for (const e of edges) inDegree[e.to] = (inDegree[e.to] || 0) + 1;
+    const mostLinked = nodes
+      .map((nd) => ({ ...nd, backlinks: inDegree[nd.id] || 0 }))
+      .sort((a, b) => b.backlinks - a.backlinks)
+      .slice(0, 10);
+    return {
+      ok: true,
+      result: { nodes, edges, edgeCount: edges.length, mostLinked },
+    };
+  });
+
+  // ─── Share / permission controls per page ────────────────────────────
+  function dcShares(s) {
+    if (!(s.shares instanceof Map)) s.shares = new Map();
+    return s.shares;
+  }
+
+  registerLensAction("docs", "share-set", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const m = dcShares(s);
+    const visibility = ["private", "link", "public"].includes(params.visibility)
+      ? params.visibility : "private";
+    const role = ["view", "edit"].includes(params.role) ? params.role : "view";
+    let share = m.get(page.id);
+    if (!share || visibility === "private") {
+      share = {
+        pageId: page.id,
+        visibility,
+        role,
+        token: visibility === "private" ? null : (m.get(page.id)?.token || dcId("shr")),
+        invites: m.get(page.id)?.invites || [],
+        updatedAt: dcNow(),
+      };
+    } else {
+      share.visibility = visibility;
+      share.role = role;
+      if (!share.token) share.token = dcId("shr");
+      share.updatedAt = dcNow();
+    }
+    m.set(page.id, share);
+    saveDocs();
+    return {
+      ok: true,
+      result: {
+        share,
+        shareUrl: share.visibility === "private" ? null : `/shared/docs/${share.token}`,
+      },
+    };
+  });
+
+  registerLensAction("docs", "share-get", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const share = dcShares(s).get(page.id) || {
+      pageId: page.id, visibility: "private", role: "view",
+      token: null, invites: [], updatedAt: null,
+    };
+    return {
+      ok: true,
+      result: {
+        share,
+        shareUrl: share.visibility === "private" || !share.token
+          ? null : `/shared/docs/${share.token}`,
+      },
+    };
+  });
+
+  registerLensAction("docs", "share-invite", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const invitee = dcClean(params.invitee, 120);
+    if (!invitee) return { ok: false, error: "invitee required" };
+    const m = dcShares(s);
+    let share = m.get(page.id);
+    if (!share) {
+      share = {
+        pageId: page.id, visibility: "private", role: "view",
+        token: null, invites: [], updatedAt: dcNow(),
+      };
+      m.set(page.id, share);
+    }
+    const role = ["view", "edit"].includes(params.role) ? params.role : "view";
+    const existing = share.invites.find((iv) => iv.invitee === invitee);
+    if (existing) existing.role = role;
+    else share.invites.push({ id: dcId("inv"), invitee, role, invitedAt: dcNow() });
+    share.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { invites: share.invites } };
+  });
+
+  registerLensAction("docs", "share-revoke", (ctx, _a, params = {}) => {
+    const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.pageId);
+    if (!page) return { ok: false, error: "page not found" };
+    const share = dcShares(s).get(page.id);
+    if (!share) return { ok: false, error: "no share settings" };
+    const before = share.invites.length;
+    share.invites = share.invites.filter((iv) => iv.id !== params.inviteId);
+    if (share.invites.length === before) return { ok: false, error: "invite not found" };
+    share.updatedAt = dcNow();
+    saveDocs();
+    return { ok: true, result: { invites: share.invites } };
   });
 }

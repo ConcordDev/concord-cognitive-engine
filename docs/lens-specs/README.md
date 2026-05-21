@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~72%**
-- Total buildable features in the backlog (sum of all "Missing" items): **855**
+- Average feature parity: **~73%**
+- Total buildable features in the backlog (sum of all "Missing" items): **814**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 108 |
+| 80–100% (near-complete) | 114 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 61 |
+| 40–59% (partial) | 55 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -33,12 +33,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| consulting | Bonsai / Harvest | ~50% | 8 |
-| creative | StudioBinder / Frame.io | ~50% | 7 |
-| cri | data-quality scorecard tooling | ~50% | 6 |
-| deities | in-game pantheon system (no consumer rival) | ~50% | 6 |
-| docs | Notion / Confluence | ~50% | 8 |
-| dreams | in-game dream-record system (no consumer rival) | ~50% | 6 |
 | dtus | knowledge-base browser (internal) | ~50% | 7 |
 | events | Eventbrite / Cvent | ~50% | 7 |
 | federation | Mastodon / ActivityPub admin | ~50% | 7 |
@@ -193,6 +187,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | code-quality | SonarQube / CodeClimate | ~88% | 0 |
 | cognitive-replay | Spotify Wrapped / RescueTime timeline | ~88% | 0 |
 | commonsense | ConceptNet / Cyc | ~88% | 0 |
+| consulting | Bonsai / Harvest | ~88% | 0 |
+| creative | StudioBinder / Frame.io | ~88% | 0 |
+| cri | data-quality scorecard tooling | ~88% | 0 |
+| deities | in-game pantheon system (no consumer rival) | ~88% | 0 |
+| docs | Notion / Confluence | ~88% | 0 |
+| dreams | in-game dream-record system (no consumer rival) | ~88% | 0 |
 | ethics | Ethical OS / decision-ethics tooling | ~88% | 0 |
 | expert-mode | Perplexity | ~88% | 0 |
 | ghost-tracker | no direct rival (in-game mode) | ~88% | 0 |

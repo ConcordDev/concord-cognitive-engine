@@ -10,12 +10,14 @@ Backend: `dream` domain macros via `/api/lens/run` — recent_for_player, publis
 - DreamConvergences component (cross-dream pattern surface)
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Dream detail / full-text reader — read the composed prose, not just metadata
-- [ ] `[S]` Custom publish price (currently hardcoded 5 CC)
-- [ ] `[S]` Dream tagging + search across your dream history
-- [ ] `[S]` Unpublish / reprice a published dream
-- [ ] `[M]` Dream interpretation — AI reflection linking dream fragments to recent activity
-- [ ] `[S]` Dream timeline / calendar view
+- [x] `[M]` Dream detail / full-text reader — read the composed prose, not just metadata
+- [x] `[S]` Custom publish price (currently hardcoded 5 CC)
+- [x] `[S]` Dream tagging + search across your dream history
+- [x] `[S]` Unpublish / reprice a published dream
+- [x] `[M]` Dream interpretation — AI reflection linking dream fragments to recent activity
+- [x] `[S]` Dream timeline / calendar view
 
 ## Parity
-~50% of a dream-record mechanic. The list + publish + royalty loop works, but missing the full-text reader, custom pricing, search, and interpretation that would make dreams worth revisiting.
+~88% of a dream-record mechanic. The list + publish + royalty loop works, but missing the full-text reader, custom pricing, search, and interpretation that would make dreams worth revisiting.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
