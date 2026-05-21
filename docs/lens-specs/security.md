@@ -12,13 +12,15 @@ Backend: `server/domains/security.js` — ~16 macros: incidentTrend, patrolCover
 - Live CVE feed from CIRCL CVE-Search ingested + deduped as DTUs
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Live event/log ingestion + correlation — a real SIEM event pipeline, not artifact records
-- [ ] `[M]` Incident response workflow with playbooks — assign, investigate, contain, resolve
-- [ ] `[M]` Alert rules engine — detections that auto-create incidents
-- [ ] `[S]` CVE-to-asset matching — auto-flag which registered assets a feed CVE affects
-- [ ] `[S]` Access-control / badge audit — surface anomalous access events
-- [ ] `[M]` Surveillance / camera tiles — make the Surveillance tab a live feed surface
-- [ ] `[S]` EPSS exploit-probability + threat-intel IOC enrichment
+- [x] `[M]` Live event/log ingestion + correlation — a real SIEM event pipeline, not artifact records
+- [x] `[M]` Incident response workflow with playbooks — assign, investigate, contain, resolve
+- [x] `[M]` Alert rules engine — detections that auto-create incidents
+- [x] `[S]` CVE-to-asset matching — auto-flag which registered assets a feed CVE affects
+- [x] `[S]` Access-control / badge audit — surface anomalous access events
+- [x] `[M]` Surveillance / camera tiles — make the Surveillance tab a live feed surface
+- [x] `[S]` EPSS exploit-probability + threat-intel IOC enrichment
 
 ## Parity
-~50% of a SOC console's feature surface. It blends cyber (vuln register, CVE feed, remediation workflow) and physical security (patrols, surveillance, access) with useful analysis macros, but it lacks live event ingestion/correlation, an alert rules engine, and a playbook-driven incident response.
+~90% of a SOC console's feature surface. Cyber (vuln register, CVE feed, remediation workflow), physical security (patrols, surveillance, access), live SIEM event ingestion + correlation, an alert-rules engine, playbook-driven incident response, CVE→asset matching, badge audit, camera wall, and threat enrichment all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

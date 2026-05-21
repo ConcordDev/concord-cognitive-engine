@@ -12,14 +12,16 @@ Backend: `understanding` domain — 16 macros (subject_kinds, evolution_stats, l
 - Stats strip with stat cards; detail modal.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Graph view of understandings — interactive linked-knowledge graph (Obsidian's signature).
-- [ ] `[S]` Full-text search across understanding bodies, not just subject-kind filter.
-- [ ] `[M]` Backlinks / "referenced by" panel per understanding.
-- [ ] `[S]` Manual linking — relate two understandings beyond auto-derived lineage.
-- [ ] `[M]` Inline editing of an understanding body, not only recompose-from-scratch.
-- [ ] `[S]` Tagging and tag-based filtering.
-- [ ] `[M]` Diff view — see what changed between understanding revisions.
-- [ ] `[S]` Export an understanding (markdown / DTU pack).
+- [x] `[M]` Graph view of understandings — interactive linked-knowledge graph (Obsidian's signature).
+- [x] `[S]` Full-text search across understanding bodies, not just subject-kind filter.
+- [x] `[M]` Backlinks / "referenced by" panel per understanding.
+- [x] `[S]` Manual linking — relate two understandings beyond auto-derived lineage.
+- [x] `[M]` Inline editing of an understanding body, not only recompose-from-scratch.
+- [x] `[S]` Tagging and tag-based filtering.
+- [x] `[M]` Diff view — see what changed between understanding revisions.
+- [x] `[S]` Export an understanding (markdown / DTU pack).
 
 ## Parity
-~50% of Obsidian/RemNote. The compose/evolve/lineage substrate is a genuine and unusual concept-synthesis layer, but it lacks the interactive graph, search, backlinks, and manual linking that make a knowledge tool navigable.
+~90% of Obsidian/RemNote. The compose/evolve/lineage substrate plus an interactive knowledge graph, full-text search, backlinks, manual linking, inline editing, tagging + tag filtering, revision diffs, and markdown/DTU-pack export all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

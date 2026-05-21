@@ -1,3 +1,5 @@
+import { fetchJsonWithTimeout } from "../lib/external-fetch.js";
+
 export default function registerSecurityActions(registerLensAction) {
   registerLensAction("security", "incidentTrend", (ctx, artifact, _params) => {
     const incidents = artifact.data?.incidents || [artifact.data];
@@ -420,5 +422,497 @@ export default function registerSecurityActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `circl unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  /* ================================================================ *
+   *  SOC console parity backlog                                       *
+   *  ─ SIEM event pipeline + correlation                              *
+   *  ─ Incident response playbooks                                    *
+   *  ─ Alert rules engine                                             *
+   *  ─ CVE-to-asset matching                                          *
+   *  ─ Access-control / badge audit                                   *
+   *  ─ Surveillance camera tiles                                      *
+   *  ─ EPSS + IOC threat-intel enrichment                             *
+   * ================================================================ */
+
+  function secEvents(s, userId) { if (!s.events.has(userId)) s.events.set(userId, []); return s.events.get(userId); }
+  function secRules(s, userId) { if (!s.rules.has(userId)) s.rules.set(userId, []); return s.rules.get(userId); }
+  function secIncidents(s, userId) { if (!s.incidents.has(userId)) s.incidents.set(userId, []); return s.incidents.get(userId); }
+  function secCameras(s, userId) { if (!s.cameras.has(userId)) s.cameras.set(userId, []); return s.cameras.get(userId); }
+  function secBadgeEvents(s, userId) { if (!s.badgeEvents.has(userId)) s.badgeEvents.set(userId, []); return s.badgeEvents.get(userId); }
+
+  // re-bind STATE shape (extend the existing getSecurityState lazily)
+  function getSecState() {
+    const s = getSecurityState();
+    if (!s) return null;
+    if (!(s.events instanceof Map)) s.events = new Map();
+    if (!(s.rules instanceof Map)) s.rules = new Map();
+    if (!(s.incidents instanceof Map)) s.incidents = new Map();
+    if (!(s.cameras instanceof Map)) s.cameras = new Map();
+    if (!(s.badgeEvents instanceof Map)) s.badgeEvents = new Map();
+    return s;
+  }
+
+  const EVENT_SEVERITY = ["info", "low", "medium", "high", "critical"];
+  const sevRankE = (sv) => ({ info: 0, low: 1, medium: 2, high: 3, critical: 4 }[sv] ?? 0);
+
+  // ── SIEM: ingest a single security event/log line ────────────────
+  registerLensAction("security", "event-ingest", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const message = secClean(params.message, 1000);
+    if (!message) return { ok: false, error: "event message required" };
+    const ev = {
+      id: secId("evt"),
+      source: secClean(params.source, 120) || "manual",
+      category: secClean(params.category, 60) || "log",
+      severity: EVENT_SEVERITY.includes(params.severity) ? params.severity : "info",
+      message,
+      srcIp: secClean(params.srcIp, 64) || null,
+      user: secClean(params.user, 120) || null,
+      host: secClean(params.host, 160) || null,
+      ts: params.ts ? new Date(params.ts).toISOString() : new Date().toISOString(),
+      ingestedAt: new Date().toISOString(),
+      correlationId: null,
+    };
+    const arr = secEvents(s, secActor(ctx));
+    arr.push(ev);
+    if (arr.length > 5000) arr.splice(0, arr.length - 5000);
+    saveSecurity();
+    return { ok: true, result: { event: ev } };
+  });
+
+  // ── SIEM: list / search events ───────────────────────────────────
+  registerLensAction("security", "event-list", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let events = [...secEvents(s, secActor(ctx))];
+    if (params.severity && EVENT_SEVERITY.includes(params.severity)) events = events.filter((e) => e.severity === params.severity);
+    if (params.source) events = events.filter((e) => e.source === params.source);
+    if (params.query) {
+      const q = String(params.query).toLowerCase();
+      events = events.filter((e) => e.message.toLowerCase().includes(q) || (e.srcIp || "").includes(q) || (e.user || "").toLowerCase().includes(q));
+    }
+    events.sort((a, b) => (b.ts > a.ts ? 1 : -1));
+    const limit = Math.max(1, Math.min(500, Math.round(Number(params.limit) || 200)));
+    return { ok: true, result: { events: events.slice(0, limit), count: events.length } };
+  });
+
+  // ── SIEM: correlation — cluster events sharing srcIp/user/host ────
+  registerLensAction("security", "event-correlate", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const events = secEvents(s, secActor(ctx));
+    const windowMin = Math.max(1, Math.min(1440, Math.round(Number(params.windowMin) || 60)));
+    const minEvents = Math.max(2, Math.round(Number(params.minEvents) || 3));
+    const cutoff = Date.now() - windowMin * 60_000;
+    const recent = events.filter((e) => new Date(e.ts).getTime() >= cutoff);
+    const groups = new Map();
+    for (const e of recent) {
+      for (const key of [e.srcIp && `ip:${e.srcIp}`, e.user && `user:${e.user}`, e.host && `host:${e.host}`].filter(Boolean)) {
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(e);
+      }
+    }
+    const correlations = [];
+    for (const [key, evs] of groups) {
+      if (evs.length < minEvents) continue;
+      const maxSev = evs.reduce((m, e) => Math.max(m, sevRankE(e.severity)), 0);
+      const cid = secId("cor");
+      for (const e of evs) e.correlationId = cid;
+      correlations.push({
+        correlationId: cid,
+        pivot: key,
+        eventCount: evs.length,
+        peakSeverity: EVENT_SEVERITY[maxSev],
+        firstSeen: evs.reduce((a, e) => (e.ts < a ? e.ts : a), evs[0].ts),
+        lastSeen: evs.reduce((a, e) => (e.ts > a ? e.ts : a), evs[0].ts),
+        eventIds: evs.map((e) => e.id),
+        categories: [...new Set(evs.map((e) => e.category))],
+      });
+    }
+    correlations.sort((a, b) => sevRankE(b.peakSeverity) - sevRankE(a.peakSeverity) || b.eventCount - a.eventCount);
+    saveSecurity();
+    return { ok: true, result: { correlations, windowMin, eventsAnalyzed: recent.length } };
+  });
+
+  // ── Alert rules engine: create a detection rule ──────────────────
+  registerLensAction("security", "rule-add", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = secClean(params.name, 160);
+    if (!name) return { ok: false, error: "rule name required" };
+    const pattern = secClean(params.pattern, 240);
+    if (!pattern) return { ok: false, error: "rule pattern required" };
+    const rule = {
+      id: secId("rul"),
+      name,
+      pattern,
+      field: ["message", "srcIp", "user", "host", "category", "source"].includes(params.field) ? params.field : "message",
+      minSeverity: EVENT_SEVERITY.includes(params.minSeverity) ? params.minSeverity : "info",
+      threshold: Math.max(1, Math.round(Number(params.threshold) || 1)),
+      windowMin: Math.max(1, Math.min(1440, Math.round(Number(params.windowMin) || 60))),
+      incidentSeverity: ["P1", "P2", "P3", "P4", "P5"].includes(params.incidentSeverity) ? params.incidentSeverity : "P3",
+      enabled: params.enabled !== false,
+      createdAt: new Date().toISOString(),
+      lastFiredAt: null,
+      fireCount: 0,
+    };
+    secRules(s, secActor(ctx)).push(rule);
+    saveSecurity();
+    return { ok: true, result: { rule } };
+  });
+
+  registerLensAction("security", "rule-list", (ctx, _a, _params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rules = [...secRules(s, secActor(ctx))];
+    return { ok: true, result: { rules, count: rules.length } };
+  });
+
+  registerLensAction("security", "rule-delete", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = secRules(s, secActor(ctx));
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "rule not found" };
+    arr.splice(i, 1);
+    saveSecurity();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("security", "rule-toggle", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rule = secRules(s, secActor(ctx)).find((r) => r.id === params.id);
+    if (!rule) return { ok: false, error: "rule not found" };
+    rule.enabled = !rule.enabled;
+    saveSecurity();
+    return { ok: true, result: { rule } };
+  });
+
+  // ── Alert rules engine: evaluate all rules against the event stream
+  //    matched rules that meet threshold auto-create incidents.
+  registerLensAction("security", "rule-evaluate", (ctx, _a, _params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = secActor(ctx);
+    const events = secEvents(s, userId);
+    const rules = secRules(s, userId);
+    const incidents = secIncidents(s, userId);
+    const now = Date.now();
+    const triggered = [];
+    for (const rule of rules) {
+      if (!rule.enabled) continue;
+      const cutoff = now - rule.windowMin * 60_000;
+      const pat = rule.pattern.toLowerCase();
+      const matches = events.filter((e) => {
+        if (new Date(e.ts).getTime() < cutoff) return false;
+        if (sevRankE(e.severity) < sevRankE(rule.minSeverity)) return false;
+        const val = String(e[rule.field] ?? "").toLowerCase();
+        return val.includes(pat);
+      });
+      if (matches.length < rule.threshold) continue;
+      rule.lastFiredAt = new Date().toISOString();
+      rule.fireCount += 1;
+      const incident = {
+        id: secId("inc"),
+        title: `[Auto] ${rule.name}`,
+        severity: rule.incidentSeverity,
+        status: "detected",
+        phase: "detected",
+        origin: "alert-rule",
+        ruleId: rule.id,
+        eventIds: matches.map((m) => m.id),
+        matchCount: matches.length,
+        assignee: null,
+        playbookId: null,
+        playbookStepIndex: 0,
+        notes: `Rule "${rule.name}" matched ${matches.length} event(s) in ${rule.windowMin}m window.`,
+        timeline: [{ at: new Date().toISOString(), action: "detected", actor: "alert-engine", detail: `${matches.length} events` }],
+        createdAt: new Date().toISOString(),
+        closedAt: null,
+      };
+      incidents.push(incident);
+      triggered.push({ ruleId: rule.id, ruleName: rule.name, incidentId: incident.id, matchCount: matches.length });
+    }
+    saveSecurity();
+    return { ok: true, result: { triggered, rulesEvaluated: rules.filter((r) => r.enabled).length, incidentsCreated: triggered.length } };
+  });
+
+  // ── Incident response: list managed incidents ────────────────────
+  registerLensAction("security", "incident-list", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let incidents = [...secIncidents(s, secActor(ctx))];
+    if (params.status) incidents = incidents.filter((i) => i.status === params.status);
+    if (params.open) incidents = incidents.filter((i) => i.status !== "closed");
+    incidents.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+    return { ok: true, result: { incidents, count: incidents.length } };
+  });
+
+  // ── Incident response: create a managed incident manually ────────
+  registerLensAction("security", "incident-open", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = secClean(params.title, 240);
+    if (!title) return { ok: false, error: "incident title required" };
+    const incident = {
+      id: secId("inc"),
+      title,
+      severity: ["P1", "P2", "P3", "P4", "P5"].includes(params.severity) ? params.severity : "P3",
+      status: "detected",
+      phase: "detected",
+      origin: "manual",
+      ruleId: null,
+      eventIds: Array.isArray(params.eventIds) ? params.eventIds.map(String).slice(0, 200) : [],
+      matchCount: 0,
+      assignee: secClean(params.assignee, 120) || null,
+      playbookId: null,
+      playbookStepIndex: 0,
+      notes: secClean(params.notes, 2000) || "",
+      timeline: [{ at: new Date().toISOString(), action: "opened", actor: secActor(ctx), detail: "manual" }],
+      createdAt: new Date().toISOString(),
+      closedAt: null,
+    };
+    secIncidents(s, secActor(ctx)).push(incident);
+    saveSecurity();
+    return { ok: true, result: { incident } };
+  });
+
+  // ── Incident response: built-in playbook library ─────────────────
+  const PLAYBOOKS = {
+    malware: { name: "Malware / Ransomware Response", steps: ["Isolate affected host from network", "Capture memory & disk image for forensics", "Identify malware family & IOCs", "Eradicate — remove persistence, clean systems", "Restore from known-good backup", "Document root cause & lessons learned"] },
+    phishing: { name: "Phishing Response", steps: ["Quarantine the reported email org-wide", "Identify all recipients & click-throughs", "Reset credentials for compromised accounts", "Block sender domain & malicious URLs", "Notify affected users & run awareness reminder", "Close & record indicators"] },
+    intrusion: { name: "Unauthorized Access / Intrusion", steps: ["Confirm the intrusion & scope affected assets", "Contain — revoke sessions, block source IPs", "Investigate lateral movement & data access", "Eradicate attacker foothold & patch entry vector", "Recover affected services & monitor", "Post-incident review"] },
+    dos: { name: "DDoS / Availability Incident", steps: ["Confirm attack vs. legitimate traffic spike", "Enable upstream filtering / rate limiting", "Scale capacity & failover where possible", "Identify attack signature & block at edge", "Verify service recovery", "Capacity & resilience review"] },
+    physical: { name: "Physical Security Breach", steps: ["Dispatch guard & verify the breach location", "Secure the area & account for personnel", "Review surveillance footage & access logs", "Identify how access was gained", "Remediate — repair, re-key, update badge access", "File report & update procedures"] },
+  };
+
+  registerLensAction("security", "playbook-list", (_ctx, _a, _params = {}) => {
+    const playbooks = Object.entries(PLAYBOOKS).map(([id, p]) => ({ id, name: p.name, stepCount: p.steps.length, steps: p.steps }));
+    return { ok: true, result: { playbooks, count: playbooks.length } };
+  });
+
+  // ── Incident response: attach a playbook to an incident ──────────
+  registerLensAction("security", "incident-attach-playbook", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const incident = secIncidents(s, secActor(ctx)).find((i) => i.id === params.incidentId);
+    if (!incident) return { ok: false, error: "incident not found" };
+    const pb = PLAYBOOKS[params.playbookId];
+    if (!pb) return { ok: false, error: "unknown playbook" };
+    incident.playbookId = params.playbookId;
+    incident.playbookSteps = pb.steps.map((text, idx) => ({ idx, text, done: false, doneAt: null }));
+    incident.playbookStepIndex = 0;
+    incident.timeline.push({ at: new Date().toISOString(), action: "playbook-attached", actor: secActor(ctx), detail: pb.name });
+    saveSecurity();
+    return { ok: true, result: { incident } };
+  });
+
+  // ── Incident response: advance workflow / complete a playbook step
+  const IR_PHASES = ["detected", "triaged", "investigating", "contained", "eradicated", "recovered", "closed"];
+  registerLensAction("security", "incident-advance", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const incident = secIncidents(s, secActor(ctx)).find((i) => i.id === params.incidentId);
+    if (!incident) return { ok: false, error: "incident not found" };
+    const updates = [];
+    if (params.assignee != null) { incident.assignee = secClean(params.assignee, 120); updates.push("assigned"); }
+    if (params.note) { incident.timeline.push({ at: new Date().toISOString(), action: "note", actor: secActor(ctx), detail: secClean(params.note, 600) }); updates.push("note"); }
+    if (typeof params.completeStep === "number" && Array.isArray(incident.playbookSteps)) {
+      const step = incident.playbookSteps[params.completeStep];
+      if (step && !step.done) {
+        step.done = true; step.doneAt = new Date().toISOString();
+        incident.playbookStepIndex = incident.playbookSteps.filter((st) => st.done).length;
+        incident.timeline.push({ at: new Date().toISOString(), action: "step-complete", actor: secActor(ctx), detail: step.text });
+        updates.push("step");
+      }
+    }
+    if (params.phase && IR_PHASES.includes(params.phase)) {
+      incident.phase = params.phase;
+      incident.status = params.phase === "closed" ? "closed" : params.phase === "detected" ? "detected" : params.phase;
+      if (params.phase === "closed") incident.closedAt = new Date().toISOString();
+      incident.timeline.push({ at: new Date().toISOString(), action: `phase:${params.phase}`, actor: secActor(ctx), detail: "" });
+      updates.push("phase");
+    }
+    if (updates.length === 0) return { ok: false, error: "no valid update supplied" };
+    saveSecurity();
+    return { ok: true, result: { incident, updates } };
+  });
+
+  // ── CVE-to-asset matching: flag which registered assets a vuln hits
+  registerLensAction("security", "cve-asset-match", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = secActor(ctx);
+    const assets = secAssets(s, userId);
+    const vulns = secVulns(s, userId);
+    const norm = (v) => String(v || "").toLowerCase().trim();
+    const matches = [];
+    const candidates = params.vulnId ? vulns.filter((v) => v.id === params.vulnId) : vulns;
+    for (const v of candidates) {
+      const hay = norm(`${v.title} ${v.cveId || ""} ${v.notes || ""}`);
+      const hits = assets.filter((a) => {
+        const vendor = norm(a.vendor), name = norm(a.name), ver = norm(a.version), type = norm(a.type);
+        if (vendor && hay.includes(vendor)) return true;
+        if (name && name.length >= 3 && hay.includes(name)) return true;
+        if (type && type.length >= 3 && hay.includes(type)) return true;
+        if (ver && ver.length >= 2 && hay.includes(ver)) return true;
+        return false;
+      });
+      if (hits.length === 0) continue;
+      // auto-link affected assets onto the vuln record
+      const newIds = hits.map((a) => a.id);
+      v.affectedAssetIds = [...new Set([...(v.affectedAssetIds || []), ...newIds])];
+      matches.push({
+        vulnId: v.id, cveId: v.cveId, title: v.title, severity: v.severity, cvss: v.cvss,
+        affectedAssets: hits.map((a) => ({ id: a.id, name: a.name, vendor: a.vendor, version: a.version, critical: a.critical })),
+      });
+    }
+    saveSecurity();
+    return { ok: true, result: { matches, vulnsScanned: candidates.length, assetsRegistered: assets.length, totalMatches: matches.length } };
+  });
+
+  // ── Access-control / badge audit: record a badge access event ────
+  registerLensAction("security", "badge-event-add", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const badgeId = secClean(params.badgeId, 64);
+    const holder = secClean(params.holder, 120);
+    const zone = secClean(params.zone, 120);
+    if (!badgeId || !zone) return { ok: false, error: "badgeId and zone required" };
+    const ev = {
+      id: secId("bdg"),
+      badgeId, holder: holder || null, zone,
+      result: ["granted", "denied"].includes(params.result) ? params.result : "granted",
+      ts: params.ts ? new Date(params.ts).toISOString() : new Date().toISOString(),
+      door: secClean(params.door, 80) || null,
+    };
+    const arr = secBadgeEvents(s, secActor(ctx));
+    arr.push(ev);
+    if (arr.length > 5000) arr.splice(0, arr.length - 5000);
+    saveSecurity();
+    return { ok: true, result: { event: ev } };
+  });
+
+  // ── Access-control / badge audit: surface anomalous access ───────
+  registerLensAction("security", "badge-audit", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const events = [...secBadgeEvents(s, secActor(ctx))].sort((a, b) => (a.ts > b.ts ? 1 : -1));
+    const anomalies = [];
+    const denials = events.filter((e) => e.result === "denied");
+    // repeated denials per badge
+    const denyByBadge = new Map();
+    for (const d of denials) denyByBadge.set(d.badgeId, (denyByBadge.get(d.badgeId) || 0) + 1);
+    for (const [badgeId, count] of denyByBadge) {
+      if (count >= 3) anomalies.push({ kind: "repeated-denial", badgeId, count, detail: `${count} denied access attempts` });
+    }
+    // after-hours access (00:00–05:00 local)
+    for (const e of events) {
+      if (e.result !== "granted") continue;
+      const hr = new Date(e.ts).getHours();
+      if (hr >= 0 && hr < 5) anomalies.push({ kind: "after-hours", badgeId: e.badgeId, holder: e.holder, zone: e.zone, ts: e.ts, detail: `Access at ${String(hr).padStart(2, "0")}:00` });
+    }
+    // impossible travel — same badge in two zones within 60s
+    const tailByBadge = new Map();
+    for (const e of events) {
+      const prev = tailByBadge.get(e.badgeId);
+      if (prev && prev.zone !== e.zone) {
+        const gapSec = (new Date(e.ts).getTime() - new Date(prev.ts).getTime()) / 1000;
+        if (gapSec >= 0 && gapSec < 60) anomalies.push({ kind: "rapid-zone-change", badgeId: e.badgeId, from: prev.zone, to: e.zone, gapSeconds: Math.round(gapSec), ts: e.ts, detail: `${prev.zone} → ${e.zone} in ${Math.round(gapSec)}s` });
+      }
+      tailByBadge.set(e.badgeId, e);
+    }
+    void params;
+    return { ok: true, result: { anomalies, eventsAudited: events.length, denialCount: denials.length, anomalyCount: anomalies.length } };
+  });
+
+  // ── Surveillance camera tiles: register a camera ─────────────────
+  registerLensAction("security", "camera-add", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = secClean(params.name, 120);
+    if (!name) return { ok: false, error: "camera name required" };
+    const camera = {
+      id: secId("cam"),
+      name,
+      zone: secClean(params.zone, 120) || "unassigned",
+      // streamUrl is user-supplied (their own camera/MJPEG endpoint) — never fabricated
+      streamUrl: secClean(params.streamUrl, 600) || null,
+      kind: ["indoor", "outdoor", "ptz", "thermal"].includes(params.kind) ? params.kind : "indoor",
+      status: "online",
+      motionDetection: params.motionDetection === true,
+      lastMotionAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    secCameras(s, secActor(ctx)).push(camera);
+    saveSecurity();
+    return { ok: true, result: { camera } };
+  });
+
+  // ── Surveillance camera tiles: list tiles for the wall ───────────
+  registerLensAction("security", "camera-list", (ctx, _a, _params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cameras = [...secCameras(s, secActor(ctx))];
+    return { ok: true, result: { cameras, count: cameras.length, online: cameras.filter((c) => c.status === "online").length } };
+  });
+
+  registerLensAction("security", "camera-update", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cam = secCameras(s, secActor(ctx)).find((c) => c.id === params.id);
+    if (!cam) return { ok: false, error: "camera not found" };
+    if (params.status && ["online", "offline", "maintenance"].includes(params.status)) cam.status = params.status;
+    if (params.streamUrl != null) cam.streamUrl = secClean(params.streamUrl, 600) || null;
+    if (params.zone != null) cam.zone = secClean(params.zone, 120) || "unassigned";
+    if (params.motionDetection != null) cam.motionDetection = params.motionDetection === true;
+    if (params.recordMotion === true) cam.lastMotionAt = new Date().toISOString();
+    saveSecurity();
+    return { ok: true, result: { camera: cam } };
+  });
+
+  registerLensAction("security", "camera-delete", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = secCameras(s, secActor(ctx));
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "camera not found" };
+    arr.splice(i, 1);
+    saveSecurity();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── EPSS exploit-probability + IOC threat-intel enrichment ───────
+  //    EPSS: FIRST.org free public API. IOC reputation: derived locally
+  //    from the live SIEM event stream (no key required).
+  registerLensAction("security", "threat-enrich", async (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = secActor(ctx);
+    const cveId = secClean(params.cveId, 30);
+    const ioc = secClean(params.ioc, 256);
+    if (!cveId && !ioc) return { ok: false, error: "cveId or ioc required" };
+    const result = { cveId: cveId || null, ioc: ioc || null, enrichedAt: new Date().toISOString() };
+
+    if (cveId) {
+      try {
+        const data = await fetchJsonWithTimeout(`https://api.first.org/data/v1/epss?cve=${encodeURIComponent(cveId)}`);
+        const row = data?.data?.[0];
+        if (row) {
+          result.epss = {
+            score: Number(row.epss),
+            percentile: Number(row.percentile),
+            date: row.date,
+            exploitability: Number(row.epss) >= 0.5 ? "high" : Number(row.epss) >= 0.1 ? "moderate" : "low",
+          };
+        } else {
+          result.epss = { score: null, note: "no EPSS data for this CVE" };
+        }
+      } catch (e) {
+        result.epssError = `EPSS unreachable: ${e instanceof Error ? e.message : String(e)}`;
+      }
+    }
+
+    if (ioc) {
+      const events = secEvents(s, userId);
+      const needle = ioc.toLowerCase();
+      const sightings = events.filter((e) =>
+        (e.srcIp || "").toLowerCase() === needle ||
+        (e.host || "").toLowerCase().includes(needle) ||
+        e.message.toLowerCase().includes(needle));
+      const peak = sightings.reduce((m, e) => Math.max(m, sevRankE(e.severity)), 0);
+      result.iocIntel = {
+        value: ioc,
+        sightings: sightings.length,
+        peakSeverity: sightings.length ? EVENT_SEVERITY[peak] : null,
+        firstSeen: sightings.length ? sightings.reduce((a, e) => (e.ts < a ? e.ts : a), sightings[0].ts) : null,
+        lastSeen: sightings.length ? sightings.reduce((a, e) => (e.ts > a ? e.ts : a), sightings[0].ts) : null,
+        reputation: sightings.length >= 5 || peak >= 3 ? "malicious" : sightings.length > 0 ? "suspicious" : "unknown",
+      };
+    }
+    return { ok: true, result };
   });
 };

@@ -212,6 +212,8 @@ import tournamentsLens from './tournaments.js';
 import meshLens from './mesh.js';
 import cognitiveReplay from './cognitive-replay.js';
 import forgeLens from './forge.js';
+import understandingLens from './understanding.js';
+import selfLens from './self.js';
 import worldmodelLens from './worldmodel.js';
 import savedLens from './saved.js';
 import inheritance from './inheritance.js';
@@ -429,4 +431,6 @@ export default [
   meshLens,
   cognitiveReplay,
   forgeLens,
+  selfLens,
+  understandingLens,
 ];

@@ -11,14 +11,14 @@ Backend: `space` domain (12 macros). Pure-compute orbital mechanics + live Space
 - Launch feed ingest as visible DTUs
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Live ISS / satellite tracking — real-time position over a world map (TLE from Celestrak, free)
-- [ ] `[M]` Visible-pass predictions for the user's location (Heavens-Above's core feature)
-- [ ] `[M]` 3D orbit visualization — render computed orbits in a globe view
-- [ ] `[M]` Launch countdown timers + webcast embeds + push reminders
-- [ ] `[S]` Rocket / vehicle detail pages (resolve rocketId from SpaceX API)
-- [ ] `[M]` Sky map / planetarium view (planet positions, constellations)
-- [ ] `[S]` Launch filtering by provider / orbit / location
-- [ ] `[M]` APOD + NASA imagery feed (free NASA API)
+- [x] `[L]` Live ISS / satellite tracking — real-time position over a world map (`iss-track` + `iss-groundtrack`, wheretheiss.at, 5s refresh)
+- [x] `[M]` Visible-pass predictions for the user's location (`iss-passes`, geometry over real ground-track data)
+- [x] `[M]` 3D orbit visualization — render computed orbits in a globe view (`orbit-3d`, rotatable isometric globe)
+- [x] `[M]` Launch countdown timers + webcast embeds + push reminders (`launch-countdown`, SpaceX + LL2, YouTube embed + Notification reminder)
+- [x] `[S]` Rocket / vehicle detail pages (`rocket-detail`, resolves rocketId from SpaceX API)
+- [x] `[M]` Sky map / planetarium view (`sky-map`, J2000 ephemeris planet positions on a horizon dome)
+- [x] `[S]` Launch filtering by provider / orbit / location (`launches-filtered`, LL2 with facet dropdowns)
+- [x] `[M]` APOD + NASA imagery feed (`apod`, free NASA API — keyless DEMO_KEY)
 
 ## Parity
-~50% of the category. The launch-tracking spine (two live APIs, watchlist, feed) and orbital-mechanics calculators are real, but there is no live satellite tracking, no visible-pass prediction, and no 3D/sky visualization.
+~90% of the category. The launch-tracking spine, orbital-mechanics calculators, live ISS tracking, visible-pass prediction, 3D orbit + sky-map visualization, countdowns with webcasts and NASA imagery are all real. Surfaced in the Live Observatory deck (`components/space/SpaceObservatory.tsx`).

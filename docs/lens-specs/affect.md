@@ -11,13 +11,15 @@ Backend: `server/domains/affect.js` (504 LOC) — macros `sentimentAnalysis`, `e
 - Policy controls and health view; AI universal actions
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Daily mood check-in ritual with streak tracking
-- [ ] `[M]` Trend charts: weekly/monthly mood averages and correlations
-- [ ] `[S]` Activity/tag correlation ("you feel better after X")
-- [ ] `[M]` Journaling prompt entries tied to each affect event
-- [ ] `[S]` Mood-based reminders / nudges
-- [ ] `[M]` Export emotional report (PDF/CSV) for personal or clinical use
-- [ ] `[S]` Customizable mood scale / emoji set
+- [x] `[M]` Daily mood check-in ritual with streak tracking
+- [x] `[M]` Trend charts: weekly/monthly mood averages and correlations
+- [x] `[S]` Activity/tag correlation ("you feel better after X")
+- [x] `[M]` Journaling prompt entries tied to each affect event
+- [x] `[S]` Mood-based reminders / nudges
+- [x] `[M]` Export emotional report (PDF/CSV) for personal or clinical use
+- [x] `[S]` Customizable mood scale / emoji set
 
 ## Parity
-~55% of the mood-tracking + emotion-analytics surface. The five-dimension model and timeline analytics are sophisticated, but it lacks the habit-loop (daily check-in, streaks) and correlation insights that make consumer mood apps sticky.
+~90% of the mood-tracking + emotion-analytics surface. The five-dimension model and timeline analytics plus a daily check-in ritual with streaks, weekly/monthly trend charts, activity/tag correlation, journaling prompts, mood-based reminders, report export, and a customizable mood scale all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Calendar, RefreshCw, AlertTriangle, ExternalLink, Radio } from 'lucide-react';
+import { Calendar, RefreshCw, AlertTriangle, Radio } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 

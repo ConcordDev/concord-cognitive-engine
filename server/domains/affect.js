@@ -501,4 +501,521 @@ export default function registerAffectActions(registerLensAction) {
     artifact.data.empathyMap = result;
     return { ok: true, result };
   });
+
+  // ---------------------------------------------------------------------------
+  // Mood-tracking parity layer (Daylio / Hume AI feature parity).
+  // All data is real user input persisted per-user in globalThis._concordSTATE.
+  // No seed/demo/mock mood entries are ever created.
+  // ---------------------------------------------------------------------------
+
+  function getMoodState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.affectMood) {
+      STATE.affectMood = {
+        checkins: new Map(),   // userId -> Array<checkin>
+        reminders: new Map(),  // userId -> Array<reminder>
+        scales: new Map(),     // userId -> scale config
+        seq: new Map(),        // userId -> { checkin, reminder }
+      };
+    }
+    const s = STATE.affectMood;
+    if (!s.checkins) s.checkins = new Map();
+    if (!s.reminders) s.reminders = new Map();
+    if (!s.scales) s.scales = new Map();
+    if (!s.seq) s.seq = new Map();
+    return s;
+  }
+  function moodActId(ctx) {
+    return ctx?.actor?.userId || ctx?.userId || "anon";
+  }
+  function moodList(map, userId) {
+    if (!map.has(userId)) map.set(userId, []);
+    return map.get(userId);
+  }
+  function moodSeq(s, userId, key) {
+    if (!s.seq.has(userId)) s.seq.set(userId, { checkin: 1, reminder: 1 });
+    const seq = s.seq.get(userId);
+    if (!Number.isFinite(seq[key])) seq[key] = 1;
+    return seq[key]++;
+  }
+  function moodSave() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  // Day key in YYYY-MM-DD from an ISO timestamp.
+  function dayKey(iso) {
+    return new Date(iso).toISOString().slice(0, 10);
+  }
+  // Default 5-point mood scale (Daylio's canonical shape).
+  const DEFAULT_SCALE = {
+    points: [
+      { value: 1, label: "Awful", emoji: "😖" },
+      { value: 2, label: "Bad", emoji: "😞" },
+      { value: 3, label: "Meh", emoji: "😐" },
+      { value: 4, label: "Good", emoji: "🙂" },
+      { value: 5, label: "Great", emoji: "😄" },
+    ],
+  };
+  function getScale(s, userId) {
+    return s.scales.get(userId) || DEFAULT_SCALE;
+  }
+  // Pearson correlation of two equal-length numeric arrays.
+  function pearson(xs, ys) {
+    const n = xs.length;
+    if (n < 2) return 0;
+    const mx = xs.reduce((a, b) => a + b, 0) / n;
+    const my = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0, dx = 0, dy = 0;
+    for (let i = 0; i < n; i++) {
+      const a = xs[i] - mx, b = ys[i] - my;
+      num += a * b; dx += a * a; dy += b * b;
+    }
+    if (dx === 0 || dy === 0) return 0;
+    return num / Math.sqrt(dx * dy);
+  }
+
+  /**
+   * checkin
+   * Daily mood check-in ritual. Records one real mood entry. Streak is computed
+   * from consecutive calendar days that have at least one check-in.
+   * params: { mood (1..maxScale), note?, activities?:[string], promptId?, promptAnswer? }
+   */
+  registerLensAction("affect", "checkin", (ctx, artifact, params) => {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    const scale = getScale(s, userId);
+    const maxVal = Math.max(...scale.points.map((p) => p.value));
+    const minVal = Math.min(...scale.points.map((p) => p.value));
+    const mood = Number(params.mood);
+    if (!Number.isFinite(mood) || mood < minVal || mood > maxVal) {
+      return { ok: false, error: `mood must be between ${minVal} and ${maxVal}` };
+    }
+    const list = moodList(s.checkins, userId);
+    const now = new Date().toISOString();
+    const point = scale.points.find((p) => p.value === Math.round(mood));
+    const entry = {
+      id: `chk_${moodSeq(s, userId, "checkin")}`,
+      mood: Math.round(mood),
+      moodLabel: point ? point.label : String(mood),
+      moodEmoji: point ? point.emoji : "",
+      note: typeof params.note === "string" ? params.note.slice(0, 2000) : "",
+      activities: Array.isArray(params.activities)
+        ? params.activities.map((a) => String(a).toLowerCase().trim()).filter(Boolean).slice(0, 20)
+        : [],
+      promptId: params.promptId || null,
+      promptAnswer: typeof params.promptAnswer === "string" ? params.promptAnswer.slice(0, 4000) : "",
+      createdAt: now,
+      day: dayKey(now),
+    };
+    list.push(entry);
+    moodSave();
+    // Recompute streak.
+    const days = [...new Set(list.map((c) => c.day))].sort();
+    let streak = 0;
+    let cursor = new Date(now);
+    cursor.setUTCHours(0, 0, 0, 0);
+    const daySet = new Set(days);
+    while (daySet.has(cursor.toISOString().slice(0, 10))) {
+      streak++;
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    }
+    let longest = 0, run = 0, prev = null;
+    for (const d of days) {
+      if (prev) {
+        const gap = (new Date(d) - new Date(prev)) / 86400000;
+        run = gap === 1 ? run + 1 : 1;
+      } else {
+        run = 1;
+      }
+      longest = Math.max(longest, run);
+      prev = d;
+    }
+    return {
+      ok: true,
+      result: {
+        entry,
+        currentStreak: streak,
+        longestStreak: longest,
+        totalCheckins: list.length,
+        daysLogged: days.length,
+      },
+    };
+  });
+
+  /**
+   * checkinHistory
+   * Return recorded check-ins (newest first) plus streak summary.
+   * params: { limit?, sinceDays? }
+   */
+  registerLensAction("affect", "checkinHistory", (ctx, artifact, params) => {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    const list = [...moodList(s.checkins, userId)];
+    let filtered = list;
+    if (Number.isFinite(Number(params.sinceDays))) {
+      const cutoff = Date.now() - Number(params.sinceDays) * 86400000;
+      filtered = list.filter((c) => new Date(c.createdAt).getTime() >= cutoff);
+    }
+    const sorted = filtered.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const limit = Number.isFinite(Number(params.limit)) ? Number(params.limit) : 100;
+    const days = [...new Set(list.map((c) => c.day))].sort();
+    let streak = 0;
+    const cursor = new Date();
+    cursor.setUTCHours(0, 0, 0, 0);
+    const daySet = new Set(days);
+    while (daySet.has(cursor.toISOString().slice(0, 10))) {
+      streak++;
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    }
+    const checkedToday = daySet.has(new Date().toISOString().slice(0, 10));
+    return {
+      ok: true,
+      result: {
+        entries: sorted.slice(0, limit),
+        totalCheckins: list.length,
+        currentStreak: streak,
+        checkedInToday: checkedToday,
+        daysLogged: days.length,
+      },
+    };
+  });
+
+  /**
+   * trends
+   * Weekly/monthly mood averages, day-of-week patterns, and a continuous
+   * series for charting. Computed only from real recorded check-ins.
+   * params: { granularity?: 'week'|'month', sinceDays? }
+   */
+  registerLensAction("affect", "trends", (ctx, artifact, params) => {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    let list = [...moodList(s.checkins, userId)];
+    if (Number.isFinite(Number(params.sinceDays))) {
+      const cutoff = Date.now() - Number(params.sinceDays) * 86400000;
+      list = list.filter((c) => new Date(c.createdAt).getTime() >= cutoff);
+    }
+    if (list.length === 0) {
+      return { ok: true, result: { hasData: false, buckets: [], daily: [], dayOfWeek: [] } };
+    }
+    const granularity = params.granularity === "month" ? "month" : "week";
+    // Daily averages.
+    const byDay = {};
+    for (const c of list) {
+      (byDay[c.day] = byDay[c.day] || []).push(c.mood);
+    }
+    const daily = Object.entries(byDay)
+      .sort()
+      .map(([day, moods]) => ({
+        day,
+        avgMood: Math.round((moods.reduce((a, b) => a + b, 0) / moods.length) * 100) / 100,
+        count: moods.length,
+      }));
+    // Bucket by week (ISO-ish) or month.
+    const byBucket = {};
+    for (const c of list) {
+      let key;
+      if (granularity === "month") {
+        key = c.day.slice(0, 7);
+      } else {
+        const d = new Date(c.day);
+        const onejan = new Date(d.getUTCFullYear(), 0, 1);
+        const week = Math.ceil(((d - onejan) / 86400000 + onejan.getUTCDay() + 1) / 7);
+        key = `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+      }
+      (byBucket[key] = byBucket[key] || []).push(c.mood);
+    }
+    const buckets = Object.entries(byBucket)
+      .sort()
+      .map(([bucket, moods]) => ({
+        bucket,
+        avgMood: Math.round((moods.reduce((a, b) => a + b, 0) / moods.length) * 100) / 100,
+        count: moods.length,
+        min: Math.min(...moods),
+        max: Math.max(...moods),
+      }));
+    // Day-of-week pattern.
+    const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dowAgg = DOW.map(() => []);
+    for (const c of list) {
+      dowAgg[new Date(c.day).getUTCDay()].push(c.mood);
+    }
+    const dayOfWeek = DOW.map((label, i) => ({
+      label,
+      avgMood: dowAgg[i].length
+        ? Math.round((dowAgg[i].reduce((a, b) => a + b, 0) / dowAgg[i].length) * 100) / 100
+        : null,
+      count: dowAgg[i].length,
+    }));
+    const all = list.map((c) => c.mood);
+    return {
+      ok: true,
+      result: {
+        hasData: true,
+        granularity,
+        buckets,
+        daily,
+        dayOfWeek,
+        overallAvg: Math.round((all.reduce((a, b) => a + b, 0) / all.length) * 100) / 100,
+        entryCount: list.length,
+      },
+    };
+  });
+
+  /**
+   * activityCorrelation
+   * "You feel better after X" — for each tagged activity, compares the mean
+   * mood of check-ins WITH the tag against the baseline mean of all check-ins.
+   * params: { sinceDays?, minSamples? }
+   */
+  registerLensAction("affect", "activityCorrelation", (ctx, artifact, params) => {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    let list = [...moodList(s.checkins, userId)];
+    if (Number.isFinite(Number(params.sinceDays))) {
+      const cutoff = Date.now() - Number(params.sinceDays) * 86400000;
+      list = list.filter((c) => new Date(c.createdAt).getTime() >= cutoff);
+    }
+    if (list.length === 0) {
+      return { ok: true, result: { hasData: false, correlations: [], baseline: null } };
+    }
+    const minSamples = Number.isFinite(Number(params.minSamples)) ? Number(params.minSamples) : 2;
+    const baseline = list.reduce((a, c) => a + c.mood, 0) / list.length;
+    const tagAgg = {};
+    for (const c of list) {
+      for (const a of c.activities) {
+        (tagAgg[a] = tagAgg[a] || []).push(c.mood);
+      }
+    }
+    const correlations = Object.entries(tagAgg)
+      .filter(([, moods]) => moods.length >= minSamples)
+      .map(([activity, moods]) => {
+        const avg = moods.reduce((a, b) => a + b, 0) / moods.length;
+        const delta = avg - baseline;
+        return {
+          activity,
+          avgMood: Math.round(avg * 100) / 100,
+          delta: Math.round(delta * 100) / 100,
+          samples: moods.length,
+          effect: delta > 0.25 ? "lifts" : delta < -0.25 ? "lowers" : "neutral",
+        };
+      })
+      .sort((a, b) => b.delta - a.delta);
+    return {
+      ok: true,
+      result: {
+        hasData: true,
+        baseline: Math.round(baseline * 100) / 100,
+        correlations,
+        topLift: correlations.find((c) => c.effect === "lifts") || null,
+        topDrain: [...correlations].reverse().find((c) => c.effect === "lowers") || null,
+      },
+    };
+  });
+
+  /**
+   * journalPrompts
+   * Reflective journaling prompts to attach to a check-in. Prompts rotate
+   * deterministically by day so the same day always offers the same set —
+   * this is content, not user data (no mock mood entries).
+   * params: { count? }
+   */
+  registerLensAction("affect", "journalPrompts", (ctx, artifact, params) => {
+    const POOL = [
+      "What is one moment from today you want to remember?",
+      "What drained your energy, and what restored it?",
+      "Name one thing you handled better than you would have a year ago.",
+      "What were you grateful for in the last 24 hours?",
+      "Describe a feeling you noticed but did not act on.",
+      "What would make tomorrow 1% better?",
+      "Who or what supported you today?",
+      "What is a worry you can set down for now?",
+      "What did your body tell you today?",
+      "When did you feel most like yourself today?",
+      "What is something you are looking forward to?",
+      "What boundary did you keep or wish you had kept?",
+    ];
+    const count = Math.min(Math.max(Number(params.count) || 3, 1), POOL.length);
+    const daySeed = Number(new Date().toISOString().slice(0, 10).replace(/-/g, ""));
+    const out = [];
+    const used = new Set();
+    let i = 0;
+    while (out.length < count && i < POOL.length * 2) {
+      const idx = (daySeed + i * 7) % POOL.length;
+      if (!used.has(idx)) {
+        used.add(idx);
+        out.push({ id: `prompt_${idx}`, text: POOL[idx] });
+      }
+      i++;
+    }
+    return { ok: true, result: { prompts: out, day: new Date().toISOString().slice(0, 10) } };
+  });
+
+  /**
+   * setReminder
+   * Create or update a mood-based reminder / nudge.
+   * params: { time?:'HH:MM', label?, condition?:'daily'|'streak_risk'|'low_mood', enabled? }
+   */
+  registerLensAction("affect", "setReminder", (ctx, artifact, params) => {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    const time = typeof params.time === "string" && /^\d{2}:\d{2}$/.test(params.time) ? params.time : "20:00";
+    const condition = ["daily", "streak_risk", "low_mood"].includes(params.condition)
+      ? params.condition
+      : "daily";
+    const list = moodList(s.reminders, userId);
+    if (params.id) {
+      const existing = list.find((r) => r.id === params.id);
+      if (!existing) return { ok: false, error: "reminder not found" };
+      existing.time = time;
+      existing.condition = condition;
+      if (typeof params.label === "string") existing.label = params.label.slice(0, 200);
+      if (typeof params.enabled === "boolean") existing.enabled = params.enabled;
+      existing.updatedAt = new Date().toISOString();
+      moodSave();
+      return { ok: true, result: { reminder: existing } };
+    }
+    const reminder = {
+      id: `rem_${moodSeq(s, userId, "reminder")}`,
+      time,
+      condition,
+      label: typeof params.label === "string" ? params.label.slice(0, 200) : "Time for your mood check-in",
+      enabled: params.enabled !== false,
+      createdAt: new Date().toISOString(),
+    };
+    list.push(reminder);
+    moodSave();
+    return { ok: true, result: { reminder } };
+  });
+
+  /**
+   * nudges
+   * Evaluate reminders against real check-in history and surface due nudges.
+   * No mock data — every nudge is derived from the user's actual entries.
+   */
+  registerLensAction("affect", "nudges", (ctx, artifact, _params) => {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    const reminders = moodList(s.reminders, userId).filter((r) => r.enabled);
+    const checkins = moodList(s.checkins, userId);
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const checkedToday = checkins.some((c) => c.day === todayKey);
+    const recent = checkins.filter((c) => Date.now() - new Date(c.createdAt).getTime() < 3 * 86400000);
+    const recentAvg = recent.length ? recent.reduce((a, c) => a + c.mood, 0) / recent.length : null;
+    const due = [];
+    for (const r of reminders) {
+      if (r.condition === "daily" && !checkedToday) {
+        due.push({ reminderId: r.id, type: "daily", message: r.label });
+      } else if (r.condition === "streak_risk" && !checkedToday) {
+        due.push({
+          reminderId: r.id,
+          type: "streak_risk",
+          message: "Check in today to keep your streak alive.",
+        });
+      } else if (r.condition === "low_mood" && recentAvg != null && recentAvg <= 2.5) {
+        due.push({
+          reminderId: r.id,
+          type: "low_mood",
+          message: "Your mood has been low recently — consider a self-care moment.",
+        });
+      }
+    }
+    return {
+      ok: true,
+      result: { reminders, due, checkedInToday: checkedToday, recentAvg: recentAvg != null ? Math.round(recentAvg * 100) / 100 : null },
+    };
+  });
+
+  /**
+   * exportReport
+   * Build an emotional report (rows + summary) for personal/clinical use.
+   * params: { format?:'csv'|'json', sinceDays? }
+   * Returns structured rows and a CSV string — caller downloads it client-side.
+   */
+  registerLensAction("affect", "exportReport", (ctx, artifact, params) => {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    let list = [...moodList(s.checkins, userId)];
+    if (Number.isFinite(Number(params.sinceDays))) {
+      const cutoff = Date.now() - Number(params.sinceDays) * 86400000;
+      list = list.filter((c) => new Date(c.createdAt).getTime() >= cutoff);
+    }
+    list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const rows = list.map((c) => ({
+      date: c.createdAt,
+      mood: c.mood,
+      moodLabel: c.moodLabel,
+      activities: c.activities.join("; "),
+      note: c.note,
+      journalAnswer: c.promptAnswer,
+    }));
+    const headers = ["date", "mood", "moodLabel", "activities", "note", "journalAnswer"];
+    const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => headers.map((h) => esc(r[h])).join(",")),
+    ].join("\n");
+    const moods = list.map((c) => c.mood);
+    const summary = {
+      generatedAt: new Date().toISOString(),
+      entryCount: list.length,
+      rangeStart: list.length ? list[0].createdAt : null,
+      rangeEnd: list.length ? list[list.length - 1].createdAt : null,
+      avgMood: moods.length ? Math.round((moods.reduce((a, b) => a + b, 0) / moods.length) * 100) / 100 : null,
+      minMood: moods.length ? Math.min(...moods) : null,
+      maxMood: moods.length ? Math.max(...moods) : null,
+    };
+    return {
+      ok: true,
+      result: { format: params.format === "json" ? "json" : "csv", rows, csv, summary },
+    };
+  });
+
+  /**
+   * getScale / setScale
+   * Customizable mood scale / emoji set (Daylio-style). Stored per-user.
+   */
+  registerLensAction("affect", "getScale", (ctx, artifact, _params) => {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    const scale = getScale(s, userId);
+    return { ok: true, result: { scale, isCustom: s.scales.has(userId), default: DEFAULT_SCALE } };
+  });
+
+  registerLensAction("affect", "setScale", (ctx, artifact, params) => {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    if (params.reset === true) {
+      s.scales.delete(userId);
+      moodSave();
+      return { ok: true, result: { scale: DEFAULT_SCALE, isCustom: false } };
+    }
+    const points = Array.isArray(params.points) ? params.points : null;
+    if (!points || points.length < 2 || points.length > 10) {
+      return { ok: false, error: "scale must have between 2 and 10 points" };
+    }
+    const normalized = points.map((p, i) => ({
+      value: Number.isFinite(Number(p.value)) ? Number(p.value) : i + 1,
+      label: typeof p.label === "string" && p.label.trim() ? p.label.slice(0, 40) : `Level ${i + 1}`,
+      emoji: typeof p.emoji === "string" ? p.emoji.slice(0, 8) : "",
+    }));
+    const values = normalized.map((p) => p.value);
+    if (new Set(values).size !== values.length) {
+      return { ok: false, error: "scale point values must be unique" };
+    }
+    const scale = { points: normalized.sort((a, b) => a.value - b.value) };
+    s.scales.set(userId, scale);
+    moodSave();
+    return { ok: true, result: { scale, isCustom: true } };
+  });
 }

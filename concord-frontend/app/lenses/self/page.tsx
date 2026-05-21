@@ -1,11 +1,13 @@
 'use client';
 
 /**
- * Unified Self Lens — composition of fitness/sleep/mood/journal/meditation
- * macros into one quantified-self surface. No new backend; aggregates
- * existing macro domains.
- *
- * Phase 4.6 wire-the-Lost (universe-gap fill: unified-self).
+ * Unified Self Lens — quantified-self surface shadowing Apple Health /
+ * Gyroscope. A real metric ledger (server/domains/self.js) powers
+ * customizable overview tiles, trend charts, cross-metric correlation,
+ * goals + progress rings, daily/weekly digest, streaks, and wearable
+ * import. The legacy aggregator tabs (fitness/sleep/mood/journal/
+ * rituals/achievements/milestones/season) remain for cross-substrate
+ * pulls. No seed data anywhere — empty states say "no data yet".
  */
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors. Local fetch errors caught with try/catch where shown.
 
@@ -18,6 +20,14 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SelfFeed } from '@/components/self/SelfFeed';
+import { LogMetricForm } from '@/components/self/LogMetricForm';
+import { OverviewDashboard } from '@/components/self/OverviewDashboard';
+import { TrendPanel } from '@/components/self/TrendPanel';
+import { CorrelationPanel } from '@/components/self/CorrelationPanel';
+import { GoalsPanel } from '@/components/self/GoalsPanel';
+import { DigestPanel } from '@/components/self/DigestPanel';
+import { StreaksPanel } from '@/components/self/StreaksPanel';
+import { ImportPanel } from '@/components/self/ImportPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -26,38 +36,38 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, Moon, Smile, BookOpen, Activity, TrendingUp, Loader2,
-  Sun, Trophy, Award, Calendar,
+  Sun, Trophy, Award, Calendar, Link2, Target, ScrollText, Flame, Upload,
   type LucideIcon,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-// Absorbed UX components — mounted as self-lens tabs. Each ships with
-// built-in seed-data fallbacks for empty inputs so the surface renders
-// before a backend macro is wired. Replace seeds with real data via
-// per-component query hooks in follow-on commits.
+// Absorbed UX components — mounted as legacy cross-substrate tabs.
 const DailyRituals = dynamic(() => import('@/components/world-lens/DailyRituals'), { ssr: false });
 const AchievementSystem = dynamic(() => import('@/components/world-lens/AchievementSystem'), { ssr: false });
 const ProgressionPanelExt = dynamic(() => import('@/components/world-lens/ProgressionPanel'), { ssr: false });
 const SeasonalContent = dynamic(() => import('@/components/world-lens/SeasonalContent'), { ssr: false });
 
 type TabKey =
-  | 'overview' | 'fitness' | 'sleep' | 'mood' | 'journal'
+  | 'overview' | 'trends' | 'correlations' | 'goals' | 'digest' | 'streaks' | 'import'
+  | 'fitness' | 'sleep' | 'mood' | 'journal'
   | 'rituals' | 'achievements' | 'milestones' | 'season';
 
 export default function UnifiedSelfLensPage() {
   useLensNav('self');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  // Bumped whenever a reading is logged/imported so every dependent
+  // panel re-pulls from the ledger.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const bump = () => setRefreshKey((k) => k + 1);
 
-  // Lens-scoped keyboard commands. Single-letter aliases per quantified-
-  // self subsystem; o jumps back to the overview dashboard.
   useLensCommand(
     [
       { id: 'goto-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
-      { id: 'goto-fitness', keys: 'f', description: 'Fitness', category: 'navigation', action: () => setActiveTab('fitness') },
-      { id: 'goto-sleep', keys: 's', description: 'Sleep', category: 'navigation', action: () => setActiveTab('sleep') },
-      { id: 'goto-mood', keys: 'm', description: 'Mood', category: 'navigation', action: () => setActiveTab('mood') },
-      { id: 'goto-journal', keys: 'j', description: 'Journal', category: 'navigation', action: () => setActiveTab('journal') },
-      { id: 'goto-rituals', keys: 'r', description: 'Daily rituals', category: 'navigation', action: () => setActiveTab('rituals') },
+      { id: 'goto-trends', keys: 't', description: 'Trends', category: 'navigation', action: () => setActiveTab('trends') },
+      { id: 'goto-correlations', keys: 'c', description: 'Correlations', category: 'navigation', action: () => setActiveTab('correlations') },
+      { id: 'goto-goals', keys: 'g', description: 'Goals', category: 'navigation', action: () => setActiveTab('goals') },
+      { id: 'goto-streaks', keys: 'k', description: 'Streaks', category: 'navigation', action: () => setActiveTab('streaks') },
+      { id: 'goto-import', keys: 'i', description: 'Import', category: 'navigation', action: () => setActiveTab('import') },
     ],
     { lensId: 'self' }
   );
@@ -72,7 +82,6 @@ export default function UnifiedSelfLensPage() {
   const fitness = useQuery({
     queryKey: ['self-fitness'],
     queryFn: async () => {
-      // Try a few common fitness-domain action names
       const r = await safeRunDomain('fitness', 'status') ?? await safeRunDomain('fitness', 'metrics');
       return r as { workouts?: number; weeklyMinutes?: number; recentSessions?: unknown[] } | null;
     },
@@ -89,7 +98,6 @@ export default function UnifiedSelfLensPage() {
   const mood = useQuery({
     queryKey: ['self-mood'],
     queryFn: async () => {
-      // Mood typically lives under affect or mental-health
       const r = await safeRunDomain('affect', 'status') ?? await safeRunDomain('mental_health', 'status');
       return r as { current?: string; weeklyAvg?: number; trend?: string } | null;
     },
@@ -103,12 +111,6 @@ export default function UnifiedSelfLensPage() {
     },
   });
 
-  // Achievements — fetch from /api/world/achievements/:userId and
-  // /api/world/sim/achievements (definitions). The backend returns a
-  // unified [{id, name, description, category, unlocked, progress,
-  // target, percent}] list; map to the frontend's shape (title vs
-  // name + icon + rarity defaults + split into achievements + progress
-  // arrays).
   type ServerAch = {
     id: string;
     name: string;
@@ -120,10 +122,6 @@ export default function UnifiedSelfLensPage() {
     unlockDate?: string;
     worldImpact?: string;
   };
-  // Mirror the AchievementSystem prop subtypes — Parameters<typeof X>
-  // breaks on dynamic-imported components (next/dynamic ComponentType
-  // wrapper). Mirrors are structurally equivalent and type-checked at
-  // the JSX boundary below.
   type FrontendAch = {
     id: string;
     title: string;
@@ -187,15 +185,21 @@ export default function UnifiedSelfLensPage() {
   });
 
   const tabs: { key: TabKey; label: string; icon: LucideIcon }[] = [
-    { key: 'overview', label: 'Overview', icon: TrendingUp },
-    { key: 'fitness',  label: 'Fitness',  icon: Activity },
-    { key: 'sleep',    label: 'Sleep',    icon: Moon },
-    { key: 'mood',     label: 'Mood',     icon: Smile },
-    { key: 'journal',  label: 'Journal',  icon: BookOpen },
-    { key: 'rituals',     label: 'Rituals',     icon: Sun },
-    { key: 'achievements',label: 'Achievements',icon: Trophy },
-    { key: 'milestones',  label: 'Milestones',  icon: Award },
-    { key: 'season',      label: 'Season',      icon: Calendar },
+    { key: 'overview',     label: 'Overview',     icon: TrendingUp },
+    { key: 'trends',       label: 'Trends',       icon: Activity },
+    { key: 'correlations', label: 'Correlations', icon: Link2 },
+    { key: 'goals',        label: 'Goals',        icon: Target },
+    { key: 'digest',       label: 'Digest',       icon: ScrollText },
+    { key: 'streaks',      label: 'Streaks',      icon: Flame },
+    { key: 'import',       label: 'Import',       icon: Upload },
+    { key: 'fitness',      label: 'Fitness',      icon: Activity },
+    { key: 'sleep',        label: 'Sleep',        icon: Moon },
+    { key: 'mood',         label: 'Mood',         icon: Smile },
+    { key: 'journal',      label: 'Journal',      icon: BookOpen },
+    { key: 'rituals',      label: 'Rituals',      icon: Sun },
+    { key: 'achievements', label: 'Achievements', icon: Trophy },
+    { key: 'milestones',   label: 'Milestones',   icon: Award },
+    { key: 'season',       label: 'Season',       icon: Calendar },
   ];
 
   return (
@@ -210,7 +214,7 @@ export default function UnifiedSelfLensPage() {
           <Heart className="h-6 w-6 text-rose-400" aria-hidden />
           <div>
             <h1 className="font-mono text-lg font-semibold tracking-wide">Self</h1>
-            <p className="text-xs text-rose-700">Unified quantified-self · fitness · sleep · mood · journal</p>
+            <p className="text-xs text-rose-700">Quantified-self ledger · trends · correlation · goals · streaks</p>
           </div>
         </div>
       </header>
@@ -235,20 +239,54 @@ export default function UnifiedSelfLensPage() {
       <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && (
-            <motion.section key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <h2 className="mb-3 text-base font-semibold text-rose-200">This week</h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <Stat label="Workouts" value={fitness.data?.workouts ?? '—'} icon={Activity} />
-                <Stat label="Sleep avg" value={sleep.data?.avgHours != null ? `${sleep.data.avgHours.toFixed(1)}h` : '—'} icon={Moon} />
-                <Stat label="Mood" value={mood.data?.current ?? '—'} icon={Smile} />
-                <Stat label="Journal entries" value={journal.data?.entries?.length ?? '—'} icon={BookOpen} />
+            <Section k="overview">
+              <div className="mb-4">
+                <LogMetricForm onLogged={bump} />
               </div>
-              <p className="mt-6 max-w-prose text-xs text-rose-700">
-                The Self Lens aggregates data from existing fitness, sleep, mood, and journal substrates into one
-                pane. Each tab calls the relevant macro domain. Where a backend isn't yet registered, the tab
-                shows a hint and the substrate fills in as you use the underlying lenses.
-              </p>
-            </motion.section>
+              <OverviewDashboard refreshKey={refreshKey} onChanged={bump} />
+            </Section>
+          )}
+
+          {activeTab === 'trends' && (
+            <Section k="trends">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Trend charts</h2>
+              <TrendPanel refreshKey={refreshKey} />
+            </Section>
+          )}
+
+          {activeTab === 'correlations' && (
+            <Section k="correlations">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Cross-metric correlations</h2>
+              <CorrelationPanel refreshKey={refreshKey} />
+            </Section>
+          )}
+
+          {activeTab === 'goals' && (
+            <Section k="goals">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Goals &amp; targets</h2>
+              <GoalsPanel refreshKey={refreshKey} />
+            </Section>
+          )}
+
+          {activeTab === 'digest' && (
+            <Section k="digest">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Your recap</h2>
+              <DigestPanel refreshKey={refreshKey} />
+            </Section>
+          )}
+
+          {activeTab === 'streaks' && (
+            <Section k="streaks">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Streaks</h2>
+              <StreaksPanel refreshKey={refreshKey} />
+            </Section>
+          )}
+
+          {activeTab === 'import' && (
+            <Section k="import">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Health-data import</h2>
+              <ImportPanel onImported={bump} />
+            </Section>
           )}
 
           {activeTab === 'fitness' && (
@@ -343,7 +381,7 @@ export default function UnifiedSelfLensPage() {
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
           <RecentMineCard domain="self" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="self" hideWhenEmpty className="mt-3" />

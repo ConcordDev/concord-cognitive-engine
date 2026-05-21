@@ -57,6 +57,8 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LiveAffectStream } from '@/components/affect/LiveAffectStream';
+import { MoodTracker } from '@/components/affect/MoodTracker';
+import { Smile } from 'lucide-react';
 
 // --- Types ---
 
@@ -69,7 +71,7 @@ type AffectDim = {
   description: string;
 };
 
-type TabId = 'dimensions' | 'events' | 'policy' | 'health' | 'analysis';
+type TabId = 'mood' | 'dimensions' | 'events' | 'policy' | 'health' | 'analysis';
 
 // --- Constants ---
 
@@ -227,6 +229,7 @@ export default function AffectLensPage() {
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
     [
+      { id: 'tab-mood', keys: 'm', description: 'Mood', category: 'navigation', action: () => setActiveTab('mood') },
       { id: 'tab-dimensions', keys: 'd', description: 'Dimensions', category: 'navigation', action: () => setActiveTab('dimensions') },
       { id: 'tab-events', keys: 'e', description: 'Events', category: 'navigation', action: () => setActiveTab('events') },
       { id: 'tab-policy', keys: 'p', description: 'Policy', category: 'navigation', action: () => setActiveTab('policy') },
@@ -574,6 +577,7 @@ export default function AffectLensPage() {
   // --- Tab config ---
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    { id: 'mood', label: 'Mood', icon: <Smile className="w-4 h-4" /> },
     { id: 'dimensions', label: 'Dimensions', icon: <Activity className="w-4 h-4" /> },
     { id: 'events', label: 'Event Log', icon: <Clock className="w-4 h-4" /> },
     { id: 'policy', label: 'Policies', icon: <BarChart3 className="w-4 h-4" /> },
@@ -729,6 +733,9 @@ export default function AffectLensPage() {
           </button>
         ))}
       </div>
+
+      {/* === TAB: Mood === */}
+      {activeTab === 'mood' && <MoodTracker />}
 
       {/* === TAB: Dimensions === */}
       {activeTab === 'dimensions' && (

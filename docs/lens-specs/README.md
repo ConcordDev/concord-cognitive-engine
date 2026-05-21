@@ -12,26 +12,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~77%**
-- Total buildable features in the backlog (sum of all "Missing" items): **687**
+- Average feature parity: **~78%**
+- Total buildable features in the backlog (sum of all "Missing" items): **643**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 139 |
+| 80–100% (near-complete) | 145 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 37 |
+| 40–59% (partial) | 31 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| security | Splunk / a SOC console | ~50% | 7 |
-| self | Apple Health / Gyroscope | ~50% | 7 |
-| space | NASA Eyes / Stellarium / Flightradar-for-launches | ~50% | 8 |
-| understanding | Obsidian / RemNote (knowledge synthesis) | ~50% | 8 |
-| command-center | Datadog / PagerDuty (ops cockpit) | ~52% | 7 |
-| affect | Daylio / Hume AI | ~55% | 7 |
 | astronomy | SkySafari / Stellarium | ~55% | 7 |
 | daily | Day One / Reflectly | ~55% | 7 |
 | debate | Kialo | ~55% | 7 |
@@ -213,12 +207,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | urban-planning | UrbanFootprint / Esri Urban | ~88% | 0 |
 | vote | Polis / Decidim / Snapshot | ~88% | 0 |
 | worldmodel | Palantir Foundry / digital-twin platforms | ~88% | 0 |
+| affect | Daylio / Hume AI | ~90% | 0 |
 | agents | OpenAI Assistants / CrewAI | ~90% | 0 |
 | audit | Vanta / Drata | ~90% | 0 |
 | bridge | (cross-world federation console) | ~90% | 0 |
 | chem | ChemDraw / PubChem | ~90% | 0 |
 | classroom | Google Classroom | ~90% | 0 |
 | collab | Figma / Google Docs (real-time collaboration) | ~90% | 0 |
+| command-center | Datadog / PagerDuty (ops cockpit) | ~90% | 0 |
 | debug | Sentry / Datadog | ~90% | 0 |
 | defense | Palantir Gotham (analog) | ~90% | 0 |
 | desert | field-survey / arid-environment tooling | ~90% | 0 |
@@ -248,9 +244,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | queue | RabbitMQ / BullMQ dashboard | ~90% | 0 |
 | reasoning | Rationale / argument-mapping tools | ~90% | 0 |
 | saved | Twitter/X Bookmarks | ~90% | 0 |
+| security | Splunk / a SOC console | ~90% | 0 |
+| self | Apple Health / Gyroscope | ~90% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~90% | 0 |
 | settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~90% | 0 |
 | society | Our World in Data / Gapminder | ~90% | 0 |
+| space | NASA Eyes / Stellarium / Flightradar-for-launches | ~90% | 0 |
 | suffering | Productboard / pain-point analysis tools | ~90% | 0 |
 | supplychain | SAP IBP / Anaplan | ~90% | 0 |
 | system | Datadog / Grafana (observability) | ~90% | 0 |
@@ -258,6 +257,7 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | tick | Datadog / heartbeat monitors (Better Uptime) | ~90% | 0 |
 | timeline | Facebook timeline | ~90% | 0 |
 | tools | utility bundle (Perplexity + Babel REPL + DocuSign) | ~90% | 0 |
+| understanding | Obsidian / RemNote (knowledge synthesis) | ~90% | 0 |
 | veterinary | ezyVet / Provet Cloud | ~90% | 0 |
 | welding | Jobber / contractor field-service (welding trade) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |
