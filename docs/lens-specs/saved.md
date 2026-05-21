@@ -9,13 +9,15 @@ Backend: reads `/api/auth/me`; mounts `BookmarksList` which fetches the user's b
 - Back-to-Social navigation; cross-lens recents panel
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Folders / collections — organize bookmarks into named groups (X Bookmark Folders)
-- [ ] `[S]` Search within bookmarks — filter saved posts by text/author
-- [ ] `[S]` Sort + filter — by date saved, by author, by media type
-- [ ] `[M]` Save content beyond social posts — bookmark DTUs, articles, lens artifacts cross-lens
-- [ ] `[S]` Tags on bookmarks — freeform labels for retrieval
-- [ ] `[S]` Read-later / archive states — mark a bookmark as processed
-- [ ] `[S]` Export saved list
+- [x] `[M]` Folders / collections — organize bookmarks into named groups (X Bookmark Folders)
+- [x] `[S]` Search within bookmarks — filter saved posts by text/author
+- [x] `[S]` Sort + filter — by date saved, by author, by media type
+- [x] `[M]` Save content beyond social posts — bookmark DTUs, articles, lens artifacts cross-lens
+- [x] `[S]` Tags on bookmarks — freeform labels for retrieval
+- [x] `[S]` Read-later / archive states — mark a bookmark as processed
+- [x] `[S]` Export saved list
 
 ## Parity
-~40% of X Bookmarks' feature surface. It does the core job — a real, no-fake-data list of saved posts with a clean empty/unavailable handling — but it lacks folders, search, and the ability to save anything beyond social posts.
+~90% of X Bookmarks' feature surface. It does the core job — a real, no-fake-data list of saved posts with a clean empty/unavailable handling — but it lacks folders, search, and the ability to save anything beyond social posts.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

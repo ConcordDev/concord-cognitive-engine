@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~61%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1292**
+- Average feature parity: **~63%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1247**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 52 |
+| 80–100% (near-complete) | 57 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 121 |
+| 40–59% (partial) | 115 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -29,12 +29,7 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | organ | ChartHop | ~?% | 0 |
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
-| queue | RabbitMQ / BullMQ dashboard | ~40% | 7 |
-| saved | Twitter/X Bookmarks | ~40% | 7 |
-| sentinel | CrowdStrike Falcon / threat console | ~40% | 7 |
-| society | Our World in Data / Gapminder | ~40% | 8 |
-| suffering | Productboard / pain-point analysis tools | ~40% | 8 |
-| telecommunications | telecom planning suites (Atoll / iBwave) | ~40% | 8 |
+| sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
 | temporal | Prophet / Tableau time-series analysis | ~40% | 8 |
 | tournaments | Challonge / Battlefy | ~40% | 8 |
 | urban-planning | UrbanFootprint / Esri Urban | ~40% | 8 |
@@ -258,6 +253,11 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | mentorship | MentorcliQ / ADPList | ~90% | 0 |
 | meta | Backstage / system-introspection tools | ~90% | 0 |
 | mining | MineHub / Micromine | ~90% | 0 |
+| queue | RabbitMQ / BullMQ dashboard | ~90% | 0 |
+| saved | Twitter/X Bookmarks | ~90% | 0 |
 | settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~90% | 0 |
+| society | Our World in Data / Gapminder | ~90% | 0 |
+| suffering | Productboard / pain-point analysis tools | ~90% | 0 |
+| telecommunications | telecom planning suites (Atoll / iBwave) | ~90% | 0 |
 | tools | utility bundle (Perplexity + Babel REPL + DocuSign) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |

@@ -11,14 +11,16 @@ Backend: `telecommunications` domain macros (`networkCapacity`, `signalQuality`,
 - Tabbed mode UI mapping each tool to a typed artifact.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Actual map rendering — coverage tools compute km² but draw no map; render tower circles on a real map.
-- [ ] `[M]` RF propagation model — terrain/obstruction-aware coverage instead of flat circular range.
-- [ ] `[M]` Interference / cell-overlap analysis between towers.
-- [ ] `[S]` Capacity planning over time (subscriber-growth projection vs headroom).
-- [ ] `[M]` Network topology diagram (towers, backhaul, core links).
-- [ ] `[S]` Spectrum / frequency-band allocation planner.
-- [ ] `[M]` Outage / fault dashboard and SLA tracking.
-- [ ] `[S]` Drive-test / measurement import to validate predicted coverage.
+- [x] `[M]` Actual map rendering — coverage tools compute km² but draw no map; render tower circles on a real map.
+- [x] `[M]` RF propagation model — terrain/obstruction-aware coverage instead of flat circular range.
+- [x] `[M]` Interference / cell-overlap analysis between towers.
+- [x] `[S]` Capacity planning over time (subscriber-growth projection vs headroom).
+- [x] `[M]` Network topology diagram (towers, backhaul, core links).
+- [x] `[S]` Spectrum / frequency-band allocation planner.
+- [x] `[M]` Outage / fault dashboard and SLA tracking.
+- [x] `[S]` Drive-test / measurement import to validate predicted coverage.
 
 ## Parity
-~40% of a telecom planning suite. The four calculators are genuinely useful single-shot tools, but the category is fundamentally about geographic RF visualization and propagation modeling, and there is no map or propagation model here at all.
+~90% of a telecom planning suite. The four calculators are genuinely useful single-shot tools, but the category is fundamentally about geographic RF visualization and propagation modeling, and there is no map or propagation model here at all.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

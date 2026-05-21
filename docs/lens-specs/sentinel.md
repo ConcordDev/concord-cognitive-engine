@@ -10,13 +10,28 @@ Backend: `runDomain` against `shield` (status/threats/metrics/scan), `intel` (pe
 - Semantic search: similarity search, intent classification, entity extraction over the corpus
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Threat detail + triage — drill into a threat, assign, resolve/dismiss
-- [ ] `[M]` Continuous monitoring + alerts — scheduled scans that notify on new threats
-- [ ] `[S]` Threat timeline / history — track threats over time, not just a current list
-- [ ] `[S]` Shield metrics charts — visualize the metrics rather than raw values
-- [ ] `[M]` Intel correlation — link intel findings to active threats
-- [ ] `[S]` Configurable scan scope + rules
-- [ ] `[S]` Semantic-search saved queries + result export
+- [x] `[M]` Threat detail + triage — drill into a threat, assign, resolve/dismiss
+- [x] `[M]` Continuous monitoring + alerts — scheduled scans that notify on new threats
+- [x] `[S]` Threat timeline / history — track threats over time, not just a current list
+- [x] `[S]` Shield metrics charts — visualize the metrics rather than raw values
+- [x] `[M]` Intel correlation — link intel findings to active threats
+- [x] `[S]` Configurable scan scope + rules
+- [x] `[S]` Semantic-search saved queries + result export
 
 ## Parity
-~40% of a threat-console's feature surface. The three subsystems (shield scan, intel query, semantic search) are real and useful, but it is read-and-scan only — it lacks threat triage, continuous monitoring with alerts, and a threat timeline.
+Full threat-console feature surface. Backlog shipped via the `sentinel` domain
+(`server/domains/sentinel.js`, 26 macros) + a six-tab operator UI
+(`app/lenses/sentinel/` + `components/sentinel/`):
+- **Shield** — live threat board, on-demand content/hash scan, one-click promote-to-triage.
+- **Triage** — case state machine (open → investigating → contained → resolved/dismissed),
+  assignee, investigation notes, intel correlation.
+- **Monitors** — continuous-monitoring configs (scope + min-severity + interval) with an
+  alert inbox; a monitor pass diffs the live `shield.threats` feed and emits new alerts.
+- **Metrics** — time-bucketed cases/alerts area chart, severity-mix bar, and the
+  append-only threat timeline (ChartKit + TimelineView).
+- **Rules** — configurable scan scopes, auto-triage threshold, a custom detection-rule
+  book (pattern → severity), and a rule-evaluator against content.
+- **Semantic** — corpus search (similar / classify_intent / extract_entities) with a
+  saved-query book and CSV/JSON result export.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

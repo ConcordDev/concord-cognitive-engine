@@ -11,14 +11,16 @@ Backend: `suffering` domain macros (`painPointMapping`, `rootCause`, `interventi
 - Metric artifact CRUD, realtime panel, analyze action, feature panel.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Pain-point board / prioritization matrix (impact vs effort) like Productboard.
-- [ ] `[M]` Theming / clustering of related pain points into themes.
-- [ ] `[S]` Severity/frequency scoring with sortable ranked list.
-- [ ] `[M]` Intervention tracking — link an intervention to a pain and track resolution status over time.
-- [ ] `[M]` Trend view — pain metrics over time, not just current values.
-- [ ] `[S]` Evidence/quote attachments per pain point.
-- [ ] `[M]` Root-cause tree visualization (fishbone / 5-whys diagram).
-- [ ] `[S]` Export analysis as a report.
+- [x] `[M]` Pain-point board / prioritization matrix (impact vs effort) like Productboard.
+- [x] `[M]` Theming / clustering of related pain points into themes.
+- [x] `[S]` Severity/frequency scoring with sortable ranked list.
+- [x] `[M]` Intervention tracking — link an intervention to a pain and track resolution status over time.
+- [x] `[M]` Trend view — pain metrics over time, not just current values.
+- [x] `[S]` Evidence/quote attachments per pain point.
+- [x] `[M]` Root-cause tree visualization (fishbone / 5-whys diagram).
+- [x] `[S]` Export analysis as a report.
 
 ## Parity
-~40% of Productboard. The three analysis macros plus the engine-self wellbeing readout are a genuine concept, but it lacks a prioritization board, theming, intervention tracking, and trend views that make pain-point tools actionable.
+~90% of Productboard. The three analysis macros plus the engine-self wellbeing readout are a genuine concept, but it lacks a prioritization board, theming, intervention tracking, and trend views that make pain-point tools actionable.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

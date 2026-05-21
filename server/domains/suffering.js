@@ -382,4 +382,652 @@ export default function registerSufferingActions(registerLensAction) {
       },
     };
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Parity-sprint macros — pain-point board, theming, intervention tracking,
+  // trend view, evidence attachments, root-cause tree, report export.
+  // Persistent per-user state lives in globalThis._concordSTATE.sufferingLens.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  function getSufState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.sufferingLens) STATE.sufferingLens = {};
+    const s = STATE.sufferingLens;
+    for (const k of ["pains", "themes", "interventions", "snapshots"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveSufState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const sufUid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const sufId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const clampNum = (v, lo, hi, dflt) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return dflt;
+    return Math.min(hi, Math.max(lo, n));
+  };
+  const round = (v) => Math.round(v * 1000) / 1000;
+
+  // ─── Pain-point board / prioritization matrix ───
+
+  registerLensAction("suffering", "pain-list", (ctx, _artifact, _params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const pains = (s.pains.get(uid) || []).slice();
+      // Derived priority score: impact-weighted severity discounted by effort.
+      const ranked = pains.map((p) => {
+        const priority = round((p.severity * p.frequency * p.impact) / Math.max(1, p.effort));
+        return { ...p, priorityScore: priority };
+      }).sort((a, b) => b.priorityScore - a.priorityScore);
+      return {
+        ok: true,
+        result: {
+          pains: ranked,
+          count: ranked.length,
+          openCount: ranked.filter((p) => p.status !== "resolved").length,
+          resolvedCount: ranked.filter((p) => p.status === "resolved").length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "pain-create", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const title = String(params.title || "").trim();
+      if (!title) return { ok: false, error: "title required" };
+      const pain = {
+        id: sufId("pain"),
+        title,
+        description: String(params.description || "").trim(),
+        severity: clampNum(params.severity, 1, 10, 5),
+        frequency: clampNum(params.frequency, 1, 10, 5),
+        impact: clampNum(params.impact, 1, 10, 5),
+        effort: clampNum(params.effort, 1, 10, 5),
+        status: "open",
+        themeId: params.themeId ? String(params.themeId) : null,
+        evidence: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const list = s.pains.get(uid) || [];
+      list.push(pain);
+      s.pains.set(uid, list);
+      saveSufState();
+      return { ok: true, result: { pain } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "pain-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.pains.get(uid) || [];
+      const pain = list.find((p) => p.id === params.id);
+      if (!pain) return { ok: false, error: "pain not found" };
+      if (params.title != null) pain.title = String(params.title).trim() || pain.title;
+      if (params.description != null) pain.description = String(params.description).trim();
+      for (const k of ["severity", "frequency", "impact", "effort"]) {
+        if (params[k] != null) pain[k] = clampNum(params[k], 1, 10, pain[k]);
+      }
+      if (params.status != null && ["open", "investigating", "in_progress", "resolved"].includes(params.status)) {
+        pain.status = params.status;
+      }
+      if (params.themeId !== undefined) pain.themeId = params.themeId ? String(params.themeId) : null;
+      pain.updatedAt = new Date().toISOString();
+      saveSufState();
+      return { ok: true, result: { pain } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "pain-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.pains.get(uid) || [];
+      const idx = list.findIndex((p) => p.id === params.id);
+      if (idx === -1) return { ok: false, error: "pain not found" };
+      list.splice(idx, 1);
+      s.pains.set(uid, list);
+      saveSufState();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // Prioritization matrix — impact-vs-effort quadrants like Productboard.
+  registerLensAction("suffering", "priority-matrix", (ctx, _artifact, _params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const pains = (s.pains.get(uid) || []).filter((p) => p.status !== "resolved");
+      // Weighted impact = severity × frequency × impact, normalised to 1-10.
+      const points = pains.map((p) => {
+        const rawImpact = (p.severity * p.frequency * p.impact) / 100; // 1..10
+        return {
+          id: p.id,
+          title: p.title,
+          impact: round(rawImpact),
+          effort: p.effort,
+          status: p.status,
+          themeId: p.themeId,
+        };
+      });
+      const quadrant = (pt) => {
+        const hiImpact = pt.impact >= 5;
+        const loEffort = pt.effort <= 5;
+        if (hiImpact && loEffort) return "quick_wins";
+        if (hiImpact && !loEffort) return "major_projects";
+        if (!hiImpact && loEffort) return "fill_ins";
+        return "thankless";
+      };
+      const buckets = { quick_wins: [], major_projects: [], fill_ins: [], thankless: [] };
+      for (const pt of points) buckets[quadrant(pt)].push(pt);
+      return {
+        ok: true,
+        result: {
+          points,
+          quadrants: buckets,
+          summary: {
+            quickWins: buckets.quick_wins.length,
+            majorProjects: buckets.major_projects.length,
+            fillIns: buckets.fill_ins.length,
+            thankless: buckets.thankless.length,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // ─── Theming / clustering ───
+
+  registerLensAction("suffering", "theme-list", (ctx, _artifact, _params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const themes = (s.themes.get(uid) || []).slice();
+      const pains = s.pains.get(uid) || [];
+      const enriched = themes.map((t) => {
+        const members = pains.filter((p) => p.themeId === t.id);
+        const totalPain = members.reduce(
+          (sum, p) => sum + (p.severity * p.frequency * p.impact) / 100, 0);
+        return {
+          ...t,
+          painCount: members.length,
+          openCount: members.filter((p) => p.status !== "resolved").length,
+          totalImpact: round(totalPain),
+        };
+      }).sort((a, b) => b.totalImpact - a.totalImpact);
+      const unthemed = pains.filter((p) => !p.themeId).length;
+      return { ok: true, result: { themes: enriched, count: enriched.length, unthemedPains: unthemed } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "theme-create", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      const theme = {
+        id: sufId("theme"),
+        name,
+        description: String(params.description || "").trim(),
+        color: String(params.color || "#6366f1"),
+        createdAt: new Date().toISOString(),
+      };
+      const list = s.themes.get(uid) || [];
+      list.push(theme);
+      s.themes.set(uid, list);
+      saveSufState();
+      return { ok: true, result: { theme } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "theme-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.themes.get(uid) || [];
+      const idx = list.findIndex((t) => t.id === params.id);
+      if (idx === -1) return { ok: false, error: "theme not found" };
+      list.splice(idx, 1);
+      s.themes.set(uid, list);
+      // Orphan member pains.
+      const pains = s.pains.get(uid) || [];
+      for (const p of pains) if (p.themeId === params.id) p.themeId = null;
+      saveSufState();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // Auto-cluster unthemed pains by keyword overlap in title/description.
+  registerLensAction("suffering", "theme-autocluster", (ctx, _artifact, _params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const pains = (s.pains.get(uid) || []).filter((p) => !p.themeId);
+      const STOP = new Set(["the", "a", "an", "and", "or", "of", "to", "in", "on", "for",
+        "is", "are", "with", "this", "that", "it", "be", "by", "as", "at", "i", "we"]);
+      const tokens = (p) => `${p.title} ${p.description}`.toLowerCase()
+        .split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !STOP.has(w));
+      const tokenSets = pains.map((p) => ({ id: p.id, title: p.title, set: new Set(tokens(p)) }));
+      // Union-find grouping on Jaccard ≥ 0.25.
+      const parent = {};
+      const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+      for (const t of tokenSets) parent[t.id] = t.id;
+      for (let i = 0; i < tokenSets.length; i++) {
+        for (let j = i + 1; j < tokenSets.length; j++) {
+          const a = tokenSets[i].set, b = tokenSets[j].set;
+          if (a.size === 0 || b.size === 0) continue;
+          let inter = 0;
+          for (const w of a) if (b.has(w)) inter++;
+          const jac = inter / (a.size + b.size - inter);
+          if (jac >= 0.25) parent[find(tokenSets[i].id)] = find(tokenSets[j].id);
+        }
+      }
+      const groups = {};
+      for (const t of tokenSets) {
+        const root = find(t.id);
+        (groups[root] = groups[root] || []).push(t);
+      }
+      const suggestions = Object.values(groups)
+        .filter((g) => g.length >= 2)
+        .map((g) => {
+          // Theme name = most frequent shared token.
+          const freq = {};
+          for (const m of g) for (const w of m.set) freq[w] = (freq[w] || 0) + 1;
+          const top = Object.entries(freq).sort((a, b) => b[1] - a[1])[0];
+          return {
+            suggestedName: top ? top[0] : g[0].title,
+            painIds: g.map((m) => m.id),
+            painTitles: g.map((m) => m.title),
+          };
+        });
+      return {
+        ok: true,
+        result: { suggestions, clusterCount: suggestions.length, unthemedAnalyzed: pains.length },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // ─── Evidence / quote attachments ───
+
+  registerLensAction("suffering", "evidence-add", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.pains.get(uid) || [];
+      const pain = list.find((p) => p.id === params.painId);
+      if (!pain) return { ok: false, error: "pain not found" };
+      const quote = String(params.quote || "").trim();
+      if (!quote) return { ok: false, error: "quote required" };
+      const ev = {
+        id: sufId("ev"),
+        quote,
+        source: String(params.source || "").trim(),
+        kind: ["quote", "metric", "log", "ticket"].includes(params.kind) ? params.kind : "quote",
+        addedAt: new Date().toISOString(),
+      };
+      if (!Array.isArray(pain.evidence)) pain.evidence = [];
+      pain.evidence.push(ev);
+      pain.updatedAt = new Date().toISOString();
+      saveSufState();
+      return { ok: true, result: { painId: pain.id, evidence: pain.evidence } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "evidence-remove", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.pains.get(uid) || [];
+      const pain = list.find((p) => p.id === params.painId);
+      if (!pain) return { ok: false, error: "pain not found" };
+      pain.evidence = (pain.evidence || []).filter((e) => e.id !== params.evidenceId);
+      pain.updatedAt = new Date().toISOString();
+      saveSufState();
+      return { ok: true, result: { painId: pain.id, evidence: pain.evidence } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // ─── Intervention tracking ───
+
+  registerLensAction("suffering", "intervention-list", (ctx, _artifact, _params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const interventions = (s.interventions.get(uid) || []).slice()
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      const byStatus = { proposed: 0, in_progress: 0, completed: 0, abandoned: 0 };
+      for (const i of interventions) byStatus[i.status] = (byStatus[i.status] || 0) + 1;
+      return {
+        ok: true,
+        result: { interventions, count: interventions.length, byStatus },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "intervention-track", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const title = String(params.title || "").trim();
+      if (!title) return { ok: false, error: "title required" };
+      const intv = {
+        id: sufId("intv"),
+        title,
+        description: String(params.description || "").trim(),
+        painId: params.painId ? String(params.painId) : null,
+        status: "proposed",
+        owner: String(params.owner || "").trim(),
+        progress: 0,
+        history: [{ at: new Date().toISOString(), status: "proposed", note: "Intervention created" }],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const list = s.interventions.get(uid) || [];
+      list.push(intv);
+      s.interventions.set(uid, list);
+      saveSufState();
+      return { ok: true, result: { intervention: intv } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "intervention-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.interventions.get(uid) || [];
+      const intv = list.find((i) => i.id === params.id);
+      if (!intv) return { ok: false, error: "intervention not found" };
+      const statuses = ["proposed", "in_progress", "completed", "abandoned"];
+      let statusChanged = false;
+      if (params.status != null && statuses.includes(params.status) && params.status !== intv.status) {
+        intv.status = params.status;
+        statusChanged = true;
+        if (params.status === "completed") intv.progress = 100;
+      }
+      if (params.progress != null) intv.progress = clampNum(params.progress, 0, 100, intv.progress);
+      if (params.owner != null) intv.owner = String(params.owner).trim();
+      if (params.description != null) intv.description = String(params.description).trim();
+      if (statusChanged || params.note) {
+        intv.history.push({
+          at: new Date().toISOString(),
+          status: intv.status,
+          progress: intv.progress,
+          note: String(params.note || `Status → ${intv.status}`).trim(),
+        });
+      }
+      intv.updatedAt = new Date().toISOString();
+      // Resolution cascade: completing an intervention can resolve its pain.
+      if (intv.status === "completed" && intv.painId && params.resolvePain) {
+        const pains = s.pains.get(uid) || [];
+        const pain = pains.find((p) => p.id === intv.painId);
+        if (pain) { pain.status = "resolved"; pain.updatedAt = new Date().toISOString(); }
+      }
+      saveSufState();
+      return { ok: true, result: { intervention: intv } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "intervention-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.interventions.get(uid) || [];
+      const idx = list.findIndex((i) => i.id === params.id);
+      if (idx === -1) return { ok: false, error: "intervention not found" };
+      list.splice(idx, 1);
+      s.interventions.set(uid, list);
+      saveSufState();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // ─── Trend view — snapshot pain metrics over time ───
+
+  registerLensAction("suffering", "snapshot-record", (ctx, _artifact, _params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const pains = s.pains.get(uid) || [];
+      const open = pains.filter((p) => p.status !== "resolved");
+      const totalPain = open.reduce(
+        (sum, p) => sum + (p.severity * p.frequency * p.impact) / 100, 0);
+      const avgSeverity = pains.length
+        ? pains.reduce((sum, p) => sum + p.severity, 0) / pains.length : 0;
+      const interventions = s.interventions.get(uid) || [];
+      const snap = {
+        id: sufId("snap"),
+        at: new Date().toISOString(),
+        totalPains: pains.length,
+        openPains: open.length,
+        resolvedPains: pains.length - open.length,
+        totalImpact: round(totalPain),
+        avgSeverity: round(avgSeverity),
+        activeInterventions: interventions.filter((i) => i.status === "in_progress").length,
+        completedInterventions: interventions.filter((i) => i.status === "completed").length,
+      };
+      const list = s.snapshots.get(uid) || [];
+      list.push(snap);
+      // Keep last 365 snapshots.
+      if (list.length > 365) list.splice(0, list.length - 365);
+      s.snapshots.set(uid, list);
+      saveSufState();
+      return { ok: true, result: { snapshot: snap } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("suffering", "trend-view", (ctx, _artifact, _params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const snapshots = (s.snapshots.get(uid) || []).slice()
+        .sort((a, b) => new Date(a.at) - new Date(b.at));
+      let direction = "flat";
+      let delta = 0;
+      if (snapshots.length >= 2) {
+        const first = snapshots[0].totalImpact;
+        const last = snapshots[snapshots.length - 1].totalImpact;
+        delta = round(last - first);
+        direction = delta > 0.5 ? "worsening" : delta < -0.5 ? "improving" : "flat";
+      }
+      return {
+        ok: true,
+        result: {
+          snapshots,
+          count: snapshots.length,
+          direction,
+          deltaImpact: delta,
+          latest: snapshots[snapshots.length - 1] || null,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // ─── Root-cause tree (5-whys / fishbone) for a tracked pain ───
+
+  registerLensAction("suffering", "root-cause-tree", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.pains.get(uid) || [];
+      const pain = list.find((p) => p.id === params.painId);
+      if (!pain) return { ok: false, error: "pain not found" };
+      // params.causes = [{ id, description, parentId?, category?, probability? }]
+      const causes = Array.isArray(params.causes) ? params.causes : (pain.causes || []);
+      if (params.causes) { pain.causes = causes; pain.updatedAt = new Date().toISOString(); saveSufState(); }
+      const ISHIKAWA = ["people", "process", "technology", "environment", "materials", "measurement"];
+      const byId = {};
+      const childIds = {};
+      const rootIds = [];
+      for (const c of causes) {
+        byId[c.id] = { ...c, probability: clampNum(c.probability, 0, 1, 0.5) };
+        childIds[c.id] = [];
+      }
+      for (const c of causes) {
+        if (c.parentId && byId[c.parentId]) childIds[c.parentId].push(c.id);
+        else rootIds.push(c.id);
+      }
+      const buildTree = (id) => {
+        const n = byId[id];
+        const kids = (childIds[id] || []).map(buildTree);
+        return {
+          id: n.id,
+          label: n.description || n.id,
+          detail: `${n.category || "uncategorized"} · p=${n.probability}`,
+          tone: n.probability >= 0.66 ? "bad" : n.probability >= 0.33 ? "warn" : "default",
+          children: kids,
+        };
+      };
+      const tree = rootIds.map(buildTree);
+      // Fishbone groups by Ishikawa category.
+      const fishbone = {};
+      for (const cat of ISHIKAWA) fishbone[cat] = [];
+      for (const c of causes) {
+        const cat = ISHIKAWA.includes((c.category || "").toLowerCase())
+          ? c.category.toLowerCase() : "process";
+        fishbone[cat].push({ id: c.id, description: c.description, probability: byId[c.id].probability });
+      }
+      const leaves = causes.filter((c) => (childIds[c.id] || []).length === 0)
+        .map((c) => ({ id: c.id, description: c.description, probability: byId[c.id].probability }))
+        .sort((a, b) => b.probability - a.probability);
+      return {
+        ok: true,
+        result: {
+          painId: pain.id,
+          painTitle: pain.title,
+          tree,
+          fishbone: Object.fromEntries(Object.entries(fishbone).filter(([, v]) => v.length > 0)),
+          rootCauses: leaves,
+          causeCount: causes.length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // ─── Export full analysis as a report ───
+
+  registerLensAction("suffering", "export-report", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const pains = (s.pains.get(uid) || []).slice();
+      const themes = s.themes.get(uid) || [];
+      const interventions = s.interventions.get(uid) || [];
+      const snapshots = s.snapshots.get(uid) || [];
+      const ranked = pains.map((p) => ({
+        ...p,
+        priorityScore: round((p.severity * p.frequency * p.impact) / Math.max(1, p.effort)),
+      })).sort((a, b) => b.priorityScore - a.priorityScore);
+      const format = params.format === "markdown" ? "markdown" : "json";
+      const generatedAt = new Date().toISOString();
+      if (format === "json") {
+        return {
+          ok: true,
+          result: {
+            format: "json",
+            report: { generatedAt, pains: ranked, themes, interventions, snapshots },
+          },
+        };
+      }
+      // Markdown report.
+      const lines = [];
+      lines.push("# Pain-Point Analysis Report");
+      lines.push(`Generated: ${generatedAt}`);
+      lines.push("");
+      lines.push(`## Summary`);
+      lines.push(`- Pain points: ${pains.length} (${pains.filter((p) => p.status !== "resolved").length} open)`);
+      lines.push(`- Themes: ${themes.length}`);
+      lines.push(`- Interventions: ${interventions.length}`);
+      lines.push("");
+      lines.push("## Prioritized Pain Points");
+      for (const p of ranked) {
+        lines.push(`### ${p.title} — priority ${p.priorityScore}`);
+        lines.push(`- Status: ${p.status}`);
+        lines.push(`- Severity ${p.severity} · Frequency ${p.frequency} · Impact ${p.impact} · Effort ${p.effort}`);
+        if (p.description) lines.push(`- ${p.description}`);
+        if (Array.isArray(p.evidence) && p.evidence.length) {
+          lines.push(`- Evidence:`);
+          for (const ev of p.evidence) lines.push(`  - "${ev.quote}"${ev.source ? ` — ${ev.source}` : ""}`);
+        }
+        lines.push("");
+      }
+      if (interventions.length) {
+        lines.push("## Interventions");
+        for (const i of interventions) {
+          lines.push(`- ${i.title} — ${i.status} (${i.progress}%)`);
+        }
+        lines.push("");
+      }
+      return {
+        ok: true,
+        result: { format: "markdown", markdown: lines.join("\n"), generatedAt },
+      };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
 }

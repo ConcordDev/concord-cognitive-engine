@@ -206,6 +206,8 @@ import worldCreator from './world-creator.js';
 import expeditionJournal from './expedition-journal.js';
 import bounties from './bounties.js';
 import subWorlds from './sub-worlds.js';
+import sentinelLens from './sentinel.js';
+import savedLens from './saved.js';
 import inheritance from './inheritance.js';
 import personas from './personas.js';
 import psyops from './psyops.js';
@@ -413,4 +415,6 @@ export default [
   personas,
   psyops,
   tools,
+  savedLens,
+  sentinelLens,
 ];

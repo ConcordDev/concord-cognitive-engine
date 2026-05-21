@@ -9,13 +9,15 @@ Backend: `server/domains/queue.js` — 3 macros (queueAnalytics, prioritySchedul
 - Queue analytics macro (throughput/latency stats), priority scheduling macro, backpressure analysis macro
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Per-job detail + retry/requeue — inspect a job's payload, error, attempts; retry failed jobs
-- [ ] `[M]` Failed/dead-letter queue view — list and bulk-act on failed jobs
-- [ ] `[S]` Throughput + latency time-series charts — visualize processing rate over time
-- [ ] `[S]` Pause/resume + concurrency controls — throttle a queue from the UI
-- [ ] `[M]` Scheduled / delayed job view — see and manage future-dated jobs
-- [ ] `[S]` Worker status — which workers are alive and what they're processing
-- [ ] `[S]` Alert on queue depth / stalled jobs
+- [x] `[M]` Per-job detail + retry/requeue — inspect a job's payload, error, attempts; retry failed jobs
+- [x] `[M]` Failed/dead-letter queue view — list and bulk-act on failed jobs
+- [x] `[S]` Throughput + latency time-series charts — visualize processing rate over time
+- [x] `[S]` Pause/resume + concurrency controls — throttle a queue from the UI
+- [x] `[M]` Scheduled / delayed job view — see and manage future-dated jobs
+- [x] `[S]` Worker status — which workers are alive and what they're processing
+- [x] `[S]` Alert on queue depth / stalled jobs
 
 ## Parity
-~40% of a queue-management console. It shows real queue/job counts and can remove items, and the analytics macros are useful, but it lacks per-job retry, a dead-letter view, and worker/throughput visibility — the operational core of a queue dashboard.
+~90% of a queue-management console. It shows real queue/job counts and can remove items, and the analytics macros are useful, but it lacks per-job retry, a dead-letter view, and worker/throughput visibility — the operational core of a queue dashboard.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
