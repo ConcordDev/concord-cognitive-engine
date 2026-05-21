@@ -11,12 +11,14 @@ Backend: `forecast.{compose, recent}` macros backed by `server/lib/world-forecas
 - Drift forecast (likely drift kind + severity); compose-fresh + persisted recent forecast
 
 ## Missing — buildable feature backlog
-- [ ] `[S]` Multi-day / 7-day outlook (currently single 24h window)
-- [ ] `[S]` Hourly breakdown within the window
-- [ ] `[M]` Per-district / per-region forecast instead of whole-world
-- [ ] `[S]` Forecast accuracy tracking — compare past forecasts to realized outcomes
-- [ ] `[M]` Alert subscriptions — push when a high-confidence severe event is predicted
-- [ ] `[S]` Historical forecast archive / trend visualization
+- [x] `[S]` Multi-day / 7-day outlook (currently single 24h window)
+- [x] `[S]` Hourly breakdown within the window
+- [x] `[M]` Per-district / per-region forecast instead of whole-world
+- [x] `[S]` Forecast accuracy tracking — compare past forecasts to realized outcomes
+- [x] `[M]` Alert subscriptions — push when a high-confidence severe event is predicted
+- [x] `[S]` Historical forecast archive / trend visualization
 
 ## Parity
-~60% of a predictive-outlook tool's surface for what it scopes. It is a genuinely novel simulation forecast with no real-world rival; the gaps are range (multi-day/hourly), granularity (per-region), and accuracy feedback — all straightforward extensions.
+~95% of a predictive-outlook tool's surface for what it scopes. The novel simulation forecast plus a multi-day outlook, hourly breakdown, per-region forecasts, accuracy tracking, alert subscriptions, and a historical archive with trend visualization all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

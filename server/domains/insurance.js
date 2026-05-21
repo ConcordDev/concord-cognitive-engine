@@ -697,6 +697,411 @@ export default function registerInsuranceActions(registerLensAction) {
     };
   });
 
+  // ════════════════════════════════════════════════════════════════════
+  // Inheritance-pact parity backlog (death-insurance lens)
+  //
+  // The /lenses/death-insurance lens writes sparks-denominated inheritance
+  // pacts. The base write/revoke/list loop is SQLite-backed in server.js;
+  // these macros add the feature-parity backlog — multi-beneficiary split,
+  // renewal / auto-renew, recurring premium schedule, beneficiary
+  // acceptance handshake, fired-payout history, and expiry/fire alerts.
+  //
+  // Currency: ⚡ Sparks ONLY. CC is insulated per the no-pay-to-win
+  // invariant — no CC is read or written by any pact macro.
+  //
+  // State is STATE-backed (globalThis._concordSTATE) keyed by ctx.userId so
+  // it survives restart via the debounced state-saver and stays per-user.
+  // ════════════════════════════════════════════════════════════════════
+
+  function getPactState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.inheritPacts) STATE.inheritPacts = {};
+    const s = STATE.inheritPacts;
+    // pacts: Map<userId, pact[]>  — pacts the user wrote
+    // payouts: Map<userId, payout[]> — fired-payout history (insured side)
+    if (!(s.pacts instanceof Map)) s.pacts = new Map();
+    if (!(s.payouts instanceof Map)) s.payouts = new Map();
+    return s;
+  }
+  const pactUid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const pactBucket = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const pactNow = () => Math.floor(Date.now() / 1000);
+  const PACT_DAY = 86400;
+  const PACT_NEW = "pct_";
+  const pactId = () => PACT_NEW + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+  const pactInt = (v, d = 0) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? n : d; };
+  const pactStr = (v, max = 120) => String(v == null ? "" : v).trim().slice(0, max);
+
+  // Normalise a free-form beneficiary list into [{userId, sharePct, accepted}]
+  function normaliseBeneficiaries(raw, fallbackUserId) {
+    let list = [];
+    if (Array.isArray(raw) && raw.length) {
+      list = raw
+        .map((b) => ({
+          userId: pactStr(b?.userId ?? b?.beneficiaryUserId ?? b, 80),
+          sharePct: Math.max(0, Math.min(100, Number(b?.sharePct ?? b?.share ?? 0))),
+        }))
+        .filter((b) => b.userId);
+    } else if (fallbackUserId) {
+      list = [{ userId: pactStr(fallbackUserId, 80), sharePct: 100 }];
+    }
+    // De-dupe by userId (keep first), then re-balance shares to sum 100.
+    const seen = new Set();
+    list = list.filter((b) => (seen.has(b.userId) ? false : (seen.add(b.userId), true)));
+    const total = list.reduce((a, b) => a + b.sharePct, 0);
+    if (total <= 0 && list.length) {
+      const even = Math.floor(100 / list.length);
+      list.forEach((b, i) => { b.sharePct = i === list.length - 1 ? 100 - even * (list.length - 1) : even; });
+    } else if (total !== 100 && list.length) {
+      let acc = 0;
+      list.forEach((b, i) => {
+        if (i === list.length - 1) { b.sharePct = 100 - acc; }
+        else { b.sharePct = Math.round((b.sharePct / total) * 100); acc += b.sharePct; }
+      });
+    }
+    return list.map((b) => ({ userId: b.userId, sharePct: b.sharePct, accepted: false, respondedAt: null }));
+  }
+
+  function pactStatus(p) {
+    if (p.status === "revoked") return "revoked";
+    if (p.status === "fired") return "fired";
+    if (p.expiresAt && p.expiresAt < pactNow()) return "expired";
+    return "active";
+  }
+
+  // ── #1 Write a pact (multi-beneficiary split + recurring premium) ────
+  registerLensAction("insurance", "pact-write", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pactUid(ctx);
+    const payoutSparks = pactInt(params.payoutSparks);
+    const premiumSparks = pactInt(params.premiumSparks);
+    if (payoutSparks <= 0) return { ok: false, error: "payoutSparks must be > 0" };
+    if (premiumSparks <= 0) return { ok: false, error: "premiumSparks must be > 0" };
+    const durationDays = Math.max(1, pactInt(params.durationDays, 30));
+
+    const beneficiaries = normaliseBeneficiaries(params.beneficiaries, params.beneficiaryUserId);
+    if (!beneficiaries.length) return { ok: false, error: "at least one beneficiary required" };
+    // Suicide-pact prevention: insured cannot be a beneficiary of their own pact.
+    if (beneficiaries.some((b) => b.userId === userId)) {
+      return { ok: false, error: "self_pact_blocked: beneficiary cannot equal insured" };
+    }
+
+    const freq = ["upfront", "weekly", "monthly"].includes(params.premiumFrequency)
+      ? params.premiumFrequency : "upfront";
+    const now = pactNow();
+    const intervalDays = freq === "weekly" ? 7 : freq === "monthly" ? 30 : 0;
+    const pact = {
+      id: pactId(),
+      insuredUserId: userId,
+      beneficiaries,
+      payoutSparks,
+      premiumSparks,
+      premiumFrequency: freq,
+      autoRenew: params.autoRenew === true,
+      requireHandshake: params.requireHandshake !== false,
+      writtenAt: now,
+      durationDays,
+      expiresAt: now + durationDays * PACT_DAY,
+      // payout cannot fire within 24h of write — anti-abuse guard
+      armsAt: now + PACT_DAY,
+      status: "active",
+      renewCount: 0,
+      premiumPaidSparks: freq === "upfront" ? premiumSparks : 0,
+      nextPremiumDueAt: freq === "upfront" ? null : now + intervalDays * PACT_DAY,
+    };
+    pactBucket(s.pacts, userId).push(pact);
+    saveInsState();
+    return { ok: true, result: { pact } };
+  });
+
+  // ── List pacts (written + beneficiary-of) ───────────────────────────
+  registerLensAction("insurance", "pact-list", (ctx, _a, _params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pactUid(ctx);
+    const decorate = (p) => ({ ...p, status: pactStatus(p), armed: pactNow() >= p.armsAt });
+
+    const written = (s.pacts.get(userId) || []).map(decorate);
+    const beneficiaryOf = [];
+    for (const [insured, arr] of s.pacts) {
+      if (insured === userId) continue;
+      for (const p of arr) {
+        const mine = p.beneficiaries.find((b) => b.userId === userId);
+        if (!mine) continue;
+        beneficiaryOf.push({
+          ...decorate(p),
+          myShare: { sharePct: mine.sharePct, accepted: mine.accepted, respondedAt: mine.respondedAt },
+        });
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        written: written.slice().reverse(),
+        beneficiaryOf: beneficiaryOf.slice().reverse(),
+        count: written.length + beneficiaryOf.length,
+      },
+    };
+  });
+
+  // ── Revoke a pact (insured only) ────────────────────────────────────
+  registerLensAction("insurance", "pact-revoke", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pact = (s.pacts.get(pactUid(ctx)) || []).find((p) => p.id === params.pactId);
+    if (!pact) return { ok: false, error: "pact not found" };
+    if (pactStatus(pact) !== "active") return { ok: false, error: "only active pacts can be revoked" };
+    pact.status = "revoked";
+    pact.revokedAt = pactNow();
+    saveInsState();
+    return { ok: true, result: { pactId: pact.id, status: "revoked" } };
+  });
+
+  // ── #2 Renewal / auto-renew ─────────────────────────────────────────
+  registerLensAction("insurance", "pact-renew", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pact = (s.pacts.get(pactUid(ctx)) || []).find((p) => p.id === params.pactId);
+    if (!pact) return { ok: false, error: "pact not found" };
+    const st = pactStatus(pact);
+    if (st === "revoked" || st === "fired") return { ok: false, error: `cannot renew a ${st} pact` };
+    const extraDays = Math.max(1, pactInt(params.durationDays, pact.durationDays));
+    const base = st === "expired" ? pactNow() : pact.expiresAt;
+    pact.expiresAt = base + extraDays * PACT_DAY;
+    pact.durationDays = extraDays;
+    pact.status = "active";
+    pact.renewCount = (pact.renewCount || 0) + 1;
+    pact.lastRenewedAt = pactNow();
+    if (params.autoRenew != null) pact.autoRenew = params.autoRenew === true;
+    saveInsState();
+    return { ok: true, result: { pact: { ...pact, status: pactStatus(pact) } } };
+  });
+
+  registerLensAction("insurance", "pact-set-auto-renew", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pact = (s.pacts.get(pactUid(ctx)) || []).find((p) => p.id === params.pactId);
+    if (!pact) return { ok: false, error: "pact not found" };
+    pact.autoRenew = params.autoRenew === true;
+    saveInsState();
+    return { ok: true, result: { pactId: pact.id, autoRenew: pact.autoRenew } };
+  });
+
+  // ── #3 Recurring premium payment schedule ───────────────────────────
+  registerLensAction("insurance", "pact-pay-premium", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pact = (s.pacts.get(pactUid(ctx)) || []).find((p) => p.id === params.pactId);
+    if (!pact) return { ok: false, error: "pact not found" };
+    if (pact.premiumFrequency === "upfront") return { ok: false, error: "this pact has an upfront premium" };
+    if (pactStatus(pact) !== "active") return { ok: false, error: "pact is not active" };
+    pact.premiumPaidSparks = (pact.premiumPaidSparks || 0) + pact.premiumSparks;
+    pact.premiumInstallments = pact.premiumInstallments || [];
+    pact.premiumInstallments.push({ amountSparks: pact.premiumSparks, paidAt: pactNow() });
+    const intervalDays = pact.premiumFrequency === "weekly" ? 7 : 30;
+    pact.nextPremiumDueAt = pactNow() + intervalDays * PACT_DAY;
+    saveInsState();
+    return {
+      ok: true,
+      result: {
+        pactId: pact.id,
+        premiumPaidSparks: pact.premiumPaidSparks,
+        nextPremiumDueAt: pact.nextPremiumDueAt,
+        installments: pact.premiumInstallments.length,
+      },
+    };
+  });
+
+  registerLensAction("insurance", "pact-premium-schedule", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pact = (s.pacts.get(pactUid(ctx)) || []).find((p) => p.id === params.pactId);
+    if (!pact) return { ok: false, error: "pact not found" };
+    const intervalDays = pact.premiumFrequency === "weekly" ? 7
+      : pact.premiumFrequency === "monthly" ? 30 : 0;
+    const installments = pact.premiumInstallments || [];
+    return {
+      ok: true,
+      result: {
+        pactId: pact.id,
+        premiumFrequency: pact.premiumFrequency,
+        installmentSparks: pact.premiumSparks,
+        intervalDays,
+        premiumPaidSparks: pact.premiumPaidSparks || (pact.premiumFrequency === "upfront" ? pact.premiumSparks : 0),
+        installments,
+        nextPremiumDueAt: pact.nextPremiumDueAt,
+        nextPremiumOverdue: pact.nextPremiumDueAt != null && pact.nextPremiumDueAt < pactNow(),
+      },
+    };
+  });
+
+  // ── #4 Beneficiary acceptance handshake ─────────────────────────────
+  function findPactByIdAnyOwner(s, pactId) {
+    for (const arr of s.pacts.values()) {
+      const p = arr.find((x) => x.id === pactId);
+      if (p) return p;
+    }
+    return null;
+  }
+
+  registerLensAction("insurance", "pact-respond", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pactUid(ctx);
+    const pact = findPactByIdAnyOwner(s, params.pactId);
+    if (!pact) return { ok: false, error: "pact not found" };
+    const mine = pact.beneficiaries.find((b) => b.userId === userId);
+    if (!mine) return { ok: false, error: "you are not a beneficiary of this pact" };
+    const accept = params.accept !== false;
+    mine.accepted = accept;
+    mine.respondedAt = pactNow();
+    saveInsState();
+    return {
+      ok: true,
+      result: {
+        pactId: pact.id,
+        accepted: mine.accepted,
+        allAccepted: pact.beneficiaries.every((b) => b.accepted),
+      },
+    };
+  });
+
+  // ── #5 Fired-payout history log ─────────────────────────────────────
+  // Records a pact firing (insured fell in Concordia) and splits the
+  // sparks payout across all (accepted, when handshake required)
+  // beneficiaries by share percentage. Idempotent on pactId.
+  registerLensAction("insurance", "pact-record-payout", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pactUid(ctx);
+    const pact = (s.pacts.get(userId) || []).find((p) => p.id === params.pactId);
+    if (!pact) return { ok: false, error: "pact not found" };
+    if (pact.status === "fired") return { ok: false, error: "pact already fired" };
+    const st = pactStatus(pact);
+    if (st === "revoked") return { ok: false, error: "cannot fire a revoked pact" };
+    if (st === "expired") return { ok: false, error: "cannot fire an expired pact" };
+    if (pactNow() < pact.armsAt) return { ok: false, error: "payout cannot fire within 24h of write" };
+
+    const eligible = pact.beneficiaries.filter((b) => !pact.requireHandshake || b.accepted);
+    if (!eligible.length) {
+      return { ok: false, error: "no beneficiary has accepted the handshake" };
+    }
+    const eligibleShare = eligible.reduce((a, b) => a + b.sharePct, 0) || 1;
+    let acc = 0;
+    const splits = eligible.map((b, i) => {
+      const sparks = i === eligible.length - 1
+        ? pact.payoutSparks - acc
+        : Math.round((b.sharePct / eligibleShare) * pact.payoutSparks);
+      acc += sparks;
+      return { userId: b.userId, sharePct: b.sharePct, sparks };
+    });
+    const payout = {
+      id: pactId(),
+      pactId: pact.id,
+      cause: pactStr(params.cause, 80) || "fell in Concordia",
+      firedAt: pactNow(),
+      totalSparks: pact.payoutSparks,
+      splits,
+    };
+    pact.status = "fired";
+    pact.firedAt = payout.firedAt;
+    pactBucket(s.payouts, userId).push(payout);
+    saveInsState();
+    return { ok: true, result: { payout } };
+  });
+
+  registerLensAction("insurance", "pact-payout-history", (ctx, _a, _params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pactUid(ctx);
+    // Payouts from pacts the user wrote.
+    const paidOut = (s.payouts.get(userId) || []).slice().reverse();
+    // Payouts the user received a split from.
+    const received = [];
+    for (const [insured, arr] of s.payouts) {
+      for (const po of arr) {
+        const split = po.splits.find((sp) => sp.userId === userId);
+        if (split) received.push({ ...po, insuredUserId: insured, mySparks: split.sparks, mySharePct: split.sharePct });
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        paidOut,
+        received: received.slice().reverse(),
+        totalPaidOutSparks: paidOut.reduce((a, p) => a + p.totalSparks, 0),
+        totalReceivedSparks: received.reduce((a, p) => a + p.mySparks, 0),
+      },
+    };
+  });
+
+  // ── #6 Expiry / fire / premium-due notifications ────────────────────
+  registerLensAction("insurance", "pact-notifications", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pactUid(ctx);
+    const windowDays = Math.max(1, pactInt(params.windowDays, 7));
+    const now = pactNow();
+    const horizon = now + windowDays * PACT_DAY;
+    const notes = [];
+
+    const written = s.pacts.get(userId) || [];
+    for (const p of written) {
+      const st = pactStatus(p);
+      if (st === "active" && p.expiresAt <= horizon) {
+        notes.push({
+          kind: "expiring", pactId: p.id, severity: p.expiresAt - now < PACT_DAY ? "high" : "medium",
+          at: p.expiresAt, autoRenew: p.autoRenew,
+          message: `Pact ${p.id} ${p.autoRenew ? "will auto-renew" : "expires"} ${new Date(p.expiresAt * 1000).toLocaleDateString()}`,
+        });
+      }
+      if (st === "active" && p.premiumFrequency !== "upfront" && p.nextPremiumDueAt != null && p.nextPremiumDueAt <= horizon) {
+        notes.push({
+          kind: "premium_due", pactId: p.id,
+          severity: p.nextPremiumDueAt < now ? "high" : "medium",
+          at: p.nextPremiumDueAt,
+          message: `${p.premiumSparks} ⚡ ${p.premiumFrequency} premium ${p.nextPremiumDueAt < now ? "overdue" : "due"} on pact ${p.id}`,
+        });
+      }
+      if (st === "active" && p.requireHandshake && p.beneficiaries.some((b) => !b.accepted)) {
+        const pending = p.beneficiaries.filter((b) => !b.accepted).length;
+        notes.push({
+          kind: "handshake_pending", pactId: p.id, severity: "low", at: p.writtenAt,
+          message: `${pending} beneficiar${pending === 1 ? "y" : "ies"} have not yet accepted pact ${p.id}`,
+        });
+      }
+    }
+    // Pacts where the caller is a beneficiary and has not responded.
+    for (const [insured, arr] of s.pacts) {
+      if (insured === userId) continue;
+      for (const p of arr) {
+        if (pactStatus(p) !== "active") continue;
+        const mine = p.beneficiaries.find((b) => b.userId === userId);
+        if (mine && !mine.accepted && mine.respondedAt == null) {
+          notes.push({
+            kind: "handshake_request", pactId: p.id, severity: "medium", at: p.writtenAt,
+            message: `${insured} named you beneficiary of a ${p.payoutSparks} ⚡ pact — accept or decline`,
+          });
+        }
+      }
+    }
+    // Payouts that fired in the window.
+    for (const [insured, arr] of s.payouts) {
+      for (const po of arr) {
+        if (po.firedAt < now - windowDays * PACT_DAY) continue;
+        if (insured === userId) {
+          notes.push({ kind: "fired", pactId: po.pactId, severity: "high", at: po.firedAt,
+            message: `Pact ${po.pactId} fired — ${po.totalSparks} ⚡ paid out` });
+        }
+        const split = po.splits.find((sp) => sp.userId === userId);
+        if (split && insured !== userId) {
+          notes.push({ kind: "payout_received", pactId: po.pactId, severity: "high", at: po.firedAt,
+            message: `You inherited ${split.sparks} ⚡ from ${insured}` });
+        }
+      }
+    }
+    notes.sort((a, b) => b.at - a.at);
+    return {
+      ok: true,
+      result: {
+        notifications: notes,
+        count: notes.length,
+        unreadHigh: notes.filter((n) => n.severity === "high").length,
+      },
+    };
+  });
+
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("insurance", "insurance-dashboard", (ctx, _a, _params = {}) => {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };

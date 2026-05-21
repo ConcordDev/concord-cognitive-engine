@@ -5007,6 +5007,30 @@ export const LENS_MANIFESTS: LensManifest[] = [
       ],
     },
   },
+
+  {
+    domain: 'forecast',
+    label: 'Forecast',
+    artifacts: ['world_forecast'],
+    macros: { list: 'forecast.archive', get: 'forecast.recent', run: 'forecast.compose' },
+    exports: ['json'],
+    actions: ['compose', 'recent', 'multiDay', 'hourly', 'regional', 'accuracy', 'archive', 'subscribeAlert', 'listAlerts', 'unsubscribeAlert', 'checkAlerts'],
+    category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
+    emptyState: {
+      headline: 'No forecast yet.',
+      caption: 'Compose a 24-hour world outlook from forward-sim, drift, faction strategy, and embodied climate baselines. Then extend it to multi-day, hourly, or per-district views.',
+      firstActionLabel: 'Compose forecast',
+      firstActionMacro: { name: 'compose', input: { worldId: 'concordia-hub', persist: true } },
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Compose a forecast — it folds the live simulation state into a 24h weather + ecology + faction + drift outlook.' },
+        { caption: 'Switch to the multi-day, hourly, or per-district tabs. Confidence honestly decays the further out you look.' },
+        { caption: 'Subscribe to alerts so a high-confidence severe event, drift, or weather kind surfaces the moment it is predicted.' },
+      ],
+    },
+  },
 ];
 
 // ---- Sub-lens auto-registration ----

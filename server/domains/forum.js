@@ -44,7 +44,10 @@ export default function registerForumActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.forumLens) STATE.forumLens = {};
     const s = STATE.forumLens;
-    for (const k of ["categories", "topics", "posts", "flags"]) {
+    for (const k of [
+      "categories", "topics", "posts", "flags",
+      "subforums", "subscriptions", "notifications", "saves",
+    ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -112,14 +115,20 @@ export default function registerForumActions(registerLensAction) {
     if (!title) return { ok: false, error: "topic title required" };
     let categoryId = params.categoryId ? String(params.categoryId) : null;
     if (categoryId && !(s.categories.get(userId) || []).some((c) => c.id === categoryId)) categoryId = null;
+    const images = Array.isArray(params.images)
+      ? params.images.map((u) => fmClean(u, 2000)).filter(Boolean).slice(0, 8) : [];
     const topic = {
-      id: fmId("top"), categoryId, title,
+      id: fmId("top"), categoryId,
+      subforumId: params.subforumId ? String(params.subforumId) : null,
+      title,
       body: fmClean(params.body, 8000) || "",
+      format: params.format === "markdown" ? "markdown" : "plain",
+      images,
       tags: Array.isArray(params.tags)
         ? [...new Set(params.tags.map((t) => fmClean(t, 30).toLowerCase()).filter(Boolean))].slice(0, 8) : [],
       author: fmClean(params.author, 60) || "Me",
       pinned: false, locked: false,
-      voters: {}, score: 0,
+      voters: {}, score: 0, awards: [],
       createdAt: fmNow(), updatedAt: fmNow(),
     };
     fmListB(s.topics, userId).push(topic);
@@ -136,6 +145,7 @@ export default function registerForumActions(registerLensAction) {
       replyCount: posts.filter((p) => p.topicId === t.id).length,
     }));
     if (params.categoryId) topics = topics.filter((t) => t.categoryId === String(params.categoryId));
+    if (params.subforumId) topics = topics.filter((t) => t.subforumId === String(params.subforumId));
     if (params.tag) topics = topics.filter((t) => t.tags.includes(String(params.tag).toLowerCase()));
     const sort = ["latest", "top", "new"].includes(String(params.sort)) ? String(params.sort) : "latest";
     topics.sort((a, b) => {
@@ -155,7 +165,24 @@ export default function registerForumActions(registerLensAction) {
     const posts = (s.posts.get(userId) || [])
       .filter((p) => p.topicId === topic.id)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    return { ok: true, result: { topic, posts, replyCount: posts.length } };
+    // Build a nested comment tree from parentId links.
+    const byParent = new Map();
+    for (const p of posts) {
+      const key = p.parentId || "_root";
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key).push(p);
+    }
+    const buildTree = (parentKey, depth) => {
+      if (depth > 12) return [];
+      return (byParent.get(parentKey) || []).map((p) => ({
+        ...p,
+        depth,
+        replies: buildTree(p.id, depth + 1),
+      }));
+    };
+    const tree = buildTree("_root", 0);
+    const subscribed = (s.subscriptions.get(userId) || []).some((x) => x.topicId === topic.id);
+    return { ok: true, result: { topic, posts, tree, replyCount: posts.length, subscribed } };
   });
 
   registerLensAction("forum", "topic-delete", (ctx, _a, params = {}) => {
@@ -197,14 +224,36 @@ export default function registerForumActions(registerLensAction) {
     if (topic.locked) return { ok: false, error: "topic is locked" };
     const body = fmClean(params.body, 8000);
     if (!body) return { ok: false, error: "reply body required" };
+    let parentId = params.parentId ? String(params.parentId) : null;
+    const existing = s.posts.get(userId) || [];
+    if (parentId) {
+      const parent = existing.find((p) => p.id === parentId);
+      if (!parent || parent.topicId !== topic.id) parentId = null;
+    }
+    const images = Array.isArray(params.images)
+      ? params.images.map((u) => fmClean(u, 2000)).filter(Boolean).slice(0, 8) : [];
     const post = {
-      id: fmId("pst"), topicId: topic.id, body,
+      id: fmId("pst"), topicId: topic.id, parentId, body,
+      format: params.format === "markdown" ? "markdown" : "plain",
+      images,
       author: fmClean(params.author, 60) || "Me",
-      voters: {}, score: 0,
+      voters: {}, score: 0, awards: [],
       createdAt: fmNow(),
     };
     fmListB(s.posts, userId).push(post);
     topic.updatedAt = fmNow();
+    // notify thread subscribers (other than the replier)
+    for (const sub of s.subscriptions.get(userId) || []) {
+      if (sub.topicId === topic.id) {
+        fmListB(s.notifications, userId).push({
+          id: fmId("ntf"), kind: "reply",
+          topicId: topic.id, topicTitle: topic.title,
+          postId: post.id, message: `New reply in "${topic.title}"`,
+          read: false, createdAt: fmNow(),
+        });
+        break;
+      }
+    }
     saveFmState();
     return { ok: true, result: { post } };
   });
@@ -349,6 +398,320 @@ export default function registerForumActions(registerLensAction) {
         replies: (s.posts.get(userId) || []).length,
         topicsThisWeek: topics.filter((t) => t.createdAt >= week).length,
         pendingFlags: (s.flags.get(userId) || []).filter((f) => f.status === "pending").length,
+        subforums: (s.subforums.get(userId) || []).length,
+        subscriptions: (s.subscriptions.get(userId) || []).length,
+        unreadNotifications: (s.notifications.get(userId) || []).filter((n) => !n.read).length,
+        savedPosts: (s.saves.get(userId) || []).length,
+      },
+    };
+  });
+
+  // ── Subforums / user-created communities ────────────────────────────
+  // Per-community rules + mod teams (item: User-created communities).
+  registerLensAction("forum", "subforum-create", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const name = fmClean(params.name, 60);
+    if (!name) return { ok: false, error: "subforum name required" };
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40)
+      || `sf-${Date.now().toString(36)}`;
+    const existing = s.subforums.get(userId) || [];
+    if (existing.some((f) => f.slug === slug)) return { ok: false, error: "subforum already exists" };
+    const subforum = {
+      id: fmId("sf"), slug, name,
+      description: fmClean(params.description, 600) || null,
+      icon: fmClean(params.icon, 8) || "💬",
+      rules: Array.isArray(params.rules)
+        ? params.rules.map((r) => fmClean(r, 200)).filter(Boolean).slice(0, 12) : [],
+      moderators: [fmClean(params.author, 60) || "Me"],
+      createdAt: fmNow(),
+    };
+    fmListB(s.subforums, userId).push(subforum);
+    saveFmState();
+    return { ok: true, result: { subforum } };
+  });
+
+  registerLensAction("forum", "subforum-list", (ctx, _a, _params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const topics = s.topics.get(userId) || [];
+    const subforums = (s.subforums.get(userId) || []).map((f) => ({
+      ...f,
+      topicCount: topics.filter((t) => t.subforumId === f.id).length,
+      memberCount: 1 + (f.moderators ? f.moderators.length - 1 : 0),
+    }));
+    return { ok: true, result: { subforums, count: subforums.length } };
+  });
+
+  registerLensAction("forum", "subforum-update-rules", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sf = (s.subforums.get(fmAid(ctx)) || []).find((f) => f.id === params.id);
+    if (!sf) return { ok: false, error: "subforum not found" };
+    if (Array.isArray(params.rules)) {
+      sf.rules = params.rules.map((r) => fmClean(r, 200)).filter(Boolean).slice(0, 12);
+    }
+    if (params.description !== undefined) sf.description = fmClean(params.description, 600) || null;
+    saveFmState();
+    return { ok: true, result: { id: sf.id, rules: sf.rules, description: sf.description } };
+  });
+
+  registerLensAction("forum", "subforum-add-mod", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sf = (s.subforums.get(fmAid(ctx)) || []).find((f) => f.id === params.id);
+    if (!sf) return { ok: false, error: "subforum not found" };
+    const mod = fmClean(params.moderator, 60);
+    if (!mod) return { ok: false, error: "moderator name required" };
+    if (!Array.isArray(sf.moderators)) sf.moderators = [];
+    if (!sf.moderators.includes(mod)) sf.moderators.push(mod);
+    saveFmState();
+    return { ok: true, result: { id: sf.id, moderators: sf.moderators } };
+  });
+
+  registerLensAction("forum", "subforum-delete", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const arr = s.subforums.get(userId) || [];
+    const i = arr.findIndex((f) => f.id === params.id);
+    if (i < 0) return { ok: false, error: "subforum not found" };
+    arr.splice(i, 1);
+    for (const t of s.topics.get(userId) || []) {
+      if (t.subforumId === params.id) t.subforumId = null;
+    }
+    saveFmState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Thread subscriptions + notifications ────────────────────────────
+  registerLensAction("forum", "thread-subscribe", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const topic = (s.topics.get(userId) || []).find((t) => t.id === params.topicId);
+    if (!topic) return { ok: false, error: "topic not found" };
+    const subs = fmListB(s.subscriptions, userId);
+    const idx = subs.findIndex((x) => x.topicId === topic.id);
+    let subscribed;
+    if (idx >= 0) { subs.splice(idx, 1); subscribed = false; }
+    else { subs.push({ topicId: topic.id, topicTitle: topic.title, createdAt: fmNow() }); subscribed = true; }
+    saveFmState();
+    return { ok: true, result: { topicId: topic.id, subscribed } };
+  });
+
+  registerLensAction("forum", "subscription-list", (ctx, _a, _params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const topics = s.topics.get(userId) || [];
+    const subs = (s.subscriptions.get(userId) || [])
+      .map((x) => {
+        const t = topics.find((tp) => tp.id === x.topicId);
+        return { ...x, exists: !!t, locked: t ? t.locked : false };
+      })
+      .filter((x) => x.exists);
+    return { ok: true, result: { subscriptions: subs, count: subs.length } };
+  });
+
+  registerLensAction("forum", "notification-list", (ctx, _a, _params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const all = (s.notifications.get(userId) || [])
+      .slice()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return {
+      ok: true,
+      result: {
+        notifications: all.slice(0, 60),
+        count: all.length,
+        unread: all.filter((n) => !n.read).length,
+      },
+    };
+  });
+
+  registerLensAction("forum", "notification-read", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const all = s.notifications.get(userId) || [];
+    if (params.id) {
+      const n = all.find((x) => x.id === params.id);
+      if (!n) return { ok: false, error: "notification not found" };
+      n.read = true;
+    } else {
+      for (const n of all) n.read = true;
+    }
+    saveFmState();
+    return { ok: true, result: { unread: all.filter((n) => !n.read).length } };
+  });
+
+  // ── Awards / badges ─────────────────────────────────────────────────
+  const FM_AWARDS = {
+    helpful: { name: "Helpful", icon: "🙌", weight: 5 },
+    insightful: { name: "Insightful", icon: "💡", weight: 8 },
+    gold: { name: "Gold", icon: "🏆", weight: 15 },
+    welcoming: { name: "Welcoming", icon: "🤝", weight: 4 },
+    breakthrough: { name: "Breakthrough", icon: "🚀", weight: 12 },
+  };
+  registerLensAction("forum", "award-catalog", (_ctx, _a, _params = {}) => ({
+    ok: true,
+    result: {
+      awards: Object.entries(FM_AWARDS).map(([id, a]) => ({ id, ...a })),
+    },
+  }));
+
+  registerLensAction("forum", "award-give", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const kind = String(params.kind || "");
+    if (!FM_AWARDS[kind]) return { ok: false, error: "unknown award kind" };
+    const targetType = params.targetType === "post" ? "post" : "topic";
+    const bucket = targetType === "post" ? s.posts.get(userId) : s.topics.get(userId);
+    const item = (bucket || []).find((x) => x.id === params.targetId);
+    if (!item) return { ok: false, error: `${targetType} not found` };
+    if (!Array.isArray(item.awards)) item.awards = [];
+    const def = FM_AWARDS[kind];
+    item.awards.push({
+      id: fmId("awd"), kind, icon: def.icon, name: def.name,
+      by: fmClean(params.author, 60) || "Me", createdAt: fmNow(),
+    });
+    saveFmState();
+    return { ok: true, result: { targetType, targetId: item.id, awards: item.awards } };
+  });
+
+  // ── Saved posts + post history + profile pages ──────────────────────
+  registerLensAction("forum", "save-toggle", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const targetType = params.targetType === "post" ? "post" : "topic";
+    const bucket = targetType === "post" ? s.posts.get(userId) : s.topics.get(userId);
+    const item = (bucket || []).find((x) => x.id === params.targetId);
+    if (!item) return { ok: false, error: `${targetType} not found` };
+    const saves = fmListB(s.saves, userId);
+    const idx = saves.findIndex((x) => x.targetId === item.id && x.targetType === targetType);
+    let saved;
+    if (idx >= 0) { saves.splice(idx, 1); saved = false; }
+    else { saves.push({ targetType, targetId: item.id, createdAt: fmNow() }); saved = true; }
+    saveFmState();
+    return { ok: true, result: { targetType, targetId: item.id, saved } };
+  });
+
+  registerLensAction("forum", "saved-list", (ctx, _a, _params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const topics = s.topics.get(userId) || [];
+    const posts = s.posts.get(userId) || [];
+    const items = (s.saves.get(userId) || []).map((sv) => {
+      if (sv.targetType === "topic") {
+        const t = topics.find((x) => x.id === sv.targetId);
+        return t ? { ...sv, title: t.title, score: t.score, snippet: t.body.slice(0, 160) } : null;
+      }
+      const p = posts.find((x) => x.id === sv.targetId);
+      if (!p) return null;
+      const t = topics.find((x) => x.id === p.topicId);
+      return { ...sv, title: t ? t.title : "reply", score: p.score, snippet: p.body.slice(0, 160) };
+    }).filter(Boolean);
+    return { ok: true, result: { saved: items, count: items.length } };
+  });
+
+  registerLensAction("forum", "post-history", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const author = params.author ? fmClean(params.author, 60) : null;
+    const topics = (s.topics.get(userId) || [])
+      .filter((t) => !author || t.author === author)
+      .map((t) => ({ type: "topic", id: t.id, title: t.title, score: t.score, at: t.createdAt }));
+    const posts = (s.posts.get(userId) || [])
+      .filter((p) => !author || p.author === author)
+      .map((p) => {
+        const t = (s.topics.get(userId) || []).find((x) => x.id === p.topicId);
+        return {
+          type: "reply", id: p.id, topicId: p.topicId,
+          title: t ? t.title : "reply", snippet: p.body.slice(0, 120),
+          score: p.score, at: p.createdAt,
+        };
+      });
+    const history = [...topics, ...posts].sort((a, b) => b.at.localeCompare(a.at));
+    return { ok: true, result: { history, count: history.length } };
+  });
+
+  registerLensAction("forum", "user-profile", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const author = params.author ? fmClean(params.author, 60) : null;
+    const allTopics = s.topics.get(userId) || [];
+    const allPosts = s.posts.get(userId) || [];
+    const topics = allTopics.filter((t) => !author || t.author === author);
+    const posts = allPosts.filter((p) => !author || p.author === author);
+    const karma = topics.reduce((a, t) => a + (t.score || 0), 0)
+      + posts.reduce((a, p) => a + (p.score || 0), 0);
+    const awardsEarned = [
+      ...topics.flatMap((t) => t.awards || []),
+      ...posts.flatMap((p) => p.awards || []),
+    ];
+    const awardCounts = {};
+    for (const a of awardsEarned) awardCounts[a.kind] = (awardCounts[a.kind] || 0) + 1;
+    const dates = [...topics, ...posts].map((x) => x.createdAt).sort();
+    return {
+      ok: true,
+      result: {
+        author: author || "Me",
+        topics: topics.length,
+        replies: posts.length,
+        karma,
+        awardsEarned: awardsEarned.length,
+        awardBreakdown: awardCounts,
+        joinedAt: dates[0] || null,
+        lastActiveAt: dates[dates.length - 1] || null,
+      },
+    };
+  });
+
+  // ── Trending / personalized hot ranking across categories ───────────
+  // Reddit-style hot score: log-weighted votes + age decay, blended
+  // with a personalization boost from the viewer's tag affinity.
+  registerLensAction("forum", "trending", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const topics = s.topics.get(userId) || [];
+    if (topics.length === 0) {
+      return { ok: true, result: { trending: [], count: 0, affinityTags: [] } };
+    }
+    const posts = s.posts.get(userId) || [];
+    const now = Date.now();
+    // Tag affinity: tags on topics the viewer authored or replied in.
+    const myTopicIds = new Set(posts.map((p) => p.topicId));
+    const affinity = {};
+    for (const t of topics) {
+      const mine = t.author === "Me" || myTopicIds.has(t.id);
+      if (!mine) continue;
+      for (const tag of t.tags || []) affinity[tag] = (affinity[tag] || 0) + 1;
+    }
+    const affinityTags = Object.entries(affinity)
+      .sort((a, b) => b[1] - a[1]).slice(0, 8).map(([tag, n]) => ({ tag, weight: n }));
+    const personalize = params.personalize !== false;
+    const ranked = topics.map((t) => {
+      const ageHours = Math.max(0.01, (now - new Date(t.createdAt).getTime()) / 3600000);
+      const replyCount = posts.filter((p) => p.topicId === t.id).length;
+      const order = Math.log10(Math.max(1, Math.abs(t.score) + replyCount * 2 + 1));
+      const sign = t.score >= 0 ? 1 : -1;
+      // Reddit hot: order minus age penalty (12h half-cycle equivalent).
+      let hot = sign * order - ageHours / 12;
+      const affBoost = personalize
+        ? (t.tags || []).reduce((a, tag) => a + (affinity[tag] || 0), 0) * 0.15 : 0;
+      hot += affBoost;
+      return {
+        id: t.id, title: t.title, categoryId: t.categoryId,
+        subforumId: t.subforumId || null, tags: t.tags || [],
+        score: t.score, replyCount,
+        hotScore: Math.round(hot * 1000) / 1000,
+        personalBoost: Math.round(affBoost * 1000) / 1000,
+        createdAt: t.createdAt,
+      };
+    }).sort((a, b) => b.hotScore - a.hotScore);
+    const limit = Math.min(50, Math.max(1, fmNum(params.limit, 20)));
+    return {
+      ok: true,
+      result: {
+        trending: ranked.slice(0, limit),
+        count: ranked.length,
+        affinityTags,
+        personalized: personalize,
       },
     };
   });

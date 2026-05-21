@@ -12,13 +12,13 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~84%**
-- Total buildable features in the backlog (sum of all "Missing" items): **385**
+- Average feature parity: **~85%**
+- Total buildable features in the backlog (sum of all "Missing" items): **346**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 181 |
-| 60–79% (strong) | 54 |
+| 80–100% (near-complete) | 187 |
+| 60–79% (strong) | 48 |
 | 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
@@ -26,12 +26,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| creative-writing | Scrivener | ~60% | 7 |
-| creator | YouTube Studio / Patreon | ~60% | 7 |
-| death-insurance | in-game inheritance pact (no consumer rival) | ~60% | 6 |
-| environment | Persefoni / Watershed (carbon accounting) | ~60% | 6 |
-| forecast | Weather apps (no direct rival) | ~60% | 6 |
-| forum | Reddit / Discourse | ~60% | 7 |
 | goals | Notion / Weekdone OKR | ~60% | 7 |
 | household | Cozi / Sweepy | ~60% | 7 |
 | legal | Clio (legal practice management) | ~60% | 7 |
@@ -236,14 +230,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | cognition | (reasoning-substrate console) | ~95% | 0 |
 | council | Loomio / Convene | ~95% | 0 |
 | crafting | MMO crafting systems | ~95% | 0 |
+| creative-writing | Scrivener | ~95% | 0 |
+| creator | YouTube Studio / Patreon | ~95% | 0 |
 | daily | Day One / Reflectly | ~95% | 0 |
+| death-insurance | in-game inheritance pact (no consumer rival) | ~95% | 0 |
 | debate | Kialo | ~95% | 0 |
 | dx-platform | Sourcegraph Cody / GitHub Copilot platform | ~95% | 0 |
 | eco | iNaturalist / JouleBug | ~95% | 0 |
 | energy | Sense / Span Home | ~95% | 0 |
+| environment | Persefoni / Watershed (carbon accounting) | ~95% | 0 |
 | export | Google Takeout / Notion Export | ~95% | 0 |
+| forecast | Weather apps (no direct rival) | ~95% | 0 |
 | forestry | SilvAssist / forest-management software | ~95% | 0 |
 | fork | GitHub (fork network / insights) | ~95% | 0 |
+| forum | Reddit / Discourse | ~95% | 0 |
 | gallery | Google Arts & Culture / Artsy | ~95% | 0 |
 | geology | USGS apps / Rockd | ~95% | 0 |
 | history | TimelineJS / Wikipedia | ~95% | 0 |

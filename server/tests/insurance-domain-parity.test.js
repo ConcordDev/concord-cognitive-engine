@@ -186,3 +186,177 @@ describe("insurance.id-card + summaries", () => {
     assert.equal(call("renewals-due", ctxA, {}).result.count, 1);
   });
 });
+
+// ─── Inheritance-pact (death-insurance lens) parity backlog ────────────
+
+describe("insurance.pact-write — multi-beneficiary split", () => {
+  it("writes a pact and rebalances shares to 100", () => {
+    const r = call("pact-write", ctxA, {
+      beneficiaries: [
+        { userId: "user_b", sharePct: 30 },
+        { userId: "user_c", sharePct: 30 },
+      ],
+      payoutSparks: 1000,
+      premiumSparks: 50,
+      durationDays: 30,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.pact.beneficiaries.length, 2);
+    const total = r.result.pact.beneficiaries.reduce((a, b) => a + b.sharePct, 0);
+    assert.equal(total, 100);
+  });
+
+  it("blocks self-pact (insured cannot be a beneficiary)", () => {
+    const r = call("pact-write", ctxA, {
+      beneficiaries: [{ userId: "user_a", sharePct: 100 }],
+      payoutSparks: 500,
+      premiumSparks: 50,
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /self_pact_blocked/);
+  });
+
+  it("rejects non-positive payout or premium", () => {
+    assert.equal(
+      call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 0, premiumSparks: 50 }).ok,
+      false,
+    );
+    assert.equal(
+      call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 0 }).ok,
+      false,
+    );
+  });
+
+  it("accepts single beneficiaryUserId fallback at 100%", () => {
+    const r = call("pact-write", ctxA, {
+      beneficiaryUserId: "user_b",
+      payoutSparks: 200,
+      premiumSparks: 20,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.pact.beneficiaries[0].sharePct, 100);
+  });
+});
+
+describe("insurance.pact-list", () => {
+  it("returns written and beneficiary-of buckets", () => {
+    call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50 });
+    const a = call("pact-list", ctxA, {});
+    assert.equal(a.result.written.length, 1);
+    assert.equal(a.result.beneficiaryOf.length, 0);
+    const b = call("pact-list", ctxB, {});
+    assert.equal(b.result.written.length, 0);
+    assert.equal(b.result.beneficiaryOf.length, 1);
+    assert.equal(b.result.beneficiaryOf[0].myShare.sharePct, 100);
+  });
+});
+
+describe("insurance.pact-revoke", () => {
+  it("revokes an active pact, rejects double revoke", () => {
+    const p = call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50 }).result.pact;
+    assert.equal(call("pact-revoke", ctxA, { pactId: p.id }).ok, true);
+    assert.equal(call("pact-revoke", ctxA, { pactId: p.id }).ok, false);
+    assert.equal(call("pact-list", ctxA, {}).result.written[0].status, "revoked");
+  });
+});
+
+describe("insurance.pact-renew + pact-set-auto-renew", () => {
+  it("renew extends expiry and bumps renewCount", () => {
+    const p = call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50, durationDays: 10 }).result.pact;
+    const beforeExpiry = p.expiresAt; // capture before renew mutates the shared object
+    const r = call("pact-renew", ctxA, { pactId: p.id, durationDays: 20 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.pact.renewCount, 1);
+    assert.ok(r.result.pact.expiresAt > beforeExpiry);
+  });
+
+  it("set-auto-renew toggles the flag", () => {
+    const p = call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50 }).result.pact;
+    assert.equal(call("pact-set-auto-renew", ctxA, { pactId: p.id, autoRenew: true }).result.autoRenew, true);
+    assert.equal(call("pact-set-auto-renew", ctxA, { pactId: p.id, autoRenew: false }).result.autoRenew, false);
+  });
+});
+
+describe("insurance.pact-pay-premium + pact-premium-schedule", () => {
+  it("recurring premium accumulates installments", () => {
+    const p = call("pact-write", ctxA, {
+      beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 25,
+      premiumFrequency: "monthly",
+    }).result.pact;
+    assert.equal(p.premiumFrequency, "monthly");
+    const pay = call("pact-pay-premium", ctxA, { pactId: p.id });
+    assert.equal(pay.ok, true);
+    assert.equal(pay.result.premiumPaidSparks, 25);
+    assert.equal(pay.result.installments, 1);
+    const sched = call("pact-premium-schedule", ctxA, { pactId: p.id });
+    assert.equal(sched.result.premiumFrequency, "monthly");
+    assert.equal(sched.result.intervalDays, 30);
+  });
+
+  it("rejects pay-premium on an upfront pact", () => {
+    const p = call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50 }).result.pact;
+    assert.equal(call("pact-pay-premium", ctxA, { pactId: p.id }).ok, false);
+  });
+});
+
+describe("insurance.pact-respond — acceptance handshake", () => {
+  it("beneficiary accepts; allAccepted reflects it", () => {
+    const p = call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50 }).result.pact;
+    const r = call("pact-respond", ctxB, { pactId: p.id, accept: true });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.accepted, true);
+    assert.equal(r.result.allAccepted, true);
+  });
+
+  it("non-beneficiary cannot respond", () => {
+    const p = call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50 }).result.pact;
+    assert.equal(call("pact-respond", ctxA, { pactId: p.id, accept: true }).ok, false);
+  });
+});
+
+describe("insurance.pact-record-payout + pact-payout-history", () => {
+  it("fires only after the 24h arming window", () => {
+    const p = call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50, requireHandshake: false }).result.pact;
+    // armsAt is 24h out — firing now must be blocked.
+    assert.equal(call("pact-record-payout", ctxA, { pactId: p.id }).ok, false);
+  });
+
+  it("fires a past-armed pact and splits payout; history records it", () => {
+    const p = call("pact-write", ctxA, {
+      beneficiaries: [
+        { userId: "user_b", sharePct: 60 },
+        { userId: "user_c", sharePct: 40 },
+      ],
+      payoutSparks: 1000, premiumSparks: 50, requireHandshake: false,
+    }).result.pact;
+    // Backdate the arming guard so the payout can fire in-test.
+    p.armsAt = Math.floor(Date.now() / 1000) - 10;
+    const r = call("pact-record-payout", ctxA, { pactId: p.id, cause: "fell in raid" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.payout.splits.length, 2);
+    assert.equal(r.result.payout.splits.reduce((a, s) => a + s.sparks, 0), 1000);
+    const hist = call("pact-payout-history", ctxA, {});
+    assert.equal(hist.result.paidOut.length, 1);
+    assert.equal(hist.result.totalPaidOutSparks, 1000);
+    const bHist = call("pact-payout-history", ctxB, {});
+    assert.equal(bHist.result.received.length, 1);
+    assert.equal(bHist.result.received[0].mySparks, 600);
+  });
+
+  it("blocks payout when handshake required and nobody accepted", () => {
+    const p = call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50, requireHandshake: true }).result.pact;
+    p.armsAt = Math.floor(Date.now() / 1000) - 10;
+    assert.equal(call("pact-record-payout", ctxA, { pactId: p.id }).ok, false);
+  });
+});
+
+describe("insurance.pact-notifications", () => {
+  it("flags an expiring pact and a handshake request", () => {
+    call("pact-write", ctxA, { beneficiaryUserId: "user_b", payoutSparks: 500, premiumSparks: 50, durationDays: 2 });
+    const a = call("pact-notifications", ctxA, { windowDays: 7 });
+    assert.equal(a.ok, true);
+    assert.ok(a.result.notifications.some((n) => n.kind === "expiring"));
+    const b = call("pact-notifications", ctxB, { windowDays: 7 });
+    assert.ok(b.result.notifications.some((n) => n.kind === "handshake_request"));
+  });
+});

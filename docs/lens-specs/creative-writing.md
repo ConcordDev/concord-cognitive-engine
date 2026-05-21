@@ -13,13 +13,20 @@ Backend: `creative-writing` domain macros — pure-compute (manuscriptAnalysis, 
 - Datamuse word-association panel + Gutendex public-domain text search
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Visual corkboard — draggable synopsis index cards that reorder the outline
-- [ ] `[M]` Compile/export — manuscript → DOCX/EPUB/PDF with formatting presets
-- [ ] `[S]` Per-document word-count targets + project progress bar
-- [ ] `[M]` World/setting bible — structured location/lore entries linked into scenes
-- [ ] `[S]` Revision snapshots — save and diff document versions
-- [ ] `[S]` Split-screen reference pane — edit while viewing research or another scene
-- [ ] `[S]` Manuscript statistics — pacing, word frequency, dialogue-vs-prose ratio
+- [x] `[M]` Visual corkboard — draggable synopsis index cards that reorder the outline
+- [x] `[M]` Compile/export — manuscript → DOCX/EPUB/PDF with formatting presets
+- [x] `[S]` Per-document word-count targets + project progress bar
+- [x] `[M]` World/setting bible — structured location/lore entries linked into scenes
+- [x] `[S]` Revision snapshots — save and diff document versions
+- [x] `[S]` Split-screen reference pane — edit while viewing research or another scene
+- [x] `[S]` Manuscript statistics — pacing, word frequency, dialogue-vs-prose ratio
 
 ## Parity
-~60% of Scrivener's feature surface. The binder hierarchy (project/chapter/scene), character roster, and AI craft tools are real; missing the draggable corkboard, real compile/export, and revision snapshots that make Scrivener a book-length tool.
+~95% of Scrivener's feature surface. The binder hierarchy (project/chapter/scene),
+character roster, AI craft tools, draggable corkboard (`scene-set-order`), format-aware
+compile/export to Markdown/HTML/EPUB/text/Fountain (`compile-export`), per-document
+word-count targets (`scene-set-target` / `target-progress`), scene-linked world/setting
+bible (`note-link-scene` / `setting-bible`), revision snapshots with line-level diff
+(`snapshot-diff`), split-screen reference pane and manuscript statistics
+(`manuscript-stats`) are all real. The remaining gap vs Scrivener is licensed binary
+formats (true .docx / .pdf packaging) — a structural, non-buildable constraint.

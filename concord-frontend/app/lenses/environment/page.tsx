@@ -17,6 +17,11 @@ import RECsLedger from '@/components/environment/RECsLedger';
 import OffsetsLedger from '@/components/environment/OffsetsLedger';
 import EJScreenLookup from '@/components/environment/EJScreenLookup';
 import ReportsBuilder from '@/components/environment/ReportsBuilder';
+import CarbonFootprintDashboard from '@/components/environment/CarbonFootprintDashboard';
+import InventoryReportBuilder from '@/components/environment/InventoryReportBuilder';
+import ActivityImportPanel from '@/components/environment/ActivityImportPanel';
+import ScenarioModeler from '@/components/environment/ScenarioModeler';
+import AuditTrailPanel from '@/components/environment/AuditTrailPanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { GbifPanel } from '@/components/environment/GbifPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
@@ -3764,15 +3769,21 @@ export default function EnvironmentLensPage() {
 /* ------------------------------------------------------------------ */
 
 function CarbonWorkbenchSection() {
-  const [active, setActive] = useState<'activities' | 'factors' | 'suppliers' | 'targets' | 'projects' | 'recs' | 'offsets' | 'ejscreen' | 'reports'>('activities');
+  const [active, setActive] = useState<'dashboard' | 'activities' | 'import' | 'factors' | 'suppliers' | 'targets' | 'projects' | 'scenarios' | 'recs' | 'offsets' | 'audit' | 'inventory' | 'ejscreen' | 'reports'>('dashboard');
+  const [importNonce, setImportNonce] = useState(0);
   const TABS = [
+    { id: 'dashboard', label: 'Footprint dashboard' },
     { id: 'activities', label: 'Activities' },
+    { id: 'import', label: 'Bulk import' },
     { id: 'factors', label: 'EPA factors' },
     { id: 'suppliers', label: 'Suppliers' },
     { id: 'targets', label: 'Targets' },
     { id: 'projects', label: 'Projects' },
+    { id: 'scenarios', label: 'Scenarios' },
     { id: 'recs', label: 'RECs' },
     { id: 'offsets', label: 'Offsets' },
+    { id: 'audit', label: 'Audit trail' },
+    { id: 'inventory', label: 'GHG inventory' },
     { id: 'ejscreen', label: 'EJScreen' },
     { id: 'reports', label: 'Reports' },
   ] as const;
@@ -3797,13 +3808,20 @@ function CarbonWorkbenchSection() {
         ))}
       </nav>
       <div>
-        {active === 'activities' && <EmissionsActivitiesPanel />}
+        {active === 'dashboard' && <CarbonFootprintDashboard />}
+        {active === 'activities' && <EmissionsActivitiesPanel key={importNonce} />}
+        {active === 'import' && (
+          <ActivityImportPanel onImported={() => setImportNonce((n) => n + 1)} />
+        )}
         {active === 'factors' && <EmissionFactorsLibrary />}
         {active === 'suppliers' && <SuppliersPortal />}
         {active === 'targets' && <TargetsTracker />}
         {active === 'projects' && <ProjectsBacklog />}
+        {active === 'scenarios' && <ScenarioModeler />}
         {active === 'recs' && <RECsLedger />}
         {active === 'offsets' && <OffsetsLedger />}
+        {active === 'audit' && <AuditTrailPanel />}
+        {active === 'inventory' && <InventoryReportBuilder />}
         {active === 'ejscreen' && <EJScreenLookup />}
         {active === 'reports' && <ReportsBuilder />}
       </div>

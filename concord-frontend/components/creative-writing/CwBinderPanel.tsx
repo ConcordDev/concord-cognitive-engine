@@ -6,7 +6,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Plus, FileText, Folder, ChevronUp, ChevronDown, Trash2, Save } from 'lucide-react';
+import {
+  Loader2, Plus, FileText, Folder, ChevronUp, ChevronDown, Trash2, Save,
+  Columns2, X, BookOpen,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +20,7 @@ interface Scene {
   povCharacterId: string | null; order: number;
 }
 interface Character { id: string; name: string }
+interface RefNote { id: string; title: string; kind: string; body: string }
 
 const STATUS = ['outline', 'draft', 'revised', 'final'];
 const STATUS_COLOR: Record<string, string> = {
@@ -35,6 +39,12 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
   const [snapshots, setSnapshots] = useState<{ id: string; title: string; wordCount: number }[]>([]);
   const [comments, setComments] = useState<{ id: string; body: string }[]>([]);
   const [commentDraft, setCommentDraft] = useState('');
+  // Split-screen reference pane.
+  const [refOpen, setRefOpen] = useState(false);
+  const [refMode, setRefMode] = useState<'scene' | 'note'>('scene');
+  const [refSceneId, setRefSceneId] = useState('');
+  const [refNotes, setRefNotes] = useState<RefNote[]>([]);
+  const [refNoteId, setRefNoteId] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -65,6 +75,14 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
   }, [selected]);
 
   useEffect(() => { void loadSceneExtras(); }, [loadSceneExtras]);
+
+  // Load notes for the reference pane on first open.
+  const loadRefNotes = useCallback(async () => {
+    const r = await lensRun('creative-writing', 'note-list', { projectId });
+    setRefNotes((r.data?.result?.notes as RefNote[]) || []);
+  }, [projectId]);
+
+  useEffect(() => { if (refOpen) void loadRefNotes(); }, [refOpen, loadRefNotes]);
 
   const takeSnapshot = async () => {
     if (!selected) return;
@@ -154,9 +172,12 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
   );
 
   const unfiled = scenes.filter((sc) => !sc.chapterId);
+  const refScene = scenes.find((sc) => sc.id === refSceneId) || null;
+  const refNote = refNotes.find((n) => n.id === refNoteId) || null;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-3">
+    <div className={cn('grid grid-cols-1 gap-3',
+      refOpen ? 'lg:grid-cols-[220px_1fr_300px]' : 'lg:grid-cols-[260px_1fr]')}>
       {/* Binder */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
@@ -246,6 +267,11 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               </button>
               <button type="button" onClick={takeSnapshot}
                 className="px-2.5 py-1.5 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Snapshot</button>
+              <button type="button" onClick={() => setRefOpen((v) => !v)}
+                className={cn('flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg',
+                  refOpen ? 'bg-amber-600/30 text-amber-200' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200')}>
+                <Columns2 className="w-3.5 h-3.5" /> Reference
+              </button>
             </div>
 
             {/* Snapshots */}
@@ -290,6 +316,64 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           </div>
         )}
       </div>
+
+      {/* Split-screen reference pane */}
+      {refOpen && (
+        <aside className="border border-zinc-800 rounded-xl bg-zinc-900/70 p-3 space-y-2 lg:max-h-[640px] lg:overflow-auto">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-xs font-semibold text-zinc-200 flex-1">Reference</span>
+            <button type="button" onClick={() => setRefOpen(false)} className="text-zinc-600 hover:text-zinc-300">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="flex gap-1">
+            <button type="button" onClick={() => setRefMode('scene')}
+              className={cn('flex-1 text-[11px] px-2 py-1 rounded-lg',
+                refMode === 'scene' ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>Scene</button>
+            <button type="button" onClick={() => setRefMode('note')}
+              className={cn('flex-1 text-[11px] px-2 py-1 rounded-lg',
+                refMode === 'note' ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>Note</button>
+          </div>
+          {refMode === 'scene' ? (
+            <>
+              <select value={refSceneId} onChange={(e) => setRefSceneId(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                <option value="">Pick a scene to view…</option>
+                {scenes.filter((sc) => sc.id !== selected).map((sc) => (
+                  <option key={sc.id} value={sc.id}>{sc.title}</option>
+                ))}
+              </select>
+              {refScene ? (
+                <article className="text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed font-serif">
+                  <p className="text-zinc-500 italic mb-1">{refScene.synopsis || 'No synopsis'}</p>
+                  {refScene.content || <span className="text-zinc-600 italic">Empty scene.</span>}
+                </article>
+              ) : (
+                <p className="text-[10px] text-zinc-600 italic">Select a scene to read it side-by-side while you write.</p>
+              )}
+            </>
+          ) : (
+            <>
+              <select value={refNoteId} onChange={(e) => setRefNoteId(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                <option value="">Pick a research note…</option>
+                {refNotes.map((n) => <option key={n.id} value={n.id}>{n.title}</option>)}
+              </select>
+              {refNote ? (
+                <article className="text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                  <p className="text-[9px] uppercase text-amber-400 mb-1">{refNote.kind}</p>
+                  {refNote.body || <span className="text-zinc-600 italic">No content.</span>}
+                </article>
+              ) : (
+                <p className="text-[10px] text-zinc-600 italic">
+                  {refNotes.length ? 'Select a note to view it.' : 'No research notes yet — add them in the Research tab.'}
+                </p>
+              )}
+            </>
+          )}
+        </aside>
+      )}
     </div>
   );
 }

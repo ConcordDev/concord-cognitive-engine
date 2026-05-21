@@ -341,3 +341,142 @@ describe("environment.dashboard-summary", () => {
     assert.equal(d.result.netEmissionsTonnes, Math.round((d.result.ytdTotalCo2eTonnes - 5) * 100) / 100);
   });
 });
+
+// ── Feature-parity backlog (carbon footprint dashboard + reporting) ──
+
+describe("environment.footprint-breakdown", () => {
+  it("rolls up Scope 1/2/3, category and monthly series", () => {
+    const ctx = { actor: { userId: "user_fp" }, userId: "user_fp" };
+    const yr = new Date().getFullYear().toString();
+    call("activities-log", ctx, { factorKey: "diesel_gallon", amount: 100, date: `${yr}-01-15`, category: "Fleet" });
+    call("activities-log", ctx, { factorKey: "electricity_kwh_us_avg", amount: 10000, date: `${yr}-02-10`, category: "Buildings" });
+    call("activities-log", ctx, { factorKey: "air_travel_long_haul_passenger_mile", amount: 5000, date: `${yr}-02-20`, category: "Travel" });
+    const r = call("footprint-breakdown", ctx, { year: yr });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.byScope.scope1 > 0);
+    assert.ok(r.result.byScope.scope2 > 0);
+    assert.ok(r.result.byScope.scope3 > 0);
+    assert.equal(r.result.scopeShare.scope1 + r.result.scopeShare.scope2 + r.result.scopeShare.scope3 <= 100, true);
+    assert.ok(r.result.byCategory.length >= 3);
+    assert.equal(r.result.byMonth.length, 2);
+    assert.equal(r.result.activityCount, 3);
+  });
+});
+
+describe("environment.emissions-trend", () => {
+  it("builds per-year actuals with target trajectory overlay", () => {
+    const ctx = { actor: { userId: "user_tr" }, userId: "user_tr" };
+    call("activities-log", ctx, { factorKey: "diesel_gallon", amount: 200, date: "2024-03-01" });
+    call("activities-log", ctx, { factorKey: "diesel_gallon", amount: 150, date: "2025-03-01" });
+    const t = call("targets-create", ctx, { name: "T", baseYear: 2024, targetYear: 2030, baseCo2eTonnes: 2, reductionPct: 50, scopes: [1] });
+    const r = call("emissions-trend", ctx, { targetId: t.result.target.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.hasTarget, true);
+    const row2024 = r.result.series.find(s => s.year === "2024");
+    assert.ok(row2024.actual > 0);
+    assert.ok(row2024.trajectory != null);
+    const row2030 = r.result.series.find(s => s.year === "2030");
+    assert.ok(Math.abs(row2030.trajectory - 1) < 0.1);
+  });
+  it("works with no target", () => {
+    const ctx = { actor: { userId: "user_tr2" }, userId: "user_tr2" };
+    call("activities-log", ctx, { factorKey: "diesel_gallon", amount: 10, date: "2026-01-01" });
+    const r = call("emissions-trend", ctx, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.hasTarget, false);
+  });
+});
+
+describe("environment.inventory-report", () => {
+  it("generates a GHG-Protocol structured inventory with scope sections", () => {
+    const ctx = { actor: { userId: "user_inv" }, userId: "user_inv" };
+    const yr = new Date().getFullYear().toString();
+    call("activities-log", ctx, { factorKey: "natural_gas_therm", amount: 1000, date: `${yr}-01-01`, facility: "Plant A" });
+    call("activities-log", ctx, { factorKey: "electricity_kwh_california", amount: 50000, date: `${yr}-01-01` });
+    const r = call("inventory-report", ctx, { year: yr, organization: "Acme Co", framework: "CDP" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.report.framework, "CDP");
+    assert.equal(r.result.report.organization, "Acme Co");
+    assert.ok(r.result.report.scopes.scope1.totalTonnes > 0);
+    assert.ok(r.result.report.scopes.scope2.totalTonnes > 0);
+    assert.equal(r.result.report.scopes.scope1.lineItems.length, 1);
+    assert.ok(r.result.report.summary.grossEmissionsTonnes > 0);
+    assert.match(r.result.report.methodology, /GHG Protocol/);
+  });
+});
+
+describe("environment.activities-import", () => {
+  it("bulk-imports valid rows and reports invalid ones", () => {
+    const ctx = { actor: { userId: "user_imp" }, userId: "user_imp" };
+    const r = call("activities-import", ctx, {
+      batchLabel: "Q1 utility bills",
+      rows: [
+        { factorKey: "natural_gas_therm", amount: 500, date: "2026-01-31", facility: "HQ" },
+        { factorKey: "electricity_kwh_us_avg", amount: 8000, date: "2026-02-28" },
+        { factorKey: "bogus_key", amount: 10, date: "2026-01-01" },
+        { factorKey: "diesel_gallon", amount: -5, date: "2026-01-01" },
+        { factorKey: "diesel_gallon", amount: 5, date: "bad-date" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.importedCount, 2);
+    assert.equal(r.result.errorCount, 3);
+    assert.equal(r.result.rowsReceived, 5);
+    assert.ok(r.result.totalTonnesImported > 0);
+    assert.equal(r.result.imported[0].importBatch, "Q1 utility bills");
+    const list = call("activities-list", ctx, {});
+    assert.equal(list.result.total, 2);
+  });
+  it("rejects empty rows array", () => {
+    assert.equal(call("activities-import", { userId: "u" }, { rows: [] }).ok, false);
+  });
+});
+
+describe("environment.scenario-model", () => {
+  it("projects business-as-usual vs with-projects over a horizon", () => {
+    const ctx = { actor: { userId: "user_sc" }, userId: "user_sc" };
+    const r = call("scenario-model", ctx, {
+      baselineTonnes: 1000,
+      baseYear: 2026,
+      horizonYears: 5,
+      annualGrowthPct: 2,
+      reductions: [{ name: "Solar", annualReductionTonnes: 100, startYear: 2027 }],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.projection.length, 6);
+    assert.equal(r.result.baselineTonnes, 1000);
+    const final = r.result.projection[5];
+    assert.ok(final.businessAsUsual > 1000);
+    assert.ok(final.withProjects < final.businessAsUsual);
+    assert.ok(r.result.totalAvoidedTonnes > 0);
+    assert.ok(r.result.finalYearReductionPct > 0);
+  });
+  it("uses logged activity year-total when no baseline supplied", () => {
+    const ctx = { actor: { userId: "user_sc2" }, userId: "user_sc2" };
+    call("activities-log", ctx, { factorKey: "diesel_gallon", amount: 100, date: "2026-01-01" });
+    const r = call("scenario-model", ctx, { baseYear: 2026, horizonYears: 2 });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.baselineTonnes > 0);
+  });
+});
+
+describe("environment.activity-set-verification + audit-trail", () => {
+  it("transitions verification status and records audit events", () => {
+    const ctx = { actor: { userId: "user_ver" }, userId: "user_ver" };
+    const a = call("activities-log", ctx, { factorKey: "diesel_gallon", amount: 50, date: "2026-01-01" });
+    assert.equal(a.result.activity.verificationStatus, "unverified");
+    const v = call("activity-set-verification", ctx, { id: a.result.activity.id, status: "verified", verifier: "Auditor X", note: "Matches invoice" });
+    assert.equal(v.ok, true);
+    assert.equal(v.result.activity.verificationStatus, "verified");
+    assert.equal(v.result.activity.auditTrail.length, 1);
+    const trail = call("audit-trail", ctx, {});
+    assert.equal(trail.ok, true);
+    assert.equal(trail.result.statusRollup.verified, 1);
+    assert.ok(trail.result.eventCount >= 2);
+  });
+  it("rejects invalid status and missing activity", () => {
+    const ctx = { actor: { userId: "user_ver2" }, userId: "user_ver2" };
+    assert.equal(call("activity-set-verification", ctx, { id: "x", status: "bad" }).ok, false);
+    assert.equal(call("activity-set-verification", ctx, { id: "missing", status: "verified" }).ok, false);
+  });
+});

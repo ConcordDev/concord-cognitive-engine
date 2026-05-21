@@ -11,12 +11,14 @@ Backend: `insurance` domain macros via `/api/lens/run` — list_for_user, write_
 - InsuranceChatter flavor component
 
 ## Missing — buildable feature backlog
-- [ ] `[S]` Multi-beneficiary split — distribute payout across several friends with percentages
-- [ ] `[S]` Contract renewal / auto-renew before expiry
-- [ ] `[S]` Premium payment schedule (recurring) instead of single up-front
-- [ ] `[M]` Beneficiary acceptance handshake — require the recipient to opt in
-- [ ] `[S]` Payout history log — see contracts that actually fired
-- [ ] `[S]` Notification when a contract is about to expire or fires
+- [x] `[S]` Multi-beneficiary split — distribute payout across several friends with percentages
+- [x] `[S]` Contract renewal / auto-renew before expiry
+- [x] `[S]` Premium payment schedule (recurring) instead of single up-front
+- [x] `[M]` Beneficiary acceptance handshake — require the recipient to opt in
+- [x] `[S]` Payout history log — see contracts that actually fired
+- [x] `[S]` Notification when a contract is about to expire or fires
 
 ## Parity
-~60% of a peer inheritance-pact mechanic. Tight, well-scoped feature with real abuse guards; the contract write/revoke/list loop is complete. Gaps are multi-beneficiary, renewal, and acceptance handshake — all small enhancements.
+~95% of a peer inheritance-pact mechanic. The contract write/revoke/list loop plus multi-beneficiary splits, contract renewal/auto-renew, recurring premium schedules, a beneficiary acceptance handshake, a fired-payout history log, and expiry/fire/premium-due notifications all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -70488,6 +70488,98 @@ register("forecast", "recent", async (_ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Most recent persisted forecast for a world." });
 
+// Multi-day outlook — N daily windows with honestly-decaying confidence.
+register("forecast", "multiDay", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", days = 7 } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.composeMultiDay(db, STATE, worldId, days);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Multi-day (2-14) world outlook with range-decaying confidence." });
+
+// Hourly breakdown within the 24h window — diurnal temperature curve.
+register("forecast", "hourly", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", hours = 24 } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.composeHourly(db, STATE, worldId, hours);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Hourly breakdown (6-48h) following the standard diurnal model." });
+
+// Per-region forecast — reads real embodied signals at each district anchor.
+register("forecast", "regional", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.composeRegional(db, STATE, worldId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Per-district forecast from embodied signals at each region anchor." });
+
+// Forecast accuracy — past predictions vs. realized persisted forecasts.
+register("forecast", "accuracy", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", limit = 20 } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.forecastAccuracy(db, worldId, limit);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Forecast accuracy — kind hit-rate + mean temp error vs. realized." });
+
+// Historical archive — persisted forecasts with extracted trend points.
+register("forecast", "archive", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", limit = 50 } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return lib.forecastArchive(db, worldId, limit);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Historical forecast archive + ascending trend points for charting." });
+
+// Alert subscriptions — per-user, persisted.
+register("forecast", "subscribeAlert", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId || ctx?.userId;
+  if (!userId) return { ok: false, reason: "no_user" };
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return lib.createAlertSub(db, userId, input || {});
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Create a forecast alert subscription (severe_event|drift|weather|any)." });
+
+register("forecast", "listAlerts", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId || ctx?.userId;
+  if (!userId) return { ok: false, reason: "no_user" };
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    const subs = lib.listAlertSubs(db, userId, input?.worldId || null);
+    return { ok: true, count: subs.length, subscriptions: subs };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List the caller's forecast alert subscriptions." });
+
+register("forecast", "unsubscribeAlert", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId || ctx?.userId;
+  if (!userId) return { ok: false, reason: "no_user" };
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return lib.deleteAlertSub(db, userId, input?.subscriptionId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Remove a forecast alert subscription by id." });
+
+register("forecast", "checkAlerts", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId || ctx?.userId;
+  if (!userId) return { ok: false, reason: "no_user" };
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.checkAlerts(db, STATE, userId, input?.worldId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose a fresh forecast and return which alert subscriptions trip." });
+
 // #18 Glyph spell as music.
 register("sonic_glyph", "spell_to_chord", (_ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };

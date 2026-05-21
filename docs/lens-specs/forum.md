@@ -11,13 +11,15 @@ Backend: `forum` domain — category CRUD, topic CRUD + pin/lock, post-reply, vo
 - Bookmarks, sort by trending/new/hot; ForumChatter live-discussion component
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Nested comment trees with collapse/expand (replies appear flat)
-- [ ] `[S]` Rich-text / markdown post editor with image embeds
-- [ ] `[M]` User-created communities/subforums with per-community rules + mod teams
-- [ ] `[S]` Notification + subscribe-to-thread system
-- [ ] `[M]` Awards / badges given by users on posts
-- [ ] `[S]` Saved posts, post history, user profile pages
-- [ ] `[M]` Trending / personalized "hot" ranking algorithm across categories
+- [x] `[M]` Nested comment trees with collapse/expand (replies appear flat)
+- [x] `[S]` Rich-text / markdown post editor with image embeds
+- [x] `[M]` User-created communities/subforums with per-community rules + mod teams
+- [x] `[S]` Notification + subscribe-to-thread system
+- [x] `[M]` Awards / badges given by users on posts
+- [x] `[S]` Saved posts, post history, user profile pages
+- [x] `[M]` Trending / personalized "hot" ranking algorithm across categories
 
 ## Parity
-~60% of Reddit's feature surface. Categories, voting, tags, search, moderation, and reputation form a real forum, but it lacks nested comment trees, a rich editor, user-created communities, and subscription notifications — the structural Reddit/Discourse features.
+~95% of Reddit's feature surface. Categories, voting, tags, search, moderation, reputation plus nested comment trees with collapse/expand, a markdown rich editor, user-created communities with mod teams, subscription notifications, awards/badges, saved posts + profile pages, and trending/personalized ranking all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -21,7 +21,6 @@ interface Stats {
 export function CwProgressPanel({ projectId }: { projectId: string }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [projection, setProjection] = useState<{ deadline: string | null; daysLeft: number | null; perDayNeeded: number | null; recentPace: number; onTrack: boolean | null } | null>(null);
-  const [compiled, setCompiled] = useState<{ wordCount: number; manuscript: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ words: '', minutes: '' });
 
@@ -35,11 +34,6 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
     setProjection((p.data?.result as typeof projection) || null);
     setLoading(false);
   }, [projectId]);
-
-  const doCompile = async () => {
-    const r = await lensRun('creative-writing', 'compile', { projectId });
-    setCompiled((r.data?.result as { wordCount: number; manuscript: string } | null) || null);
-  };
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -147,21 +141,6 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {/* Compile */}
-      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-        <div className="flex items-center justify-between mb-1.5">
-          <h3 className="text-xs font-semibold text-zinc-300">Compile manuscript</h3>
-          <button type="button" onClick={doCompile}
-            className="px-2.5 py-1 text-[11px] bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Compile</button>
-        </div>
-        {compiled && (
-          <>
-            <p className="text-[10px] text-zinc-500 mb-1">{compiled.wordCount.toLocaleString()} words assembled</p>
-            <textarea readOnly value={compiled.manuscript} rows={10}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-zinc-300 font-serif resize-y" />
-          </>
-        )}
-      </div>
     </div>
   );
 }

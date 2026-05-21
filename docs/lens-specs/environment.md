@@ -11,12 +11,14 @@ Backend: `environment` domain macros — pure-compute (populationTrend, complian
 - AI actions: population trend, compliance check, trail condition, diversion rate
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Carbon footprint dashboard — Scope 1/2/3 rollup with charts
-- [ ] `[M]` Inventory report generation (GHG Protocol / CDP-style export)
-- [ ] `[S]` Year-over-year emissions trend with target-trajectory overlay
-- [ ] `[M]` Activity data import from utility bills / spreadsheets
-- [ ] `[S]` Reduction-scenario modeling — project the effect of a project on totals
-- [ ] `[S]` Audit trail / verification status per activity entry
+- [x] `[M]` Carbon footprint dashboard — Scope 1/2/3 rollup with charts
+- [x] `[M]` Inventory report generation (GHG Protocol / CDP-style export)
+- [x] `[S]` Year-over-year emissions trend with target-trajectory overlay
+- [x] `[M]` Activity data import from utility bills / spreadsheets
+- [x] `[S]` Reduction-scenario modeling — project the effect of a project on totals
+- [x] `[S]` Audit trail / verification status per activity entry
 
 ## Parity
-~60% of a Persefoni+Watershed composite. One of the deeper lenses — emission factors, activity logging, supplier disclosures, RECs/offsets ledgers, targets, and live EPA/USGS/AirNow data all work. Main gaps are the Scope 1/2/3 rollup dashboard and a GHG Protocol report export.
+~95% of a Persefoni+Watershed composite. Emission factors, activity logging, supplier disclosures, RECs/offsets ledgers, targets, live EPA/USGS/AirNow data plus a Scope 1/2/3 footprint dashboard, GHG Protocol inventory report export, year-over-year trends, activity-data import, reduction-scenario modeling, and a per-entry audit trail all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._
