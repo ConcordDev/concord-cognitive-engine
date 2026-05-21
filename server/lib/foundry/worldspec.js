@@ -68,6 +68,12 @@ export function normalizeWorldspec(raw = {}) {
           .map((s) => ({ id: s.id, config: s.config && typeof s.config === "object" ? s.config : {} }))
       : [],
     rules: Array.isArray(raw.rules) ? raw.rules.slice(0, 200) : [],
+    // Phase 8 — multiplayer/lobby/matchmaking block. Carried through
+    // normalization so foundry.multiplayer_set survives a later
+    // foundry.update; the foundry domain owns its canonical shape.
+    ...(raw.multiplayer && typeof raw.multiplayer === "object" && !Array.isArray(raw.multiplayer)
+      ? { multiplayer: raw.multiplayer }
+      : {}),
   };
 }
 
