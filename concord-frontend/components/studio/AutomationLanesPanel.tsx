@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Activity, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -13,9 +13,7 @@ export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
   const [loading, setLoading] = useState(true);
   const [parameter, setParameter] = useState('volume');
 
-  useEffect(() => { refresh(); }, [trackId]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (!trackId) { setLanes([]); setLoading(false); return; }
     setLoading(true);
     try {
@@ -23,7 +21,9 @@ export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
       setLanes((res.data?.result?.lanes || []) as Lane[]);
     } catch (e) { console.error('[Automation] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [trackId]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function addLane() {
     if (!trackId) return;

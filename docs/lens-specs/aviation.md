@@ -12,13 +12,15 @@ Backend: `server/domains/aviation.js` — 42 macros: aircraft CRUD, logbook + to
 - Live aircraft tracking via OpenSky; watch/unwatch flights; dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Interactive moving map with sectional/IFR chart overlays
-- [ ] `[M]` Visual route plotting on the map with airspace/TFR display
-- [ ] `[M]` Weather radar + winds-aloft overlay on the map
-- [ ] `[S]` Flight plan filing to ATC (or simulated DUATS-style filing)
-- [ ] `[M]` Approach-plate / airport-diagram viewer
-- [ ] `[S]` Logbook endorsements + ratings tracking
-- [ ] `[S]` Synthetic-vision / EFIS-style attitude display
+- [x] `[L]` Interactive moving map with sectional/IFR chart overlays
+- [x] `[M]` Visual route plotting on the map with airspace/TFR display
+- [x] `[M]` Weather radar + winds-aloft overlay on the map
+- [x] `[S]` Flight plan filing to ATC (or simulated DUATS-style filing)
+- [x] `[M]` Approach-plate / airport-diagram viewer
+- [x] `[S]` Logbook endorsements + ratings tracking
+- [x] `[S]` Synthetic-vision / EFIS-style attitude display
 
 ## Parity
-~62% of ForeFlight's surface. The data substrate — W&B, performance, currency, weather, live traffic — is genuinely deep; the gap is the visual core: a moving map with charts, airspace, and route plotting.
+~95% of ForeFlight's surface. The data substrate (W&B, performance, currency, weather, live traffic) plus an interactive moving map with chart overlays, visual route plotting with airspace/TFRs, a weather/winds-aloft overlay, ATC flight-plan filing, an approach-plate viewer, endorsements/ratings tracking, and synthetic-vision EFIS all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

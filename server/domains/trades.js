@@ -1095,4 +1095,408 @@ export default function registerTradesActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Backlog: scheduling calendar / payments / portal / recurring /
+  //     GPS tracking / reminders / pricebook / reporting ──────────────
+
+  // ── [M] Scheduling calendar — assign jobs to date+slot, reschedule ──
+
+  registerLensAction("trades", "schedule-set", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const jobId = String(params.jobId || "");
+    const job = s.jobs.get(userId)?.get(jobId);
+    if (!job) return { ok: false, error: "job not found" };
+    const date = String(params.date || "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "date must be YYYY-MM-DD" };
+    const slot = Number(params.slot);
+    if (!Number.isInteger(slot) || slot < 0 || slot > 23) return { ok: false, error: "slot must be hour 0-23" };
+    job.scheduledFor = `${date}T${String(slot).padStart(2, "0")}:00`;
+    job.scheduledSlot = slot;
+    if (params.tech != null) job.assignedTech = String(params.tech) || null;
+    job.updatedAt = nowIsoTrades();
+    saveTradesState();
+    return { ok: true, result: { job } };
+  });
+
+  registerLensAction("trades", "schedule-week", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const startStr = String(params.weekStart || new Date().toISOString().slice(0, 10));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startStr)) return { ok: false, error: "weekStart must be YYYY-MM-DD" };
+    const jobsMap = s.jobs?.get(userId);
+    const allJobs = jobsMap ? Array.from(jobsMap.values()) : [];
+    const start = new Date(`${startStr}T00:00:00`);
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start.getTime() + i * 86400000);
+      const key = d.toISOString().slice(0, 10);
+      const dayJobs = allJobs
+        .filter(j => String(j.scheduledFor || "").slice(0, 10) === key)
+        .map(j => ({
+          id: j.id, number: j.number, customerName: j.customerName,
+          description: j.description, priority: j.priority, status: j.status,
+          slot: j.scheduledSlot != null ? j.scheduledSlot : (j.scheduledFor ? new Date(j.scheduledFor).getHours() : null),
+          assignedTech: j.assignedTech || null,
+        }))
+        .sort((a, b) => (a.slot ?? 99) - (b.slot ?? 99));
+      days.push({ date: key, weekday: d.toLocaleDateString("en-US", { weekday: "short" }), jobs: dayJobs });
+    }
+    const unscheduled = allJobs
+      .filter(j => !j.scheduledFor && j.status !== "completed" && j.status !== "cancelled" && j.status !== "invoiced")
+      .map(j => ({ id: j.id, number: j.number, customerName: j.customerName, description: j.description, priority: j.priority }));
+    return { ok: true, result: { weekStart: startStr, days, unscheduled, totalScheduled: days.reduce((n, d) => n + d.jobs.length, 0) } };
+  });
+
+  // ── [M] Payment processing — invoices with payment status tracking ──
+
+  registerLensAction("trades", "invoices-list", (ctx, _a, _p = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const invoices = ensureTrBucket(s, "invoices", userId);
+    const now = Date.now();
+    const enriched = invoices.map(inv => {
+      const overdue = inv.status !== "paid" && inv.dueDate && new Date(inv.dueDate).getTime() < now;
+      return { ...inv, overdue: !!overdue };
+    });
+    const outstanding = enriched.filter(i => i.status !== "paid").reduce((n, i) => n + i.total, 0);
+    const collected = enriched.filter(i => i.status === "paid").reduce((n, i) => n + i.total, 0);
+    return {
+      ok: true,
+      result: {
+        invoices: enriched.slice().reverse(),
+        outstanding: Math.round(outstanding * 100) / 100,
+        collected: Math.round(collected * 100) / 100,
+        overdueCount: enriched.filter(i => i.overdue).length,
+      },
+    };
+  });
+
+  registerLensAction("trades", "invoices-create", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const customerName = String(params.customerName || "").trim();
+    const lineItems = Array.isArray(params.lineItems) ? params.lineItems : [];
+    if (!customerName) return { ok: false, error: "customerName required" };
+    if (lineItems.length === 0) return { ok: false, error: "at least one line item required" };
+    const subtotal = lineItems.reduce((n, l) => n + (Number(l.qty) || 1) * (Number(l.unitPrice) || 0), 0);
+    const taxRate = Math.max(0, Math.min(50, Number(params.taxRate) || 0));
+    const tax = subtotal * (taxRate / 100);
+    const total = subtotal + tax;
+    if (!s.seq.has(userId)) s.seq.set(userId, { job: 1, invoice: 1 });
+    const seq = s.seq.get(userId);
+    const invoice = {
+      id: uidTr("inv"),
+      number: `INV-${String(seq.invoice).padStart(5, "0")}`,
+      customerName, jobId: params.jobId ? String(params.jobId) : null,
+      lineItems,
+      subtotal: Math.round(subtotal * 100) / 100,
+      taxRate, tax: Math.round(tax * 100) / 100,
+      total: Math.round(total * 100) / 100,
+      amountPaid: 0,
+      status: "unpaid",
+      dueDate: params.dueDate || null,
+      method: null,
+      createdAt: nowIsoTrades(),
+    };
+    seq.invoice++;
+    ensureTrBucket(s, "invoices", userId).push(invoice);
+    saveTradesState();
+    return { ok: true, result: { invoice } };
+  });
+
+  registerLensAction("trades", "invoices-record-payment", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const id = String(params.id || "");
+    const inv = ensureTrBucket(s, "invoices", userId).find(i => i.id === id);
+    if (!inv) return { ok: false, error: "invoice not found" };
+    if (inv.status === "paid") return { ok: false, error: "invoice already paid" };
+    const amount = Number(params.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const method = ["card", "ach", "cash", "check"].includes(params.method) ? params.method : "card";
+    inv.amountPaid = Math.round((inv.amountPaid + amount) * 100) / 100;
+    inv.method = method;
+    inv.status = inv.amountPaid >= inv.total ? "paid" : "partial";
+    if (inv.status === "paid") inv.paidAt = nowIsoTrades();
+    inv.payments = inv.payments || [];
+    inv.payments.push({ amount: Math.round(amount * 100) / 100, method, at: nowIsoTrades() });
+    saveTradesState();
+    return { ok: true, result: { invoice: inv } };
+  });
+
+  // ── [M] Customer portal — read-only customer-facing bundle ──────────
+
+  registerLensAction("trades", "portal-view", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const customerId = String(params.customerId || "");
+    if (!customerId) return { ok: false, error: "customerId required" };
+    const customer = s.customers.get(userId)?.get(customerId);
+    if (!customer) return { ok: false, error: "customer not found" };
+    const jobsMap = s.jobs?.get(userId);
+    const jobs = (jobsMap ? Array.from(jobsMap.values()) : [])
+      .filter(j => j.customerId === customerId)
+      .map(j => ({ number: j.number, description: j.description, status: j.status, scheduledFor: j.scheduledFor, assignedTech: j.assignedTech }));
+    const quotes = ensureTrBucket(s, "quotes", userId)
+      .filter(q => q.customerId === customerId)
+      .map(q => ({ id: q.id, title: q.title, total: q.total, status: q.status, validUntil: q.validUntil }));
+    const invoices = ensureTrBucket(s, "invoices", userId)
+      .filter(i => !customer.name || i.customerName === customer.name)
+      .map(i => ({ id: i.id, number: i.number, total: i.total, amountPaid: i.amountPaid, status: i.status, dueDate: i.dueDate }));
+    const balanceDue = invoices.filter(i => i.status !== "paid").reduce((n, i) => n + (i.total - i.amountPaid), 0);
+    return {
+      ok: true,
+      result: {
+        customer: { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone, address: customer.address },
+        jobs, quotes, invoices,
+        balanceDue: Math.round(balanceDue * 100) / 100,
+      },
+    };
+  });
+
+  registerLensAction("trades", "portal-quote-respond", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const id = String(params.id || "");
+    const decision = params.decision === "accept" ? "accept" : params.decision === "reject" ? "reject" : null;
+    if (!decision) return { ok: false, error: "decision must be accept or reject" };
+    const quote = ensureTrBucket(s, "quotes", userId).find(q => q.id === id);
+    if (!quote) return { ok: false, error: "quote not found" };
+    if (quote.status === "accepted" || quote.status === "rejected") return { ok: false, error: `quote already ${quote.status}` };
+    quote.status = decision === "accept" ? "accepted" : "rejected";
+    quote[decision === "accept" ? "acceptedAt" : "rejectedAt"] = nowIsoTrades();
+    quote.respondedVia = "portal";
+    saveTradesState();
+    return { ok: true, result: { quote } };
+  });
+
+  // ── [S] Recurring jobs — auto-generate the next due visit ───────────
+
+  registerLensAction("trades", "recurring-generate-visit", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const id = String(params.id || "");
+    const plan = ensureTrBucket(s, "recurringPlans", userId).find(p => p.id === id);
+    if (!plan) return { ok: false, error: "plan not found" };
+    if (plan.status !== "active") return { ok: false, error: "plan is not active" };
+    const customer = s.customers.get(userId)?.get(plan.customerId);
+    const base = plan.nextServiceDate ? new Date(`${String(plan.nextServiceDate).slice(0, 10)}T09:00:00`) : new Date();
+    const visitDate = base.toISOString().slice(0, 10);
+    if (!s.seq.has(userId)) s.seq.set(userId, { job: 1, invoice: 1 });
+    const seq = s.seq.get(userId);
+    const job = {
+      id: nextTradesId("job"),
+      number: `JOB-${String(seq.job).padStart(5, "0")}`,
+      customerId: plan.customerId,
+      customerName: customer ? customer.name : "Recurring customer",
+      description: `${plan.serviceType} — recurring ${plan.cadence} visit`,
+      priority: "normal",
+      status: "unassigned",
+      scheduledFor: `${visitDate}T09:00`,
+      scheduledSlot: 9,
+      assignedTech: null,
+      estimatedHours: 0,
+      recurringPlanId: plan.id,
+      notes: "",
+      createdAt: nowIsoTrades(),
+      updatedAt: nowIsoTrades(),
+    };
+    seq.job++;
+    if (!s.jobs.has(userId)) s.jobs.set(userId, new Map());
+    s.jobs.get(userId).set(job.id, job);
+    // advance the plan's next service date by its cadence
+    const stepDays = { weekly: 7, monthly: 30, quarterly: 91, annual: 365 }[plan.cadence] || 30;
+    const next = new Date(base.getTime() + stepDays * 86400000);
+    plan.nextServiceDate = next.toISOString().slice(0, 10);
+    plan.jobsCompleted = (plan.jobsCompleted || 0) + 1;
+    plan.totalRevenue = Math.round(((plan.totalRevenue || 0) + plan.priceEach) * 100) / 100;
+    saveTradesState();
+    return { ok: true, result: { job, plan } };
+  });
+
+  // ── [M] GPS technician tracking + live job-status from the field ────
+
+  registerLensAction("trades", "technician-update-location", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const id = String(params.id || "");
+    const tech = ensureTrBucket(s, "technicians", userId).find(t => t.id === id);
+    if (!tech) return { ok: false, error: "technician not found" };
+    const lat = Number(params.lat), lng = Number(params.lng);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) return { ok: false, error: "lat must be -90..90" };
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) return { ok: false, error: "lng must be -180..180" };
+    tech.lat = lat;
+    tech.lng = lng;
+    tech.locationUpdatedAt = nowIsoTrades();
+    if (params.activeJobId !== undefined) tech.activeJobId = params.activeJobId ? String(params.activeJobId) : null;
+    saveTradesState();
+    return { ok: true, result: { technician: tech } };
+  });
+
+  registerLensAction("trades", "field-status-update", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const jobId = String(params.jobId || "");
+    const job = s.jobs.get(userId)?.get(jobId);
+    if (!job) return { ok: false, error: "job not found" };
+    const status = String(params.status || "");
+    if (!["en-route", "on-site", "completed"].includes(status)) {
+      return { ok: false, error: "field status must be en-route, on-site or completed" };
+    }
+    job.status = status;
+    if (status === "completed") job.completedAt = nowIsoTrades();
+    job.updatedAt = nowIsoTrades();
+    const note = String(params.note || "").trim().slice(0, 300);
+    job.fieldLog = job.fieldLog || [];
+    job.fieldLog.push({ status, note, at: nowIsoTrades(), lat: Number.isFinite(Number(params.lat)) ? Number(params.lat) : null, lng: Number.isFinite(Number(params.lng)) ? Number(params.lng) : null });
+    saveTradesState();
+    return { ok: true, result: { job } };
+  });
+
+  registerLensAction("trades", "technicians-live-map", (ctx, _a, _p = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const techs = ensureTrBucket(s, "technicians", userId)
+      .filter(t => Number.isFinite(t.lat) && Number.isFinite(t.lng))
+      .map(t => ({ id: t.id, name: t.name, lat: t.lat, lng: t.lng, status: t.status, activeJobId: t.activeJobId || null, locationUpdatedAt: t.locationUpdatedAt || null }));
+    return { ok: true, result: { technicians: techs, count: techs.length } };
+  });
+
+  // ── [S] SMS / email reminders + on-the-way notifications ────────────
+
+  registerLensAction("trades", "notifications-list", (ctx, _a, _p = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const notifications = ensureTrBucket(s, "notifications", userId);
+    return { ok: true, result: { notifications: notifications.slice().reverse(), count: notifications.length } };
+  });
+
+  registerLensAction("trades", "notifications-send", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const channel = ["sms", "email"].includes(params.channel) ? params.channel : null;
+    if (!channel) return { ok: false, error: "channel must be sms or email" };
+    const kind = ["reminder", "on_the_way", "follow_up", "confirmation"].includes(params.kind) ? params.kind : "reminder";
+    const recipient = String(params.recipient || "").trim();
+    if (!recipient) return { ok: false, error: "recipient required" };
+    const message = String(params.message || "").trim();
+    if (!message) return { ok: false, error: "message required" };
+    const notification = {
+      id: uidTr("notif"), channel, kind, recipient,
+      message: message.slice(0, 500),
+      jobId: params.jobId ? String(params.jobId) : null,
+      status: "queued",
+      createdAt: nowIsoTrades(),
+    };
+    ensureTrBucket(s, "notifications", userId).push(notification);
+    saveTradesState();
+    return { ok: true, result: { notification } };
+  });
+
+  // ── [M] Pricebook — reusable priced services/materials catalog ──────
+
+  registerLensAction("trades", "pricebook-list", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const kind = ["service", "material"].includes(params.kind) ? params.kind : null;
+    let items = ensureTrBucket(s, "pricebook", userId);
+    if (kind) items = items.filter(i => i.kind === kind);
+    const sorted = items.slice().sort((a, b) => a.name.localeCompare(b.name));
+    return { ok: true, result: { items: sorted, count: sorted.length } };
+  });
+
+  registerLensAction("trades", "pricebook-upsert", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const kind = ["service", "material"].includes(params.kind) ? params.kind : "service";
+    const price = Number(params.price);
+    if (!Number.isFinite(price) || price < 0) return { ok: false, error: "price must be >= 0" };
+    const list = ensureTrBucket(s, "pricebook", userId);
+    const id = params.id ? String(params.id) : uidTr("pb");
+    const existing = list.find(i => i.id === id);
+    const entry = {
+      id, name, kind, price: Math.round(price * 100) / 100,
+      unit: String(params.unit || existing?.unit || "ea").slice(0, 16),
+      category: String(params.category || existing?.category || "general").slice(0, 40),
+      cost: Number.isFinite(Number(params.cost)) ? Math.round(Number(params.cost) * 100) / 100 : (existing?.cost ?? 0),
+      updatedAt: nowIsoTrades(),
+    };
+    entry.marginPct = entry.price > 0 ? Math.round(((entry.price - entry.cost) / entry.price) * 1000) / 10 : 0;
+    if (existing) Object.assign(existing, entry);
+    else { entry.createdAt = nowIsoTrades(); list.push(entry); }
+    saveTradesState();
+    return { ok: true, result: { item: existing || entry } };
+  });
+
+  registerLensAction("trades", "pricebook-delete", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureTrBucket(s, "pricebook", userId);
+    const idx = list.findIndex(i => i.id === id);
+    if (idx < 0) return { ok: false, error: "pricebook item not found" };
+    list.splice(idx, 1);
+    saveTradesState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── [S] Reporting dashboard — revenue / close rate / utilization ────
+
+  registerLensAction("trades", "report-overview", (ctx, _a, _p = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const jobsMap = s.jobs?.get(userId);
+    const jobs = jobsMap ? Array.from(jobsMap.values()) : [];
+    const quotes = ensureTrBucket(s, "quotes", userId);
+    const invoices = ensureTrBucket(s, "invoices", userId);
+    const payments = ensureTrBucket(s, "payments", userId);
+    const technicians = ensureTrBucket(s, "technicians", userId);
+    const timesheets = ensureTrBucket(s, "timesheets", userId);
+    const reviews = ensureTrBucket(s, "reviews", userId);
+
+    // Revenue — paid invoices + paid payment links
+    const invoiceRevenue = invoices.filter(i => i.status === "paid").reduce((n, i) => n + i.total, 0)
+      + invoices.filter(i => i.status === "partial").reduce((n, i) => n + i.amountPaid, 0);
+    const linkRevenue = payments.filter(p => p.status === "paid").reduce((n, p) => n + p.amount, 0);
+    const totalRevenue = Math.round((invoiceRevenue + linkRevenue) * 100) / 100;
+    const outstanding = Math.round(invoices.filter(i => i.status !== "paid").reduce((n, i) => n + (i.total - i.amountPaid), 0) * 100) / 100;
+
+    // Close rate — accepted quotes / quotes that received a decision
+    const decided = quotes.filter(q => q.status === "accepted" || q.status === "rejected").length;
+    const accepted = quotes.filter(q => q.status === "accepted").length;
+    const closeRate = decided > 0 ? Math.round((accepted / decided) * 1000) / 10 : 0;
+
+    // Tech utilization — clocked hours vs an 8h/day baseline per active tech
+    const totalClockedMin = timesheets.filter(t => t.durationMin != null).reduce((n, t) => n + t.durationMin, 0);
+    const totalClockedHours = Math.round((totalClockedMin / 60) * 10) / 10;
+    const baselineHours = Math.max(1, technicians.length) * 8;
+    const utilization = Math.min(100, Math.round((totalClockedHours / baselineHours) * 1000) / 10);
+
+    // Job pipeline
+    const byStatus = {};
+    for (const j of jobs) byStatus[j.status] = (byStatus[j.status] || 0) + 1;
+    const completed = jobs.filter(j => j.status === "completed" || j.status === "invoiced").length;
+    const jobCompletionRate = jobs.length > 0 ? Math.round((completed / jobs.length) * 1000) / 10 : 0;
+
+    // Average ticket — revenue per completed job
+    const avgTicket = completed > 0 ? Math.round((totalRevenue / completed) * 100) / 100 : 0;
+
+    const ratings = reviews.map(r => r.rating).filter(n => typeof n === "number");
+    const avgRating = ratings.length > 0 ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : 0;
+
+    return {
+      ok: true,
+      result: {
+        generatedAt: nowIsoTrades(),
+        revenue: { total: totalRevenue, outstanding, avgTicket, fromInvoices: Math.round(invoiceRevenue * 100) / 100, fromLinks: Math.round(linkRevenue * 100) / 100 },
+        sales: { quotesTotal: quotes.length, quotesAccepted: accepted, quotesDecided: decided, closeRate },
+        jobs: { total: jobs.length, completed, completionRate: jobCompletionRate, byStatus },
+        labor: { technicians: technicians.length, clockedHours: totalClockedHours, baselineHours, utilization },
+        satisfaction: { reviewCount: reviews.length, avgRating },
+      },
+    };
+  });
 };

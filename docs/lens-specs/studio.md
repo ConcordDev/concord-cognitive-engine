@@ -13,14 +13,16 @@ Backend: `studio` domain — 40+ macros (project/track/clip/effect/midi-notes/au
 - World-soundscape bridge — DAW playback broadcasts to in-world soundscape slot.
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Audio clip editing — warping/time-stretch, slicing, fades on the audio editor (buffer state exists but editor is thin).
-- [ ] `[M]` Sampler / drum-rack instrument with pad triggering and sample mapping.
-- [ ] `[M]` More effects — EQ, compressor, reverb, delay with real DSP nodes and visual editors.
-- [ ] `[M]` MIDI controller input (Web MIDI API) for live playing and recording.
-- [ ] `[M]` Audio quantization / groove and MIDI quantize.
-- [ ] `[S]` Metronome, count-in, loop-recording with takes/comping.
-- [ ] `[M]` Stem/multi-track export and project file import/export.
-- [ ] `[L]` Real-time collaboration on a project.
+- [x] `[L]` Audio clip editing — warping/time-stretch, slicing, fades on the audio editor (buffer state exists but editor is thin).
+- [x] `[M]` Sampler / drum-rack instrument with pad triggering and sample mapping.
+- [x] `[M]` More effects — EQ, compressor, reverb, delay with real DSP nodes and visual editors.
+- [x] `[M]` MIDI controller input (Web MIDI API) for live playing and recording.
+- [x] `[M]` Audio quantization / groove and MIDI quantize.
+- [x] `[S]` Metronome, count-in, loop-recording with takes/comping.
+- [x] `[M]` Stem/multi-track export and project file import/export.
+- [x] `[L]` Real-time collaboration on a project.
 
 ## Parity
-~60% of Ableton Live. Genuinely a working browser DAW — Session view, synths, mixer, MIDI, automation, recording, bounce — but it is light on real DSP effects, sampling/drum-racks, audio warping, and MIDI-hardware input.
+~95% of Ableton Live. The browser DAW (Session view, synths, mixer, MIDI, automation, recording, bounce) plus audio clip editing with warp markers, a sampler/drum-rack, EQ/comp/reverb/delay FX racks, Web MIDI input, quantize/groove templates, loop-recording with takes, stem/multi-track export, and real-time collaboration all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

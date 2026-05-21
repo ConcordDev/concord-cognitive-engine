@@ -305,3 +305,190 @@ describe("trades.dashboard-summary (DispatchShell data source)", () => {
     assert.equal(d.result.avgRating, 5);
   });
 });
+
+// ── Backlog parity: scheduling / payments / portal / recurring /
+//    GPS / reminders / pricebook / reporting ──────────────────────
+
+function newCustAndJob(ctx, desc = "Job") {
+  const c = call("customer-upsert", ctx, { name: "Sched Cust" }).result.customer.id;
+  const j = call("job-create", ctx, { customerId: c, description: desc }).result.job;
+  return { custId: c, job: j };
+}
+
+describe("trades.schedule-* (drag-drop scheduling calendar)", () => {
+  it("schedule-set assigns a date+slot to a job", () => {
+    const { job } = newCustAndJob(ctxA);
+    const r = call("schedule-set", ctxA, { jobId: job.id, date: "2026-06-10", slot: 9, tech: "Mike" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.job.scheduledFor, "2026-06-10T09:00");
+    assert.equal(r.result.job.scheduledSlot, 9);
+    assert.equal(r.result.job.assignedTech, "Mike");
+  });
+  it("schedule-set rejects bad date / slot / missing job", () => {
+    const { job } = newCustAndJob(ctxA);
+    assert.equal(call("schedule-set", ctxA, { jobId: job.id, date: "bad", slot: 9 }).ok, false);
+    assert.equal(call("schedule-set", ctxA, { jobId: job.id, date: "2026-06-10", slot: 99 }).ok, false);
+    assert.equal(call("schedule-set", ctxA, { jobId: "nope", date: "2026-06-10", slot: 9 }).ok, false);
+  });
+  it("schedule-week buckets jobs into 7 days + unscheduled list", () => {
+    const { job } = newCustAndJob(ctxA);
+    newCustAndJob(ctxA, "Unscheduled one");
+    call("schedule-set", ctxA, { jobId: job.id, date: "2026-06-10", slot: 8 });
+    const r = call("schedule-week", ctxA, { weekStart: "2026-06-08" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.days.length, 7);
+    assert.equal(r.result.totalScheduled, 1);
+    assert.ok(r.result.unscheduled.length >= 1);
+  });
+});
+
+describe("trades.invoices-* (payment processing + status)", () => {
+  it("create / record-payment full + partial / list aggregates", () => {
+    const inv = call("invoices-create", ctxA, {
+      customerName: "Acme", lineItems: [{ qty: 2, unitPrice: 250 }], taxRate: 0,
+    });
+    assert.equal(inv.ok, true);
+    assert.match(inv.result.invoice.number, /^INV-\d{5}$/);
+    assert.equal(inv.result.invoice.total, 500);
+    assert.equal(inv.result.invoice.status, "unpaid");
+    const partial = call("invoices-record-payment", ctxA, { id: inv.result.invoice.id, amount: 200, method: "card" });
+    assert.equal(partial.result.invoice.status, "partial");
+    const full = call("invoices-record-payment", ctxA, { id: inv.result.invoice.id, amount: 300, method: "ach" });
+    assert.equal(full.result.invoice.status, "paid");
+    const list = call("invoices-list", ctxA, {});
+    assert.equal(list.result.collected, 500);
+    assert.equal(list.result.outstanding, 0);
+  });
+  it("rejects empty line items and zero payment", () => {
+    assert.equal(call("invoices-create", ctxA, { customerName: "X", lineItems: [] }).ok, false);
+    const inv = call("invoices-create", ctxA, { customerName: "Y", lineItems: [{ qty: 1, unitPrice: 100 }] });
+    assert.equal(call("invoices-record-payment", ctxA, { id: inv.result.invoice.id, amount: 0 }).ok, false);
+  });
+});
+
+describe("trades.portal-* (customer portal)", () => {
+  it("portal-view returns customer jobs + quotes + invoices + balance", () => {
+    const c = call("customer-upsert", ctxA, { name: "Portal Cust", email: "p@x" }).result.customer;
+    call("job-create", ctxA, { customerId: c.id, description: "Portal job" });
+    call("quotes-create", ctxA, { customerId: c.id, title: "Q", lineItems: [{ qty: 1, unitPrice: 100 }] });
+    call("invoices-create", ctxA, { customerName: "Portal Cust", lineItems: [{ qty: 1, unitPrice: 400 }] });
+    const r = call("portal-view", ctxA, { customerId: c.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.jobs.length, 1);
+    assert.equal(r.result.quotes.length, 1);
+    assert.equal(r.result.invoices.length, 1);
+    assert.equal(r.result.balanceDue, 400);
+  });
+  it("portal-quote-respond accepts/rejects a quote from the portal", () => {
+    const c = call("customer-upsert", ctxA, { name: "C" }).result.customer;
+    const q = call("quotes-create", ctxA, { customerId: c.id, title: "Q", lineItems: [{ qty: 1, unitPrice: 50 }] });
+    const r = call("portal-quote-respond", ctxA, { id: q.result.quote.id, decision: "accept" });
+    assert.equal(r.result.quote.status, "accepted");
+    assert.equal(r.result.quote.respondedVia, "portal");
+    assert.equal(call("portal-quote-respond", ctxA, { id: q.result.quote.id, decision: "reject" }).ok, false);
+  });
+});
+
+describe("trades.recurring-generate-visit (auto-generated visits)", () => {
+  it("generates a job from a recurring plan and advances next date", () => {
+    const c = call("customer-upsert", ctxA, { name: "Rec Cust" }).result.customer;
+    const plan = call("recurring-plans-create", ctxA, {
+      customerId: c.id, serviceType: "HVAC tune-up", cadence: "monthly", priceEach: 150, nextServiceDate: "2026-06-01",
+    }).result.plan;
+    const r = call("recurring-generate-visit", ctxA, { id: plan.id });
+    assert.equal(r.ok, true);
+    assert.match(r.result.job.number, /^JOB-\d{5}$/);
+    assert.equal(r.result.job.recurringPlanId, plan.id);
+    assert.equal(r.result.plan.jobsCompleted, 1);
+    assert.equal(r.result.plan.totalRevenue, 150);
+    assert.notEqual(r.result.plan.nextServiceDate, "2026-06-01");
+  });
+  it("rejects cancelled plan", () => {
+    const c = call("customer-upsert", ctxA, { name: "C" }).result.customer;
+    const plan = call("recurring-plans-create", ctxA, { customerId: c.id, serviceType: "X", priceEach: 50 }).result.plan;
+    call("recurring-plans-cancel", ctxA, { id: plan.id });
+    assert.equal(call("recurring-generate-visit", ctxA, { id: plan.id }).ok, false);
+  });
+});
+
+describe("trades GPS tracking + field updates", () => {
+  it("technician-update-location sets coords + live-map filters", () => {
+    const t = call("technicians-add", ctxA, { name: "Field Tech" }).result.technician;
+    const r = call("technician-update-location", ctxA, { id: t.id, lat: 40.7, lng: -74.0 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.technician.lat, 40.7);
+    const map = call("technicians-live-map", ctxA, {});
+    assert.equal(map.result.count, 1);
+  });
+  it("rejects out-of-range coordinates", () => {
+    const t = call("technicians-add", ctxA, { name: "T" }).result.technician;
+    assert.equal(call("technician-update-location", ctxA, { id: t.id, lat: 200, lng: 0 }).ok, false);
+  });
+  it("field-status-update transitions job + appends field log", () => {
+    const { job } = newCustAndJob(ctxA);
+    const r = call("field-status-update", ctxA, { jobId: job.id, status: "on-site", note: "Arrived", lat: 40.7, lng: -74.0 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.job.status, "on-site");
+    assert.equal(r.result.job.fieldLog.length, 1);
+    assert.equal(call("field-status-update", ctxA, { jobId: job.id, status: "bogus" }).ok, false);
+  });
+});
+
+describe("trades.notifications-* (SMS/email reminders)", () => {
+  it("send + list with channel/kind", () => {
+    const r = call("notifications-send", ctxA, {
+      channel: "sms", kind: "on_the_way", recipient: "555-0100", message: "Tech is 10 min away",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.notification.status, "queued");
+    assert.equal(call("notifications-list", ctxA, {}).result.count, 1);
+  });
+  it("rejects bad channel and empty message", () => {
+    assert.equal(call("notifications-send", ctxA, { channel: "fax", recipient: "x", message: "y" }).ok, false);
+    assert.equal(call("notifications-send", ctxA, { channel: "sms", recipient: "x", message: "" }).ok, false);
+  });
+});
+
+describe("trades.pricebook-* (priced services/materials catalog)", () => {
+  it("upsert / list / delete with margin calc", () => {
+    const a = call("pricebook-upsert", ctxA, { name: "Drain cleaning", kind: "service", price: 180, cost: 60 });
+    assert.equal(a.ok, true);
+    assert.equal(a.result.item.marginPct, 66.7);
+    call("pricebook-upsert", ctxA, { name: "Copper pipe", kind: "material", price: 12, unit: "ft" });
+    assert.equal(call("pricebook-list", ctxA, {}).result.count, 2);
+    assert.equal(call("pricebook-list", ctxA, { kind: "service" }).result.count, 1);
+    const del = call("pricebook-delete", ctxA, { id: a.result.item.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("pricebook-list", ctxA, {}).result.count, 1);
+  });
+  it("rejects empty name and negative price", () => {
+    assert.equal(call("pricebook-upsert", ctxA, { name: "", price: 10 }).ok, false);
+    assert.equal(call("pricebook-upsert", ctxA, { name: "X", price: -5 }).ok, false);
+  });
+});
+
+describe("trades.report-overview (reporting dashboard)", () => {
+  it("computes revenue, close rate, utilization, completion", () => {
+    const c = call("customer-upsert", ctxA, { name: "Rep Cust" }).result.customer;
+    const j = call("job-create", ctxA, { customerId: c.id, description: "Done job" }).result.job;
+    call("job-update-status", ctxA, { id: j.id, status: "completed" });
+    const q1 = call("quotes-create", ctxA, { customerId: c.id, title: "Q1", lineItems: [{ qty: 1, unitPrice: 100 }] });
+    call("quotes-accept", ctxA, { id: q1.result.quote.id });
+    const q2 = call("quotes-create", ctxA, { customerId: c.id, title: "Q2", lineItems: [{ qty: 1, unitPrice: 100 }] });
+    call("quotes-reject", ctxA, { id: q2.result.quote.id });
+    const inv = call("invoices-create", ctxA, { customerName: "Rep Cust", lineItems: [{ qty: 1, unitPrice: 600 }] });
+    call("invoices-record-payment", ctxA, { id: inv.result.invoice.id, amount: 600 });
+    const r = call("report-overview", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.revenue.total, 600);
+    assert.equal(r.result.sales.closeRate, 50);
+    assert.equal(r.result.jobs.completed, 1);
+    assert.equal(r.result.jobs.completionRate, 100);
+    assert.ok(r.result.labor.utilization >= 0);
+  });
+  it("INVARIANT: report scoped per-user", () => {
+    call("invoices-create", ctxA, { customerName: "A", lineItems: [{ qty: 1, unitPrice: 999 }] });
+    const b = call("report-overview", ctxB, {});
+    assert.equal(b.result.revenue.total, 0);
+  });
+});

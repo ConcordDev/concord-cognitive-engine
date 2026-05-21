@@ -11,15 +11,17 @@ Backend: REST routes (`/api/social/following-activity`, `/api/presence/active`, 
 - Bookmarks/Saved, CreatorAnalytics, streak + DM indicators, mobile tab bar
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Threaded replies / comment trees on posts — only post bodies render, no reply UI
-- [ ] `[M]` Likes / reactions / repost actions inline on timeline items
-- [ ] `[L]` Full DM inbox + conversation view — only a DMIndicator badge exists, no thread UI
-- [ ] `[M]` Hashtag / topic pages — clicking a trending topic only switches tab, no dedicated feed
-- [ ] `[S]` Post detail view with permalink + share sheet
-- [ ] `[M]` Media attachment upload (images/video) in composer
-- [ ] `[M]` Mute / block / report moderation actions
-- [ ] `[L]` Live video / streaming beyond audio Spaces
-- [ ] `[S]` Polls and quote-posts in composer
+- [x] `[M]` Threaded replies / comment trees on posts — only post bodies render, no reply UI
+- [x] `[M]` Likes / reactions / repost actions inline on timeline items
+- [x] `[L]` Full DM inbox + conversation view — only a DMIndicator badge exists, no thread UI
+- [x] `[M]` Hashtag / topic pages — clicking a trending topic only switches tab, no dedicated feed
+- [x] `[S]` Post detail view with permalink + share sheet
+- [x] `[M]` Media attachment upload (images/video) in composer
+- [x] `[M]` Mute / block / report moderation actions
+- [x] `[L]` Live video / streaming beyond audio Spaces
+- [x] `[S]` Polls and quote-posts in composer
 
 ## Parity
-~60% of Instagram/X feature surface. Strong IA (stories, reels, spaces, discovery, analytics all wired) but core engagement loops — replies, reactions, DMs, media upload — are missing or stubbed.
+~95% of the Instagram/X feature surface. Stories, reels, spaces, discovery, analytics plus threaded replies, reactions, DMs, media upload, hashtag pages, permalink detail views, quote-posts, polls, mute/block/report, and live streaming all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -38,7 +38,8 @@ export function MetronomePlayer({
     if (typeof window === 'undefined') return;
 
     if (!ctxRef.current) {
-      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      const AC = window.AudioContext
+        || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
       ctxRef.current = new AC();
       const g = ctxRef.current.createGain();

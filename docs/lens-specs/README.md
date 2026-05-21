@@ -12,13 +12,13 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~86%**
-- Total buildable features in the backlog (sum of all "Missing" items): **262**
+- Average feature parity: **~87%**
+- Total buildable features in the backlog (sum of all "Missing" items): **215**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 199 |
-| 60–79% (strong) | 36 |
+| 80–100% (near-complete) | 205 |
+| 60–79% (strong) | 30 |
 | 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
@@ -26,12 +26,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| social | Instagram / X (Twitter) | ~60% | 9 |
-| studio | Ableton Live | ~60% | 8 |
-| trades | ServiceTitan / Jobber | ~60% | 8 |
-| voice | Otter.ai | ~60% | 7 |
-| wallet | PayPal / Venmo | ~60% | 8 |
-| aviation | ForeFlight | ~62% | 7 |
 | all | App Launcher / Command Palette | ~65% | 5 |
 | answers | Stack Overflow | ~65% | 7 |
 | fashion | Whering / Stylebook | ~65% | 7 |
@@ -212,6 +206,7 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | animation | FlipaClip / Pencil2D | ~95% | 0 |
 | astronomy | SkySafari / Stellarium | ~95% | 0 |
 | atlas | Google Maps | ~95% | 0 |
+| aviation | ForeFlight | ~95% | 0 |
 | black-market | (in-game grey-market stall) | ~95% | 0 |
 | board | Trello | ~95% | 0 |
 | byo-keys | OpenRouter / LiteLLM key management | ~95% | 0 |
@@ -258,6 +253,11 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | sandbox | a game combat-feel test scene | ~95% | 0 |
 | science | LabArchives / GraphPad Prism | ~95% | 0 |
 | sessions | a workflow / task-session manager | ~95% | 0 |
+| social | Instagram / X (Twitter) | ~95% | 0 |
 | srs | Anki | ~95% | 0 |
+| studio | Ableton Live | ~95% | 0 |
 | thread | Typefully | ~95% | 0 |
+| trades | ServiceTitan / Jobber | ~95% | 0 |
 | travel | Google Travel / TripIt | ~95% | 0 |
+| voice | Otter.ai | ~95% | 0 |
+| wallet | PayPal / Venmo | ~95% | 0 |

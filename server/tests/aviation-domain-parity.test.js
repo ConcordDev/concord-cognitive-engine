@@ -393,3 +393,229 @@ describe("aviation.dashboard-summary", () => {
     assert.equal(d.result.watchedFlights, 1);
   });
 });
+
+// ── ForeFlight feature-parity backlog (visual EFB core) ──────────
+
+describe("aviation.chart-catalog (moving-map chart overlays)", () => {
+  it("returns layer descriptors even when the edition index is unreachable", async () => {
+    // fetch is mocked to throw — handler must still return layer descriptors.
+    const r = await call("chart-catalog", ctxA, { kind: "sectional" });
+    assert.equal(r.ok, true);
+    assert.ok(Array.isArray(r.result.layers));
+    assert.ok(r.result.layers.length >= 1);
+    assert.ok(r.result.layers.every((l) => typeof l.wms === "string" && l.wms.length > 0));
+  });
+  it("rejects an invalid chart kind", async () => {
+    const r = await call("chart-catalog", ctxA, { kind: "bogus" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /kind must be one of/);
+  });
+  it("filters layers to the requested kind when the edition index resolves", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ edition: [] }) });
+    const r = await call("chart-catalog", ctxA, { kind: "ifr_low" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.layers.length >= 1);
+    assert.ok(r.result.layers.every((l) => l.category === "ifr_low"));
+  });
+});
+
+describe("aviation.route-plot (visual route plotting)", () => {
+  function mockAirports() {
+    globalThis.fetch = async (url) => {
+      if (url.includes("apt=KSFO")) return { ok: true, json: async () => ({ KSFO: [{ latitude_decimal: 37.6189, longitude_decimal: -122.375, facility_name: "San Francisco Intl" }] }) };
+      if (url.includes("apt=KLAX")) return { ok: true, json: async () => ({ KLAX: [{ latitude_decimal: 33.9425, longitude_decimal: -118.4081, facility_name: "Los Angeles Intl" }] }) };
+      return { ok: true, json: async () => ({}) };
+    };
+  }
+  it("rejects when from/to missing", async () => {
+    const r = await call("route-plot", ctxA, { from: "", to: "" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /from \+ to required/);
+  });
+  it("resolves geo points + legs with bearing for a from/to pair", async () => {
+    mockAirports();
+    const r = await call("route-plot", ctxA, { from: "KSFO", to: "KLAX" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.points.length, 2);
+    assert.equal(r.result.resolvedCount, 2);
+    assert.equal(r.result.legs.length, 1);
+    assert.ok(r.result.legs[0].distance_nm > 200 && r.result.legs[0].distance_nm < 400);
+    assert.ok(r.result.legs[0].bearing_deg >= 0 && r.result.legs[0].bearing_deg <= 360);
+    assert.ok(r.result.totalDistance_nm > 0);
+  });
+  it("marks an unresolvable ident without failing the whole plot", async () => {
+    mockAirports();
+    const r = await call("route-plot", ctxA, { from: "KSFO", to: "KZZZ" });
+    assert.equal(r.ok, true);
+    const unresolved = r.result.points.find((p) => p.unresolved);
+    assert.ok(unresolved);
+    assert.equal(unresolved.ident, "KZZZ");
+  });
+});
+
+describe("aviation.airspace-tfrs (airspace / TFR overlay)", () => {
+  it("returns an error shape when the FAA TFR feed is unreachable", async () => {
+    const r = await call("airspace-tfrs", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /TFR fetch failed|tfr\.faa\.gov/);
+  });
+  it("parses the FAA TFR list into mappable records", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ([
+        { notam_id: "4/1234", type: "TFR", description: "VIP Movement", facility: "ZOA", state: "CA", creation_date: "2026-05-20" },
+      ]),
+    });
+    const r = await call("airspace-tfrs", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 1);
+    assert.equal(r.result.tfrs[0].notamId, "4/1234");
+    assert.equal(r.result.tfrs[0].state, "CA");
+  });
+});
+
+describe("aviation.wx-overlay (weather radar + winds aloft)", () => {
+  it("rejects when lat/lng missing", async () => {
+    const r = await call("wx-overlay", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /lat and lng required/);
+  });
+  it("returns a radar layer descriptor even if winds-aloft fetch fails", async () => {
+    const r = await call("wx-overlay", ctxA, { lat: 37.6, lng: -122.4 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.radarLayer.id, "nws_radar");
+    assert.ok(Array.isArray(r.result.windsAloft));
+  });
+  it("parses Open-Meteo winds-aloft levels", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        hourly: {
+          windspeed_850hPa: [22], winddirection_850hPa: [270], temperature_850hPa: [8],
+          windspeed_700hPa: [35], winddirection_700hPa: [280], temperature_700hPa: [-2],
+          windspeed_500hPa: [55], winddirection_500hPa: [290], temperature_500hPa: [-18],
+          windspeed_300hPa: [90], winddirection_300hPa: [300], temperature_300hPa: [-45],
+        },
+      }),
+    });
+    const r = await call("wx-overlay", ctxA, { lat: 37.6, lng: -122.4 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.windsAloft.length, 4);
+    assert.equal(r.result.windsAloft[0].windSpeed_kt, 22);
+  });
+});
+
+describe("aviation.plan-file + plan-filing-update (ATC filing)", () => {
+  function mockAirports() {
+    globalThis.fetch = async (url) => {
+      if (url.includes("apt=KSFO")) return { ok: true, json: async () => ({ KSFO: [{ latitude_decimal: 37.6189, longitude_decimal: -122.375 }] }) };
+      if (url.includes("apt=KLAX")) return { ok: true, json: async () => ({ KLAX: [{ latitude_decimal: 33.9425, longitude_decimal: -118.4081 }] }) };
+      return { ok: true, json: async () => ({}) };
+    };
+  }
+  it("files a saved plan and assigns a confirmation", async () => {
+    mockAirports();
+    const plan = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX" });
+    const r = call("plan-file", ctxA, { planId: plan.result.plan.id, flightRules: "VFR", departureTime: "1800Z", pilotName: "Jane Pilot", soulsOnBoard: 2 });
+    assert.equal(r.ok, true);
+    assert.match(r.result.filing.confirmation, /^CC/);
+    assert.equal(r.result.filing.status, "filed");
+    assert.equal(r.result.filing.soulsOnBoard, 2);
+  });
+  it("rejects filing with missing departure time or pilot name", async () => {
+    mockAirports();
+    const plan = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX" });
+    assert.equal(call("plan-file", ctxA, { planId: plan.result.plan.id, departureTime: "", pilotName: "X" }).ok, false);
+    assert.equal(call("plan-file", ctxA, { planId: plan.result.plan.id, departureTime: "1800Z", pilotName: "" }).ok, false);
+  });
+  it("transitions filed → activated → closed and rejects illegal jumps", async () => {
+    mockAirports();
+    const plan = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX" });
+    const f = call("plan-file", ctxA, { planId: plan.result.plan.id, departureTime: "1800Z", pilotName: "Jane" });
+    assert.equal(call("plan-filing-update", ctxA, { id: f.result.filing.id, status: "closed" }).ok, false);
+    assert.equal(call("plan-filing-update", ctxA, { id: f.result.filing.id, status: "activated" }).ok, true);
+    assert.equal(call("plan-filing-update", ctxA, { id: f.result.filing.id, status: "closed" }).ok, true);
+    const list = call("plan-filings-list", ctxA, {});
+    assert.equal(list.result.filings[0].status, "closed");
+  });
+});
+
+describe("aviation.approach-plates (plate / diagram viewer)", () => {
+  it("rejects missing airport ident", async () => {
+    const r = await call("approach-plates", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /apt required/);
+  });
+  it("classifies the FAA d-TPP chart index by category", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        KSFO: [
+          { chart_name: "AIRPORT DIAGRAM", chart_code: "APD", pdf_path: "00375AD.PDF", pdf_name: "AD" },
+          { chart_name: "ILS OR LOC RWY 28R", chart_code: "IAP", pdf_path: "https://aeronav.faa.gov/d-tpp/2605/00375IL28R.PDF" },
+        ],
+      }),
+    });
+    const r = await call("approach-plates", ctxA, { apt: "KSFO" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 2);
+    assert.ok(r.result.byCategory.airport_diagram.length === 1);
+    assert.ok(r.result.byCategory.approach.length === 1);
+    assert.ok(r.result.charts[0].pdfUrl.startsWith("http"));
+  });
+});
+
+describe("aviation.endorsement-* + rating-* (logbook endorsements)", () => {
+  it("adds / lists / deletes an endorsement, per-user scoped", () => {
+    const a = call("endorsement-add", ctxA, { kind: "flight_review", cfiName: "Sam CFI", farReference: "61.56" });
+    assert.equal(a.ok, true);
+    assert.equal(call("endorsements-list", ctxA, {}).result.endorsements.length, 1);
+    assert.equal(call("endorsements-list", ctxB, {}).result.endorsements.length, 0);
+    assert.equal(call("endorsement-delete", ctxA, { id: a.result.endorsement.id }).ok, true);
+    assert.equal(call("endorsements-list", ctxA, {}).result.endorsements.length, 0);
+  });
+  it("computes an expiry date when expiresMonths set", () => {
+    const a = call("endorsement-add", ctxA, { kind: "flight_review", date: "2026-01-15", cfiName: "Sam", expiresMonths: 24 });
+    assert.equal(a.result.endorsement.expiryDate, "2028-01-15");
+  });
+  it("rejects an endorsement with no CFI name or a bad kind", () => {
+    assert.equal(call("endorsement-add", ctxA, { kind: "flight_review", cfiName: "" }).ok, false);
+    assert.equal(call("endorsement-add", ctxA, { kind: "bogus", cfiName: "Sam" }).ok, false);
+  });
+  it("adds / deletes a rating", () => {
+    const a = call("rating-add", ctxA, { kind: "instrument_airplane", dateEarned: "2026-03-01", examiner: "DPE Lee" });
+    assert.equal(a.ok, true);
+    assert.equal(call("endorsements-list", ctxA, {}).result.ratings.length, 1);
+    assert.equal(call("rating-delete", ctxA, { id: a.result.rating.id }).ok, true);
+  });
+  it("rejects a rating with a bad kind", () => {
+    assert.equal(call("rating-add", ctxA, { kind: "bogus" }).ok, false);
+  });
+});
+
+describe("aviation.efis-snapshot (synthetic-vision attitude)", () => {
+  it("rejects a missing or unknown track", () => {
+    assert.equal(call("efis-snapshot", ctxA, { trackId: "nope" }).ok, false);
+  });
+  it("requires at least two points for an attitude snapshot", () => {
+    const ac = call("aircraft-add", ctxA, { tail: "NEFIS1", make: "P", model: "M" });
+    const t = call("track-logs-start", ctxA, { aircraftId: ac.result.aircraft.id });
+    call("track-logs-append", ctxA, { trackId: t.result.track.id, lat: 37.0, lng: -121.0, altitudeFt: 2000 });
+    const r = call("efis-snapshot", ctxA, { trackId: t.result.track.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /at least 2 points/);
+  });
+  it("derives a bounded attitude + state snapshot from two track points", () => {
+    const ac = call("aircraft-add", ctxA, { tail: "NEFIS2", make: "P", model: "M" });
+    const t = call("track-logs-start", ctxA, { aircraftId: ac.result.aircraft.id });
+    call("track-logs-append", ctxA, { trackId: t.result.track.id, lat: 37.00, lng: -121.00, altitudeFt: 3000, groundSpeedKts: 110, heading: 90 });
+    call("track-logs-append", ctxA, { trackId: t.result.track.id, lat: 37.00, lng: -120.95, altitudeFt: 3300, groundSpeedKts: 115, heading: 95 });
+    const r = call("efis-snapshot", ctxA, { trackId: t.result.track.id });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.attitude.pitchDeg >= -30 && r.result.attitude.pitchDeg <= 30);
+    assert.ok(r.result.attitude.bankDeg >= -60 && r.result.attitude.bankDeg <= 60);
+    assert.equal(r.result.state.altitudeFt, 3300);
+    assert.ok(r.result.state.groundTrackDeg >= 0 && r.result.state.groundTrackDeg <= 360);
+    assert.equal(r.result.pointCount, 2);
+  });
+});

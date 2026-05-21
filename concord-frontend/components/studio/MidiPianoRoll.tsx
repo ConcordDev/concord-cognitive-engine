@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Music, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 
 interface Note { id: string; clipId: string; pitch: number; velocity: number; startBeats: number; lengthBeats: number }
 
@@ -15,9 +14,7 @@ export function MidiPianoRoll({ clipId }: { clipId?: string }) {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ pitch: '60', velocity: '96', startBeats: '0', lengthBeats: '0.5' });
 
-  useEffect(() => { refresh(); }, [clipId]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (!clipId) { setNotes([]); setLoading(false); return; }
     setLoading(true);
     try {
@@ -25,7 +22,9 @@ export function MidiPianoRoll({ clipId }: { clipId?: string }) {
       setNotes((res.data?.result?.notes || []) as Note[]);
     } catch (e) { console.error('[MIDI] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [clipId]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function add() {
     if (!clipId) return;

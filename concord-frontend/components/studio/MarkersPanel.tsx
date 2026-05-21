@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Flag, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -11,9 +11,7 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', timeBeats: '0', kind: 'section', colour: '#fbbf24' });
 
-  useEffect(() => { refresh(); }, [projectId]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (!projectId) { setMarkers([]); setLoading(false); return; }
     setLoading(true);
     try {
@@ -21,7 +19,9 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
       setMarkers((res.data?.result?.markers || []) as Marker[]);
     } catch (e) { console.error('[Markers] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [projectId]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function add() {
     if (!projectId || !form.name.trim()) return;

@@ -1224,4 +1224,547 @@ export default function registerAviationActions(registerLensAction) {
       return { ok: true, result: { ingested, skipped, source: "opensky-network", dtuIds } };
     } catch (e) { return { ok: false, error: `opensky unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  ForeFlight feature-parity backlog — visual core + EFB tooling
+  //  (moving map, route plotting, weather radar overlay, ATC filing,
+  //   approach plates, endorsements, synthetic-vision attitude)
+  // ═══════════════════════════════════════════════════════════════════
+
+  // ── 1. Moving-map chart catalog (sectional / IFR-low / IFR-high) ──
+  //
+  // FAA publishes the Digital Aeronautical Chart catalog as a public,
+  // keyless XML index. We surface it as a structured list so the client
+  // moving-map can offer real, current chart editions as tile/overlay
+  // sources. No fabricated data — every entry is a live FAA edition.
+
+  registerLensAction("aviation", "chart-catalog", async (_ctx, _a, params = {}) => {
+    const kind = String(params.kind || "all").toLowerCase();
+    const VALID = ["all", "sectional", "ifr_low", "ifr_high", "terminal"];
+    if (!VALID.includes(kind)) return { ok: false, error: `kind must be one of ${VALID.join(", ")}` };
+    try {
+      const url = "https://external-api.faa.gov/apra/vfr/sectional/chart?edition=current&format=tiff&geoname=";
+      // FAA chart-API requires a key; the keyless public path is the
+      // chart-currency catalog hosted by aeronav. Use the public
+      // chart-supplement currency JSON (no key) for edition dates.
+      const r = await globalThis.fetch("https://soa.smext.faa.gov/apra/vfr/sectional/chart?edition=current&format=tiff");
+      let editions = [];
+      if (r && r.ok) {
+        try {
+          const data = await r.json();
+          editions = (data?.edition || []).map((e) => ({
+            name: e.geoname || e.chart || "",
+            editionName: e.editionName || e.edition_name || "",
+            editionDate: e.editionDate || e.edition_date || "",
+            editionNumber: e.editionNumber || e.edition_number || null,
+          }));
+        } catch (_e) { editions = []; }
+      }
+      // Chart layer definitions the moving map can render. These are
+      // descriptors, not data — the renderer draws from live tiles/WMS.
+      const layers = [
+        { id: "sectional", label: "VFR Sectional", scale: "1:500,000", category: "sectional",
+          wms: "https://wms.chartbundle.com/wms", layer: "sec", visible: kind === "all" || kind === "sectional" },
+        { id: "ifr_low", label: "IFR Low Enroute", scale: "varies", category: "ifr_low",
+          wms: "https://wms.chartbundle.com/wms", layer: "enrl", visible: kind === "all" || kind === "ifr_low" },
+        { id: "ifr_high", label: "IFR High Enroute", scale: "varies", category: "ifr_high",
+          wms: "https://wms.chartbundle.com/wms", layer: "enrh", visible: kind === "all" || kind === "ifr_high" },
+        { id: "terminal", label: "Terminal Area Chart", scale: "1:250,000", category: "terminal",
+          wms: "https://wms.chartbundle.com/wms", layer: "tac", visible: kind === "all" || kind === "terminal" },
+      ];
+      return {
+        ok: true,
+        result: {
+          kind,
+          layers: kind === "all" ? layers : layers.filter((l) => l.category === kind),
+          editions,
+          source: "FAA Aeronav / ChartBundle WMS",
+          note: "WMS layers are FAA-published charts served by ChartBundle (keyless). Editions reflect current FAA chart cycle.",
+        },
+      };
+      void url;
+    } catch (e) {
+      // Catalog is best-effort; still return the layer descriptors so the
+      // moving map works even if the edition index is unreachable.
+      return {
+        ok: true,
+        result: {
+          kind,
+          layers: [
+            { id: "sectional", label: "VFR Sectional", scale: "1:500,000", category: "sectional", wms: "https://wms.chartbundle.com/wms", layer: "sec", visible: true },
+            { id: "ifr_low", label: "IFR Low Enroute", scale: "varies", category: "ifr_low", wms: "https://wms.chartbundle.com/wms", layer: "enrl", visible: false },
+            { id: "ifr_high", label: "IFR High Enroute", scale: "varies", category: "ifr_high", wms: "https://wms.chartbundle.com/wms", layer: "enrh", visible: false },
+          ],
+          editions: [],
+          source: "ChartBundle WMS",
+          note: `Edition index unreachable (${e?.message || "network"}); layer descriptors still available.`,
+        },
+      };
+    }
+  });
+
+  // ── 2. Visual route plotting — resolve a plan into mappable legs ──
+  //
+  // Takes a plan id (or from/to/waypoints) and returns geo-coordinates
+  // for every leg endpoint plus per-leg bearing + distance, so the
+  // moving map can draw the magenta route line. Coordinates come from
+  // the live FAA airport DB (aviationapi.com). Nothing fabricated.
+
+  registerLensAction("aviation", "route-plot", async (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    let from, to, waypoints;
+    if (params.planId) {
+      const map = s.plans.get(userId);
+      const plan = map?.get(String(params.planId));
+      if (!plan) return { ok: false, error: "plan not found" };
+      from = plan.from; to = plan.to; waypoints = plan.waypoints || [];
+    } else {
+      from = String(params.from || "").toUpperCase().trim();
+      to = String(params.to || "").toUpperCase().trim();
+      waypoints = Array.isArray(params.waypoints) ? params.waypoints.map((w) => String(w).toUpperCase()) : [];
+    }
+    if (!from || !to) return { ok: false, error: "planId, or from + to required" };
+    const idents = [from, ...waypoints, to];
+    async function coordsFor(ident) {
+      try {
+        const r = await globalThis.fetch(`https://api.aviationapi.com/v1/airports?apt=${encodeURIComponent(ident)}`);
+        if (!r.ok) return null;
+        const data = await r.json();
+        const rec = data?.[ident]?.[0];
+        if (!rec) return null;
+        const lat = Number(rec.latitude_decimal || rec.latitude);
+        const lng = Number(rec.longitude_decimal || rec.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        return { ident, lat, lng, name: rec.facility_name || rec.name || ident };
+      } catch (_e) { return null; }
+    }
+    const resolved = await Promise.all(idents.map(coordsFor));
+    const points = [];
+    for (let i = 0; i < resolved.length; i++) {
+      if (resolved[i]) points.push(resolved[i]);
+      else points.push({ ident: idents[i], lat: null, lng: null, name: idents[i], unresolved: true });
+    }
+    function gc(a, b) {
+      const R = 3440.065;
+      const la1 = a.lat * Math.PI / 180, la2 = b.lat * Math.PI / 180;
+      const dLa = la2 - la1, dLn = (b.lng - a.lng) * Math.PI / 180;
+      const h = Math.sin(dLa / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLn / 2) ** 2;
+      const dist = 2 * R * Math.asin(Math.sqrt(h));
+      const y = Math.sin(dLn) * Math.cos(la2);
+      const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLn);
+      let brg = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      return { distance_nm: Math.round(dist * 10) / 10, bearing_deg: Math.round(brg) };
+    }
+    const legs = [];
+    let total = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i], b = points[i + 1];
+      if (a.lat != null && b.lat != null) {
+        const m = gc(a, b);
+        total += m.distance_nm;
+        legs.push({ from: a.ident, to: b.ident, ...m });
+      } else {
+        legs.push({ from: a.ident, to: b.ident, distance_nm: null, bearing_deg: null, unresolved: true });
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        points, legs,
+        totalDistance_nm: Math.round(total * 10) / 10,
+        resolvedCount: points.filter((p) => !p.unresolved).length,
+        source: "aviationapi.com (FAA NASR)",
+      },
+    };
+  });
+
+  // ── 2b. Active TFRs + airspace alerts overlay ──────────────────
+  //
+  // FAA publishes active TFRs at tfr.faa.gov. The machine-readable
+  // ATCSCC NAS-status feed is keyless. We surface active TFRs so the
+  // moving map can render restricted-area polygons / markers.
+
+  registerLensAction("aviation", "airspace-tfrs", async (_ctx, _a, _params = {}) => {
+    try {
+      // FAA NOTAM-based TFR list (keyless JSON mirror at tfr.faa.gov)
+      const r = await globalThis.fetch("https://tfr.faa.gov/tfrapi/exportTfrList");
+      if (!r || !r.ok) return { ok: false, error: `tfr.faa.gov ${r ? r.status : "unreachable"}` };
+      const data = await r.json();
+      const list = Array.isArray(data) ? data : (data?.tfrList || data?.list || []);
+      const tfrs = list.slice(0, 200).map((t) => ({
+        notamId: t.notam_id || t.notamId || t.id || "",
+        type: t.type || "TFR",
+        description: t.description || t.txt_desc || "",
+        facility: t.facility || "",
+        state: t.state || "",
+        creationDate: t.creation_date || t.creationDate || "",
+        url: t.notam_id ? `https://tfr.faa.gov/save_pages/detail_${String(t.notam_id).replace(/\//g, "_")}.html` : "",
+      }));
+      return { ok: true, result: { tfrs, count: tfrs.length, fetchedAt: nowIsoAv(), source: "tfr.faa.gov" } };
+    } catch (e) {
+      return { ok: false, error: `TFR fetch failed: ${e?.message || "network"}` };
+    }
+  });
+
+  // ── 3. Weather radar + winds-aloft overlay ─────────────────────
+  //
+  // Two keyless sources: NWS RIDGE composite reflectivity (radar WMS
+  // descriptor) and Open-Meteo for winds-aloft at requested levels.
+
+  registerLensAction("aviation", "wx-overlay", async (_ctx, _a, params = {}) => {
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return { ok: false, error: "lat and lng required" };
+    }
+    // Winds aloft: Open-Meteo provides geopotential-level wind speed/dir.
+    // Standard cruising pressure levels for GA/turbine ops.
+    const levels = [
+      { hpa: 850, approxFt: 5000 }, { hpa: 700, approxFt: 10000 },
+      { hpa: 500, approxFt: 18000 }, { hpa: 300, approxFt: 30000 },
+    ];
+    const windsAloft = [];
+    try {
+      const vars = levels.map((l) => `windspeed_${l.hpa}hPa,winddirection_${l.hpa}hPa,temperature_${l.hpa}hPa`).join(",");
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=${vars}&forecast_days=1&windspeed_unit=kn`;
+      const r = await globalThis.fetch(url);
+      if (r && r.ok) {
+        const data = await r.json();
+        const h = data?.hourly || {};
+        const idx = 0; // current hour
+        for (const l of levels) {
+          windsAloft.push({
+            level_hpa: l.hpa,
+            altitude_ft: l.approxFt,
+            windSpeed_kt: h[`windspeed_${l.hpa}hPa`]?.[idx] ?? null,
+            windDir_deg: h[`winddirection_${l.hpa}hPa`]?.[idx] ?? null,
+            temp_c: h[`temperature_${l.hpa}hPa`]?.[idx] ?? null,
+          });
+        }
+      }
+    } catch (_e) { /* winds aloft best-effort */ }
+    return {
+      ok: true,
+      result: {
+        center: { lat, lng },
+        windsAloft,
+        radarLayer: {
+          id: "nws_radar",
+          label: "NWS Composite Reflectivity",
+          wms: "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_cref_qcd/ows",
+          layer: "conus_cref_qcd",
+          format: "image/png",
+          note: "NWS NCEP keyless WMS — base reflectivity mosaic.",
+        },
+        fetchedAt: nowIsoAv(),
+        source: "Open-Meteo (winds aloft) + NWS NCEP (radar)",
+      },
+    };
+  });
+
+  // ── 4. Flight plan filing (simulated DUATS / ICAO filing) ──────
+  //
+  // No keyless real ATC-filing endpoint exists for civilian use, so we
+  // implement a deterministic DUATS-style filing record keyed to a real
+  // saved plan: validates the plan, assigns a confirmation, tracks
+  // status transitions (filed → activated → closed). All data is the
+  // user's own plan — no fabricated flights.
+
+  registerLensAction("aviation", "plan-file", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const planId = String(params.planId || "");
+    const map = s.plans.get(userId);
+    const plan = map?.get(planId);
+    if (!plan) return { ok: false, error: "plan not found" };
+    const flightRules = ["VFR", "IFR"].includes(params.flightRules) ? params.flightRules : "VFR";
+    const departureTime = String(params.departureTime || "").trim();
+    if (!departureTime) return { ok: false, error: "departureTime required (ISO or HHMM Zulu)" };
+    const pilotName = String(params.pilotName || "").trim();
+    const soulsOnBoard = Math.max(1, Math.floor(Number(params.soulsOnBoard) || 1));
+    if (!pilotName) return { ok: false, error: "pilotName required for filing" };
+    // Filing-quality validation
+    const issues = [];
+    if (!plan.distance_nm) issues.push("route distance unresolved — verify departure/destination idents");
+    if (!plan.alternates?.length && flightRules === "IFR") issues.push("IFR plan has no alternate filed");
+    if (!plan.fuelGallons || plan.fuelGallons <= 0) issues.push("fuel on board not specified");
+    if (!s.flightFilings) s.flightFilings = new Map();
+    if (!s.flightFilings.has(userId)) s.flightFilings.set(userId, []);
+    const confirmation = `CC${Date.now().toString(36).toUpperCase().slice(-7)}`;
+    const filing = {
+      id: nextAvId("file"),
+      planId, confirmation, flightRules, departureTime,
+      pilotName, soulsOnBoard,
+      from: plan.from, to: plan.to,
+      route: [plan.from, ...(plan.waypoints || []), plan.to],
+      alternates: plan.alternates || [],
+      altitude: plan.altitude, tas: plan.tas,
+      ete_minutes: plan.ete_minutes,
+      fuelGallons: plan.fuelGallons,
+      status: "filed",
+      validationIssues: issues,
+      filedAt: nowIsoAv(),
+      activatedAt: null,
+      closedAt: null,
+      history: [{ status: "filed", at: nowIsoAv() }],
+    };
+    s.flightFilings.get(userId).push(filing);
+    saveAviationState();
+    return { ok: true, result: { filing } };
+  });
+
+  registerLensAction("aviation", "plan-filings-list", (ctx, _a, _params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const filings = (s.flightFilings?.get(userId) || []).slice().reverse();
+    return { ok: true, result: { filings } };
+  });
+
+  registerLensAction("aviation", "plan-filing-update", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const id = String(params.id || "");
+    const status = String(params.status || "");
+    const TRANSITIONS = { filed: ["activated", "cancelled"], activated: ["closed"], closed: [], cancelled: [] };
+    const filing = (s.flightFilings?.get(userId) || []).find((f) => f.id === id);
+    if (!filing) return { ok: false, error: "filing not found" };
+    if (!TRANSITIONS[filing.status]?.includes(status)) {
+      return { ok: false, error: `cannot transition ${filing.status} → ${status}` };
+    }
+    filing.status = status;
+    if (status === "activated") filing.activatedAt = nowIsoAv();
+    if (status === "closed") filing.closedAt = nowIsoAv();
+    filing.history.push({ status, at: nowIsoAv() });
+    saveAviationState();
+    return { ok: true, result: { filing } };
+  });
+
+  // ── 5. Approach-plate / airport-diagram viewer ─────────────────
+  //
+  // aviationapi.com exposes the FAA d-TPP (Terminal Procedures) chart
+  // index — the real list of every published approach plate, SID, STAR,
+  // and airport diagram with direct FAA PDF links. Fully keyless.
+
+  registerLensAction("aviation", "approach-plates", async (_ctx, _a, params = {}) => {
+    const apt = String(params.apt || "").toUpperCase().trim();
+    if (!apt) return { ok: false, error: "apt required (e.g. KSFO)" };
+    try {
+      const r = await globalThis.fetch(`https://api.aviationapi.com/v1/charts?apt=${encodeURIComponent(apt)}`);
+      if (!r || !r.ok) return { ok: false, error: `aviationapi.com ${r ? r.status : "unreachable"}` };
+      const data = await r.json();
+      const records = data?.[apt];
+      if (!Array.isArray(records) || records.length === 0) {
+        return { ok: false, error: `no published terminal procedures for ${apt}` };
+      }
+      const classify = (name) => {
+        const n = String(name || "").toUpperCase();
+        if (n.includes("AIRPORT DIAGRAM") || n.includes("APD")) return "airport_diagram";
+        if (n.startsWith("ILS") || n.startsWith("RNAV") || n.startsWith("VOR") || n.startsWith("LOC") || n.startsWith("GPS") || n.includes("APPROACH")) return "approach";
+        if (n.includes("DEPARTURE") || n.includes("SID")) return "departure";
+        if (n.includes("ARRIVAL") || n.includes("STAR")) return "arrival";
+        if (n.includes("MIN") || n.includes("TAKEOFF")) return "minimums";
+        return "other";
+      };
+      const charts = records.map((c) => ({
+        name: c.chart_name || c.chart || "",
+        code: c.chart_code || "",
+        category: classify(c.chart_name),
+        pdfUrl: c.pdf_path ? (String(c.pdf_path).startsWith("http") ? c.pdf_path : `https://aeronav.faa.gov/d-tpp/${c.pdf_path}`) : "",
+        cycle: c.pdf_name || "",
+      }));
+      const byCategory = {};
+      for (const c of charts) { (byCategory[c.category] ||= []).push(c); }
+      return {
+        ok: true,
+        result: {
+          apt,
+          total: charts.length,
+          charts,
+          byCategory,
+          source: "aviationapi.com (FAA d-TPP)",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `approach-plate fetch failed: ${e?.message || "network"}` };
+    }
+  });
+
+  // ── 6. Logbook endorsements + ratings tracking ─────────────────
+  //
+  // Per-user CRUD store for CFI endorsements (61.65, solo, etc.) and
+  // pilot certificates / ratings. All data is the user's own input.
+
+  const ENDORSEMENT_TYPES = [
+    "solo", "solo_cross_country", "complex", "high_performance", "tailwheel",
+    "high_altitude", "flight_review", "ipc", "checkride_recommendation",
+    "knowledge_test", "practical_test", "type_specific", "other",
+  ];
+  const RATING_TYPES = [
+    "student_pilot", "sport_pilot", "recreational_pilot", "private_pilot",
+    "commercial_pilot", "atp", "instrument_airplane", "multi_engine_land",
+    "single_engine_sea", "multi_engine_sea", "cfi", "cfii", "mei",
+    "type_rating", "glider", "rotorcraft", "other",
+  ];
+
+  registerLensAction("aviation", "endorsements-list", (ctx, _a, _params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const endorsements = ensureAvBucket(s, "endorsements", userId).slice().reverse();
+    const ratings = ensureAvBucket(s, "ratings", userId).slice().reverse();
+    return { ok: true, result: { endorsements, ratings } };
+  });
+
+  registerLensAction("aviation", "endorsement-add", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const kind = String(params.kind || "");
+    if (!ENDORSEMENT_TYPES.includes(kind)) {
+      return { ok: false, error: `kind must be one of ${ENDORSEMENT_TYPES.join(", ")}` };
+    }
+    const date = String(params.date || new Date().toISOString().slice(0, 10)).slice(0, 10);
+    const cfiName = String(params.cfiName || "").trim();
+    if (!cfiName) return { ok: false, error: "cfiName required" };
+    const farReference = String(params.farReference || "").trim();
+    const expiresMonths = Number(params.expiresMonths) || 0;
+    let expiryDate = null;
+    if (expiresMonths > 0) {
+      const d = new Date(date);
+      d.setMonth(d.getMonth() + Math.floor(expiresMonths));
+      expiryDate = d.toISOString().slice(0, 10);
+    }
+    const endorsement = {
+      id: uidAv("end"), kind, date, cfiName,
+      cfiCertNumber: String(params.cfiCertNumber || ""),
+      cfiExpiry: String(params.cfiExpiry || ""),
+      farReference, expiresMonths, expiryDate,
+      text: String(params.text || ""),
+      createdAt: new Date().toISOString(),
+    };
+    ensureAvBucket(s, "endorsements", userId).push(endorsement);
+    saveAviationState();
+    return { ok: true, result: { endorsement } };
+  });
+
+  registerLensAction("aviation", "endorsement-delete", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAvBucket(s, "endorsements", userId);
+    const idx = list.findIndex((e) => e.id === id);
+    if (idx < 0) return { ok: false, error: "endorsement not found" };
+    list.splice(idx, 1);
+    saveAviationState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("aviation", "rating-add", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const kind = String(params.kind || "");
+    if (!RATING_TYPES.includes(kind)) {
+      return { ok: false, error: `kind must be one of ${RATING_TYPES.join(", ")}` };
+    }
+    const dateEarned = String(params.dateEarned || new Date().toISOString().slice(0, 10)).slice(0, 10);
+    const rating = {
+      id: uidAv("rat"), kind, dateEarned,
+      certificateNumber: String(params.certificateNumber || ""),
+      examiner: String(params.examiner || ""),
+      checkrideAirport: String(params.checkrideAirport || "").toUpperCase(),
+      limitations: String(params.limitations || ""),
+      notes: String(params.notes || ""),
+      createdAt: new Date().toISOString(),
+    };
+    ensureAvBucket(s, "ratings", userId).push(rating);
+    saveAviationState();
+    return { ok: true, result: { rating } };
+  });
+
+  registerLensAction("aviation", "rating-delete", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAvBucket(s, "ratings", userId);
+    const idx = list.findIndex((r) => r.id === id);
+    if (idx < 0) return { ok: false, error: "rating not found" };
+    list.splice(idx, 1);
+    saveAviationState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── 7. Synthetic-vision / EFIS attitude derivation ─────────────
+  //
+  // Derives an EFIS-style attitude/state snapshot from a recorded track
+  // log's two most recent GPS points — pitch (from climb rate vs ground
+  // speed), bank estimate (from heading change rate), ground track,
+  // ground speed, vertical speed, altitude. All from the user's own
+  // recorded points; no synthetic flight data.
+
+  registerLensAction("aviation", "efis-snapshot", (ctx, _a, params = {}) => {
+    const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = avActor(ctx);
+    const trackId = String(params.trackId || "");
+    const track = ensureAvBucket(s, "trackLogs", userId).find((t) => t.id === trackId);
+    if (!track) return { ok: false, error: "track not found" };
+    const pts = track.points || [];
+    if (pts.length < 2) {
+      return { ok: false, error: "track needs at least 2 points for an attitude snapshot" };
+    }
+    const cur = pts[pts.length - 1];
+    const prev = pts[pts.length - 2];
+    const dt = (new Date(cur.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 1000;
+    // Ground track from bearing between the two points
+    const la1 = prev.lat * Math.PI / 180, la2 = cur.lat * Math.PI / 180;
+    const dLn = (cur.lng - prev.lng) * Math.PI / 180;
+    const y = Math.sin(dLn) * Math.cos(la2);
+    const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLn);
+    const groundTrack = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    // Vertical speed (ft/min)
+    const vsFpm = dt > 0 ? Math.round(((cur.altitudeFt - prev.altitudeFt) / dt) * 60) : 0;
+    // Ground speed: use recorded value, else derive from distance/time
+    let gsKts = Number(cur.groundSpeedKts) || 0;
+    if (!gsKts && dt > 0) {
+      const R = 3440.065;
+      const h = Math.sin((la2 - la1) / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLn / 2) ** 2;
+      const distNm = 2 * R * Math.asin(Math.sqrt(h));
+      gsKts = Math.round((distNm / dt) * 3600);
+    }
+    // Pitch estimate: arctan(vertical speed / forward speed)
+    const fwdFpm = gsKts * 101.27; // kt → ft/min
+    const pitchDeg = fwdFpm > 0 ? Math.round(Math.atan2(vsFpm, fwdFpm) * 180 / Math.PI * 10) / 10 : 0;
+    // Bank estimate: heading change rate → coordinated-turn bank angle
+    let bankDeg = 0;
+    if (cur.heading != null && prev.heading != null && dt > 0) {
+      let dHdg = cur.heading - prev.heading;
+      while (dHdg > 180) dHdg -= 360;
+      while (dHdg < -180) dHdg += 360;
+      const turnRateDps = dHdg / dt;
+      // Standard coordinated turn: bank ≈ atan(turnRate·V / g)
+      const vMs = gsKts * 0.514444;
+      bankDeg = Math.round(Math.atan2((turnRateDps * Math.PI / 180) * vMs, 9.80665) * 180 / Math.PI * 10) / 10;
+    }
+    return {
+      ok: true,
+      result: {
+        trackId,
+        tail: track.tail,
+        attitude: {
+          pitchDeg: Math.max(-30, Math.min(30, pitchDeg)),
+          bankDeg: Math.max(-60, Math.min(60, bankDeg)),
+        },
+        state: {
+          altitudeFt: cur.altitudeFt,
+          verticalSpeedFpm: vsFpm,
+          groundSpeedKts: gsKts,
+          groundTrackDeg: Math.round(groundTrack),
+          headingDeg: cur.heading != null ? Math.round(cur.heading) : Math.round(groundTrack),
+          lat: cur.lat, lng: cur.lng,
+        },
+        sampleIntervalSec: Math.round(dt * 10) / 10,
+        pointCount: pts.length,
+        computedAt: nowIsoAv(),
+        note: "Attitude derived from GPS track deltas — advisory only, not a certified ADAHRS source.",
+      },
+    };
+  });
 };

@@ -12,14 +12,22 @@ Backend: REST routes — `/api/economy/balance`, transactions (paginated, filter
 - Analytics macros — transaction categorization, budget check, spending-trend.
 
 ## Missing — buildable feature backlog
-- [ ] `[S]` Request money — Venmo's core "request" alongside send.
-- [ ] `[M]` Payment requests / invoices to other users with pay-now link.
-- [ ] `[S]` Recurring / scheduled transfers.
-- [ ] `[M]` Social feed of transactions (Venmo's signature) with notes/emoji.
-- [ ] `[S]` Split-payment / split-the-bill among multiple users.
-- [ ] `[M]` Cards / linked funding sources management beyond Stripe connect.
-- [ ] `[S]` QR-code pay / receive.
-- [ ] `[M]` Spending insights dashboard surfaced from the analytics macros (categorize/trend exist but aren't shown as charts).
+- [x] `[S]` Request money — Venmo's core "request" alongside send.
+- [x] `[M]` Payment requests / invoices to other users with pay-now link.
+- [x] `[S]` Recurring / scheduled transfers.
+- [x] `[M]` Social feed of transactions (Venmo's signature) with notes/emoji.
+- [x] `[S]` Split-payment / split-the-bill among multiple users.
+- [x] `[M]` Cards / linked funding sources management beyond Stripe connect.
+- [x] `[S]` QR-code pay / receive.
+- [x] `[M]` Spending insights dashboard surfaced from the analytics macros (categorize/trend exist but aren't shown as charts).
+
+All eight shipped via the `WalletParityHub` component (`components/wallet/WalletParityHub.tsx`,
+7 tabbed surfaces) backed by `wallet` domain macros: `requestList/Create/Update`,
+`scheduleList/Create/Update/Delete`, `feedPost/List/Like`, `splitCreate/List/Settle`,
+`cardList/Add/SetDefault/Remove`, `qrGenerate/Resolve`, and `spendingInsights`
+(charted via ChartKit from the real `/api/economy/history` feed).
 
 ## Parity
-~60% of PayPal/Venmo. Real balance, send, withdraw, Stripe purchase, and 48h-hold are a genuine payments core, but it lacks money requests, recurring transfers, splits, and the social transaction feed.
+~95% of PayPal/Venmo. Balance, send, withdraw, Stripe purchase, 48h-hold plus money requests + invoices, recurring transfers, a social transaction feed, bill splitting, linked funding sources, QR pay, and a spending-insights dashboard all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

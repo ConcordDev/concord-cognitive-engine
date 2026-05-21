@@ -73,6 +73,7 @@ import metacognition from './metacognition.js';
 import metalearning from './metalearning.js';
 import news from './news.js';
 import meditation from './meditation.js';
+import social from './social.js';
 import dxPlatform from './dx-platform.js';
 import observe from './observe.js';
 import ops from './ops.js';
@@ -290,6 +291,7 @@ export default [
   metalearning,
   news,
   meditation,
+  social,
   observe,
   ops,
   productivity,

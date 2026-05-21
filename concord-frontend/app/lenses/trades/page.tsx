@@ -85,6 +85,13 @@ import PaymentsPanel from '@/components/trades/PaymentsPanel';
 import RecurringPlansPanel from '@/components/trades/RecurringPlansPanel';
 import ReviewsPanel from '@/components/trades/ReviewsPanel';
 import RouteOptimizerPanel from '@/components/trades/RouteOptimizerPanel';
+import SchedulingCalendarPanel from '@/components/trades/SchedulingCalendarPanel';
+import InvoicesPanel from '@/components/trades/InvoicesPanel';
+import CustomerPortalPanel from '@/components/trades/CustomerPortalPanel';
+import FieldTrackingPanel from '@/components/trades/FieldTrackingPanel';
+import NotificationsPanel from '@/components/trades/NotificationsPanel';
+import PricebookPanel from '@/components/trades/PricebookPanel';
+import ReportingPanel from '@/components/trades/ReportingPanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 
 // ---------------------------------------------------------------------------
@@ -2546,17 +2553,27 @@ export default function TradesLensPage() {
 /* ------------------------------------------------------------------ */
 
 function ServiceTitanWorkbenchSection() {
-  const [active, setActive] = useState<'dispatch' | 'techs' | 'route' | 'quotes' | 'bookings' | 'timesheets' | 'payments' | 'recurring' | 'reviews'>('dispatch');
+  const [active, setActive] = useState<
+    'dispatch' | 'calendar' | 'techs' | 'field' | 'route' | 'quotes' | 'bookings' | 'timesheets'
+    | 'invoices' | 'payments' | 'portal' | 'recurring' | 'pricebook' | 'reminders' | 'reviews' | 'reports'
+  >('dispatch');
   const TABS = [
     { id: 'dispatch', label: 'Dispatch' },
+    { id: 'calendar', label: 'Calendar' },
     { id: 'techs', label: 'Technicians' },
+    { id: 'field', label: 'Field/GPS' },
     { id: 'route', label: 'Route opt' },
     { id: 'quotes', label: 'Quotes' },
     { id: 'bookings', label: 'Bookings' },
     { id: 'timesheets', label: 'Timesheets' },
+    { id: 'invoices', label: 'Invoices' },
     { id: 'payments', label: 'Payments' },
+    { id: 'portal', label: 'Portal' },
     { id: 'recurring', label: 'Recurring' },
+    { id: 'pricebook', label: 'Pricebook' },
+    { id: 'reminders', label: 'Reminders' },
     { id: 'reviews', label: 'Reviews' },
+    { id: 'reports', label: 'Reports' },
   ] as const;
   return (
     <section className="mt-6 space-y-3">
@@ -2579,14 +2596,21 @@ function ServiceTitanWorkbenchSection() {
       </nav>
       <div>
         {active === 'dispatch' && <DispatchBoardPanel />}
+        {active === 'calendar' && <SchedulingCalendarPanel />}
         {active === 'techs' && <TechniciansPanel />}
+        {active === 'field' && <FieldTrackingPanel />}
         {active === 'route' && <RouteOptimizerPanel />}
         {active === 'quotes' && <QuotesPanel />}
         {active === 'bookings' && <BookingsPanel />}
         {active === 'timesheets' && <TimesheetsPanel />}
+        {active === 'invoices' && <InvoicesPanel />}
         {active === 'payments' && <PaymentsPanel />}
+        {active === 'portal' && <CustomerPortalPanel />}
         {active === 'recurring' && <RecurringPlansPanel />}
+        {active === 'pricebook' && <PricebookPanel />}
+        {active === 'reminders' && <NotificationsPanel />}
         {active === 'reviews' && <ReviewsPanel />}
+        {active === 'reports' && <ReportingPanel />}
       </div>
     </section>
   );

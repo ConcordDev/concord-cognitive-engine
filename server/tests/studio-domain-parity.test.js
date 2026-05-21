@@ -263,6 +263,223 @@ describe("studio.scenes-* (Ableton clip launcher)", () => {
   });
 });
 
+// ── Feature-parity backlog vs Ableton Live (2026) ──────────────
+
+describe("studio.clip-* (audio clip editing — warp / slice / fades)", () => {
+  it("clip-warp-set stores sorted warp markers and enables warping", () => {
+    const { projectId, trackId } = newProjAndTrack(ctxA);
+    const clip = call("clips-create", ctxA, { projectId, trackId, kind: "audio", lengthBeats: 8 });
+    const r = call("clip-warp-set", ctxA, {
+      clipId: clip.result.clip.id,
+      warpMarkers: [{ beat: 4, sampleSec: 2 }, { beat: 0, sampleSec: 0 }],
+      warpMode: "complex",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.clip.warpMarkers[0].beat, 0);
+    assert.equal(r.result.clip.warpEnabled, true);
+    assert.equal(r.result.clip.warpMode, "complex");
+  });
+  it("clip-slice splits a clip in two", () => {
+    const { projectId, trackId } = newProjAndTrack(ctxA);
+    const clip = call("clips-create", ctxA, { projectId, trackId, startBeats: 0, lengthBeats: 8 });
+    const r = call("clip-slice", ctxA, { clipId: clip.result.clip.id, atBeats: 3 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.left.lengthBeats, 3);
+    assert.equal(r.result.right.startBeats, 3);
+    assert.equal(r.result.right.lengthBeats, 5);
+  });
+  it("clip-slice rejects an out-of-bounds split point", () => {
+    const { projectId, trackId } = newProjAndTrack(ctxA);
+    const clip = call("clips-create", ctxA, { projectId, trackId, startBeats: 0, lengthBeats: 4 });
+    assert.equal(call("clip-slice", ctxA, { clipId: clip.result.clip.id, atBeats: 99 }).ok, false);
+  });
+  it("clip-fade-set clamps fades and gain", () => {
+    const { projectId, trackId } = newProjAndTrack(ctxA);
+    const clip = call("clips-create", ctxA, { projectId, trackId, lengthBeats: 4 });
+    const r = call("clip-fade-set", ctxA, { clipId: clip.result.clip.id, fadeInBeats: 99, gainDb: 999, fadeInCurve: "exp" });
+    assert.equal(r.result.clip.fadeInBeats, 4);
+    assert.equal(r.result.clip.gainDb, 12);
+    assert.equal(r.result.clip.fadeInCurve, "exp");
+  });
+});
+
+describe("studio.drumrack-* (sampler / drum rack)", () => {
+  it("create / list / pad-assign / delete cycle", () => {
+    const proj = call("project-create", ctxA, { name: "P" });
+    const c = call("drumrack-create", ctxA, { projectId: proj.result.project.id, name: "Kit", padCount: 16 });
+    assert.equal(c.ok, true);
+    assert.equal(c.result.rack.pads.length, 16);
+    const a = call("drumrack-pad-assign", ctxA, { rackId: c.result.rack.id, padIndex: 0, label: "Kick", gainDb: -3, tuneSemitones: 2 });
+    assert.equal(a.result.rack.pads[0].label, "Kick");
+    assert.equal(a.result.rack.pads[0].gainDb, -3);
+    assert.equal(call("drumrack-list", ctxA, { projectId: proj.result.project.id }).result.racks.length, 1);
+    assert.equal(call("drumrack-delete", ctxA, { id: c.result.rack.id }).ok, true);
+    assert.equal(call("drumrack-list", ctxA, { projectId: proj.result.project.id }).result.racks.length, 0);
+  });
+  it("rejects bad pad index", () => {
+    const proj = call("project-create", ctxA, { name: "P" });
+    const c = call("drumrack-create", ctxA, { projectId: proj.result.project.id, name: "Kit", padCount: 8 });
+    assert.equal(call("drumrack-pad-assign", ctxA, { rackId: c.result.rack.id, padIndex: 99 }).ok, false);
+  });
+});
+
+describe("studio.fx-rack-* (EQ / compressor / reverb / delay)", () => {
+  it("save / list / delete with param schema", () => {
+    const r = call("fx-rack-save", ctxA, { name: "Vocal Chain", units: [{ type: "eq" }, { type: "compressor" }] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.rack.units.length, 2);
+    const list = call("fx-rack-list", ctxA, {});
+    assert.equal(list.result.racks.length, 1);
+    assert.ok(list.result.schema.compressor);
+    assert.equal(call("fx-rack-delete", ctxA, { id: r.result.rack.id }).ok, true);
+  });
+  it("rejects invalid unit type", () => {
+    assert.equal(call("fx-rack-save", ctxA, { name: "X", units: [{ type: "bogus" }] }).ok, false);
+    assert.equal(call("fx-rack-save", ctxA, { name: "X", units: [] }).ok, false);
+  });
+});
+
+describe("studio.midi-map-* (Web MIDI controller mapping)", () => {
+  it("add / list / delete cycle scoped per project", () => {
+    const proj = call("project-create", ctxA, { name: "P" });
+    const m = call("midi-map-add", ctxA, { projectId: proj.result.project.id, target: "track1.volume", msgType: "cc", controller: 7, channel: 0 });
+    assert.equal(m.ok, true);
+    assert.equal(m.result.map.controller, 7);
+    assert.equal(call("midi-map-list", ctxA, { projectId: proj.result.project.id }).result.maps.length, 1);
+    assert.equal(call("midi-map-delete", ctxA, { id: m.result.map.id }).ok, true);
+  });
+  it("rejects missing target", () => {
+    const proj = call("project-create", ctxA, { name: "P" });
+    assert.equal(call("midi-map-add", ctxA, { projectId: proj.result.project.id, target: "" }).ok, false);
+  });
+});
+
+describe("studio.midi-quantize + groove", () => {
+  it("midi-quantize snaps notes to the grid", () => {
+    const { projectId, trackId } = newProjAndTrack(ctxA);
+    const clip = call("clips-create", ctxA, { projectId, trackId });
+    call("midi-notes-add", ctxA, { clipId: clip.result.clip.id, pitch: 60, startBeats: 0.27, lengthBeats: 0.5 });
+    call("midi-notes-add", ctxA, { clipId: clip.result.clip.id, pitch: 62, startBeats: 1.18, lengthBeats: 0.5 });
+    const r = call("midi-quantize", ctxA, { clipId: clip.result.clip.id, gridBeats: 0.25, strength: 1 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.quantized, 2);
+    const notes = call("midi-notes-list", ctxA, { clipId: clip.result.clip.id }).result.notes;
+    assert.ok(notes.every((n) => Math.abs((n.startBeats / 0.25) - Math.round(n.startBeats / 0.25)) < 1e-6));
+  });
+  it("groove-list returns built-in groove templates", () => {
+    const r = call("groove-list", ctxA, {});
+    assert.ok(r.result.grooves.length >= 4);
+    assert.ok(r.result.grooves.some((g) => g.id === "straight"));
+  });
+  it("groove-apply applies swing to a clip's notes", () => {
+    const { projectId, trackId } = newProjAndTrack(ctxA);
+    const clip = call("clips-create", ctxA, { projectId, trackId });
+    call("midi-notes-add", ctxA, { clipId: clip.result.clip.id, pitch: 60, startBeats: 0, lengthBeats: 0.5 });
+    const r = call("groove-apply", ctxA, { clipId: clip.result.clip.id, gridBeats: 0.5, swing: 0.33, velAccent: 0.1 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.grooved, 1);
+  });
+  it("midi-quantize rejects empty clip", () => {
+    const { projectId, trackId } = newProjAndTrack(ctxA);
+    const clip = call("clips-create", ctxA, { projectId, trackId });
+    assert.equal(call("midi-quantize", ctxA, { clipId: clip.result.clip.id, gridBeats: 0.25 }).ok, false);
+  });
+});
+
+describe("studio.record-config-* + takes-* (metronome / count-in / comping)", () => {
+  it("record-config get returns defaults then set persists", () => {
+    const proj = call("project-create", ctxA, { name: "P" });
+    const g = call("record-config-get", ctxA, { projectId: proj.result.project.id });
+    assert.equal(g.result.config.metronomeEnabled, true);
+    const s = call("record-config-set", ctxA, { projectId: proj.result.project.id, countInBars: 2, loopRecord: true });
+    assert.equal(s.result.config.countInBars, 2);
+    assert.equal(s.result.config.loopRecord, true);
+  });
+  it("takes add / comp-select / delete cycle", () => {
+    const { projectId, trackId } = newProjAndTrack(ctxA);
+    const t1 = call("takes-add", ctxA, { projectId, trackId, name: "Take A" });
+    const t2 = call("takes-add", ctxA, { projectId, trackId, name: "Take B" });
+    assert.equal(t1.result.take.selected, true);
+    assert.equal(t2.result.take.selected, false);
+    call("takes-comp-select", ctxA, { id: t2.result.take.id });
+    const list = call("takes-list", ctxA, { trackId }).result.takes;
+    assert.equal(list.find((t) => t.id === t2.result.take.id).selected, true);
+    assert.equal(list.find((t) => t.id === t1.result.take.id).selected, false);
+    assert.equal(call("takes-delete", ctxA, { id: t2.result.take.id }).ok, true);
+  });
+});
+
+describe("studio.export-stems + project-import/export", () => {
+  it("export-stems produces one stem per track", () => {
+    const { projectId } = newProjAndTrack(ctxA);
+    call("track-add", ctxA, { projectId, kind: "audio" });
+    const r = call("export-stems", ctxA, { projectId, format: "wav_24" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.job.stemCount, 2);
+    assert.equal(r.result.job.stems.length, 2);
+  });
+  it("export-stems rejects a project with no tracks", () => {
+    const proj = call("project-create", ctxA, { name: "Empty" });
+    assert.equal(call("export-stems", ctxA, { projectId: proj.result.project.id }).ok, false);
+  });
+  it("project-export then project-import round-trips", () => {
+    const { projectId, trackId } = newProjAndTrack(ctxA);
+    const clip = call("clips-create", ctxA, { projectId, trackId, name: "verse" });
+    call("midi-notes-add", ctxA, { clipId: clip.result.clip.id, pitch: 60, startBeats: 0, lengthBeats: 1 });
+    call("markers-add", ctxA, { projectId, name: "Intro", timeBeats: 0 });
+    const exp = call("project-export", ctxA, { projectId });
+    assert.equal(exp.ok, true);
+    assert.equal(exp.result.bundle.format, "concord-studio-project/v1");
+    const imp = call("project-import", ctxA, { bundle: exp.result.bundle });
+    assert.equal(imp.ok, true);
+    assert.equal(imp.result.imported.tracks, 1);
+    assert.equal(imp.result.imported.clips, 1);
+    assert.equal(imp.result.imported.notes, 1);
+    assert.equal(imp.result.imported.markers, 1);
+  });
+  it("project-import rejects a malformed bundle", () => {
+    assert.equal(call("project-import", ctxA, { bundle: { format: "wrong" } }).ok, false);
+    assert.equal(call("project-import", ctxA, {}).ok, false);
+  });
+});
+
+describe("studio.collab-* (real-time collaboration)", () => {
+  it("start session, second user joins, edit log appends", () => {
+    const proj = call("project-create", ctxA, { name: "Jam" });
+    const start = call("collab-session-start", ctxA, { projectId: proj.result.project.id, displayName: "Host" });
+    assert.equal(start.ok, true);
+    assert.equal(start.result.session.collaborators.length, 1);
+    const join = call("collab-join", ctxB, { projectId: proj.result.project.id, displayName: "Guest" });
+    assert.equal(join.ok, true);
+    assert.equal(join.result.session.collaborators.length, 2);
+    const edit = call("collab-edit", ctxB, { projectId: proj.result.project.id, op: "clip-create", target: "clip1" });
+    assert.equal(edit.ok, true);
+    assert.equal(edit.result.entry.seq, 1);
+    const since = call("collab-since", ctxA, { projectId: proj.result.project.id, sinceSeq: 0 });
+    assert.equal(since.result.entries.length, 1);
+    assert.equal(since.result.entries[0].op, "clip-create");
+  });
+  it("presence updates collaborator cursor", () => {
+    const proj = call("project-create", ctxA, { name: "Jam2" });
+    call("collab-session-start", ctxA, { projectId: proj.result.project.id });
+    const p = call("collab-presence", ctxA, { projectId: proj.result.project.id, cursorBeats: 12 });
+    assert.equal(p.ok, true);
+    assert.equal(p.result.collaborators[0].cursorBeats, 12);
+  });
+  it("collab-leave removes a collaborator; last leaver closes the session", () => {
+    const proj = call("project-create", ctxA, { name: "Jam3" });
+    call("collab-session-start", ctxA, { projectId: proj.result.project.id });
+    call("collab-join", ctxB, { projectId: proj.result.project.id });
+    assert.equal(call("collab-leave", ctxB, { projectId: proj.result.project.id }).result.sessionClosed, false);
+    assert.equal(call("collab-leave", ctxA, { projectId: proj.result.project.id }).result.sessionClosed, true);
+    assert.equal(call("collab-session-get", ctxA, { projectId: proj.result.project.id }).result.session, null);
+  });
+  it("collab-join rejects when no session exists", () => {
+    const proj = call("project-create", ctxA, { name: "Jam4" });
+    assert.equal(call("collab-join", ctxB, { projectId: proj.result.project.id }).ok, false);
+  });
+});
+
 describe("studio.dashboard-summary", () => {
   it("aggregates projects + clips + renders + presets", () => {
     const ctxC = { actor: { userId: "user_dash_stu" }, userId: "user_dash_stu" };

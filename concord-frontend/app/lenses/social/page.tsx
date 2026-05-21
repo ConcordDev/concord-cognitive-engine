@@ -29,8 +29,9 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Globe2, Users, Bell, TrendingUp, BarChart3,
-  Sparkles, Hash, Activity, Loader2, Bookmark, Play, Radio,
+  Globe2, Users, Bell, BarChart3,
+  Sparkles, Activity, Loader2, Bookmark, Play, Radio,
+  MessageSquare,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -58,8 +59,9 @@ import { BookmarksList } from '@/components/social/BookmarksList';
 import { ReelsFeed } from '@/components/reels/ReelsFeed';
 import { RoomList } from '@/components/audio-rooms/RoomList';
 import RoomStage from '@/components/audio-rooms/RoomStage';
+import { FeedView } from '@/components/social/feed/FeedView';
 
-type TabId = 'discover' | 'reels' | 'spaces' | 'following' | 'notifications' | 'analytics' | 'saved';
+type TabId = 'feed' | 'discover' | 'reels' | 'spaces' | 'following' | 'notifications' | 'analytics' | 'saved';
 
 interface MeResponse {
   ok: boolean;
@@ -77,7 +79,7 @@ interface FollowingActivityItem {
 }
 
 export default function SocialHubPage() {
-  const [activeTab, setActiveTab] = useState<TabId>('discover');
+  const [activeTab, setActiveTab] = useState<TabId>('feed');
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   // Phase 12 — Spaces stage modal target. RoomList sets this when the
   // user clicks Join; the modal mounts <RoomStage> which owns the
@@ -101,6 +103,7 @@ export default function SocialHubPage() {
   }, [me?.user?.id, profileUserId]);
 
   const TABS: { id: TabId; label: string; icon: typeof Globe2; badge?: number }[] = [
+    { id: 'feed',          label: 'Feed',          icon: MessageSquare },
     { id: 'discover',      label: 'For You',       icon: Sparkles },
     { id: 'reels',         label: 'Reels',         icon: Play },
     { id: 'spaces',        label: 'Spaces',        icon: Radio },
@@ -182,6 +185,13 @@ export default function SocialHubPage() {
             </nav>
 
             {/* Tab content */}
+            {activeTab === 'feed' && (
+              <FeedView
+                currentUserId={currentUserId}
+                username={me?.user?.username || me?.user?.displayName || currentUserId}
+              />
+            )}
+
             {activeTab === 'discover' && (
               <Discovery currentUserId={currentUserId} />
             )}
@@ -243,12 +253,12 @@ export default function SocialHubPage() {
       {/* Mobile tab bar */}
       <MobileTabBar
         tabs={[
+          { id: 'feed',          label: 'Feed',     icon: MessageSquare },
           { id: 'discover',      label: 'For You',  icon: Sparkles },
           { id: 'reels',         label: 'Reels',    icon: Play },
           { id: 'spaces',        label: 'Spaces',   icon: Radio },
           { id: 'following',     label: 'Follow',   icon: Users },
           { id: 'notifications', label: 'Alerts',   icon: Bell },
-          { id: 'saved',         label: 'Saved',    icon: Bookmark },
         ]}
         active={activeTab}
         onSelect={(id) => setActiveTab(id as TabId)}

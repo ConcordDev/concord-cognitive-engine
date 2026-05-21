@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { GitMerge, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -11,9 +11,7 @@ export function SendsRouting({ projectId }: { projectId?: string }) {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ fromTrackId: '', toTrackId: '', levelDb: '-6', prePost: 'post' });
 
-  useEffect(() => { refresh(); }, [projectId]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (!projectId) { setSends([]); setLoading(false); return; }
     setLoading(true);
     try {
@@ -21,7 +19,9 @@ export function SendsRouting({ projectId }: { projectId?: string }) {
       setSends((res.data?.result?.sends || []) as Send[]);
     } catch (e) { console.error('[Sends] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [projectId]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function set() {
     if (!projectId || !form.fromTrackId.trim() || !form.toTrackId.trim()) return;

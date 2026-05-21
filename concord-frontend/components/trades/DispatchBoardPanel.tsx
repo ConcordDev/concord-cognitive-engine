@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Calendar, Loader2, RefreshCw } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -24,9 +24,7 @@ export function DispatchBoardPanel() {
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
 
-  useEffect(() => { refresh(); }, [date]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const res = await lensRun({ domain: 'trades', action: 'dispatch-board', input: { date } });
@@ -34,7 +32,9 @@ export function DispatchBoardPanel() {
       setUnassigned((res.data?.result?.unassigned || []) as Job[]);
     } catch (e) { console.error('[Dispatch] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [date]);
+
+  useEffect(() => { refresh(); }, [refresh]);
 
   function hourOf(j: Job): number {
     if (!j.scheduledFor) return 9;

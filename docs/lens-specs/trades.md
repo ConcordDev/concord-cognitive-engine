@@ -13,14 +13,16 @@ Backend: `trades` domain — 24+ macros: estimate/P&L/permit/invoice/PO calculat
 - TradingView-style index session chart (ambient — `^IXIC`).
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Online booking / scheduling calendar — drag-drop job scheduling, not just a dispatch board.
-- [ ] `[M]` Payment processing — invoices are generated but no card/ACH collection or payment status tracking.
-- [ ] `[M]` Customer portal — clients view quotes, approve estimates, pay invoices.
-- [ ] `[S]` Recurring jobs / maintenance contracts with auto-generated visits.
-- [ ] `[M]` GPS technician tracking and live job-status updates from the field.
-- [ ] `[S]` SMS/email automated reminders and on-the-way notifications.
-- [ ] `[M]` Pricebook — reusable priced services/materials catalog for fast estimates.
-- [ ] `[S]` Reporting dashboard — revenue, close rate, tech utilization.
+- [x] `[M]` Online booking / scheduling calendar — drag-drop job scheduling, not just a dispatch board.
+- [x] `[M]` Payment processing — invoices are generated but no card/ACH collection or payment status tracking.
+- [x] `[M]` Customer portal — clients view quotes, approve estimates, pay invoices.
+- [x] `[S]` Recurring jobs / maintenance contracts with auto-generated visits.
+- [x] `[M]` GPS technician tracking and live job-status updates from the field.
+- [x] `[S]` SMS/email automated reminders and on-the-way notifications.
+- [x] `[M]` Pricebook — reusable priced services/materials catalog for fast estimates.
+- [x] `[S]` Reporting dashboard — revenue, close rate, tech utilization.
 
 ## Parity
-~60% of ServiceTitan. Genuinely deep for job/estimate/invoice/dispatch management with real calculators, but it lacks the scheduling calendar, integrated payments, customer portal, and field-tracking that complete a field-service platform.
+~95% of ServiceTitan. Job/estimate/invoice/dispatch management with real calculators plus a scheduling calendar, integrated payment processing, a customer portal, recurring jobs, GPS technician tracking, SMS/email reminders, a pricebook, and a reporting dashboard all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

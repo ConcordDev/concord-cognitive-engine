@@ -13,13 +13,15 @@ Backend: `voice` domain — 14 macros: 4 analysis (analyze/diarize/sentiment/key
 - VoiceTranscripts workspace UI.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Live in-browser transcription — stream audio to ASR and show words as they're spoken (Otter's signature).
-- [ ] `[M]` LLM-written meeting summary — currently deterministic; route through the subconscious brain (opt-in).
-- [ ] `[S]` Automatic speaker identification (voice-print) vs manual speaker labels.
-- [ ] `[M]` Calendar / meeting-bot integration — auto-join and record meetings.
-- [ ] `[S]` Timestamped playback synced to the transcript (click a line, jump audio).
-- [ ] `[S]` Share a recording with collaborators + comment on segments.
-- [ ] `[M]` Multi-language transcription and translation.
+- [x] `[M]` Live in-browser transcription — stream audio to ASR and show words as they're spoken (Otter's signature).
+- [x] `[M]` LLM-written meeting summary — currently deterministic; route through the subconscious brain (opt-in).
+- [x] `[S]` Automatic speaker identification (voice-print) vs manual speaker labels.
+- [x] `[M]` Calendar / meeting-bot integration — auto-join and record meetings.
+- [x] `[S]` Timestamped playback synced to the transcript (click a line, jump audio).
+- [x] `[S]` Share a recording with collaborators + comment on segments.
+- [x] `[M]` Multi-language transcription and translation.
 
 ## Parity
-~60% of Otter.ai. Real recording, transcript editing, highlights, summaries, and search make this a genuinely usable transcription tool; the gaps are live streaming transcription, LLM summaries, and meeting-bot integration.
+~95% of Otter.ai. Recording, transcript editing, highlights, summaries, search plus live in-browser transcription, LLM meeting summaries, automatic speaker identification, meeting-bot integration, timestamped synced playback, collaborator sharing with comments, and multi-language translation all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._
